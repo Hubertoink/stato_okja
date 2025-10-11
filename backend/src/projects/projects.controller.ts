@@ -1,12 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, NotFoundException, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ArchiveProjectDto } from './dto/archive-project.dto';
+import { JwtAuthGuard } from '../auth/jwt.guard';
 
 @ApiTags('projects')
 @Controller('projects')
+@UseGuards(JwtAuthGuard)
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
@@ -14,40 +16,42 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Alle Projekte abrufen' })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'archived', required: false })
-  findAll(@Query('search') search?: string, @Query('archived') archived?: string) {
+  findAll(@Req() req: { user: { role: string; orgId?: string|null } }, @Query('search') search?: string, @Query('archived') archived?: string) {
     const archivedBool = archived === 'true' ? true : archived === 'false' ? false : undefined;
-    return this.projectsService.findAll(search, archivedBool);
+    const orgId = req.user.role === 'superadmin' ? null : (req.user.orgId || null);
+    return this.projectsService.findAll(search, archivedBool, orgId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Projekt per ID abrufen' })
-  async findOne(@Param('id') id: string) {
-    const p = await this.projectsService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    const p = await this.projectsService.findOneScoped(id, req.user);
     if (!p) throw new NotFoundException('Project not found');
     return p;
   }
 
   @Post()
   @ApiOperation({ summary: 'Projekt anlegen' })
-  create(@Body() data: CreateProjectDto) {
-    return this.projectsService.create(data);
+  create(@Body() data: CreateProjectDto & { orgId?: string|null }, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    const orgId = req.user.role === 'superadmin' ? (data.orgId ?? null) : (req.user.orgId || null);
+    return this.projectsService.create({ ...data, orgId });
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Projekt bearbeiten' })
-  update(@Param('id') id: string, @Body() data: UpdateProjectDto) {
-    return this.projectsService.update(id, data);
+  update(@Param('id') id: string, @Body() data: UpdateProjectDto, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    return this.projectsService.updateScoped(id, data, req.user);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Projekt löschen' })
-  remove(@Param('id') id: string) {
-    return this.projectsService.remove(id);
+  remove(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    return this.projectsService.removeScoped(id, req.user);
   }
 
   @Patch(':id/archive')
   @ApiOperation({ summary: 'Projekt archivieren / wiederherstellen' })
-  setArchived(@Param('id') id: string, @Body() body: ArchiveProjectDto) {
-    return this.projectsService.archive(id, body.archived ?? true);
+  setArchived(@Param('id') id: string, @Body() body: ArchiveProjectDto, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    return this.projectsService.archiveScoped(id, body.archived ?? true, req.user);
   }
 }

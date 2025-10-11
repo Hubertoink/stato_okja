@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, Raw } from 'typeorm';
+import { Repository, FindOptionsWhere, Raw, Equal, IsNull } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Category } from '../taxonomy/entities/category.entity';
@@ -29,8 +29,13 @@ export class StatsService {
     return where;
   }
 
-  async getSummary(from?: string, to?: string) {
-    const where = this.buildDateWhere(from, to);
+  private applyOrg(where: FindOptionsWhere<Activity>, orgId?: string|null): FindOptionsWhere<Activity> {
+    if (typeof orgId === 'undefined') return where; // superadmin ohne orgId → keine Einschränkung
+    return { ...where, orgId: orgId === null ? (IsNull() as any) : (Equal(orgId) as any) } as any;
+  }
+
+  async getSummary(from?: string, to?: string, orgId?: string|null) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
     const activities = await this.activityRepository.find({ where });
 
     const totalActivities = activities.length;
@@ -52,8 +57,8 @@ export class StatsService {
     };
   }
 
-  async getByType(from?: string, to?: string) {
-    const where = this.buildDateWhere(from, to);
+  async getByType(from?: string, to?: string, orgId?: string|null) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
     const activities = await this.activityRepository.find({ where });
     const map = new Map<string, number>();
     for (const a of activities) {
@@ -62,8 +67,8 @@ export class StatsService {
     return Array.from(map.entries()).map(([type, count]) => ({ type, count }));
   }
 
-  async getGender(from?: string, to?: string) {
-    const where = this.buildDateWhere(from, to);
+  async getGender(from?: string, to?: string, orgId?: string|null) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
     const activities = await this.activityRepository.find({ where });
     const male = activities.reduce((s, a) => s + (a.countMale || 0), 0);
     const female = activities.reduce((s, a) => s + (a.countFemale || 0), 0);
@@ -71,8 +76,8 @@ export class StatsService {
     return { male, female, diverse };
   }
 
-  async getParticipantsTimeseries(from?: string, to?: string) {
-    const where = this.buildDateWhere(from, to);
+  async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
     const activities = await this.activityRepository.find({ where });
     const map = new Map<string, number>();
     for (const a of activities) {
@@ -86,8 +91,8 @@ export class StatsService {
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  async getByCategory(from?: string, to?: string) {
-    const where = this.buildDateWhere(from, to);
+  async getByCategory(from?: string, to?: string, orgId?: string|null) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
     // Count by the category of the linked project (user-managed categories)
     const activities = await this.activityRepository.find({ where });
     const map = new Map<string, number>();
@@ -95,7 +100,7 @@ export class StatsService {
       const catId = a.project?.categoryId || '__uncategorized__';
       map.set(catId, (map.get(catId) || 0) + 1);
     }
-    const categories = await this.categoryRepository.find();
+  const categories = await this.categoryRepository.find({ where: typeof orgId === 'undefined' ? {} : { orgId: orgId === null ? (IsNull() as any) : (Equal(orgId) as any) } as any });
     const nameMap = new Map<string, string>(categories.map((c) => [c.id, c.name] as const));
     const result = Array.from(map.entries()).map(([id, count]) => ({
       id,
@@ -105,8 +110,8 @@ export class StatsService {
     return result.sort((a, b) => b.count - a.count).slice(0, 10);
   }
 
-  async getByCohort(from?: string, to?: string) {
-    const where = this.buildDateWhere(from, to);
+  async getByCohort(from?: string, to?: string, orgId?: string|null) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
     const activities = await this.activityRepository.find({ where });
     // Sum cohorts JSON m/w/d by cohortId
     const map = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
@@ -119,7 +124,7 @@ export class StatsService {
         map.set(ch.cohortId, entry);
       }
     }
-    const cohorts = await this.cohortRepository.find();
+  const cohorts = await this.cohortRepository.find({ where: typeof orgId === 'undefined' ? {} : { orgId: orgId === null ? (IsNull() as any) : (Equal(orgId) as any) } as any });
     const nameMap = new Map(cohorts.map((c) => [c.id, c.name] as const));
     return Array.from(map.values()).map((v) => ({
       cohortId: v.cohortId,

@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere, Equal, IsNull } from 'typeorm';
 import { Staff } from './entities/staff.entity';
 import * as bcrypt from 'bcryptjs';
 
@@ -11,8 +11,10 @@ export class StaffService {
     private staffRepository: Repository<Staff>,
   ) {}
 
-  async findAll(active?: boolean): Promise<Staff[]> {
-    const where = active !== undefined ? { active } : {};
+  async findAll(active?: boolean, orgId?: string|null): Promise<Staff[]> {
+    const where: FindOptionsWhere<Staff> = {};
+    if (active !== undefined) Object.assign(where, { active });
+    if (typeof orgId !== 'undefined') Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
     return this.staffRepository.find({ where });
   }
 
@@ -44,5 +46,32 @@ export class StaffService {
 
   async remove(id: string): Promise<void> {
     await this.staffRepository.delete(id);
+  }
+
+  async findOneScoped(id: string, user: { role: string; orgId?: string|null }) {
+    const s = await this.findOne(id);
+    if (!s) return null;
+    if (user.role !== 'superadmin' && (s.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    return s;
+  }
+
+  async updateScoped(id: string, data: Partial<Staff>, user: { role: string; orgId?: string|null }) {
+    const existing = await this.staffRepository.findOne({ where: { id } });
+    if (!existing) return null;
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    if (user.role !== 'superadmin') {
+      const d = data as Partial<Staff> & { orgId?: string | null };
+      if ('orgId' in d) delete d.orgId;
+      // Ensure sanitized object is used for update
+      data = d;
+    }
+    return this.update(id, data);
+  }
+
+  async removeScoped(id: string, user: { role: string; orgId?: string|null }) {
+    const existing = await this.staffRepository.findOne({ where: { id } });
+    if (!existing) return;
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    await this.remove(id);
   }
 }

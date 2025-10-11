@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, ManyToOne, JoinColumn } from 'typeorm';
 import { ActivityType } from '../../common/enums';
 import { Category } from '../../taxonomy/entities/category.entity';
+import { Organization } from '../../orgs/entities/organization.entity';
 
 @Entity('projects')
 export class Project {
@@ -73,4 +74,12 @@ export class Project {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Mandantentrennung
+  @Column({ type: 'uuid', nullable: true })
+  orgId: string | null;
+
+  @ManyToOne(() => Organization, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'orgId' })
+  org?: Organization | null;
 }

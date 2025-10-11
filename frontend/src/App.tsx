@@ -6,12 +6,14 @@ import Activities from './pages/Activities';
 import ActivityForm from './pages/ActivityForm';
 import Statistics from './pages/Statistics';
 import Settings from './pages/Settings';
+import MyProfile from './pages/MyProfile';
 import Login from './pages/Login';
 import Projects from './pages/Projects';
 import Calendar from './pages/Calendar';
 import { AuthProvider, useAuth } from './lib/auth';
 import AdminOrgSetup from './pages/AdminOrgSetup';
 import OrgUserManagement from './pages/OrgUserManagement';
+import AcceptInvite from './pages/AcceptInvite';
 
 function App() {
   // App-level providers
@@ -19,9 +21,16 @@ function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-      <AuthProvider>
-        <AuthedRoutes />
-      </AuthProvider>
+        <Routes>
+          {/* Public route for invite acceptance */}
+          <Route path="/accept-invite" element={<AcceptInvite />} />
+          {/* Everything else requires auth */}
+          <Route path="/*" element={
+            <AuthProvider>
+              <AuthedRoutes />
+            </AuthProvider>
+          } />
+        </Routes>
       </ToastProvider>
     </BrowserRouter>
   );
@@ -47,6 +56,7 @@ function AuthedRoutes() {
         <Route path="projects" element={<Projects />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="statistics" element={<Statistics />} />
+  <Route path="me" element={<MyProfile />} />
         <Route path="settings" element={<Settings />} />
         {/* Mock admin routes */}
         {user.role === 'superadmin' && (

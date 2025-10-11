@@ -26,18 +26,33 @@ export default function Layout() {
             <h1 className="text-2xl font-bold">Stato 2.0</h1>
             <p className="text-sm text-mint-green">OKJA Statistik & Dokumentation</p>
           </div>
+          {/* Current user and org summary */}
+          <div className="hidden sm:flex flex-col items-end text-sm">
+            <div className="font-medium">{user?.name || user?.email}</div>
+            <div className="opacity-90 text-mint-green">{roleLabel[user?.role || 'user']}{user?.orgName ? ` · ${user.orgName}` : (user?.orgId ? ` · Org ${user.orgId}` : '')}</div>
+          </div>
           {/* User menu */}
           <div className="relative" onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
             <button aria-label="Benutzer" className="flex items-center gap-2 hover:opacity-90" onClick={()=> setMenuOpen((v)=>!v)}>
-              <UserCircle2 className="w-8 h-8" />
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <UserCircle2 className="w-8 h-8" />
+              )}
             </button>
+            {/* Compact user/org on mobile */}
+            <div className="flex sm:hidden flex-col items-end ml-2 text-[11px] leading-4">
+              <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
+              <div className="opacity-90 text-mint-green truncate max-w-[40vw]">{user?.orgName ? user.orgName : (user?.orgId ? `Org ${user.orgId}` : '')}</div>
+            </div>
             {menuOpen && (
             <div className="absolute right-0 mt-2 bg-white text-gray-800 rounded shadow-lg w-56 z-50" onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
               <div className="px-4 py-3 border-b">
                 <div className="font-semibold">{user?.name || user?.email}</div>
-                <div className="text-xs text-gray-500">{roleLabel[user?.role || 'user']}{user?.orgId ? ` · Org ${user.orgId}`:''}</div>
+                <div className="text-xs text-gray-500">{roleLabel[user?.role || 'user']}{user?.orgName ? ` · ${user.orgName}` : (user?.orgId ? ` · Org ${user.orgId}` : '')}</div>
               </div>
               <ul className="py-1 text-sm">
+                <li><button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={()=>{ navigate('/me'); setMenuOpen(false); }}>Meine Daten</button></li>
                 {user?.role === 'superadmin' && (
                   <li><button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={()=>navigate('/admin/orgs')}>Organisationen</button></li>
                 )}
@@ -194,7 +209,10 @@ export default function Layout() {
       {/* Footer */}
       <footer className="bg-azure-web text-gray-600 mt-12">
         <div className="container mx-auto px-4 py-6 text-center text-sm">
-          <p>© 2025 Stato 2.0 - OKJA Team</p>
+          <p>
+            © {new Date().getFullYear()} Stato 2.0 · Version 0.7 ·{' '}
+            <a href="mailto:nikolas.haefner@mannheim.de" className="underline hover:text-viridian">Nikolas Häfner</a>
+          </p>
         </div>
       </footer>
     </div>

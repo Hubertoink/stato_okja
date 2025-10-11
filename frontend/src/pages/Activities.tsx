@@ -1,22 +1,36 @@
 import { useMemo, useState } from 'react';
-import { useActivities } from '@/lib/activities';
-import { useLocations } from '@/lib/locations';
+import { useActivities, type ActivitiesFilter } from '@/lib/activities';
+// basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import type { Project } from '@/lib/projects';
 import { Pencil, XCircle, Tag as TagIcon, StickyNote } from 'lucide-react';
 import { useActivity } from '@/lib/activities';
+import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
+import { colorForActivityType } from '@/lib/colors';
 
 export default function Activities() {
-  const [showFilters, setShowFilters] = useState(false);
-  const [from, setFrom] = useState<string>('');
-  const [to, setTo] = useState<string>('');
-  const [type, setType] = useState<string>('');
-  const [locationId, setLocationId] = useState<string>('');
+  // Basic filter UI removed; we keep only advanced filter state
+  const [filterDrawer, setFilterDrawer] = useState(false);
+  const [advanced, setAdvanced] = useState<ActivitiesFilter>({});
   const [picker, setPicker] = useState<boolean>(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
-  const { data } = useActivities({ from: from || undefined, to: to || undefined, type: type || undefined, locationId: locationId || undefined });
-  const { data: locs } = useLocations({ active: true });
+  const { data } = useActivities({
+    from: advanced.from,
+    to: advanced.to,
+    types: advanced.types,
+    locationIds: advanced.locationIds,
+    projectIds: advanced.projectIds,
+    categoryIds: advanced.categoryIds,
+    tagIds: advanced.tagIds,
+    cohortIds: advanced.cohortIds,
+    hasNotes: advanced.hasNotes,
+    participantsMin: advanced.participantsMin,
+    participantsMax: advanced.participantsMax,
+    durationMin: advanced.durationMin,
+    durationMax: advanced.durationMax,
+  });
+  // no quick location filter
   const activities = useMemo(() => data || [], [data]);
   const [editId, setEditId] = useState<string | null>(null);
   const { data: editing } = useActivity(editId || undefined);
@@ -30,53 +44,58 @@ export default function Activities() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-viridian">Aktivitäten</h2>
-        <button className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors" onClick={() => setPicker(true)}>
-          + Neue Aktivität
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
-        <div className="flex items-center justify-between md:block">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold">Filter</h3>
-            {([from, to, type, locationId].some(Boolean)) && (
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-cambridge-blue/20 transition-colors p-1.5"
-                title="Filter zurücksetzen"
-                aria-label="Filter zurücksetzen"
-                onClick={() => { setFrom(''); setTo(''); setType(''); setLocationId(''); }}
-              >
-                <XCircle className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-          <button
-            type="button"
-            className="md:hidden text-viridian underline"
-            onClick={() => setShowFilters((s) => !s)}
-          >
-            {showFilters ? 'Filter verbergen' : 'Filter anzeigen'}
+        <div className="flex gap-2">
+          <button className="bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors" onClick={() => setFilterDrawer(true)}>
+            Filter
+          </button>
+          <button className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors" onClick={() => setPicker(true)}>
+            + Neue Aktivität
           </button>
         </div>
-        <div className={`grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 ${showFilters ? '' : 'hidden md:grid'}`}>
-          <input type="date" className="border border-gray-300 rounded px-3 py-2" value={from} onChange={(e)=> setFrom(e.target.value)} />
-          <input type="date" className="border border-gray-300 rounded px-3 py-2" value={to} onChange={(e)=> setTo(e.target.value)} />
-          <select className="border border-gray-300 rounded px-3 py-2" value={type} onChange={(e)=> setType(e.target.value)}>
-            <option value="">Alle Tätigkeitstypen</option>
-            <option value="open_door">Offene Tür</option>
-            <option value="project_open">Projekt (offen)</option>
-            <option value="project_closed">Projekt (geschlossen)</option>
-            <option value="event">Veranstaltung</option>
-            <option value="outreach">Aufsuchende Arbeit</option>
-          </select>
-          <select className="border border-gray-300 rounded px-3 py-2" value={locationId} onChange={(e)=> setLocationId(e.target.value)}>
-            <option value="">Alle Einrichtungen</option>
-            {(locs || []).map((l)=> (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
+      </div>
+
+      {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap gap-2 text-xs">
+          {advanced.from || advanced.to ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Zeitraum</span> : null}
+          {advanced.types?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Typen: {advanced.types.length}</span> : null}
+          {advanced.locationIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Einrichtungen: {advanced.locationIds.length}</span> : null}
+          {advanced.projectIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Projekte: {advanced.projectIds.length}</span> : null}
+          {advanced.categoryIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Kategorien: {advanced.categoryIds.length}</span> : null}
+          {advanced.tagIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Tags: {advanced.tagIds.length}</span> : null}
+          {advanced.cohortIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Kohorten: {advanced.cohortIds.length}</span> : null}
+          {advanced.hasNotes ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Nur mit Notizen</span> : null}
+          {(typeof advanced.participantsMin === 'number' || typeof advanced.participantsMax === 'number') && (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Teilnehmende: {typeof advanced.participantsMin === 'number' && typeof advanced.participantsMax === 'number'
+                ? `${advanced.participantsMin}–${advanced.participantsMax}`
+                : typeof advanced.participantsMin === 'number'
+                  ? `≥ ${advanced.participantsMin}`
+                  : `≤ ${advanced.participantsMax}`}
+            </span>
+          )}
+          {(typeof advanced.durationMin === 'number' || typeof advanced.durationMax === 'number') && (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Dauer: {typeof advanced.durationMin === 'number' && typeof advanced.durationMax === 'number'
+                ? `${advanced.durationMin}–${advanced.durationMax} Min.`
+                : typeof advanced.durationMin === 'number'
+                  ? `≥ ${advanced.durationMin} Min.`
+                  : `≤ ${advanced.durationMax} Min.`}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {( Object.values(advanced).some((v)=> Array.isArray(v) ? v.length>0 : v!==undefined && v!==null && v!=='') ) && (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-cambridge-blue/20 transition-colors px-3 py-1.5"
+              title="Filter zurücksetzen"
+              aria-label="Filter zurücksetzen"
+              onClick={() => { setAdvanced({}); }}
+            >
+              <XCircle className="w-4 h-4 mr-1" /> Zurücksetzen
+            </button>
+          )}
         </div>
       </div>
 
@@ -100,9 +119,15 @@ export default function Activities() {
               <tr key={a.id} className="hover:bg-azure-web">
                 <td className="px-6 py-4 text-sm">{(() => { const s=(a.date||'').slice(0,10); const [y,m,d]=s.split('-'); return `${d}.${m}.${y}`; })()}</td>
                 <td className="px-6 py-4 text-sm">
-                  <span className="px-2 py-1 bg-viridian text-white rounded text-xs">
-                    {({open_door:'Offene Tür', project_open:'Projekt (offen)', project_closed:'Projekt (geschlossen)', event:'Veranstaltung', outreach:'Aufsuchend'} as Record<string,string>)[a.type] || a.type}
-                  </span>
+                  {(() => {
+                    const label = ({open_door:'Offene Tür', project_open:'Projekt (offen)', project_closed:'Projekt (geschlossen)', event:'Veranstaltung', outreach:'Aufsuchend'} as Record<string,string>)[a.type] || a.type;
+                    const bg = colorForActivityType(a.type);
+                    return (
+                      <span className="px-2 py-1 text-white rounded text-xs" style={{ backgroundColor: bg }}>
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-6 py-4 text-sm">
                   <div className="font-medium text-gray-900">{a.title || '-'}</div>
@@ -224,6 +249,12 @@ export default function Activities() {
       {editId && editing && (
         <ActivityQuickAdd dateISO={editing.date} onClose={() => setEditId(null)} project={editing.project ?? undefined} activity={editing} />
       )}
+      <ActivitiesFilterDrawer
+        open={filterDrawer}
+        initial={advanced}
+        onClose={()=> setFilterDrawer(false)}
+        onApply={(f)=> { setAdvanced(f); setFilterDrawer(false); }}
+      />
     </div>
   );
 }

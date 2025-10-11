@@ -2,14 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
+import { Organization } from '../orgs/entities/organization.entity';
+import { Location } from '../locations/entities/location.entity';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { EmailService } from '../email/email.service';
+import type { UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
+  @InjectRepository(Organization) private readonly orgs: Repository<Organization>,
+  @InjectRepository(Location) private readonly locations: Repository<Location>,
     private readonly jwt: JwtService,
+    private readonly email: EmailService,
   ) {}
 
   async ensureSeed() {
@@ -35,24 +42,44 @@ export class AuthService {
   async login(user: User) {
     const payload = { sub: user.id, role: user.role, orgId: user.orgId };
     const token = await this.jwt.signAsync(payload);
-    return { access_token: token, user: { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId } };
+    const orgName = user.orgId ? (await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null : null;
+  const avatarUrl = (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null;
+  return { access_token: token, user: { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId, orgName, avatarUrl } };
   }
 
-  async inviteUser(payload: { email: string; name: string; role?: 'org_admin'|'user'|'superadmin'; orgId?: string|null }) {
+  async inviteUser(payload: { email: string; name: string; role?: 'org_admin'|'user'|'superadmin'; orgId?: string|null; orgName?: string }) {
     const email = payload.email.toLowerCase();
     let user = await this.users.findOne({ where: { email } });
+    // If no orgId but orgName provided by superadmin, create organization automatically
+    let resolvedOrgId: string | null | undefined = payload.orgId;
+    if (!resolvedOrgId && payload.orgName) {
+      const existingOrg = await this.orgs.findOne({ where: { name: payload.orgName } });
+      if (existingOrg) resolvedOrgId = existingOrg.id;
+      else {
+        const newOrg = this.orgs.create({ name: payload.orgName });
+        const saved = await this.orgs.save(newOrg);
+        // Default Location for org
+        const loc = this.locations.create({ name: payload.orgName, active: true, orgId: saved.id });
+        await this.locations.save(loc);
+        resolvedOrgId = saved.id;
+      }
+    }
     if (!user) {
-      user = this.users.create({ email, name: payload.name || email, role: (payload.role as any) || 'user', orgId: payload.orgId ?? null, passwordHash: null });
+      const role: UserRole = (payload.role ?? 'user') as UserRole;
+      user = this.users.create({ email, name: payload.name || email, role, orgId: (typeof resolvedOrgId !== 'undefined' ? resolvedOrgId : payload.orgId) ?? null, passwordHash: null });
     } else {
       // reset password and update role/org if provided
       user.name = payload.name || user.name;
-      if (payload.role) user.role = payload.role as any;
-      if (typeof payload.orgId !== 'undefined') user.orgId = payload.orgId ?? null;
+      if (payload.role) user.role = payload.role as UserRole;
+      if (typeof resolvedOrgId !== 'undefined') user.orgId = resolvedOrgId ?? null;
       user.passwordHash = null; // mark as invited
     }
     await this.users.save(user);
-    const token = await this.jwt.signAsync({ sub: user.id, purpose: 'invite' }, { expiresIn: process.env.INVITE_TOKEN_EXPIRATION || '7d' });
-    return { token, user: { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId } };
+  const token = await this.jwt.signAsync({ sub: user.id, purpose: 'invite' }, { expiresIn: process.env.INVITE_TOKEN_EXPIRATION || '7d' });
+  const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
+  const link = `${origin}/accept-invite?token=${token}`;
+  try { await this.email.sendInviteEmail(user.email, user.name || user.email, link); } catch (e) { /* ignore email errors */ }
+  return { token, user: { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId } };
   }
 
   async acceptInvite(token: string, password: string) {
@@ -64,5 +91,34 @@ export class AuthService {
     user.passwordHash = await bcrypt.hash(password, 10);
     await this.users.save(user);
     return this.login(user);
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) return null;
+    const orgName = user.orgId ? (await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null : null;
+  const avatarUrl = (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null;
+  return { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId, orgName, avatarUrl };
+  }
+
+  async updateProfile(userId: string, patch: { name?: string; avatarUrl?: string | null }) {
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+    if (typeof patch.name === 'string') user.name = patch.name;
+  if (typeof patch.avatarUrl !== 'undefined') (user as unknown as { avatarUrl?: string | null }).avatarUrl = patch.avatarUrl;
+    await this.users.save(user);
+    return this.getProfile(user.id);
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user || !user.passwordHash) {
+      throw new Error('Passwortänderung nicht möglich');
+    }
+    const ok = await bcrypt.compare(currentPassword || '', user.passwordHash || '');
+    if (!ok) throw new Error('Aktuelles Passwort ist falsch');
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.users.save(user);
+    return { ok: true };
   }
 }

@@ -23,6 +23,7 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
   const { showToast } = useToast();
   const [form, setForm] = useState<{
+    date?: string;
     projectId?: string;
     locationId?: string;
     start?: string;
@@ -34,20 +35,21 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
     // gendered cohort counts: cohortId -> { m,w,d }
     cohortCounts?: Record<string, { m: number; w: number; d: number }>;
   }>(() => {
-    return { cohortCounts: {} };
+    return { cohortCounts: {}, date: (dateISO || '').slice(0,10) };
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const selectedProject: Project | undefined = useMemo(() => (projects || []).find(p => p.id === form.projectId) || initialProject, [projects, form.projectId, initialProject]);
 
   useEffect(() => {
     // Default times; if project provided, prefill from defaults
-    setForm((f) => ({ start: f.start || (initialProject?.defaultStartTime || '15:00'), end: f.end || (initialProject?.defaultEndTime || '17:00'), projectId: f.projectId || initialProject?.id, ...f }));
+    setForm((f) => ({ start: f.start || (initialProject?.defaultStartTime || '15:00'), end: f.end || (initialProject?.defaultEndTime || '17:00'), projectId: f.projectId || initialProject?.id, date: f.date || (dateISO || '').slice(0,10), ...f }));
   }, [initialProject]);
   useEffect(() => {
     // Prefill for edit mode
     if (activity) {
       setForm((f) => ({
         ...f,
+        date: (activity.date || f.date || dateISO).slice(0,10),
         projectId: activity.projectId || activity.project?.id || f.projectId || initialProject?.id,
         locationId: activity.locationId || activity.location?.id || f.locationId,
         start: activity.startTime || f.start || initialProject?.defaultStartTime || '15:00',
@@ -67,7 +69,7 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
       return;
     }
     // Default times; if project provided, prefill from defaults
-    setForm((f) => ({ start: f.start || (initialProject?.defaultStartTime || '15:00'), end: f.end || (initialProject?.defaultEndTime || '17:00'), projectId: f.projectId || initialProject?.id, ...f }));
+    setForm((f) => ({ start: f.start || (initialProject?.defaultStartTime || '15:00'), end: f.end || (initialProject?.defaultEndTime || '17:00'), projectId: f.projectId || initialProject?.id, date: f.date || (dateISO || '').slice(0,10), ...f }));
   }, [initialProject, activity]);
 
   // Prefill default staff/category from project if provided
@@ -95,8 +97,12 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
   return (
     <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
       <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
-  <h3 className="text-xl font-semibold text-viridian mb-2">Aktivität am {(() => { const s=(dateISO||'').slice(0,10); const [y,m,d]=s.split('-'); return `${d}.${m}.${y}`; })()}</h3>
+  <h3 className="text-xl font-semibold text-viridian mb-2">Aktivität am {(() => { const s=(form.date||dateISO||'').slice(0,10); const [y,m,d]=s.split('-'); return `${d}.${m}.${y}`; })()}</h3>
         <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Datum *</label>
+            <input type="date" value={(form.date || '').slice(0,10)} onChange={(e)=> setForm({ ...form, date: e.target.value })} className="w-full border rounded px-3 py-2" />
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1">Standort *</label>
             <select value={form.locationId || ''} onChange={(e)=> setForm({ ...form, locationId: e.target.value || undefined })} className="w-full border rounded px-3 py-2">
@@ -250,6 +256,7 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
             className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
             onClick={() => {
               // Validation: require project, and per-gender sums must match
+              if (!form.date) { setErrorOpen('Bitte ein Datum wählen.'); return; }
               if (!form.projectId) { setErrorOpen('Bitte ein Projekt wählen.'); return; }
               if (!form.locationId) { setErrorOpen('Bitte einen Standort wählen.'); return; }
               const cohortSums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
@@ -270,7 +277,7 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
               const endM = toMinutes(form.end || selectedProject?.defaultEndTime || null);
               const durationMinutes = startM !== undefined && endM !== undefined && endM >= startM ? (endM - startM) : undefined;
               const payloadBase = {
-                date: activity?.date || dateISO,
+                date: (form.date || (activity?.date || dateISO)).slice(0,10),
                 startTime: form.start || null,
                 endTime: form.end || null,
                 // Always derive activity type from selected project (matches data model)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
 import { createOrgApi, inviteUserApi, listOrgs, acceptInviteApi, type OrgDto } from '@/lib/orgs';
+import { fetchUsers } from '@/lib/users';
 import { setAuthToken } from '@/lib/api';
 
 export default function AdminOrgSetup() {
@@ -54,9 +55,7 @@ export default function AdminOrgSetup() {
           {loading && <div className="text-gray-500">Lade Organisationen…</div>}
           <ul className="text-sm space-y-1">
             {orgs.map(o => (
-              <li key={o.id} className="border rounded px-2 py-1 bg-white flex justify-between">
-                <span>{o.name}</span>
-              </li>
+              <OrgRow key={o.id} org={o} />
             ))}
             {!loading && orgs.length===0 && <li className="text-gray-500">Noch keine Organisationen</li>}
           </ul>
@@ -66,6 +65,12 @@ export default function AdminOrgSetup() {
       {/* Einladung annehmen Modal */}
       <Modal open={!!inviteToken} onClose={()=>{ setInviteToken(null); setInvitePassword(''); }} title="Admin-Einladung aktivieren" maxWidth="sm">
         <p className="text-sm text-gray-700 mb-3">Setze ein Passwort für den eingeladenen Admin.</p>
+        {inviteToken && (
+          <div className="mb-3 text-xs text-gray-600 bg-gray-50 rounded px-2 py-1 flex items-center justify-between">
+            <span className="truncate">{`${window.location.origin}/accept-invite?token=${inviteToken}`}</span>
+            <button className="ml-2 px-2 py-0.5 rounded bg-gray-200" onClick={async()=>{ try { await navigator.clipboard.writeText(`${window.location.origin}/accept-invite?token=${inviteToken}`);} catch {} }}>Kopieren</button>
+          </div>
+        )}
         <input type="password" value={invitePassword} onChange={(e)=>setInvitePassword(e.target.value)} className="border rounded px-3 py-2 w-full" placeholder="Neues Passwort"/>
         <div className="mt-4 flex items-center justify-end gap-2">
           <button className="px-3 py-1.5 rounded bg-gray-200 text-gray-700" onClick={()=>{ setInviteToken(null); setInvitePassword(''); }}>Abbrechen</button>
@@ -92,5 +97,41 @@ export default function AdminOrgSetup() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+function OrgRow({ org }: { org: OrgDto }) {
+  const [counts, setCounts] = useState<{ admins: number; users: number } | null>(null);
+  const [copyMsg, setCopyMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const list = await fetchUsers();
+        const admins = list.filter(u => u.orgId === org.id && u.role === 'org_admin').length;
+        const users = list.filter(u => u.orgId === org.id && u.role === 'user').length;
+        if (mounted) setCounts({ admins, users });
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, [org.id]);
+
+  return (
+    <li className="border rounded px-2 py-1 bg-white flex items-center justify-between gap-2">
+      <span className="truncate">{org.name}</span>
+      <div className="flex items-center gap-2 text-xs text-gray-600">
+        <span className="bg-gray-100 rounded px-2 py-0.5">Admins: {counts?.admins ?? '–'}</span>
+        <span className="bg-gray-100 rounded px-2 py-0.5">Benutzer: {counts?.users ?? '–'}</span>
+        <button
+          className="ml-2 px-2 py-0.5 rounded bg-viridian text-white"
+          onClick={async()=>{
+            const url = `${window.location.origin}/accept-invite`;
+            try { await navigator.clipboard.writeText(url); setCopyMsg('Link kopiert'); setTimeout(()=>setCopyMsg(null), 1500); } catch {}
+          }}
+        >Einladungslink kopieren</button>
+        {copyMsg && <span className="text-viridian">{copyMsg}</span>}
+      </div>
+    </li>
   );
 }

@@ -15,8 +15,10 @@ export class UsersService {
   create(data: Partial<User>) { const u = this.repo.create(data); return this.repo.save(u); }
   update(id: string, patch: Partial<User>) { return this.repo.update({ id }, patch); }
   async remove(id: string) { await this.repo.delete({ id }); return true; }
+  findById(id: string) { return this.repo.findOne({ where: { id } }); }
   countAdmins(orgId: string | null) {
     if (orgId) return this.repo.count({ where: { role: 'org_admin', orgId: Equal(orgId) } });
     return this.repo.count({ where: { role: 'org_admin', orgId: IsNull() } });
   }
+  countSuperadmins() { return this.repo.count({ where: { role: 'superadmin' } }); }
 }

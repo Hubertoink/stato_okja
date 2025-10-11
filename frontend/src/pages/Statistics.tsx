@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from 'recharts';
 
@@ -85,6 +85,7 @@ function useStatsByCategory(params: { from?: string; to?: string }) {
 export default function Statistics() {
   const [from, setFrom] = useState<string>('');
   const [to, setTo] = useState<string>('');
+  const qc = useQueryClient();
   const params = useMemo(() => ({ from: from || undefined, to: to || undefined }), [from, to]);
   const { data: summary } = useStatsSummary(params);
   const { data: byType } = useStatsByType(params);
@@ -117,7 +118,19 @@ export default function Statistics() {
             <label className="block text-sm font-medium mb-1">Bis</label>
             <input type="date" className="border border-gray-300 rounded px-3 py-2" value={to} onChange={(e)=> setTo(e.target.value)} />
           </div>
-          <button className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors" onClick={() => { /* queries auto-refetch via params */ }}>
+          <button
+            className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
+            onClick={() => {
+              // Force refetch of all stats queries even if params didn't change
+              qc.invalidateQueries({
+                predicate: (q) => {
+                  const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
+                  return typeof key0 === 'string' && key0.startsWith('stats:');
+                },
+                refetchType: 'active',
+              });
+            }}
+          >
             Aktualisieren
           </button>
           <button className="bg-cambridge-blue text-white px-6 py-2 rounded-lg hover:bg-viridian transition-colors" onClick={() => { /* TODO: CSV export */ }}>

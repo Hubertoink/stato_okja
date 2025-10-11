@@ -1,12 +1,10 @@
 import { useProjects, Project } from '@/lib/projects';
+import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
 import { X as XIcon } from 'lucide-react';
 
 function pickBg(title?: string) {
-  const palette = ['#2563eb','#ef4444','#f59e0b','#10b981','#8b5cf6','#ec4899','#f97316','#14b8a6','#22c55e','#0ea5e9','#a855f7'];
-  if (!title) return palette[0];
-  let h = 0; for (let i=0;i<title.length;i++) h = (h*31 + title.charCodeAt(i))>>>0;
-  return palette[h % palette.length];
+  return colorFromStringHash(title);
 }
 
 export default function ProjectPickerModal({ onPick, onClose }: { onPick: (p: Project) => void; onClose: () => void }) {

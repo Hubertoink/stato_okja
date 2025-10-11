@@ -139,4 +139,8 @@ export class Activity {
 
   @Column({ type: 'varchar', nullable: true })
   projectId?: string | null;
+
+  // Mandantentrennung
+  @Column({ type: 'uuid', nullable: true })
+  orgId: string | null;
 }

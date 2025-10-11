@@ -2,13 +2,11 @@ import { useState } from 'react';
 import { StaffMember, StaffRole, useArchiveStaff, useCreateStaff, useStaff, useUpdateStaff } from '@/lib/staff';
 import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon } from 'lucide-react';
 
-const ROLE_LABEL: Record<StaffRole, string> = {
-  admin: 'Admin',
-  lead: 'Leitung',
+// Statistikrelevante Rollen (UI-Auswahl auf diese beschränkt)
+const ROLE_LABEL: Partial<Record<StaffRole, string>> = {
   employee: 'Mitarbeitende',
   volunteer: 'Ehrenamtliche',
   helper: 'Helfer',
-  analyst: 'Analyst',
 };
 
 function StaffForm({ initial, onCancel, onSubmit }: { initial?: Partial<StaffMember>; onCancel: () => void; onSubmit: (data: Partial<StaffMember>) => void }) {
@@ -45,13 +43,13 @@ function StaffForm({ initial, onCancel, onSubmit }: { initial?: Partial<StaffMem
           <div>
             <label className="block text-sm font-medium mb-1">Rolle</label>
             <select
-              value={Array.isArray(form.roles) ? form.roles[0] : form.role || 'employee'}
+              value={Array.isArray(form.roles) ? form.roles[0] : (form.role && ROLE_LABEL[form.role] ? form.role : 'employee')}
               onChange={(e) => update('roles', [e.target.value as StaffRole])}
               className="w-full border rounded px-3 py-2"
             >
-              {Object.entries(ROLE_LABEL).map(([key, label]) => (
+              {(['employee','volunteer','helper'] as StaffRole[]).map((key) => (
                 <option key={key} value={key}>
-                  {label}
+                  {ROLE_LABEL[key]}
                 </option>
               ))}
             </select>
@@ -150,7 +148,7 @@ export default function SettingsTeam() {
               </div>
               <div className="mt-2">
                 <span className="inline-block px-2 py-0.5 rounded-full bg-azure-web text-viridian text-xs">
-                  {ROLE_LABEL[(m.role || (Array.isArray(m.roles) ? m.roles[0] : 'employee')) as StaffRole]}
+                  {ROLE_LABEL[(m.role || (Array.isArray(m.roles) ? m.roles[0] : 'employee')) as StaffRole] || '–'}
                 </span>
               </div>
             </div>

@@ -29,8 +29,8 @@ export function useCreateStaff() {
   return useMutation({
     mutationFn: async (data: Partial<StaffMember>) => {
       const payload: Partial<StaffMember> & { role?: StaffRole } = { ...data };
-      // map roles -> role if single selection
-      if (!payload.role && Array.isArray(payload.roles) && payload.roles.length > 0) {
+      // Always prefer roles[0] over any stale `role` field
+      if (Array.isArray(payload.roles) && payload.roles.length > 0) {
         payload.role = payload.roles[0];
       }
       // remove unsupported key to avoid backend update of unknown column
@@ -47,7 +47,8 @@ export function useUpdateStaff() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<StaffMember> }) => {
       const payload: Partial<StaffMember> & { role?: StaffRole } = { ...data };
-      if (!payload.role && Array.isArray(payload.roles) && payload.roles.length > 0) {
+      // Always prefer roles[0] over any stale `role` field
+      if (Array.isArray(payload.roles) && payload.roles.length > 0) {
         payload.role = payload.roles[0];
       }
       delete (payload as Record<string, unknown>).roles;

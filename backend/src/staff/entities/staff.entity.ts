@@ -4,8 +4,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { StaffRole } from '../../common/enums';
+import { Organization } from '../../orgs/entities/organization.entity';
 
 @Entity('staff')
 export class Staff {
@@ -45,4 +48,12 @@ export class Staff {
 
   @Column({ type: 'timestamp', nullable: true })
   lastLogin: Date | null;
+
+  // Mandantentrennung
+  @Column({ type: 'uuid', nullable: true })
+  orgId: string | null;
+
+  @ManyToOne(() => Organization, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'orgId' })
+  org?: Organization | null;
 }

@@ -27,11 +27,38 @@ export interface Activity {
   cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
 }
 
-export function useActivities(params?: { from?: string; to?: string; type?: string; locationId?: string }) {
+export type ActivitiesFilter = {
+  from?: string;
+  to?: string;
+  type?: string; // legacy single-type (kept for compatibility)
+  types?: string[];
+  locationId?: string; // legacy single-location
+  locationIds?: string[];
+  projectIds?: string[];
+  categoryIds?: string[];
+  tagIds?: string[];
+  cohortIds?: string[];
+  hasNotes?: boolean;
+  participantsMin?: number;
+  participantsMax?: number;
+  durationMin?: number;
+  durationMax?: number;
+};
+
+export function useActivities(params?: ActivitiesFilter) {
   return useQuery({
     queryKey: ['activities', params],
     queryFn: async () => {
-      const res = await api.get('/activities', { params });
+      // Encode arrays as comma-separated strings for simple query parsing
+      const qp: Record<string, unknown> = { ...params };
+      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','cohortIds'];
+      for (const k of arrayKeys) {
+        const v = params?.[k];
+        if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
+        else if (Array.isArray(v)) delete qp[k as string];
+      }
+      // Legacy fields stay as-is
+      const res = await api.get('/activities', { params: qp });
       return res.data as Activity[];
     },
   });

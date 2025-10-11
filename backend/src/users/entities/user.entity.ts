@@ -22,6 +22,9 @@ export class User {
   @Column({ type: 'varchar', length: 50, default: 'user' })
   role!: UserRole;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  avatarUrl!: string | null;
+
   @Column({ type: 'uuid', nullable: true })
   orgId!: string | null;
 

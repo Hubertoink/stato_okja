@@ -23,6 +23,7 @@ export default function Settings() {
     <div>
       <h2 className="text-3xl font-bold text-viridian mb-6">Einstellungen</h2>
 
+
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg shadow mb-6 overflow-x-auto">
         <div className="flex border-b">

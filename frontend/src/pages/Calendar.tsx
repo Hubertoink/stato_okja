@@ -3,6 +3,7 @@ import type { Project } from '@/lib/projects';
 import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useActivities, Activity } from '@/lib/activities';
+import { colorForActivityType, translucent } from '@/lib/colors';
 import ActivityDetailModal from './ActivityDetailModal';
 // duplicate import removed
 
@@ -94,8 +95,11 @@ export default function Calendar() {
   const palette = [
     '#2563eb', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#22c55e', '#eab308', '#0ea5e9', '#a855f7',
   ];
-  const pickBg = (title?: string) => {
-    if (!title) return '#bfd8d3';
+  const pickBg = (title?: string, type?: string) => {
+    // Prefer type color when available; fallback to hashed title color
+    const typeColor = colorForActivityType(type);
+    if (typeColor) return translucent(typeColor);
+    if (!title) return '#bfd8d333';
     let h = 0; for (let i=0;i<title.length;i++) h = (h*31 + title.charCodeAt(i)) >>> 0;
     return palette[h % palette.length] + '33'; // translucent
   };
@@ -108,7 +112,7 @@ export default function Calendar() {
       <div className="mt-1 space-y-1">
         {visible.map((a, i) => {
           const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
-          const bg = (a.project?.color ? `${a.project.color}33` : pickBg(a.project?.title || a.title || typeLabel[a.type] || ''));
+          const bg = (a.project?.color ? `${a.project.color}33` : pickBg(a.project?.title || a.title || typeLabel[a.type] || '', a.type));
           const time = fmtTimeRange(a.startTime, a.endTime);
           const total = a.countTotal ?? 0;
           const m = a.countMale ?? 0; const w = a.countFemale ?? 0; const d = a.countDiverse ?? 0;
@@ -119,17 +123,27 @@ export default function Calendar() {
             `Teilnehmende: ${total} (m:${m}, w:${w}, d:${d})`,
             loc ? `Ort: ${loc}` : null,
           ].filter(Boolean).join('\n');
+          const hasImg = Boolean(a.project?.imageUrl);
           return (
             <button
               key={i}
               type="button"
               onClick={(e)=> { e.stopPropagation(); setDetail(a); }}
-              className="w-full h-5 rounded text-[10px] leading-5 px-1 truncate text-left"
+              className="relative w-full h-5 rounded text-[10px] leading-5 px-1 truncate text-left overflow-hidden"
               style={{ backgroundColor: bg }}
               title={tooltip}
               aria-label={label}
             >
-              {label}
+              {hasImg && a.project && (
+                <img
+                  src={a.project.imageUrl || undefined}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-0 w-full h-full object-cover blur-[2px] opacity-40"
+                />
+              )}
+              {hasImg && <div className="absolute inset-0 bg-black/25" aria-hidden />}
+              <span className={`relative z-10 ${hasImg ? 'text-white drop-shadow-sm' : ''}`}>{label}</span>
             </button>
           );
         })}
@@ -149,22 +163,32 @@ export default function Calendar() {
         {items.map((a, i) => {
           const title = a.project?.title || typeLabel[a.type] || a.type;
           const subtitle = a.title ? a.title : undefined;
-          const bg = (a.project?.color ? `${a.project.color}33` : pickBg(a.project?.title || a.title || typeLabel[a.type] || ''));
+          const bg = (a.project?.color ? `${a.project.color}33` : pickBg(a.project?.title || a.title || typeLabel[a.type] || '', a.type));
           const time = fmtTimeRange(a.startTime, a.endTime);
           const counts = (a.countTotal ?? 0);
           const m = a.countMale ?? 0; const w = a.countFemale ?? 0; const d = a.countDiverse ?? 0;
+          const hasImg = Boolean(a.project?.imageUrl);
           return (
             <button
               key={i}
               type="button"
               onClick={(e)=> { e.stopPropagation(); setDetail(a); }}
-              className="w-full rounded px-2 py-1.5 text-left shadow-sm hover:shadow transition-shadow"
+              className="relative w-full rounded px-2 py-1.5 text-left shadow-sm hover:shadow transition-shadow overflow-hidden"
               style={{ backgroundColor: bg }}
               title="Details anzeigen"
             >
-              <div className="text-[11px] font-medium text-gray-800 truncate">{title}{subtitle ? ` (${subtitle})` : ''}</div>
-              {time && <div className="text-[10px] text-gray-700">{time}</div>}
-              <div className="text-[10px] text-gray-700">{counts} (m:{m}, w:{w}, d:{d})</div>
+              {hasImg && a.project && (
+                <img
+                  src={a.project.imageUrl || undefined}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-0 w-full h-full object-cover blur-[3px] opacity-35"
+                />
+              )}
+              {hasImg && <div className="absolute inset-0 bg-black/25" aria-hidden />}
+              <div className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-800'}`}>{title}{subtitle ? ` (${subtitle})` : ''}</div>
+              {time && <div className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}>{time}</div>}
+              <div className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}>{counts} (m:{m}, w:{w}, d:{d})</div>
             </button>
           );
         })}
@@ -206,7 +230,13 @@ export default function Calendar() {
               return (
                 <button
                   key={idx}
-                  className={`relative h-24 md:h-32 border p-1 text-left focus:outline-none focus:ring-2 focus:ring-viridian ${isOtherMonth ? 'bg-azure-web/60 text-gray-500' : 'bg-white'} ${isToday ? 'ring-1 ring-viridian' : ''}`}
+                  className={`relative h-24 md:h-32 border p-1 text-left focus:outline-none focus:ring-2 focus:ring-viridian transition-colors ${
+                    isOtherMonth
+                      ? 'bg-azure-web/60 text-gray-500'
+                      : isToday
+                        ? 'bg-mint-green/40'
+                        : 'bg-white'
+                  } ${isToday ? 'ring-1 ring-mint-green/60 border-mint-green/60' : ''}`}
                   onClick={() => setPicker({ date: iso })}
                   title={`Aktivität am ${day.toLocaleDateString('de-DE')} hinzufügen`}
                 >
@@ -236,7 +266,7 @@ export default function Calendar() {
               return (
                 <button
                   key={iso}
-                  className={`min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left focus:outline-none ${isToday ? 'ring-1 ring-viridian' : ''}`}
+                  className={`min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left focus:outline-none transition-colors ${isToday ? 'bg-mint-green/40 ring-1 ring-mint-green/60 border-mint-green/60' : ''}`}
                   onClick={() => setPicker({ date: iso })}
                   title={`Aktivität am ${d.toLocaleDateString('de-DE')} hinzufügen`}
                 >

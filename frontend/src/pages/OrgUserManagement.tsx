@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { createUserApi, fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
+import { fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
+import { inviteUserApi } from '@/lib/orgs';
+import Modal from '@/components/Modal';
 
 export default function OrgUserManagement() {
   const { user } = useAuth();
@@ -12,6 +14,8 @@ export default function OrgUserManagement() {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmUser, setConfirmUser] = useState<UserDto | null>(null);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
 
   async function reload() {
     setLoading(true);
@@ -19,9 +23,9 @@ export default function OrgUserManagement() {
     try {
       const list = await fetchUsers();
       setUsers(list);
-    } catch (e: any) {
-      const msg = e?.response?.data?.message || 'Fehler beim Laden der Benutzer';
-      setError(Array.isArray(msg) ? msg.join(', ') : String(msg));
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Fehler beim Laden der Benutzer';
+      setError(Array.isArray(msg as any) ? (msg as any[]).join(', ') : String(msg));
     } finally {
       setLoading(false);
     }
@@ -49,12 +53,13 @@ export default function OrgUserManagement() {
           onClick={async()=>{
             if (!email) return;
             try {
-              await createUserApi({ email, name: name || email, role, orgId: orgId ?? null });
+              const res = await inviteUserApi({ email, name: name || email, role, orgId: orgId ?? null });
               setEmail(''); setName(''); setRole('user');
+              setInviteToken(res.token);
               await reload();
-            } catch (e: any) {
-              const msg = e?.response?.data?.message || 'Benutzer anlegen fehlgeschlagen';
-              alert(Array.isArray(msg) ? msg.join(', ') : String(msg));
+            } catch (e: unknown) {
+              const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Einladung senden fehlgeschlagen';
+              alert(Array.isArray(msg as any) ? (msg as any[]).join(', ') : String(msg));
             }
           }}
         >Benutzer anlegen</button>
@@ -78,11 +83,12 @@ export default function OrgUserManagement() {
                 disabled={u.role === 'superadmin'}
                 onChange={async (e)=>{
                   try {
-                    await updateUserApi(u.id, { role: e.target.value as any });
+                    const newRole = e.target.value as 'org_admin'|'user';
+                    await updateUserApi(u.id, { role: newRole });
                     await reload();
-                  } catch (err: any) {
-                    const msg = err?.response?.data?.message || 'Rolle ändern fehlgeschlagen';
-                    alert(Array.isArray(msg)?msg.join(', '):String(msg));
+                  } catch (err: unknown) {
+                    const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Rolle ändern fehlgeschlagen';
+                    alert(Array.isArray(msg as any)?(msg as any[]).join(', '):String(msg));
                   }
                 }}
               >
@@ -92,16 +98,9 @@ export default function OrgUserManagement() {
               </select>
               <button
                 className="text-red-600 hover:underline text-sm"
-                onClick={async()=>{
+                onClick={()=>{
                   if (u.id === user?.id) { alert('Du kannst dich nicht selbst entfernen.'); return; }
-                  if (!confirm(`Benutzer ${u.email} entfernen?`)) return;
-                  try {
-                    await removeUserApi(u.id);
-                    await reload();
-                  } catch (err: any) {
-                    const msg = err?.response?.data?.message || 'Entfernen fehlgeschlagen';
-                    alert(Array.isArray(msg)?msg.join(', '):String(msg));
-                  }
+                  setConfirmUser(u);
                 }}
               >Entfernen</button>
             </div>
@@ -109,6 +108,52 @@ export default function OrgUserManagement() {
         ))}
         {(!loading && users.length===0) && <li className="text-gray-500">Noch keine Benutzer</li>}
       </ul>
+      {/* Delete confirmation modal */}
+      <RemoveUserModal
+        user={confirmUser}
+        onClose={()=> setConfirmUser(null)}
+        onRemoved={()=> { setConfirmUser(null); reload(); }}
+      />
+      {/* Einladung-Link Modal */}
+      <Modal open={!!inviteToken} onClose={()=> setInviteToken(null)} title="Einladung verschickt" maxWidth="sm">
+        <div className="text-sm text-gray-700">Sende diesen Link an den Benutzer, damit er sein Passwort setzen kann:</div>
+        <div className="mt-3 flex items-center bg-azure-web rounded px-2 py-2">
+          <span className="truncate">{inviteToken ? `${window.location.origin}/accept-invite?token=${inviteToken}` : ''}</span>
+          <button
+            className="ml-2 px-2 py-0.5 rounded bg-gray-200"
+            onClick={async()=>{
+              try {
+                if (inviteToken) await navigator.clipboard.writeText(`${window.location.origin}/accept-invite?token=${inviteToken}`);
+              } catch (_e) {
+                /* ignore clipboard errors */
+              }
+            }}
+          >Kopieren</button>
+        </div>
+      </Modal>
     </div>
+  );
+}
+
+// Confirm delete modal
+function RemoveUserModal({ user, onClose, onRemoved }: { user: UserDto | null; onClose: ()=>void; onRemoved: ()=>void }) {
+  if (!user) return null;
+  return (
+    <Modal open={true} onClose={onClose} title="Benutzer entfernen" maxWidth="sm">
+      <p className="text-sm text-gray-700">Möchtest du den Benutzer <span className="font-medium">{user.email}</span> wirklich entfernen?</p>
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <button className="px-3 py-1.5 rounded bg-gray-200 text-gray-700" onClick={onClose}>Abbrechen</button>
+        <button
+          className="px-3 py-1.5 rounded bg-red-600 text-white"
+          onClick={async()=>{
+            try { await removeUserApi(user.id); onClose(); onRemoved(); }
+            catch (err: unknown) {
+              const e = err as { response?: { data?: { message?: unknown } } };
+              alert(String(e?.response?.data?.message || 'Entfernen fehlgeschlagen'));
+            }
+          }}
+        >Entfernen</button>
+      </div>
+    </Modal>
   );
 }

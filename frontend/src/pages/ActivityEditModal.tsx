@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X as XIcon, Save as SaveIcon } from 'lucide-react';
-import { useActivity, useUpdateActivity } from '@/lib/activities';
+import { useActivity, useUpdateActivity, Activity } from '@/lib/activities';
 import { useProjects, Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
-import { useTags, useCohorts } from '@/lib/taxonomy';
+import { useTags, useCohorts as useCohortsQuery } from '@/lib/taxonomy';
+import type { Cohort } from '@/lib/taxonomy';
 import { useStaff } from '@/lib/staff';
 import ConfirmModal from '@/components/ConfirmModal';
 import { Boxes } from 'lucide-react';
@@ -17,7 +18,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
   const { data: projects } = useProjects({ archived: false });
   const { data: locations } = useLocations({ active: true });
   const { data: tags } = useTags({ active: true });
-  const { data: cohorts } = useCohorts({ active: true });
+  const { data: cohorts } = useCohortsQuery({ active: true });
   const { data: staff } = useStaff({ active: true });
   const update = useUpdateActivity();
   const { showToast } = useToast();
@@ -35,11 +36,26 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
     notes?: string;
     staffIds?: string[];
     cohortCounts?: Record<string, { m: number; w: number; d: number }>;
+    topCounts?: { m: number; w: number; d: number; total: number };
   }>({ cohortCounts: {} });
 
   useEffect(() => {
     if (!activity) return;
     const cohortCounts: Record<string, { m: number; w: number; d: number }> = {};
+    // Map activity.cohorts (if present) into editable map keyed by cohortId
+    if (Array.isArray(activity.cohorts)) {
+      for (const c of activity.cohorts) {
+        const prev = cohortCounts[c.cohortId] || { m: 0, w: 0, d: 0 };
+        cohortCounts[c.cohortId] = {
+          m: (prev.m || 0) + (c.m || 0),
+          w: (prev.w || 0) + (c.w || 0),
+          d: (prev.d || 0) + (c.d || 0),
+        };
+      }
+    }
+    const m = activity.countMale || 0;
+    const w = activity.countFemale || 0;
+    const d = activity.countDiverse || 0;
     setForm({
       projectId: activity.projectId || activity.project?.id || undefined,
       locationId: activity.locationId || activity.location?.id || undefined,
@@ -50,6 +66,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
       notes: activity.notes || undefined,
       staffIds: (activity.staff || []).map((s) => s.id),
       cohortCounts,
+      topCounts: { m, w, d, total: (activity.countTotal ?? (m + w + d)) || 0 },
     });
   }, [activity]);
 
@@ -60,11 +77,68 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
 
   if (!activity) return null;
 
+  // Derive cohort sums and decide if we use cohort-based counts or top-level
+  const cohortSums = useMemo(() => {
+    const sums: { m: number; w: number; d: number } = { m: 0, w: 0, d: 0 };
+    Object.values(form.cohortCounts || {}).forEach((e) => {
+      sums.m += e.m || 0;
+      sums.w += e.w || 0;
+      sums.d += e.d || 0;
+    });
+    return sums;
+  }, [form.cohortCounts]);
+  const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
+  const hasCohortData = cohortTotal > 0;
+  const displayCounts = useMemo(() => {
+    if (hasCohortData) {
+      return { ...cohortSums, total: cohortTotal };
+    }
+    const t = form.topCounts || { m: 0, w: 0, d: 0, total: 0 };
+    return { ...t, total: (t.m || 0) + (t.w || 0) + (t.d || 0) };
+  }, [hasCohortData, cohortSums, cohortTotal, form.topCounts]);
+
   return (
     <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
       <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-2">Aktivität bearbeiten</h3>
         <div className="space-y-3">
+          {/* Participants summary (editable if no cohort data) */}
+          <div>
+            <h3 className="text-lg font-semibold mb-2 text-viridian">Teilnehmende</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {(['m', 'w', 'd'] as const).map((g) => (
+                <div key={g}>
+                  <label className="block text-sm font-medium mb-1">{g === 'm' ? 'Männlich' : g === 'w' ? 'Weiblich' : 'Divers'}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={displayCounts[g] ?? 0}
+                    onChange={(e) => {
+                      if (hasCohortData) return; // lock when cohorts present
+                      const val = Number(e.target.value || 0);
+                      const cur = form.topCounts || { m: 0, w: 0, d: 0, total: 0 };
+                      setForm({ ...form, topCounts: { ...cur, [g]: val, total: (g === 'm' ? val : cur.m) + (g === 'w' ? val : cur.w) + (g === 'd' ? val : cur.d) } });
+                    }}
+                    className={`w-full border rounded px-3 py-2 ${hasCohortData ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    disabled={hasCohortData}
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="block text-sm font-medium mb-1">Gesamt</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={displayCounts.total ?? 0}
+                  readOnly
+                  className="w-full border rounded px-3 py-2 bg-gray-50"
+                />
+              </div>
+            </div>
+            {hasCohortData && (
+              <p className="text-xs text-gray-500 mt-1">Die Werte ergeben sich aus den Alterskohorten.</p>
+            )}
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1">Standort *</label>
             <select
@@ -142,6 +216,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
           {/* Cohorts */}
           <div>
             <label className="block text-sm font-medium mb-1">Alterskohorten</label>
+            <div className="text-xs text-gray-600 mb-2">Summe aktuell: m:{displayCounts.m ?? 0} · w:{displayCounts.w ?? 0} · d:{displayCounts.d ?? 0}</div>
             <div className="space-y-2">
               <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2">
                 <span className="text-xs text-gray-500" />
@@ -155,7 +230,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                   ⚧
                 </span>
               </div>
-              {(cohorts || []).map((c) => {
+              {(cohorts || []).map((c: Cohort) => {
                 const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
                 const updateC = (g: GenderKey, val: number) =>
                   setForm({
@@ -180,6 +255,9 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                   </div>
                 );
               })}
+              {!hasCohortData && (
+                <p className="text-xs text-gray-500">Noch keine Kohorten erfasst – die Gesamtsummen oben sind editierbar.</p>
+              )}
             </div>
           </div>
           {/* Tags */}
@@ -299,12 +377,16 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             onClick={() => {
               if (!form.projectId) return;
               if (!form.locationId) return;
-              const cohortSums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
+              const cohortSumsLocal: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
               Object.values(form.cohortCounts || {}).forEach((e) => {
-                cohortSums.m += e.m || 0;
-                cohortSums.w += e.w || 0;
-                cohortSums.d += e.d || 0;
+                cohortSumsLocal.m += e.m || 0;
+                cohortSumsLocal.w += e.w || 0;
+                cohortSumsLocal.d += e.d || 0;
               });
+              const useCoh = (cohortSumsLocal.m + cohortSumsLocal.w + cohortSumsLocal.d) > 0;
+              const counts = useCoh
+                ? cohortSumsLocal
+                : { m: form.topCounts?.m || 0, w: form.topCounts?.w || 0, d: form.topCounts?.d || 0 };
               const payload: Record<string, unknown> = {
                 date: activity.date,
                 startTime: form.start || null,
@@ -317,20 +399,22 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                 tagIds: form.tagIds || [],
                 staffIds: form.staffIds || [],
                 durationMinutes: activity.durationMinutes,
-                countMale: cohortSums.m,
-                countFemale: cohortSums.w,
-                countDiverse: cohortSums.d,
-                countTotal: cohortSums.m + cohortSums.w + cohortSums.d,
-                cohorts: Object.entries(form.cohortCounts || {}).flatMap(([cohortId, gcounts]) => {
-                  const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> = [];
-                  (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
-                    const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
-                    if (v > 0) arr.push({ cohortId, count: v, gender: g });
-                  });
-                  return arr;
-                }),
+                countMale: counts.m,
+                countFemale: counts.w,
+                countDiverse: counts.d,
+                countTotal: counts.m + counts.w + counts.d,
+                cohorts: useCoh
+                  ? Object.entries(form.cohortCounts || {}).flatMap(([cohortId, gcounts]) => {
+                      const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> = [];
+                      (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
+                        const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
+                        if (v > 0) arr.push({ cohortId, count: v, gender: g });
+                      });
+                      return arr;
+                    })
+                  : [],
               };
-              update.mutate({ id, data: payload as any }, { onSuccess: () => { showToast('Aktivität aktualisiert'); onClose(); } });
+              update.mutate({ id, data: payload as Partial<Activity> & Record<string, unknown> }, { onSuccess: () => { showToast('Aktivität aktualisiert'); onClose(); } });
             }}
             title="Speichern"
             aria-label="Speichern"

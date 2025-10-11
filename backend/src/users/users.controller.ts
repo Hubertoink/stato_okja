@@ -32,9 +32,18 @@ export class UsersController {
   @Delete(':id')
   async remove(@Param('id') id: string, @Req() req: { user: { id: string; orgId?: string|null; role: string } }) {
     if (req.user.id === id) throw new BadRequestException('Cannot remove yourself');
-    const admins = await this.service.countAdmins(req.user.role==='superadmin' ? null : (req.user.orgId ?? null));
-    // naive check; in real impl check the target user's org
-    if (admins <= 1) throw new BadRequestException('Cannot remove the last org admin');
+    const target = await this.service.findById(id);
+    if (!target) throw new BadRequestException('User not found');
+    // Prevent deleting last superadmin globally
+    if (target.role === 'superadmin') {
+      const superadmins = await this.service.countSuperadmins();
+      if (superadmins <= 1) throw new BadRequestException('Cannot remove the last superadmin');
+    }
+    // Prevent deleting last org admin in the target's org
+    if (target.role === 'org_admin') {
+      const adminsInOrg = await this.service.countAdmins(target.orgId ?? null);
+      if (adminsInOrg <= 1) throw new BadRequestException('Cannot remove the last org admin');
+    }
     await this.service.remove(id);
     return { ok: true };
   }

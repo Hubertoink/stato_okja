@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Organization } from '../../orgs/entities/organization.entity';
 
 @Entity('cohorts')
 export class Cohort {
@@ -31,4 +34,12 @@ export class Cohort {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Mandantentrennung
+  @Column({ type: 'uuid', nullable: true })
+  orgId: string | null;
+
+  @ManyToOne(() => Organization, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'orgId' })
+  org?: Organization | null;
 }

@@ -1,6 +1,6 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, FindOptionsWhere } from 'typeorm';
+import { Repository, In, Brackets } from 'typeorm';
 import { Activity } from './entities/activity.entity';
 import { ActivityType } from '../common/enums';
 import { Tag } from '../taxonomy/entities/tag.entity';
@@ -23,25 +23,82 @@ export class ActivitiesService {
     private readonly projectRepository: Repository<Project>,
   ) {}
 
-  async findAll(filters?: { from?: string; to?: string; type?: string; locationId?: string }): Promise<Activity[]> {
-    const where: FindOptionsWhere<Activity> = {};
+  async findAll(filters?: {
+    from?: string; to?: string;
+    type?: string; types?: string[];
+    locationId?: string; locationIds?: string[];
+    projectIds?: string[]; categoryIds?: string[]; tagIds?: string[];
+    cohortIds?: string[];
+    hasNotes?: boolean;
+    participantsMin?: number; participantsMax?: number;
+    durationMin?: number; durationMax?: number;
+    orgId?: string|null;
+  }): Promise<Activity[]> {
+    const qb = this.activityRepository.createQueryBuilder('a')
+      .leftJoinAndSelect('a.location', 'location')
+      .leftJoinAndSelect('a.categories', 'categories')
+      .leftJoinAndSelect('a.tags', 'tags')
+      .leftJoinAndSelect('a.staff', 'staff')
+      .leftJoinAndSelect('a.attachments', 'attachments')
+      .leftJoinAndSelect('a.project', 'project')
+      .leftJoinAndSelect('a.createdBy', 'createdBy')
+      .leftJoinAndSelect('a.updatedBy', 'updatedBy')
+      .distinct(true);
 
     if (filters?.from && filters?.to) {
-      where.date = Between(new Date(filters.from), new Date(filters.to));
+      qb.andWhere('a.date BETWEEN :from AND :to', { from: filters.from, to: filters.to });
     }
-    if (filters?.type) {
-      // Cast to the ActivityType enum string
-      where.type = filters.type as ActivityType;
+    if (typeof filters?.orgId !== 'undefined') {
+      if (filters.orgId === null) qb.andWhere('a.orgId IS NULL');
+      else qb.andWhere('a.orgId = :orgId', { orgId: filters.orgId });
     }
-    if (filters?.locationId) {
-      where.locationId = filters.locationId;
+    if (filters?.types && filters.types.length) {
+      qb.andWhere('a.type IN (:...types)', { types: filters.types });
+    } else if (filters?.type) {
+      qb.andWhere('a.type = :type', { type: filters.type });
+    }
+    if (filters?.locationIds && filters.locationIds.length) {
+      qb.andWhere('a.locationId IN (:...locationIds)', { locationIds: filters.locationIds });
+    } else if (filters?.locationId) {
+      qb.andWhere('a.locationId = :locationId', { locationId: filters.locationId });
+    }
+    if (filters?.projectIds && filters.projectIds.length) {
+      qb.andWhere('a.projectId IN (:...projectIds)', { projectIds: filters.projectIds });
+    }
+    if (filters?.categoryIds && filters.categoryIds.length) {
+      qb.andWhere('categories.id IN (:...categoryIds)', { categoryIds: filters.categoryIds });
+    }
+    if (filters?.tagIds && filters.tagIds.length) {
+      qb.andWhere('tags.id IN (:...tagIds)', { tagIds: filters.tagIds });
+    }
+    if (filters?.cohortIds && filters.cohortIds.length) {
+      qb.andWhere(new Brackets((b) => {
+        filters.cohortIds!.forEach((id, i) => {
+          const param = `cid${i}`;
+          (i === 0 ? b.where : b.orWhere)(`a.cohorts LIKE :${param}`, { [param]: `%"cohortId":"${id}"%` });
+        });
+      }));
+    }
+    if (typeof filters?.hasNotes !== 'undefined') {
+      // Treat whitespace-only as empty; TRIM works in Postgres/SQLite
+      if (filters.hasNotes) qb.andWhere("a.notes IS NOT NULL AND TRIM(a.notes) <> ''");
+      else qb.andWhere("(a.notes IS NULL OR TRIM(a.notes) = '')");
+    }
+    if (typeof filters?.participantsMin === 'number') {
+      qb.andWhere('a.countTotal >= :pMin', { pMin: filters.participantsMin });
+    }
+    if (typeof filters?.participantsMax === 'number') {
+      qb.andWhere('a.countTotal <= :pMax', { pMax: filters.participantsMax });
+    }
+    if (typeof filters?.durationMin === 'number') {
+      qb.andWhere('a.durationMinutes >= :dMin', { dMin: filters.durationMin });
+    }
+    if (typeof filters?.durationMax === 'number') {
+      qb.andWhere('a.durationMinutes <= :dMax', { dMax: filters.durationMax });
     }
 
-    return this.activityRepository.find({
-      where,
-      order: { date: 'DESC', startTime: 'DESC' },
-      relations: ['location', 'categories', 'tags', 'staff', 'attachments', 'project'],
-    });
+    qb.orderBy('a.date', 'DESC').addOrderBy('a.startTime', 'DESC');
+    return qb.getMany();
   }
 
   findOne(id: string): Promise<Activity | null> {
@@ -49,6 +106,15 @@ export class ActivitiesService {
       where: { id },
       relations: ['location', 'categories', 'tags', 'staff', 'attachments', 'createdBy', 'updatedBy', 'project'],
     });
+  }
+
+  async findOneScoped(id: string, user: { role: string; orgId?: string|null }) {
+    const a = await this.findOne(id);
+    if (!a) return null;
+    if (user.role !== 'superadmin' && (a.orgId ?? null) !== (user.orgId ?? null)) {
+      throw new ForbiddenException('Not allowed');
+    }
+    return a;
   }
 
   async create(data: (Partial<Activity> & {
@@ -62,20 +128,21 @@ export class ActivitiesService {
       tagIds?: string[];
       staffIds?: string[];
       categoryIds?: string[];
-      cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number } | { cohortId: string; count: number; gender?: string }>;
+      cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number }> | Array<{ cohortId: string; count: number; gender?: 'm'|'w'|'d' }>;
     };
 
     if (!rest.locationId) {
       throw new BadRequestException('locationId is required');
     }
 
-    const activity = this.activityRepository.create(rest);
+  const activity = this.activityRepository.create(rest);
 
     // If a project is linked, enforce the activity type to match the project's type
-    if ((rest as any).projectId) {
-      const project = await this.projectRepository.findOne({ where: { id: (rest as any).projectId } });
+    const restWithProject = rest as Partial<Activity> & { projectId?: string | null };
+    if (restWithProject.projectId) {
+      const project = await this.projectRepository.findOne({ where: { id: restWithProject.projectId } });
       if (!project) throw new BadRequestException('Invalid projectId');
-      activity.project = project as any;
+      activity.project = project;
       activity.type = project.type as ActivityType;
     }
 
@@ -96,18 +163,22 @@ export class ActivitiesService {
     // Cohorts: allow two input shapes; normalize to per-gender {cohortId,m,w,d}
     if (Array.isArray(cohorts)) {
       const byId = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
-      for (const c of cohorts) {
+      for (const c of cohorts as Array<{ cohortId: string; m?: number; w?: number; d?: number } | { cohortId: string; count: number; gender?: 'm'|'w'|'d' }>) {
         if (!c || !('cohortId' in c) || !c.cohortId) continue;
         const cur = byId.get(c.cohortId) || { cohortId: c.cohortId, m: 0, w: 0, d: 0 };
         if ('m' in c || 'w' in c || 'd' in c) {
-          cur.m += (c as any).m || 0;
-          cur.w += (c as any).w || 0;
-          cur.d += (c as any).d || 0;
+          const cm = (c as { m?: number }).m ?? 0;
+          const cw = (c as { w?: number }).w ?? 0;
+          const cd = (c as { d?: number }).d ?? 0;
+          cur.m += cm;
+          cur.w += cw;
+          cur.d += cd;
         } else if ('count' in c) {
-          const g = (c as any).gender as string | undefined;
-          if (g === 'm') cur.m += (c as any).count || 0;
-          else if (g === 'w') cur.w += (c as any).count || 0;
-          else if (g === 'd') cur.d += (c as any).count || 0;
+          const g = (c as { gender?: 'm'|'w'|'d' }).gender;
+          const cnt = (c as { count: number }).count || 0;
+          if (g === 'm') cur.m += cnt;
+          else if (g === 'w') cur.w += cnt;
+          else if (g === 'd') cur.d += cnt;
         }
         byId.set(c.cohortId, cur);
       }
@@ -136,17 +207,18 @@ export class ActivitiesService {
       tagIds?: string[];
       staffIds?: string[];
       categoryIds?: string[];
-      cohorts?: Array<{ cohortId: string; count: number; gender?: string }>;
+      cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number }> | Array<{ cohortId: string; count: number; gender?: 'm'|'w'|'d' }>;
     };
 
     Object.assign(existing, rest);
 
     // If a project is linked (new or existing), ensure the activity type mirrors the project's type
-    const projectId = (rest as any).projectId ?? existing.projectId;
+    const restWithProject = rest as Partial<Activity> & { projectId?: string | null };
+    const projectId = restWithProject.projectId ?? existing.projectId;
     if (projectId) {
       const project = await this.projectRepository.findOne({ where: { id: projectId as string } });
       if (project) {
-        existing.project = project as any;
+        existing.project = project;
         existing.type = project.type as ActivityType;
       }
     }
@@ -165,18 +237,22 @@ export class ActivitiesService {
     // Cohorts: normalize to per-gender and recompute totals
     if (Array.isArray(cohorts)) {
       const byId = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
-      for (const c of cohorts) {
+      for (const c of cohorts as Array<{ cohortId: string; m?: number; w?: number; d?: number } | { cohortId: string; count: number; gender?: 'm'|'w'|'d' }>) {
         if (!c || !('cohortId' in c) || !c.cohortId) continue;
         const cur = byId.get(c.cohortId) || { cohortId: c.cohortId, m: 0, w: 0, d: 0 };
         if ('m' in c || 'w' in c || 'd' in c) {
-          cur.m += (c as any).m || 0;
-          cur.w += (c as any).w || 0;
-          cur.d += (c as any).d || 0;
+          const cm = (c as { m?: number }).m ?? 0;
+          const cw = (c as { w?: number }).w ?? 0;
+          const cd = (c as { d?: number }).d ?? 0;
+          cur.m += cm;
+          cur.w += cw;
+          cur.d += cd;
         } else if ('count' in c) {
-          const g = (c as any).gender as string | undefined;
-          if (g === 'm') cur.m += (c as any).count || 0;
-          else if (g === 'w') cur.w += (c as any).count || 0;
-          else if (g === 'd') cur.d += (c as any).count || 0;
+          const g = (c as { gender?: 'm'|'w'|'d' }).gender;
+          const cnt = (c as { count: number }).count || 0;
+          if (g === 'm') cur.m += cnt;
+          else if (g === 'w') cur.w += cnt;
+          else if (g === 'd') cur.d += cnt;
         }
         byId.set(c.cohortId, cur);
       }
@@ -192,7 +268,24 @@ export class ActivitiesService {
     return this.findOne(id);
   }
 
-  async remove(id: string): Promise<void> {
+  async updateScoped(id: string, data: Partial<Activity>, user: { role: string; orgId?: string|null }) {
+    const existing = await this.activityRepository.findOne({ where: { id } });
+    if (!existing) return null;
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
+      throw new ForbiddenException('Not allowed');
+    }
+    // enforce orgId remains same for non-superadmin
+    const patch: Partial<Activity> = { ...data };
+    if (user.role !== 'superadmin') patch.orgId = existing.orgId ?? null;
+    return this.update(id, patch);
+  }
+
+  async removeScoped(id: string, user: { role: string; orgId?: string|null }): Promise<void> {
+    const existing = await this.activityRepository.findOne({ where: { id } });
+    if (!existing) return;
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
+      throw new ForbiddenException('Not allowed');
+    }
     await this.activityRepository.delete(id);
   }
 }

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Cohort, useCohorts, useCreateCohort, useDeleteCohort, useUpdateCohort } from '@/lib/taxonomy';
 import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon } from 'lucide-react';
+import ConfirmModal from '@/components/ConfirmModal';
+import { api } from '@/lib/api';
 
 function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void }) {
   const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
@@ -69,6 +71,7 @@ export default function SettingsCohorts() {
   const update = useUpdateCohort();
   const remove = useDeleteCohort();
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; cohort?: Cohort } | null>(null);
+  const [confirm, setConfirm] = useState<{ open: boolean; cohort?: Cohort; countActivities?: number; countParticipants?: number; loading?: boolean }>({ open: false });
 
   const cohorts = data || [];
 
@@ -95,6 +98,15 @@ export default function SettingsCohorts() {
               <div className="text-sm text-gray-600">{c.minAge}–{c.maxAge} Jahre</div>
             </div>
             <div className="flex gap-2">
+              {showArchived && c.active === false && (
+                <button
+                  className="text-viridian hover:underline"
+                  onClick={() => update.mutate({ id: c.id, data: { active: true } })}
+                >Wiederherstellen</button>
+              )}
+              {showArchived && c.active === false && (
+                <button className="text-viridian hover:underline" onClick={() => update.mutate({ id: c.id, data: { active: true } })}>Wiederherstellen</button>
+              )}
               <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
                 title="Bearbeiten"
@@ -103,7 +115,19 @@ export default function SettingsCohorts() {
               >
                 <Pencil className="w-4 h-4 text-viridian" />
               </button>
-              <button className="text-gray-500 hover:underline" onClick={() => { if (confirm('Kohorte löschen?')) remove.mutate(c.id); }}>Löschen</button>
+              <button className="text-gray-500 hover:underline" onClick={async () => {
+                setConfirm({ open: true, cohort: c, loading: true });
+                try {
+                  const resStats = await api.get('/stats/by-cohort');
+                  const statsList = Array.isArray(resStats.data) ? (resStats.data as Array<{ cohortId: string; total: number; activities?: number }>) : [];
+                  const statEntry = statsList.find((s) => s.cohortId === c.id);
+                  const participants = statEntry?.total || 0;
+                  const acts = typeof statEntry?.activities === 'number' ? statEntry!.activities : 0;
+                  setConfirm({ open: true, cohort: c, countActivities: acts, countParticipants: participants, loading: false });
+                } catch {
+                  setConfirm((prv) => ({ ...prv, loading: false }));
+                }
+              }}>Löschen</button>
             </div>
           </div>
         ))}
@@ -126,6 +150,37 @@ export default function SettingsCohorts() {
           onCancel={() => setModal(null)}
         />
       )}
+
+      <ConfirmModal
+        open={confirm.open}
+        title="Kohorte löschen?"
+        message={
+          <div className="space-y-2">
+            <p>Wenn Sie eine Alterskohorte löschen, werden historische Auswertungen beeinflusst. Aktivitäten, die dieser Kohorte zugeordnet wurden, verlieren diese Zuordnung. Statistiken nach Alterskohorten ändern sich rückwirkend.</p>
+            {confirm.loading ? (
+              <p className="text-sm text-gray-500">Ermittle betroffene Einträge…</p>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-sm text-gray-700">Betroffene Aktivitäten: <strong>{typeof confirm.countActivities === 'number' ? confirm.countActivities : 0}</strong></p>
+                <p className="text-sm text-gray-700">Betroffene Personen (m/w/d gesamt): <strong>{typeof confirm.countParticipants === 'number' ? confirm.countParticipants : 0}</strong></p>
+              </div>
+            )}
+            <p className="text-sm text-gray-600">Tipp: Statt zu löschen können Sie die Kohorte archivieren. Archivierte Kohorten erscheinen nicht mehr in Auswahlfeldern, bleiben aber für bestehende Daten erhalten.</p>
+          </div>
+        }
+        cancelLabel="Abbrechen"
+        secondaryLabel="Archivieren (empfohlen)"
+        onSecondaryConfirm={() => {
+          if (confirm.cohort?.id) update.mutate({ id: confirm.cohort.id, data: { active: false } });
+          setConfirm({ open: false });
+        }}
+        confirmLabel="Endgültig löschen"
+        onConfirm={() => {
+          if (confirm.cohort?.id) remove.mutate(confirm.cohort.id);
+          setConfirm({ open: false });
+        }}
+        onCancel={() => setConfirm({ open: false })}
+      />
     </div>
   );
 }

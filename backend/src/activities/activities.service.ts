@@ -23,7 +23,7 @@ export class ActivitiesService {
     private readonly projectRepository: Repository<Project>,
   ) {}
 
-  async findAll(filters?: {
+  private buildListQuery(filters?: {
     from?: string; to?: string;
     type?: string; types?: string[];
     locationId?: string; locationIds?: string[];
@@ -33,7 +33,7 @@ export class ActivitiesService {
     participantsMin?: number; participantsMax?: number;
     durationMin?: number; durationMax?: number;
     orgId?: string|null;
-  }): Promise<Activity[]> {
+  }) {
     const qb = this.activityRepository.createQueryBuilder('a')
       .leftJoinAndSelect('a.location', 'location')
       .leftJoinAndSelect('a.categories', 'categories')
@@ -98,7 +98,42 @@ export class ActivitiesService {
     }
 
     qb.orderBy('a.date', 'DESC').addOrderBy('a.startTime', 'DESC');
+    return qb;
+  }
+
+  async findAll(filters?: {
+    from?: string; to?: string;
+    type?: string; types?: string[];
+    locationId?: string; locationIds?: string[];
+    projectIds?: string[]; categoryIds?: string[]; tagIds?: string[];
+    cohortIds?: string[];
+    hasNotes?: boolean;
+    participantsMin?: number; participantsMax?: number;
+    durationMin?: number; durationMax?: number;
+    orgId?: string|null;
+  }): Promise<Activity[]> {
+    const qb = this.buildListQuery(filters);
     return qb.getMany();
+  }
+
+  async findAllPaged(filters: {
+    from?: string; to?: string;
+    type?: string; types?: string[];
+    locationId?: string; locationIds?: string[];
+    projectIds?: string[]; categoryIds?: string[]; tagIds?: string[];
+    cohortIds?: string[];
+    hasNotes?: boolean;
+    participantsMin?: number; participantsMax?: number;
+    durationMin?: number; durationMax?: number;
+    orgId?: string|null;
+    page: number; limit: number;
+  }): Promise<{ data: Activity[]; total: number; page: number; pageSize: number }> {
+    const qb = this.buildListQuery(filters);
+    const page = Math.max(filters.page || 1, 1);
+    const limit = Math.min(Math.max(filters.limit || 50, 1), 50);
+    qb.take(limit).skip((page - 1) * limit);
+    const [rows, total] = await qb.getManyAndCount();
+    return { data: rows, total, page, pageSize: limit };
   }
 
   findOne(id: string): Promise<Activity | null> {

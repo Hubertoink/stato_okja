@@ -64,6 +64,33 @@ export function useActivities(params?: ActivitiesFilter) {
   });
 }
 
+export interface PagedActivitiesResult {
+  data: Activity[];
+  total: number;
+  page: number;
+  pageSize: number; // limit
+}
+
+export function useActivitiesPaged(params: ActivitiesFilter | undefined, page: number, limit: number = 50) {
+  return useQuery({
+    queryKey: ['activities', 'paged', params, page, limit],
+    queryFn: async () => {
+      const qp: Record<string, unknown> = { ...params };
+      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','cohortIds'];
+      for (const k of arrayKeys) {
+        const v = params?.[k];
+        if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
+        else if (Array.isArray(v)) delete qp[k as string];
+      }
+      qp.page = page;
+      qp.limit = Math.min(Math.max(limit, 1), 50);
+      const res = await api.get('/activities', { params: qp });
+      return res.data as PagedActivitiesResult;
+    },
+    placeholderData: (prev) => prev,
+  });
+}
+
 export function useActivity(id?: string) {
   return useQuery({
     queryKey: ['activity', id],

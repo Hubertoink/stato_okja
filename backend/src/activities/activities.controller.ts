@@ -38,6 +38,8 @@ export class ActivitiesController {
   @ApiQuery({ name: 'participantsMax', required: false })
   @ApiQuery({ name: 'durationMin', required: false })
   @ApiQuery({ name: 'durationMax', required: false })
+  @ApiQuery({ name: 'page', required: false, description: '1-basierte Seite für Paginierung' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Anzahl je Seite (max 50, Standard 50)' })
   findAll(
     @Req() req: { user: { role: string; orgId?: string|null } },
     @Query('from') from?: string,
@@ -56,12 +58,18 @@ export class ActivitiesController {
     @Query('durationMin') durationMin?: string,
     @Query('durationMax') durationMax?: string,
     @Query('orgId') orgIdQuery?: string,
+    @Query('page') pageStr?: string,
+    @Query('limit') limitStr?: string,
   ) {
     const orgId = req.user.role === 'superadmin'
       ? (typeof orgIdQuery === 'undefined' ? undefined : (orgIdQuery || null))
       : (req.user.orgId || null);
     const csvToArray = (s?: string) => (s ? s.split(',').map((v)=>v.trim()).filter(Boolean) : undefined);
-    return this.activitiesService.findAll({
+    const page = pageStr ? Math.max(parseInt(pageStr, 10) || 1, 1) : undefined;
+    const limitParsed = limitStr ? (parseInt(limitStr, 10) || 50) : 50;
+    const limit = Math.min(Math.max(limitParsed, 1), 50);
+
+    const filters = {
       from,
       to,
       type,
@@ -78,7 +86,13 @@ export class ActivitiesController {
       durationMin: durationMin ? parseInt(durationMin, 10) : undefined,
       durationMax: durationMax ? parseInt(durationMax, 10) : undefined,
       orgId,
-    });
+    } as const;
+
+    // Wenn page gesetzt ist, paginierte Antwort liefern, sonst alle (bestehendes Verhalten)
+    if (typeof page !== 'undefined') {
+      return this.activitiesService.findAllPaged({ ...filters, page, limit });
+    }
+    return this.activitiesService.findAll(filters);
   }
 
   @Get(':id')

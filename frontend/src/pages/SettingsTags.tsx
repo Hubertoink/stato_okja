@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Tag, useCreateTag, useDeleteTag, useTags, useUpdateTag } from '@/lib/taxonomy';
 import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon } from 'lucide-react';
+import ConfirmModal from '@/components/ConfirmModal';
+import { api } from '@/lib/api';
 
 function TagForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Tag>; onSubmit: (d: Partial<Tag>) => void; onCancel: () => void; onArchive?: () => void }) {
   const [form, setForm] = useState<Partial<Tag>>({ active: true, ...initial });
@@ -69,6 +71,7 @@ export default function SettingsTags() {
   const update = useUpdateTag();
   const remove = useDeleteTag();
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; tag?: Tag } | null>(null);
+  const [confirm, setConfirm] = useState<{ open: boolean; tag?: Tag; count?: number; loading?: boolean }>({ open: false });
 
   const tags = data || [];
 
@@ -98,6 +101,9 @@ export default function SettingsTags() {
               </div>
             </div>
             <div className="flex gap-2">
+              {showArchived && t.active === false && (
+                <button className="text-viridian hover:underline" onClick={() => update.mutate({ id: t.id, data: { active: true } })}>Wiederherstellen</button>
+              )}
               <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
                 title="Bearbeiten"
@@ -106,7 +112,16 @@ export default function SettingsTags() {
               >
                 <Pencil className="w-4 h-4 text-viridian" />
               </button>
-              <button className="text-gray-500 hover:underline" onClick={() => { if (confirm('Tag löschen?')) remove.mutate(t.id); }}>Löschen</button>
+              <button className="text-gray-500 hover:underline" onClick={async () => {
+                setConfirm({ open: true, tag: t, loading: true });
+                try {
+                  const res = await api.get('/activities', { params: { tagIds: t.id } });
+                  const list = res.data as unknown[];
+                  setConfirm({ open: true, tag: t, count: Array.isArray(list) ? list.length : 0, loading: false });
+                } catch {
+                  setConfirm((prv) => ({ ...prv, loading: false }));
+                }
+              }}>Löschen</button>
             </div>
           </div>
         ))}
@@ -128,6 +143,33 @@ export default function SettingsTags() {
           onCancel={() => setModal(null)}
         />
       )}
+      <ConfirmModal
+        open={confirm.open}
+        title="Tag löschen?"
+        message={
+          <div className="space-y-2">
+            <p>Wenn Sie ein Tag löschen, verlieren alle Aktivitäten mit diesem Tag die Zuordnung. Historische Auswertungen nach Tags ändern sich rückwirkend.</p>
+            {confirm.loading ? (
+              <p className="text-sm text-gray-500">Ermittle betroffene Einträge…</p>
+            ) : (
+              <p className="text-sm text-gray-700">Betroffene Aktivitäten: <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong></p>
+            )}
+            <p className="text-sm text-gray-600">Tipp: Statt zu löschen können Sie das Tag archivieren. Archivierte Tags erscheinen nicht mehr in Auswahlfeldern, bleiben aber für bestehende Daten erhalten.</p>
+          </div>
+        }
+        cancelLabel="Abbrechen"
+        secondaryLabel="Archivieren (empfohlen)"
+        onSecondaryConfirm={() => {
+          if (confirm.tag?.id) update.mutate({ id: confirm.tag.id, data: { active: false } });
+          setConfirm({ open: false });
+        }}
+        confirmLabel="Endgültig löschen"
+        onConfirm={() => {
+          if (confirm.tag?.id) remove.mutate(confirm.tag.id);
+          setConfirm({ open: false });
+        }}
+        onCancel={() => setConfirm({ open: false })}
+      />
     </div>
   );
 }

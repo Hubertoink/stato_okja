@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useActivities, type ActivitiesFilter } from '@/lib/activities';
+import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 // basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
@@ -14,8 +14,10 @@ export default function Activities() {
   const [filterDrawer, setFilterDrawer] = useState(false);
   const [advanced, setAdvanced] = useState<ActivitiesFilter>({});
   const [picker, setPicker] = useState<boolean>(false);
+  const [page, setPage] = useState<number>(1);
+  const pageSize = 50;
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
-  const { data } = useActivities({
+  const filters = {
     from: advanced.from,
     to: advanced.to,
     types: advanced.types,
@@ -29,9 +31,12 @@ export default function Activities() {
     participantsMax: advanced.participantsMax,
     durationMin: advanced.durationMin,
     durationMax: advanced.durationMax,
-  });
+  } as ActivitiesFilter;
+  const { data: paged } = useActivitiesPaged(filters, page, pageSize);
   // no quick location filter
-  const activities = useMemo(() => data || [], [data]);
+  const activities = useMemo(() => (paged?.data || []), [paged]);
+  const total = paged?.total || 0;
+  const pageCount = Math.max(Math.ceil(total / pageSize), 1);
   const [editId, setEditId] = useState<string | null>(null);
   const { data: editing } = useActivity(editId || undefined);
   const firstWords = (s?: string | null, n: number = 20) => {
@@ -91,7 +96,7 @@ export default function Activities() {
               className="inline-flex items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-cambridge-blue/20 transition-colors px-3 py-1.5"
               title="Filter zurücksetzen"
               aria-label="Filter zurücksetzen"
-              onClick={() => { setAdvanced({}); }}
+              onClick={() => { setAdvanced({}); setPage(1); }}
             >
               <XCircle className="w-4 h-4 mr-1" /> Zurücksetzen
             </button>
@@ -180,6 +185,29 @@ export default function Activities() {
           </tbody>
         </table>
       </div>
+      {/* Pagination Controls */}
+      <div className="mt-4 flex items-center justify-between">
+        <div className="text-sm text-gray-600">
+          {total > 0 ? `Seite ${page} von ${pageCount} · ${total} Einträge` : 'Keine Einträge'}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+            onClick={() => setPage((p)=> Math.max(p-1, 1))}
+            disabled={page <= 1}
+          >
+            Zurück
+          </button>
+          <span className="text-sm">{page} / {pageCount}</span>
+          <button
+            className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+            onClick={() => setPage((p)=> Math.min(p+1, pageCount))}
+            disabled={page >= pageCount}
+          >
+            Weiter
+          </button>
+        </div>
+      </div>
 
       {/* Mobile Cards */}
       <div className="space-y-3 md:hidden">
@@ -253,7 +281,7 @@ export default function Activities() {
         open={filterDrawer}
         initial={advanced}
         onClose={()=> setFilterDrawer(false)}
-        onApply={(f)=> { setAdvanced(f); setFilterDrawer(false); }}
+        onApply={(f)=> { setAdvanced(f); setPage(1); setFilterDrawer(false); }}
       />
     </div>
   );

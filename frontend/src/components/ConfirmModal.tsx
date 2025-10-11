@@ -10,6 +10,8 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
   showCancel = true,
+  secondaryLabel,
+  onSecondaryConfirm,
 }: {
   open: boolean;
   title?: string;
@@ -19,6 +21,8 @@ export default function ConfirmModal({
   onConfirm: () => void;
   onCancel: () => void;
   showCancel?: boolean;
+  secondaryLabel?: string;
+  onSecondaryConfirm?: () => void;
 }) {
   if (!open) return null;
   return (
@@ -36,6 +40,9 @@ export default function ConfirmModal({
         <div className="mt-4 flex items-center justify-end gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
           {showCancel && (
             <button type="button" className="px-3 py-1.5 rounded bg-gray-200 text-gray-700" onClick={onCancel}>{cancelLabel}</button>
+          )}
+          {secondaryLabel && onSecondaryConfirm && (
+            <button type="button" className="px-3 py-1.5 rounded bg-white border border-gray-300 text-gray-800 hover:bg-gray-50" onClick={onSecondaryConfirm}>{secondaryLabel}</button>
           )}
           <button type="button" className="px-3 py-1.5 rounded bg-viridian text-white" onClick={onConfirm}>{confirmLabel}</button>
         </div>

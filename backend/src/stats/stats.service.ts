@@ -29,9 +29,13 @@ export class StatsService {
     return where;
   }
 
-  private applyOrg(where: FindOptionsWhere<Activity>, orgId?: string|null): FindOptionsWhere<Activity> {
-    if (typeof orgId === 'undefined') return where; // superadmin ohne orgId → keine Einschränkung
-    return { ...where, orgId: orgId === null ? (IsNull() as any) : (Equal(orgId) as any) } as any;
+  private applyOrg(where: FindOptionsWhere<Activity>, orgId?: string | null): FindOptionsWhere<Activity> {
+    // superadmin ohne orgId → keine Einschränkung
+    if (typeof orgId === 'undefined') return where;
+    const extra: FindOptionsWhere<Activity> = orgId === null
+      ? { orgId: IsNull() }
+      : { orgId: Equal(orgId) };
+    return { ...where, ...extra } as FindOptionsWhere<Activity>;
   }
 
   async getSummary(from?: string, to?: string, orgId?: string|null) {
@@ -100,7 +104,12 @@ export class StatsService {
       const catId = a.project?.categoryId || '__uncategorized__';
       map.set(catId, (map.get(catId) || 0) + 1);
     }
-  const categories = await this.categoryRepository.find({ where: typeof orgId === 'undefined' ? {} : { orgId: orgId === null ? (IsNull() as any) : (Equal(orgId) as any) } as any });
+  const catQB = this.categoryRepository.createQueryBuilder('c');
+    if (typeof orgId !== 'undefined') {
+      if (orgId === null) catQB.where('c.orgId IS NULL');
+      else catQB.where('c.orgId = :orgId', { orgId });
+    }
+    const categories = await catQB.getMany();
     const nameMap = new Map<string, string>(categories.map((c) => [c.id, c.name] as const));
     const result = Array.from(map.entries()).map(([id, count]) => ({
       id,
@@ -113,8 +122,9 @@ export class StatsService {
   async getByCohort(from?: string, to?: string, orgId?: string|null) {
     const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
     const activities = await this.activityRepository.find({ where });
-    // Sum cohorts JSON m/w/d by cohortId
+    // Sum cohorts JSON m/w/d by cohortId and count distinct activities per cohort
     const map = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
+    const usage = new Map<string, Set<string>>();
     for (const a of activities) {
       for (const ch of a.cohorts || []) {
         const entry = map.get(ch.cohortId) || { cohortId: ch.cohortId, m: 0, w: 0, d: 0 };
@@ -122,9 +132,16 @@ export class StatsService {
         entry.w += ch.w || 0;
         entry.d += ch.d || 0;
         map.set(ch.cohortId, entry);
+        if (!usage.has(ch.cohortId)) usage.set(ch.cohortId, new Set());
+        usage.get(ch.cohortId)!.add(a.id);
       }
     }
-  const cohorts = await this.cohortRepository.find({ where: typeof orgId === 'undefined' ? {} : { orgId: orgId === null ? (IsNull() as any) : (Equal(orgId) as any) } as any });
+    const cohQB = this.cohortRepository.createQueryBuilder('h');
+    if (typeof orgId !== 'undefined') {
+      if (orgId === null) cohQB.where('h.orgId IS NULL');
+      else cohQB.where('h.orgId = :orgId', { orgId });
+    }
+    const cohorts = await cohQB.getMany();
     const nameMap = new Map(cohorts.map((c) => [c.id, c.name] as const));
     return Array.from(map.values()).map((v) => ({
       cohortId: v.cohortId,
@@ -133,6 +150,7 @@ export class StatsService {
       female: v.w,
       diverse: v.d,
       total: v.m + v.w + v.d,
+      activities: usage.get(v.cohortId)?.size || 0,
     })).sort((a, b) => b.total - a.total);
   }
 }

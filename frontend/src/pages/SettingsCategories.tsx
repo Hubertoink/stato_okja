@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Category, useCategories, useCreateCategory, useDeleteCategory, useUpdateCategory } from '@/lib/taxonomy';
+import ConfirmModal from '@/components/ConfirmModal';
+import { api } from '@/lib/api';
 import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon } from 'lucide-react';
 
 function CategoryForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Category>; onSubmit: (d: Partial<Category>) => void; onCancel: () => void; onArchive?: () => void }) {
@@ -75,7 +77,7 @@ export default function SettingsCategories() {
   const update = useUpdateCategory();
   const remove = useDeleteCategory();
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; category?: Category } | null>(null);
-  const [seeding, setSeeding] = useState(false);
+  const [confirm, setConfirm] = useState<{ open: boolean; category?: Category; count?: number; loading?: boolean }>({ open: false });
 
   const categories = data || [];
 
@@ -84,7 +86,6 @@ export default function SettingsCategories() {
       <div className="flex items-center justify-between mb-4 gap-3">
         <div>
           <h3 className="text-xl font-semibold text-viridian">Kategorien verwalten</h3>
-          <p className="text-gray-600">Kategorien nach Landesjugendamt-Standard</p>
         </div>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -93,40 +94,6 @@ export default function SettingsCategories() {
           </label>
           <button className="bg-viridian text-white px-4 py-2 rounded-lg hover:bg-cambridge-blue" onClick={() => setModal({ mode: 'create' })}>+ Neue Kategorie</button>
         </div>
-      </div>
-      <div className="mb-3">
-        <button
-          className="text-sm text-viridian underline disabled:opacity-50"
-          disabled={seeding}
-          onClick={async () => {
-            setSeeding(true);
-            const defaults: Array<{ name: string; description: string }> = [
-              { name: 'Medienpädagogik', description: 'Förderung von Medienkompetenz, kreative Medienarbeit, kritischer Umgang mit digitalen Tools' },
-              { name: 'Freizeitpädagogik', description: 'Offene Angebote zur Freizeitgestaltung, z. B. Spiel, Sport, Ausflüge, kreative Werkstätten' },
-              { name: 'Kulturelle Bildung', description: 'Theater, Musik, Tanz, bildende Kunst – oft mit partizipativem Ansatz' },
-              { name: 'Politische Bildung', description: 'Demokratieförderung, Beteiligung, Wertevermittlung, z. B. Jugendforen oder Workshops' },
-              { name: 'Interkulturelle Arbeit', description: 'Begegnung, Integration, Empowerment von Jugendlichen mit Migrationsgeschichte' },
-              { name: 'Genderpädagogik', description: 'Geschlechtersensible Angebote, z. B. Mädchenarbeit, Jungenarbeit, Queer-Jugendarbeit' },
-              { name: 'Soziale Gruppenarbeit', description: 'Stärkung sozialer Kompetenzen, Konfliktlösung, Peer-Projekte' },
-              { name: 'Berufsorientierung & Lebensplanung', description: 'Unterstützung beim Übergang Schule–Beruf, Bewerbungstrainings, Zukunftswerkstätten' },
-              { name: 'Inklusive Pädagogik', description: 'Barrierefreie Angebote, Teilhabe für Jugendliche mit Behinderung oder Benachteiligung' },
-            ];
-            try {
-              for (const d of defaults) {
-                await new Promise<void>((resolve) => {
-                  create.mutate(
-                    { name: d.name, description: d.description, active: true },
-                    { onSettled: () => resolve() },
-                  );
-                });
-              }
-            } finally {
-              setSeeding(false);
-            }
-          }}
-        >
-          Standardkategorien hinzufügen
-        </button>
       </div>
       <div className="divide-y">
         {categories.map((c) => (
@@ -139,6 +106,9 @@ export default function SettingsCategories() {
               {c.description && <div className="text-sm text-gray-600 line-clamp-2">{c.description}</div>}
             </div>
             <div className="flex gap-2">
+              {showArchived && (c as Category).active === false && (
+                <button className="text-viridian hover:underline" onClick={() => update.mutate({ id: c.id, data: { active: true } })}>Wiederherstellen</button>
+              )}
               <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
                 title="Bearbeiten"
@@ -147,7 +117,16 @@ export default function SettingsCategories() {
               >
                 <Pencil className="w-4 h-4 text-viridian" />
               </button>
-              <button className="text-gray-500 hover:underline" onClick={() => { if (confirm('Kategorie löschen?')) remove.mutate(c.id); }}>Löschen</button>
+              <button className="text-gray-500 hover:underline" onClick={async () => {
+                setConfirm({ open: true, category: c, loading: true });
+                try {
+                  const res = await api.get('/activities', { params: { categoryIds: c.id } });
+                  const list = res.data as unknown[];
+                  setConfirm({ open: true, category: c, count: Array.isArray(list) ? list.length : 0, loading: false });
+                } catch {
+                  setConfirm((prv) => ({ ...prv, loading: false }));
+                }
+              }}>Löschen</button>
             </div>
           </div>
         ))}
@@ -170,6 +149,33 @@ export default function SettingsCategories() {
           onCancel={() => setModal(null)}
         />
       )}
+      <ConfirmModal
+        open={confirm.open}
+        title="Kategorie löschen?"
+        message={
+          <div className="space-y-2">
+            <p>Wenn Sie eine Kategorie löschen, verlieren alle Aktivitäten mit dieser Kategorie die Zuordnung. Historische Auswertungen nach Kategorien ändern sich rückwirkend.</p>
+            {confirm.loading ? (
+              <p className="text-sm text-gray-500">Ermittle betroffene Einträge…</p>
+            ) : (
+              <p className="text-sm text-gray-700">Betroffene Aktivitäten: <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong></p>
+            )}
+            <p className="text-sm text-gray-600">Tipp: Statt zu löschen können Sie die Kategorie archivieren. Archivierte Kategorien erscheinen nicht mehr in Auswahlfeldern, bleiben aber für bestehende Daten erhalten.</p>
+          </div>
+        }
+        cancelLabel="Abbrechen"
+        secondaryLabel="Archivieren (empfohlen)"
+        onSecondaryConfirm={() => {
+          if (confirm.category?.id) update.mutate({ id: confirm.category.id, data: { active: false } });
+          setConfirm({ open: false });
+        }}
+        confirmLabel="Endgültig löschen"
+        onConfirm={() => {
+          if (confirm.category?.id) remove.mutate(confirm.category.id);
+          setConfirm({ open: false });
+        }}
+        onCancel={() => setConfirm({ open: false })}
+      />
     </div>
   );
 }

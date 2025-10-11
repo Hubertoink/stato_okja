@@ -1,0 +1,84 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+*.log
+
+# Env files
+.env
+.env.*
+
+# Editor/OS
+.DS_Store
+.vscode/
+*.local
+
+# Generated uploads
+uploads/
+frontend/dist/
+backend/dist/# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Production
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+postgres-data/
+minio-data/
+
+# IDE
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Uploads
+uploads/
+temp/
+
+# Misc
+.cache/
+.temp/
+*.pid
+*.seed
+*.pid.lock

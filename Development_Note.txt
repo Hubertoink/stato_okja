@@ -1,0 +1,203 @@
+## Produktionsplan für ein multi-user Statistikprogramm in der OKJA
+
+Du willst ein System, das echte Praxis abbildet: unterschiedliche Tätigkeitsformen, pädagogische Kategorien nach Standards, flexible Tags, frei definierbare Alterskohorten, klare Rollen und eine starke Notizfunktion. Ziel: lokal entwickelbar, später als Server-App mit responsivem Frontend nutzbar.
+
+---
+
+### Projektziele und Leitplanken
+
+- **Zielgruppe:** OKJA-Teams, Leitung, Träger; Mehrbenutzerbetrieb mit klaren Rollen.
+- **Schwerpunkte:** Tätigkeiten, Kategorien (wissenschaftlich/Landesjugendamt), Tags, Geschlecht, Alterskohorten, Mitarbeitenden-Zuordnung, Notizen/Dokumentation.
+- **Qualitäten:** Datenschutz, lokale Testbarkeit, Offline-tolerant, saubere Datenmodellierung, einfache Auswertungen.
+
+---
+
+### Funktionsumfang (MVP bis erweitertes)
+
+- **Tätigkeiten:** Offene Tür/Bereich, Angebote/Projekte (offen/geschlossen), Veranstaltungen, Aufsuchende Arbeit.
+- **Erfassung:** Datum/Zeit, Standort/Medienraum, Dauer, Teilnehmende (Zählung), Kategorien, Tags, Mitarbeitende/Ehrenamtliche/Helfer, Notizen/Ziele, Anhänge.
+- **Statistik:** Geschlecht (m/w/divers), frei definierbare Alterskohorten, Zeitreihen, Verteilung nach Kategorien/Tags, Standort-/Raum-Analysen.
+- **Rollen und Rechte:** Admin, Leitung, Mitarbeitende, Ehrenamtliche (eingeschränkt), Auswertung-only.
+- **Konfiguration:** Kategorien nach Standard, Tag-Set, Alterskohorten, Standorte/Räume, Team, Sichtbarkeitsregeln.
+- **Audit:** Änderungsverlauf, letzte Bearbeiter, Erstellungszeitpunkt.
+
+---
+
+### Design- und UX-Richtlinien
+
+- **Responsive UI:** Mobile-first, große Touch-Zielbereiche, klare Schrittfolgen für Erfassung.
+- **Farbpalette:** viridian #6b9080, cambridge-blue #a4c3b2, mint-green #cce3de, azure-web #eaf4f4, mint-cream #f6fff8.  
+  - **Primär:** viridian für Aktionen/Primärbuttons.  
+  - **Sekundär:** cambridge-blue für Navigation.  
+  - **Hintergrund/Flächen:** mint-cream / azure-web.  
+  - **Status/Chips:** mint-green für neutrale Tags.  
+- **Komponenten:**  
+  - **Quick-Log Karte:** Datum, Tätigkeitstyp, Dauer, Besucherzahlen (m/w/divers), Alterskohorten-Slider, Kategorie-Chips, Tag-Autocomplete, Mitarbeitenden-Picker, Notizenfeld.  
+  - **Filterbar:** Zeitraum, Tätigkeitstyp, Raum/Standort, Kategorie, Tag, Teammitglied.  
+  - **Statistik-Dashboard:** KPI-Kacheln, Linien-/Balkendiagramme, Verteilungen, Export (CSV/PDF).  
+  - **Konfiguration:** kohorten-Editor, Kategorien-Manager, Tag-Verwaltung mit Synonymen.
+
+---
+
+### Datenmodell (vereinfachtes Schema)
+
+- **Activity**  
+  - id, date, start_time, end_time, location_id, type (open_door | project_open | project_closed | event | outreach), category_ids[], tag_ids[], staff_ids[], notes, attachments[]  
+  - counts: male, female, diverse  
+  - cohorts: [{cohort_id, count}]
+- **Category**  
+  - id, name, standard_ref (z. B. Landesjugendamt-Code), description, active
+- **Tag**  
+  - id, name, synonyms[], color?, active
+- **Cohort**  
+  - id, name (z. B. 6–9), min_age, max_age, active
+- **Location**  
+  - id, name (Medienraum/Standort), address?, room_type
+- **Staff**  
+  - id, name, role (employee | volunteer | helper | admin | lead | analyst), active
+- **Attachment**  
+  - id, activity_id, filename, mime, size, storage_ref
+- **AuditLog**  
+  - id, entity_type, entity_id, action, by_staff_id, at, diff
+
+---
+
+### Architekturübersicht
+
+- **Frontend:** React + TypeScript, Vite, Zustand/Redux für State, React Query für Serverstate, Routing (React Router), PWA-Service Worker für Offline-Pufferung.
+- **Backend:** Node.js + NestJS (oder Express) mit TypeScript; REST/JSON API; modulare Services (activities, taxonomy, staff, stats, auth).
+- **Datenbank:**  
+  - **Entwicklung:** SQLite (Dateibasiert, schnell, lokal).  
+  - **Produktion:** PostgreSQL (Rollen, Integrität, JSONB für flexible Felder).
+- **Auth:** JWT (Access + Refresh), optional OIDC Integration (Azure AD) später; RBAC in Middleware/Guards.
+- **Deployment:** Docker Compose (api + postgres + nginx). Nginx als Reverse Proxy, HTTPS via Let’s Encrypt. CI/CD (GitHub Actions) mit Migrationslauf.
+- **Storage:** Anhänge in S3-kompatiblem Storage (MinIO lokal, später Cloud) mit signierten URLs.
+
+---
+
+### API-Design (wichtigste Endpunkte)
+
+- **Auth:**  
+  - POST /auth/login  
+  - POST /auth/refresh
+- **Activities:**  
+  - GET /activities?from&to&type&tag&category&location&staff  
+  - POST /activities  
+  - PATCH /activities/:id  
+  - DELETE /activities/:id
+- **Taxonomy:**  
+  - GET /categories, POST/PATCH/DELETE /categories/:id  
+  - GET /tags, POST/PATCH/DELETE /tags/:id  
+  - GET /cohorts, POST/PATCH/DELETE /cohorts/:id
+- **Staff & Locations:**  
+  - GET/POST/PATCH/DELETE /staff/:id  
+  - GET/POST/PATCH/DELETE /locations/:id
+- **Stats/Reports:**  
+  - GET /stats/summary?from&to  
+  - GET /stats/by-category?from&to  
+  - GET /stats/by-cohort?from&to  
+  - GET /export/csv?from&to&filter…
+
+---
+
+### Rollen und Berechtigungen
+
+- **Admin:** Vollzugriff, Konfiguration, Rechteverwaltung.
+- **Leitung:** Vollzugriff auf Aktivitäten/Statistiken, begrenzte Konfiguration.
+- **Mitarbeitende:** CRUD für eigene Aktivitäten, Lesen innerhalb Standort/Team.
+- **Ehrenamtliche/Helfer:** Create/Read, keine Konfig, nur eigene Einträge bearbeiten.
+- **Analyst:** Lesen & Exporte, keine Bearbeitung.
+
+---
+
+### Eingabelogik und Validierungen
+
+- **Pflichtfelder:** Tätigkeitstyp, Datum/Zeit, mindestens eine Zählung (gesamt oder m/w/divers), Standort.
+- **Kohorten-Summen:**  
+  - **Validierung:** Summe der Kohorten = Summe der Gesamtteilnehmenden; Warnung, wenn abweichend.  
+- **Kategorie-Standards:** Kategorien nur aus aktivem Standardset wählbar.
+- **Tags:** Autocomplete, Synonyme-Matching, Limit auf z. B. 10 pro Aktivität, Duplikate verhindert.
+- **Mitarbeitenden-Zuordnung:** Picker mit Rolle-Label; mindestens eine Person empfohlen (Warnhinweis).
+
+---
+
+### Notiz- und Dokumentationsfunktion
+
+- **Rich Text:** Markdown-unterstützt, Checklisten, ToDos, Zielsetzung Felder (z. B. kurz/mittel/lang).
+- **Verknüpfung:** Notizen mit Aktivität verknüpft; schnelle Templates („Reflexion“, „Lernziele“, „Besondere Vorkommnisse“).
+- **Suche/Filter:** Volltextsuche in Notizen; Tagging innerhalb Notizen optional.
+- **Anhänge:** Fotos, PDF, Audio; Datenschutz-Hinweise (kein Personenbezug ohne Einwilligung).
+
+---
+
+### Statistik und Auswertung
+
+- **KPI-Kacheln:** Gesamtteilnehmende, Anteil m/w/divers, Stunden, Anzahl Aktivitäten.
+- **Zeitreihen:** Aktivitäten/Teilnehmende pro Woche/Monat; Vergleichszeiträume.
+- **Verteilungen:** nach Kategorien, Tätigkeitsformen, Standorten, Tags.
+- **Alterskohorten:** Balken/Stacked Bars m/w/divers je Kohorte.
+- **Exports:** CSV für Rohdaten, PDF-Berichte mit Diagrammen; anpassbare Titel/Logo.
+
+---
+
+### Qualität, Datenschutz, Sicherheit
+
+- **Datenschutz:** Personenbezogene Daten minimieren; Aktivitäten sind aggregierte Zählungen. Keine Klardaten zu Teilnehmenden. Rollen-/Standortgrenzen beachten.
+- **Sicherheit:** HTTPS, sichere JWT-Handhabung, Rate Limiting auf Auth, Input-Validierung (Zod/Joi), Audit-Logs.
+- **Backups:** DB-Snapshots täglich (Produktion), Versionierte S3-Objekte für Anhänge.
+
+---
+
+### Entwicklungs- und Teststrategie
+
+- **Lokales Setup:** Docker Compose mit postgres, api, minio; React dev-server. Seed-Daten für Kategorien/Tags/Kohorten.
+- **Unit-Tests:** Services (Counts, Validierungen), Tag-Matching, RBAC-Guards.
+- **Integrationstests:** API-Flows (Create → Edit → Stats), Migrations.
+- **E2E-Tests:** Cypress/Playwright für Erfassung, Filter, Dashboards.
+- **Accessibility:** WCAG AA, Tastaturbedienung, Farbkombis mit guter Kontrastprüfung (Palette oben).
+- **Performance:** Lazy-loading, Query-Cache (React Query), Indexe in DB (date, type, location, tags).
+
+---
+
+### Roadmap
+
+1. **Woche 1–2:** Datenmodell finalisieren, Backend-NestJS Grundgerüst, Auth, Activities CRUD, Taxonomy CRUD.  
+2. **Woche 3–4:** Frontend Erfassung-Form, Filterliste, Liste/Detail, Notizen (Markdown), Tags Autocomplete.  
+3. **Woche 5:** Statistik-Basics (KPI, Zeitreihe, Verteilungen), Exporte (CSV).  
+4. **Woche 6:** Rollen/RBAC, Kohorten-Editor, Kategorien-Konfiguration nach Standard.  
+5. **Woche 7:** Attachments mit MinIO, Audit-Log, Mobile-Optimierungen, PWA.  
+6. **Woche 8:** E2E-Tests, Accessibility-Fixes, Deployment (Docker + Nginx), Beta-Rollout im Jugendhaus.  
+7. **Kontinuierlich:** Feedback aus Teams, Feintuning Tag-System, Berichtsvorlagen für Landesjugendamt.
+
+---
+
+### Beispiel-Validierungen und Business-Regeln
+
+- **Regel:** Eine Aktivität muss mindestens eine Zählung enthalten: entweder Gesamtzahl oder m/w/divers; bei m/w/divers muss Summe ≥ Gesamt.  
+- **Regel:** Geschlossene Projekte markieren Zugangsart (geschlossen/offen) für Auswertung.  
+- **Regel:** Outreach hat optionalen Ortsmarker/Radius.  
+- **Regel:** Kategorien nur aus aktivem Standardset; Versionswechsel protokollieren.
+
+---
+
+### Frontend-Styling-Hinweise (Palette integriert)
+
+- **CSS Vars:**  
+  - --viridian: #6b9080;  
+  - --cambridge-blue: #a4c3b2;  
+  - --mint-green: #cce3de;  
+  - --azure-web: #eaf4f4;  
+  - --mint-cream: #f6fff8;
+- **Buttons:** Primär: viridian auf mint-cream; Hover: cambridge-blue.  
+- **Cards/Listen:** Hintergrund azure-web, Akzentlinien mint-green.  
+- **Chips:** Tags mit mint-green, Kategorien mit cambridge-blue, Tätigkeitsform mit viridian-Border.
+
+---
+
+### Nächste Schritte
+
+- **Seed-Dateien erstellen:** Kategorien nach Landesjugendamt-Standard, Beispiel-Tags, Kohorten (z. B. 6–9, 10–13, 14–17, 18–21, 22+).  
+- **Minimal-Flow bauen:** Login → Aktivität anlegen → Statistik-Kacheln prüfen.  
+- **Stakeholder-Test:** Mitarbeitende/Leitung 1–2 Wochen probieren, Feedback sammeln.
+
+Wenn du willst, schreibe ich dir direkt ein kompaktes Prompt-Briefing für eine KI-gestützte Umsetzung (z. B. „Erstelle NestJS-Modul Activities mit Endpunkten…“), inklusive Datenmodelle und Validierungen.

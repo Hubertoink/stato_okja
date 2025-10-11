@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stato_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-stato_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [stato]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      API_PREFIX: ${API_PREFIX:-api}
+      JWT_SECRET: ${JWT_SECRET:-please_change}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER:-stato_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      DB_DATABASE: ${POSTGRES_DB:-stato_prod}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      DB_LOGGING: ${DB_LOGGING:-false}
+      # SMTP_* optional
+      # SMTP_HOST: smtp.example.org
+      # SMTP_PORT: 587
+      # SMTP_USER: user
+      # SMTP_PASS: pass
+      # SMTP_FROM: no-reply@example.org
+    depends_on:
+      - postgres
+    volumes:
+      - backend-uploads:/app/uploads
+    networks: [stato]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks: [stato]
+
+volumes:
+  postgres-data: {}
+  backend-uploads: {}
+
+networks:
+  stato: {}

@@ -1,16 +1,19 @@
 import { FormEvent, useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const { login } = useAuth();
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('admin');
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     const res = await login(email, password);
     if (!res.ok) setError(res.error);
+    else navigate('/dashboard');
   }
 
   return (

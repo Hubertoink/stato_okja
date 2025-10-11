@@ -1,20 +1,35 @@
-import { useEffect, useMemo, useState } from 'react';
-import { listUsersByOrg, createUser, removeUser, updateUser } from '@/lib/mockdb';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import { createUserApi, fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
 
 export default function OrgUserManagement() {
   const { user } = useAuth();
-  const orgId = user?.orgId as string | undefined;
+  const orgId = (user?.role === 'superadmin') ? undefined : (user?.orgId as string | undefined);
+
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<'org_admin' | 'user'>('user');
-  const [version, setVersion] = useState(0);
-  const users = useMemo(() => (orgId ? listUsersByOrg(orgId) : []), [orgId, version]);
-  useEffect(() => { /* force initial read */ setVersion(v=>v); }, []);
+  const [users, setUsers] = useState<UserDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!orgId) {
-    return <div className="text-gray-600">Keine Organisation zugeordnet.</div>;
+  async function reload() {
+    setLoading(true);
+    setError(null);
+    try {
+      const list = await fetchUsers();
+      setUsers(list);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || 'Fehler beim Laden der Benutzer';
+      setError(Array.isArray(msg) ? msg.join(', ') : String(msg));
+    } finally {
+      setLoading(false);
+    }
   }
+
+  useEffect(() => { reload(); }, []);
+
+  if (!user) return null;
 
   return (
     <div>
@@ -31,31 +46,45 @@ export default function OrgUserManagement() {
         </select>
         <button
           className="bg-viridian text-white px-4 py-2 rounded"
-          onClick={()=>{
+          onClick={async()=>{
             if (!email) return;
-            const u = createUser({ email, name: name || email, role, orgId });
-            // Für den Mock: Passwort entsprechend Rolle setzen
-            updateUser(u.id, { password: role === 'org_admin' ? 'admin' : 'user' });
-            alert(`Einladung (Mock) für ${u.email} erstellt. Passwort: ${role === 'org_admin' ? 'admin' : 'user'}`);
-            setEmail(''); setName(''); setRole('user');
-            setVersion(v=>v+1);
+            try {
+              await createUserApi({ email, name: name || email, role, orgId: orgId ?? null });
+              setEmail(''); setName(''); setRole('user');
+              await reload();
+            } catch (e: any) {
+              const msg = e?.response?.data?.message || 'Benutzer anlegen fehlgeschlagen';
+              alert(Array.isArray(msg) ? msg.join(', ') : String(msg));
+            }
           }}
-        >Benutzer anlegen (Mock)</button>
+        >Benutzer anlegen</button>
       </div>
+
       <h3 className="mt-6 font-semibold">Benutzerliste</h3>
+      {loading && <div className="text-gray-500 mt-2">Lade Benutzer…</div>}
+      {error && <div className="text-red-600 mt-2 text-sm">{error}</div>}
+
       <ul className="mt-2 space-y-1">
-        {users.map(u => (
+        {users.map((u: UserDto) => (
           <li key={u.id} className="bg-white border rounded px-3 py-2 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="truncate font-medium">{u.name} <span className="text-gray-500 font-normal">({u.email})</span></div>
-              <div className="text-xs text-gray-600">Rolle: {u.role === 'org_admin' ? 'Admin' : 'Benutzer'}</div>
+              <div className="text-xs text-gray-600">Rolle: {u.role === 'org_admin' ? 'Admin' : (u.role==='superadmin'?'Superadmin':'Benutzer')}</div>
             </div>
             <div className="flex items-center gap-2">
               <select
                 className="border rounded px-2 py-1 text-sm"
                 value={u.role === 'superadmin' ? 'superadmin' : u.role}
                 disabled={u.role === 'superadmin'}
-                onChange={(e)=>{ updateUser(u.id, { role: e.target.value as any }); setVersion(v=>v+1); }}
+                onChange={async (e)=>{
+                  try {
+                    await updateUserApi(u.id, { role: e.target.value as any });
+                    await reload();
+                  } catch (err: any) {
+                    const msg = err?.response?.data?.message || 'Rolle ändern fehlgeschlagen';
+                    alert(Array.isArray(msg)?msg.join(', '):String(msg));
+                  }
+                }}
               >
                 <option value="user">Benutzer</option>
                 <option value="org_admin">Admin</option>
@@ -63,19 +92,22 @@ export default function OrgUserManagement() {
               </select>
               <button
                 className="text-red-600 hover:underline text-sm"
-                onClick={()=>{
+                onClick={async()=>{
                   if (u.id === user?.id) { alert('Du kannst dich nicht selbst entfernen.'); return; }
-                  const adminCount = users.filter(x=>x.role==='org_admin').length;
-                  if (u.role==='org_admin' && adminCount<=1) { alert('Letzten Admin der Organisation kannst du nicht entfernen.'); return; }
                   if (!confirm(`Benutzer ${u.email} entfernen?`)) return;
-                  removeUser(u.id);
-                  setVersion(v=>v+1);
+                  try {
+                    await removeUserApi(u.id);
+                    await reload();
+                  } catch (err: any) {
+                    const msg = err?.response?.data?.message || 'Entfernen fehlgeschlagen';
+                    alert(Array.isArray(msg)?msg.join(', '):String(msg));
+                  }
                 }}
               >Entfernen</button>
             </div>
           </li>
         ))}
-        {users.length===0 && <li className="text-gray-500">Noch keine Benutzer</li>}
+        {(!loading && users.length===0) && <li className="text-gray-500">Noch keine Benutzer</li>}
       </ul>
     </div>
   );

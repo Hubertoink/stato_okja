@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { useCategories, useTags } from '@/lib/taxonomy';
 import { useStaff } from '@/lib/staff';
 import { useToast } from '@/components/Toast';
+import ConfirmModal from '@/components/ConfirmModal';
 
 function ArchiveRestoreControls({
   id,
@@ -13,6 +14,7 @@ function ArchiveRestoreControls({
   deleting,
   onArchivingChange,
   onDeletingChange,
+  onDeleted,
 }: {
   id: string;
   archived: boolean;
@@ -20,9 +22,11 @@ function ArchiveRestoreControls({
   deleting: boolean;
   onArchivingChange: (v: boolean) => void;
   onDeletingChange: (v: boolean) => void;
+  onDeleted?: () => void;
 }) {
   const archive = useDeleteProject();
   const remove = useRemoveProject();
+  const [confirm, setConfirm] = useState<{ open: boolean; loading?: boolean; count?: number }>({ open: false });
   return (
     <div className="flex gap-2 items-center">
       <span className="tooltip-wrapper">
@@ -52,10 +56,16 @@ function ArchiveRestoreControls({
           title="Löschen"
           aria-label="Löschen"
           disabled={deleting || remove.isPending}
-          onClick={() => {
-            if (!confirm('Dieses Projekt dauerhaft löschen?')) return;
-            onDeletingChange(true);
-            remove.mutate(id, { onSettled: () => onDeletingChange(false) });
+          onClick={async () => {
+            // Open modal and fetch affected activities count efficiently via paged endpoint
+            setConfirm({ open: true, loading: true });
+            try {
+              const res = await api.get('/activities', { params: { projectIds: id, page: 1, limit: 1 } });
+              const total = typeof res?.data?.total === 'number' ? res.data.total : (Array.isArray(res?.data) ? res.data.length : 0);
+              setConfirm({ open: true, loading: false, count: total });
+            } catch {
+              setConfirm({ open: true, loading: false, count: undefined });
+            }
           }}
         >
           <Trash2 className="w-5 h-5" />
@@ -63,6 +73,35 @@ function ArchiveRestoreControls({
         <span className="tooltip-bubble">Löschen</span>
         </span>
       )}
+      <ConfirmModal
+        open={confirm.open}
+        title="Projekt löschen?"
+        message={
+          <div className="space-y-2">
+            <p>Wenn Sie ein Projekt löschen, verlieren alle Aktivitäten mit diesem Projekt die Zuordnung. Historische Auswertungen nach Projekten ändern sich rückwirkend.</p>
+            {confirm.loading ? (
+              <p className="text-sm text-gray-500">Ermittle betroffene Einträge…</p>
+            ) : (
+              <p className="text-sm text-gray-700">Betroffene Aktivitäten: <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong></p>
+            )}
+            <p className="text-sm text-gray-600">Tipp: Wenn das Projekt versehentlich archiviert wurde, können Sie es stattdessen wiederherstellen.</p>
+          </div>
+        }
+        cancelLabel="Abbrechen"
+        secondaryLabel={archived ? 'Wiederherstellen' : undefined}
+        onSecondaryConfirm={archived ? () => {
+          onArchivingChange(true);
+          archive.mutate({ id, archived: false }, { onSettled: () => onArchivingChange(false) });
+          setConfirm({ open: false });
+        } : undefined}
+        confirmLabel="Endgültig löschen"
+        onConfirm={() => {
+          setConfirm({ open: false });
+          onDeletingChange(true);
+          remove.mutate(id, { onSettled: () => onDeletingChange(false), onSuccess: () => { if (onDeleted) onDeleted(); } });
+        }}
+        onCancel={() => setConfirm({ open: false })}
+      />
     </div>
   );
 }
@@ -350,6 +389,7 @@ function ProjectForm({ initial, onSubmit, onCancel }: { initial?: Partial<Projec
                 deleting={deleting}
                 onArchivingChange={setArchiving}
                 onDeletingChange={setDeleting}
+                onDeleted={onCancel}
               />
             )}
           </div>

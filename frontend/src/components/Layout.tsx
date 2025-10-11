@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Activity, BarChart3, Settings, Calendar as CalendarIcon, Boxes, UserCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import logoUrl from '../../assets/Stato_Logo.png';
 import { useRef, useState } from 'react';
 
 export default function Layout() {
@@ -21,10 +22,13 @@ export default function Layout() {
     <div className="min-h-screen bg-mint-cream">
       {/* Header */}
       <header className="bg-viridian text-white shadow-lg">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Stato 2.0</h1>
-            <p className="text-sm text-mint-green">OKJA Statistik & Dokumentation</p>
+        <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <img src={logoUrl} alt="StatO Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain select-none" />
+            <div className="leading-tight min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold truncate">StatO</h1>
+              <p className="text-[11px] md:text-sm text-mint-green truncate">OKJA Statistik & Dokumentation</p>
+            </div>
           </div>
           {/* Current user and org summary */}
           <div className="hidden sm:flex flex-col items-end text-sm">
@@ -142,7 +146,7 @@ export default function Layout() {
       </nav>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 pb-24 md:pb-8">
+      <main className="container mx-auto px-4 py-8 pb-32 md:pb-8">
         <Outlet />
       </main>
 

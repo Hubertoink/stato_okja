@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
+import { Roles } from './roles.decorator';
+import { RolesGuard } from './roles.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -17,5 +19,18 @@ export class AuthController {
   @Get('me')
   me(@Req() req: { user: { id: string; role: string; orgId?: string | null } }) {
     return req.user;
+  }
+
+  // Invite and accept-invite
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('superadmin','org_admin')
+  @Post('invite')
+  invite(@Body() body: { email: string; name: string; role?: 'org_admin'|'user'; orgId?: string|null }) {
+    return this.auth.inviteUser(body);
+  }
+
+  @Post('accept-invite')
+  acceptInvite(@Body() body: { token: string; password: string }) {
+    return this.auth.acceptInvite(body?.token, body?.password);
   }
 }

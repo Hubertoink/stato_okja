@@ -25,10 +25,8 @@ async function bootstrap() {
   );
 
   // CORS
-  app.enableCors({
-    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173'],
-    credentials: true,
-  });
+  const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:5173'];
+  app.enableCors({ origin: corsOrigins, credentials: true });
 
   // Swagger API Documentation
   const config = new DocumentBuilder()

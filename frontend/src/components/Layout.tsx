@@ -125,7 +125,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-mint-cream">
       {/* Header */}
-      <header className="bg-viridian text-white shadow-lg">
+      <header className="fixed top-0 inset-x-0 z-40 header-surface text-white shadow-lg">
         <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <img src={logoUrl} alt="StatO Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain select-none" />
@@ -188,8 +188,8 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* Navigation (desktop) */}
-      <nav className="bg-cambridge-blue text-white shadow-md hidden md:block">
+      {/* Navigation (desktop) - fixed under header */}
+      <nav className="nav-surface text-white shadow-md hidden md:block fixed top-14 md:top-20 inset-x-0 z-30">
         <div className="container mx-auto px-4">
           <ul className="flex space-x-1">
             <li>
@@ -263,7 +263,7 @@ export default function Layout() {
       </nav>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 pb-[var(--mobile-nav-space,8rem)] md:pb-8">
+      <main className="container mx-auto px-4 py-8 pt-24 md:pt-32 pb-[var(--mobile-nav-space,8rem)] md:pb-8">
         <Outlet />
       </main>
 

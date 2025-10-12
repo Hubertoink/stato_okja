@@ -65,13 +65,26 @@ export default function ExportModal({
     return map;
   }, [cohorts]);
 
+  // Use all active cohorts as dynamic columns in raw exports, ordered by sortOrder/minAge
+  const cohortColumns = useMemo(() => Array.from(cohortIndex.values()), [cohortIndex]);
+
+  const getCohortTotal = (a: Activity, cohortId: string) => {
+    if (!Array.isArray(a.cohorts)) return 0;
+    let sum = 0;
+    for (const c of a.cohorts) {
+      if (c.cohortId === cohortId) sum += (c.m ?? 0) + (c.w ?? 0) + (c.d ?? 0);
+    }
+    return sum;
+  };
+
   const downloadRaw = () => {
     const rows: string[][] = [];
     const header = [
       'id','datum','start','ende','dauer_min','typ','titel',
       'projekt_id','projekt','projekt_typ',
       'kategorie_ids','kategorien','tags','ort_id','ort',
-      'mitarbeitende','teilnehmende_total','m','w','d','notizen','cohorts_json'
+      'mitarbeitende','teilnehmende_total','m','w','d','notizen',
+      ...cohortColumns.map((c) => `kohorte:${c.name}`),
     ];
     rows.push(header);
     for (const a of activities) {
@@ -79,7 +92,7 @@ export default function ExportModal({
       const catIds = a.categories?.map((c) => c.id).join('|') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
-      const cohortsJson = a.cohorts ? JSON.stringify(a.cohorts) : '';
+      const cohortTotals = cohortColumns.map((c) => String(getCohortTotal(a, c.id)));
       rows.push([
         a.id,
         a.date?.slice(0, 10) || '',
@@ -102,7 +115,7 @@ export default function ExportModal({
         String(a.countFemale ?? 0),
         String(a.countDiverse ?? 0),
         a.notes || '',
-        cohortsJson,
+        ...cohortTotals,
       ]);
     }
     const csv = rows.map((r) => r.map(csvEscape).join(';')).join('\r\n');
@@ -267,14 +280,15 @@ export default function ExportModal({
     const { utils, writeFile } = xlsx;
     // Raw sheet
     const rawHeader = [
-      'ID','Datum','Start','Ende','Dauer (Minuten)','Typ','Titel','Projekt-ID','Projekt','Projekt-Typ','Kategorie-IDs','Kategorien','Tags','Ort-ID','Ort','Mitarbeitende','Teilnehmende (Total)','M','W','D','Notizen','Kohorten (JSON)'
+      'ID','Datum','Start','Ende','Dauer (Minuten)','Typ','Titel','Projekt-ID','Projekt','Projekt-Typ','Kategorie-IDs','Kategorien','Tags','Ort-ID','Ort','Mitarbeitende','Teilnehmende (Total)','M','W','D','Notizen',
+      ...cohortColumns.map((c) => `Kohorte: ${c.name}`),
     ];
     const rawRows = activities.map((a) => {
       const cats = a.categories?.map((c) => c.name).join(' | ') || '';
       const catIds = a.categories?.map((c) => c.id).join('|') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
-      const cohortsJson = a.cohorts ? JSON.stringify(a.cohorts) : '';
+      const cohortTotals = cohortColumns.map((c) => getCohortTotal(a, c.id));
       return [
         a.id,
         a.date?.slice(0, 10) || '',
@@ -297,7 +311,7 @@ export default function ExportModal({
         a.countFemale ?? 0,
         a.countDiverse ?? 0,
         a.notes || '',
-        cohortsJson,
+        ...cohortTotals,
       ];
     });
   const rawSheet = utils.aoa_to_sheet([rawHeader, ...rawRows]) as WorkSheet;

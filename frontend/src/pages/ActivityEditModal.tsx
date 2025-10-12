@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X as XIcon, Save as SaveIcon } from 'lucide-react';
-import { useActivity, useUpdateActivity, Activity } from '@/lib/activities';
+import { X as XIcon, Save as SaveIcon, Trash2 as TrashIcon } from 'lucide-react';
+import { useActivity, useUpdateActivity, useRemoveActivity, Activity } from '@/lib/activities';
 import { useProjects, Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import { useTags, useCohorts as useCohortsQuery } from '@/lib/taxonomy';
@@ -21,10 +21,12 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
   const { data: cohorts } = useCohortsQuery({ active: true });
   const { data: staff } = useStaff({ active: true });
   const update = useUpdateActivity();
+  const remove = useRemoveActivity();
   const { showToast } = useToast();
   const [picker, setPicker] = useState(false);
   const [confirmMismatchOpen, setConfirmMismatchOpen] = useState(false);
   const [pendingPost, setPendingPost] = useState<null | (() => void)>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [form, setForm] = useState<{
     projectId?: string;
@@ -74,6 +76,21 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
     () => (projects || []).find((p) => p.id === form.projectId),
     [projects, form.projectId]
   );
+
+  // Prefill tags from the selected project's default tags if none chosen yet
+  useEffect(() => {
+    if (!selectedProject) return;
+    const cur = form.tagIds || [];
+    if (cur.length > 0) return; // don't override existing choices
+    const names = (selectedProject.tag || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (names.length === 0) return;
+    const byName = new Map((tags || []).map((t) => [t.name, t.id] as const));
+    const ids = Array.from(new Set(names.map((n) => byName.get(n)).filter(Boolean))) as string[];
+    if (ids.length > 0) setForm((f) => ({ ...f, tagIds: ids }));
+  }, [selectedProject, tags]);
 
   if (!activity) return null;
 
@@ -362,70 +379,92 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
         </div>
 
         <div className="mt-4 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-            onClick={onClose}
-            title="Abbrechen"
-            aria-label="Abbrechen"
-          >
-            <XIcon className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-            onClick={() => {
-              if (!form.projectId) return;
-              if (!form.locationId) return;
-              const cohortSumsLocal: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
-              Object.values(form.cohortCounts || {}).forEach((e) => {
-                cohortSumsLocal.m += e.m || 0;
-                cohortSumsLocal.w += e.w || 0;
-                cohortSumsLocal.d += e.d || 0;
-              });
-              const useCoh = (cohortSumsLocal.m + cohortSumsLocal.w + cohortSumsLocal.d) > 0;
-              const counts = useCoh
-                ? cohortSumsLocal
-                : { m: form.topCounts?.m || 0, w: form.topCounts?.w || 0, d: form.topCounts?.d || 0 };
-              const payload: Record<string, unknown> = {
-                date: activity.date,
-                startTime: form.start || null,
-                endTime: form.end || null,
-                type: activity.type,
-                projectId: form.projectId,
-                locationId: form.locationId!,
-                title: form.title || null,
-                notes: form.notes || null,
-                tagIds: form.tagIds || [],
-                staffIds: form.staffIds || [],
-                durationMinutes: activity.durationMinutes,
-                countMale: counts.m,
-                countFemale: counts.w,
-                countDiverse: counts.d,
-                countTotal: counts.m + counts.w + counts.d,
-                cohorts: useCoh
-                  ? Object.entries(form.cohortCounts || {}).flatMap(([cohortId, gcounts]) => {
-                      const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> = [];
-                      (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
-                        const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
-                        if (v > 0) arr.push({ cohortId, count: v, gender: g });
-                      });
-                      return arr;
-                    })
-                  : [],
-              };
-              update.mutate({ id, data: payload as Partial<Activity> & Record<string, unknown> }, { onSuccess: () => { showToast('Aktivität aktualisiert'); onClose(); } });
-            }}
-            title="Speichern"
-            aria-label="Speichern"
-          >
-            <SaveIcon className="w-5 h-5" />
-          </button>
+          <div className="flex-1 flex items-center">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+              onClick={onClose}
+              title="Abbrechen"
+              aria-label="Abbrechen"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-red-100 text-red-700"
+              onClick={() => setDeleteOpen(true)}
+              title="Löschen"
+              aria-label="Löschen"
+            >
+              <TrashIcon className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-end">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+              onClick={() => {
+                if (!form.projectId) return;
+                if (!form.locationId) { /* locationId is now optional */ }
+                const cohortSumsLocal: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
+                Object.values(form.cohortCounts || {}).forEach((e) => {
+                  cohortSumsLocal.m += e.m || 0;
+                  cohortSumsLocal.w += e.w || 0;
+                  cohortSumsLocal.d += e.d || 0;
+                });
+                const useCoh = (cohortSumsLocal.m + cohortSumsLocal.w + cohortSumsLocal.d) > 0;
+                const counts = useCoh
+                  ? cohortSumsLocal
+                  : { m: form.topCounts?.m || 0, w: form.topCounts?.w || 0, d: form.topCounts?.d || 0 };
+                const payload: Record<string, unknown> = {
+                  date: activity.date,
+                  startTime: form.start || null,
+                  endTime: form.end || null,
+                  type: activity.type,
+                  projectId: form.projectId,
+                  ...(form.locationId ? { locationId: form.locationId } : {}),
+                  title: form.title || null,
+                  notes: form.notes || null,
+                  tagIds: form.tagIds || [],
+                  staffIds: form.staffIds || [],
+                  durationMinutes: activity.durationMinutes,
+                  countMale: counts.m,
+                  countFemale: counts.w,
+                  countDiverse: counts.d,
+                  countTotal: counts.m + counts.w + counts.d,
+                  cohorts: useCoh
+                    ? Object.entries(form.cohortCounts || {}).flatMap(([cohortId, gcounts]) => {
+                        const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> = [];
+                        (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
+                          const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
+                          if (v > 0) arr.push({ cohortId, count: v, gender: g });
+                        });
+                        return arr;
+                      })
+                    : [],
+                };
+                update.mutate({ id, data: payload as Partial<Activity> & Record<string, unknown> }, { onSuccess: () => { showToast('Aktivität aktualisiert'); onClose(); } });
+              }}
+              title="Speichern"
+              aria-label="Speichern"
+            >
+              <SaveIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         {picker && (
           <ProjectPickerModal
             onPick={(p) => {
-              setForm({ ...form, projectId: p.id });
+              // When picking a project, prefill tags if none selected yet from project's tag string
+              const names = (p.tag || '')
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean);
+              const byName = new Map((tags || []).map((t) => [t.name, t.id] as const));
+              const defaultTagIds = Array.from(new Set(names.map((n) => byName.get(n)).filter(Boolean))) as string[];
+              setForm((prev) => ({ ...prev, projectId: p.id, tagIds: (prev.tagIds && prev.tagIds.length > 0) ? prev.tagIds : defaultTagIds }));
               setPicker(false);
             }}
             onClose={() => setPicker(false)}
@@ -443,6 +482,29 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             if (fn) fn();
           }}
         />
+        {activity && (
+          <ConfirmModal
+            open={deleteOpen}
+            title="Aktivität löschen?"
+            message="Diese Aktion kann nicht rückgängig gemacht werden."
+            onCancel={() => setDeleteOpen(false)}
+            onConfirm={() => {
+              remove.mutate(activity.id, {
+                onSuccess: () => {
+                  showToast('Aktivität gelöscht');
+                  setDeleteOpen(false);
+                  onClose();
+                },
+                onError: (e: unknown) => {
+                  console.error(e);
+                  setDeleteOpen(false);
+                  showToast('Löschen fehlgeschlagen');
+                },
+              });
+            }}
+            confirmLabel="Löschen"
+          />
+        )}
       </div>
     </div>
   );

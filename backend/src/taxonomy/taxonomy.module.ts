@@ -5,11 +5,14 @@ import { Tag } from './entities/tag.entity';
 import { Cohort } from './entities/cohort.entity';
 import { TaxonomyService } from './taxonomy.service';
 import { TaxonomyController } from './taxonomy.controller';
+import { AuditModule } from '../common/audit.module';
+import { OrgsModule } from '../orgs/orgs.module';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Category, Tag, Cohort])],
+  imports: [TypeOrmModule.forFeature([Category, Tag, Cohort]), AuditModule, OrgsModule],
   controllers: [TaxonomyController],
-  providers: [TaxonomyService],
+  providers: [TaxonomyService, OrgScopeGuard],
   exports: [TaxonomyService],
 })
 export class TaxonomyModule {}

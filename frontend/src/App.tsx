@@ -11,9 +11,12 @@ import Login from './pages/Login';
 import Projects from './pages/Projects';
 import Calendar from './pages/Calendar';
 import { AuthProvider, useAuth } from './lib/auth';
+import { OrgScopeProvider } from './lib/orgScope';
 import AdminOrgSetup from './pages/AdminOrgSetup';
 import OrgUserManagement from './pages/OrgUserManagement';
 import AcceptInvite from './pages/AcceptInvite';
+import ResetRequest from './pages/ResetRequest';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   // App-level providers
@@ -24,10 +27,15 @@ function App() {
         <Routes>
           {/* Public route for invite acceptance */}
           <Route path="/accept-invite" element={<AcceptInvite />} />
+          {/* Public routes for password reset */}
+          <Route path="/reset-password-request" element={<ResetRequest />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* Everything else requires auth */}
           <Route path="/*" element={
             <AuthProvider>
-              <AuthedRoutes />
+              <OrgScopeProvider>
+                <AuthedRoutes />
+              </OrgScopeProvider>
             </AuthProvider>
           } />
         </Routes>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import Toggle from '@/components/Toggle';
 import { Cohort, useCohorts, useCreateCohort, useDeleteCohort, useUpdateCohort } from '@/lib/taxonomy';
-import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon } from 'lucide-react';
+import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 
@@ -30,10 +31,7 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
               <input type="number" value={form.sortOrder ?? 0} onChange={(e) => update('sortOrder', Number(e.target.value))} className="w-full border rounded px-3 py-2" />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.active ?? true} onChange={(e) => update('active', Boolean(e.target.checked))} />
-            Aktiv
-          </label>
+          {/* Kohorten werden immer aktiv angelegt; kein Toggle im UI */}
         </div>
   <div className="mt-6 flex items-center justify-between gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
           <span className="tooltip-wrapper"><button type="button" className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onCancel} title="Abbrechen" aria-label="Abbrechen">
@@ -67,6 +65,8 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
 export default function SettingsCohorts() {
   const [showArchived, setShowArchived] = useState(false);
   const { data } = useCohorts(showArchived ? undefined : { active: true });
+  const { data: archivedOnly } = useCohorts({ active: false });
+  const archivedCount = (archivedOnly || []).length;
   const create = useCreateCohort();
   const update = useUpdateCohort();
   const remove = useDeleteCohort();
@@ -83,11 +83,17 @@ export default function SettingsCohorts() {
           <p className="text-gray-600">Definieren Sie Altersgruppen für die Auswertung</p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
-            Archivierte anzeigen
-          </label>
-          <button className="bg-viridian text-white px-4 py-2 rounded-lg hover:bg-cambridge-blue" onClick={() => setModal({ mode: 'create' })}>+ Neue Kohorte</button>
+          {archivedCount > 0 && (
+            <Toggle checked={showArchived} onChange={setShowArchived} label={<span>Archiv <span className="text-xs text-gray-500">({archivedCount})</span></span>} />
+          )}
+          <span className="tooltip-wrapper"><button
+            className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow"
+            onClick={() => setModal({ mode: 'create' })}
+            aria-label="Neue Kohorte"
+            title="Neue Kohorte"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clipRule="evenodd" /></svg>
+          </button><span className="tooltip-bubble">Neue Kohorte</span></span>
         </div>
       </div>
       <div className="divide-y">
@@ -115,7 +121,11 @@ export default function SettingsCohorts() {
               >
                 <Pencil className="w-4 h-4 text-viridian" />
               </button>
-              <button className="text-gray-500 hover:underline" onClick={async () => {
+              <button
+                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 p-1.5"
+                aria-label="Löschen"
+                title="Löschen"
+                onClick={async () => {
                 setConfirm({ open: true, cohort: c, loading: true });
                 try {
                   const resStats = await api.get('/stats/by-cohort');
@@ -127,7 +137,10 @@ export default function SettingsCohorts() {
                 } catch {
                   setConfirm((prv) => ({ ...prv, loading: false }));
                 }
-              }}>Löschen</button>
+              }}
+              >
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </button>
             </div>
           </div>
         ))}
@@ -139,7 +152,7 @@ export default function SettingsCohorts() {
           initial={modal.mode === 'edit' ? modal.cohort : undefined}
           onSubmit={(values) => {
             if (modal.mode === 'create') {
-              create.mutate(values, { onSuccess: () => setModal(null) });
+              create.mutate({ ...values, active: true }, { onSuccess: () => setModal(null) });
             } else if (modal.cohort?.id) {
               const { id: _r, ...rest } = (values || {}) as Partial<Cohort>;
               void _r;

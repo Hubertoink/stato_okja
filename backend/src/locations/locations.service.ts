@@ -22,7 +22,7 @@ export class LocationsService {
   }
 
   create(data: Partial<Location>): Promise<Location> {
-    const location = this.locationRepository.create(data);
+    const location = this.locationRepository.create({ ...data, active: true });
     return this.locationRepository.save(location);
   }
 
@@ -51,9 +51,11 @@ export class LocationsService {
       throw new ForbiddenException('Not allowed');
     }
     // prevent moving to another org unless superadmin
+    // also strip 'active' – locations are always active
     if (user.role !== 'superadmin') {
-      const d = data as Partial<Location> & { orgId?: string | null };
+      const d = data as Partial<Location> & { orgId?: string | null; active?: boolean };
       if ('orgId' in d) delete d.orgId;
+      if ('active' in d) delete d.active;
     }
     return this.update(id, data);
   }

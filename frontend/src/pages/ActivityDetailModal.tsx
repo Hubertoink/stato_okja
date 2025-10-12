@@ -22,8 +22,8 @@ export default function ActivityDetailModal({ activity, onClose, onEdit }: { act
   })();
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6" onClick={onClose}>
-      <div className="bg-white w-full md:max-w-xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate" onClick={(e)=> e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-2" onClick={onClose}>
+  <div className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[96vh] supports-[height:100dvh]:max-h-[96dvh] overflow-y-auto scrollbar-hide bottom-sheet-animate" onClick={(e)=> e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <h3 className="text-xl font-semibold text-viridian">{activity.title || activity.project?.title || typeLabel[activity.type] || activity.type}</h3>
@@ -84,7 +84,7 @@ export default function ActivityDetailModal({ activity, onClose, onEdit }: { act
           )}
         </div>
 
-        <div className="mt-4 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 flex items-center justify-end">
+        <div className="mt-4 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe flex items-center justify-end">
           <button type="button" className="inline-flex items-center justify-center px-3 py-2 rounded bg-viridian text-white" onClick={onClose}>Schließen</button>
         </div>
       </div>

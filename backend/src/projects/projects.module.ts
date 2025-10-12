@@ -4,10 +4,13 @@ import { Project } from './entities/project.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { ProjectsService } from './projects.service';
 import { ProjectsController } from './projects.controller';
+import { AuditModule } from '../common/audit.module';
+import { OrgsModule } from '../orgs/orgs.module';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Project, Category])],
-  providers: [ProjectsService],
+  imports: [TypeOrmModule.forFeature([Project, Category]), AuditModule, OrgsModule],
+  providers: [ProjectsService, OrgScopeGuard],
   controllers: [ProjectsController],
   exports: [ProjectsService],
 })

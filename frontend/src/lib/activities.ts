@@ -43,6 +43,7 @@ export type ActivitiesFilter = {
   participantsMax?: number;
   durationMin?: number;
   durationMax?: number;
+  order?: 'asc'|'desc'; // sort by date/startTime
 };
 
 export function useActivities(params?: ActivitiesFilter) {
@@ -82,6 +83,7 @@ export function useActivitiesPaged(params: ActivitiesFilter | undefined, page: n
         if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
         else if (Array.isArray(v)) delete qp[k as string];
       }
+      // order is a simple string param if provided
       qp.page = page;
       qp.limit = Math.min(Math.max(limit, 1), 50);
       const res = await api.get('/activities', { params: qp });

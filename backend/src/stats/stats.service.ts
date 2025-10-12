@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, Raw, Equal, IsNull } from 'typeorm';
+import { Repository, FindOptionsWhere, Raw, Equal, IsNull, In } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Category } from '../taxonomy/entities/category.entity';
@@ -29,8 +29,11 @@ export class StatsService {
     return where;
   }
 
-  private applyOrg(where: FindOptionsWhere<Activity>, orgId?: string | null): FindOptionsWhere<Activity> {
+  private applyOrg(where: FindOptionsWhere<Activity>, orgId?: string | null, orgIds?: string[]): FindOptionsWhere<Activity> {
     // superadmin ohne orgId → keine Einschränkung
+    if (Array.isArray(orgIds) && orgIds.length) {
+      return { ...where, orgId: In(orgIds) } as FindOptionsWhere<Activity>;
+    }
     if (typeof orgId === 'undefined') return where;
     const extra: FindOptionsWhere<Activity> = orgId === null
       ? { orgId: IsNull() }
@@ -38,8 +41,8 @@ export class StatsService {
     return { ...where, ...extra } as FindOptionsWhere<Activity>;
   }
 
-  async getSummary(from?: string, to?: string, orgId?: string|null) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
+  async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
     const activities = await this.activityRepository.find({ where });
 
     const totalActivities = activities.length;
@@ -61,8 +64,8 @@ export class StatsService {
     };
   }
 
-  async getByType(from?: string, to?: string, orgId?: string|null) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
+  async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
     const activities = await this.activityRepository.find({ where });
     const map = new Map<string, number>();
     for (const a of activities) {
@@ -71,8 +74,8 @@ export class StatsService {
     return Array.from(map.entries()).map(([type, count]) => ({ type, count }));
   }
 
-  async getGender(from?: string, to?: string, orgId?: string|null) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
+  async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
     const activities = await this.activityRepository.find({ where });
     const male = activities.reduce((s, a) => s + (a.countMale || 0), 0);
     const female = activities.reduce((s, a) => s + (a.countFemale || 0), 0);
@@ -80,8 +83,8 @@ export class StatsService {
     return { male, female, diverse };
   }
 
-  async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
+  async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
     const activities = await this.activityRepository.find({ where });
     const map = new Map<string, number>();
     for (const a of activities) {
@@ -95,8 +98,8 @@ export class StatsService {
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  async getByCategory(from?: string, to?: string, orgId?: string|null) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
+  async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
     // Count by the category of the linked project (user-managed categories)
     const activities = await this.activityRepository.find({ where });
     const map = new Map<string, number>();
@@ -105,7 +108,9 @@ export class StatsService {
       map.set(catId, (map.get(catId) || 0) + 1);
     }
   const catQB = this.categoryRepository.createQueryBuilder('c');
-    if (typeof orgId !== 'undefined') {
+    if (Array.isArray(orgIds) && orgIds.length) {
+      catQB.where('c.orgId IN (:...orgIds)', { orgIds });
+    } else if (typeof orgId !== 'undefined') {
       if (orgId === null) catQB.where('c.orgId IS NULL');
       else catQB.where('c.orgId = :orgId', { orgId });
     }
@@ -119,8 +124,8 @@ export class StatsService {
     return result.sort((a, b) => b.count - a.count).slice(0, 10);
   }
 
-  async getByCohort(from?: string, to?: string, orgId?: string|null) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId);
+  async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
+    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
     const activities = await this.activityRepository.find({ where });
     // Sum cohorts JSON m/w/d by cohortId and count distinct activities per cohort
     const map = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
@@ -137,7 +142,9 @@ export class StatsService {
       }
     }
     const cohQB = this.cohortRepository.createQueryBuilder('h');
-    if (typeof orgId !== 'undefined') {
+    if (Array.isArray(orgIds) && orgIds.length) {
+      cohQB.where('h.orgId IN (:...orgIds)', { orgIds });
+    } else if (typeof orgId !== 'undefined') {
       if (orgId === null) cohQB.where('h.orgId IS NULL');
       else cohQB.where('h.orgId = :orgId', { orgId });
     }

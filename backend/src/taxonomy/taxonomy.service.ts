@@ -4,6 +4,8 @@ import { Repository, Like, FindOptionsWhere, Equal, IsNull } from 'typeorm';
 import { Category } from './entities/category.entity';
 import { Tag } from './entities/tag.entity';
 import { Cohort } from './entities/cohort.entity';
+import { AuditService } from '../common/audit.service';
+import { AuditAction } from '../common/enums';
 
 @Injectable()
 export class TaxonomyService {
@@ -14,6 +16,7 @@ export class TaxonomyService {
     private tagRepository: Repository<Tag>,
     @InjectRepository(Cohort)
     private cohortRepository: Repository<Cohort>,
+    private readonly audit: AuditService,
   ) {}
 
   // Categories
@@ -28,14 +31,17 @@ export class TaxonomyService {
     return this.categoryRepository.findOne({ where: { id } });
   }
 
-  createCategory(data: Partial<Category>): Promise<Category> {
+  async createCategory(data: Partial<Category>, user?: { id?: string; name?: string | null; orgId?: string | null }): Promise<Category> {
     const category = this.categoryRepository.create(data);
-    return this.categoryRepository.save(category);
+    const saved = await this.categoryRepository.save(category);
+    await this.audit.log({ action: AuditAction.CREATE, entityType: 'category', entityId: saved.id, entityTitle: saved.name, orgId: saved.orgId ?? null, user });
+    return saved;
   }
 
   async updateCategory(id: string, data: Partial<Category>): Promise<Category | null> {
     await this.categoryRepository.update(id, data);
-    return this.findOneCategory(id);
+    const c = await this.findOneCategory(id);
+    return c;
   }
 
   async removeCategory(id: string): Promise<void> {
@@ -55,14 +61,17 @@ export class TaxonomyService {
     return this.tagRepository.findOne({ where: { id } });
   }
 
-  createTag(data: Partial<Tag>): Promise<Tag> {
+  async createTag(data: Partial<Tag>, user?: { id?: string; name?: string | null; orgId?: string | null }): Promise<Tag> {
     const tag = this.tagRepository.create(data);
-    return this.tagRepository.save(tag);
+    const saved = await this.tagRepository.save(tag);
+    await this.audit.log({ action: AuditAction.CREATE, entityType: 'tag', entityId: saved.id, entityTitle: saved.name, orgId: saved.orgId ?? null, user });
+    return saved;
   }
 
   async updateTag(id: string, data: Partial<Tag>): Promise<Tag | null> {
     await this.tagRepository.update(id, data);
-    return this.findOneTag(id);
+    const t = await this.findOneTag(id);
+    return t;
   }
 
   async removeTag(id: string): Promise<void> {
@@ -81,14 +90,17 @@ export class TaxonomyService {
     return this.cohortRepository.findOne({ where: { id } });
   }
 
-  createCohort(data: Partial<Cohort>): Promise<Cohort> {
+  async createCohort(data: Partial<Cohort>, user?: { id?: string; name?: string | null; orgId?: string | null }): Promise<Cohort> {
     const cohort = this.cohortRepository.create(data);
-    return this.cohortRepository.save(cohort);
+    const saved = await this.cohortRepository.save(cohort);
+    await this.audit.log({ action: AuditAction.CREATE, entityType: 'cohort', entityId: saved.id, entityTitle: saved.name, orgId: saved.orgId ?? null, user });
+    return saved;
   }
 
   async updateCohort(id: string, data: Partial<Cohort>): Promise<Cohort | null> {
     await this.cohortRepository.update(id, data);
-    return this.findOneCohort(id);
+    const c = await this.findOneCohort(id);
+    return c;
   }
 
   async removeCohort(id: string): Promise<void> {
@@ -103,7 +115,7 @@ export class TaxonomyService {
     return c;
   }
 
-  async updateCategoryScoped(id: string, data: Partial<Category>, user: { role: string; orgId?: string|null }) {
+  async updateCategoryScoped(id: string, data: Partial<Category>, user: { id?: string; role: string; orgId?: string|null }) {
     const existing = await this.categoryRepository.findOne({ where: { id } });
     if (!existing) return null;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
@@ -111,14 +123,26 @@ export class TaxonomyService {
       const d = data as Partial<Category> & { orgId?: string | null };
       if ('orgId' in d) delete d.orgId;
     }
-    return this.updateCategory(id, data);
+    const c = await this.updateCategory(id, data);
+    if (c) {
+      const diff: Record<string, { from: unknown; to: unknown }> = {};
+      const keys: Array<keyof Category> = ['name', 'description', 'color', 'active', 'standardRef'];
+      for (const k of keys) {
+        const beforeVal = (existing as unknown as Record<string, unknown>)[k as string];
+        const afterVal = (c as unknown as Record<string, unknown>)[k as string];
+        if (beforeVal !== afterVal) diff[k as string] = { from: beforeVal, to: afterVal };
+      }
+      await this.audit.log({ action: AuditAction.UPDATE, entityType: 'category', entityId: c.id, entityTitle: c.name, orgId: c.orgId ?? null, user, diff: Object.keys(diff).length ? diff : null });
+    }
+    return c;
   }
 
-  async removeCategoryScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async removeCategoryScoped(id: string, user: { id?: string; role: string; orgId?: string|null }) {
     const existing = await this.categoryRepository.findOne({ where: { id } });
     if (!existing) return;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
     await this.removeCategory(id);
+    await this.audit.log({ action: AuditAction.DELETE, entityType: 'category', entityId: id, entityTitle: existing.name || null, orgId: user.orgId ?? null, user });
   }
 
   async findOneTagScoped(id: string, user: { role: string; orgId?: string|null }) {
@@ -128,7 +152,7 @@ export class TaxonomyService {
     return t;
   }
 
-  async updateTagScoped(id: string, data: Partial<Tag>, user: { role: string; orgId?: string|null }) {
+  async updateTagScoped(id: string, data: Partial<Tag>, user: { id?: string; role: string; orgId?: string|null }) {
     const existing = await this.tagRepository.findOne({ where: { id } });
     if (!existing) return null;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
@@ -136,14 +160,29 @@ export class TaxonomyService {
       const d = data as Partial<Tag> & { orgId?: string | null };
       if ('orgId' in d) delete d.orgId;
     }
-    return this.updateTag(id, data);
+    const t = await this.updateTag(id, data);
+    if (t) {
+      const diff: Record<string, { from: unknown; to: unknown }> = {};
+      const keys: Array<keyof Tag> = ['name', 'description', 'color', 'active', 'synonyms'];
+      for (const k of keys) {
+        const beforeVal = (existing as unknown as Record<string, unknown>)[k as string];
+        const afterVal = (t as unknown as Record<string, unknown>)[k as string];
+        const changed = Array.isArray(beforeVal) || Array.isArray(afterVal)
+          ? JSON.stringify(beforeVal || []) !== JSON.stringify(afterVal || [])
+          : beforeVal !== afterVal;
+        if (changed) diff[k as string] = { from: beforeVal, to: afterVal };
+      }
+      await this.audit.log({ action: AuditAction.UPDATE, entityType: 'tag', entityId: t.id, entityTitle: t.name, orgId: t.orgId ?? null, user, diff: Object.keys(diff).length ? diff : null });
+    }
+    return t;
   }
 
-  async removeTagScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async removeTagScoped(id: string, user: { id?: string; role: string; orgId?: string|null }) {
     const existing = await this.tagRepository.findOne({ where: { id } });
     if (!existing) return;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
     await this.removeTag(id);
+    await this.audit.log({ action: AuditAction.DELETE, entityType: 'tag', entityId: id, entityTitle: existing.name || null, orgId: user.orgId ?? null, user });
   }
 
   async findOneCohortScoped(id: string, user: { role: string; orgId?: string|null }) {
@@ -153,7 +192,7 @@ export class TaxonomyService {
     return c;
   }
 
-  async updateCohortScoped(id: string, data: Partial<Cohort>, user: { role: string; orgId?: string|null }) {
+  async updateCohortScoped(id: string, data: Partial<Cohort>, user: { id?: string; role: string; orgId?: string|null }) {
     const existing = await this.cohortRepository.findOne({ where: { id } });
     if (!existing) return null;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
@@ -161,13 +200,25 @@ export class TaxonomyService {
       const d = data as Partial<Cohort> & { orgId?: string | null };
       if ('orgId' in d) delete d.orgId;
     }
-    return this.updateCohort(id, data);
+    const c = await this.updateCohort(id, data);
+    if (c) {
+      const diff: Record<string, { from: unknown; to: unknown }> = {};
+      const keys: Array<keyof Cohort> = ['name', 'minAge', 'maxAge', 'sortOrder', 'active'];
+      for (const k of keys) {
+        const beforeVal = (existing as unknown as Record<string, unknown>)[k as string];
+        const afterVal = (c as unknown as Record<string, unknown>)[k as string];
+        if (beforeVal !== afterVal) diff[k as string] = { from: beforeVal, to: afterVal };
+      }
+      await this.audit.log({ action: AuditAction.UPDATE, entityType: 'cohort', entityId: c.id, entityTitle: c.name, orgId: c.orgId ?? null, user, diff: Object.keys(diff).length ? diff : null });
+    }
+    return c;
   }
 
-  async removeCohortScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async removeCohortScoped(id: string, user: { id?: string; role: string; orgId?: string|null }) {
     const existing = await this.cohortRepository.findOne({ where: { id } });
     if (!existing) return;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
     await this.removeCohort(id);
+    await this.audit.log({ action: AuditAction.DELETE, entityType: 'cohort', entityId: id, entityTitle: existing.name || null, orgId: user.orgId ?? null, user });
   }
 }

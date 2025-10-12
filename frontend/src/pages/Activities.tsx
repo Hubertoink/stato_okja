@@ -4,7 +4,7 @@ import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import type { Project } from '@/lib/projects';
-import { Pencil, XCircle, Tag as TagIcon, StickyNote } from 'lucide-react';
+import { Pencil, XCircle, Tag as TagIcon, StickyNote, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react';
 import { useActivity } from '@/lib/activities';
 import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
 import { colorForActivityType } from '@/lib/colors';
@@ -15,6 +15,7 @@ export default function Activities() {
   const [advanced, setAdvanced] = useState<ActivitiesFilter>({});
   const [picker, setPicker] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
+  const [order, setOrder] = useState<'asc'|'desc'>('desc');
   const pageSize = 50;
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const filters = {
@@ -31,6 +32,7 @@ export default function Activities() {
     participantsMax: advanced.participantsMax,
     durationMin: advanced.durationMin,
     durationMax: advanced.durationMax,
+    order,
   } as ActivitiesFilter;
   const { data: paged } = useActivitiesPaged(filters, page, pageSize);
   // no quick location filter
@@ -110,7 +112,21 @@ export default function Activities() {
         <table className="w-full">
           <thead className="bg-azure-web">
             <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Datum</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 hover:text-viridian"
+                  title="Nach Datum sortieren"
+                  onClick={() => { setOrder((o)=> o==='desc' ? 'asc' : 'desc'); setPage(1); }}
+                >
+                  Datum
+                  {order === 'desc' ? (
+                    <ArrowDownWideNarrow className="w-4 h-4" />
+                  ) : (
+                    <ArrowUpNarrowWide className="w-4 h-4" />
+                  )}
+                </button>
+              </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Typ</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Titel / Projekt</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Teilnehmende</th>

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Brackets } from 'typeorm';
 import { Activity } from './entities/activity.entity';
 import { ActivityType } from '../common/enums';
+import { AuditService } from '../common/audit.service';
+import { AuditAction } from '../common/enums';
 import { Tag } from '../taxonomy/entities/tag.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { Staff } from '../staff/entities/staff.entity';
@@ -21,23 +23,26 @@ export class ActivitiesService {
     private readonly staffRepository: Repository<Staff>,
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
+    private readonly audit: AuditService,
   ) {}
 
   private buildListQuery(filters?: {
     from?: string; to?: string;
     type?: string; types?: string[];
     locationId?: string; locationIds?: string[];
-    projectIds?: string[]; categoryIds?: string[]; tagIds?: string[];
-    cohortIds?: string[];
+  projectIds?: string[]; categoryIds?: string[]; tagIds?: string[]; staffIds?: string[];
+  cohortIds?: string[];
     hasNotes?: boolean;
     participantsMin?: number; participantsMax?: number;
     durationMin?: number; durationMax?: number;
     orgId?: string|null;
+    orgIds?: string[];
+    order?: 'asc'|'desc';
   }) {
     const qb = this.activityRepository.createQueryBuilder('a')
       .leftJoinAndSelect('a.location', 'location')
       .leftJoinAndSelect('a.categories', 'categories')
-      .leftJoinAndSelect('a.tags', 'tags')
+  .leftJoinAndSelect('a.tags', 'tags')
       .leftJoinAndSelect('a.staff', 'staff')
       .leftJoinAndSelect('a.attachments', 'attachments')
       .leftJoinAndSelect('a.project', 'project')
@@ -48,7 +53,9 @@ export class ActivitiesService {
     if (filters?.from && filters?.to) {
       qb.andWhere('a.date BETWEEN :from AND :to', { from: filters.from, to: filters.to });
     }
-    if (typeof filters?.orgId !== 'undefined') {
+    if (Array.isArray(filters?.orgIds) && filters!.orgIds!.length) {
+      qb.andWhere('a.orgId IN (:...orgIds)', { orgIds: filters!.orgIds! });
+    } else if (typeof filters?.orgId !== 'undefined') {
       if (filters.orgId === null) qb.andWhere('a.orgId IS NULL');
       else qb.andWhere('a.orgId = :orgId', { orgId: filters.orgId });
     }
@@ -70,6 +77,9 @@ export class ActivitiesService {
     }
     if (filters?.tagIds && filters.tagIds.length) {
       qb.andWhere('tags.id IN (:...tagIds)', { tagIds: filters.tagIds });
+    }
+    if (filters?.staffIds && filters.staffIds.length) {
+      qb.andWhere('staff.id IN (:...staffIds)', { staffIds: filters.staffIds });
     }
     if (filters?.cohortIds && filters.cohortIds.length) {
       qb.andWhere(new Brackets((b) => {
@@ -97,7 +107,8 @@ export class ActivitiesService {
       qb.andWhere('a.durationMinutes <= :dMax', { dMax: filters.durationMax });
     }
 
-    qb.orderBy('a.date', 'DESC').addOrderBy('a.startTime', 'DESC');
+    const dir = (filters?.order?.toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
+    qb.orderBy('a.date', dir as ('ASC'|'DESC')).addOrderBy('a.startTime', dir as ('ASC'|'DESC'));
     return qb;
   }
 
@@ -111,6 +122,8 @@ export class ActivitiesService {
     participantsMin?: number; participantsMax?: number;
     durationMin?: number; durationMax?: number;
     orgId?: string|null;
+    orgIds?: string[];
+    order?: 'asc'|'desc';
   }): Promise<Activity[]> {
     const qb = this.buildListQuery(filters);
     return qb.getMany();
@@ -126,6 +139,8 @@ export class ActivitiesService {
     participantsMin?: number; participantsMax?: number;
     durationMin?: number; durationMax?: number;
     orgId?: string|null;
+    orgIds?: string[];
+    order?: 'asc'|'desc';
     page: number; limit: number;
   }): Promise<{ data: Activity[]; total: number; page: number; pageSize: number }> {
     const qb = this.buildListQuery(filters);
@@ -158,7 +173,7 @@ export class ActivitiesService {
     categoryIds?: string[];
     cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number }>
             | Array<{ cohortId: string; count: number; gender?: string }>;
-  })): Promise<Activity> {
+  }), user?: { id?: string; name?: string; orgId?: string | null }): Promise<Activity> {
     const { tagIds, staffIds, categoryIds, cohorts, ...rest } = data as Partial<Activity> & {
       tagIds?: string[];
       staffIds?: string[];
@@ -166,9 +181,7 @@ export class ActivitiesService {
       cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number }> | Array<{ cohortId: string; count: number; gender?: 'm'|'w'|'d' }>;
     };
 
-    if (!rest.locationId) {
-      throw new BadRequestException('locationId is required');
-    }
+    // locationId is optional; if omitted, activity can still be created
 
   const activity = this.activityRepository.create(rest);
 
@@ -226,7 +239,17 @@ export class ActivitiesService {
       activity.countTotal = totals.m + totals.w + totals.d;
     }
 
-    return this.activityRepository.save(activity);
+    const saved = await this.activityRepository.save(activity);
+    await this.audit.log({
+      action: AuditAction.CREATE,
+      entityType: 'activity',
+      entityId: saved.id,
+      entityTitle: saved.title || saved.project?.title || saved.location?.name || null,
+      user: user ?? undefined,
+      orgId: saved.orgId ?? null,
+      details: { date: saved.date, type: saved.type },
+    });
+    return saved;
   }
 
   async update(id: string, data: Partial<Activity> & {
@@ -234,7 +257,7 @@ export class ActivitiesService {
     staffIds?: string[];
     categoryIds?: string[];
     cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number } | { cohortId: string; count: number; gender?: string }>;
-  }): Promise<Activity | null> {
+  }, user?: { id?: string; name?: string | null; orgId?: string | null }): Promise<Activity | null> {
     const existing = await this.activityRepository.findOne({ where: { id }, relations: ['tags', 'staff', 'categories'] });
     if (!existing) return null;
 
@@ -300,10 +323,22 @@ export class ActivitiesService {
     }
 
     await this.activityRepository.save(existing);
-    return this.findOne(id);
+    const updated = await this.findOne(id);
+    if (updated) {
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entityType: 'activity',
+        entityId: updated.id,
+        entityTitle: updated.title || updated.project?.title || updated.location?.name || null,
+        orgId: updated.orgId ?? null,
+        details: { date: updated.date, type: updated.type },
+        user,
+      });
+    }
+    return updated;
   }
 
-  async updateScoped(id: string, data: Partial<Activity>, user: { role: string; orgId?: string|null }) {
+  async updateScoped(id: string, data: Partial<Activity>, user: { id?: string; role: string; orgId?: string|null; name?: string|null }) {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return null;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
@@ -312,15 +347,23 @@ export class ActivitiesService {
     // enforce orgId remains same for non-superadmin
     const patch: Partial<Activity> = { ...data };
     if (user.role !== 'superadmin') patch.orgId = existing.orgId ?? null;
-    return this.update(id, patch);
+    return this.update(id, patch, { id: user.id, name: user.name ?? null, orgId: user.orgId ?? null });
   }
 
-  async removeScoped(id: string, user: { role: string; orgId?: string|null }): Promise<void> {
+  async removeScoped(id: string, user: { id?: string; role: string; orgId?: string|null; name?: string|null }): Promise<void> {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
       throw new ForbiddenException('Not allowed');
     }
     await this.activityRepository.delete(id);
+    await this.audit.log({
+      action: AuditAction.DELETE,
+      entityType: 'activity',
+      entityId: id,
+      entityTitle: existing.title || existing.project?.title || existing.location?.name || null,
+      orgId: existing.orgId ?? null,
+      user,
+    });
   }
 }

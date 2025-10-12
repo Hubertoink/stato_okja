@@ -39,8 +39,10 @@ In `backend`-Container setzen:
 - Server/Allgemein
   - `PORT=3000`
   - `API_PREFIX=api` (Backend läuft unter `/api`)
+  - `APP_ORIGIN=https://app.example.org` (Öffentliche URL des Frontends; wird in E-Mail-Links genutzt)
   - `CORS_ORIGINS=https://app.example.org` (Komma-separiert möglich; sollte Domain des Frontends enthalten)
   - `JWT_SECRET=ein_langes_geheimes_token`
+  - `SUPERADMIN_EMAIL=admin@example.org` (optional; Seed/Erzwingung der Superadmin-E-Mail)
 
 - Datenbank (siehe auch `src/config/typeorm.config.ts`)
   - `DB_TYPE=postgres`
@@ -189,8 +191,62 @@ Aktuell werden Uploads lokal gespeichert. Wer MinIO nutzen möchte:
 - [ ] DB-Schema vorhanden (Migrationen gelaufen).
 - [ ] Superadmin existiert; Passwort geändert.
 - [ ] Uploads-Verzeichnis persistent.
-- [ ] E-Mail (optional) getestet.
+- [ ] E-Mail (SMTP/Absender) eingerichtet und getestet (inkl. Passwort-Reset).
 - [ ] Health-Check: Login, Aktivitäten-Liste, Erstellen/Bearbeiten, Uploads.
+
+## 15) E-Mail & Passwort-Reset für den Live-Betrieb
+
+Dieser Abschnitt beschreibt, wie das Versenden von E-Mails (Einladungen, Passwort-Reset) produktiv aktiviert wird.
+
+### 15.1 SMTP-Provider auswählen
+
+- Mögliche Dienste: Brevo (Sendinblue), Mailgun, Postmark, AWS SES, Microsoft 365/Exchange.
+- Benötigte Daten: Host, Port (587 empfohlen, 465 möglich), Benutzername, Passwort/API-Key, Absender-Adresse (From).
+
+### 15.2 Environment-Variablen setzen (Backend)
+
+In `docker-compose.prod.yml` unter `services.backend.environment`:
+
+- `SMTP_HOST`: z. B. `smtp-relay.brevo.com`
+- `SMTP_PORT`: `587` (STARTTLS) oder `465` (SSL)
+- `SMTP_USER`: z. B. `smtp-user@deinedomain.de` oder provider-spezifisch
+- `SMTP_PASS`: SMTP-Passwort oder API-Key
+- `SMTP_FROM`: z. B. `no-reply@deinedomain.de`
+- `APP_ORIGIN`: z. B. `https://stato.deinedomain.de`
+- `CORS_ORIGINS`: z. B. `https://stato.deinedomain.de`
+- `JWT_SECRET`: langer, geheimer Wert
+- `SUPERADMIN_EMAIL`: E-Mail für den Superadmin (optional; wird beim Start erzwungen)
+
+Hinweis: Bei Port `465` wird SSL verwendet, bei `587` STARTTLS. Der Code wählt das automatisch basierend auf dem Port.
+
+### 15.3 DNS & Zustellbarkeit
+
+- SPF: TXT-Record, der den SMTP-Dienst autorisiert (Anleitung des Providers folgen)
+- DKIM: Provider stellt Schlüssel/CNAMEs bereit – unbedingt setzen
+- DMARC: Optional, aber empfohlen (z. B. `v=DMARC1; p=quarantine; rua=mailto:dmarc@deinedomain.de`)
+
+Ohne korrekte SPF/DKIM-Einträge landen E-Mails oft im Spam.
+
+### 15.4 Testen
+
+1) Deployment mit gesetzten ENV-Variablen neu starten
+2) In der App:
+  - Auf der Login-Seite „Passwort vergessen?“ → E-Mail eingeben → es sollte eine Mail mit Link `APP_ORIGIN/reset-password?token=...` ankommen.
+  - Als Superadmin (Benutzer verwalten) kann über das Schlüssel-Icon ein Reset-Link an einen Nutzer gesendet werden.
+3) Provider-Panel prüfen (Zustellungen, Bounces). Falls kein SMTP gesetzt ist, schreibt das Backend den Link ins Log („SMTP not configured…“).
+
+### 15.5 Troubleshooting
+
+- TLS-Fehler: Bei Port/SSL-Mismatch auf korrekten Port wechseln (587/STARTTLS oder 465/SSL).
+- Ausgehende Verbindungen blockiert: Firewall/Provider erlaubt Outbound auf 587/465?
+- Falsche Links in E-Mails: `APP_ORIGIN` korrekt (inkl. `https://` und Domain)?
+- CORS-Probleme: `CORS_ORIGINS` enthält die Frontend-Domain.
+
+### 15.6 Sicherheit
+
+- `JWT_SECRET` stark/zufällig setzen.
+- Token-Gültigkeit: Einladungen (`INVITE_TOKEN_EXPIRATION`, Default `7d`), Passwort-Reset (`RESET_TOKEN_EXPIRATION`, Default `1h`).
+- Superadmin-Passwort nach dem ersten Login ändern.
 
 ---
 

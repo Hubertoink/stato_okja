@@ -44,6 +44,28 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
     // Default times; if project provided, prefill from defaults
     setForm((f) => ({ start: f.start || (initialProject?.defaultStartTime || '15:00'), end: f.end || (initialProject?.defaultEndTime || '17:00'), projectId: f.projectId || initialProject?.id, date: f.date || (dateISO || '').slice(0,10), ...f }));
   }, [initialProject]);
+  // Prefill tags from project defaults when creating (not editing) and when none selected yet
+  useEffect(() => {
+    if (activity) return; // don't override existing tags in edit mode
+    const proj = selectedProject || initialProject;
+    if (!proj) return;
+    const current = form.tagIds || [];
+    if (current.length > 0) return; // user already has a selection
+    const names = (proj.tag || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (names.length === 0) return;
+    const byName = new Map((tags || []).map((t) => [t.name, t.id] as const));
+    const ids = Array.from(new Set(names.map((n) => byName.get(n)).filter(Boolean))) as string[];
+    if (ids.length > 0) setForm((f) => ({ ...f, tagIds: ids }));
+  }, [selectedProject, initialProject, tags, activity]);
+  useEffect(() => {
+    // If there is exactly one location, auto-select it to reduce friction
+    if ((locations || []).length === 1 && !form.locationId) {
+      setForm((f) => ({ ...f, locationId: (locations![0]?.id) }));
+    }
+  }, [locations]);
   useEffect(() => {
     // Prefill for edit mode
     if (activity) {
@@ -104,7 +126,7 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
             <input type="date" value={(form.date || '').slice(0,10)} onChange={(e)=> setForm({ ...form, date: e.target.value })} className="w-full border rounded px-3 py-2" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Standort *</label>
+            <label className="block text-sm font-medium mb-1">Standort</label>
             <select value={form.locationId || ''} onChange={(e)=> setForm({ ...form, locationId: e.target.value || undefined })} className="w-full border rounded px-3 py-2">
               <option value="">— Standort wählen —</option>
               {(locations || []).map(l => (
@@ -234,12 +256,14 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
           </div>
         </div>
 
-        <div className="mt-4 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div className="mt-4 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 flex items-center gap-3">
+          <div className="flex-1 flex items-center">
             <button type="button" className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onClose} title="Abbrechen" aria-label="Abbrechen">
               <XIcon className="w-5 h-5" />
             </button>
-            {activity && (
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            {activity ? (
               <button
                 type="button"
                 className="inline-flex items-center justify-center p-2 rounded-full bg-red-100 text-red-700"
@@ -249,16 +273,19 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
               >
                 <TrashIcon className="w-5 h-5" />
               </button>
+            ) : (
+              <span className="inline-block w-10 h-10" aria-hidden="true" />
             )}
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-            onClick={() => {
+          <div className="flex-1 flex items-center justify-end">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+              onClick={() => {
               // Validation: require project, and per-gender sums must match
               if (!form.date) { setErrorOpen('Bitte ein Datum wählen.'); return; }
               if (!form.projectId) { setErrorOpen('Bitte ein Projekt wählen.'); return; }
-              if (!form.locationId) { setErrorOpen('Bitte einen Standort wählen.'); return; }
+              // Standort optional – keine Validierung nötig
               const cohortSums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
               Object.values(form.cohortCounts || {}).forEach((e) => {
                 cohortSums.m += e.m || 0;
@@ -283,7 +310,7 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
                 // Always derive activity type from selected project (matches data model)
                 type: (selectedProject?.type || activity?.type || 'project_open'),
                 projectId: form.projectId,
-                locationId: form.locationId!,
+                ...(form.locationId ? { locationId: form.locationId } : {}),
                 title: form.title || null,
                 notes: form.notes || null,
                 tagIds: form.tagIds || [],
@@ -312,14 +339,29 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
               }});
               if (activity) doUpdate(); else doCreate();
             }}
-            title="Speichern"
-            aria-label="Speichern"
-          >
-            <SaveIcon className="w-5 h-5" />
-          </button>
+              title="Speichern"
+              aria-label="Speichern"
+            >
+              <SaveIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         {picker && (
-          <ProjectPickerModal onPick={(p) => { setForm({ ...form, projectId: p.id }); setPicker(false); }} onClose={() => setPicker(false)} />
+          <ProjectPickerModal onPick={(p) => {
+            // When picking a project, also prefill tags if none selected yet
+            const names = (p.tag || '')
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
+            const byName = new Map((tags || []).map((t) => [t.name, t.id] as const));
+            const defaultTagIds = Array.from(new Set(names.map((n) => byName.get(n)).filter(Boolean))) as string[];
+            setForm((prev) => ({
+              ...prev,
+              projectId: p.id,
+              tagIds: (prev.tagIds && prev.tagIds.length > 0) ? prev.tagIds : defaultTagIds,
+            }));
+            setPicker(false);
+          }} onClose={() => setPicker(false)} />
         )}
         <ConfirmModal
           open={Boolean(errorOpen)}

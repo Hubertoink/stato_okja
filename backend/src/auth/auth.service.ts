@@ -20,31 +20,39 @@ export class AuthService {
   ) {}
 
   async ensureSeed() {
-    const exists = await this.users.findOne({ where: { role: 'superadmin' } });
-    if (!exists) {
+    const seedEmail = (process.env.SUPERADMIN_EMAIL || 'Hubertoink@outlook.com').toLowerCase();
+    const existing = await this.users.findOne({ where: { role: 'superadmin' } });
+    if (!existing) {
       const u = this.users.create({
-        email: 'admin@example.com',
+        email: seedEmail,
         name: 'Super Admin',
         role: 'superadmin',
         passwordHash: await bcrypt.hash('admin', 10),
       });
       await this.users.save(u);
+    } else if (existing.email.toLowerCase() !== seedEmail) {
+      // Overwrite email so you can receive reset mails during testing
+      existing.email = seedEmail;
+      await this.users.save(existing);
     }
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
-    const u = await this.users.findOne({ where: { email } });
+    const u = await this.users.createQueryBuilder('u').where('LOWER(u.email) = LOWER(:email)', { email }).getOne();
     if (!u) return null;
     const ok = await bcrypt.compare(password, u.passwordHash || '');
     return ok ? u : null;
   }
 
   async login(user: User) {
-    const payload = { sub: user.id, role: user.role, orgId: user.orgId };
+    const payload = { sub: user.id, role: user.role, orgId: user.orgId, name: user.name || null };
     const token = await this.jwt.signAsync(payload);
     const orgName = user.orgId ? (await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null : null;
   const avatarUrl = (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null;
-  return { access_token: token, user: { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId, orgName, avatarUrl } };
+  const rawTheme = (user as unknown as { theme?: string }).theme;
+  // Normalize missing/legacy theme values to the new default so first-visit users see the proper theme
+  const theme = (!rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel') ? 'Default Theme' : rawTheme;
+  return { access_token: token, user: { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId, orgName, avatarUrl, theme } };
   }
 
   async inviteUser(payload: { email: string; name: string; role?: 'org_admin'|'user'|'superadmin'; orgId?: string|null; orgName?: string }) {
@@ -98,14 +106,18 @@ export class AuthService {
     if (!user) return null;
     const orgName = user.orgId ? (await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null : null;
   const avatarUrl = (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null;
-  return { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId, orgName, avatarUrl };
+  const rawTheme = (user as unknown as { theme?: string }).theme;
+  // Normalize missing/legacy theme values to the new default so first-visit users see the proper theme
+  const theme = (!rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel') ? 'Default Theme' : rawTheme;
+  return { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId, orgName, avatarUrl, theme };
   }
 
-  async updateProfile(userId: string, patch: { name?: string; avatarUrl?: string | null }) {
+  async updateProfile(userId: string, patch: { name?: string; avatarUrl?: string | null; theme?: string }) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
     if (typeof patch.name === 'string') user.name = patch.name;
-  if (typeof patch.avatarUrl !== 'undefined') (user as unknown as { avatarUrl?: string | null }).avatarUrl = patch.avatarUrl;
+    if (typeof patch.avatarUrl !== 'undefined') (user as unknown as { avatarUrl?: string | null }).avatarUrl = patch.avatarUrl;
+    if (typeof patch.theme === 'string') (user as unknown as { theme?: string }).theme = patch.theme;
     await this.users.save(user);
     return this.getProfile(user.id);
   }
@@ -119,6 +131,39 @@ export class AuthService {
     if (!ok) throw new Error('Aktuelles Passwort ist falsch');
     user.passwordHash = await bcrypt.hash(newPassword, 10);
     await this.users.save(user);
+    return { ok: true };
+  }
+
+  async requestPasswordReset(emailRaw: string) {
+    const email = (emailRaw || '').toLowerCase().trim();
+    if (!email) return { ok: true };
+    const user = await this.users.findOne({ where: { email } });
+    // Do not leak existence of the account
+    if (!user) return { ok: true };
+    const token = await this.jwt.signAsync({ sub: user.id, purpose: 'reset' }, { expiresIn: process.env.RESET_TOKEN_EXPIRATION || '1h' });
+    const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
+    const link = `${origin}/reset-password?token=${token}`;
+    try { await this.email.sendPasswordResetEmail(user.email, user.name || user.email, link); } catch { /* ignore email errors */ }
+    return { ok: true };
+  }
+
+  async resetPassword(token: string, password: string) {
+    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token, { secret: process.env.JWT_SECRET || 'dev_secret_change_me' });
+    if (!decoded || decoded.purpose !== 'reset') throw new Error('Invalid reset token');
+    const user = await this.users.findOne({ where: { id: decoded.sub } });
+    if (!user) throw new Error('User not found');
+    user.passwordHash = await bcrypt.hash(password, 10);
+    await this.users.save(user);
+    return { ok: true };
+  }
+
+  async adminResetPassword(userId: string) {
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+    const token = await this.jwt.signAsync({ sub: user.id, purpose: 'reset' }, { expiresIn: process.env.RESET_TOKEN_EXPIRATION || '1h' });
+    const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
+    const link = `${origin}/reset-password?token=${token}`;
+    try { await this.email.sendPasswordResetEmail(user.email, user.name || user.email, link); } catch { /* ignore email errors */ }
     return { ok: true };
   }
 }

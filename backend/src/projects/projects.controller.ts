@@ -5,10 +5,11 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ArchiveProjectDto } from './dto/archive-project.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 
 @ApiTags('projects')
 @Controller('projects')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OrgScopeGuard)
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
@@ -16,9 +17,9 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Alle Projekte abrufen' })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'archived', required: false })
-  findAll(@Req() req: { user: { role: string; orgId?: string|null } }, @Query('search') search?: string, @Query('archived') archived?: string) {
+  findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('search') search?: string, @Query('archived') archived?: string) {
     const archivedBool = archived === 'true' ? true : archived === 'false' ? false : undefined;
-    const orgId = req.user.role === 'superadmin' ? null : (req.user.orgId || null);
+    const orgId = req.user.role === 'superadmin' ? (typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     return this.projectsService.findAll(search, archivedBool, orgId);
   }
 
@@ -32,9 +33,9 @@ export class ProjectsController {
 
   @Post()
   @ApiOperation({ summary: 'Projekt anlegen' })
-  create(@Body() data: CreateProjectDto & { orgId?: string|null }, @Req() req: { user: { role: string; orgId?: string|null } }) {
-    const orgId = req.user.role === 'superadmin' ? (data.orgId ?? null) : (req.user.orgId || null);
-    return this.projectsService.create({ ...data, orgId });
+  create(@Body() data: CreateProjectDto & { orgId?: string|null }, @Req() req: { user: { id: string; role: string; orgId?: string|null; name?: string|null }; effectiveOrgId?: string|null|undefined }) {
+    const orgId = req.user.role === 'superadmin' ? (typeof req.effectiveOrgId === 'undefined' ? (data.orgId ?? null) : req.effectiveOrgId) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    return this.projectsService.create({ ...data, orgId }, { id: req.user.id, name: req.user.name || null, orgId });
   }
 
   @Patch(':id')

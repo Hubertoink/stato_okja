@@ -1,29 +1,69 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { OrgsService } from '../orgs/orgs.service';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly service: UsersService) {}
+  constructor(private readonly service: UsersService, private readonly orgs: OrgsService) {}
 
   @Get()
-  list(@Req() req: { user: { role: string; orgId?: string|null } }) {
-    if (req.user.role === 'superadmin') return this.service.findAll();
-    return this.service.findByOrg(req.user.orgId || null);
+  async list(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
+    if (req.user.role === 'superadmin') {
+      // If a superadmin provided an effective scope, list users for that org subtree; else list all
+      if (typeof req.effectiveOrgId === 'undefined') return this.service.findAll();
+      if (req.effectiveOrgId === null) return this.service.findByOrg(null);
+      const subtree = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
+      return this.service.findByOrgIds(subtree);
+    }
+    const myOrgId = (typeof req.effectiveOrgId === 'undefined') ? (req.user.orgId || null) : req.effectiveOrgId;
+    if (!myOrgId) return this.service.findByOrg(null);
+    const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
+    return this.service.findByOrgIds(subtree);
   }
 
   @Roles('org_admin','superadmin')
   @Post()
-  create(@Body() body: { email: string; name: string; role?: 'superadmin'|'org_admin'|'user'; orgId?: string|null; passwordHash?: string|null }) {
-    return this.service.create(body);
+  create(@Body() body: { email: string; name: string; role?: 'superadmin'|'org_admin'|'user'; orgId?: string|null }, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    // Require an organization for all users
+    const requestedOrgId = typeof body.orgId === 'undefined' ? (req.user.orgId || null) : (body.orgId ?? null);
+    if (!requestedOrgId) {
+      throw new BadRequestException('Organisation ist erforderlich');
+    }
+    // Admins can only create users in their own org subtree
+    if (req.user.role !== 'superadmin') {
+      const myOrgId = req.user.orgId || null;
+      // Only allow if requestedOrgId is in subtree of myOrgId
+      return (async () => {
+        if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+        const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
+        if (!(requestedOrgId && subtree.includes(requestedOrgId))) throw new ForbiddenException('Nicht erlaubt');
+        return this.service.create({ ...body, orgId: requestedOrgId });
+      })();
+    }
+    return this.service.create({ ...body, orgId: requestedOrgId });
   }
 
   @Roles('org_admin','superadmin')
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() patch: { role?: 'org_admin'|'user' }) {
+  async update(@Param('id') id: string, @Body() patch: { role?: 'org_admin'|'user'; orgId?: string | null }, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    // Admins can only change role within subtree and cannot move users outside subtree
+    if (req.user.role !== 'superadmin') {
+      const myOrgId = req.user.orgId || null;
+      const targetOrgId = typeof patch.orgId === 'undefined' ? undefined : (patch.orgId ?? null);
+      if (typeof targetOrgId !== 'undefined') {
+        if (myOrgId === null) {
+          if (targetOrgId !== null) throw new ForbiddenException('Nicht erlaubt');
+        } else {
+          const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
+          if (!(targetOrgId && subtree.includes(targetOrgId))) throw new ForbiddenException('Nicht erlaubt');
+        }
+      }
+    }
     await this.service.update(id, patch);
     return { ok: true };
   }

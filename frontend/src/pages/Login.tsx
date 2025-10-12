@@ -22,7 +22,7 @@ export default function Login() {
     <div className="min-h-screen bg-mint-cream flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-viridian">Stato 2.0</h1>
+          <h1 className="text-3xl font-bold text-viridian">StatO</h1>
           <p className="text-gray-600 mt-2">OKJA Statistik & Dokumentation</p>
         </div>
 
@@ -62,12 +62,15 @@ export default function Login() {
           >
             Anmelden
           </button>
+          <div className="text-center text-sm mt-2">
+            <a className="text-viridian hover:underline" href="/reset-password-request">Passwort vergessen?</a>
+          </div>
 
           {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
         </form>
 
         <p className="text-center text-sm text-gray-600 mt-6">
-          © 2025 Stato 2.0 - OKJA Team
+          © 2025 StatO - OKJA Team
         </p>
       </div>
     </div>

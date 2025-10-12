@@ -16,19 +16,20 @@ import { Category } from './entities/category.entity';
 import { Tag } from './entities/tag.entity';
 import { Cohort } from './entities/cohort.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 
 @ApiTags('taxonomy')
 @Controller('taxonomy')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OrgScopeGuard)
 export class TaxonomyController {
   constructor(private readonly taxonomyService: TaxonomyService) {}
 
   // Categories
   @Get('categories')
   @ApiOperation({ summary: 'Alle Kategorien abrufen' })
-  findAllCategories(@Req() req: { user: { role: string; orgId?: string|null } }, @Query('active') active?: string) {
+  findAllCategories(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string) {
     const isActive = active === 'true' ? true : active === 'false' ? false : undefined;
-    const orgId = req.user.role === 'superadmin' ? null : (req.user.orgId || null);
+    const orgId = req.user.role === 'superadmin' ? (typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     return this.taxonomyService.findAllCategories(isActive, orgId);
   }
 
@@ -39,10 +40,12 @@ export class TaxonomyController {
 
   @Post('categories')
   @ApiOperation({ summary: 'Neue Kategorie anlegen' })
-  createCategory(@Body() data: Partial<Category>, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  createCategory(@Body() data: Partial<Category>, @Req() req: { user: { id: string; name?: string|null; role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
     const bodyOrgId = (data as Partial<Category> & { orgId?: string | null }).orgId ?? null;
-    const orgId = req.user.role === 'superadmin' ? bodyOrgId : (req.user.orgId || null);
-    return this.taxonomyService.createCategory({ ...data, orgId });
+    const orgId = req.user.role === 'superadmin'
+      ? (typeof req.effectiveOrgId === 'undefined' ? bodyOrgId : req.effectiveOrgId)
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    return this.taxonomyService.createCategory({ ...data, orgId }, { id: req.user.id, name: req.user.name || null, orgId });
   }
 
   @Patch('categories/:id')
@@ -58,9 +61,9 @@ export class TaxonomyController {
   // Tags
   @Get('tags')
   @ApiOperation({ summary: 'Alle Tags abrufen' })
-  findAllTags(@Req() req: { user: { role: string; orgId?: string|null } }, @Query('active') active?: string, @Query('search') search?: string) {
+  findAllTags(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string, @Query('search') search?: string) {
     const isActive = active === 'true' ? true : active === 'false' ? false : undefined;
-    const orgId = req.user.role === 'superadmin' ? null : (req.user.orgId || null);
+    const orgId = req.user.role === 'superadmin' ? (typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     return this.taxonomyService.findAllTags(isActive, search, orgId);
   }
 
@@ -71,10 +74,12 @@ export class TaxonomyController {
 
   @Post('tags')
   @ApiOperation({ summary: 'Neues Tag anlegen' })
-  createTag(@Body() data: Partial<Tag>, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  createTag(@Body() data: Partial<Tag>, @Req() req: { user: { id: string; name?: string|null; role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
     const bodyOrgId = (data as Partial<Tag> & { orgId?: string | null }).orgId ?? null;
-    const orgId = req.user.role === 'superadmin' ? bodyOrgId : (req.user.orgId || null);
-    return this.taxonomyService.createTag({ ...data, orgId });
+    const orgId = req.user.role === 'superadmin'
+      ? (typeof req.effectiveOrgId === 'undefined' ? bodyOrgId : req.effectiveOrgId)
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    return this.taxonomyService.createTag({ ...data, orgId }, { id: req.user.id, name: req.user.name || null, orgId });
   }
 
   @Patch('tags/:id')
@@ -90,9 +95,9 @@ export class TaxonomyController {
   // Cohorts
   @Get('cohorts')
   @ApiOperation({ summary: 'Alle Alterskohorten abrufen' })
-  findAllCohorts(@Req() req: { user: { role: string; orgId?: string|null } }, @Query('active') active?: string) {
+  findAllCohorts(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string) {
     const isActive = active === 'true' ? true : active === 'false' ? false : undefined;
-    const orgId = req.user.role === 'superadmin' ? null : (req.user.orgId || null);
+    const orgId = req.user.role === 'superadmin' ? (typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     return this.taxonomyService.findAllCohorts(isActive, orgId);
   }
 
@@ -103,10 +108,12 @@ export class TaxonomyController {
 
   @Post('cohorts')
   @ApiOperation({ summary: 'Neue Kohorte anlegen' })
-  createCohort(@Body() data: Partial<Cohort>, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  createCohort(@Body() data: Partial<Cohort>, @Req() req: { user: { id: string; name?: string|null; role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
     const bodyOrgId = (data as Partial<Cohort> & { orgId?: string | null }).orgId ?? null;
-    const orgId = req.user.role === 'superadmin' ? bodyOrgId : (req.user.orgId || null);
-    return this.taxonomyService.createCohort({ ...data, orgId });
+    const orgId = req.user.role === 'superadmin'
+      ? (typeof req.effectiveOrgId === 'undefined' ? bodyOrgId : req.effectiveOrgId)
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    return this.taxonomyService.createCohort({ ...data, orgId }, { id: req.user.id, name: req.user.name || null, orgId });
   }
 
   @Patch('cohorts/:id')

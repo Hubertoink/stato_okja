@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import Toggle from '@/components/Toggle';
 import { Tag, useCreateTag, useDeleteTag, useTags, useUpdateTag } from '@/lib/taxonomy';
-import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon } from 'lucide-react';
+import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 
@@ -30,10 +31,6 @@ function TagForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial
             <label className="block text-sm font-medium mb-1">Beschreibung</label>
             <textarea value={form.description || ''} onChange={(e) => update('description', e.target.value)} rows={3} className="w-full border rounded px-3 py-2" />
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.active ?? true} onChange={(e) => update('active', Boolean(e.target.checked))} />
-            Aktiv
-          </label>
         </div>
   <div className="mt-6 flex items-center justify-between gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
           <span className="tooltip-wrapper"><button type="button" className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onCancel} title="Abbrechen" aria-label="Abbrechen">
@@ -67,6 +64,8 @@ function TagForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial
 export default function SettingsTags() {
   const [showArchived, setShowArchived] = useState(false);
   const { data } = useTags(showArchived ? undefined : { active: true });
+  const { data: archivedOnly } = useTags({ active: false });
+  const archivedCount = (archivedOnly || []).length;
   const create = useCreateTag();
   const update = useUpdateTag();
   const remove = useDeleteTag();
@@ -83,11 +82,17 @@ export default function SettingsTags() {
           <p className="text-gray-600">Freitext-Tags mit Farben für flexible Zuordnung</p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
-            Archivierte anzeigen
-          </label>
-          <button className="bg-viridian text-white px-4 py-2 rounded-lg hover:bg-cambridge-blue" onClick={() => setModal({ mode: 'create' })}>+ Neues Tag</button>
+          {archivedCount > 0 && (
+            <Toggle checked={showArchived} onChange={setShowArchived} label={<span>Archiv <span className="text-xs text-gray-500">({archivedCount})</span></span>} />
+          )}
+          <span className="tooltip-wrapper"><button
+            className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow"
+            onClick={() => setModal({ mode: 'create' })}
+            aria-label="Neues Tag"
+            title="Neues Tag"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clipRule="evenodd" /></svg>
+          </button><span className="tooltip-bubble">Neues Tag</span></span>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -112,7 +117,11 @@ export default function SettingsTags() {
               >
                 <Pencil className="w-4 h-4 text-viridian" />
               </button>
-              <button className="text-gray-500 hover:underline" onClick={async () => {
+              <button
+                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 p-1.5"
+                aria-label="Löschen"
+                title="Löschen"
+                onClick={async () => {
                 setConfirm({ open: true, tag: t, loading: true });
                 try {
                   const res = await api.get('/activities', { params: { tagIds: t.id } });
@@ -121,7 +130,10 @@ export default function SettingsTags() {
                 } catch {
                   setConfirm((prv) => ({ ...prv, loading: false }));
                 }
-              }}>Löschen</button>
+              }}
+              >
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </button>
             </div>
           </div>
         ))}
@@ -132,7 +144,8 @@ export default function SettingsTags() {
           initial={modal.mode === 'edit' ? modal.tag : undefined}
           onSubmit={(values) => {
             if (modal.mode === 'create') {
-              create.mutate(values, { onSuccess: () => setModal(null) });
+              // Tags sind per Default aktiv
+              create.mutate({ ...values, active: true }, { onSuccess: () => setModal(null) });
             } else if (modal.tag?.id) {
               const { id: _r, ...rest } = (values || {}) as Partial<Tag>;
               void _r;

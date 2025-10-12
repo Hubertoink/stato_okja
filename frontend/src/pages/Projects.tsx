@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Toggle from '@/components/Toggle';
 import { Project, useCreateProject, useProjects, useUpdateProject, useDeleteProject, useRemoveProject } from '@/lib/projects';
 import { Layers, Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, ArchiveRestore as ArchiveRestoreIcon, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -107,11 +108,19 @@ function ArchiveRestoreControls({
 }
 
 function ProjectForm({ initial, onSubmit, onCancel }: { initial?: Partial<Project>; onSubmit: (data: Partial<Project>) => void; onCancel: () => void }) {
-  const [form, setForm] = useState<Partial<Project> & { categoryIds?: string[] }>({
-    title: '',
-    // Default to a valid enum value in backend (lowercase)
-    type: 'project_open',
-    ...initial,
+  const [form, setForm] = useState<Partial<Project>>(() => {
+    const base: Partial<Project> = {
+      title: '',
+      // Default to a valid enum value in backend (lowercase)
+      type: 'project_open',
+      ...(initial || {}),
+    };
+    // Backward compatibility: if legacy data has categories[] but no categoryId, pick the first
+    const anyBase = base as Partial<Project> & { categories?: Array<{ id: string }> };
+    if (!base.categoryId && Array.isArray(anyBase.categories) && anyBase.categories.length) {
+      base.categoryId = anyBase.categories[0].id;
+    }
+    return base;
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [archiving, setArchiving] = useState(false);
@@ -253,17 +262,17 @@ function ProjectForm({ initial, onSubmit, onCancel }: { initial?: Partial<Projec
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Kategorien (mehrfach)</label>
+            <label className="block text-sm font-medium mb-1">Kategorie</label>
             <div className="flex flex-wrap gap-2">
               {(categories || []).map((c) => {
-                const set = new Set(((form.categoryIds as string[] | undefined) || (form.categoryId ? [String(form.categoryId)] : [])).map(String));
-                const active = set.has(c.id);
+                const active = String(form.categoryId || '') === c.id;
                 return (
-                  <button key={c.id} type="button" onClick={() => {
-                    if (active) set.delete(c.id); else set.add(c.id);
-                    // store an array on the form for UI; backend will get the first as categoryId for now
-                    setForm((f)=> ({ ...f, categoryId: (Array.from(set)[0] as string) || '', categoryIds: Array.from(set) }));
-                  }} className={`px-2 py-1 rounded-full text-xs border ${active?'bg-cambridge-blue text-white':'bg-white text-gray-700'}`}>
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, categoryId: active ? null : c.id }))}
+                    className={`px-2 py-1 rounded-full text-xs border ${active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'}`}
+                  >
                     {c.name}
                   </button>
                 );
@@ -328,11 +337,10 @@ function ProjectForm({ initial, onSubmit, onCancel }: { initial?: Partial<Projec
               type="button"
               onClick={() => {
                 // Only send DTO-allowed keys. For clearable fields, map empty string to null so backend clears the value.
-                const allowed: (keyof Project | 'categoryIds')[] = [
+                const allowed: (keyof Project)[] = [
                   'title',
                   'type',
                   'categoryId',
-                  'categoryIds',
                   'targetGroup',
                   'imageUrl',
                   'color',
@@ -370,7 +378,7 @@ function ProjectForm({ initial, onSubmit, onCancel }: { initial?: Partial<Projec
                     (acc as Record<string, unknown>)[k as string] = v as unknown;
                   }
                   return acc;
-                }, {} as Partial<Project> & { categoryIds?: string[] });
+                }, {} as Partial<Project>);
                 onSubmit(cleaned);
               }}
               className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
@@ -413,6 +421,9 @@ export default function Projects() {
   // Archivierte Projekte nur anzeigen, wenn Checkbox aktiv ist.
   // Wenn nicht aktiv, filtern wir auf archived=false. Wenn aktiv, keinen Filter (zeigt alle an).
   const { data, isLoading } = useProjects({ search: debounced, archived: showArchived ? undefined : false });
+  // Fetch archived count to decide whether to show/enable the toggle
+  const { data: archivedOnly } = useProjects({ search: debounced, archived: true });
+  const archivedCount = (archivedOnly || []).length;
   const create = useCreateProject();
   const update = useUpdateProject();
 
@@ -452,11 +463,48 @@ export default function Projects() {
     return palette[h % palette.length];
   };
 
+  // Choose readable text color (black/white) based on background brightness
+  const textColorFor = (bg?: string | null) => {
+    const hex = (bg || '').toString().trim();
+    if (!hex || !hex.startsWith('#')) return '#ffffff';
+    const clean = hex.length === 4
+      ? '#' + [...hex.slice(1)].map(ch => ch + ch).join('')
+      : hex;
+    const r = parseInt(clean.slice(1, 3), 16);
+    const g = parseInt(clean.slice(3, 5), 16);
+    const b = parseInt(clean.slice(5, 7), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 140 ? '#111111' : '#ffffff';
+  };
+
   const truncateWords = (text?: string | null, words = 20) => {
     if (!text) return '';
     const parts = text.trim().split(/\s+/);
     if (parts.length <= words) return text;
     return parts.slice(0, words).join(' ') + '…';
+  };
+
+  // Helpers: pick up to 2 staff names and build initials
+  const pickStaffNames = (p: Project): string[] => {
+    const names1 = (p.defaultStaff || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const names2 = (p.defaultVolunteers || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const set = new Set<string>();
+    for (const n of names1) { if (set.size < 2) set.add(n); }
+    for (const n of names2) { if (set.size < 2) set.add(n); }
+    return Array.from(set).slice(0, 2);
+  };
+
+  const initialsOf = (name: string): string => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
   return (
@@ -473,10 +521,13 @@ export default function Projects() {
           placeholder="Suchen…"
           className="w-full md:w-80 border border-gray-300 rounded px-3 py-2"
         />
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
-          Archivierte anzeigen
-        </label>
+        {archivedCount > 0 && (
+          <Toggle
+            checked={showArchived}
+            onChange={setShowArchived}
+            label={<span>Archiv <span className="text-xs text-gray-500">({archivedCount})</span></span>}
+          />
+        )}
       </div>
 
       {isLoading && !data ? (
@@ -492,30 +543,43 @@ export default function Projects() {
               outreach: 'Aufsuchend',
             };
             const prettyType = typeLabel[p.type] || p.type;
-            const cat = p.categoryId ? categoryMap.get(p.categoryId) : undefined;
-            const extraCats = p.categories as Array<{ id: string; name: string; color?: string | null }> | undefined;
-            const extraCount = Math.max(0, (extraCats?.length || 0) - (cat ? 1 : 0));
-            const tag = p.tag ? tagMap.get(p.tag) : undefined;
+            let cat = p.categoryId ? categoryMap.get(p.categoryId) : undefined;
+            // Fallback for legacy items without categoryId
+            if (!cat && Array.isArray(p.categories) && p.categories.length) {
+              const first = p.categories[0];
+              cat = categoryMap.get(first.id);
+            }
+            const staffNames = pickStaffNames(p);
+            const tagList = (p.tag || '')
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((name) => tagMap.get(name))
+              .filter(Boolean) as Array<{ id: string; name: string; color?: string | null }>;
+            const extraTags = Math.max(0, tagList.length - 3);
             return (
               <div
                 key={p.id}
-                className="relative rounded-2xl overflow-hidden shadow group min-h-[160px]"
+                className="relative rounded-2xl shadow group min-h-[160px]"
                 style={{ backgroundColor: p.imageUrl ? undefined : (p.color || pickBg(p.title)) }}
               >
-                {p.imageUrl ? (
-                  <>
-                    <img src={p.imageUrl} alt={p.title} className="absolute inset-0 w-full h-full object-cover transform scale-105 blur-[2px]" />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60" />
-                  </>
-                ) : (
-                  <>
-                    {/* subtle overlay for contrast even without image */}
-                    <div className="absolute inset-0 bg-black/20" />
-                    <div className="absolute inset-0 flex items-center justify-center text-white/90 text-3xl font-bold drop-shadow">
-                      {p.title?.charAt(0)}
-                    </div>
-                  </>
-                )}
+                {/* Media/background layer (clipped to rounded corners) */}
+                <div className="absolute inset-0 rounded-2xl overflow-hidden z-0 pointer-events-none">
+                  {p.imageUrl ? (
+                    <>
+                      <img src={p.imageUrl} alt={p.title} className="absolute inset-0 w-full h-full object-cover transform scale-105 blur-[2px]" />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60" />
+                    </>
+                  ) : (
+                    <>
+                      {/* subtle overlay for contrast even without image */}
+                      <div className="absolute inset-0 bg-black/20" />
+                      <div className="absolute inset-0 flex items-center justify-center text-white/90 text-3xl font-bold drop-shadow">
+                        {p.title?.charAt(0)}
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 {/* Content */}
                 <div className="relative z-10 p-4 flex flex-col gap-2 text-white">
@@ -523,38 +587,36 @@ export default function Projects() {
                     <div>
                       <div className="text-xl font-semibold drop-shadow-sm">{p.title}</div>
                       <div className="text-sm opacity-90">{prettyType}</div>
-                      {cat && (
-                        <div className="mt-1 flex items-center gap-2">
-                          <div
-                            className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor: 'rgba(255,255,255,0.25)',
-                              color: '#ffffff',
-                              border: cat.color ? `1px solid ${cat.color}` : undefined,
-                              boxShadow: cat.color ? `inset 0 0 0 999px ${cat.color}33` : undefined,
-                            }}
-                          >
-                            <Layers className="w-3 h-3" />
-                            <span>{cat.name}</span>
-                          </div>
-                          {extraCount > 0 && (
-                            <span
-                              className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold"
+                      {(cat || staffNames.length > 0) && (
+                        <div className="mt-1 flex items-center flex-wrap gap-2">
+                          {cat && (
+                            <div
+                              className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                               style={{
-                                backgroundColor: 'rgba(255,255,255,0.25)',
-                                color: '#ffffff',
-                                border: cat.color ? `1px solid ${cat.color}` : '1px solid rgba(255,255,255,0.6)',
+                                backgroundColor: cat.color || '#6b7280',
+                                color: textColorFor(cat.color || '#6b7280'),
+                                border: `1px solid ${cat.color || '#6b7280'}`,
                               }}
-                              title={`Weitere Kategorien: ${(extraCats || []).filter(ec => !cat || ec.id !== cat.id).map(ec => ec.name).join(', ')}`}
-                              aria-label={`Weitere Kategorien: +${extraCount}`}
                             >
-                              +{extraCount}
-                            </span>
+                              <Layers className="w-3 h-3" />
+                              <span>{cat.name}</span>
+                            </div>
                           )}
+                          {staffNames.map((n) => (
+                            <span
+                              key={n}
+                              className="inline-flex items-center gap-2 pl-1 pr-2 py-0.5 rounded-full bg-white/90 text-gray-900 border border-white/40 shadow-sm"
+                              title={n}
+                              aria-label={`Mitarbeitende:r ${n}`}
+                            >
+                              <span className="w-4 h-4 rounded-full bg-gray-200 text-[10px] font-semibold flex items-center justify-center">{initialsOf(n)}</span>
+                              <span className="text-xs font-medium">{n}</span>
+                            </span>
+                          ))}
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-3 text-sm items-start">
+                    <div className="flex gap-3 text-sm items-start z-[2] relative">
                       <span className="tooltip-wrapper"><button
                         onClick={() => setModal({ mode: 'edit', project: p })}
                         title="Bearbeiten"
@@ -570,17 +632,37 @@ export default function Projects() {
                         <div className="text-sm opacity-95">{truncateWords(p.description, 20)}</div>
                       )}
 
-                      {/* Tag Label mit Farbe */}
-                      {tag && (
-                        <div className="mt-1 text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                          style={{
-                            backgroundColor: 'rgba(255,255,255,0.25)',
-                            color: '#ffffff',
-                            border: tag.color ? `1px solid ${tag.color}` : undefined,
-                            boxShadow: tag.color ? `inset 0 0 0 999px ${tag.color}33` : undefined,
-                          }}
-                        >
-                          <span>{tag.name}</span>
+                      {/* Tags: zeige max. 3, Rest als +x */}
+                      {tagList.length > 0 && (
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          {tagList.slice(0, 3).map((t) => (
+                            <span
+                              key={t.id}
+                              className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                              style={{
+                                backgroundColor: t.color || '#6b7280',
+                                color: textColorFor(t.color || '#6b7280'),
+                                border: `1px solid ${t.color || '#6b7280'}`,
+                              }}
+                              title={t.name}
+                            >
+                              <span>{t.name}</span>
+                            </span>
+                          ))}
+                          {extraTags > 0 && (
+                            <span
+                              className="inline-flex items-center justify-center px-2 h-5 rounded-full text-[10px] font-semibold"
+                              style={{
+                                backgroundColor: '#ffffff',
+                                color: '#111111',
+                                border: '1px solid #e5e7eb'
+                              }}
+                              title={`Weitere Tags: ${tagList.slice(3).map(t=>t.name).join(', ')}`}
+                              aria-label={`Weitere Tags: +${extraTags}`}
+                            >
+                              +{extraTags}
+                            </span>
+                          )}
                         </div>
                       )}
 

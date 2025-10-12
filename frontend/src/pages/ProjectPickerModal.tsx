@@ -3,14 +3,21 @@ import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
 import { X as XIcon } from 'lucide-react';
 
-function pickBg(title?: string) {
-  return colorFromStringHash(title);
+function pickBg(p: Project) {
+  return p.color || colorFromStringHash(p.title);
 }
 
 export default function ProjectPickerModal({ onPick, onClose }: { onPick: (p: Project) => void; onClose: () => void }) {
   const [search, setSearch] = useState('');
   const { data } = useProjects({ archived: false, search });
   const projects = useMemo(() => data || [], [data]);
+  const typeLabel: Record<string, string> = {
+    open_door: 'Offene Tür',
+    project_open: 'Projekt (offen)',
+    project_closed: 'Projekt (geschlossen)',
+    event: 'Veranstaltung',
+    outreach: 'Aufsuchend',
+  };
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
@@ -27,12 +34,19 @@ export default function ProjectPickerModal({ onPick, onClose }: { onPick: (p: Pr
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={p.title} className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
-                  <div className="absolute inset-0" style={{ backgroundColor: pickBg(p.title) }} />
+                  <div className="absolute inset-0" style={{ backgroundColor: pickBg(p) }} />
                 )}
+                {/* Type badge overlay */}
+                <div className="absolute top-1 left-1 z-10">
+                  <span
+                    className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${p.imageUrl ? 'bg-black/45 text-white' : 'bg-white/80 text-gray-800 border border-white/60'}`}
+                  >
+                    {typeLabel[p.type] || p.type}
+                  </span>
+                </div>
               </div>
               <div className="p-2">
                 <div className="font-medium text-viridian truncate">{p.title}</div>
-                <div className="text-xs text-gray-600 truncate">{p.targetGroup || '—'}</div>
               </div>
             </button>
           ))}

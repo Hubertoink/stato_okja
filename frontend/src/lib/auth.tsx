@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, setAuthToken } from './api';
 
 export type Role = 'superadmin' | 'org_admin' | 'user';
-export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null }
+export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string }
 
 type LoginResult = { ok: true } | { ok: false; error: string };
 
@@ -27,13 +27,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem('auth_token') || '';
     if (token) {
       setAuthToken(token);
-      api.get<AuthUser>('/auth/me').then(res => {
-        setUser(res.data);
+  api.get<AuthUser>('/auth/me').then(res => {
+    const t = (res.data.theme === 'Light Steel') ? 'Default Theme' : (res.data.theme || 'Default Theme');
+    setUser({ ...res.data, theme: t });
+  try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ }
         setLoading(false);
       }).catch(() => {
         setAuthToken(undefined);
         localStorage.removeItem('auth_token');
         setUser(null);
+  try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* noop */ }
         qc.clear();
         setLoading(false);
       });
@@ -54,7 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthToken(token);
         // Clear any cached data from a previous session so next queries refetch for this user/org
         qc.clear();
-        setUser(res.data.user);
+    const t = (res.data.user.theme === 'Light Steel') ? 'Default Theme' : (res.data.user.theme || 'Default Theme');
+    setUser({ ...res.data.user, theme: t });
+  try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ }
         // Also proactively invalidate any active queries
         qc.invalidateQueries({ predicate: () => true });
         return { ok: true } as const;
@@ -67,13 +72,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('auth_token');
       setAuthToken(undefined);
       setUser(null);
+  try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* noop */ }
       // Remove all cached queries so the next login starts fresh
       qc.clear();
     },
     async refresh() {
       try {
         const res = await api.get<AuthUser>('/auth/me');
-        setUser(res.data);
+    const t = (res.data.theme === 'Light Steel') ? 'Default Theme' : (res.data.theme || 'Default Theme');
+    setUser({ ...res.data, theme: t });
+  try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ }
       } catch {
         // ignore
       }

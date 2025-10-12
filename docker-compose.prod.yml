@@ -19,6 +19,8 @@ services:
       NODE_ENV: production
       PORT: 3000
       API_PREFIX: ${API_PREFIX:-api}
+      # Public app origin for links in emails (invite/reset)
+      APP_ORIGIN: ${APP_ORIGIN:-https://app.example.com}
       JWT_SECRET: ${JWT_SECRET:-please_change}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
       DB_TYPE: postgres
@@ -30,11 +32,11 @@ services:
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
       DB_LOGGING: ${DB_LOGGING:-false}
       # SMTP_* optional
-      # SMTP_HOST: smtp.example.org
-      # SMTP_PORT: 587
-      # SMTP_USER: user
-      # SMTP_PASS: pass
-      # SMTP_FROM: no-reply@example.org
+  # SMTP_HOST: ${SMTP_HOST}
+  # SMTP_PORT: ${SMTP_PORT}
+  # SMTP_USER: ${SMTP_USER}
+  # SMTP_PASS: ${SMTP_PASS}
+  # SMTP_FROM: ${SMTP_FROM}
     depends_on:
       - postgres
     volumes:

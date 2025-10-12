@@ -1,22 +1,35 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
+import { useAuditLogs } from '@/lib/audit';
+import { Pencil, PlusCircle, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import ExportModal from '@/components/ExportModal';
 import type { Project } from '@/lib/projects';
+import { useAuth } from '@/lib/auth';
+import { listOrgs, type OrgDto } from '@/lib/orgs';
+import { useOrgScope } from '@/lib/orgScope';
 
-function useMonthSummary(year: number, month: number) {
+function useMonthSummary(year: number, month: number, scopeKey: string | null | undefined) {
   // month is 1-12
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to = new Date(year, month, 0); // last day of month
   const toISO = `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, '0')}-${String(to.getDate()).padStart(2, '0')}`;
   return useQuery({
-    queryKey: ['stats:summary', { from, to: toISO }],
+    // Include scope in key so a scope change forces refetch after login/reload
+    queryKey: ['stats:summary', { from, to: toISO, scope: scopeKey === undefined ? 'GLOBAL' : (scopeKey === null ? 'NULL' : scopeKey) }],
     queryFn: async () => {
-      const res = await api.get('/stats/summary', { params: { from, to: toISO } });
+      const res = await api.get('/stats/summary', {
+        params: {
+          from,
+          to: toISO,
+          // Pass orgId explicitly so superadmin gets correctly scoped KPIs even before header is applied
+          orgId: typeof scopeKey === 'undefined' ? undefined : (scopeKey === null ? 'null' : scopeKey),
+        },
+      });
       return res.data as {
         totalActivities: number;
         totalParticipants: number;
@@ -29,31 +42,53 @@ function useMonthSummary(year: number, month: number) {
 }
 
 export default function Dashboard() {
+  const { scope } = useOrgScope();
+  const { user } = useAuth();
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1; // 1-12
   const navigate = useNavigate();
   const [picker, setPicker] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
-  const { data: summary } = useMonthSummary(year, month);
+  const { data: summary } = useMonthSummary(year, month, scope);
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
-  const { data: activities } = useActivities({ from, to });
+  useActivities({ from, to });
+  const { data: audit } = useAuditLogs(10);
   const [exportOpen, setExportOpen] = useState(false);
+  const [orgMap, setOrgMap] = useState<Record<string, string>>({});
 
-  const lastFive = useMemo(() =>
-    (activities || [])
-      .slice()
-      .sort((a, b) => (a.date < b.date ? 1 : -1))
-      .slice(0, 5),
-  [activities]);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (user?.role === 'superadmin') {
+        try {
+          const orgs = await listOrgs();
+          if (mounted) setOrgMap(Object.fromEntries((orgs as OrgDto[]).map(o => [o.id, o.name])));
+        } catch { /* ignore */ }
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user?.role]);
+
+  const lastFive = useMemo(() => {
+    const items = (audit || []);
+    // Filter duplicate anonymous updates/deletes when a user-attributed entry with same entity/action exists
+    const seenKeyWithUser = new Set<string>();
+    for (const e of items) {
+      const key = `${e.action}:${e.entityType}:${e.entityId}`;
+      if (e.userName) seenKeyWithUser.add(key);
+    }
+    const filtered = items.filter(e => {
+      const key = `${e.action}:${e.entityType}:${e.entityId}`;
+      if (!e.userName && seenKeyWithUser.has(key)) return false;
+      return true;
+    });
+    return filtered.slice(0, 10);
+  }, [audit]);
 
   const fmt = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
-  const fmtDate = (iso?: string) => {
-    const s = (iso || '').slice(0, 10);
-    const [y, m, d] = s.split('-');
-    return `${d}.${m}.${y}`;
-  };
+  // keep date helpers only where needed; recent actions use locale string
 
   // Export handled via ExportModal
 
@@ -100,23 +135,46 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Recent Activities */}
+      {/* Recent Actions */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-semibold mb-4 text-viridian">Letzte Aktivitäten</h3>
+        <h3 className="text-xl font-semibold mb-4 text-viridian">Letzte Aktionen</h3>
         <div className="space-y-3">
-          {(lastFive || []).map((a) => (
-            <div key={a.id} className="border-l-4 border-viridian pl-4 py-2 bg-azure-web">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-semibold">{({open_door:'Offene Tür', project_open:'Projekt (offen)', project_closed:'Projekt (geschlossen)', event:'Veranstaltung', outreach:'Aufsuchend'} as Record<string,string>)[a.type] || a.type}{a.title ? `: ${a.title}` : ''}</h4>
-                  <p className="text-sm text-gray-600">{a.location?.name || a.project?.title || '–'} · {(a.countTotal ?? 0)} Teilnehmende</p>
+          {(lastFive || []).map((e) => {
+            const icon = e.action === 'create' ? <PlusCircle className="w-4 h-4 text-viridian" /> : e.action === 'update' ? <Pencil className="w-4 h-4 text-cambridge-blue" /> : <Trash2 className="w-4 h-4 text-red-600" />;
+            const labelMap: Record<string, string> = { activity: 'Aktivität', project: 'Projekt', tag: 'Tag', category: 'Kategorie', cohort: 'Kohorte' };
+            const who = e.userName || 'Jemand';
+            const what = labelMap[e.entityType] || e.entityType;
+            const title = e.entityTitle ? ` „${e.entityTitle}“` : '';
+            const when = new Date(e.createdAt).toLocaleString('de-DE');
+            const verb = e.action === 'create' ? 'angelegt' : e.action === 'update' ? 'bearbeitet' : 'gelöscht';
+            // Prefer backend-provided orgName; fallback to local mapping for older entries
+            const orgName = e.orgName || (e.orgId ? orgMap[e.orgId] : undefined);
+            return (
+              <div key={e.id} className="border-l-4 border-viridian pl-4 py-2 bg-azure-web">
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex items-start gap-2">
+                    {icon}
+                    <div>
+                      <h4 className="font-semibold">{who} hat {what}{title} {verb}.</h4>
+                      <p className="text-xs text-gray-600">{when}</p>
+                      {orgName && <span className="inline-block mt-1 text-[11px] text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">Organisation: {orgName}</span>}
+                      {e.diff && Object.keys(e.diff).length > 0 && (
+                        <ul className="mt-2 text-sm text-gray-700 list-disc pl-5 space-y-0.5">
+                          {Object.entries(e.diff as Record<string, { from: unknown; to: unknown }>).map(([k, v]) => (
+                            <li key={k}>
+                              <span className="font-medium">{k}:</span> {String(v.from ?? '—')} → {String(v.to ?? '—')}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <span className="text-sm text-gray-500">{fmtDate(a.date)}</span>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {(lastFive || []).length === 0 && (
-            <div className="text-gray-500">Im aktuellen Monat wurden noch keine Aktivitäten erfasst.</div>
+            <div className="text-gray-500">Noch keine Aktionen vorhanden.</div>
           )}
         </div>
       </div>

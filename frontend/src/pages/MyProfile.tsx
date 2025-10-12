@@ -8,19 +8,20 @@ export default function MyProfile() {
     <div>
       <h2 className="text-3xl font-bold text-viridian mb-6">Meine Daten</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} />
+  <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} />
         <PasswordCard />
       </div>
     </div>
   );
 }
 
-function ProfileCard({ userName, avatarUrl, onUpdated }: { userName: string; avatarUrl: string | null; onUpdated: ()=>Promise<void>|void }) {
+function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userName: string; avatarUrl: string | null; email: string; theme: string; onUpdated: ()=>Promise<void>|void }) {
   const [name, setName] = useState(userName);
   const [image, setImage] = useState<string | null>(avatarUrl);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<string>(theme);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function handleFile(file: File) {
@@ -41,6 +42,10 @@ function ProfileCard({ userName, avatarUrl, onUpdated }: { userName: string; ava
           <div>
             <label className="block text-sm font-medium">Name</label>
             <input className="border rounded px-3 py-2 w-full" value={name} onChange={(e)=> setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">E-Mail</label>
+            <input className="border rounded px-3 py-2 w-full bg-gray-50 text-gray-600" value={email} disabled />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Profilfoto</label>
@@ -65,6 +70,10 @@ function ProfileCard({ userName, avatarUrl, onUpdated }: { userName: string; ava
               <span className="text-xs text-gray-500">PNG/JPG, max. 10&nbsp;MB</span>
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Design-Theme</label>
+            <ThemePicker value={selectedTheme} onChange={(t)=>{ setSelectedTheme(t); try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ } }} />
+          </div>
           {msg && <div className="text-green-700 text-sm">{msg}</div>}
           {err && <div className="text-red-600 text-sm">{err}</div>}
           <button
@@ -73,7 +82,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated }: { userName: string; ava
             onClick={async()=>{
               setBusy(true); setMsg(null); setErr(null);
               try {
-                await api.patch('/auth/me', { name, avatarUrl: image });
+                await api.patch('/auth/me', { name, avatarUrl: image, theme: selectedTheme });
                 setMsg('Profil aktualisiert');
                 await onUpdated();
               } catch (e: unknown) {
@@ -132,6 +141,35 @@ function PasswordCard() {
           >Passwort speichern</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)=>void }) {
+  const themes: Array<{ name: string; colors: string[] }> = [
+    { name: 'Default Theme', colors: ['#6b9080','#a4c3b2','#cce3de','#eaf4f4','#f6fff8'] },
+    { name: 'Earthy Tones', colors: ['#6d6875','#b5838d','#e5989b','#ffb4a2','#f5f2f1'] },
+    { name: 'Peachy Delight', colors: ['#d8e2dc','#ffe5d9','#ffcad4','#f4acb7','#9d8189'] },
+    { name: 'Ocean Pearl', colors: ['#006d77','#83c5be','#edf6f9','#ffddd2','#f3f4f6'] },
+  ];
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {themes.map(t => (
+          <button
+            key={t.name}
+            type="button"
+            onClick={()=> onChange(t.name)}
+            className={`border rounded p-2 text-left ${value===t.name ? 'ring-2 ring-viridian' : ''}`}
+          >
+            <div className="font-medium text-sm mb-2">{t.name}</div>
+            <div className="flex -space-x-1">
+              {t.colors.map((c,i)=> (<span key={i} className="inline-block w-6 h-6 rounded border" style={{ backgroundColor: c }} />))}
+            </div>
+          </button>
+        ))}
+      </div>
+      <div className="text-xs text-gray-500">Auswahl wird sofort als Vorschau angewendet und beim Speichern dauerhaft übernommen.</div>
     </div>
   );
 }

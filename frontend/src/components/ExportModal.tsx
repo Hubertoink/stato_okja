@@ -24,6 +24,17 @@ function computeDurationMinutes(a: Activity): number {
   return s !== undefined && e !== undefined && e >= s ? e - s : 0;
 }
 
+function typeLabel(code?: string | null): string {
+  const map: Record<string, string> = {
+    open_door: 'Offene Tür',
+    project_open: 'Projekt (offen)',
+    project_closed: 'Projekt (geschlossen)',
+    event: 'Veranstaltung',
+    outreach: 'Aufsuchend',
+  };
+  return code ? (map[code] || code) : '';
+}
+
 export default function ExportModal({
   open,
   onClose,
@@ -74,12 +85,12 @@ export default function ExportModal({
         a.date?.slice(0, 10) || '',
         a.startTime || '',
         a.endTime || '',
-        String(computeDurationMinutes(a)),
-        a.type,
+  String(computeDurationMinutes(a)),
+  typeLabel(a.type),
         a.title || '',
         a.project?.id || '',
-        a.project?.title || '',
-        a.project?.type || '',
+  a.project?.title || '',
+  typeLabel(a.project?.type),
         catIds,
         cats,
         tags,
@@ -111,7 +122,7 @@ export default function ExportModal({
       const key = a.project?.id || `ohne-projekt:${a.project?.title || a.type}`;
       const projekt = a.project?.title || 'Ohne Projekt';
       const kategorie = a.project?.categories?.map((c) => c.name).join(' | ') || '';
-      const typ = a.project?.type || a.type || '';
+      const typ = typeLabel(a.project?.type || a.type || '');
       const gk = groups.get(key);
       if (!gk) groups.set(key, { key, projekt, kategorie, typ, items: [a] });
       else gk.items.push(a);
@@ -184,7 +195,7 @@ export default function ExportModal({
       const key = a.project?.id || `ohne-projekt:${a.project?.title || a.type}`;
       const projekt = a.project?.title || 'Ohne Projekt';
       const kategorie = a.project?.categories?.map((c) => c.name).join(' | ') || '';
-      const typ = a.project?.type || a.type || '';
+      const typ = typeLabel(a.project?.type || a.type || '');
       const gk = groups.get(key);
       if (!gk) groups.set(key, { key, projekt, kategorie, typ, items: [a] });
       else gk.items.push(a);
@@ -270,11 +281,11 @@ export default function ExportModal({
         a.startTime || '',
         a.endTime || '',
         computeDurationMinutes(a),
-        a.type,
+        typeLabel(a.type),
         a.title || '',
         a.project?.id || '',
         a.project?.title || '',
-        a.project?.type || '',
+        typeLabel(a.project?.type),
         catIds,
         cats,
         tags,

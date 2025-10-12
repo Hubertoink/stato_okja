@@ -2,7 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* Theme variables: default to Default Theme (original green palette) */
+:root[data-theme="Default Theme"], :root:not([data-theme]) {
+  --viridian: #6b9080;
+  --cambridge-blue: #a4c3b2;
+  --mint-green: #cce3de;
+  --azure-web: #eaf4f4;
+  --mint-cream: #f6fff8;
+  /* Greys specific to Light Steel */
+  --seasalt: #f8f9faff;
+  --antiflash-white: #e9ecefff;
+  --platinum: #dee2e6ff;
+  --french-gray: #ced4daff;
+  --french-gray-2: #adb5bdff;
+  --slate-gray: #6c757dff;
+  --outer-space: #495057ff;
+  --onyx: #343a40ff;
+  --eerie-black: #212529ff;
+}
+
+/* Earthy Tones */
+:root[data-theme="Earthy Tones"] {
+  --viridian: #6d6875ff; /* dim-gray as primary */
+  --cambridge-blue: #b5838dff; /* old-rose */
+  --mint-green: #e5989bff; /* salmon-pink */
+  --azure-web: #ffb4a2ff; /* melon */
+  --mint-cream: #f5f2f1; /* softened, desaturated warm light background */
+}
+
+/* Peachy Delight */
+:root[data-theme="Peachy Delight"] {
+  --viridian: #9d8189ff; /* mountbatten-pink */
+  --cambridge-blue: #f4acb7ff; /* cherry-blossom-pink */
+  --mint-green: #ffcad4ff; /* pink */
+  --azure-web: #ffe5d9ff; /* champagne-pink */
+  --mint-cream: #d8e2dcff; /* platinum */
+}
+
+/* Ocean Pearl */
+:root[data-theme="Ocean Pearl"] {
+  --viridian: #006d77ff; /* caribbean-current */
+  --cambridge-blue: #83c5beff; /* tiffany-blue */
+  --mint-green: #edf6f9ff; /* alice-blue */
+  --azure-web: #ffddd2ff; /* pale-dogwood */
+  --mint-cream: #f3f4f6; /* soft light gray instead of atomic-tangerine */
+}
+
+/* Default Theme (original green palette) */
+:root[data-theme="Default Theme"] {
   --viridian: #6b9080;
   --cambridge-blue: #a4c3b2;
   --mint-green: #cce3de;
@@ -21,6 +68,27 @@ body {
   /* Respect safe areas on iOS */
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* Override color utility classes to use theme variables */
+.bg-viridian { background-color: var(--viridian) !important; }
+.text-viridian { color: var(--viridian) !important; }
+.border-viridian { border-color: var(--viridian) !important; }
+
+.bg-cambridge-blue { background-color: var(--cambridge-blue) !important; }
+.text-cambridge-blue { color: var(--cambridge-blue) !important; }
+.border-cambridge-blue { border-color: var(--cambridge-blue) !important; }
+
+.bg-mint-green { background-color: var(--mint-green) !important; }
+.text-mint-green { color: var(--mint-green) !important; }
+.border-mint-green { border-color: var(--mint-green) !important; }
+
+.bg-azure-web { background-color: var(--azure-web) !important; }
+.text-azure-web { color: var(--azure-web) !important; }
+.border-azure-web { border-color: var(--azure-web) !important; }
+
+.bg-mint-cream { background-color: var(--mint-cream) !important; }
+.text-mint-cream { color: var(--mint-cream) !important; }
+.border-mint-cream { border-color: var(--mint-cream) !important; }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
@@ -58,3 +126,12 @@ code {
   to { transform: translateY(0); opacity: 1; }
 }
 .bottom-sheet-animate { animation: bottomSheetIn 180ms ease-out; }
+
+/* Hide scrollbars but keep scrolling (used for modals) */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}

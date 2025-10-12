@@ -14,18 +14,19 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { StaffService } from './staff.service';
 import { Staff } from './entities/staff.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 
 @ApiTags('staff')
 @Controller('staff')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OrgScopeGuard)
 export class StaffController {
   constructor(private readonly staffService: StaffService) {}
 
   @Get()
   @ApiOperation({ summary: 'Alle Mitarbeitende abrufen' })
-  findAll(@Req() req: { user: { role: string; orgId?: string|null } }, @Query('active') active?: string) {
+  findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string) {
     const isActive = active === 'true' ? true : active === 'false' ? false : undefined;
-    const orgId = req.user.role === 'superadmin' ? null : (req.user.orgId || null);
+    const orgId = req.user.role === 'superadmin' ? (typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     return this.staffService.findAll(isActive, orgId);
   }
 
@@ -37,8 +38,11 @@ export class StaffController {
 
   @Post()
   @ApiOperation({ summary: 'Neue Mitarbeitende anlegen' })
-  create(@Body() data: Partial<Staff>, @Req() req: { user: { role: string; orgId?: string|null } }) {
-    const orgId = req.user.role === 'superadmin' ? (data as any).orgId ?? null : (req.user.orgId || null);
+  create(@Body() data: Partial<Staff>, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
+    const bodyOrgId = (data as Partial<Staff> & { orgId?: string | null }).orgId ?? null;
+    const orgId = req.user.role === 'superadmin'
+      ? (typeof req.effectiveOrgId === 'undefined' ? bodyOrgId : req.effectiveOrgId)
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     return this.staffService.create({ ...data, orgId });
   }
 

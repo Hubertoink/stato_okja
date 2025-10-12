@@ -41,12 +41,12 @@ export class Activity {
   })
   type: ActivityType;
 
-  @ManyToOne(() => Location, { eager: true })
+  @ManyToOne(() => Location, { eager: true, nullable: true })
   @JoinColumn({ name: 'locationId' })
-  location: Location;
+  location: Location | null;
 
-  @Column()
-  locationId: string;
+  @Column({ nullable: true })
+  locationId: string | null;
 
   // Geschlechts-Verteilung
   @Column({ type: 'int', default: 0 })

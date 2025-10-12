@@ -31,4 +31,7 @@ export class User {
   @ManyToOne(() => Organization, (o) => o.users, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'orgId' })
   org!: Organization | null;
+
+  @Column({ type: 'varchar', length: 50, default: 'Default Theme' })
+  theme!: string;
 }

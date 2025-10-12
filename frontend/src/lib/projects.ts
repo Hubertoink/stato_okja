@@ -6,7 +6,6 @@ export interface Project {
   title: string;
   type: string;
   categoryId?: string | null;
-  categoryIds?: string[];
   categories?: Array<{ id: string; name: string; color?: string | null }>;
   targetGroup?: string | null;
   imageUrl?: string | null;

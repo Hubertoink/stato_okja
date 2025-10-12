@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { Pencil, Save as SaveIcon, X as XIcon, Trash2 } from 'lucide-react';
 
 function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Location>; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState<Partial<Location>>({ active: true, ...initial });
+  const [form, setForm] = useState<Partial<Location>>({ ...initial });
   const [saving, setSaving] = useState(false);
   const update = <K extends keyof Location>(k: K, v: Location[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -12,9 +12,12 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
     setSaving(true);
     try {
       if (initial?.id) {
-        await api.patch(`/locations/${initial.id}`, form);
+  // On edit, do not change active state via UI (always active); omit 'active' if present
+  const { /* active: _omit, */ ...rest } = form as Record<string, unknown>;
+        await api.patch(`/locations/${initial.id}`, rest);
       } else {
-        await api.post('/locations', form);
+        // New locations are always active
+        await api.post('/locations', { ...form, active: true });
       }
       onSaved();
     } finally {
@@ -39,10 +42,7 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
             <label className="block text-sm font-medium mb-1">Raumtyp</label>
             <input className="w-full border rounded px-3 py-2" value={form.roomType || ''} onChange={(e)=> update('roomType', e.target.value)} />
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.active ?? true} onChange={(e)=> update('active', Boolean(e.target.checked))} />
-            Aktiv
-          </label>
+          {/* Locations are always active; no UI toggle */}
         </div>
         <div className="mt-6 flex items-center justify-between gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
           <button type="button" className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onClose} aria-label="Abbrechen"><XIcon className="w-5 h-5"/></button>
@@ -65,7 +65,14 @@ export default function SettingsLocations() {
           <h3 className="text-xl font-semibold text-viridian">Einrichtungen</h3>
           <p className="text-gray-600">Standorte/Räume zur Auswahl bei Aktivitäten</p>
         </div>
-        <button className="bg-viridian text-white px-4 py-2 rounded-lg hover:bg-cambridge-blue" onClick={()=> setModal({ mode: 'create' })}>+ Neue Einrichtung</button>
+        <span className="tooltip-wrapper"><button
+          className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow"
+          onClick={()=> setModal({ mode: 'create' })}
+          aria-label="Neue Einrichtung"
+          title="Neue Einrichtung"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clipRule="evenodd" /></svg>
+        </button><span className="tooltip-bubble">Neue Einrichtung</span></span>
       </div>
       <div className="divide-y">
         {locations.map((l) => (

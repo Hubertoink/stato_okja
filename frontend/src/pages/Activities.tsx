@@ -49,9 +49,9 @@ export default function Activities() {
   };
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+  <div className="flex justify-between items-center mb-6 mt-1">
         <h2 className="text-3xl font-bold text-viridian">Aktivitäten</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-1">
           <button className="bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors" onClick={() => setFilterDrawer(true)}>
             Filter
           </button>

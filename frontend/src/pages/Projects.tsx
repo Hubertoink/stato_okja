@@ -509,7 +509,7 @@ export default function Projects() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 mt-1">
         <h2 className="text-3xl font-bold text-viridian">Angebote & Projekte</h2>
         <button onClick={() => setModal({ mode: 'create' })} className="bg-viridian text-white px-4 py-2 rounded hover:bg-cambridge-blue">Neues Projekt</button>
       </div>

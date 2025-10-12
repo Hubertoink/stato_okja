@@ -262,6 +262,9 @@ export default function Layout() {
         </div>
       </nav>
 
+      {/* Tiny spacer below fixed desktop nav for visual breathing room */}
+      <div className="hidden md:block h-[5px]" aria-hidden="true" />
+
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 pt-24 md:pt-32 pb-[var(--mobile-nav-space,8rem)] md:pb-8">
         <Outlet />

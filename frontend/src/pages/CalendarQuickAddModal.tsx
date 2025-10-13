@@ -184,9 +184,20 @@ export default function ActivityQuickAdd({ dateISO, onClose, project: initialPro
                     [c.id]: { ...entry, [g]: val },
                   },
                 }); };
+                const ageLabel = (() => {
+                  const from = typeof (c as any).minAge === 'number' ? (c as any).minAge : undefined;
+                  const to = typeof (c as any).maxAge === 'number' ? (c as any).maxAge : undefined;
+                  if (from != null && to != null) return `${from}–${to} Jahre`;
+                  if (from != null) return `ab ${from} Jahre`;
+                  if (to != null) return `bis ${to} Jahre`;
+                  return '';
+                })();
                 return (
                   <div key={c.id} className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2">
-                    <span className="text-sm text-gray-700 truncate">{c.name}</span>
+                    <span className="text-sm text-gray-700 truncate">
+                      <div className="truncate">{c.name}</div>
+                      {ageLabel && <div className="text-[11px] text-gray-500 leading-tight">{ageLabel}</div>}
+                    </span>
                     {(['m','w','d'] as const).map((g) => (
                       <input key={g} type="number" min={0} value={entry[g] ?? 0} onChange={(e)=> update(g, Number(e.target.value||0))} className="w-full border rounded px-2 py-1 text-center" placeholder={g==='m'?'♂':g==='w'?'♀':'⚧'} aria-label={`${c.name} ${g.toUpperCase()}`} />
                     ))}

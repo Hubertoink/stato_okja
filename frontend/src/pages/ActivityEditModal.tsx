@@ -254,9 +254,20 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                     ...form,
                     cohortCounts: { ...form.cohortCounts!, [c.id]: { ...entry, [g]: val } },
                   });
+                const ageLabel = (() => {
+                  const from = typeof c.minAge === 'number' ? c.minAge : undefined;
+                  const to = typeof c.maxAge === 'number' ? c.maxAge : undefined;
+                  if (from != null && to != null) return `${from}–${to} Jahre`;
+                  if (from != null) return `ab ${from} Jahre`;
+                  if (to != null) return `bis ${to} Jahre`;
+                  return '';
+                })();
                 return (
                   <div key={c.id} className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2">
-                    <span className="text-sm text-gray-700 truncate">{c.name}</span>
+                    <span className="text-sm text-gray-700 truncate">
+                      <div className="truncate">{c.name}</div>
+                      {ageLabel && <div className="text-[11px] text-gray-500 leading-tight">{ageLabel}</div>}
+                    </span>
                     {(['m', 'w', 'd'] as const).map((g) => (
                       <input
                         key={g}

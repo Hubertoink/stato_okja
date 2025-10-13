@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
+import { useCohorts } from '@/lib/taxonomy';
+import type { Cohort } from '@/lib/taxonomy';
+import { Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { api } from '@/lib/api';
 // basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
@@ -18,6 +23,8 @@ export default function Activities() {
   const [order, setOrder] = useState<'asc'|'desc'>('desc');
   const pageSize = 50;
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
+  const { data: cohorts = [] } = useCohorts({ active: true });
+  const [exporting, setExporting] = useState(false);
   const filters = {
     from: advanced.from,
     to: advanced.to,
@@ -49,9 +56,69 @@ export default function Activities() {
   };
   return (
     <div>
-  <div className="flex justify-between items-center mb-6 mt-1">
+      <div className="flex justify-between items-center mb-6 mt-1">
         <h2 className="text-3xl font-bold text-viridian">Aktivitäten</h2>
         <div className="flex gap-2 mt-1">
+          <button
+            className="inline-flex items-center justify-center rounded-lg bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10"
+            title="Excel-Export (gefiltert)"
+            aria-label="Excel-Export (gefiltert)"
+            disabled={exporting}
+            onClick={async () => {
+              try {
+                setExporting(true);
+                // Build query like in useActivities/useActivitiesPaged but without paging to fetch all filtered items
+                const qp: Record<string, unknown> = { ...filters };
+                const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','cohortIds'];
+                for (const k of arrayKeys) {
+                  const v = (filters as any)?.[k];
+                  if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
+                  else if (Array.isArray(v)) delete qp[k as string];
+                }
+                const res = await api.get('/activities', { params: qp });
+                const list: Array<{
+                  id: string; date: string; type: string; title?: string|null; project?: { title?: string|null }|null;
+                  countTotal?: number|null; countMale?: number|null; countFemale?: number|null; countDiverse?: number|null;
+                  durationMinutes?: number|null; startTime?: string|null; endTime?: string|null; tags?: Array<{ name: string }>; notes?: string|null; cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>
+                }> = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+
+                const cohortOrder = (cohorts as Cohort[]).slice().sort((a,b)=> (a.sortOrder??0) - (b.sortOrder??0));
+                const cohortIds = cohortOrder.map(c=>c.id);
+                const cohortHeaders = cohortOrder.map(c=>c.name);
+
+                // Build rows
+                const header = ['Datum','Typ','Titel','Projekt','Teilnehmende','m','w','d', ...cohortHeaders, 'Dauer (min)','Tags','Notizen'];
+                const rows = [header as (string|number)[]];
+                const typeLabel: Record<string,string> = { open_door:'Offene Tür', project_open:'Projekt (offen)', project_closed:'Projekt (geschlossen)', event:'Veranstaltung', outreach:'Aufsuchend' };
+                const durFrom = (a:any) => {
+                  if (typeof a?.durationMinutes === 'number' && a.durationMinutes >= 0) return a.durationMinutes;
+                  const toMinutes = (t?: string|null) => { if (!t) return undefined; const [hh,mm] = t.split(':').map((v)=>parseInt(v,10)); if (Number.isNaN(hh)||Number.isNaN(mm)) return undefined; return hh*60+mm; };
+                  const s = toMinutes(a?.startTime); const e = toMinutes(a?.endTime); return (s!==undefined && e!==undefined && e>=s) ? (e-s) : undefined;
+                };
+                for (const a of list) {
+                  const s=(a.date||'').slice(0,10); const [y,m,d]=s.split('-'); const dateDE = `${d}.${m}.${y}`;
+                  const tlabel = typeLabel[a.type] || a.type;
+                  const total = (a.countTotal ?? ((a.countMale||0)+(a.countFemale||0)+(a.countDiverse||0))) || 0;
+                  const mcount = a.countMale || 0; const wcount = a.countFemale || 0; const dcount = a.countDiverse || 0;
+                  const perCoh: Record<string, number> = Object.fromEntries(cohortIds.map(id=>[id,0] as const));
+                  (a.cohorts || []).forEach(c=>{ perCoh[c.cohortId] = (perCoh[c.cohortId]||0) + (c.m||0)+(c.w||0)+(c.d||0); });
+                  const duration = durFrom(a) ?? '';
+                  const tagsText = (a.tags||[]).map(t=>t.name).join(', ');
+                  const row = [dateDE, tlabel, a.title||'', a.project?.title||'', total, mcount, wcount, dcount, ...cohortIds.map(id=> perCoh[id] || 0), duration, tagsText, a.notes || ''];
+                  rows.push(row);
+                }
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Aktivitäten');
+                const fname = `Aktivitäten_${new Date().toISOString().slice(0,10)}.xlsx`;
+                XLSX.writeFile(wb, fname);
+              } finally {
+                setExporting(false);
+              }
+            }}
+          >
+            <Download className="w-5 h-5" />
+          </button>
           <button className="bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors" onClick={() => setFilterDrawer(true)}>
             Filter
           </button>
@@ -257,6 +324,12 @@ export default function Activities() {
             </div>
             <div className="text-sm text-gray-600 mb-1">{a.title || '-'}</div>
             <div className="text-xs text-gray-500 mb-3">{a.project?.title || '-'}</div>
+            <div className="text-xs text-gray-600 mb-2">
+              {(() => {
+                const m = a.countMale || 0; const w = a.countFemale || 0; const d = a.countDiverse || 0; const total = (a.countTotal ?? (m+w+d)) || 0;
+                return <>Teilnehmende: {total} (m:{m}, w:{w}, d:{d})</>;
+              })()}
+            </div>
             {(a.tags && a.tags.length > 0) && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {a.tags.map((t) => (

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
-import { createOrgApi, inviteUserApi, listOrgs, acceptInviteApi, type OrgDto, listUsersByOrg, moveOrgApi } from '@/lib/orgs';
+import { createOrgApi, inviteUserApi, listOrgs, acceptInviteApi, type OrgDto, listUsersByOrg, moveOrgApi, deleteOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fetchUsers } from '@/lib/users';
@@ -195,6 +195,7 @@ function OrgTree({ node, depth, allOrgs, onMoved }: { node: OrgTreeNode; depth: 
 }
 
 function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; allOrgs: OrgDto[]; onMoved: () => void }) {
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [counts, setCounts] = useState<{ admins: number; users: number } | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);

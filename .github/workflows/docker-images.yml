@@ -15,7 +15,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/stato-backend
   IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/stato-frontend
-  # For Modus B set this in Repo → Settings → Actions → Variables
+  # Default API base for frontend (Modus A uses proxy so '/api' is fine). Override in repo variables if using Modus B.
   FRONTEND_API_BASE_URL: ${{ vars.FRONTEND_API_BASE_URL || '/api' }}
 
 jobs:

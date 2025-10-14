@@ -31,12 +31,12 @@ services:
       DB_DATABASE: ${POSTGRES_DB:-stato_prod}
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
       DB_LOGGING: ${DB_LOGGING:-false}
-      # SMTP_* optional
-  # SMTP_HOST: ${SMTP_HOST}
-  # SMTP_PORT: ${SMTP_PORT}
-  # SMTP_USER: ${SMTP_USER}
-  # SMTP_PASS: ${SMTP_PASS}
-  # SMTP_FROM: ${SMTP_FROM}
+    # SMTP_* optional
+    # SMTP_HOST: ${SMTP_HOST}
+    # SMTP_PORT: ${SMTP_PORT}
+    # SMTP_USER: ${SMTP_USER}
+    # SMTP_PASS: ${SMTP_PASS}
+    # SMTP_FROM: ${SMTP_FROM}
     depends_on:
       - postgres
     volumes:

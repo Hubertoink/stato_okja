@@ -5,7 +5,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { join } from 'path';
 
-import { Express } from 'express';
+import type { Express } from 'express';
 
 // Create a safe filename: timestamp-random-original.ext (lowercased, spaces -> -)
 function sanitizeFilename(originalName: string) {

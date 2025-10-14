@@ -181,7 +181,11 @@ docker-compose -f docker-compose.prod.yml up -d
 npm run migration:run
 ```
 
+<<<<<<< HEAD
 Weitere Hinweise für Hosting bei Mittwald (inkl. Subdomains, Registry und ENV):
+=======
+Weitere Hinweise für Hosting bei Mittwald (inklusive Subdomains, Registry und ENV) findest du in:
+>>>>>>> 85ae415 (fix(backend): remove missing UploadsModule from AppModule for CI build)
 - DEPLOY_MITTWALD.md
 
 ## 🗓️ Roadmap

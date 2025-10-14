@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere, Equal, IsNull } from 'typeorm';
+import { Repository, Like, FindOptionsWhere, Equal, IsNull, In } from 'typeorm';
 import { Category } from './entities/category.entity';
 import { Tag } from './entities/tag.entity';
 import { Cohort } from './entities/cohort.entity';
@@ -20,10 +20,14 @@ export class TaxonomyService {
   ) {}
 
   // Categories
-  findAllCategories(active?: boolean, orgId?: string|null): Promise<Category[]> {
+  findAllCategories(active?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Category[]> {
     const where: FindOptionsWhere<Category> = {};
     if (active !== undefined) Object.assign(where, { active });
-    if (typeof orgId !== 'undefined') Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    if (Array.isArray(orgIds) && orgIds.length) {
+      Object.assign(where, { orgId: In(orgIds) });
+    } else if (typeof orgId !== 'undefined') {
+      Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    }
     return this.categoryRepository.find({ where, order: { name: 'ASC' } });
   }
 
@@ -49,11 +53,15 @@ export class TaxonomyService {
   }
 
   // Tags
-  findAllTags(active?: boolean, search?: string, orgId?: string|null): Promise<Tag[]> {
+  findAllTags(active?: boolean, search?: string, orgId?: string|null, orgIds?: string[]): Promise<Tag[]> {
     const where: FindOptionsWhere<Tag> = {};
     if (active !== undefined) where.active = active;
     if (search) where.name = Like(`%${search}%`);
-    if (typeof orgId !== 'undefined') Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    if (Array.isArray(orgIds) && orgIds.length) {
+      Object.assign(where, { orgId: In(orgIds) });
+    } else if (typeof orgId !== 'undefined') {
+      Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    }
     return this.tagRepository.find({ where, order: { name: 'ASC' } });
   }
 
@@ -79,10 +87,14 @@ export class TaxonomyService {
   }
 
   // Cohorts
-  findAllCohorts(active?: boolean, orgId?: string|null): Promise<Cohort[]> {
+  findAllCohorts(active?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Cohort[]> {
     const where: FindOptionsWhere<Cohort> = {};
     if (active !== undefined) Object.assign(where, { active });
-    if (typeof orgId !== 'undefined') Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    if (Array.isArray(orgIds) && orgIds.length) {
+      Object.assign(where, { orgId: In(orgIds) });
+    } else if (typeof orgId !== 'undefined') {
+      Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    }
     return this.cohortRepository.find({ where, order: { sortOrder: 'ASC', minAge: 'ASC' } });
   }
 

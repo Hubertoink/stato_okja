@@ -5,6 +5,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { join } from 'path';
 
+import { Express } from 'express';
+
 // Create a safe filename: timestamp-random-original.ext (lowercased, spaces -> -)
 function sanitizeFilename(originalName: string) {
   const name = (originalName || 'file').toLowerCase().replace(/[^a-z0-9_.-]+/g, '-');

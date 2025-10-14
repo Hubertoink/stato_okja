@@ -21,19 +21,33 @@ export class AuthService {
 
   async ensureSeed() {
     const seedEmail = (process.env.SUPERADMIN_EMAIL || 'Hubertoink@outlook.com').toLowerCase();
+    const forcedPassword = process.env.SUPERADMIN_PASSWORD;
     const existing = await this.users.findOne({ where: { role: 'superadmin' } });
     if (!existing) {
       const u = this.users.create({
         email: seedEmail,
         name: 'Super Admin',
         role: 'superadmin',
-        passwordHash: await bcrypt.hash('admin', 10),
+        passwordHash: await bcrypt.hash(forcedPassword || 'admin', 10),
       });
       await this.users.save(u);
-    } else if (existing.email.toLowerCase() !== seedEmail) {
-      // Overwrite email so you can receive reset mails during testing
-      existing.email = seedEmail;
-      await this.users.save(existing);
+    } else {
+      let changed = false;
+      if (existing.email.toLowerCase() !== seedEmail) {
+        // Overwrite email so you can receive reset mails during testing/production
+        existing.email = seedEmail;
+        changed = true;
+      }
+      if (typeof forcedPassword === 'string' && forcedPassword.length >= 6) {
+        // Allow resetting the superadmin password via ENV
+        existing.passwordHash = await bcrypt.hash(forcedPassword, 10);
+        changed = true;
+      } else if (!existing.passwordHash) {
+        // If somehow no password is set (e.g., invited user), ensure a default
+        existing.passwordHash = await bcrypt.hash('admin', 10);
+        changed = true;
+      }
+      if (changed) await this.users.save(existing);
     }
   }
 

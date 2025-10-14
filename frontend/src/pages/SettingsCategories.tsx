@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Toggle from '@/components/Toggle';
 import { Category, useCategories, useCreateCategory, useDeleteCategory, useUpdateCategory } from '@/lib/taxonomy';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -78,14 +78,56 @@ export default function SettingsCategories() {
   const remove = useDeleteCategory();
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; category?: Category } | null>(null);
   const [confirm, setConfirm] = useState<{ open: boolean; category?: Category; count?: number; loading?: boolean }>({ open: false });
+  const [seedConfirm, setSeedConfirm] = useState<{ open: boolean; busy?: boolean; created?: number }>({ open: false });
 
   const categories = data || [];
+  const allExisting = useMemo(() => ([...(data || []), ...(archivedOnly || [])] as Category[]), [data, archivedOnly]);
+
+  // Standard-Kategorien (aus den Referenzbildern)
+  const DEFAULT_CATEGORIES: Array<{ name: string; color: string; description?: string; standardRef?: string }> = [
+    { name: 'Beratung', color: '#2563eb' },
+    { name: 'Erlebnispädagogik', color: '#ef4444' },
+    { name: 'Ernährung und Gesundheit', color: '#f59e0b' },
+    { name: 'Ferienfreizeiten und -angebote', color: '#10b981' },
+    { name: 'Genderpädagogik', color: '#8b5cf6' },
+    { name: 'Handwerk und Technik', color: '#ec4899' },
+    { name: 'Hausaufgaben- und Lernbetreuung', color: '#f97316' },
+    { name: 'Künstlerisches Gestalten (u.a. Basteln, Malen)', color: '#14b8a6' },
+    { name: 'Medienbildung', color: '#22c55e' },
+    { name: 'Multiplikator*innenarbeit', color: '#0ea5e9' },
+    { name: 'Musik und Tanz', color: '#7c3aed' },
+    { name: 'Natur und Umwelt', color: '#16a34a' },
+    { name: 'Politische und gesellschaftliche Bildung', color: '#ea580c' },
+    { name: 'Prävention und Soziales Lernen', color: '#dc2626' },
+    { name: 'Sonderveranstaltungen und Stadtteilfeste', color: '#3b82f6' },
+    { name: 'Sonstiges', color: '#64748b' },
+    { name: 'Spiel', color: '#0ea5e9' },
+    { name: 'Sport', color: '#22c55e' },
+    { name: 'Theater und Kultur', color: '#a855f7' },
+  ];
+
+  const existingNames = useMemo(() => new Set(allExisting.map((c) => (c.name || '').trim().toLowerCase())), [allExisting]);
+  const defaultsMissing = useMemo(
+    () => DEFAULT_CATEGORIES.filter((c) => !existingNames.has(c.name.trim().toLowerCase())),
+    [existingNames]
+  );
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4 gap-3">
         <div>
           <h3 className="text-xl font-semibold text-viridian">Kategorien verwalten</h3>
+          <div className="text-xs text-gray-600 mt-1">
+            <button
+              type="button"
+              className="text-viridian hover:underline disabled:text-gray-400"
+              onClick={() => setSeedConfirm({ open: true })}
+              disabled={defaultsMissing.length === 0}
+              title={defaultsMissing.length === 0 ? 'Alle Standard-Kategorien sind bereits vorhanden' : undefined}
+            >
+              Standard‑Kategorien erstellen{defaultsMissing.length > 0 ? ` (${defaultsMissing.length})` : ''}
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {archivedCount > 0 && (
@@ -188,6 +230,47 @@ export default function SettingsCategories() {
           setConfirm({ open: false });
         }}
         onCancel={() => setConfirm({ open: false })}
+      />
+
+      {/* Seed standard categories */}
+      <ConfirmModal
+        open={seedConfirm.open}
+        title="Standard‑Kategorien erstellen"
+        message={
+          <div className="space-y-2 text-sm">
+            {defaultsMissing.length > 0 ? (
+              <>
+                <p>Es werden folgende Kategorien angelegt (bereits vorhandene werden übersprungen):</p>
+                <ul className="list-disc pl-5 space-y-0.5">
+                  {defaultsMissing.slice(0, 8).map((c) => (
+                    <li key={c.name}>{c.name}</li>
+                  ))}
+                </ul>
+                {defaultsMissing.length > 8 && (
+                  <p className="text-gray-500">… und {defaultsMissing.length - 8} weitere</p>
+                )}
+              </>
+            ) : (
+              <p>Alle Standard‑Kategorien sind bereits vorhanden.</p>
+            )}
+          </div>
+        }
+        confirmLabel={seedConfirm.busy ? 'Erstelle…' : 'Erstellen'}
+        onConfirm={async () => {
+          if (seedConfirm.busy || defaultsMissing.length === 0) { setSeedConfirm({ open: false }); return; }
+          setSeedConfirm({ open: true, busy: true });
+          try {
+            for (const def of defaultsMissing) {
+              await create.mutateAsync({ name: def.name, color: def.color, active: true });
+            }
+            setSeedConfirm({ open: false, busy: false, created: defaultsMissing.length });
+          } catch {
+            setSeedConfirm({ open: false, busy: false });
+          }
+        }}
+        onCancel={() => setSeedConfirm({ open: false })}
+        showCancel={true}
+        cancelLabel="Abbrechen"
       />
     </div>
   );

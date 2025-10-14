@@ -12,16 +12,20 @@ export class EmailService {
     const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
-    if (!host || !user || !pass) {
-      this.logger.warn('SMTP not configured; emails will be logged instead of sent.');
+    if (!host) {
+      this.logger.warn('SMTP not configured (missing SMTP_HOST); emails will be logged instead of sent.');
       return null;
     }
-    this.transporter = nodemailer.createTransport({
+    // Allow unauthenticated SMTP in development (e.g., Mailpit) when no user/pass provided
+    const options: nodemailer.TransportOptions & { auth?: { user: string; pass: string } } = {
       host,
       port,
       secure: port === 465,
-      auth: { user, pass },
-    });
+    };
+    if (user && pass) {
+      options.auth = { user, pass };
+    }
+    this.transporter = nodemailer.createTransport(options);
     return this.transporter;
   }
 

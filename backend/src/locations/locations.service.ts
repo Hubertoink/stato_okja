@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Equal, IsNull, FindOptionsWhere } from 'typeorm';
+import { Repository, Equal, IsNull, FindOptionsWhere, In } from 'typeorm';
 import { Location } from './entities/location.entity';
 
 @Injectable()
@@ -10,10 +10,14 @@ export class LocationsService {
     private locationRepository: Repository<Location>,
   ) {}
 
-  findAll(active?: boolean, orgId?: string|null): Promise<Location[]> {
+  findAll(active?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Location[]> {
     const where: FindOptionsWhere<Location> = {};
     if (active !== undefined) Object.assign(where, { active });
-    if (typeof orgId !== 'undefined') Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    if (Array.isArray(orgIds) && orgIds.length) {
+      Object.assign(where, { orgId: In(orgIds) });
+    } else if (typeof orgId !== 'undefined') {
+      Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    }
     return this.locationRepository.find({ where });
   }
 

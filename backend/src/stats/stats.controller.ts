@@ -21,7 +21,10 @@ export class StatsController {
     @Query('to') to?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const orgIdRaw = req.user.role === 'superadmin' ? (typeof orgIdQuery === 'undefined' ? req.effectiveOrgId : (orgIdQuery || null)) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
+    const orgIdRaw = req.user.role === 'superadmin'
+      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     const orgId: string | null | undefined = orgIdRaw;
     let orgIds: string[] | undefined;
     if (typeof orgIdRaw === 'string') {
@@ -40,7 +43,10 @@ export class StatsController {
     @Query('to') to?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const orgIdRaw = req.user.role === 'superadmin' ? (typeof orgIdQuery === 'undefined' ? req.effectiveOrgId : (orgIdQuery || null)) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
+    const orgIdRaw = req.user.role === 'superadmin'
+      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     const orgId: string | null | undefined = orgIdRaw;
     let orgIds: string[] | undefined;
     if (typeof orgIdRaw === 'string') {
@@ -59,7 +65,10 @@ export class StatsController {
     @Query('to') to?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const orgIdRaw = req.user.role === 'superadmin' ? (typeof orgIdQuery === 'undefined' ? req.effectiveOrgId : (orgIdQuery || null)) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
+    const orgIdRaw = req.user.role === 'superadmin'
+      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     const orgId: string | null | undefined = orgIdRaw;
     let orgIds: string[] | undefined;
     if (typeof orgIdRaw === 'string') {
@@ -78,7 +87,10 @@ export class StatsController {
     @Query('to') to?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const orgIdRaw = req.user.role === 'superadmin' ? (typeof orgIdQuery === 'undefined' ? req.effectiveOrgId : (orgIdQuery || null)) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
+    const orgIdRaw = req.user.role === 'superadmin'
+      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     const orgId: string | null | undefined = orgIdRaw;
     let orgIds: string[] | undefined;
     if (typeof orgIdRaw === 'string') {
@@ -97,7 +109,10 @@ export class StatsController {
     @Query('to') to?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const orgIdRaw = req.user.role === 'superadmin' ? (typeof orgIdQuery === 'undefined' ? req.effectiveOrgId : (orgIdQuery || null)) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
+    const orgIdRaw = req.user.role === 'superadmin'
+      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     const orgId: string | null | undefined = orgIdRaw;
     let orgIds: string[] | undefined;
     if (typeof orgIdRaw === 'string') {
@@ -116,7 +131,10 @@ export class StatsController {
     @Query('to') to?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const orgIdRaw = req.user.role === 'superadmin' ? (typeof orgIdQuery === 'undefined' ? req.effectiveOrgId : (orgIdQuery || null)) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
+    const orgIdRaw = req.user.role === 'superadmin'
+      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
+      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     const orgId: string | null | undefined = orgIdRaw;
     let orgIds: string[] | undefined;
     if (typeof orgIdRaw === 'string') {

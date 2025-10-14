@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
-import { createOrgApi, inviteUserApi, listOrgs, acceptInviteApi, type OrgDto, listUsersByOrg, moveOrgApi } from '@/lib/orgs';
+import { createOrgApi, inviteUserApi, listOrgs, acceptInviteApi, type OrgDto, listUsersByOrg, moveOrgApi, deleteOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fetchUsers } from '@/lib/users';
 // no auto-login on invite accept; keep superadmin session
-import { Link as LinkIcon, Shield, User as UserIcon } from 'lucide-react';
+import { Link as LinkIcon, Shield, Trash2, User as UserIcon } from 'lucide-react';
 
 export default function AdminOrgSetup() {
   const { user } = useAuth();
@@ -194,6 +194,7 @@ function OrgTree({ node, depth, allOrgs, onMoved }: { node: OrgTreeNode; depth: 
 }
 
 function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; allOrgs: OrgDto[]; onMoved: () => void }) {
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [counts, setCounts] = useState<{ admins: number; users: number } | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
@@ -279,6 +280,27 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
             <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
           ))}
         </select>
+        {user?.role === 'superadmin' && (
+          <button
+            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100"
+            title="Organisation löschen"
+            onClick={async()=>{
+              const confirmed = window.confirm(`Organisation „${org.name}“ wirklich löschen? Unterorganisationen verhindern das Löschen.`);
+              if (!confirmed) return;
+              try {
+                await deleteOrgApi(org.id);
+                showToast('Organisation gelöscht.', { type: 'success' });
+                onMoved();
+              } catch (e: unknown) {
+                const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Löschen fehlgeschlagen';
+                showToast(String(msg), { type: 'error' });
+              }
+            }}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Löschen</span>
+          </button>
+        )}
         {/* Link icon moved into the modal header; keep row compact */}
       </div>
 

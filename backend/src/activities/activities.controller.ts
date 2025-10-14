@@ -67,8 +67,12 @@ export class ActivitiesController {
     @Query('page') pageStr?: string,
     @Query('limit') limitStr?: string,
   ) {
+    // Determine organization filter from scope
+    // Superadmin: if no explicit scope header provided (effectiveOrgId === undefined), treat as orgId=null ("SuperAdmin-Orga"),
+    // otherwise use the selected orgId or null if explicit 'null'.
+    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
     const orgIdRaw = req.user.role === 'superadmin'
-      ? (typeof orgIdQuery === 'undefined' ? req.effectiveOrgId : (orgIdQuery || null))
+      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
       : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
     let orgId: string | null | undefined = orgIdRaw;
     let orgIds: string[] | undefined = undefined;
@@ -119,19 +123,23 @@ export class ActivitiesController {
 
   @Post()
   @ApiOperation({ summary: 'Neue Aktivität anlegen' })
-  create(@Body() data: Partial<Activity>, @Req() req: { user: { id: string; role: string; orgId?: string|null; name?: string|null } }) {
-    // Enforce orgId
-    const bodyOrgId = (data as Partial<Activity> & { orgId?: string | null }).orgId ?? null;
-    const orgId = req.user.role === 'superadmin' ? bodyOrgId : (req.user.orgId || null);
-    return this.activitiesService.create({ ...data, orgId }, { id: req.user.id, name: req.user.name || undefined, orgId: orgId ?? null });
+  create(@Body() data: Partial<Activity>, @Req() req: { user: { id: string; role: string; orgId?: string|null; name?: string|null }; effectiveOrgId?: string|null|undefined }) {
+    // Enforce orgId strictly from effective scope (ignore body)
+    const scopeOrgId = req.user.role === 'superadmin'
+      ? ((typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId)
+      : ((typeof req.effectiveOrgId === 'undefined') ? (req.user.orgId || null) : req.effectiveOrgId);
+    const orgId = scopeOrgId ?? null;
+    return this.activitiesService.create({ ...data, orgId }, { id: req.user.id, name: req.user.name || undefined, orgId });
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Aktivität bearbeiten' })
-  update(@Param('id') id: string, @Body() data: Partial<Activity>, @Req() req: { user: { id: string; role: string; orgId?: string|null; name?: string|null } }) {
-    const bodyOrgId = (data as Partial<Activity> & { orgId?: string | null }).orgId ?? null;
-    const orgId = req.user.role === 'superadmin' ? bodyOrgId : (req.user.orgId || null);
-    return this.activitiesService.updateScoped(id, { ...data, orgId }, { ...req.user, name: req.user.name || undefined });
+  update(@Param('id') id: string, @Body() data: Partial<Activity>, @Req() req: { user: { id: string; role: string; orgId?: string|null; name?: string|null }; effectiveOrgId?: string|null|undefined }) {
+    // Never allow changing orgId via update (for all roles)
+    // Drop orgId from payload and let service enforce scoping rules
+    const rest: Partial<Activity> = { ...(data as Partial<Activity>) };
+    delete (rest as Partial<Activity> & { orgId?: string | null }).orgId;
+    return this.activitiesService.updateScoped(id, rest, { ...req.user, name: req.user.name || undefined });
   }
 
   @Delete(':id')

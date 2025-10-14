@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, FindOptionsWhere, Equal, IsNull } from 'typeorm';
+import { Repository, ILike, FindOptionsWhere, Equal, IsNull, In } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { AuditService } from '../common/audit.service';
@@ -16,12 +16,16 @@ export class ProjectsService {
     private readonly audit: AuditService,
   ) {}
 
-  findAll(search?: string, archived?: boolean, orgId?: string|null): Promise<Project[]> {
+  findAll(search?: string, archived?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Project[]> {
     const where: FindOptionsWhere<Project> = {};
     if (typeof archived === 'boolean') where.archived = archived;
     // Use ILike for case-insensitive search (PostgreSQL)
     if (search) (where as unknown as Record<string, unknown>).title = ILike(`%${search}%`);
-    if (typeof orgId !== 'undefined') Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    if (Array.isArray(orgIds) && orgIds.length) {
+      Object.assign(where, { orgId: In(orgIds) });
+    } else if (typeof orgId !== 'undefined') {
+      Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    }
     return this.projectRepository.find({ where, order: { title: 'ASC' } });
   }
 

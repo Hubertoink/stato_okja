@@ -1,0 +1,10 @@
+services:
+  stato20:
+    image: stato20
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      NODE_ENV: production
+    ports:
+      - 3000:3000

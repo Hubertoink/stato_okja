@@ -15,7 +15,7 @@ FROM nginx:1.27-alpine AS runner
 WORKDIR /usr/share/nginx/html
 
 # Remove default content and config
-RUN rm -rf ./* /etc/nginx/conf.d/*
+RUN rm -rf ./* /etc/nginx/conf.d/* /etc/nginx/templates/*
 
 # Copy build
 COPY --from=builder /app/dist .

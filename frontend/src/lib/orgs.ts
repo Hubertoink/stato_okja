@@ -31,3 +31,8 @@ export async function moveOrgApi(id: string, parentId: string | null) {
   const res = await api.patch(`/orgs/${id}/move`, { parentId });
   return res.data as OrgDto;
 }
+
+export async function deleteOrgApi(id: string): Promise<{ ok: true }> {
+  const res = await api.delete(`/orgs/${id}`);
+  return res.data as { ok: true };
+}

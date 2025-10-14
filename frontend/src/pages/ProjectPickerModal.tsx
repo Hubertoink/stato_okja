@@ -8,7 +8,13 @@ function pickBg(p: Project) {
   return p.color || colorFromStringHash(p.title);
 }
 
-export default function ProjectPickerModal({ onPick, onClose }: { onPick: (p: Project) => void; onClose: () => void }) {
+export default function ProjectPickerModal({
+  onPick,
+  onClose,
+}: {
+  onPick: (p: Project) => void;
+  onClose: () => void;
+}) {
   const [search, setSearch] = useState('');
   const { data } = useProjects({ archived: false, search });
   const projects = useMemo(() => data || [], [data]);
@@ -25,22 +31,45 @@ export default function ProjectPickerModal({ onPick, onClose }: { onPick: (p: Pr
       <div className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xl font-semibold text-viridian">Projekt wählen</h3>
-          <button className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onClose} aria-label="Schließen"><XIcon className="w-5 h-5" /></button>
+          <button
+            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+            onClick={onClose}
+            aria-label="Schließen"
+          >
+            <XIcon className="w-5 h-5" />
+          </button>
         </div>
-        <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Suchen…" className="w-full border rounded px-3 py-2 mb-3" />
-  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Suchen…"
+          className="w-full border rounded px-3 py-2 mb-3"
+        />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {projects.map((p) => (
-            <button key={p.id} onClick={() => onPick(p)} className="rounded-xl overflow-hidden shadow focus:outline-none focus:ring-2 focus:ring-viridian text-left">
+            <button
+              key={p.id}
+              onClick={() => onPick(p)}
+              className="rounded-xl overflow-hidden shadow focus:outline-none focus:ring-2 focus:ring-viridian text-left"
+            >
               <div className="relative h-24">
                 {p.imageUrl ? (
-                  <img src={p.imageUrl} alt={p.title} className="absolute inset-0 w-full h-full object-cover" />
+                  <img
+                    src={p.imageUrl}
+                    alt={p.title}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="absolute inset-0" style={{ backgroundColor: pickBg(p) }} />
                 )}
                 {/* Type badge overlay */}
                 <div className="absolute top-1 left-1 z-10">
                   <span
-                    className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${p.imageUrl ? 'bg-black/45 text-white' : 'bg-white/80 text-gray-800 border border-white/60'}`}
+                    className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${
+                      p.imageUrl
+                        ? 'bg-black/45 text-white'
+                        : 'bg-white/80 text-gray-800 border border-white/60'
+                    }`}
                   >
                     {typeLabel[p.type] || p.type}
                   </span>
@@ -56,7 +85,11 @@ export default function ProjectPickerModal({ onPick, onClose }: { onPick: (p: Pr
               <div className="text-gray-500">Keine Projekte gefunden.</div>
               <div className="mt-2 text-xs text-gray-600">
                 Erstelle dein erstes Projekt –
-                <Link to="/projects" className="text-viridian hover:underline ml-1" onClick={onClose}>
+                <Link
+                  to="/projects"
+                  className="text-viridian hover:underline ml-1"
+                  onClick={onClose}
+                >
                   zur Projekte-Seite
                 </Link>
               </div>
@@ -64,7 +97,9 @@ export default function ProjectPickerModal({ onPick, onClose }: { onPick: (p: Pr
           )}
         </div>
         <div className="mt-4 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6">
-          <div className="text-xs text-gray-600">Tipp: Tippe zum Auswählen. Suche nach Titel oder Zielgruppe.</div>
+          <div className="text-xs text-gray-600">
+            Tipp: Tippe zum Auswählen. Suche nach Titel oder Zielgruppe.
+          </div>
         </div>
       </div>
     </div>

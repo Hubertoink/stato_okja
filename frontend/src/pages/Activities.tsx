@@ -9,7 +9,14 @@ import { api } from '@/lib/api';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import type { Project } from '@/lib/projects';
-import { Pencil, XCircle, Tag as TagIcon, StickyNote, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react';
+import {
+  Pencil,
+  XCircle,
+  Tag as TagIcon,
+  StickyNote,
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+} from 'lucide-react';
 import { useActivity } from '@/lib/activities';
 import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
 import { colorForActivityType } from '@/lib/colors';
@@ -20,7 +27,7 @@ export default function Activities() {
   const [advanced, setAdvanced] = useState<ActivitiesFilter>({});
   const [picker, setPicker] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
-  const [order, setOrder] = useState<'asc'|'desc'>('desc');
+  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const pageSize = 50;
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const { data: cohorts = [] } = useCohorts({ active: true });
@@ -43,7 +50,7 @@ export default function Activities() {
   } as ActivitiesFilter;
   const { data: paged } = useActivitiesPaged(filters, page, pageSize);
   // no quick location filter
-  const activities = useMemo(() => (paged?.data || []), [paged]);
+  const activities = useMemo(() => paged?.data || [], [paged]);
   const total = paged?.total || 0;
   const pageCount = Math.max(Math.ceil(total / pageSize), 1);
   const [editId, setEditId] = useState<string | null>(null);
@@ -69,7 +76,14 @@ export default function Activities() {
                 setExporting(true);
                 // Build query like in useActivities/useActivitiesPaged but without paging to fetch all filtered items
                 const qp: Record<string, unknown> = { ...filters };
-                const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','cohortIds'];
+                const arrayKeys: (keyof ActivitiesFilter)[] = [
+                  'types',
+                  'locationIds',
+                  'projectIds',
+                  'categoryIds',
+                  'tagIds',
+                  'cohortIds',
+                ];
                 for (const k of arrayKeys) {
                   const v = (filters as any)?.[k];
                   if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
@@ -77,40 +91,114 @@ export default function Activities() {
                 }
                 const res = await api.get('/activities', { params: qp });
                 const list: Array<{
-                  id: string; date: string; type: string; title?: string|null; project?: { title?: string|null }|null;
-                  countTotal?: number|null; countMale?: number|null; countFemale?: number|null; countDiverse?: number|null;
-                  durationMinutes?: number|null; startTime?: string|null; endTime?: string|null; tags?: Array<{ name: string }>; notes?: string|null; cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>
-                }> = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+                  id: string;
+                  date: string;
+                  type: string;
+                  title?: string | null;
+                  project?: { title?: string | null } | null;
+                  countTotal?: number | null;
+                  countMale?: number | null;
+                  countFemale?: number | null;
+                  countDiverse?: number | null;
+                  durationMinutes?: number | null;
+                  startTime?: string | null;
+                  endTime?: string | null;
+                  tags?: Array<{ name: string; color?: string | null }>;
+                  categories?: Array<{ name: string; color?: string | null }>;
+                  notes?: string | null;
+                  cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
+                }> = Array.isArray(res.data?.data)
+                  ? res.data.data
+                  : Array.isArray(res.data)
+                  ? res.data
+                  : [];
 
-                const cohortOrder = (cohorts as Cohort[]).slice().sort((a,b)=> (a.sortOrder??0) - (b.sortOrder??0));
-                const cohortIds = cohortOrder.map(c=>c.id);
-                const cohortHeaders = cohortOrder.map(c=>c.name);
+                const cohortOrder = (cohorts as Cohort[])
+                  .slice()
+                  .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+                const cohortIds = cohortOrder.map((c) => c.id);
+                const cohortHeaders = cohortOrder.map((c) => c.name);
 
                 // Build rows
-                const header = ['Datum','Typ','Titel','Projekt','Teilnehmende','m','w','d', ...cohortHeaders, 'Dauer (min)','Tags','Notizen'];
-                const rows = [header as (string|number)[]];
-                const typeLabel: Record<string,string> = { open_door:'Offene Tür', project_open:'Projekt (offen)', project_closed:'Projekt (geschlossen)', event:'Veranstaltung', outreach:'Aufsuchend' };
-                const durFrom = (a:any) => {
-                  if (typeof a?.durationMinutes === 'number' && a.durationMinutes >= 0) return a.durationMinutes;
-                  const toMinutes = (t?: string|null) => { if (!t) return undefined; const [hh,mm] = t.split(':').map((v)=>parseInt(v,10)); if (Number.isNaN(hh)||Number.isNaN(mm)) return undefined; return hh*60+mm; };
-                  const s = toMinutes(a?.startTime); const e = toMinutes(a?.endTime); return (s!==undefined && e!==undefined && e>=s) ? (e-s) : undefined;
+                const header = [
+                  'Datum',
+                  'Typ',
+                  'Titel',
+                  'Projekt',
+                  'Teilnehmende',
+                  'm',
+                  'w',
+                  'd',
+                  ...cohortHeaders,
+                  'Dauer (min)',
+                  'Kategorien',
+                  'Tags',
+                  'Notizen',
+                ];
+                const rows = [header as (string | number)[]];
+                const typeLabel: Record<string, string> = {
+                  open_door: 'Offene Tür',
+                  project_open: 'Projekt (offen)',
+                  project_closed: 'Projekt (geschlossen)',
+                  event: 'Veranstaltung',
+                  outreach: 'Aufsuchend',
+                };
+                const durFrom = (a: any) => {
+                  if (typeof a?.durationMinutes === 'number' && a.durationMinutes >= 0)
+                    return a.durationMinutes;
+                  const toMinutes = (t?: string | null) => {
+                    if (!t) return undefined;
+                    const [hh, mm] = t.split(':').map((v) => parseInt(v, 10));
+                    if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
+                    return hh * 60 + mm;
+                  };
+                  const s = toMinutes(a?.startTime);
+                  const e = toMinutes(a?.endTime);
+                  return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
                 };
                 for (const a of list) {
-                  const s=(a.date||'').slice(0,10); const [y,m,d]=s.split('-'); const dateDE = `${d}.${m}.${y}`;
+                  const s = (a.date || '').slice(0, 10);
+                  const [y, m, d] = s.split('-');
+                  const dateDE = `${d}.${m}.${y}`;
                   const tlabel = typeLabel[a.type] || a.type;
-                  const total = (a.countTotal ?? ((a.countMale||0)+(a.countFemale||0)+(a.countDiverse||0))) || 0;
-                  const mcount = a.countMale || 0; const wcount = a.countFemale || 0; const dcount = a.countDiverse || 0;
-                  const perCoh: Record<string, number> = Object.fromEntries(cohortIds.map(id=>[id,0] as const));
-                  (a.cohorts || []).forEach(c=>{ perCoh[c.cohortId] = (perCoh[c.cohortId]||0) + (c.m||0)+(c.w||0)+(c.d||0); });
+                  const total =
+                    (a.countTotal ??
+                      (a.countMale || 0) + (a.countFemale || 0) + (a.countDiverse || 0)) ||
+                    0;
+                  const mcount = a.countMale || 0;
+                  const wcount = a.countFemale || 0;
+                  const dcount = a.countDiverse || 0;
+                  const perCoh: Record<string, number> = Object.fromEntries(
+                    cohortIds.map((id) => [id, 0] as const),
+                  );
+                  (a.cohorts || []).forEach((c) => {
+                    perCoh[c.cohortId] =
+                      (perCoh[c.cohortId] || 0) + (c.m || 0) + (c.w || 0) + (c.d || 0);
+                  });
                   const duration = durFrom(a) ?? '';
-                  const tagsText = (a.tags||[]).map(t=>t.name).join(', ');
-                  const row = [dateDE, tlabel, a.title||'', a.project?.title||'', total, mcount, wcount, dcount, ...cohortIds.map(id=> perCoh[id] || 0), duration, tagsText, a.notes || ''];
+                  const catsText = (a.categories || []).map((c) => c.name).join(', ');
+                  const tagsText = (a.tags || []).map((t) => t.name).join(', ');
+                  const row = [
+                    dateDE,
+                    tlabel,
+                    a.title || '',
+                    a.project?.title || '',
+                    total,
+                    mcount,
+                    wcount,
+                    dcount,
+                    ...cohortIds.map((id) => perCoh[id] || 0),
+                    duration,
+                    catsText,
+                    tagsText,
+                    a.notes || '',
+                  ];
                   rows.push(row);
                 }
                 const ws = XLSX.utils.aoa_to_sheet(rows);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Aktivitäten');
-                const fname = `Aktivitäten_${new Date().toISOString().slice(0,10)}.xlsx`;
+                const fname = `Aktivitäten_${new Date().toISOString().slice(0, 10)}.xlsx`;
                 XLSX.writeFile(wb, fname);
               } finally {
                 setExporting(false);
@@ -119,10 +207,16 @@ export default function Activities() {
           >
             <Download className="w-5 h-5" />
           </button>
-          <button className="bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors" onClick={() => setFilterDrawer(true)}>
+          <button
+            className="bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors"
+            onClick={() => setFilterDrawer(true)}
+          >
             Filter
           </button>
-          <button className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors" onClick={() => setPicker(true)}>
+          <button
+            className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
+            onClick={() => setPicker(true)}
+          >
             + Neue Aktivität
           </button>
         </div>
@@ -131,41 +225,81 @@ export default function Activities() {
       {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex flex-wrap gap-2 text-xs">
-          {advanced.from || advanced.to ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Zeitraum</span> : null}
-          {advanced.types?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Typen: {advanced.types.length}</span> : null}
-          {advanced.locationIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Einrichtungen: {advanced.locationIds.length}</span> : null}
-          {advanced.projectIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Projekte: {advanced.projectIds.length}</span> : null}
-          {advanced.categoryIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Kategorien: {advanced.categoryIds.length}</span> : null}
-          {advanced.tagIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Tags: {advanced.tagIds.length}</span> : null}
-          {advanced.cohortIds?.length ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Kohorten: {advanced.cohortIds.length}</span> : null}
-          {advanced.hasNotes ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Nur mit Notizen</span> : null}
-          {(typeof advanced.participantsMin === 'number' || typeof advanced.participantsMax === 'number') && (
+          {advanced.from || advanced.to ? (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Zeitraum</span>
+          ) : null}
+          {advanced.types?.length ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Teilnehmende: {typeof advanced.participantsMin === 'number' && typeof advanced.participantsMax === 'number'
+              Typen: {advanced.types.length}
+            </span>
+          ) : null}
+          {advanced.locationIds?.length ? (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Einrichtungen: {advanced.locationIds.length}
+            </span>
+          ) : null}
+          {advanced.projectIds?.length ? (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Projekte: {advanced.projectIds.length}
+            </span>
+          ) : null}
+          {advanced.categoryIds?.length ? (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Kategorien: {advanced.categoryIds.length}
+            </span>
+          ) : null}
+          {advanced.tagIds?.length ? (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Tags: {advanced.tagIds.length}
+            </span>
+          ) : null}
+          {advanced.cohortIds?.length ? (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Kohorten: {advanced.cohortIds.length}
+            </span>
+          ) : null}
+          {advanced.hasNotes ? (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Nur mit Notizen
+            </span>
+          ) : null}
+          {(typeof advanced.participantsMin === 'number' ||
+            typeof advanced.participantsMax === 'number') && (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Teilnehmende:{' '}
+              {typeof advanced.participantsMin === 'number' &&
+              typeof advanced.participantsMax === 'number'
                 ? `${advanced.participantsMin}–${advanced.participantsMax}`
                 : typeof advanced.participantsMin === 'number'
-                  ? `≥ ${advanced.participantsMin}`
-                  : `≤ ${advanced.participantsMax}`}
+                ? `≥ ${advanced.participantsMin}`
+                : `≤ ${advanced.participantsMax}`}
             </span>
           )}
-          {(typeof advanced.durationMin === 'number' || typeof advanced.durationMax === 'number') && (
+          {(typeof advanced.durationMin === 'number' ||
+            typeof advanced.durationMax === 'number') && (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Dauer: {typeof advanced.durationMin === 'number' && typeof advanced.durationMax === 'number'
+              Dauer:{' '}
+              {typeof advanced.durationMin === 'number' && typeof advanced.durationMax === 'number'
                 ? `${advanced.durationMin}–${advanced.durationMax} Min.`
                 : typeof advanced.durationMin === 'number'
-                  ? `≥ ${advanced.durationMin} Min.`
-                  : `≤ ${advanced.durationMax} Min.`}
+                ? `≥ ${advanced.durationMin} Min.`
+                : `≤ ${advanced.durationMax} Min.`}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          {( Object.values(advanced).some((v)=> Array.isArray(v) ? v.length>0 : v!==undefined && v!==null && v!=='') ) && (
+          {Object.values(advanced).some((v) =>
+            Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== '',
+          ) && (
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-cambridge-blue/20 transition-colors px-3 py-1.5"
               title="Filter zurücksetzen"
               aria-label="Filter zurücksetzen"
-              onClick={() => { setAdvanced({}); setPage(1); }}
+              onClick={() => {
+                setAdvanced({});
+                setPage(1);
+              }}
             >
               <XCircle className="w-4 h-4 mr-1" /> Zurücksetzen
             </button>
@@ -184,7 +318,10 @@ export default function Activities() {
                   type="button"
                   className="inline-flex items-center gap-1 hover:text-viridian"
                   title="Nach Datum sortieren"
-                  onClick={() => { setOrder((o)=> o==='desc' ? 'asc' : 'desc'); setPage(1); }}
+                  onClick={() => {
+                    setOrder((o) => (o === 'desc' ? 'asc' : 'desc'));
+                    setPage(1);
+                  }}
                 >
                   Datum
                   {order === 'desc' ? (
@@ -195,23 +332,47 @@ export default function Activities() {
                 </button>
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Typ</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Titel / Projekt</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Teilnehmende</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Titel / Projekt
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Teilnehmende
+              </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Dauer</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Tags & Notizen</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Tags & Notizen
+              </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Aktion</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {activities.map((a) => (
               <tr key={a.id} className="hover:bg-azure-web">
-                <td className="px-6 py-4 text-sm">{(() => { const s=(a.date||'').slice(0,10); const [y,m,d]=s.split('-'); return `${d}.${m}.${y}`; })()}</td>
                 <td className="px-6 py-4 text-sm">
                   {(() => {
-                    const label = ({open_door:'Offene Tür', project_open:'Projekt (offen)', project_closed:'Projekt (geschlossen)', event:'Veranstaltung', outreach:'Aufsuchend'} as Record<string,string>)[a.type] || a.type;
+                    const s = (a.date || '').slice(0, 10);
+                    const [y, m, d] = s.split('-');
+                    return `${d}.${m}.${y}`;
+                  })()}
+                </td>
+                <td className="px-6 py-4 text-sm">
+                  {(() => {
+                    const label =
+                      (
+                        {
+                          open_door: 'Offene Tür',
+                          project_open: 'Projekt (offen)',
+                          project_closed: 'Projekt (geschlossen)',
+                          event: 'Veranstaltung',
+                          outreach: 'Aufsuchend',
+                        } as Record<string, string>
+                      )[a.type] || a.type;
                     const bg = colorForActivityType(a.type);
                     return (
-                      <span className="px-2 py-1 text-white rounded text-xs" style={{ backgroundColor: bg }}>
+                      <span
+                        className="px-2 py-1 text-white rounded text-xs"
+                        style={{ backgroundColor: bg }}
+                      >
                         {label}
                       </span>
                     );
@@ -221,49 +382,85 @@ export default function Activities() {
                   <div className="font-medium text-gray-900">{a.title || '-'}</div>
                   <div className="text-xs text-gray-600">{a.project?.title || '-'}</div>
                 </td>
-                <td className="px-6 py-4 text-sm">{(a.countTotal ?? 0)} (m:{a.countMale ?? 0}, w:{a.countFemale ?? 0}, d:{a.countDiverse ?? 0})</td>
-                <td className="px-6 py-4 text-sm">{(() => {
-                  if (a.durationMinutes) return `${a.durationMinutes} min`;
-                  const parse = (t?: string | null) => {
-                    if (!t) return undefined;
-                    const [h, m] = t.split(':').map((v)=> parseInt(v,10));
-                    if (Number.isNaN(h) || Number.isNaN(m)) return undefined;
-                    return h*60+m;
-                  };
-                  const s = parse(a.startTime); const e = parse(a.endTime);
-                  if (s!==undefined && e!==undefined && e>=s) return `${e-s} min`;
-                  return '-';
-                })()}</td>
+                <td className="px-6 py-4 text-sm">
+                  {a.countTotal ?? 0} (m:{a.countMale ?? 0}, w:{a.countFemale ?? 0}, d:
+                  {a.countDiverse ?? 0})
+                </td>
+                <td className="px-6 py-4 text-sm">
+                  {(() => {
+                    if (a.durationMinutes) return `${a.durationMinutes} min`;
+                    const parse = (t?: string | null) => {
+                      if (!t) return undefined;
+                      const [h, m] = t.split(':').map((v) => parseInt(v, 10));
+                      if (Number.isNaN(h) || Number.isNaN(m)) return undefined;
+                      return h * 60 + m;
+                    };
+                    const s = parse(a.startTime);
+                    const e = parse(a.endTime);
+                    if (s !== undefined && e !== undefined && e >= s) return `${e - s} min`;
+                    return '-';
+                  })()}
+                </td>
                 <td className="px-6 py-4 text-sm">
                   <div className="flex flex-wrap gap-2 mb-2">
+                    {(a.categories || []).map((c) => (
+                      <span
+                        key={c.id}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border"
+                        style={{
+                          backgroundColor: c.color ? `${c.color}26` : undefined,
+                          borderColor: c.color || undefined,
+                        }}
+                        title={c.name}
+                      >
+                        {c.name}
+                      </span>
+                    ))}
                     {(a.tags || []).map((t) => (
                       <span
                         key={t.id}
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border"
-                        style={{ backgroundColor: t.color ? `${t.color}26` : undefined, borderColor: t.color || undefined }}
+                        style={{
+                          backgroundColor: t.color ? `${t.color}26` : undefined,
+                          borderColor: t.color || undefined,
+                        }}
                         title={t.name}
                       >
                         <TagIcon className="w-3 h-3" /> {t.name}
                       </span>
                     ))}
-                    {(a.tags || []).length === 0 && <span className="text-xs text-gray-400">–</span>}
+                    {(a.tags || []).length === 0 && (a.categories || []).length === 0 && (
+                      <span className="text-xs text-gray-400">–</span>
+                    )}
                   </div>
                   {a.notes && (
-                    <div className="text-xs text-gray-600 flex items-start gap-1" title={a.notes || undefined}>
+                    <div
+                      className="text-xs text-gray-600 flex items-start gap-1"
+                      title={a.notes || undefined}
+                    >
                       <StickyNote className="w-3.5 h-3.5 mt-[2px] text-gray-500" />
                       <span>{firstWords(a.notes, 20)}</span>
                     </div>
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm">
-                  <button onClick={() => setEditId(a.id)} className="inline-flex items-center justify-center rounded-full bg-white border p-2 text-viridian hover:bg-azure-web" title="Bearbeiten" aria-label="Bearbeiten">
+                  <button
+                    onClick={() => setEditId(a.id)}
+                    className="inline-flex items-center justify-center rounded-full bg-white border p-2 text-viridian hover:bg-azure-web"
+                    title="Bearbeiten"
+                    aria-label="Bearbeiten"
+                  >
                     <Pencil className="w-4 h-4" />
                   </button>
                 </td>
               </tr>
             ))}
             {activities.length === 0 && (
-              <tr><td colSpan={7} className="px-6 py-6 text-center text-gray-500 text-sm">Keine Aktivitäten im Zeitraum.</td></tr>
+              <tr>
+                <td colSpan={7} className="px-6 py-6 text-center text-gray-500 text-sm">
+                  Keine Aktivitäten im Zeitraum.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -276,15 +473,17 @@ export default function Activities() {
         <div className="flex items-center gap-2">
           <button
             className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-            onClick={() => setPage((p)=> Math.max(p-1, 1))}
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
             disabled={page <= 1}
           >
             Zurück
           </button>
-          <span className="text-sm">{page} / {pageCount}</span>
+          <span className="text-sm">
+            {page} / {pageCount}
+          </span>
           <button
             className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-            onClick={() => setPage((p)=> Math.min(p+1, pageCount))}
+            onClick={() => setPage((p) => Math.min(p + 1, pageCount))}
             disabled={page >= pageCount}
           >
             Weiter
@@ -303,47 +502,97 @@ export default function Activities() {
             aria-label="Aktivität bearbeiten"
             onClick={() => setEditId(a.id)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditId(a.id); }
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setEditId(a.id);
+              }
             }}
           >
             <div className="flex justify-between items-start mb-2">
               <div>
-                <div className="text-sm text-gray-500">{(() => { const s=(a.date||'').slice(0,10); const [y,m,d]=s.split('-'); return `${d}.${m}.${y}`; })()}</div>
-                <div className="font-semibold text-viridian">{({open_door:'Offene Tür', project_open:'Projekt (offen)', project_closed:'Projekt (geschlossen)', event:'Veranstaltung', outreach:'Aufsuchend'} as Record<string,string>)[a.type] || a.type}</div>
+                <div className="text-sm text-gray-500">
+                  {(() => {
+                    const s = (a.date || '').slice(0, 10);
+                    const [y, m, d] = s.split('-');
+                    return `${d}.${m}.${y}`;
+                  })()}
+                </div>
+                <div className="font-semibold text-viridian">
+                  {(
+                    {
+                      open_door: 'Offene Tür',
+                      project_open: 'Projekt (offen)',
+                      project_closed: 'Projekt (geschlossen)',
+                      event: 'Veranstaltung',
+                      outreach: 'Aufsuchend',
+                    } as Record<string, string>
+                  )[a.type] || a.type}
+                </div>
               </div>
               {(() => {
-                const duration = a.durationMinutes ?? (()=>{
-                  const parse = (t?: string | null) => {
-                    if (!t) return undefined; const [h,m] = t.split(':').map((v)=>parseInt(v,10));
-                    if (Number.isNaN(h)||Number.isNaN(m)) return undefined; return h*60+m;
-                  };
-                  const s=parse(a.startTime); const e=parse(a.endTime); return (s!==undefined&&e!==undefined&&e>=s)?(e-s):undefined;
-                })();
-                return duration ? (<span className="text-xs px-2 py-1 bg-viridian text-white rounded">{duration} min</span>) : null;
+                const duration =
+                  a.durationMinutes ??
+                  (() => {
+                    const parse = (t?: string | null) => {
+                      if (!t) return undefined;
+                      const [h, m] = t.split(':').map((v) => parseInt(v, 10));
+                      if (Number.isNaN(h) || Number.isNaN(m)) return undefined;
+                      return h * 60 + m;
+                    };
+                    const s = parse(a.startTime);
+                    const e = parse(a.endTime);
+                    return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
+                  })();
+                return duration ? (
+                  <span className="text-xs px-2 py-1 bg-viridian text-white rounded">
+                    {duration} min
+                  </span>
+                ) : null;
               })()}
             </div>
             <div className="text-sm text-gray-600 mb-1">{a.title || '-'}</div>
             <div className="text-xs text-gray-500 mb-3">{a.project?.title || '-'}</div>
             <div className="text-xs text-gray-600 mb-2">
               {(() => {
-                const m = a.countMale || 0; const w = a.countFemale || 0; const d = a.countDiverse || 0; const total = (a.countTotal ?? (m+w+d)) || 0;
-                return <>Teilnehmende: {total} (m:{m}, w:{w}, d:{d})</>;
+                const m = a.countMale || 0;
+                const w = a.countFemale || 0;
+                const d = a.countDiverse || 0;
+                const total = (a.countTotal ?? m + w + d) || 0;
+                return (
+                  <>
+                    Teilnehmende: {total} (m:{m}, w:{w}, d:{d})
+                  </>
+                );
               })()}
             </div>
-            {(a.tags && a.tags.length > 0) && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {a.tags.map((t) => (
-                  <span
-                    key={t.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border"
-                    style={{ backgroundColor: t.color ? `${t.color}26` : undefined, borderColor: t.color || undefined }}
-                    title={t.name}
-                  >
-                    <TagIcon className="w-3 h-3" /> {t.name}
-                  </span>
-                ))}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {(a.categories || []).map((c) => (
+                <span
+                  key={c.id}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border"
+                  style={{
+                    backgroundColor: c.color ? `${c.color}26` : undefined,
+                    borderColor: c.color || undefined,
+                  }}
+                  title={c.name}
+                >
+                  {c.name}
+                </span>
+              ))}
+              {(a.tags || []).map((t) => (
+                <span
+                  key={t.id}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border"
+                  style={{
+                    backgroundColor: t.color ? `${t.color}26` : undefined,
+                    borderColor: t.color || undefined,
+                  }}
+                  title={t.name}
+                >
+                  <TagIcon className="w-3 h-3" /> {t.name}
+                </span>
+              ))}
+            </div>
             {a.notes && (
               <div className="text-[12px] text-gray-600 flex items-start gap-1 mb-2">
                 <StickyNote className="w-3.5 h-3.5 mt-[2px] text-gray-500" />
@@ -358,19 +607,41 @@ export default function Activities() {
         )}
       </div>
       {picker && (
-        <ProjectPickerModal onPick={(p)=> { setPicker(false); setQuickAdd({ project: p }); }} onClose={()=> setPicker(false)} />
+        <ProjectPickerModal
+          onPick={(p) => {
+            setPicker(false);
+            setQuickAdd({ project: p });
+          }}
+          onClose={() => setPicker(false)}
+        />
       )}
       {quickAdd && (
-        <ActivityQuickAdd dateISO={`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}`} onClose={()=> setQuickAdd(null)} project={quickAdd.project} />
+        <ActivityQuickAdd
+          dateISO={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(
+            2,
+            '0',
+          )}-${String(new Date().getDate()).padStart(2, '0')}`}
+          onClose={() => setQuickAdd(null)}
+          project={quickAdd.project}
+        />
       )}
       {editId && editing && (
-        <ActivityQuickAdd dateISO={editing.date} onClose={() => setEditId(null)} project={editing.project ?? undefined} activity={editing} />
+        <ActivityQuickAdd
+          dateISO={editing.date}
+          onClose={() => setEditId(null)}
+          project={editing.project ?? undefined}
+          activity={editing}
+        />
       )}
       <ActivitiesFilterDrawer
         open={filterDrawer}
         initial={advanced}
-        onClose={()=> setFilterDrawer(false)}
-        onApply={(f)=> { setAdvanced(f); setPage(1); setFilterDrawer(false); }}
+        onClose={() => setFilterDrawer(false)}
+        onApply={(f) => {
+          setAdvanced(f);
+          setPage(1);
+          setFilterDrawer(false);
+        }}
       />
     </div>
   );

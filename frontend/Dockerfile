@@ -24,7 +24,14 @@ COPY --from=builder /app/dist .
 ARG NGINX_MODE=direct
 COPY nginx.direct.conf /etc/nginx/conf.d/default.direct.conf
 COPY nginx.proxy.conf /etc/nginx/conf.d/default.proxy.conf
-RUN if [ "$NGINX_MODE" = "proxy" ]; then cp /etc/nginx/conf.d/default.proxy.conf /etc/nginx/conf.d/default.conf; else cp /etc/nginx/conf.d/default.direct.conf /etc/nginx/conf.d/default.conf; fi
+# Select a single config and delete the other to avoid Nginx loading both
+RUN if [ "$NGINX_MODE" = "proxy" ]; then \
+			cp /etc/nginx/conf.d/default.proxy.conf /etc/nginx/conf.d/default.conf && \
+			rm -f /etc/nginx/conf.d/default.direct.conf; \
+		else \
+			cp /etc/nginx/conf.d/default.direct.conf /etc/nginx/conf.d/default.conf && \
+			rm -f /etc/nginx/conf.d/default.proxy.conf; \
+		fi
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

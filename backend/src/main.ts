@@ -5,6 +5,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -45,8 +46,17 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
+  // Ensure uploads directories exist (volume might start empty)
+  const uploadsBase = join(process.cwd(), 'uploads');
+  const uploadsImages = join(uploadsBase, 'images');
+  try {
+    if (!existsSync(uploadsImages)) mkdirSync(uploadsImages, { recursive: true });
+  } catch (e) {
+    console.warn('Could not ensure uploads directory exists:', e);
+  }
+
   // Serve static files for uploads
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+  app.useStaticAssets(uploadsBase, {
     prefix: '/uploads/',
   });
 

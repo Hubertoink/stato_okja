@@ -7,7 +7,7 @@ Dieses Dokument beschreibt, wie du das Projekt auf Mittwald mit separater API-Do
 - CI baut und pusht Images nach GHCR:
   - Backend: `ghcr.io/<Owner>/stato-backend:latest`
   - Frontend: `ghcr.io/<Owner>/stato-frontend:latest`
-- Optional Tags (z. B. `v2.0.0`) nutzen für reproduzierbare Deploys.
+– Optional Tags (z. B. `v2.0.0`) verwenden für reproduzierbare Deploys.
 - Entweder Packages auf `Public` stellen oder Mittwald mit GHCR-Login (PAT mit `read:packages`) konfigurieren.
 
 ## 2) Domains

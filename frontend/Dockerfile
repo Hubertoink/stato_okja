@@ -7,6 +7,7 @@ COPY package*.json ./
 RUN npm install --no-audit --no-fund
 
 COPY . .
+# Allow passing the API base URL at build time for Modus B
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 RUN npm run build

@@ -84,6 +84,18 @@ export default function ActivityQuickAdd({
     const ids = Array.from(new Set(names.map((n) => byName.get(n)).filter(Boolean))) as string[];
     if (ids.length > 0) setForm((f: FormState) => ({ ...f, tagIds: ids }));
   }, [selectedProject, initialProject, tags, activity]);
+  // Prefill categories from project when creating (include primary categoryId)
+  useEffect(() => {
+    if (activity) return; // editing: don't override
+    const proj = selectedProject || initialProject;
+    if (!proj) return;
+    const cur = form.categoryIds || [];
+    if (cur.length > 0) return; // already chosen
+    const set = new Set<string>();
+    (proj.categories || []).forEach((c) => set.add(c.id));
+    if (proj.categoryId) set.add(proj.categoryId);
+    if (set.size > 0) setForm((f: FormState) => ({ ...f, categoryIds: Array.from(set) }));
+  }, [selectedProject, initialProject, activity]);
   useEffect(() => {
     // If there is exactly one location, auto-select it to reduce friction
     if ((locations || []).length === 1 && !form.locationId) {

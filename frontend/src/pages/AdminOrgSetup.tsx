@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fetchUsers } from '@/lib/users';
 // no auto-login on invite accept; keep superadmin session
-import { Link as LinkIcon, Shield, Trash2, User as UserIcon } from 'lucide-react';
+import { Link as LinkIcon, Shield, User as UserIcon, Trash2 } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
 
 export default function AdminOrgSetup() {
@@ -195,6 +195,7 @@ function OrgTree({ node, depth, allOrgs, onMoved }: { node: OrgTreeNode; depth: 
 }
 
 function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; allOrgs: OrgDto[]; onMoved: () => void }) {
+  // Access auth to conditionally render delete button only for superadmin
   const { user } = useAuth();
   const { showToast } = useToast();
   const [counts, setCounts] = useState<{ admins: number; users: number } | null>(null);
@@ -282,6 +283,7 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
             <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
           ))}
         </select>
+        {/* Delete button (nur für Superadmin sichtbar) */}
         {user?.role === 'superadmin' && (
           <button
             className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100"

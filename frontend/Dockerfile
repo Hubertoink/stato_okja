@@ -25,7 +25,7 @@ COPY --from=builder /app/dist .
 ARG NGINX_MODE=direct
 COPY nginx.direct.conf /etc/nginx/conf.d/default.direct.conf
 COPY nginx.proxy.conf /etc/nginx/conf.d/default.proxy.conf
-# Select a single config and delete temp files so only default.conf remains
+# Select single config to default.conf and remove any others so only one *.conf remains
 RUN if [ "$NGINX_MODE" = "proxy" ]; then \
 			cp /etc/nginx/conf.d/default.proxy.conf /etc/nginx/conf.d/default.conf; \
 		else \

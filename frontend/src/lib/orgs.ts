@@ -32,6 +32,7 @@ export async function moveOrgApi(id: string, parentId: string | null) {
   return res.data as OrgDto;
 }
 
+// Delete an organization (superadmin only). Returns { ok: true } on success.
 export async function deleteOrgApi(id: string): Promise<{ ok: true }> {
   const res = await api.delete(`/orgs/${id}`);
   return res.data as { ok: true };

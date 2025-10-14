@@ -57,14 +57,11 @@ export class OrgsService {
 
   /**
    * Remove an organization if it has no child organizations.
-   * Note: Users referencing this org will have their orgId set to null (disassociate),
-   * based on the User entity relation (onDelete: SET NULL via org relation).
    * Returns true if removed, false if blocked (e.g., has children or not found).
    */
   async removeOrg(id: string): Promise<boolean> {
     const org = await this.repo.findOne({ where: { id } });
     if (!org) return false;
-    // Check children
     const all = await this.repo.find();
     const path = org.path || org.id;
     const hasChildren = all.some(o => (o.path || o.id).startsWith(path + '/') );

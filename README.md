@@ -181,6 +181,9 @@ docker-compose -f docker-compose.prod.yml up -d
 npm run migration:run
 ```
 
+Weitere Hinweise für Hosting bei Mittwald (inkl. Subdomains, Registry und ENV):
+- DEPLOY_MITTWALD.md
+
 ## 🗓️ Roadmap
 
 - [x] Projektsetup & Architektur

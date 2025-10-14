@@ -195,6 +195,8 @@ function OrgTree({ node, depth, allOrgs, onMoved }: { node: OrgTreeNode; depth: 
 }
 
 function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; allOrgs: OrgDto[]; onMoved: () => void }) {
+  // Access auth to conditionally render delete button only for superadmin
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [counts, setCounts] = useState<{ admins: number; users: number } | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
@@ -281,15 +283,17 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
             <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
           ))}
         </select>
-        {/* Delete button (superadmin only) */}
-        <button
-          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100"
-          title="Organisation löschen"
-          onClick={()=> setDeleteModalOpen(true)}
-        >
-          <Trash2 className="w-4 h-4" />
-          <span className="hidden sm:inline">Löschen</span>
-        </button>
+        {/* Delete button (nur für Superadmin sichtbar) */}
+        {user?.role === 'superadmin' && (
+          <button
+            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100"
+            title="Organisation löschen"
+            onClick={()=> setDeleteModalOpen(true)}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Löschen</span>
+          </button>
+        )}
         {/* Link icon moved into the modal header; keep row compact */}
       </div>
 
@@ -347,13 +351,15 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
         </div>
         {copyMsg && <div className="text-[11px] text-viridian mt-1">{copyMsg}</div>}
       </Modal>
-      <DeleteOrgModal
-        orgId={org.id}
-        orgName={org.name}
-        open={deleteModalOpen}
-        onClose={()=> setDeleteModalOpen(false)}
-        onDeleted={()=> { setDeleteModalOpen(false); onMoved(); }}
-      />
+      {user?.role === 'superadmin' && (
+        <DeleteOrgModal
+          orgId={org.id}
+          orgName={org.name}
+          open={deleteModalOpen}
+          onClose={()=> setDeleteModalOpen(false)}
+          onDeleted={()=> { setDeleteModalOpen(false); onMoved(); }}
+        />
+      )}
     </li>
   );
 }

@@ -16,6 +16,7 @@ function ArchiveRestoreControls({
   onArchivingChange,
   onDeletingChange,
   onDeleted,
+  onArchivedToggle,
 }: {
   id: string;
   archived: boolean;
@@ -24,6 +25,7 @@ function ArchiveRestoreControls({
   onArchivingChange: (v: boolean) => void;
   onDeletingChange: (v: boolean) => void;
   onDeleted?: () => void;
+  onArchivedToggle?: () => void;
 }) {
   const archive = useDeleteProject();
   const remove = useRemoveProject();
@@ -41,7 +43,7 @@ function ArchiveRestoreControls({
           onArchivingChange(true);
           archive.mutate(
             { id, archived: !archived },
-            { onSettled: () => onArchivingChange(false) },
+            { onSettled: () => onArchivingChange(false), onSuccess: () => { if (onArchivedToggle) onArchivedToggle(); } },
           );
         }}
       >
@@ -92,7 +94,7 @@ function ArchiveRestoreControls({
         secondaryLabel={archived ? 'Wiederherstellen' : undefined}
         onSecondaryConfirm={archived ? () => {
           onArchivingChange(true);
-          archive.mutate({ id, archived: false }, { onSettled: () => onArchivingChange(false) });
+          archive.mutate({ id, archived: false }, { onSettled: () => onArchivingChange(false), onSuccess: () => { if (onArchivedToggle) onArchivedToggle(); } });
           setConfirm({ open: false });
         } : undefined}
         confirmLabel="Endgültig löschen"
@@ -266,12 +268,20 @@ function ProjectForm({ initial, onSubmit, onCancel }: { initial?: Partial<Projec
             <div className="flex flex-wrap gap-2">
               {(categories || []).map((c) => {
                 const active = String(form.categoryId || '') === c.id;
+                const color = c.color || '#7aa39a';
                 return (
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, categoryId: active ? null : c.id }))}
-                    className={`px-2 py-1 rounded-full text-xs border ${active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'}`}
+                    onClick={() => update('categoryId', active ? null : (c.id as any))}
+                    className={`px-2 py-1 rounded-full text-xs border`}
+                    style={
+                      active
+                        ? { backgroundColor: color, color: '#fff', borderColor: color }
+                        : { backgroundColor: '#fff', color: '#374151', borderColor: color }
+                    }
+                    title={c.name}
+                    aria-pressed={active}
                   >
                     {c.name}
                   </button>
@@ -398,6 +408,7 @@ function ProjectForm({ initial, onSubmit, onCancel }: { initial?: Partial<Projec
                 onArchivingChange={setArchiving}
                 onDeletingChange={setDeleting}
                 onDeleted={onCancel}
+                onArchivedToggle={onCancel}
               />
             )}
           </div>

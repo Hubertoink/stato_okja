@@ -1,6 +1,7 @@
 import { useProjects, Project } from '@/lib/projects';
 import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { X as XIcon } from 'lucide-react';
 
 function pickBg(p: Project) {
@@ -27,7 +28,7 @@ export default function ProjectPickerModal({ onPick, onClose }: { onPick: (p: Pr
           <button className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onClose} aria-label="Schließen"><XIcon className="w-5 h-5" /></button>
         </div>
         <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Suchen…" className="w-full border rounded px-3 py-2 mb-3" />
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {projects.map((p) => (
             <button key={p.id} onClick={() => onPick(p)} className="rounded-xl overflow-hidden shadow focus:outline-none focus:ring-2 focus:ring-viridian text-left">
               <div className="relative h-24">
@@ -51,7 +52,15 @@ export default function ProjectPickerModal({ onPick, onClose }: { onPick: (p: Pr
             </button>
           ))}
           {projects.length === 0 && (
-            <div className="col-span-full text-gray-500 text-center py-6">Keine Projekte gefunden.</div>
+            <div className="col-span-full text-center py-6">
+              <div className="text-gray-500">Keine Projekte gefunden.</div>
+              <div className="mt-2 text-xs text-gray-600">
+                Erstelle dein erstes Projekt –
+                <Link to="/projects" className="text-viridian hover:underline ml-1" onClick={onClose}>
+                  zur Projekte-Seite
+                </Link>
+              </div>
+            </div>
           )}
         </div>
         <div className="mt-4 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6">

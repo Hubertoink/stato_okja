@@ -15,12 +15,12 @@ export default function ResetPassword() {
     e.preventDefault();
     setError(null);
     if (!token) { setError('Ungültiger Link'); return; }
-    if (password.length < 6) { setError('Mindestens 6 Zeichen'); return; }
+    if (password.length < 8) { setError('Mindestens 8 Zeichen'); return; }
     if (password !== confirm) { setError('Passwörter stimmen nicht überein'); return; }
     try {
       await resetPassword(token, password);
       setOk(true);
-      setTimeout(()=> navigate('/'), 1200);
+      setTimeout(() => navigate('/'), 1500);
     } catch (e: unknown) {
       setError('Zurücksetzen fehlgeschlagen');
     }
@@ -31,19 +31,23 @@ export default function ResetPassword() {
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <h2 className="text-2xl font-bold text-viridian mb-4">Neues Passwort setzen</h2>
         {ok ? (
-          <p className="text-sm text-gray-700">Passwort gesetzt. Du wirst weitergeleitet…</p>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700">Passwort gesetzt. Du wirst weitergeleitet…</p>
+            <p className="text-xs text-gray-600">Falls nichts passiert: <a href="/" className="text-viridian hover:underline">Zum Login</a></p>
+          </div>
         ) : (
           <form className="space-y-4" onSubmit={onSubmit}>
             <div>
               <label className="block text-sm font-medium mb-2">Neues Passwort</label>
-              <input type="password" required value={password} onChange={(e)=>setPassword(e.target.value)} className="w-full border border-gray-300 rounded px-4 py-2" />
+              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-300 rounded px-4 py-2" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Bestätigung</label>
-              <input type="password" required value={confirm} onChange={(e)=>setConfirm(e.target.value)} className="w-full border border-gray-300 rounded px-4 py-2" />
+              <input type="password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} className="w-full border border-gray-300 rounded px-4 py-2" />
             </div>
             <button type="submit" className="w-full bg-viridian text-white py-2 rounded">Speichern</button>
             {error && <div className="text-red-600 text-sm">{error}</div>}
+            <p className="text-xs text-gray-600">Abbrechen? <a href="/" className="text-viridian hover:underline">Zurück zum Login</a></p>
           </form>
         )}
       </div>

@@ -9,7 +9,6 @@ import { StaffModule } from './staff/staff.module';
 import { LocationsModule } from './locations/locations.module';
 import { StatsModule } from './stats/stats.module';
 import { ProjectsModule } from './projects/projects.module';
-import { UploadsModule } from './uploads/uploads.module';
 import { OrgsModule } from './orgs/orgs.module';
 import { UsersModule } from './users/users.module';
 import { AuditModule } from './common/audit.module';
@@ -36,7 +35,6 @@ import { AuditModule } from './common/audit.module';
     LocationsModule,
     StatsModule,
     ProjectsModule,
-    UploadsModule,
     OrgsModule,
     UsersModule,
     AuditModule,

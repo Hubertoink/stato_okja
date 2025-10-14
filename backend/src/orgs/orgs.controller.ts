@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards, ForbiddenException, Delete, BadRequestException } from '@nestjs/common';
 import { OrgsService } from './orgs.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -33,6 +33,14 @@ export class OrgsController {
   @Roles('superadmin')
   @Patch(':id/move')
   move(@Param('id') id: string, @Body() body: { parentId?: string | null }) { return this.service.moveOrg(id, body?.parentId ?? null); }
+
+  @Roles('superadmin')
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    const ok = await this.service.removeOrg(id);
+    if (!ok) throw new BadRequestException('Organisation kann nicht gelöscht werden (existieren Unterorganisationen?)');
+    return { ok: true };
+  }
 
   // List users for an org (optionally include subtree)
   @Get(':id/users')

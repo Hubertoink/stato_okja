@@ -337,7 +337,8 @@ export default function Layout() {
       <footer className="bg-azure-web text-gray-600 mt-12">
         <div className="container mx-auto px-4 py-6 text-center text-sm">
           <p>
-            © {new Date().getFullYear()} StatO · Version 0.7 ·{' '}
+            © {new Date().getFullYear()} StatO · Version {import.meta.env.VITE_APP_VERSION || '0.7'}
+            {import.meta.env.VITE_COMMIT_SHA ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0,7)})` : ''} ·{' '}
             <a href="mailto:nikolas.haefner@mannheim.de" className="underline hover:text-viridian">Nikolas Häfner</a>
           </p>
         </div>

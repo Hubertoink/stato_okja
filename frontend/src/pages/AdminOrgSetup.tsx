@@ -6,7 +6,8 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fetchUsers } from '@/lib/users';
 // no auto-login on invite accept; keep superadmin session
-import { Link as LinkIcon, Shield, User as UserIcon } from 'lucide-react';
+import { Link as LinkIcon, Shield, User as UserIcon, Trash2 } from 'lucide-react';
+import DeleteOrgModal from '@/components/DeleteOrgModal';
 
 export default function AdminOrgSetup() {
   const { user } = useAuth();
@@ -200,6 +201,7 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<Array<{ id: string; email: string; name: string; role: string }> | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
   const byId = useMemo(() => Object.fromEntries(allOrgs.map(o => [o.id, o] as const)), [allOrgs]);
 
@@ -279,6 +281,15 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
             <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
           ))}
         </select>
+        {/* Delete button (superadmin only) */}
+        <button
+          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100"
+          title="Organisation löschen"
+          onClick={()=> setDeleteModalOpen(true)}
+        >
+          <Trash2 className="w-4 h-4" />
+          <span className="hidden sm:inline">Löschen</span>
+        </button>
         {/* Link icon moved into the modal header; keep row compact */}
       </div>
 
@@ -336,6 +347,13 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
         </div>
         {copyMsg && <div className="text-[11px] text-viridian mt-1">{copyMsg}</div>}
       </Modal>
+      <DeleteOrgModal
+        orgId={org.id}
+        orgName={org.name}
+        open={deleteModalOpen}
+        onClose={()=> setDeleteModalOpen(false)}
+        onDeleted={()=> { setDeleteModalOpen(false); onMoved(); }}
+      />
     </li>
   );
 }

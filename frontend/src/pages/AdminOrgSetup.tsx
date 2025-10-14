@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
-import { createOrgApi, inviteUserApi, listOrgs, acceptInviteApi, type OrgDto, listUsersByOrg, moveOrgApi, deleteOrgApi } from '@/lib/orgs';
+import { createOrgApi, inviteUserApi, listOrgs, acceptInviteApi, type OrgDto, listUsersByOrg, moveOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fetchUsers } from '@/lib/users';
 // no auto-login on invite accept; keep superadmin session
 import { Link as LinkIcon, Shield, Trash2, User as UserIcon } from 'lucide-react';
+import DeleteOrgModal from '@/components/DeleteOrgModal';
 
 export default function AdminOrgSetup() {
   const { user } = useAuth();
@@ -201,6 +202,7 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<Array<{ id: string; email: string; name: string; role: string }> | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
   const byId = useMemo(() => Object.fromEntries(allOrgs.map(o => [o.id, o] as const)), [allOrgs]);
 
@@ -284,18 +286,7 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
           <button
             className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100"
             title="Organisation löschen"
-            onClick={async()=>{
-              const confirmed = window.confirm(`Organisation „${org.name}“ wirklich löschen? Unterorganisationen verhindern das Löschen.`);
-              if (!confirmed) return;
-              try {
-                await deleteOrgApi(org.id);
-                showToast('Organisation gelöscht.', { type: 'success' });
-                onMoved();
-              } catch (e: unknown) {
-                const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Löschen fehlgeschlagen';
-                showToast(String(msg), { type: 'error' });
-              }
-            }}
+            onClick={()=> setDeleteModalOpen(true)}
           >
             <Trash2 className="w-4 h-4" />
             <span className="hidden sm:inline">Löschen</span>
@@ -358,6 +349,15 @@ function OrgRow({ org, depth, allOrgs, onMoved }: { org: OrgDto; depth: number; 
         </div>
         {copyMsg && <div className="text-[11px] text-viridian mt-1">{copyMsg}</div>}
       </Modal>
+      {user?.role === 'superadmin' && (
+        <DeleteOrgModal
+          orgId={org.id}
+          orgName={org.name}
+          open={deleteModalOpen}
+          onClose={()=> setDeleteModalOpen(false)}
+          onDeleted={()=> { setDeleteModalOpen(false); onMoved(); }}
+        />
+      )}
     </li>
   );
 }

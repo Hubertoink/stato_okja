@@ -20,8 +20,11 @@ RUN rm -rf ./* /etc/nginx/conf.d/*
 # Copy build
 COPY --from=builder /app/dist .
 
-# Add our Nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Add our Nginx configs and select based on build arg (default: direct = no proxy)
+ARG NGINX_MODE=direct
+COPY nginx.direct.conf /etc/nginx/conf.d/default.direct.conf
+COPY nginx.proxy.conf /etc/nginx/conf.d/default.proxy.conf
+RUN if [ "$NGINX_MODE" = "proxy" ]; then cp /etc/nginx/conf.d/default.proxy.conf /etc/nginx/conf.d/default.conf; else cp /etc/nginx/conf.d/default.direct.conf /etc/nginx/conf.d/default.conf; fi
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

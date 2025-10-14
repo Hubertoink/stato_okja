@@ -27,6 +27,10 @@ function buildTypeOrmConfig(): DataSourceOptions {
   }
 
   // Default to Postgres
+  const sslEnv = (process.env.DB_SSL || '').toLowerCase();
+  const useSsl = sslEnv === 'true' || sslEnv === 'require' || sslEnv === '1';
+  const rejectUnauthorized = (process.env.DB_SSL_REJECT_UNAUTHORIZED || 'false').toLowerCase() === 'true';
+
   const cfg: DataSourceOptions = {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
@@ -38,6 +42,7 @@ function buildTypeOrmConfig(): DataSourceOptions {
     migrations: [...base.migrations],
     synchronize: base.synchronize,
     logging: base.logging,
+    ...(useSsl ? { ssl: { rejectUnauthorized } } : {}),
   };
   return cfg;
 }

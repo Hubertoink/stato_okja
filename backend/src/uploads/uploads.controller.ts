@@ -23,7 +23,10 @@ function sanitizeFilename(originalName: string) {
 @Controller('uploads')
 export class UploadsController {
   @Post('images')
-  @ApiOperation({ summary: 'Bild hochladen', description: 'Erwartet ein Multipart-Form-Field "file"' })
+  @ApiOperation({
+    summary: 'Bild hochladen',
+    description: 'Erwartet ein Multipart-Form-Field "file"',
+  })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {

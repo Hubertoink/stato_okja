@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Project } from '@/lib/projects';
 import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
 import ProjectPickerModal from './ProjectPickerModal';
@@ -6,6 +6,7 @@ import { useActivities, Activity } from '@/lib/activities';
 import { colorForActivityType, translucent } from '@/lib/colors';
 import ActivityDetailModal from './ActivityDetailModal';
 import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holidays';
+import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
 import type React from 'react';
 // duplicate import removed
 
@@ -94,7 +95,7 @@ export default function Calendar() {
   }, [activities]);
 
   // Holidays overlay
-  const { state: holidayState } = readHolidayPrefs();
+  const { state: holidayState, school: showSchool } = readHolidayPrefs();
   const holidays = useMemo(
     () => getHolidaysInRange(range.from, range.to, holidayState),
     [range.from, range.to, holidayState],
@@ -108,6 +109,32 @@ export default function Calendar() {
     });
     return map;
   }, [holidays]);
+
+  // School holidays (optional)
+  const [schoolRanges, setSchoolRanges] = useState<SchoolHolidayRange[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!showSchool || !holidayState) {
+        if (alive) setSchoolRanges(null);
+        return;
+      }
+      try {
+        const ranges = await getSchoolHolidaysInRange(holidayState, range.from, range.to);
+        if (alive) setSchoolRanges(ranges);
+      } catch {
+        if (alive) setSchoolRanges(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [showSchool, holidayState, range.from, range.to]);
+  const schoolLabelFor = (iso: string): string | null => {
+    if (!schoolRanges || !schoolRanges.length) return null;
+    const hit = schoolRanges.find((r) => !(r.end < iso || r.start > iso));
+    return hit?.name ?? null;
+  };
   const typeLabel: Record<string, string> = {
     open_door: 'Offene Tür',
     project_open: 'Projekt (offen)',
@@ -345,6 +372,15 @@ export default function Calendar() {
                       </div>
                     </div>
                   )}
+                  {/* School holiday band */}
+                  {showSchool && schoolLabelFor(iso) && (
+                    <div
+                      className="absolute left-0 right-0 top-6 h-4 bg-amber-100 border-y border-amber-200 text-[10px] text-amber-800 overflow-hidden px-1"
+                      title={schoolLabelFor(iso) || undefined}
+                    >
+                      <span className="truncate inline-block align-top">{schoolLabelFor(iso)}</span>
+                    </div>
+                  )}
                   {renderEntries(iso, 3)}
                 </button>
               );
@@ -387,6 +423,14 @@ export default function Calendar() {
                         .join(', ')}
                     >
                       {holidaysByDate.get(iso)![0].name}
+                    </div>
+                  )}
+                  {showSchool && schoolLabelFor(iso) && (
+                    <div
+                      className="mb-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-amber-800 bg-amber-100 border border-amber-200 truncate max-w-full"
+                      title={schoolLabelFor(iso) || undefined}
+                    >
+                      {schoolLabelFor(iso)}
                     </div>
                   )}
                   {renderEntriesWeek(iso)}

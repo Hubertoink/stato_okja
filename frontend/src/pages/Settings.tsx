@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin } from 'lucide-react';
+import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun } from 'lucide-react';
 import SettingsTeam from './SettingsTeam';
 import SettingsCategories from './SettingsCategories';
 import SettingsTags from './SettingsTags';
 import SettingsCohorts from './SettingsCohorts';
 import SettingsLocations from './SettingsLocations';
+import SettingsHolidays from './SettingsHolidays';
 
-type Tab = 'categories' | 'tags' | 'cohorts' | 'team' | 'locations';
+type Tab = 'categories' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<Tab>('categories');
@@ -17,12 +18,12 @@ export default function Settings() {
     { id: 'cohorts' as Tab, label: 'Kohorten', icon: Calendar },
     { id: 'team' as Tab, label: 'Team', icon: UsersIcon },
     { id: 'locations' as Tab, label: 'Einrichtungen', icon: MapPin },
+    { id: 'holidays' as Tab, label: 'Feiertage', icon: Sun },
   ];
 
   return (
     <div>
       <h2 className="text-3xl font-bold text-viridian mb-6">Einstellungen</h2>
-
 
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg shadow mb-6 overflow-x-auto">
@@ -56,7 +57,8 @@ export default function Settings() {
 
       {activeTab === 'team' && <SettingsTeam />}
 
-  {activeTab === 'locations' && <SettingsLocations />}
+      {activeTab === 'locations' && <SettingsLocations />}
+      {activeTab === 'holidays' && <SettingsHolidays />}
     </div>
   );
 }

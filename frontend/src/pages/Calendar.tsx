@@ -232,7 +232,16 @@ export default function Calendar() {
                   className="absolute inset-0 w-full h-full object-cover blur-[2px] opacity-40"
                 />
               )}
-              {hasImg && <div className="absolute inset-0 bg-black/25" aria-hidden />}
+              {hasImg && (
+                <div
+                  className="absolute inset-0"
+                  aria-hidden
+                  style={{
+                    background:
+                      'linear-gradient(90deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.05) 85%)',
+                  }}
+                />
+              )}
               <span className={`relative z-10 ${hasImg ? 'text-white drop-shadow-sm' : ''}`}>
                 {label}
               </span>
@@ -286,7 +295,16 @@ export default function Calendar() {
                   className="absolute inset-0 w-full h-full object-cover blur-[3px] opacity-35"
                 />
               )}
-              {hasImg && <div className="absolute inset-0 bg-black/25" aria-hidden />}
+              {hasImg && (
+                <div
+                  className="absolute inset-0"
+                  aria-hidden
+                  style={{
+                    background:
+                      'linear-gradient(90deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.05) 85%)',
+                  }}
+                />
+              )}
               <div
                 className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-800'}`}
               >

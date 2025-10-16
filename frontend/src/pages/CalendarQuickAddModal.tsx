@@ -1,5 +1,6 @@
 import { Project, useProjects } from '@/lib/projects';
 import { useEffect, useMemo, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { Save as SaveIcon, X as XIcon, Boxes, Trash2 as TrashIcon } from 'lucide-react';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useStaff } from '@/lib/staff';
@@ -273,12 +274,17 @@ export default function ActivityQuickAdd({
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Ende</label>
-              <input
-                type="time"
-                value={form.end || ''}
-                onChange={(e: any) => setForm({ ...form, end: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
+              <div className="relative">
+                <input
+                  type="time"
+                  value={form.end || ''}
+                  onChange={(e: any) => setForm({ ...form, end: e.target.value })}
+                  className="w-full border rounded px-3 py-2 pr-10"
+                />
+                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-500 text-sm">
+                  Uhr
+                </span>
+              </div>
             </div>
           </div>
           {/* Cohort breakdown per gender */}
@@ -310,7 +316,7 @@ export default function ActivityQuickAdd({
                   ⚧
                 </span>
               </div>
-              {(cohorts || []).map((c) => {
+              {(cohorts || []).map((c, rowIndex: number) => {
                 const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
                 const update = (g: GenderKey, val: number) => {
                   setForm({
@@ -320,6 +326,49 @@ export default function ActivityQuickAdd({
                       [c.id]: { ...entry, [g]: val },
                     },
                   });
+                };
+                const genders: GenderKey[] = ['m', 'w', 'd'];
+                const handleKeyDown = (
+                  e: KeyboardEvent<HTMLInputElement>,
+                  currentRow: number,
+                  g: GenderKey,
+                ) => {
+                  const list = cohorts || [];
+                  const col = genders.indexOf(g);
+                  let nextRow = currentRow;
+                  let nextCol = col;
+                  if (e.key === 'Enter' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    nextCol = col + 1;
+                    if (nextCol >= genders.length) {
+                      nextCol = 0;
+                      nextRow = currentRow + 1;
+                    }
+                  } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    nextCol = col - 1;
+                    if (nextCol < 0) {
+                      nextCol = genders.length - 1;
+                      nextRow = Math.max(0, currentRow - 1);
+                    }
+                  } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    nextRow = currentRow + 1;
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    nextRow = Math.max(0, currentRow - 1);
+                  } else {
+                    return;
+                  }
+                  const targetC = list[nextRow];
+                  const targetG = genders[nextCol];
+                  if (targetC && targetG) {
+                    const el = document.querySelector<HTMLInputElement>(
+                      `input[data-cohort-id='${targetC.id}'][data-gender='${targetG}']`,
+                    );
+                    el?.focus();
+                    el?.select();
+                  }
                 };
                 const ageLabel = (() => {
                   const from =
@@ -349,8 +398,12 @@ export default function ActivityQuickAdd({
                         pattern="[0-9]*"
                         min={0}
                         value={entry[g] ? String(entry[g]) : ''}
-                        onFocus={(e) => e.currentTarget.select()}
-                        onChange={(e) => update(g, Number(e.target.value || 0))}
+                        onFocus={(e: any) => e.currentTarget.select()}
+                        onChange={(e: any) => update(g, Number(e.target.value || 0))}
+                        onKeyDown={(e: any) => handleKeyDown(e, rowIndex, g)}
+                        data-cohort-id={c.id}
+                        data-gender={g}
+                        enterKeyHint="next"
                         className="w-full border rounded px-2 py-1 text-center"
                         placeholder={g === 'm' ? '♂' : g === 'w' ? '♀' : '⚧'}
                         aria-label={`${c.name} ${g.toUpperCase()}`}

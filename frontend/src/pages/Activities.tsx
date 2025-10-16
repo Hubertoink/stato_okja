@@ -110,8 +110,8 @@ export default function Activities() {
                 }> = Array.isArray(res.data?.data)
                   ? res.data.data
                   : Array.isArray(res.data)
-                  ? res.data
-                  : [];
+                    ? res.data
+                    : [];
 
                 const cohortOrder = (cohorts as Cohort[])
                   .slice()
@@ -176,7 +176,10 @@ export default function Activities() {
                       (perCoh[c.cohortId] || 0) + (c.m || 0) + (c.w || 0) + (c.d || 0);
                   });
                   const duration = durFrom(a) ?? '';
-                  const catsText = (a.categories || []).map((c) => c.name).join(', ');
+                  const catsText =
+                    a.project?.title && (a as any)?.project?.type === 'open_door'
+                      ? ''
+                      : (a.categories || []).map((c) => c.name).join(', ');
                   const tagsText = (a.tags || []).map((t) => t.name).join(', ');
                   const row = [
                     dateDE,
@@ -271,8 +274,8 @@ export default function Activities() {
               typeof advanced.participantsMax === 'number'
                 ? `${advanced.participantsMin}–${advanced.participantsMax}`
                 : typeof advanced.participantsMin === 'number'
-                ? `≥ ${advanced.participantsMin}`
-                : `≤ ${advanced.participantsMax}`}
+                  ? `≥ ${advanced.participantsMin}`
+                  : `≤ ${advanced.participantsMax}`}
             </span>
           )}
           {(typeof advanced.durationMin === 'number' ||
@@ -282,8 +285,8 @@ export default function Activities() {
               {typeof advanced.durationMin === 'number' && typeof advanced.durationMax === 'number'
                 ? `${advanced.durationMin}–${advanced.durationMax} Min.`
                 : typeof advanced.durationMin === 'number'
-                ? `≥ ${advanced.durationMin} Min.`
-                : `≤ ${advanced.durationMax} Min.`}
+                  ? `≥ ${advanced.durationMin} Min.`
+                  : `≤ ${advanced.durationMax} Min.`}
             </span>
           )}
         </div>

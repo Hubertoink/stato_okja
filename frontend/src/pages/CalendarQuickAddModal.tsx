@@ -55,6 +55,7 @@ export default function ActivityQuickAdd({
     () => (projects || []).find((p: Project) => p.id === form.projectId) || initialProject,
     [projects, form.projectId, initialProject],
   );
+  const isOpenDoor = (selectedProject || initialProject)?.type === 'open_door';
 
   useEffect(() => {
     // Default times; if project provided, prefill from defaults
@@ -89,6 +90,11 @@ export default function ActivityQuickAdd({
     if (activity) return; // editing: don't override
     const proj = selectedProject || initialProject;
     if (!proj) return;
+    if (proj.type === 'open_door') {
+      // Ensure no categories for open-door
+      setForm((f: FormState) => ({ ...f, categoryIds: [] }));
+      return;
+    }
     const cur = form.categoryIds || [];
     if (cur.length > 0) return; // already chosen
     const set = new Set<string>();
@@ -96,6 +102,13 @@ export default function ActivityQuickAdd({
     if (proj.categoryId) set.add(proj.categoryId);
     if (set.size > 0) setForm((f: FormState) => ({ ...f, categoryIds: Array.from(set) }));
   }, [selectedProject, initialProject, activity]);
+  // If switching to an open-door project, clear categories
+  useEffect(() => {
+    const proj = selectedProject || initialProject;
+    if (proj && proj.type === 'open_door') {
+      setForm((f: FormState) => ({ ...f, categoryIds: [] }));
+    }
+  }, [selectedProject?.type, initialProject?.type]);
   useEffect(() => {
     // If there is exactly one location, auto-select it to reduce friction
     if ((locations || []).length === 1 && !form.locationId) {
@@ -345,39 +358,41 @@ export default function ActivityQuickAdd({
               })}
             </div>
           </div>
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Kategorien</label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {(categories || []).map((c) => {
-                const active = (form.categoryIds || []).includes(c.id);
-                const bg = c.color || '#7aa39a';
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      const set = new Set(form.categoryIds || []);
-                      if (set.has(c.id)) set.delete(c.id);
-                      else set.add(c.id);
-                      setForm({ ...form, categoryIds: Array.from(set) });
-                    }}
-                    className="px-2 py-1 rounded-full text-xs border"
-                    style={
-                      active
-                        ? { backgroundColor: bg, color: '#fff', borderColor: bg }
-                        : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
-                    }
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
-              {(categories || []).length === 0 && (
-                <span className="text-xs text-gray-400">Keine Kategorien vorhanden.</span>
-              )}
+          {/* Kategorien: ausblenden bei "Offene Tür" */}
+          {(!selectedProject || selectedProject.type !== 'open_door') && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Kategorien</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(categories || []).map((c) => {
+                  const active = (form.categoryIds || []).includes(c.id);
+                  const bg = c.color || '#7aa39a';
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        const set = new Set(form.categoryIds || []);
+                        if (set.has(c.id)) set.delete(c.id);
+                        else set.add(c.id);
+                        setForm({ ...form, categoryIds: Array.from(set) });
+                      }}
+                      className="px-2 py-1 rounded-full text-xs border"
+                      style={
+                        active
+                          ? { backgroundColor: bg, color: '#fff', borderColor: bg }
+                          : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
+                      }
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+                {(categories || []).length === 0 && (
+                  <span className="text-xs text-gray-400">Keine Kategorien vorhanden.</span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           <div>
             <label className="block text-sm font-medium mb-1">Tags</label>
             <div className="flex flex-wrap gap-2">
@@ -554,7 +569,7 @@ export default function ActivityQuickAdd({
                   ...(form.locationId ? { locationId: form.locationId } : {}),
                   title: form.title || null,
                   notes: form.notes || null,
-                  categoryIds: form.categoryIds || [],
+                  categoryIds: isOpenDoor ? [] : form.categoryIds || [],
                   tagIds: form.tagIds || [],
                   staffIds: form.staffIds || [],
                   durationMinutes,
@@ -625,12 +640,15 @@ export default function ActivityQuickAdd({
                 projectId: p.id,
                 tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
                 // Prefill categories from project's categories plus primary categoryId if set
-                categoryIds: (() => {
-                  const set = new Set<string>(prev.categoryIds || []);
-                  (p.categories || []).forEach((c) => set.add(c.id));
-                  if (p.categoryId) set.add(p.categoryId);
-                  return Array.from(set);
-                })(),
+                categoryIds:
+                  p.type === 'open_door'
+                    ? []
+                    : (() => {
+                        const set = new Set<string>(prev.categoryIds || []);
+                        (p.categories || []).forEach((c) => set.add(c.id));
+                        if (p.categoryId) set.add(p.categoryId);
+                        return Array.from(set);
+                      })(),
               }));
               setPicker(false);
             }}

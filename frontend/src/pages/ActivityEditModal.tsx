@@ -79,6 +79,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
     () => (projects || []).find((p) => p.id === form.projectId),
     [projects, form.projectId],
   );
+  const isOpenDoor = selectedProject?.type === 'open_door';
 
   // Prefill tags from the selected project's default tags if none chosen yet
   useEffect(() => {
@@ -98,6 +99,11 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
   // Prefill categories from selected project's categories if none selected yet
   useEffect(() => {
     if (!selectedProject) return;
+    if (selectedProject.type === 'open_door') {
+      // ensure categories cleared for offene Tür
+      setForm((f) => ({ ...f, categoryIds: [] }));
+      return;
+    }
     const cur = form.categoryIds || [];
     if (cur.length > 0) return;
     const set = new Set<string>();
@@ -340,36 +346,38 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
               )}
             </div>
           </div>
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Kategorien</label>
-            <div className="flex flex-wrap gap-2">
-              {(categories || []).map((c) => {
-                const active = (form.categoryIds || []).includes(c.id);
-                const bg = c.color || '#7aa39a';
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      const set = new Set(form.categoryIds || []);
-                      if (set.has(c.id)) set.delete(c.id);
-                      else set.add(c.id);
-                      setForm({ ...form, categoryIds: Array.from(set) });
-                    }}
-                    className={`px-2 py-1 rounded-full text-xs border`}
-                    style={
-                      active
-                        ? { backgroundColor: bg, color: '#fff', borderColor: bg }
-                        : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
-                    }
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
+          {/* Kategorien: ausblenden bei Offene Tür */}
+          {selectedProject?.type !== 'open_door' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Kategorien</label>
+              <div className="flex flex-wrap gap-2">
+                {(categories || []).map((c) => {
+                  const active = (form.categoryIds || []).includes(c.id);
+                  const bg = c.color || '#7aa39a';
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        const set = new Set(form.categoryIds || []);
+                        if (set.has(c.id)) set.delete(c.id);
+                        else set.add(c.id);
+                        setForm({ ...form, categoryIds: Array.from(set) });
+                      }}
+                      className={`px-2 py-1 rounded-full text-xs border`}
+                      style={
+                        active
+                          ? { backgroundColor: bg, color: '#fff', borderColor: bg }
+                          : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
+                      }
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
           {/* Tags */}
           <div>
             <label className="block text-sm font-medium mb-1">Tags</label>
@@ -548,7 +556,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                         return arr;
                       })
                     : [],
-                  categoryIds: form.categoryIds || [],
+                  categoryIds: isOpenDoor ? [] : form.categoryIds || [],
                 };
                 update.mutate(
                   { id, data: payload as Partial<Activity> & Record<string, unknown> },
@@ -584,6 +592,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                 projectId: p.id,
                 tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
                 categoryIds: (() => {
+                  if (p.type === 'open_door') return [];
                   if (prev.categoryIds && prev.categoryIds.length > 0) return prev.categoryIds;
                   const set = new Set<string>();
                   (p.categories || []).forEach((c) => set.add(c.id));

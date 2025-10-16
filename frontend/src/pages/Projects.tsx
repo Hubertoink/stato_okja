@@ -96,8 +96,8 @@ function ArchiveRestoreControls({
                   typeof res?.data?.total === 'number'
                     ? res.data.total
                     : Array.isArray(res?.data)
-                    ? res.data.length
-                    : 0;
+                      ? res.data.length
+                      : 0;
                 setConfirm({ open: true, loading: false, count: total });
               } catch {
                 setConfirm({ open: true, loading: false, count: undefined });
@@ -286,7 +286,15 @@ function ProjectForm({
             <label className="block text-sm font-medium mb-1">Typ *</label>
             <select
               value={form.type || 'project_open'}
-              onChange={(e) => update('type', e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value as Project['type'];
+                setForm((f) => ({
+                  ...f,
+                  type: val,
+                  // For "Offene Tür" projects, categories are not used
+                  ...(val === 'open_door' ? { categoryId: null } : {}),
+                }));
+              }}
               required
               className="w-full border rounded px-3 py-2"
             >
@@ -428,32 +436,34 @@ function ProjectForm({
               })}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Kategorie</label>
-            <div className="flex flex-wrap gap-2">
-              {(categories || []).map((c) => {
-                const active = String(form.categoryId || '') === c.id;
-                const color = c.color || '#7aa39a';
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => update('categoryId', active ? null : (c.id as any))}
-                    className={`px-2 py-1 rounded-full text-xs border`}
-                    style={
-                      active
-                        ? { backgroundColor: color, color: '#fff', borderColor: color }
-                        : { backgroundColor: '#fff', color: '#374151', borderColor: color }
-                    }
-                    title={c.name}
-                    aria-pressed={active}
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
+          {form.type !== 'open_door' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Kategorie</label>
+              <div className="flex flex-wrap gap-2">
+                {(categories || []).map((c) => {
+                  const active = String(form.categoryId || '') === c.id;
+                  const color = c.color || '#7aa39a';
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => update('categoryId', active ? null : (c.id as any))}
+                      className={`px-2 py-1 rounded-full text-xs border`}
+                      style={
+                        active
+                          ? { backgroundColor: color, color: '#fff', borderColor: color }
+                          : { backgroundColor: '#fff', color: '#374151', borderColor: color }
+                      }
+                      title={c.name}
+                      aria-pressed={active}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">
               Mitarbeitende (mehrfach, Standard)

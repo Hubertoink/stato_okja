@@ -12,7 +12,8 @@ function csvEscape(value: unknown): string {
 }
 
 function computeDurationMinutes(a: Activity): number {
-  if (typeof a.durationMinutes === 'number' && !Number.isNaN(a.durationMinutes)) return a.durationMinutes;
+  if (typeof a.durationMinutes === 'number' && !Number.isNaN(a.durationMinutes))
+    return a.durationMinutes;
   const parse = (t?: string | null) => {
     if (!t) return undefined;
     const [h, m] = t.split(':').map((v) => parseInt(v, 10));
@@ -32,7 +33,7 @@ function typeLabel(code?: string | null): string {
     event: 'Veranstaltung',
     outreach: 'Aufsuchend',
   };
-  return code ? (map[code] || code) : '';
+  return code ? map[code] || code : '';
 }
 
 export default function ExportModal({
@@ -50,9 +51,10 @@ export default function ExportModal({
   const [month, setMonth] = useState<number>(initialMonth);
   // Support exporting a whole year when month === 0
   const from = month === 0 ? `${year}-01-01` : `${year}-${String(month).padStart(2, '0')}-01`;
-  const to = month === 0
-    ? `${year}-12-31`
-    : `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
+  const to =
+    month === 0
+      ? `${year}-12-31`
+      : `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
   const { data: activities = [] } = useActivities({ from, to });
   const { data: cohorts } = useCohorts({ active: true });
 
@@ -80,16 +82,34 @@ export default function ExportModal({
   const downloadRaw = () => {
     const rows: string[][] = [];
     const header = [
-      'id','datum','start','ende','dauer_min','typ','titel',
-      'projekt_id','projekt','projekt_typ',
-      'kategorie_ids','kategorien','tags','ort_id','ort',
-      'mitarbeitende','teilnehmende_total','m','w','d','notizen',
+      'id',
+      'datum',
+      'start',
+      'ende',
+      'dauer_min',
+      'typ',
+      'titel',
+      'projekt_id',
+      'projekt',
+      'projekt_typ',
+      'kategorie_ids',
+      'kategorien',
+      'tags',
+      'ort_id',
+      'ort',
+      'mitarbeitende',
+      'teilnehmende_total',
+      'm',
+      'w',
+      'd',
+      'notizen',
       ...cohortColumns.map((c) => `kohorte:${c.name}`),
     ];
     rows.push(header);
     for (const a of activities) {
-      const cats = a.categories?.map((c) => c.name).join(' | ') || '';
-      const catIds = a.categories?.map((c) => c.id).join('|') || '';
+      const isOpenDoor = a.project?.type === 'open_door';
+      const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
+      const catIds = isOpenDoor ? '' : a.categories?.map((c) => c.id).join('|') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
       const cohortTotals = cohortColumns.map((c) => String(getCohortTotal(a, c.id)));
@@ -98,12 +118,12 @@ export default function ExportModal({
         a.date?.slice(0, 10) || '',
         a.startTime || '',
         a.endTime || '',
-  String(computeDurationMinutes(a)),
-  typeLabel(a.type),
+        String(computeDurationMinutes(a)),
+        typeLabel(a.type),
         a.title || '',
         a.project?.id || '',
-  a.project?.title || '',
-  typeLabel(a.project?.type),
+        a.project?.title || '',
+        typeLabel(a.project?.type),
         catIds,
         cats,
         tags,
@@ -130,11 +150,17 @@ export default function ExportModal({
 
   const buildConsolidatedMatrix = () => {
     // Group by project (id). Activities without project grouped under 'ohne-projekt:<type>'
-    const groups = new Map<string, { key: string; projekt: string; kategorie: string; typ: string; items: Activity[] }>();
+    const groups = new Map<
+      string,
+      { key: string; projekt: string; kategorie: string; typ: string; items: Activity[] }
+    >();
     for (const a of activities) {
       const key = a.project?.id || `ohne-projekt:${a.project?.title || a.type}`;
       const projekt = a.project?.title || 'Ohne Projekt';
-      const kategorie = a.project?.categories?.map((c) => c.name).join(' | ') || '';
+      const kategorie =
+        a.project?.type === 'open_door'
+          ? ''
+          : a.project?.categories?.map((c) => c.name).join(' | ') || '';
       const typ = typeLabel(a.project?.type || a.type || '');
       const gk = groups.get(key);
       if (!gk) groups.set(key, { key, projekt, kategorie, typ, items: [a] });
@@ -144,14 +170,24 @@ export default function ExportModal({
     // Dynamic cohort columns by name
     const cohortNames = Array.from(cohortIndex.values()).map((c) => c.name);
     const header = [
-      'projekt','kategorie','typ','anzahl','dauer_avg_min','m_avg','w_avg','d_avg',
+      'projekt',
+      'kategorie',
+      'typ',
+      'anzahl',
+      'dauer_avg_min',
+      'm_avg',
+      'w_avg',
+      'd_avg',
       ...cohortNames.map((n) => `kohorte:${n}_avg`),
     ];
-    const rows: (string|number)[][] = [header];
+    const rows: (string | number)[][] = [header];
 
     for (const g of groups.values()) {
       const n = g.items.length || 1;
-      let sumDur = 0, sumM = 0, sumW = 0, sumD = 0;
+      let sumDur = 0,
+        sumM = 0,
+        sumW = 0,
+        sumD = 0;
       // cohort sum by cohortId of total (m+w+d)
       const cohortTotals = new Map<string, number>();
       for (const a of g.items) {
@@ -203,11 +239,17 @@ export default function ExportModal({
 
   // Build consolidated matrix specifically for Excel with pretty headers and integer averages
   const buildConsolidatedMatrixExcel = () => {
-    const groups = new Map<string, { key: string; projekt: string; kategorie: string; typ: string; items: Activity[] }>();
+    const groups = new Map<
+      string,
+      { key: string; projekt: string; kategorie: string; typ: string; items: Activity[] }
+    >();
     for (const a of activities) {
       const key = a.project?.id || `ohne-projekt:${a.project?.title || a.type}`;
       const projekt = a.project?.title || 'Ohne Projekt';
-      const kategorie = a.project?.categories?.map((c) => c.name).join(' | ') || '';
+      const kategorie =
+        a.project?.type === 'open_door'
+          ? ''
+          : a.project?.categories?.map((c) => c.name).join(' | ') || '';
       const typ = typeLabel(a.project?.type || a.type || '');
       const gk = groups.get(key);
       if (!gk) groups.set(key, { key, projekt, kategorie, typ, items: [a] });
@@ -218,7 +260,15 @@ export default function ExportModal({
     // Two header rows: group labels (row 1) + column titles (row 2)
     const spacerColLabel = '';
     const subHeader = [
-      'Projekt', 'Kategorie', 'Typ', 'Anzahl', 'Ø Dauer (Min.)', 'Ø m', 'Ø w', 'Ø d', spacerColLabel,
+      'Projekt',
+      'Kategorie',
+      'Typ',
+      'Anzahl',
+      'Ø Dauer (Min.)',
+      'Ø m',
+      'Ø w',
+      'Ø d',
+      spacerColLabel,
       ...cohortNames.map((n) => `Ø ${n}`),
     ];
     const topHeader: string[] = new Array(subHeader.length).fill('');
@@ -231,11 +281,14 @@ export default function ExportModal({
     if (genderStart <= genderEnd) topHeader[genderStart] = 'Geschlecht';
     if (cohortStart <= cohortEnd) topHeader[cohortStart] = 'Alterskohorten';
 
-    const rows: (string|number)[][] = [topHeader, subHeader];
+    const rows: (string | number)[][] = [topHeader, subHeader];
 
     for (const g of groups.values()) {
       const n = g.items.length || 1;
-      let sumDur = 0, sumM = 0, sumW = 0, sumD = 0;
+      let sumDur = 0,
+        sumM = 0,
+        sumW = 0,
+        sumD = 0;
       const cohortTotals = new Map<string, number>();
       for (const a of g.items) {
         sumDur += computeDurationMinutes(a);
@@ -280,12 +333,33 @@ export default function ExportModal({
     const { utils, writeFile } = xlsx;
     // Raw sheet
     const rawHeader = [
-      'ID','Datum','Start','Ende','Dauer (Minuten)','Typ','Titel','Projekt-ID','Projekt','Projekt-Typ','Kategorie-IDs','Kategorien','Tags','Ort-ID','Ort','Mitarbeitende','Teilnehmende (Total)','M','W','D','Notizen',
+      'ID',
+      'Datum',
+      'Start',
+      'Ende',
+      'Dauer (Minuten)',
+      'Typ',
+      'Titel',
+      'Projekt-ID',
+      'Projekt',
+      'Projekt-Typ',
+      'Kategorie-IDs',
+      'Kategorien',
+      'Tags',
+      'Ort-ID',
+      'Ort',
+      'Mitarbeitende',
+      'Teilnehmende (Total)',
+      'M',
+      'W',
+      'D',
+      'Notizen',
       ...cohortColumns.map((c) => `Kohorte: ${c.name}`),
     ];
     const rawRows = activities.map((a) => {
-      const cats = a.categories?.map((c) => c.name).join(' | ') || '';
-      const catIds = a.categories?.map((c) => c.id).join('|') || '';
+      const isOpenDoor = a.project?.type === 'open_door';
+      const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
+      const catIds = isOpenDoor ? '' : a.categories?.map((c) => c.id).join('|') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
       const cohortTotals = cohortColumns.map((c) => getCohortTotal(a, c.id));
@@ -314,11 +388,13 @@ export default function ExportModal({
         ...cohortTotals,
       ];
     });
-  const rawSheet = utils.aoa_to_sheet([rawHeader, ...rawRows]) as WorkSheet;
-  // Autofilter and reasonable column widths
-  rawSheet['!autofilter'] = { ref: `A1:${utils.encode_col(rawHeader.length - 1)}1` };
-  const rawCols: ColInfo[] = rawHeader.map((h, i) => ({ wch: Math.max(12, (i < 2 ? 18 : 0), h.length + 2) }));
-  rawSheet['!cols'] = rawCols;
+    const rawSheet = utils.aoa_to_sheet([rawHeader, ...rawRows]) as WorkSheet;
+    // Autofilter and reasonable column widths
+    rawSheet['!autofilter'] = { ref: `A1:${utils.encode_col(rawHeader.length - 1)}1` };
+    const rawCols: ColInfo[] = rawHeader.map((h, i) => ({
+      wch: Math.max(12, i < 2 ? 18 : 0, h.length + 2),
+    }));
+    rawSheet['!cols'] = rawCols;
 
     // Consolidated sheet
     const matrix = buildConsolidatedMatrixExcel();
@@ -326,18 +402,24 @@ export default function ExportModal({
     // Merges to create group headers in row 1
     const consHeaderTop = matrix[0] as string[];
     const consHeaderSub = matrix[1] as string[];
-    const genderStart = 5; const genderEnd = 7; // F..H
-    const cohortStart = 9; const cohortEnd = consHeaderSub.length - 1; // J..last
+    const genderStart = 5;
+    const genderEnd = 7; // F..H
+    const cohortStart = 9;
+    const cohortEnd = consHeaderSub.length - 1; // J..last
     const merges = [] as Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
-    if (genderEnd >= genderStart) merges.push({ s: { r: 0, c: genderStart }, e: { r: 0, c: genderEnd } });
-    if (cohortEnd >= cohortStart) merges.push({ s: { r: 0, c: cohortStart }, e: { r: 0, c: cohortEnd } });
+    if (genderEnd >= genderStart)
+      merges.push({ s: { r: 0, c: genderStart }, e: { r: 0, c: genderEnd } });
+    if (cohortEnd >= cohortStart)
+      merges.push({ s: { r: 0, c: cohortStart }, e: { r: 0, c: cohortEnd } });
     consSheet['!merges'] = merges;
 
     // Autofilter on the second header row (row 2 in Excel)
     consSheet['!autofilter'] = { ref: `A2:${utils.encode_col(consHeaderSub.length - 1)}2` };
 
     // Column widths (spacer column narrower)
-    const consCols: ColInfo[] = consHeaderSub.map((h, i) => ({ wch: i === 8 ? 3 : (i <= 2 ? 22 : Math.max(10, h.length + 2)) }));
+    const consCols: ColInfo[] = consHeaderSub.map((h, i) => ({
+      wch: i === 8 ? 3 : i <= 2 ? 22 : Math.max(10, h.length + 2),
+    }));
     consSheet['!cols'] = consCols;
 
     // Optional styling (may be ignored by some Excel writers, but supported in many viewers)
@@ -358,8 +440,10 @@ export default function ExportModal({
     for (let c = genderStart; c <= genderEnd; c++) setCellStyle(1, c, grayFill);
     for (let c = cohortStart; c <= cohortEnd; c++) setCellStyle(1, c, greenFill);
     // Group titles (row 0)
-    if (consHeaderTop[genderStart]) setCellStyle(0, genderStart, { font: { bold: true }, ...grayFill });
-    if (consHeaderTop[cohortStart]) setCellStyle(0, cohortStart, { font: { bold: true }, ...greenFill });
+    if (consHeaderTop[genderStart])
+      setCellStyle(0, genderStart, { font: { bold: true }, ...grayFill });
+    if (consHeaderTop[cohortStart])
+      setCellStyle(0, cohortStart, { font: { bold: true }, ...greenFill });
 
     const wb = utils.book_new();
     utils.book_append_sheet(wb, rawSheet, 'Rohdaten');
@@ -391,36 +475,70 @@ export default function ExportModal({
         <div className="grid grid-cols-2 gap-3">
           <label className="text-sm text-gray-600">
             Jahr
-            <select className="block mt-1 border rounded px-2 py-1" value={year} onChange={(e)=> setYear(parseInt(e.target.value,10))}>
-              {years.map((y)=> <option key={y} value={y}>{y}</option>)}
+            <select
+              className="block mt-1 border rounded px-2 py-1"
+              value={year}
+              onChange={(e) => setYear(parseInt(e.target.value, 10))}
+            >
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
             </select>
           </label>
           <label className="text-sm text-gray-600">
             Monat
-            <select className="block mt-1 border rounded px-2 py-1" value={month} onChange={(e)=> setMonth(parseInt(e.target.value,10))}>
-              {months.map((m)=> <option key={m.value} value={m.value}>{m.label}</option>)}
+            <select
+              className="block mt-1 border rounded px-2 py-1"
+              value={month}
+              onChange={(e) => setMonth(parseInt(e.target.value, 10))}
+            >
+              {months.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
             </select>
           </label>
         </div>
-        <div className="text-xs text-gray-500">Zeitraum: {from} bis {to} · Aktivitäten: {activities.length}</div>
+        <div className="text-xs text-gray-500">
+          Zeitraum: {from} bis {to} · Aktivitäten: {activities.length}
+        </div>
         <div>
           <h4 className="font-semibold text-viridian mb-1">Rohdaten (CSV)</h4>
-          <p className="text-sm text-gray-600 mb-3">Alle Felder je Aktivität. Geeignet für eigene Auswertungen.</p>
-          <button className="px-4 py-2 rounded bg-viridian text-white hover:bg-cambridge-blue" onClick={downloadRaw}>
+          <p className="text-sm text-gray-600 mb-3">
+            Alle Felder je Aktivität. Geeignet für eigene Auswertungen.
+          </p>
+          <button
+            className="px-4 py-2 rounded bg-viridian text-white hover:bg-cambridge-blue"
+            onClick={downloadRaw}
+          >
             CSV herunterladen
           </button>
         </div>
         <div className="border-t pt-4">
           <h4 className="font-semibold text-viridian mb-1">Konsolidiert (CSV)</h4>
-          <p className="text-sm text-gray-600 mb-3">Gruppiert nach Projekt mit Anzahl, durchschnittlicher Dauer, Ø m/w/d und Ø je Alterskohorte.</p>
-          <button className="px-4 py-2 rounded bg-cambridge-blue text-white hover:bg-viridian" onClick={downloadConsolidated}>
+          <p className="text-sm text-gray-600 mb-3">
+            Gruppiert nach Projekt mit Anzahl, durchschnittlicher Dauer, Ø m/w/d und Ø je
+            Alterskohorte.
+          </p>
+          <button
+            className="px-4 py-2 rounded bg-cambridge-blue text-white hover:bg-viridian"
+            onClick={downloadConsolidated}
+          >
             CSV herunterladen
           </button>
         </div>
         <div className="border-t pt-4">
           <h4 className="font-semibold text-viridian mb-1">Excel (XLSX)</h4>
-          <p className="text-sm text-gray-600 mb-3">Zwei Blätter: Rohdaten und Konsolidiert. Bessere Darstellung in Excel.</p>
-          <button className="px-4 py-2 rounded bg-azure-web text-viridian hover:bg-mint-green" onClick={downloadExcel}>
+          <p className="text-sm text-gray-600 mb-3">
+            Zwei Blätter: Rohdaten und Konsolidiert. Bessere Darstellung in Excel.
+          </p>
+          <button
+            className="px-4 py-2 rounded bg-azure-web text-viridian hover:bg-mint-green"
+            onClick={downloadExcel}
+          >
             XLSX herunterladen
           </button>
         </div>

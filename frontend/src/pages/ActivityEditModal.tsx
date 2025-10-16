@@ -174,18 +174,17 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                     }`}
                     disabled={hasCohortData}
                   />
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Ende</label>
+                    <input
+                      type="time"
+                      value={form.end || ''}
+                      onChange={(e) => setForm({ ...form, end: e.target.value })}
+                      className="w-full border rounded px-3 py-2"
+                    />
+                  </div>
                 </div>
               ))}
-              <div>
-                <label className="block text-sm font-medium mb-1">Gesamt</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={displayCounts.total ?? 0}
-                  readOnly
-                  className="w-full border rounded px-3 py-2 bg-gray-50"
-                />
-              </div>
             </div>
             {hasCohortData && (
               <p className="text-xs text-gray-500 mt-1">

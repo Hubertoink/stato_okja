@@ -315,7 +315,7 @@ export default function Calendar() {
                 <div
                   className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
                 >
-                  {time}
+                  {time} Uhr
                 </div>
               )}
               <div

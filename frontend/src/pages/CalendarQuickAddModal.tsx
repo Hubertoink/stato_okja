@@ -212,11 +212,13 @@ export default function ActivityQuickAdd({
             <label className="block text-sm font-medium mb-1">Standort</label>
             <select
               value={form.locationId || ''}
-              onChange={(e: any) => setForm({ ...form, locationId: e.target.value || undefined })}
+              onChange={(e: any) =>
+                setForm({ ...form, locationId: e.target.value || undefined })
+              }
               className="w-full border rounded px-3 py-2"
             >
               <option value="">— Standort wählen —</option>
-              {(locations || []).map((l: { id: string; name: string }) => (
+              {(locations || []).map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
                 </option>
@@ -274,17 +276,12 @@ export default function ActivityQuickAdd({
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Ende</label>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={form.end || ''}
-                  onChange={(e: any) => setForm({ ...form, end: e.target.value })}
-                  className="w-full border rounded px-3 py-2 pr-10"
-                />
-                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-500 text-sm">
-                  Uhr
-                </span>
-              </div>
+              <input
+                type="time"
+                value={form.end || ''}
+                onChange={(e: any) => setForm({ ...form, end: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              />
             </div>
           </div>
           {/* Cohort breakdown per gender */}

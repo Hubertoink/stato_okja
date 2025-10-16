@@ -350,7 +350,20 @@ export default function Activities() {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {activities.map((a) => (
-              <tr key={a.id} className="hover:bg-azure-web">
+              <tr
+                key={a.id}
+                className="hover:bg-azure-web"
+                style={
+                  a.project?.imageUrl
+                    ? {
+                        backgroundImage: `linear-gradient(90deg, rgba(255,255,255,0.95) 0px, rgba(255,255,255,0.85) 160px, rgba(255,255,255,0.5) 280px, rgba(255,255,255,0.0) 420px), url('${a.project.imageUrl}')`,
+                        backgroundSize: 'cover',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'left center',
+                      }
+                    : undefined
+                }
+              >
                 <td className="px-6 py-4 text-sm">
                   {(() => {
                     const s = (a.date || '').slice(0, 10);

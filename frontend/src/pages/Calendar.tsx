@@ -20,6 +20,10 @@ function addDays(d: Date, n: number) {
   x.setDate(x.getDate() + n);
   return x;
 }
+function addMonths(d: Date, n: number) {
+  // Jump to first of target month for stable month navigation
+  return new Date(d.getFullYear(), d.getMonth() + n, 1);
+}
 function startOfWeek(d: Date) {
   const x = new Date(d);
   const day = (x.getDay() + 6) % 7; // make Monday=0
@@ -306,13 +310,13 @@ export default function Calendar() {
           </button>
           <button
             className="bg-white border text-gray-700 px-3 py-2 rounded"
-            onClick={() => setCursor(addDays(cursor, -30))}
+            onClick={() => setCursor(view === 'week' ? addDays(cursor, -7) : addMonths(cursor, -1))}
           >
             «
           </button>
           <button
             className="bg-white border text-gray-700 px-3 py-2 rounded"
-            onClick={() => setCursor(addDays(cursor, 30))}
+            onClick={() => setCursor(view === 'week' ? addDays(cursor, 7) : addMonths(cursor, 1))}
           >
             »
           </button>

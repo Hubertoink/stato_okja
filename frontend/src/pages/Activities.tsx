@@ -358,17 +358,20 @@ export default function Activities() {
                         src={a.project.imageUrl || undefined}
                         alt=""
                         aria-hidden
-                        className="absolute inset-0 w-full h-full object-cover opacity-45"
+                        className="absolute inset-0 w-full h-full object-cover opacity-70"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent" aria-hidden />
+                      <div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-white"
+                        aria-hidden
+                      />
                     </>
                   )}
                   <span className="relative z-10">
-                  {(() => {
-                    const s = (a.date || '').slice(0, 10);
-                    const [y, m, d] = s.split('-');
-                    return `${d}.${m}.${y}`;
-                  })()}
+                    {(() => {
+                      const s = (a.date || '').slice(0, 10);
+                      const [y, m, d] = s.split('-');
+                      return `${d}.${m}.${y}`;
+                    })()}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm">
@@ -512,7 +515,7 @@ export default function Activities() {
         {activities.map((a) => (
           <div
             key={a.id}
-            className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-azure-web/50 focus:outline-none focus:ring-2 focus:ring-viridian/40"
+            className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-azure-web/50 focus:outline-none focus:ring-2 focus:ring-viridian/40 relative overflow-hidden"
             role="button"
             tabIndex={0}
             aria-label="Aktivität bearbeiten"
@@ -524,7 +527,21 @@ export default function Activities() {
               }
             }}
           >
-            <div className="flex justify-between items-start mb-2">
+            {a.project?.imageUrl && (
+              <>
+                <img
+                  src={a.project.imageUrl || undefined}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-y-0 left-0 w-28 h-full object-cover opacity-70"
+                />
+                <div
+                  className="absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-transparent via-white/60 to-white"
+                  aria-hidden
+                />
+              </>
+            )}
+            <div className="relative z-10 flex justify-between items-start mb-2">
               <div>
                 <div className="text-sm text-gray-500">
                   {(() => {
@@ -566,9 +583,9 @@ export default function Activities() {
                 ) : null;
               })()}
             </div>
-            <div className="text-sm text-gray-600 mb-1">{a.title || '-'}</div>
-            <div className="text-xs text-gray-500 mb-3">{a.project?.title || '-'}</div>
-            <div className="text-xs text-gray-600 mb-2">
+            <div className="relative z-10 text-sm text-gray-600 mb-1">{a.title || '-'}</div>
+            <div className="relative z-10 text-xs text-gray-500 mb-3">{a.project?.title || '-'}</div>
+            <div className="relative z-10 text-xs text-gray-600 mb-2">
               {(() => {
                 const m = a.countMale || 0;
                 const w = a.countFemale || 0;
@@ -581,7 +598,7 @@ export default function Activities() {
                 );
               })()}
             </div>
-            <div className="flex flex-wrap gap-1.5 mb-2">
+            <div className="relative z-10 flex flex-wrap gap-1.5 mb-2">
               {(a.categories || []).map((c) => (
                 <span
                   key={c.id}
@@ -610,7 +627,7 @@ export default function Activities() {
               ))}
             </div>
             {a.notes && (
-              <div className="text-[12px] text-gray-600 flex items-start gap-1 mb-2">
+              <div className="relative z-10 text-[12px] text-gray-600 flex items-start gap-1 mb-2">
                 <StickyNote className="w-3.5 h-3.5 mt-[2px] text-gray-500" />
                 <span>{firstWords(a.notes, 20)}</span>
               </div>

@@ -212,9 +212,7 @@ export default function ActivityQuickAdd({
             <label className="block text-sm font-medium mb-1">Standort</label>
             <select
               value={form.locationId || ''}
-              onChange={(e: any) =>
-                setForm({ ...form, locationId: e.target.value || undefined })
-              }
+              onChange={(e: any) => setForm({ ...form, locationId: e.target.value || undefined })}
               className="w-full border rounded px-3 py-2"
             >
               <option value="">— Standort wählen —</option>

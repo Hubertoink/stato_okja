@@ -31,6 +31,17 @@ function startOfWeek(d: Date) {
   x.setHours(0, 0, 0, 0);
   return x;
 }
+function getISOWeek(d: Date) {
+  // ISO week: Thursday determines the week number
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  // set to nearest Thursday (current date + 4 - current day number)
+  const dayNum = (date.getUTCDay() + 6) % 7; // Mon=0..Sun=6
+  date.setUTCDate(date.getUTCDate() - dayNum + 3);
+  // Jan 4th is always in week 1
+  const jan4 = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const diff = (date.getTime() - jan4.getTime()) / 86400000; // days
+  return 1 + Math.floor((diff + ((jan4.getUTCDay() + 6) % 7)) / 7);
+}
 
 export default function Calendar() {
   const [view, setView] = useState<View>('month');
@@ -40,10 +51,14 @@ export default function Calendar() {
   const [detail, setDetail] = useState<Activity | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
 
-  const label = useMemo(
-    () => cursor.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }),
-    [cursor],
-  );
+  const label = useMemo(() => {
+    const base = cursor.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+    if (view === 'week') {
+      const kw = getISOWeek(cursor);
+      return `${base} (KW ${kw})`;
+    }
+    return base;
+  }, [cursor, view]);
   const fmtLocalISO = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const fmtTime = (t?: string | null) => (t ? String(t).slice(0, 5) : '');
@@ -136,7 +151,7 @@ export default function Calendar() {
   }, [showSchool, holidayState, range.from, range.to]);
   const schoolLabelFor = (iso: string): string | null => {
     if (!schoolRanges || !schoolRanges.length) return null;
-    const hit = schoolRanges.find((r) => !(r.end < iso || r.start > iso));
+    const hit = schoolRanges.find((r: SchoolHolidayRange) => !(r.end < iso || r.start > iso));
     return hit?.name ?? null;
   };
   const typeLabel: Record<string, string> = {
@@ -310,13 +325,17 @@ export default function Calendar() {
           </button>
           <button
             className="bg-white border text-gray-700 px-3 py-2 rounded"
-            onClick={() => setCursor(view === 'week' ? addDays(cursor, -7) : addMonths(cursor, -1))}
+            onClick={() =>
+              setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), -7) : addMonths(c, -1)))
+            }
           >
             «
           </button>
           <button
             className="bg-white border text-gray-700 px-3 py-2 rounded"
-            onClick={() => setCursor(view === 'week' ? addDays(cursor, 7) : addMonths(cursor, 1))}
+            onClick={() =>
+              setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), 7) : addMonths(c, 1)))
+            }
           >
             »
           </button>

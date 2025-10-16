@@ -345,8 +345,11 @@ export default function ActivityQuickAdd({
                       <input
                         key={g}
                         type="number"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         min={0}
-                        value={entry[g] ?? 0}
+                        value={entry[g] ? String(entry[g]) : ''}
+                        onFocus={(e) => e.currentTarget.select()}
                         onChange={(e) => update(g, Number(e.target.value || 0))}
                         className="w-full border rounded px-2 py-1 text-center"
                         placeholder={g === 'm' ? '♂' : g === 'w' ? '♀' : '⚧'}

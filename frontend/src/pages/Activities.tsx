@@ -350,26 +350,26 @@ export default function Activities() {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {activities.map((a) => (
-              <tr
-                key={a.id}
-                className="hover:bg-azure-web"
-                style={
-                  a.project?.imageUrl
-                    ? {
-                        backgroundImage: `linear-gradient(90deg, rgba(255,255,255,0.95) 0px, rgba(255,255,255,0.85) 160px, rgba(255,255,255,0.5) 280px, rgba(255,255,255,0.0) 420px), url('${a.project.imageUrl}')`,
-                        backgroundSize: 'cover',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'left center',
-                      }
-                    : undefined
-                }
-              >
-                <td className="px-6 py-4 text-sm">
+              <tr key={a.id} className="hover:bg-azure-web">
+                <td className="px-6 py-4 text-sm relative overflow-hidden">
+                  {a.project?.imageUrl && (
+                    <>
+                      <img
+                        src={a.project.imageUrl || undefined}
+                        alt=""
+                        aria-hidden
+                        className="absolute inset-0 w-full h-full object-cover opacity-45"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent" aria-hidden />
+                    </>
+                  )}
+                  <span className="relative z-10">
                   {(() => {
                     const s = (a.date || '').slice(0, 10);
                     const [y, m, d] = s.split('-');
                     return `${d}.${m}.${y}`;
                   })()}
+                  </span>
                 </td>
                 <td className="px-6 py-4 text-sm">
                   {(() => {

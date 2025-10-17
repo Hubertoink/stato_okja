@@ -17,6 +17,8 @@ import {
   ArchiveRestore as ArchiveRestoreIcon,
   Trash2,
 } from 'lucide-react';
+import { Star, StarOff } from 'lucide-react';
+import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
 import { api } from '@/lib/api';
 import { useCategories, useTags } from '@/lib/taxonomy';
 import { useStaff } from '@/lib/staff';
@@ -664,6 +666,7 @@ export default function Projects() {
   const update = useUpdateProject();
 
   const projects = data || [];
+  const [starred, setStarred] = useState<string[]>(() => getStarredProjectIds());
   const { data: categoriesList } = useCategories({ active: true });
   const { data: tagsList } = useTags({ active: true });
   const categoryMap = useMemo(() => {
@@ -804,6 +807,7 @@ export default function Projects() {
               .map((name) => tagMap.get(name))
               .filter(Boolean) as Array<{ id: string; name: string; color?: string | null }>;
             const extraTags = Math.max(0, tagList.length - 3);
+            const starredNow = starred.includes(p.id);
             return (
               <div
                 key={p.id}
@@ -870,6 +874,23 @@ export default function Projects() {
                       )}
                     </div>
                     <div className="flex gap-3 text-sm items-start z-[2] relative">
+                      <span className="tooltip-wrapper">
+                        <button
+                          onClick={() => setStarred(toggleStarredProject(p.id))}
+                          title={starredNow ? 'Highlight entfernen' : 'Projekt highlighten'}
+                          className={`opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full p-1.5 ${
+                            starredNow ? 'bg-yellow-400/90' : 'bg-white/20 hover:bg-white/30'
+                          }`}
+                          aria-label={starredNow ? 'Highlight entfernen' : 'Projekt highlighten'}
+                        >
+                          {starredNow ? (
+                            <Star className="w-4 h-4 text-gray-900" />
+                          ) : (
+                            <StarOff className="w-4 h-4 text-white" />
+                          )}
+                        </button>
+                        <span className="tooltip-bubble">{starredNow ? 'Unstarren' : 'Highlight'}</span>
+                      </span>
                       <span className="tooltip-wrapper">
                         <button
                           onClick={() => setModal({ mode: 'edit', project: p })}

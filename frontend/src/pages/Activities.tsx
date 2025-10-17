@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { useCohorts } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
-import { Download } from 'lucide-react';
+import { Download, Filter as FilterIcon, Plus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { api } from '@/lib/api';
 // basic location quick filter removed
@@ -210,14 +210,34 @@ export default function Activities() {
           >
             <Download className="w-5 h-5" />
           </button>
+          {/* Mobile icon-only: Filter */}
           <button
-            className="bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors"
+            className="md:hidden inline-flex items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10"
+            onClick={() => setFilterDrawer(true)}
+            title="Filter"
+            aria-label="Filter"
+          >
+            <FilterIcon className="w-5 h-5" />
+          </button>
+          {/* Desktop: Filter text button */}
+          <button
+            className="hidden md:inline-flex items-center bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors"
             onClick={() => setFilterDrawer(true)}
           >
             Filter
           </button>
+          {/* Mobile icon-only: New activity */}
           <button
-            className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
+            className="md:hidden inline-flex items-center justify-center rounded-full bg-viridian text-white hover:bg-cambridge-blue transition-colors w-10 h-10"
+            onClick={() => setPicker(true)}
+            title="Neue Aktivität"
+            aria-label="Neue Aktivität"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+          {/* Desktop: New activity text button */}
+          <button
+            className="hidden md:inline-flex items-center bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
             onClick={() => setPicker(true)}
           >
             + Neue Aktivität
@@ -584,7 +604,9 @@ export default function Activities() {
               })()}
             </div>
             <div className="relative z-10 text-sm text-gray-600 mb-1">{a.title || '-'}</div>
-            <div className="relative z-10 text-xs text-gray-500 mb-3">{a.project?.title || '-'}</div>
+            <div className="relative z-10 text-xs text-gray-500 mb-3">
+              {a.project?.title || '-'}
+            </div>
             <div className="relative z-10 text-xs text-gray-600 mb-2">
               {(() => {
                 const m = a.countMale || 0;

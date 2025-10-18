@@ -22,14 +22,12 @@ export default function ProjectPickerModal({
   const projects = useMemo(() => {
     const list = data || [];
     const starred = new Set(getStarredProjectIds());
-    return list
-      .slice()
-      .sort((a, b) => {
-        const sa = starred.has(a.id) ? 1 : 0;
-        const sb = starred.has(b.id) ? 1 : 0;
-        if (sa !== sb) return sb - sa; // starred first
-        return a.title.localeCompare(b.title, 'de');
-      });
+    return list.slice().sort((a, b) => {
+      const sa = starred.has(a.id) ? 1 : 0;
+      const sb = starred.has(b.id) ? 1 : 0;
+      if (sa !== sb) return sb - sa; // starred first
+      return a.title.localeCompare(b.title, 'de');
+    });
   }, [data]);
   const typeLabel: Record<string, string> = {
     open_door: 'Offene Tür',

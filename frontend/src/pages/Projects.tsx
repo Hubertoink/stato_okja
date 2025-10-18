@@ -889,7 +889,9 @@ export default function Projects() {
                             <StarOff className="w-4 h-4 text-white" />
                           )}
                         </button>
-                        <span className="tooltip-bubble">{starredNow ? 'Unstarren' : 'Highlight'}</span>
+                        <span className="tooltip-bubble">
+                          {starredNow ? 'Unstarren' : 'Highlight'}
+                        </span>
                       </span>
                       <span className="tooltip-wrapper">
                         <button

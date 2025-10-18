@@ -370,7 +370,7 @@ export default function Activities() {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {activities.map((a) => (
-              <tr key={a.id} className="hover:bg-azure-web">
+              <tr key={a.id} className="bg-white hover:bg-azure-web">
                 <td className="px-6 py-4 text-sm relative overflow-hidden">
                   {a.project?.imageUrl && (
                     <>
@@ -378,10 +378,10 @@ export default function Activities() {
                         src={a.project.imageUrl || undefined}
                         alt=""
                         aria-hidden
-                        className="absolute inset-0 w-full h-full object-cover opacity-70"
+                        className="absolute inset-0 w-full h-full object-cover object-right opacity-70"
                       />
                       <div
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-white"
+                        className="absolute inset-0 bg-gradient-to-l from-transparent via-white/60 to-white"
                         aria-hidden
                       />
                     </>
@@ -553,10 +553,10 @@ export default function Activities() {
                   src={a.project.imageUrl || undefined}
                   alt=""
                   aria-hidden
-                  className="absolute inset-y-0 left-0 w-28 h-full object-cover opacity-70"
+                  className="absolute inset-y-0 right-0 w-28 h-full object-cover opacity-70"
                 />
                 <div
-                  className="absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-transparent via-white/60 to-white"
+                  className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-transparent via-white/60 to-white"
                   aria-hidden
                 />
               </>

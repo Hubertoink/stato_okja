@@ -371,22 +371,8 @@ export default function Activities() {
           <tbody className="divide-y divide-gray-200">
             {activities.map((a) => (
               <tr key={a.id} className="bg-white hover:bg-azure-web">
-                <td className="px-6 py-4 text-sm relative overflow-hidden">
-                  {a.project?.imageUrl && (
-                    <>
-                      <img
-                        src={a.project.imageUrl || undefined}
-                        alt=""
-                        aria-hidden
-                        className="absolute inset-0 w-full h-full object-cover object-right opacity-70"
-                      />
-                      <div
-                        className="absolute inset-0 bg-gradient-to-l from-transparent via-white/60 to-white"
-                        aria-hidden
-                      />
-                    </>
-                  )}
-                  <span className="relative z-10">
+                <td className="px-6 py-4 text-sm">
+                  <span>
                     {(() => {
                       const s = (a.date || '').slice(0, 10);
                       const [y, m, d] = s.split('-');
@@ -482,10 +468,24 @@ export default function Activities() {
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm">
+                <td className="px-6 py-4 text-sm relative overflow-hidden">
+                  {a.project?.imageUrl && (
+                    <>
+                      <img
+                        src={a.project.imageUrl || undefined}
+                        alt=""
+                        aria-hidden
+                        className="absolute inset-0 w-full h-full object-cover object-right opacity-70"
+                      />
+                      <div
+                        className="absolute inset-0 bg-gradient-to-l from-transparent via-white/60 to-white"
+                        aria-hidden
+                      />
+                    </>
+                  )}
                   <button
                     onClick={() => setEditId(a.id)}
-                    className="inline-flex items-center justify-center rounded-full bg-white border p-2 text-viridian hover:bg-azure-web"
+                    className="relative z-10 inline-flex items-center justify-center rounded-full bg-white border p-2 text-viridian hover:bg-azure-web"
                     title="Bearbeiten"
                     aria-label="Bearbeiten"
                   >

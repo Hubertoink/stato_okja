@@ -193,8 +193,21 @@ export default function ExportModal({
       'w_avg',
       'd_avg',
       ...cohortNames.map((n) => `kohorte:${n}_avg`),
+      'gesamt_avg',
     ];
     const rows: (string | number)[][] = [header];
+
+    const apportion = (values: number[], target: number): number[] => {
+      const floors = values.map((v) => Math.floor(v));
+      let rem = target - floors.reduce((s, v) => s + v, 0);
+      const fracs = values.map((v, i) => ({ i, f: v - Math.floor(v) }));
+      fracs.sort((a, b) => b.f - a.f);
+      for (let k = 0; k < fracs.length && rem > 0; k++) {
+        floors[fracs[k].i]++;
+        rem--;
+      }
+      return floors;
+    };
 
     for (const g of groups.values()) {
       const n = g.items.length || 1;
@@ -217,23 +230,27 @@ export default function ExportModal({
         }
       }
       const durAvg = sumDur / n;
-      const mAvg = sumM / n;
-      const wAvg = sumW / n;
-      const dAvg = sumD / n;
-      const cohortAvgByName = Array.from(cohortIndex.values()).map((c) => {
+      const mAvgF = sumM / n;
+      const wAvgF = sumW / n;
+      const dAvgF = sumD / n;
+      const totalAvg = Math.round((sumM + sumW + sumD) / n);
+      const [mAvg, wAvg, dAvg] = apportion([mAvgF, wAvgF, dAvgF], totalAvg);
+      const cohortAvgFloat = Array.from(cohortIndex.values()).map((c) => {
         const total = cohortTotals.get(c.id) || 0;
         return total / n;
       });
+      const cohortAvgByName = apportion(cohortAvgFloat, totalAvg);
       rows.push([
         g.projekt,
         g.kategorie,
         g.typ,
         n,
         Math.round(durAvg * 100) / 100,
-        Math.round(mAvg * 100) / 100,
-        Math.round(wAvg * 100) / 100,
-        Math.round(dAvg * 100) / 100,
-        ...cohortAvgByName.map((v) => Math.round(v * 100) / 100),
+        mAvg,
+        wAvg,
+        dAvg,
+        ...cohortAvgByName,
+        totalAvg,
       ]);
     }
     return rows;
@@ -281,6 +298,7 @@ export default function ExportModal({
       'Ø d',
       spacerColLabel,
       ...cohortNames.map((n) => `Ø ${n}`),
+      'Ø Gesamt',
     ];
     const topHeader: string[] = new Array(subHeader.length).fill('');
     // Place group labels: Geschlecht over m/w/d, Alterskohorten over cohort columns
@@ -293,6 +311,18 @@ export default function ExportModal({
     if (cohortStart <= cohortEnd) topHeader[cohortStart] = 'Alterskohorten';
 
     const rows: (string | number)[][] = [topHeader, subHeader];
+
+    const apportion = (values: number[], target: number): number[] => {
+      const floors = values.map((v) => Math.floor(v));
+      let rem = target - floors.reduce((s, v) => s + v, 0);
+      const fracs = values.map((v, i) => ({ i, f: v - Math.floor(v) }));
+      fracs.sort((a, b) => b.f - a.f);
+      for (let k = 0; k < fracs.length && rem > 0; k++) {
+        floors[fracs[k].i]++;
+        rem--;
+      }
+      return floors;
+    };
 
     for (const g of groups.values()) {
       const n = g.items.length || 1;
@@ -313,15 +343,14 @@ export default function ExportModal({
           }
         }
       }
-      // Round to whole numbers for Excel readability
       const durAvg = Math.round(sumDur / n);
-      const mAvg = Math.round(sumM / n);
-      const wAvg = Math.round(sumW / n);
-      const dAvg = Math.round(sumD / n);
-      const cohortAvgByName = Array.from(cohortIndex.values()).map((c) => {
+      const totalAvg = Math.round((sumM + sumW + sumD) / n);
+      const [mAvg, wAvg, dAvg] = apportion([sumM / n, sumW / n, sumD / n], totalAvg);
+      const cohortFloat = Array.from(cohortIndex.values()).map((c) => {
         const total = cohortTotals.get(c.id) || 0;
-        return Math.round(total / n);
+        return total / n;
       });
+      const cohortAvgByName = apportion(cohortFloat, totalAvg);
 
       rows.push([
         g.projekt,
@@ -334,6 +363,7 @@ export default function ExportModal({
         dAvg,
         '',
         ...cohortAvgByName,
+        totalAvg,
       ]);
     }
     return rows;
@@ -411,7 +441,7 @@ export default function ExportModal({
     const genderStart = 5;
     const genderEnd = 7; // F..H
     const cohortStart = 9;
-    const cohortEnd = consHeaderSub.length - 1; // J..last
+    const cohortEnd = consHeaderSub.length - 2; // cohort columns end before final Ø Gesamt
     const merges = [] as Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
     if (genderEnd >= genderStart)
       merges.push({ s: { r: 0, c: genderStart }, e: { r: 0, c: genderEnd } });
@@ -428,7 +458,7 @@ export default function ExportModal({
     }));
     consSheet['!cols'] = consCols;
 
-    // Optional styling (may be ignored by some Excel writers, but supported in many viewers)
+    // Optional styling (xlsx-js-style supports cell styles)
     const setCellStyle = (r: number, c: number, style: CellStyle) => {
       const addr = utils.encode_cell({ r, c });
       const cell = consSheet[addr] as unknown as { s?: CellStyle } | undefined;
@@ -468,6 +498,12 @@ export default function ExportModal({
       const hex = colorForActivityType(code);
       const rgb = 'FF' + hex.replace('#', '').toUpperCase();
       setCellStyle(r, typeColIndex, { font: { color: { rgb } } });
+    }
+
+    // Bold the final "Ø Gesamt" values
+    const totalColIndex = consHeaderSub.length - 1;
+    for (let r = 2; r < matrix.length; r++) {
+      setCellStyle(r, totalColIndex, { font: { bold: true } });
     }
 
     const wb = utils.book_new();

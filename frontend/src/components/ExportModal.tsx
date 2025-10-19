@@ -340,8 +340,12 @@ export default function ExportModal({
   };
 
   const downloadExcel = async () => {
-    const xlsx = await import('xlsx');
-    const { utils, writeFile } = xlsx;
+    const xlsx = await import('xlsx-js-style');
+    const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
+    type CellStyle = {
+      font?: { bold?: boolean; color?: { rgb: string } };
+      fill?: { patternType: 'solid'; fgColor: { rgb: string } };
+    };
     // Raw sheet
     const rawHeader = [
       'Datum',
@@ -425,9 +429,9 @@ export default function ExportModal({
     consSheet['!cols'] = consCols;
 
     // Optional styling (may be ignored by some Excel writers, but supported in many viewers)
-    const setCellStyle = (r: number, c: number, style: Record<string, unknown>) => {
+    const setCellStyle = (r: number, c: number, style: CellStyle) => {
       const addr = utils.encode_cell({ r, c });
-      const cell = consSheet[addr] as unknown as { s?: Record<string, unknown> } | undefined;
+      const cell = consSheet[addr] as unknown as { s?: CellStyle } | undefined;
       if (cell) {
         cell.s = { ...(cell.s || {}), ...style };
       }
@@ -437,8 +441,8 @@ export default function ExportModal({
       setCellStyle(1, c, { font: { bold: true } });
     }
     // Shade gender header (F2..H2) light gray and cohorts (J2..last) light green; also group titles in row 1
-    const grayFill = { fill: { patternType: 'solid', fgColor: { rgb: 'FFF2F2F2' } } };
-    const greenFill = { fill: { patternType: 'solid', fgColor: { rgb: 'FFE8F5E9' } } };
+    const grayFill: CellStyle = { fill: { patternType: 'solid', fgColor: { rgb: 'FFF2F2F2' } } };
+    const greenFill: CellStyle = { fill: { patternType: 'solid', fgColor: { rgb: 'FFE8F5E9' } } };
     for (let c = genderStart; c <= genderEnd; c++) setCellStyle(1, c, grayFill);
     for (let c = cohortStart; c <= cohortEnd; c++) setCellStyle(1, c, greenFill);
     // Group titles (row 0)

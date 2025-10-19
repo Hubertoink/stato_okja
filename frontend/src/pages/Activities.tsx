@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { useCohorts } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
-import { Download } from 'lucide-react';
+import { Download, Filter as FilterIcon, Plus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { api } from '@/lib/api';
 // basic location quick filter removed
@@ -110,8 +110,8 @@ export default function Activities() {
                 }> = Array.isArray(res.data?.data)
                   ? res.data.data
                   : Array.isArray(res.data)
-                  ? res.data
-                  : [];
+                    ? res.data
+                    : [];
 
                 const cohortOrder = (cohorts as Cohort[])
                   .slice()
@@ -176,7 +176,10 @@ export default function Activities() {
                       (perCoh[c.cohortId] || 0) + (c.m || 0) + (c.w || 0) + (c.d || 0);
                   });
                   const duration = durFrom(a) ?? '';
-                  const catsText = (a.categories || []).map((c) => c.name).join(', ');
+                  const catsText =
+                    a.project?.title && (a as any)?.project?.type === 'open_door'
+                      ? ''
+                      : (a.categories || []).map((c) => c.name).join(', ');
                   const tagsText = (a.tags || []).map((t) => t.name).join(', ');
                   const row = [
                     dateDE,
@@ -207,14 +210,34 @@ export default function Activities() {
           >
             <Download className="w-5 h-5" />
           </button>
+          {/* Mobile icon-only: Filter */}
           <button
-            className="bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors"
+            className="md:hidden inline-flex items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10"
+            onClick={() => setFilterDrawer(true)}
+            title="Filter"
+            aria-label="Filter"
+          >
+            <FilterIcon className="w-5 h-5" />
+          </button>
+          {/* Desktop: Filter text button */}
+          <button
+            className="hidden md:inline-flex items-center bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors"
             onClick={() => setFilterDrawer(true)}
           >
             Filter
           </button>
+          {/* Mobile icon-only: New activity */}
           <button
-            className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
+            className="md:hidden inline-flex items-center justify-center rounded-full bg-viridian text-white hover:bg-cambridge-blue transition-colors w-10 h-10"
+            onClick={() => setPicker(true)}
+            title="Neue Aktivität"
+            aria-label="Neue Aktivität"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+          {/* Desktop: New activity text button */}
+          <button
+            className="hidden md:inline-flex items-center bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
             onClick={() => setPicker(true)}
           >
             + Neue Aktivität
@@ -271,8 +294,8 @@ export default function Activities() {
               typeof advanced.participantsMax === 'number'
                 ? `${advanced.participantsMin}–${advanced.participantsMax}`
                 : typeof advanced.participantsMin === 'number'
-                ? `≥ ${advanced.participantsMin}`
-                : `≤ ${advanced.participantsMax}`}
+                  ? `≥ ${advanced.participantsMin}`
+                  : `≤ ${advanced.participantsMax}`}
             </span>
           )}
           {(typeof advanced.durationMin === 'number' ||
@@ -282,8 +305,8 @@ export default function Activities() {
               {typeof advanced.durationMin === 'number' && typeof advanced.durationMax === 'number'
                 ? `${advanced.durationMin}–${advanced.durationMax} Min.`
                 : typeof advanced.durationMin === 'number'
-                ? `≥ ${advanced.durationMin} Min.`
-                : `≤ ${advanced.durationMax} Min.`}
+                  ? `≥ ${advanced.durationMin} Min.`
+                  : `≤ ${advanced.durationMax} Min.`}
             </span>
           )}
         </div>
@@ -347,13 +370,15 @@ export default function Activities() {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {activities.map((a) => (
-              <tr key={a.id} className="hover:bg-azure-web">
+              <tr key={a.id} className="bg-white hover:bg-azure-web">
                 <td className="px-6 py-4 text-sm">
-                  {(() => {
-                    const s = (a.date || '').slice(0, 10);
-                    const [y, m, d] = s.split('-');
-                    return `${d}.${m}.${y}`;
-                  })()}
+                  <span>
+                    {(() => {
+                      const s = (a.date || '').slice(0, 10);
+                      const [y, m, d] = s.split('-');
+                      return `${d}.${m}.${y}`;
+                    })()}
+                  </span>
                 </td>
                 <td className="px-6 py-4 text-sm">
                   {(() => {
@@ -443,10 +468,24 @@ export default function Activities() {
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm">
+                <td className="px-6 py-4 text-sm relative overflow-hidden">
+                  {a.project?.imageUrl && (
+                    <>
+                      <img
+                        src={a.project.imageUrl || undefined}
+                        alt=""
+                        aria-hidden
+                        className="absolute inset-0 w-full h-full object-cover object-right opacity-70"
+                      />
+                      <div
+                        className="absolute inset-0 bg-gradient-to-l from-transparent via-white/60 to-white"
+                        aria-hidden
+                      />
+                    </>
+                  )}
                   <button
                     onClick={() => setEditId(a.id)}
-                    className="inline-flex items-center justify-center rounded-full bg-white border p-2 text-viridian hover:bg-azure-web"
+                    className="relative z-10 inline-flex items-center justify-center rounded-full bg-white border p-2 text-viridian hover:bg-azure-web"
                     title="Bearbeiten"
                     aria-label="Bearbeiten"
                   >
@@ -496,7 +535,7 @@ export default function Activities() {
         {activities.map((a) => (
           <div
             key={a.id}
-            className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-azure-web/50 focus:outline-none focus:ring-2 focus:ring-viridian/40"
+            className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-azure-web/50 focus:outline-none focus:ring-2 focus:ring-viridian/40 relative overflow-hidden"
             role="button"
             tabIndex={0}
             aria-label="Aktivität bearbeiten"
@@ -508,7 +547,21 @@ export default function Activities() {
               }
             }}
           >
-            <div className="flex justify-between items-start mb-2">
+            {a.project?.imageUrl && (
+              <>
+                <img
+                  src={a.project.imageUrl || undefined}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-y-0 right-0 w-28 h-full object-cover opacity-70"
+                />
+                <div
+                  className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-transparent via-white/60 to-white"
+                  aria-hidden
+                />
+              </>
+            )}
+            <div className="relative z-10 flex justify-between items-start mb-2">
               <div>
                 <div className="text-sm text-gray-500">
                   {(() => {
@@ -550,9 +603,11 @@ export default function Activities() {
                 ) : null;
               })()}
             </div>
-            <div className="text-sm text-gray-600 mb-1">{a.title || '-'}</div>
-            <div className="text-xs text-gray-500 mb-3">{a.project?.title || '-'}</div>
-            <div className="text-xs text-gray-600 mb-2">
+            <div className="relative z-10 text-sm text-gray-600 mb-1">{a.title || '-'}</div>
+            <div className="relative z-10 text-xs text-gray-500 mb-3">
+              {a.project?.title || '-'}
+            </div>
+            <div className="relative z-10 text-xs text-gray-600 mb-2">
               {(() => {
                 const m = a.countMale || 0;
                 const w = a.countFemale || 0;
@@ -565,7 +620,7 @@ export default function Activities() {
                 );
               })()}
             </div>
-            <div className="flex flex-wrap gap-1.5 mb-2">
+            <div className="relative z-10 flex flex-wrap gap-1.5 mb-2">
               {(a.categories || []).map((c) => (
                 <span
                   key={c.id}
@@ -594,7 +649,7 @@ export default function Activities() {
               ))}
             </div>
             {a.notes && (
-              <div className="text-[12px] text-gray-600 flex items-start gap-1 mb-2">
+              <div className="relative z-10 text-[12px] text-gray-600 flex items-start gap-1 mb-2">
                 <StickyNote className="w-3.5 h-3.5 mt-[2px] text-gray-500" />
                 <span>{firstWords(a.notes, 20)}</span>
               </div>

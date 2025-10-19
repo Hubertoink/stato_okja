@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { X as XIcon, Save as SaveIcon, Trash2 as TrashIcon } from 'lucide-react';
 import { useActivity, useUpdateActivity, useRemoveActivity, Activity } from '@/lib/activities';
 import { useProjects, Project } from '@/lib/projects';
@@ -79,6 +80,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
     () => (projects || []).find((p) => p.id === form.projectId),
     [projects, form.projectId],
   );
+  const isOpenDoor = selectedProject?.type === 'open_door';
 
   // Prefill tags from the selected project's default tags if none chosen yet
   useEffect(() => {
@@ -98,6 +100,11 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
   // Prefill categories from selected project's categories if none selected yet
   useEffect(() => {
     if (!selectedProject) return;
+    if (selectedProject.type === 'open_door') {
+      // ensure categories cleared for offene Tür
+      setForm((f) => ({ ...f, categoryIds: [] }));
+      return;
+    }
     const cur = form.categoryIds || [];
     if (cur.length > 0) return;
     const set = new Set<string>();
@@ -167,18 +174,17 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                     }`}
                     disabled={hasCohortData}
                   />
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Ende</label>
+                    <input
+                      type="time"
+                      value={form.end || ''}
+                      onChange={(e) => setForm({ ...form, end: e.target.value })}
+                      className="w-full border rounded px-3 py-2"
+                    />
+                  </div>
                 </div>
               ))}
-              <div>
-                <label className="block text-sm font-medium mb-1">Gesamt</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={displayCounts.total ?? 0}
-                  readOnly
-                  className="w-full border rounded px-3 py-2 bg-gray-50"
-                />
-              </div>
             </div>
             {hasCohortData && (
               <p className="text-xs text-gray-500 mt-1">
@@ -252,12 +258,17 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Ende</label>
-              <input
-                type="time"
-                value={form.end || ''}
-                onChange={(e) => setForm({ ...form, end: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
+              <div className="relative">
+                <input
+                  type="time"
+                  value={form.end || ''}
+                  onChange={(e) => setForm({ ...form, end: e.target.value })}
+                  className="w-full border rounded px-3 py-2 pr-10"
+                />
+                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-500 text-sm">
+                  Uhr
+                </span>
+              </div>
             </div>
           </div>
           {/* Cohorts */}
@@ -292,13 +303,56 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                   ⚧
                 </span>
               </div>
-              {(cohorts || []).map((c: Cohort) => {
+              {(cohorts || []).map((c: Cohort, rowIndex: number) => {
                 const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
                 const updateC = (g: GenderKey, val: number) =>
                   setForm({
                     ...form,
                     cohortCounts: { ...form.cohortCounts!, [c.id]: { ...entry, [g]: val } },
                   });
+                const genders: GenderKey[] = ['m', 'w', 'd'];
+                const handleKeyDown = (
+                  e: KeyboardEvent<HTMLInputElement>,
+                  currentRow: number,
+                  g: GenderKey,
+                ) => {
+                  const list = cohorts || [];
+                  const col = genders.indexOf(g);
+                  let nextRow = currentRow;
+                  let nextCol = col;
+                  if (e.key === 'Enter' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    nextCol = col + 1;
+                    if (nextCol >= genders.length) {
+                      nextCol = 0;
+                      nextRow = currentRow + 1;
+                    }
+                  } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    nextCol = col - 1;
+                    if (nextCol < 0) {
+                      nextCol = genders.length - 1;
+                      nextRow = Math.max(0, currentRow - 1);
+                    }
+                  } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    nextRow = currentRow + 1;
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    nextRow = Math.max(0, currentRow - 1);
+                  } else {
+                    return;
+                  }
+                  const targetC = list[nextRow] as Cohort | undefined;
+                  const targetG = genders[nextCol];
+                  if (targetC && targetG) {
+                    const el = document.querySelector<HTMLInputElement>(
+                      `input[data-cohort-id='${targetC.id}'][data-gender='${targetG}']`,
+                    );
+                    el?.focus();
+                    el?.select();
+                  }
+                };
                 const ageLabel = (() => {
                   const from = typeof c.minAge === 'number' ? c.minAge : undefined;
                   const to = typeof c.maxAge === 'number' ? c.maxAge : undefined;
@@ -322,9 +376,16 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                       <input
                         key={g}
                         type="number"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         min={0}
-                        value={entry[g] ?? 0}
+                        value={entry[g] ? String(entry[g]) : ''}
+                        onFocus={(e) => e.currentTarget.select()}
                         onChange={(e) => updateC(g, Number(e.target.value || 0))}
+                        onKeyDown={(e) => handleKeyDown(e, rowIndex, g)}
+                        data-cohort-id={c.id}
+                        data-gender={g}
+                        enterKeyHint="next"
                         className="w-full border rounded px-2 py-1 text-center"
                         placeholder={g.toUpperCase()}
                         aria-label={`${c.name} ${g.toUpperCase()}`}
@@ -340,36 +401,38 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
               )}
             </div>
           </div>
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Kategorien</label>
-            <div className="flex flex-wrap gap-2">
-              {(categories || []).map((c) => {
-                const active = (form.categoryIds || []).includes(c.id);
-                const bg = c.color || '#7aa39a';
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      const set = new Set(form.categoryIds || []);
-                      if (set.has(c.id)) set.delete(c.id);
-                      else set.add(c.id);
-                      setForm({ ...form, categoryIds: Array.from(set) });
-                    }}
-                    className={`px-2 py-1 rounded-full text-xs border`}
-                    style={
-                      active
-                        ? { backgroundColor: bg, color: '#fff', borderColor: bg }
-                        : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
-                    }
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
+          {/* Kategorien: ausblenden bei Offene Tür */}
+          {selectedProject?.type !== 'open_door' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Kategorien</label>
+              <div className="flex flex-wrap gap-2">
+                {(categories || []).map((c) => {
+                  const active = (form.categoryIds || []).includes(c.id);
+                  const bg = c.color || '#7aa39a';
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        const set = new Set(form.categoryIds || []);
+                        if (set.has(c.id)) set.delete(c.id);
+                        else set.add(c.id);
+                        setForm({ ...form, categoryIds: Array.from(set) });
+                      }}
+                      className={`px-2 py-1 rounded-full text-xs border`}
+                      style={
+                        active
+                          ? { backgroundColor: bg, color: '#fff', borderColor: bg }
+                          : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
+                      }
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
           {/* Tags */}
           <div>
             <label className="block text-sm font-medium mb-1">Tags</label>
@@ -548,7 +611,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                         return arr;
                       })
                     : [],
-                  categoryIds: form.categoryIds || [],
+                  categoryIds: isOpenDoor ? [] : form.categoryIds || [],
                 };
                 update.mutate(
                   { id, data: payload as Partial<Activity> & Record<string, unknown> },
@@ -584,6 +647,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                 projectId: p.id,
                 tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
                 categoryIds: (() => {
+                  if (p.type === 'open_door') return [];
                   if (prev.categoryIds && prev.categoryIds.length > 0) return prev.categoryIds;
                   const set = new Set<string>();
                   (p.categories || []).forEach((c) => set.add(c.id));

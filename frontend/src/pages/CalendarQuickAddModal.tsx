@@ -1,5 +1,6 @@
 import { Project, useProjects } from '@/lib/projects';
 import { useEffect, useMemo, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { Save as SaveIcon, X as XIcon, Boxes, Trash2 as TrashIcon } from 'lucide-react';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useStaff } from '@/lib/staff';
@@ -55,6 +56,7 @@ export default function ActivityQuickAdd({
     () => (projects || []).find((p: Project) => p.id === form.projectId) || initialProject,
     [projects, form.projectId, initialProject],
   );
+  const isOpenDoor = (selectedProject || initialProject)?.type === 'open_door';
 
   useEffect(() => {
     // Default times; if project provided, prefill from defaults
@@ -89,6 +91,11 @@ export default function ActivityQuickAdd({
     if (activity) return; // editing: don't override
     const proj = selectedProject || initialProject;
     if (!proj) return;
+    if (proj.type === 'open_door') {
+      // Ensure no categories for open-door
+      setForm((f: FormState) => ({ ...f, categoryIds: [] }));
+      return;
+    }
     const cur = form.categoryIds || [];
     if (cur.length > 0) return; // already chosen
     const set = new Set<string>();
@@ -96,6 +103,13 @@ export default function ActivityQuickAdd({
     if (proj.categoryId) set.add(proj.categoryId);
     if (set.size > 0) setForm((f: FormState) => ({ ...f, categoryIds: Array.from(set) }));
   }, [selectedProject, initialProject, activity]);
+  // If switching to an open-door project, clear categories
+  useEffect(() => {
+    const proj = selectedProject || initialProject;
+    if (proj && proj.type === 'open_door') {
+      setForm((f: FormState) => ({ ...f, categoryIds: [] }));
+    }
+  }, [selectedProject?.type, initialProject?.type]);
   useEffect(() => {
     // If there is exactly one location, auto-select it to reduce friction
     if ((locations || []).length === 1 && !form.locationId) {
@@ -202,7 +216,7 @@ export default function ActivityQuickAdd({
               className="w-full border rounded px-3 py-2"
             >
               <option value="">— Standort wählen —</option>
-              {(locations || []).map((l: { id: string; name: string }) => (
+              {(locations || []).map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
                 </option>
@@ -297,7 +311,7 @@ export default function ActivityQuickAdd({
                   ⚧
                 </span>
               </div>
-              {(cohorts || []).map((c) => {
+              {(cohorts || []).map((c, rowIndex: number) => {
                 const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
                 const update = (g: GenderKey, val: number) => {
                   setForm({
@@ -307,6 +321,49 @@ export default function ActivityQuickAdd({
                       [c.id]: { ...entry, [g]: val },
                     },
                   });
+                };
+                const genders: GenderKey[] = ['m', 'w', 'd'];
+                const handleKeyDown = (
+                  e: KeyboardEvent<HTMLInputElement>,
+                  currentRow: number,
+                  g: GenderKey,
+                ) => {
+                  const list = cohorts || [];
+                  const col = genders.indexOf(g);
+                  let nextRow = currentRow;
+                  let nextCol = col;
+                  if (e.key === 'Enter' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    nextCol = col + 1;
+                    if (nextCol >= genders.length) {
+                      nextCol = 0;
+                      nextRow = currentRow + 1;
+                    }
+                  } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    nextCol = col - 1;
+                    if (nextCol < 0) {
+                      nextCol = genders.length - 1;
+                      nextRow = Math.max(0, currentRow - 1);
+                    }
+                  } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    nextRow = currentRow + 1;
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    nextRow = Math.max(0, currentRow - 1);
+                  } else {
+                    return;
+                  }
+                  const targetC = list[nextRow];
+                  const targetG = genders[nextCol];
+                  if (targetC && targetG) {
+                    const el = document.querySelector<HTMLInputElement>(
+                      `input[data-cohort-id='${targetC.id}'][data-gender='${targetG}']`,
+                    );
+                    el?.focus();
+                    el?.select();
+                  }
                 };
                 const ageLabel = (() => {
                   const from =
@@ -332,9 +389,16 @@ export default function ActivityQuickAdd({
                       <input
                         key={g}
                         type="number"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         min={0}
-                        value={entry[g] ?? 0}
-                        onChange={(e) => update(g, Number(e.target.value || 0))}
+                        value={entry[g] ? String(entry[g]) : ''}
+                        onFocus={(e: any) => e.currentTarget.select()}
+                        onChange={(e: any) => update(g, Number(e.target.value || 0))}
+                        onKeyDown={(e: any) => handleKeyDown(e, rowIndex, g)}
+                        data-cohort-id={c.id}
+                        data-gender={g}
+                        enterKeyHint="next"
                         className="w-full border rounded px-2 py-1 text-center"
                         placeholder={g === 'm' ? '♂' : g === 'w' ? '♀' : '⚧'}
                         aria-label={`${c.name} ${g.toUpperCase()}`}
@@ -345,39 +409,41 @@ export default function ActivityQuickAdd({
               })}
             </div>
           </div>
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Kategorien</label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {(categories || []).map((c) => {
-                const active = (form.categoryIds || []).includes(c.id);
-                const bg = c.color || '#7aa39a';
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      const set = new Set(form.categoryIds || []);
-                      if (set.has(c.id)) set.delete(c.id);
-                      else set.add(c.id);
-                      setForm({ ...form, categoryIds: Array.from(set) });
-                    }}
-                    className="px-2 py-1 rounded-full text-xs border"
-                    style={
-                      active
-                        ? { backgroundColor: bg, color: '#fff', borderColor: bg }
-                        : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
-                    }
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
-              {(categories || []).length === 0 && (
-                <span className="text-xs text-gray-400">Keine Kategorien vorhanden.</span>
-              )}
+          {/* Kategorien: ausblenden bei "Offene Tür" */}
+          {(!selectedProject || selectedProject.type !== 'open_door') && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Kategorien</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(categories || []).map((c) => {
+                  const active = (form.categoryIds || []).includes(c.id);
+                  const bg = c.color || '#7aa39a';
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        const set = new Set(form.categoryIds || []);
+                        if (set.has(c.id)) set.delete(c.id);
+                        else set.add(c.id);
+                        setForm({ ...form, categoryIds: Array.from(set) });
+                      }}
+                      className="px-2 py-1 rounded-full text-xs border"
+                      style={
+                        active
+                          ? { backgroundColor: bg, color: '#fff', borderColor: bg }
+                          : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
+                      }
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+                {(categories || []).length === 0 && (
+                  <span className="text-xs text-gray-400">Keine Kategorien vorhanden.</span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           <div>
             <label className="block text-sm font-medium mb-1">Tags</label>
             <div className="flex flex-wrap gap-2">
@@ -554,7 +620,7 @@ export default function ActivityQuickAdd({
                   ...(form.locationId ? { locationId: form.locationId } : {}),
                   title: form.title || null,
                   notes: form.notes || null,
-                  categoryIds: form.categoryIds || [],
+                  categoryIds: isOpenDoor ? [] : form.categoryIds || [],
                   tagIds: form.tagIds || [],
                   staffIds: form.staffIds || [],
                   durationMinutes,
@@ -625,12 +691,15 @@ export default function ActivityQuickAdd({
                 projectId: p.id,
                 tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
                 // Prefill categories from project's categories plus primary categoryId if set
-                categoryIds: (() => {
-                  const set = new Set<string>(prev.categoryIds || []);
-                  (p.categories || []).forEach((c) => set.add(c.id));
-                  if (p.categoryId) set.add(p.categoryId);
-                  return Array.from(set);
-                })(),
+                categoryIds:
+                  p.type === 'open_door'
+                    ? []
+                    : (() => {
+                        const set = new Set<string>(prev.categoryIds || []);
+                        (p.categories || []).forEach((c) => set.add(c.id));
+                        if (p.categoryId) set.add(p.categoryId);
+                        return Array.from(set);
+                      })(),
               }));
               setPicker(false);
             }}

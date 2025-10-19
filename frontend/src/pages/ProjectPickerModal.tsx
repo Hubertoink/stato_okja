@@ -3,6 +3,8 @@ import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { X as XIcon } from 'lucide-react';
+import { Star } from 'lucide-react';
+import { getStarredProjectIds } from '@/lib/starred';
 
 function pickBg(p: Project) {
   return p.color || colorFromStringHash(p.title);
@@ -17,7 +19,16 @@ export default function ProjectPickerModal({
 }) {
   const [search, setSearch] = useState('');
   const { data } = useProjects({ archived: false, search });
-  const projects = useMemo(() => data || [], [data]);
+  const projects = useMemo(() => {
+    const list = data || [];
+    const starred = new Set(getStarredProjectIds());
+    return list.slice().sort((a, b) => {
+      const sa = starred.has(a.id) ? 1 : 0;
+      const sb = starred.has(b.id) ? 1 : 0;
+      if (sa !== sb) return sb - sa; // starred first
+      return a.title.localeCompare(b.title, 'de');
+    });
+  }, [data]);
   const typeLabel: Record<string, string> = {
     open_door: 'Offene Tür',
     project_open: 'Projekt (offen)',
@@ -74,6 +85,12 @@ export default function ProjectPickerModal({
                     {typeLabel[p.type] || p.type}
                   </span>
                 </div>
+                {/* Star badge if highlighted */}
+                {getStarredProjectIds().includes(p.id) && (
+                  <div className="absolute top-1 right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400 shadow">
+                    <Star className="w-3.5 h-3.5 text-gray-900" />
+                  </div>
+                )}
               </div>
               <div className="p-2">
                 <div className="font-medium text-viridian truncate">{p.title}</div>

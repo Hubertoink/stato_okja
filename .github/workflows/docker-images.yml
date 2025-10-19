@@ -2,10 +2,10 @@ name: Build and publish Docker images (backend, frontend)
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches: [main, dev]
+    tags: ['v*']
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
@@ -47,6 +47,7 @@ jobs:
           images: ${{ env.IMAGE_BACKEND }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -92,6 +93,7 @@ jobs:
           images: ${{ env.IMAGE_FRONTEND }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -109,5 +111,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VITE_API_BASE_URL=${{ env.FRONTEND_API_BASE_URL }}
-            NGINX_MODE=direct
+            VITE_API_BASE_URL=${{ github.ref == 'refs/heads/dev' && 'https://devapi.stato-okja.de/api' || env.FRONTEND_API_BASE_URL }}
+            NGINX_MODE=${{ github.ref == 'refs/heads/dev' && 'direct-dev' || 'direct' }}

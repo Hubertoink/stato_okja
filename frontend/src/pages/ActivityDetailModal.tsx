@@ -32,7 +32,15 @@ export default function ActivityDetailModal({
     const [y, m, d] = s.split('-');
     return `${d}.${m}.${y}`;
   })();
-  const timeStr = [activity.startTime, activity.endTime].filter(Boolean).join(' – ');
+  const fmtHHMM = (t?: string | null) => {
+    if (!t) return '';
+    const [h, m] = t.split(':');
+    if (h == null || m == null) return t || '';
+    return `${h}:${m}`; // drop seconds
+  };
+  const timeStr = [fmtHHMM(activity.startTime), fmtHHMM(activity.endTime)]
+    .filter(Boolean)
+    .join(' – ');
   const duration = (() => {
     if (activity.durationMinutes) return `${activity.durationMinutes} min`;
     const parse = (t?: string | null) => {
@@ -100,7 +108,7 @@ export default function ActivityDetailModal({
           </div>
           {!!timeStr && (
             <div className="flex items-center gap-2 text-sm text-gray-700">
-              <Clock3 className="w-4 h-4" /> {timeStr}
+              <Clock3 className="w-4 h-4" /> {timeStr} Uhr
               {duration ? ` · ${duration}` : ''}
             </div>
           )}

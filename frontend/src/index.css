@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 /* Theme variables: default to Default Theme (original green palette) */
-:root[data-theme="Default Theme"], :root:not([data-theme]) {
+:root[data-theme='Default Theme'],
+:root:not([data-theme]) {
   --viridian: #6b9080;
   --cambridge-blue: #a4c3b2;
   --mint-green: #cce3de;
@@ -22,7 +23,7 @@
 }
 
 /* Earthy Tones */
-:root[data-theme="Earthy Tones"] {
+:root[data-theme='Earthy Tones'] {
   --viridian: #6d6875ff; /* dim-gray as primary */
   --cambridge-blue: #b5838dff; /* old-rose */
   --mint-green: #e5989bff; /* salmon-pink */
@@ -31,7 +32,7 @@
 }
 
 /* Peachy Delight */
-:root[data-theme="Peachy Delight"] {
+:root[data-theme='Peachy Delight'] {
   --viridian: #9d8189ff; /* mountbatten-pink */
   --cambridge-blue: #f4acb7ff; /* cherry-blossom-pink */
   --mint-green: #ffcad4ff; /* pink */
@@ -40,7 +41,7 @@
 }
 
 /* Ocean Pearl */
-:root[data-theme="Ocean Pearl"] {
+:root[data-theme='Ocean Pearl'] {
   --viridian: #006d77ff; /* caribbean-current */
   --cambridge-blue: #83c5beff; /* tiffany-blue */
   --mint-green: #edf6f9ff; /* alice-blue */
@@ -49,7 +50,7 @@
 }
 
 /* Default Theme (original green palette) */
-:root[data-theme="Default Theme"] {
+:root[data-theme='Default Theme'] {
   --viridian: #6b9080;
   --cambridge-blue: #a4c3b2;
   --mint-green: #cce3de;
@@ -59,9 +60,9 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--mint-cream);
@@ -70,29 +71,58 @@ body {
 }
 
 /* Override color utility classes to use theme variables */
-.bg-viridian { background-color: var(--viridian) !important; }
-.text-viridian { color: var(--viridian) !important; }
-.border-viridian { border-color: var(--viridian) !important; }
+.bg-viridian {
+  background-color: var(--viridian) !important;
+}
+.text-viridian {
+  color: var(--viridian) !important;
+}
+.border-viridian {
+  border-color: var(--viridian) !important;
+}
 
-.bg-cambridge-blue { background-color: var(--cambridge-blue) !important; }
-.text-cambridge-blue { color: var(--cambridge-blue) !important; }
-.border-cambridge-blue { border-color: var(--cambridge-blue) !important; }
+.bg-cambridge-blue {
+  background-color: var(--cambridge-blue) !important;
+}
+.text-cambridge-blue {
+  color: var(--cambridge-blue) !important;
+}
+.border-cambridge-blue {
+  border-color: var(--cambridge-blue) !important;
+}
 
-.bg-mint-green { background-color: var(--mint-green) !important; }
-.text-mint-green { color: var(--mint-green) !important; }
-.border-mint-green { border-color: var(--mint-green) !important; }
+.bg-mint-green {
+  background-color: var(--mint-green) !important;
+}
+.text-mint-green {
+  color: var(--mint-green) !important;
+}
+.border-mint-green {
+  border-color: var(--mint-green) !important;
+}
 
-.bg-azure-web { background-color: var(--azure-web) !important; }
-.text-azure-web { color: var(--azure-web) !important; }
-.border-azure-web { border-color: var(--azure-web) !important; }
+.bg-azure-web {
+  background-color: var(--azure-web) !important;
+}
+.text-azure-web {
+  color: var(--azure-web) !important;
+}
+.border-azure-web {
+  border-color: var(--azure-web) !important;
+}
 
-.bg-mint-cream { background-color: var(--mint-cream) !important; }
-.text-mint-cream { color: var(--mint-cream) !important; }
-.border-mint-cream { border-color: var(--mint-cream) !important; }
+.bg-mint-cream {
+  background-color: var(--mint-cream) !important;
+}
+.text-mint-cream {
+  color: var(--mint-cream) !important;
+}
+.border-mint-cream {
+  border-color: var(--mint-cream) !important;
+}
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
 /* Theme-aware translucent header background with blur */
@@ -115,12 +145,21 @@ code {
 }
 
 /* Utility helpers for mobile safe areas and tooltips */
-.pb-safe { padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px); }
-.mb-safe { margin-bottom: max(env(safe-area-inset-bottom, 0px), 16px); }
-.pt-safe { padding-top: max(env(safe-area-inset-top, 0px), 0px); }
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+.mb-safe {
+  margin-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 0px);
+}
 
 /* Immediate tooltip styles */
-.tooltip-wrapper { position: relative; display: inline-flex; }
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+}
 .tooltip-bubble {
   position: absolute;
   bottom: 100%;
@@ -137,14 +176,24 @@ code {
   opacity: 0;
 }
 .tooltip-wrapper:hover .tooltip-bubble,
-.tooltip-wrapper:focus-within .tooltip-bubble { opacity: 1; }
+.tooltip-wrapper:focus-within .tooltip-bubble {
+  opacity: 1;
+}
 
 /* Bottom sheet slide-up animation */
 @keyframes bottomSheetIn {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
-.bottom-sheet-animate { animation: bottomSheetIn 180ms ease-out; }
+.bottom-sheet-animate {
+  animation: bottomSheetIn 180ms ease-out;
+}
 
 /* Hide scrollbars but keep scrolling (used for modals) */
 .scrollbar-hide {
@@ -160,12 +209,12 @@ code {
   position: relative;
   background-color: #fff;
   border-radius: 0.5rem; /* matches rounded-lg */
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 .note-card::before {
   /* masking tape strip */
-  content: "";
+  content: '';
   position: absolute;
   top: 6px;
   left: 18px;
@@ -175,18 +224,18 @@ code {
   opacity: 0.8;
   transform: rotate(-6deg);
   border-radius: 3px;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
   pointer-events: none;
 }
 .note-card::after {
   /* perforation dots on the left edge */
-  content: "";
+  content: '';
   position: absolute;
   top: 10px;
   bottom: 10px;
   left: 0;
   width: 12px;
-  background-image: radial-gradient(circle at 6px 8px, rgba(0,0,0,0.06) 2.5px, transparent 3px);
+  background-image: radial-gradient(circle at 6px 8px, rgba(0, 0, 0, 0.06) 2.5px, transparent 3px);
   background-size: 12px 20px;
   background-repeat: repeat-y;
   pointer-events: none;

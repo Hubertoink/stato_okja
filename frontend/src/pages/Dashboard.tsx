@@ -205,7 +205,7 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {dailyLog.map((item) => (
-              <div key={item.id} className="border rounded-lg p-4 bg-white shadow-sm">
+              <div key={item.id} className="note-card border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold text-viridian truncate" title={item.title}>
                     {item.title}
@@ -226,18 +226,31 @@ export default function Dashboard() {
                   </span>
                 </div>
                 <div className="text-xs text-gray-700 mb-2">
-                  <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-0.5 mr-2">
-                    {(() => {
-                      const labelMap: Record<string, string> = {
-                        open_door: 'Offene Tür',
-                        project_open: 'Projekt (offen)',
-                        project_closed: 'Projekt (geschlossen)',
-                        event: 'Veranstaltung',
-                        outreach: 'Aufsuchend',
-                      };
-                      return labelMap[item.type] || item.type;
-                    })()}
-                  </span>
+                  {(() => {
+                    const labelMap: Record<string, string> = {
+                      open_door: 'Offene Tür',
+                      project_open: 'Projekt (offen)',
+                      project_closed: 'Projekt (geschlossen)',
+                      event: 'Veranstaltung',
+                      outreach: 'Aufsuchend',
+                    };
+                    const typeBgClass: Record<string, string> = {
+                      open_door: 'bg-cambridge-blue text-white',
+                      project_open: 'bg-viridian text-white',
+                      project_closed: 'bg-azure-web text-viridian',
+                      event: 'bg-mint-green text-viridian',
+                      outreach: 'bg-gray-700 text-white',
+                    };
+                    const cls = typeBgClass[item.type] || 'bg-gray-600 text-white';
+                    const label = labelMap[item.type] || item.type;
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded px-2 py-0.5 mr-2 ${cls}`}
+                      >
+                        {label}
+                      </span>
+                    );
+                  })()}
                   {item.project && (
                     <span className="inline-block text-gray-600">Projekt: {item.project}</span>
                   )}

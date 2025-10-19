@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { CalendarClock } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -115,6 +115,7 @@ export default function Statistics() {
   const [from, setFrom] = useState<string>('');
   const [to, setTo] = useState<string>('');
   const [yearPickerOpen, setYearPickerOpen] = useState<boolean>(false);
+  const yearPickerRef = useRef<HTMLDivElement | null>(null);
   const [yearDraft, setYearDraft] = useState<string>('');
   const [typeShowAbsolute, setTypeShowAbsolute] = useState<boolean>(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
@@ -139,6 +140,19 @@ export default function Statistics() {
   const { data: activities = [] } = useActivities(params);
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
+
+  // Close year dropdown on click-away
+  useEffect(() => {
+    function onDocMouseDown(e: MouseEvent) {
+      if (!yearPickerOpen) return;
+      const el = yearPickerRef.current;
+      if (el && e.target instanceof Node && !el.contains(e.target)) {
+        setYearPickerOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [yearPickerOpen]);
 
   const byTypeData = (byType || []).map((d, i) => ({
     name: TYPE_LABEL[d.type] || d.type,
@@ -391,7 +405,7 @@ export default function Statistics() {
             />
           </div>
           {/* Quick year picker */}
-          <div className="relative">
+          <div className="relative" ref={yearPickerRef}>
             <label className="block text-sm font-medium mb-1">Jahr</label>
             <button
               type="button"
@@ -463,6 +477,7 @@ export default function Statistics() {
               onClick={() => {
                 setFrom('');
                 setTo('');
+                setYearDraft('');
                 qc.invalidateQueries({
                   predicate: (q) => {
                     const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;

@@ -80,10 +80,13 @@ export default function ExportModal({
 
   const projectMainCategoryName = (a: Activity): string => {
     if (a.project?.type === 'open_door') return '';
-    const cid = (a.project && (a.project as unknown as { categoryId?: string | null }).categoryId) || null;
+    const cid =
+      (a.project && (a.project as unknown as { categoryId?: string | null }).categoryId) || null;
     if (cid && categoryNameById.has(cid)) return categoryNameById.get(cid) || '';
     // fallback to project.categories if present
-    const names = Array.isArray((a.project as unknown as { categories?: Array<{ name?: string }> }).categories)
+    const names = Array.isArray(
+      (a.project as unknown as { categories?: Array<{ name?: string }> }).categories,
+    )
       ? ((a.project as unknown as { categories?: Array<{ name?: string }> }).categories || [])
           .map((c) => c?.name)
           .filter(Boolean)
@@ -126,8 +129,8 @@ export default function ExportModal({
     ];
     rows.push(header);
     for (const a of activities) {
-  const isOpenDoor = a.project?.type === 'open_door';
-  const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
+      const isOpenDoor = a.project?.type === 'open_door';
+      const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
       const cohortTotals = cohortColumns.map((c) => String(getCohortTotal(a, c.id)));
@@ -361,8 +364,8 @@ export default function ExportModal({
       ...cohortColumns.map((c) => `Kohorte: ${c.name}`),
     ];
     const rawRows = activities.map((a) => {
-  const isOpenDoor = a.project?.type === 'open_door';
-  const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
+      const isOpenDoor = a.project?.type === 'open_door';
+      const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
       const cohortTotals = cohortColumns.map((c) => getCohortTotal(a, c.id));
@@ -454,8 +457,8 @@ export default function ExportModal({
         'Offene Tür': 'open_door',
         'Projekt (offen)': 'project_open',
         'Projekt (geschlossen)': 'project_closed',
-        'Veranstaltung': 'event',
-        'Aufsuchend': 'outreach',
+        Veranstaltung: 'event',
+        Aufsuchend: 'outreach',
       };
       const code = labelToCode[typeText] || undefined;
       const hex = colorForActivityType(code);

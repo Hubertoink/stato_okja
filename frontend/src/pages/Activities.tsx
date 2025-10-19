@@ -3,7 +3,7 @@ import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { useCohorts } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
 import { Download, Filter as FilterIcon, Plus } from 'lucide-react';
-import * as XLSX from 'xlsx';
+// switched to xlsx-js-style inside the export handler to support cell styling
 import { api } from '@/lib/api';
 // basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
@@ -85,17 +85,17 @@ export default function Activities() {
                   'cohortIds',
                 ];
                 for (const k of arrayKeys) {
-                  const v = (filters as any)?.[k];
+                  const v = (filters as ActivitiesFilter)[k];
                   if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
                   else if (Array.isArray(v)) delete qp[k as string];
                 }
                 const res = await api.get('/activities', { params: qp });
-                const list: Array<{
+                type ExportRow = {
                   id: string;
                   date: string;
                   type: string;
                   title?: string | null;
-                  project?: { title?: string | null } | null;
+                  project?: { title?: string | null; type?: string | null } | null;
                   countTotal?: number | null;
                   countMale?: number | null;
                   countFemale?: number | null;
@@ -107,7 +107,8 @@ export default function Activities() {
                   categories?: Array<{ name: string; color?: string | null }>;
                   notes?: string | null;
                   cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
-                }> = Array.isArray(res.data?.data)
+                };
+                const list: Array<ExportRow> = Array.isArray(res.data?.data)
                   ? res.data.data
                   : Array.isArray(res.data)
                     ? res.data
@@ -143,8 +144,8 @@ export default function Activities() {
                   event: 'Veranstaltung',
                   outreach: 'Aufsuchend',
                 };
-                const durFrom = (a: any) => {
-                  if (typeof a?.durationMinutes === 'number' && a.durationMinutes >= 0)
+                const durFrom = (a: ExportRow) => {
+                  if (typeof a.durationMinutes === 'number' && a.durationMinutes >= 0)
                     return a.durationMinutes;
                   const toMinutes = (t?: string | null) => {
                     if (!t) return undefined;
@@ -152,8 +153,8 @@ export default function Activities() {
                     if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
                     return hh * 60 + mm;
                   };
-                  const s = toMinutes(a?.startTime);
-                  const e = toMinutes(a?.endTime);
+                  const s = toMinutes(a.startTime);
+                  const e = toMinutes(a.endTime);
                   return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
                 };
                 for (const a of list) {
@@ -177,7 +178,7 @@ export default function Activities() {
                   });
                   const duration = durFrom(a) ?? '';
                   const catsText =
-                    a.project?.title && (a as any)?.project?.type === 'open_door'
+                    a.project?.title && a.project?.type === 'open_door'
                       ? ''
                       : (a.categories || []).map((c) => c.name).join(', ');
                   const tagsText = (a.tags || []).map((t) => t.name).join(', ');
@@ -198,11 +199,45 @@ export default function Activities() {
                   ];
                   rows.push(row);
                 }
-                const ws = XLSX.utils.aoa_to_sheet(rows);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Aktivitäten');
+                const xlsx = await import('xlsx-js-style');
+                const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
+                type CellStyle = { font?: { bold?: boolean; color?: { rgb: string } } };
+                const ws = utils.aoa_to_sheet(rows);
+                // Autofilter on header row
+                (ws as unknown as { ['!autofilter']?: { ref: string } })['!autofilter'] = {
+                  ref: `A1:${utils.encode_col((rows[0]?.length || 1) - 1)}1`,
+                };
+                // Column widths
+                ws['!cols'] = (rows[0] || []).map((h, i) => ({ wch: i <= 3 ? 18 : Math.max(10, String(h).length + 2) }));
+                // Bold header
+                for (let c = 0; c < (rows[0]?.length || 0); c++) {
+                  const addr = utils.encode_cell({ r: 0, c });
+                  const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
+                  if (cell) cell.s = { ...(cell.s || {}), font: { ...(cell.s?.font || {}), bold: true } };
+                }
+                // Colorize Typ column font by activity type color
+                const typeCol = 1; // 'Typ' column index in our header
+                const labelToCode: Record<string, string> = {
+                  'Offene Tür': 'open_door',
+                  'Projekt (offen)': 'project_open',
+                  'Projekt (geschlossen)': 'project_closed',
+                  Veranstaltung: 'event',
+                  Aufsuchend: 'outreach',
+                };
+                for (let r = 1; r < rows.length; r++) {
+                  const typeText = String(rows[r][typeCol] ?? '');
+                  const code = labelToCode[typeText];
+                  if (!code) continue;
+                  const hex = colorForActivityType(code);
+                  const rgb = 'FF' + hex.replace('#', '').toUpperCase();
+                  const addr = utils.encode_cell({ r, c: typeCol });
+                  const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
+                  if (cell) cell.s = { ...(cell.s || {}), font: { ...(cell.s?.font || {}), color: { rgb } } };
+                }
+                const wb = utils.book_new();
+                utils.book_append_sheet(wb, ws, 'Aktivitäten');
                 const fname = `Aktivitäten_${new Date().toISOString().slice(0, 10)}.xlsx`;
-                XLSX.writeFile(wb, fname);
+                writeFile(wb, fname);
               } finally {
                 setExporting(false);
               }
@@ -392,12 +427,16 @@ export default function Activities() {
                           outreach: 'Aufsuchend',
                         } as Record<string, string>
                       )[a.type] || a.type;
-                    const bg = colorForActivityType(a.type);
+                    const typeBgClass: Record<string, string> = {
+                      open_door: 'bg-cambridge-blue',
+                      project_open: 'bg-viridian',
+                      project_closed: 'bg-azure-web text-viridian',
+                      event: 'bg-mint-green text-viridian',
+                      outreach: 'bg-gray-700 text-white',
+                    };
+                    const cls = typeBgClass[a.type] || 'bg-gray-600 text-white';
                     return (
-                      <span
-                        className="px-2 py-1 text-white rounded text-xs"
-                        style={{ backgroundColor: bg }}
-                      >
+                      <span className={`px-2 py-1 rounded text-xs ${cls}`}>
                         {label}
                       </span>
                     );
@@ -431,11 +470,7 @@ export default function Activities() {
                     {(a.categories || []).map((c) => (
                       <span
                         key={c.id}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border"
-                        style={{
-                          backgroundColor: c.color ? `${c.color}26` : undefined,
-                          borderColor: c.color || undefined,
-                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-gray-300 text-gray-700"
                         title={c.name}
                       >
                         {c.name}
@@ -444,11 +479,7 @@ export default function Activities() {
                     {(a.tags || []).map((t) => (
                       <span
                         key={t.id}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border"
-                        style={{
-                          backgroundColor: t.color ? `${t.color}26` : undefined,
-                          borderColor: t.color || undefined,
-                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-gray-300 text-gray-700"
                         title={t.name}
                       >
                         <TagIcon className="w-3 h-3" /> {t.name}
@@ -624,11 +655,7 @@ export default function Activities() {
               {(a.categories || []).map((c) => (
                 <span
                   key={c.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border"
-                  style={{
-                    backgroundColor: c.color ? `${c.color}26` : undefined,
-                    borderColor: c.color || undefined,
-                  }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border border-gray-300 text-gray-700"
                   title={c.name}
                 >
                   {c.name}
@@ -637,11 +664,7 @@ export default function Activities() {
               {(a.tags || []).map((t) => (
                 <span
                   key={t.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border"
-                  style={{
-                    backgroundColor: t.color ? `${t.color}26` : undefined,
-                    borderColor: t.color || undefined,
-                  }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border border-gray-300 text-gray-700"
                   title={t.name}
                 >
                   <TagIcon className="w-3 h-3" /> {t.name}

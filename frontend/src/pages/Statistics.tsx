@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { CalendarClock } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar, LabelList } from 'recharts';
@@ -91,6 +92,7 @@ function useStatsByCategory(params: { from?: string; to?: string }) {
 export default function Statistics() {
   const [from, setFrom] = useState<string>('');
   const [to, setTo] = useState<string>('');
+  const [yearPickerOpen, setYearPickerOpen] = useState<boolean>(false);
   const [typeShowAbsolute, setTypeShowAbsolute] = useState<boolean>(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
   const qc = useQueryClient();
@@ -252,14 +254,58 @@ export default function Statistics() {
 
       {/* Time Range Selector */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-  <div className="flex gap-4 items-end flex-wrap">
+  <div className="flex gap-4 items-end flex-wrap relative">
           <div>
             <label className="block text-sm font-medium mb-1">Von</label>
-            <input type="date" className="border border-gray-300 rounded px-3 py-2" value={from} onChange={(e)=> setFrom(e.target.value)} />
+            <input type="date" title="Von" aria-label="Von" className="border border-gray-300 rounded px-3 py-2" value={from} onChange={(e)=> setFrom(e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Bis</label>
-            <input type="date" className="border border-gray-300 rounded px-3 py-2" value={to} onChange={(e)=> setTo(e.target.value)} />
+            <input type="date" title="Bis" aria-label="Bis" className="border border-gray-300 rounded px-3 py-2" value={to} onChange={(e)=> setTo(e.target.value)} />
+          </div>
+          {/* Quick year picker */}
+          <div className="relative">
+            <label className="block text-sm font-medium mb-1">Jahr</label>
+            <button
+              type="button"
+              title="Jahr auswählen"
+              aria-label="Jahr auswählen"
+              className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded"
+              onClick={() => setYearPickerOpen((v) => !v)}
+            >
+              <CalendarClock className="w-4 h-4" />
+              Schnell wählen
+            </button>
+            {yearPickerOpen && (
+              <div className="absolute z-10 mt-2 bg-white border border-gray-200 rounded shadow p-2">
+                <select
+                  title="Jahr auswählen"
+                  aria-label="Jahr auswählen"
+                  className="border rounded px-2 py-1"
+                  defaultValue={new Date().getFullYear()}
+                  onChange={(e) => {
+                    const y = parseInt(e.target.value, 10);
+                    if (!Number.isNaN(y)) {
+                      setFrom(`${y}-01-01`);
+                      setTo(`${y}-12-31`);
+                      // Trigger refetch of stats queries
+                      qc.invalidateQueries({
+                        predicate: (q) => {
+                          const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
+                          return typeof key0 === 'string' && key0.startsWith('stats:');
+                        },
+                        refetchType: 'active',
+                      });
+                    }
+                    setYearPickerOpen(false);
+                  }}
+                >
+                  {Array.from({ length: 8 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <button
             className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
@@ -332,14 +378,12 @@ export default function Statistics() {
               <button
                 className={`px-2 py-1 rounded ${!typeShowAbsolute ? 'bg-viridian text-white' : 'bg-gray-100 text-gray-700'}`}
                 onClick={() => setTypeShowAbsolute(false)}
-                aria-pressed={!typeShowAbsolute}
               >
                 Prozent
               </button>
               <button
                 className={`px-2 py-1 rounded ${typeShowAbsolute ? 'bg-viridian text-white' : 'bg-gray-100 text-gray-700'}`}
                 onClick={() => setTypeShowAbsolute(true)}
-                aria-pressed={typeShowAbsolute}
               >
                 Anzahl
               </button>

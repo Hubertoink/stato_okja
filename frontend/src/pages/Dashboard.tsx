@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
 import { useAuditLogs } from '@/lib/audit';
-import { Pencil, PlusCircle, Trash2 } from 'lucide-react';
+import { Pencil, PlusCircle, Trash2, StickyNote, Tag as TagIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
@@ -54,7 +54,7 @@ export default function Dashboard() {
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
   useActivities({ from, to });
-  const { data: audit } = useAuditLogs(10);
+  const { data: audit } = useAuditLogs(50);
   const [exportOpen, setExportOpen] = useState(false);
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
 
@@ -90,7 +90,32 @@ export default function Dashboard() {
   const fmt = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
   // keep date helpers only where needed; recent actions use locale string
 
-  // Export handled via ExportModal
+  // Build Daily Log: last 5 activities in current month that have notes and/or tags
+  const { data: activitiesMonth = [] } = useActivities({ from, to });
+  const dailyLog = useMemo(() => {
+    const candidates = (activitiesMonth || []).filter((a) => (a?.notes && a.notes.trim().length > 0) || (Array.isArray(a?.tags) && a.tags.length > 0));
+    // sort by date + startTime descending
+    const toKey = (a: { date?: string; startTime?: string | null }) => `${a.date || ''}T${a.startTime || '23:59'}`;
+    candidates.sort((a, b) => (toKey(b) > toKey(a) ? 1 : toKey(b) < toKey(a) ? -1 : 0));
+    const pick = candidates.slice(0, 5);
+    // Map create user from audit logs
+    const createById = new Map<string, { user?: string | null; at?: string }>();
+    for (const e of audit || []) {
+      if (e.entityType === 'activity' && e.action === 'create') {
+        createById.set(e.entityId, { user: e.userName || null, at: e.createdAt });
+      }
+    }
+    return pick.map((a) => ({
+      id: a.id,
+      title: a.title || '—',
+      type: a.type,
+      project: a.project?.title || undefined,
+      notes: a.notes || '',
+      tags: (a.tags || []).map((t) => ({ name: t.name, color: t.color || undefined })),
+      createdBy: createById.get(a.id)?.user || '—',
+      createdAt: createById.get(a.id)?.at || `${a.date || ''} ${a.startTime || ''}`,
+    }));
+  }, [activitiesMonth, audit]);
 
   return (
     <div>
@@ -133,6 +158,50 @@ export default function Dashboard() {
             Daten exportieren
           </button>
         </div>
+      </div>
+
+      {/* Daily Log */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 className="text-xl font-semibold mb-4 text-viridian">Daily Log</h3>
+        {dailyLog.length === 0 ? (
+          <div className="text-gray-500">Keine Aktivitäten mit Notizen oder Tags im aktuellen Zeitraum.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {dailyLog.map((item) => (
+              <div key={item.id} className="border rounded-lg p-4 bg-azure-web">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-viridian truncate" title={item.title}>{item.title}</h4>
+                  <span className="text-xs text-gray-600" title={new Date(item.createdAt || '').toLocaleString('de-DE')}>{new Date(item.createdAt || '').toLocaleDateString('de-DE')}</span>
+                </div>
+                <div className="text-xs text-gray-700 mb-2">
+                  <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-0.5 mr-2">
+                    {(() => {
+                      const labelMap: Record<string, string> = { open_door: 'Offene Tür', project_open: 'Projekt (offen)', project_closed: 'Projekt (geschlossen)', event: 'Veranstaltung', outreach: 'Aufsuchend' };
+                      return labelMap[item.type] || item.type;
+                    })()}
+                  </span>
+                  {item.project && <span className="inline-block text-gray-600">Projekt: {item.project}</span>}
+                </div>
+                {item.notes && (
+                  <div className="text-sm text-gray-800 mb-2 flex items-start gap-2">
+                    <StickyNote className="w-4 h-4 text-gray-500 mt-0.5" />
+                    <span className="whitespace-pre-wrap">{item.notes}</span>
+                  </div>
+                )}
+                {item.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {item.tags.map((t, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-gray-300 text-gray-700" title={t.name}>
+                        <TagIcon className="w-3 h-3" /> {t.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="text-xs text-gray-600">Erstellt von: {item.createdBy || '—'} · {new Date(item.createdAt || '').toLocaleString('de-DE')}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recent Actions */}

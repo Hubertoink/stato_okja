@@ -208,12 +208,15 @@ export default function Activities() {
                   ref: `A1:${utils.encode_col((rows[0]?.length || 1) - 1)}1`,
                 };
                 // Column widths
-                ws['!cols'] = (rows[0] || []).map((h, i) => ({ wch: i <= 3 ? 18 : Math.max(10, String(h).length + 2) }));
+                ws['!cols'] = (rows[0] || []).map((h, i) => ({
+                  wch: i <= 3 ? 18 : Math.max(10, String(h).length + 2),
+                }));
                 // Bold header
                 for (let c = 0; c < (rows[0]?.length || 0); c++) {
                   const addr = utils.encode_cell({ r: 0, c });
                   const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
-                  if (cell) cell.s = { ...(cell.s || {}), font: { ...(cell.s?.font || {}), bold: true } };
+                  if (cell)
+                    cell.s = { ...(cell.s || {}), font: { ...(cell.s?.font || {}), bold: true } };
                 }
                 // Colorize Typ column font by activity type color
                 const typeCol = 1; // 'Typ' column index in our header
@@ -232,7 +235,11 @@ export default function Activities() {
                   const rgb = 'FF' + hex.replace('#', '').toUpperCase();
                   const addr = utils.encode_cell({ r, c: typeCol });
                   const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
-                  if (cell) cell.s = { ...(cell.s || {}), font: { ...(cell.s?.font || {}), color: { rgb } } };
+                  if (cell)
+                    cell.s = {
+                      ...(cell.s || {}),
+                      font: { ...(cell.s?.font || {}), color: { rgb } },
+                    };
                 }
                 const wb = utils.book_new();
                 utils.book_append_sheet(wb, ws, 'Aktivitäten');
@@ -435,11 +442,7 @@ export default function Activities() {
                       outreach: 'bg-gray-700 text-white',
                     };
                     const cls = typeBgClass[a.type] || 'bg-gray-600 text-white';
-                    return (
-                      <span className={`px-2 py-1 rounded text-xs ${cls}`}>
-                        {label}
-                      </span>
-                    );
+                    return <span className={`px-2 py-1 rounded text-xs ${cls}`}>{label}</span>;
                   })()}
                 </td>
                 <td className="px-6 py-4 text-sm">

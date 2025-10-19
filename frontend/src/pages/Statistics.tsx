@@ -2,7 +2,22 @@ import { useState, useMemo, useRef } from 'react';
 import { CalendarClock } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar, LabelList } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  BarChart,
+  Bar,
+  LabelList,
+} from 'recharts';
 import { useAuth } from '@/lib/auth';
 import { useActivities } from '@/lib/activities';
 import { useTags } from '@/lib/taxonomy';
@@ -74,7 +89,14 @@ function useStatsByCohort(params: { from?: string; to?: string }) {
     queryKey: ['stats:by-cohort', params],
     queryFn: async () => {
       const res = await api.get('/stats/by-cohort', { params });
-      return res.data as Array<{ cohortId: string; name: string; total: number; male: number; female: number; diverse: number }>;
+      return res.data as Array<{
+        cohortId: string;
+        name: string;
+        total: number;
+        male: number;
+        female: number;
+        diverse: number;
+      }>;
     },
   });
 }
@@ -93,6 +115,7 @@ export default function Statistics() {
   const [from, setFrom] = useState<string>('');
   const [to, setTo] = useState<string>('');
   const [yearPickerOpen, setYearPickerOpen] = useState<boolean>(false);
+  const [yearDraft, setYearDraft] = useState<string>('');
   const [typeShowAbsolute, setTypeShowAbsolute] = useState<boolean>(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
   const qc = useQueryClient();
@@ -102,25 +125,43 @@ export default function Statistics() {
   const { data: byType } = useStatsByType(params);
   const { data: gender } = useStatsGender(params);
   const { data: timeseries } = useStatsParticipantsTimeseries(params);
+  // All-time series to build available years for quick picker
+  const { data: timeseriesAll = [] } = useStatsParticipantsTimeseries({});
+  const activityYears = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of timeseriesAll || []) {
+      if (d?.date) set.add(String(d.date).slice(0, 4));
+    }
+    return Array.from(set).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+  }, [timeseriesAll]);
   const { data: byCohort } = useStatsByCohort(params);
   const { data: byCategory } = useStatsByCategory(params);
   const { data: activities = [] } = useActivities(params);
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
 
-  const byTypeData = (byType || []).map((d, i) => ({ name: TYPE_LABEL[d.type] || d.type, value: d.count, color: COLORS[i % COLORS.length] }));
+  const byTypeData = (byType || []).map((d, i) => ({
+    name: TYPE_LABEL[d.type] || d.type,
+    value: d.count,
+    color: COLORS[i % COLORS.length],
+  }));
   const byTypeTotal = (byTypeData || []).reduce((sum, d) => sum + (d.value || 0), 0);
-  const genderData = gender ? [
-    { name: 'männlich', value: gender.male, color: '#60a5fa' },
-    { name: 'weiblich', value: gender.female, color: '#f472b6' },
-    { name: 'divers', value: gender.diverse, color: '#a78bfa' },
-  ] : [];
+  const genderData = gender
+    ? [
+        { name: 'männlich', value: gender.male, color: '#60a5fa' },
+        { name: 'weiblich', value: gender.female, color: '#f472b6' },
+        { name: 'divers', value: gender.diverse, color: '#a78bfa' },
+      ]
+    : [];
   const genderTotal = (genderData || []).reduce((sum, g) => sum + (g.value || 0), 0);
 
   const fmtNumber = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
 
   // Top Tags (by activities that include the tag)
-  type ActivityLite = { tags?: Array<{ id: string; name: string }>; project?: { id?: string; title?: string } };
+  type ActivityLite = {
+    tags?: Array<{ id: string; name: string }>;
+    project?: { id?: string; title?: string };
+  };
   const topTags = useMemo(() => {
     const map = new Map<string, { id: string; name: string; count: number }>();
     for (const a of activities as ActivityLite[]) {
@@ -131,7 +172,9 @@ export default function Statistics() {
         map.set(t.id, cur);
       }
     }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 10);
+    return Array.from(map.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
   }, [activities]);
 
   // Top Projekte (by activities that are linked to a project)
@@ -145,21 +188,35 @@ export default function Statistics() {
       cur.count += 1;
       map.set(pid, cur);
     }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 10);
+    return Array.from(map.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
   }, [activities]);
 
   // Color maps
   const tagColor = useMemo(() => {
     const m = new Map<string, string | undefined>();
-    for (const t of tagsAll as Array<{ id: string; color?: string | null }>) m.set(t.id, (t.color || undefined));
+    for (const t of tagsAll as Array<{ id: string; color?: string | null }>)
+      m.set(t.id, t.color || undefined);
     return m;
   }, [tagsAll]);
   const projectColor = useMemo(() => {
     const m = new Map<string, string | undefined>();
-    for (const p of projectsAll as Array<{ id: string; color?: string | null }>) m.set(p.id, (p.color || undefined));
+    for (const p of projectsAll as Array<{ id: string; color?: string | null }>)
+      m.set(p.id, p.color || undefined);
     return m;
   }, [projectsAll]);
-  const fallbackBarColors = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6', '#eab308', '#0ea5e9', '#a855f7'];
+  const fallbackBarColors = [
+    '#2563eb',
+    '#f59e0b',
+    '#10b981',
+    '#ef4444',
+    '#8b5cf6',
+    '#14b8a6',
+    '#eab308',
+    '#0ea5e9',
+    '#a855f7',
+  ];
 
   // Generic label renderer for bar charts (positions label above the bar)
   type LabelProps = { x?: number; y?: number; width?: number; value?: number | string };
@@ -184,9 +241,9 @@ export default function Statistics() {
     const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff' });
     const imgData = canvas.toDataURL('image/png');
 
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
-  const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
+    const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
 
     // Title header
     const orgTitle = user?.orgName || 'Organisation';
@@ -208,7 +265,16 @@ export default function Statistics() {
 
     if (imgHeightAtWidth <= availableHeight) {
       // Single-page case
-      pdf.addImage(imgData, 'PNG', margin, headerHeight, availableWidth, imgHeightAtWidth, undefined, 'FAST');
+      pdf.addImage(
+        imgData,
+        'PNG',
+        margin,
+        headerHeight,
+        availableWidth,
+        imgHeightAtWidth,
+        undefined,
+        'FAST',
+      );
     } else {
       // Multi-page: slice vertically into page-sized chunks
       const pageCanvas = document.createElement('canvas');
@@ -220,8 +286,27 @@ export default function Statistics() {
         pageCanvas.width = canvas.width;
         pageCanvas.height = Math.min(pagePxHeight, canvas.height);
         ctx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(canvas, 0, offset, pageCanvas.width, pageCanvas.height, 0, 0, pageCanvas.width, pageCanvas.height);
-        pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, headerHeight, availableWidth, availableHeight, undefined, 'FAST');
+        ctx.drawImage(
+          canvas,
+          0,
+          offset,
+          pageCanvas.width,
+          pageCanvas.height,
+          0,
+          0,
+          pageCanvas.width,
+          pageCanvas.height,
+        );
+        pdf.addImage(
+          pageCanvas.toDataURL('image/png'),
+          'PNG',
+          margin,
+          headerHeight,
+          availableWidth,
+          availableHeight,
+          undefined,
+          'FAST',
+        );
         offset += pagePxHeight;
 
         while (offset < canvas.height) {
@@ -235,17 +320,45 @@ export default function Statistics() {
           pageCanvas.width = canvas.width;
           pageCanvas.height = Math.min(pagePxHeight, canvas.height - offset);
           ctx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
-          ctx.drawImage(canvas, 0, offset, pageCanvas.width, pageCanvas.height, 0, 0, pageCanvas.width, pageCanvas.height);
-          pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, headerHeight, availableWidth, Math.min(availableHeight, pageCanvas.height * ratioW), undefined, 'FAST');
+          ctx.drawImage(
+            canvas,
+            0,
+            offset,
+            pageCanvas.width,
+            pageCanvas.height,
+            0,
+            0,
+            pageCanvas.width,
+            pageCanvas.height,
+          );
+          pdf.addImage(
+            pageCanvas.toDataURL('image/png'),
+            'PNG',
+            margin,
+            headerHeight,
+            availableWidth,
+            Math.min(availableHeight, pageCanvas.height * ratioW),
+            undefined,
+            'FAST',
+          );
           offset += pagePxHeight;
         }
       } else {
         // Fallback: single shrunken page if 2D context missing for some reason
-        pdf.addImage(imgData, 'PNG', margin, headerHeight, availableWidth, availableHeight, undefined, 'FAST');
+        pdf.addImage(
+          imgData,
+          'PNG',
+          margin,
+          headerHeight,
+          availableWidth,
+          availableHeight,
+          undefined,
+          'FAST',
+        );
       }
     }
 
-  pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
+    pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
   }
 
   return (
@@ -254,14 +367,28 @@ export default function Statistics() {
 
       {/* Time Range Selector */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-  <div className="flex gap-4 items-end flex-wrap relative">
+        <div className="flex gap-4 items-end flex-wrap relative">
           <div>
             <label className="block text-sm font-medium mb-1">Von</label>
-            <input type="date" title="Von" aria-label="Von" className="border border-gray-300 rounded px-3 py-2" value={from} onChange={(e)=> setFrom(e.target.value)} />
+            <input
+              type="date"
+              title="Von"
+              aria-label="Von"
+              className="border border-gray-300 rounded px-3 py-2"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Bis</label>
-            <input type="date" title="Bis" aria-label="Bis" className="border border-gray-300 rounded px-3 py-2" value={to} onChange={(e)=> setTo(e.target.value)} />
+            <input
+              type="date"
+              title="Bis"
+              aria-label="Bis"
+              className="border border-gray-300 rounded px-3 py-2"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
           </div>
           {/* Quick year picker */}
           <div className="relative">
@@ -282,12 +409,13 @@ export default function Statistics() {
                   title="Jahr auswählen"
                   aria-label="Jahr auswählen"
                   className="border rounded px-2 py-1"
-                  defaultValue={new Date().getFullYear()}
+                  value={yearDraft}
                   onChange={(e) => {
                     const y = parseInt(e.target.value, 10);
                     if (!Number.isNaN(y)) {
                       setFrom(`${y}-01-01`);
                       setTo(`${y}-12-31`);
+                      setYearDraft(String(y));
                       // Trigger refetch of stats queries
                       qc.invalidateQueries({
                         predicate: (q) => {
@@ -300,8 +428,13 @@ export default function Statistics() {
                     setYearPickerOpen(false);
                   }}
                 >
-                  {Array.from({ length: 8 }, (_, i) => new Date().getFullYear() - i).map((y) => (
-                    <option key={y} value={y}>{y}</option>
+                  <option value="" disabled>
+                    Jahr wählen
+                  </option>
+                  {activityYears.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -342,192 +475,292 @@ export default function Statistics() {
               ×
             </button>
           )}
-          <button className="bg-cambridge-blue text-white px-6 py-2 rounded-lg hover:bg-viridian transition-colors" onClick={exportPdf}>
+          <button
+            className="bg-cambridge-blue text-white px-6 py-2 rounded-lg hover:bg-viridian transition-colors"
+            onClick={exportPdf}
+          >
             Export (PDF)
           </button>
         </div>
       </div>
 
       <div ref={reportRef} className="">
-      {/* KPI Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6 text-center">
-          <p className="text-4xl font-bold text-viridian">{fmtNumber(summary?.totalActivities)}</p>
-          <p className="text-sm text-gray-600 mt-2">Aktivitäten</p>
+        {/* KPI Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-4xl font-bold text-viridian">
+              {fmtNumber(summary?.totalActivities)}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">Aktivitäten</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-4xl font-bold text-cambridge-blue">
+              {fmtNumber(summary?.totalParticipants)}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">Teilnehmende</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-4xl font-bold text-viridian">
+              {summary?.averageParticipants?.toLocaleString('de-DE')}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">Ø pro Aktivität</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-4xl font-bold text-cambridge-blue">
+              {summary?.totalHours?.toLocaleString('de-DE')}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">Gesamt-Stunden</p>
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6 text-center">
-          <p className="text-4xl font-bold text-cambridge-blue">{fmtNumber(summary?.totalParticipants)}</p>
-          <p className="text-sm text-gray-600 mt-2">Teilnehmende</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6 text-center">
-          <p className="text-4xl font-bold text-viridian">{summary?.averageParticipants?.toLocaleString('de-DE')}</p>
-          <p className="text-sm text-gray-600 mt-2">Ø pro Aktivität</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6 text-center">
-          <p className="text-4xl font-bold text-cambridge-blue">{summary?.totalHours?.toLocaleString('de-DE')}</p>
-          <p className="text-sm text-gray-600 mt-2">Gesamt-Stunden</p>
-        </div>
-      </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-viridian">Verteilung nach Tätigkeitstyp</h3>
-            <div className="flex items-center gap-2 text-sm">
-              <button
-                className={`px-2 py-1 rounded ${!typeShowAbsolute ? 'bg-viridian text-white' : 'bg-gray-100 text-gray-700'}`}
-                onClick={() => setTypeShowAbsolute(false)}
-              >
-                Prozent
-              </button>
-              <button
-                className={`px-2 py-1 rounded ${typeShowAbsolute ? 'bg-viridian text-white' : 'bg-gray-100 text-gray-700'}`}
-                onClick={() => setTypeShowAbsolute(true)}
-              >
-                Anzahl
-              </button>
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-viridian">Verteilung nach Tätigkeitstyp</h3>
+              <div className="flex items-center gap-2 text-sm">
+                <button
+                  className={`px-2 py-1 rounded ${!typeShowAbsolute ? 'bg-viridian text-white' : 'bg-gray-100 text-gray-700'}`}
+                  onClick={() => setTypeShowAbsolute(false)}
+                >
+                  Prozent
+                </button>
+                <button
+                  className={`px-2 py-1 rounded ${typeShowAbsolute ? 'bg-viridian text-white' : 'bg-gray-100 text-gray-700'}`}
+                  onClick={() => setTypeShowAbsolute(true)}
+                >
+                  Anzahl
+                </button>
+              </div>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    dataKey="value"
+                    data={byTypeData}
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={(entry: { value?: number; percent?: number }) =>
+                      typeShowAbsolute
+                        ? fmtNumber(entry.value || 0)
+                        : `${((entry.percent || 0) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
+                    }
+                  >
+                    {byTypeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(
+                      value: number,
+                      _name: string,
+                      entry?: { payload?: { name?: string } },
+                    ) => [
+                      typeShowAbsolute
+                        ? fmtNumber(value)
+                        : byTypeTotal > 0
+                          ? `${((value / byTypeTotal) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
+                          : '0 %',
+                      entry?.payload?.name || '',
+                    ]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie dataKey="value" data={byTypeData} nameKey="name" cx="50%" cy="50%" outerRadius={80}
-                  label={(entry: { value?: number; percent?: number }) => typeShowAbsolute
-                    ? fmtNumber(entry.value || 0)
-                    : `${(((entry.percent || 0)) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
-                  }>
-                  {byTypeData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number, _name: string, entry?: { payload?: { name?: string } }) => [
-                  typeShowAbsolute
-                    ? fmtNumber(value)
-                    : (byTypeTotal > 0 ? `${((value / byTypeTotal) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %` : '0 %'),
-                  entry?.payload?.name || '',
-                ]} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4 text-viridian">Geschlechterverteilung</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie dataKey="value" data={genderData} nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}
-                  label={({ percent }) => `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`}>
-                  {genderData.map((entry, index) => (
-                    <Cell key={`gcell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number, _name: string, entry?: { payload?: { name?: string } }) => [
-                  genderTotal > 0 ? `${((value / genderTotal) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %` : '0 %',
-                  entry?.payload?.name || '',
-                ]} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4 text-viridian">Geschlechterverteilung</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    dataKey="value"
+                    data={genderData}
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    label={({ percent }) =>
+                      `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
+                    }
+                  >
+                    {genderData.map((entry, index) => (
+                      <Cell key={`gcell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(
+                      value: number,
+                      _name: string,
+                      entry?: { payload?: { name?: string } },
+                    ) => [
+                      genderTotal > 0
+                        ? `${((value / genderTotal) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
+                        : '0 %',
+                      entry?.payload?.name || '',
+                    ]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
 
-        {/* Other charts remain placeholders for now */}
-        <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-          <h3 className="text-lg font-semibold mb-4 text-viridian">Zeitverlauf Teilnehmende</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={timeseries || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} labelFormatter={(l)=> `Datum: ${l}`} />
-                <Legend />
-                <Line type="monotone" dataKey="totalParticipants" name="Teilnehmende" stroke="#10b981" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+          {/* Other charts remain placeholders for now */}
+          <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
+            <h3 className="text-lg font-semibold mb-4 text-viridian">Zeitverlauf Teilnehmende</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={timeseries || []}
+                  margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value: number) => value.toLocaleString('de-DE')}
+                    labelFormatter={(l) => `Datum: ${l}`}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="totalParticipants"
+                    name="Teilnehmende"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4 text-viridian">Alterskohorten</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byCohort || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-15} textAnchor="end" height={50} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
-                <Bar dataKey="total" name="Teilnehmende" fill="#2563eb">
-                  <LabelList dataKey="total" content={<ValueLabel />} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4 text-viridian">Alterskohorten</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byCohort || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                    angle={-15}
+                    textAnchor="end"
+                    height={50}
+                  />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
+                  <Bar dataKey="total" name="Teilnehmende" fill="#2563eb">
+                    <LabelList dataKey="total" content={<ValueLabel />} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4 text-viridian">Top Kategorien</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byCategory || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-15} textAnchor="end" height={50} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
-                <Bar dataKey="count" name="Aktivitäten">
-                  {(byCategory || []).map((_, i) => (
-                    <Cell key={`bc-${i}`} fill={fallbackBarColors[i % fallbackBarColors.length]} />
-                  ))}
-                  <LabelList dataKey="count" content={<ValueLabel />} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4 text-viridian">Top Kategorien</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={byCategory || []}
+                  margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                    angle={-15}
+                    textAnchor="end"
+                    height={50}
+                  />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
+                  <Bar dataKey="count" name="Aktivitäten">
+                    {(byCategory || []).map((_, i) => (
+                      <Cell
+                        key={`bc-${i}`}
+                        fill={fallbackBarColors[i % fallbackBarColors.length]}
+                      />
+                    ))}
+                    <LabelList dataKey="count" content={<ValueLabel />} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tags</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topTags} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-15} textAnchor="end" height={50} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
-                <Bar dataKey="count" name="Aktivitäten">
-                  {topTags.map((t, i) => (
-                    <Cell key={`tt-${t.id}`} fill={tagColor.get(t.id) || fallbackBarColors[i % fallbackBarColors.length]} />
-                  ))}
-                  <LabelList dataKey="count" content={<ValueLabel />} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tags</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topTags} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                    angle={-15}
+                    textAnchor="end"
+                    height={50}
+                  />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
+                  <Bar dataKey="count" name="Aktivitäten">
+                    {topTags.map((t, i) => (
+                      <Cell
+                        key={`tt-${t.id}`}
+                        fill={tagColor.get(t.id) || fallbackBarColors[i % fallbackBarColors.length]}
+                      />
+                    ))}
+                    <LabelList dataKey="count" content={<ValueLabel />} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4 text-viridian">Top Projekte</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topProjects} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-15} textAnchor="end" height={50} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
-                <Bar dataKey="count" name="Aktivitäten">
-                  {topProjects.map((p, i) => (
-                    <Cell key={`tp-${p.id}`} fill={projectColor.get(p.id) || fallbackBarColors[i % fallbackBarColors.length]} />
-                  ))}
-                  <LabelList dataKey="count" content={<ValueLabel />} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4 text-viridian">Top Projekte</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topProjects} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                    angle={-15}
+                    textAnchor="end"
+                    height={50}
+                  />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
+                  <Bar dataKey="count" name="Aktivitäten">
+                    {topProjects.map((p, i) => (
+                      <Cell
+                        key={`tp-${p.id}`}
+                        fill={
+                          projectColor.get(p.id) || fallbackBarColors[i % fallbackBarColors.length]
+                        }
+                      />
+                    ))}
+                    <LabelList dataKey="count" content={<ValueLabel />} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );

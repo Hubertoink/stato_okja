@@ -4,7 +4,8 @@ import Modal from './Modal';
 import type { Activity } from '@/lib/activities';
 import { useActivities } from '@/lib/activities';
 import type { Cohort } from '@/lib/taxonomy';
-import { useCohorts } from '@/lib/taxonomy';
+import { useCohorts, useCategories } from '@/lib/taxonomy';
+import { colorForActivityType } from '@/lib/colors';
 
 function csvEscape(value: unknown): string {
   const s = String(value ?? '');
@@ -57,6 +58,7 @@ export default function ExportModal({
       : `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
   const { data: activities = [] } = useActivities({ from, to });
   const { data: cohorts } = useCohorts({ active: true });
+  const { data: categoriesList = [] } = useCategories({ active: true });
 
   const cohortIndex = useMemo(() => {
     const map = new Map<string, Cohort>();
@@ -70,6 +72,27 @@ export default function ExportModal({
   // Use all active cohorts as dynamic columns in raw exports, ordered by sortOrder/minAge
   const cohortColumns = useMemo(() => Array.from(cohortIndex.values()), [cohortIndex]);
 
+  const categoryNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    categoriesList.forEach((c) => m.set(c.id, c.name));
+    return m;
+  }, [categoriesList]);
+
+  const projectMainCategoryName = (a: Activity): string => {
+    if (a.project?.type === 'open_door') return '';
+    const cid = (a.project && (a.project as unknown as { categoryId?: string | null }).categoryId) || null;
+    if (cid && categoryNameById.has(cid)) return categoryNameById.get(cid) || '';
+    // fallback to project.categories if present
+    const names = Array.isArray((a.project as unknown as { categories?: Array<{ name?: string }> }).categories)
+      ? ((a.project as unknown as { categories?: Array<{ name?: string }> }).categories || [])
+          .map((c) => c?.name)
+          .filter(Boolean)
+      : [];
+    return names.join(' | ');
+  };
+
+  const hhmm = (t?: string | null) => (t ? String(t).slice(0, 5) : '');
+
   const getCohortTotal = (a: Activity, cohortId: string) => {
     if (!Array.isArray(a.cohorts)) return 0;
     let sum = 0;
@@ -82,20 +105,16 @@ export default function ExportModal({
   const downloadRaw = () => {
     const rows: string[][] = [];
     const header = [
-      'id',
       'datum',
       'start',
       'ende',
       'dauer_min',
       'typ',
       'titel',
-      'projekt_id',
       'projekt',
       'projekt_typ',
-      'kategorie_ids',
       'kategorien',
       'tags',
-      'ort_id',
       'ort',
       'mitarbeitende',
       'teilnehmende_total',
@@ -107,27 +126,22 @@ export default function ExportModal({
     ];
     rows.push(header);
     for (const a of activities) {
-      const isOpenDoor = a.project?.type === 'open_door';
-      const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
-      const catIds = isOpenDoor ? '' : a.categories?.map((c) => c.id).join('|') || '';
+  const isOpenDoor = a.project?.type === 'open_door';
+  const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
       const cohortTotals = cohortColumns.map((c) => String(getCohortTotal(a, c.id)));
       rows.push([
-        a.id,
         a.date?.slice(0, 10) || '',
-        a.startTime || '',
-        a.endTime || '',
+        hhmm(a.startTime),
+        hhmm(a.endTime),
         String(computeDurationMinutes(a)),
         typeLabel(a.type),
         a.title || '',
-        a.project?.id || '',
         a.project?.title || '',
         typeLabel(a.project?.type),
-        catIds,
         cats,
         tags,
-        a.location?.id || '',
         a.location?.name || '',
         staff,
         String(a.countTotal ?? 0),
@@ -157,10 +171,7 @@ export default function ExportModal({
     for (const a of activities) {
       const key = a.project?.id || `ohne-projekt:${a.project?.title || a.type}`;
       const projekt = a.project?.title || 'Ohne Projekt';
-      const kategorie =
-        a.project?.type === 'open_door'
-          ? ''
-          : a.project?.categories?.map((c) => c.name).join(' | ') || '';
+      const kategorie = projectMainCategoryName(a);
       const typ = typeLabel(a.project?.type || a.type || '');
       const gk = groups.get(key);
       if (!gk) groups.set(key, { key, projekt, kategorie, typ, items: [a] });
@@ -246,10 +257,7 @@ export default function ExportModal({
     for (const a of activities) {
       const key = a.project?.id || `ohne-projekt:${a.project?.title || a.type}`;
       const projekt = a.project?.title || 'Ohne Projekt';
-      const kategorie =
-        a.project?.type === 'open_door'
-          ? ''
-          : a.project?.categories?.map((c) => c.name).join(' | ') || '';
+      const kategorie = projectMainCategoryName(a);
       const typ = typeLabel(a.project?.type || a.type || '');
       const gk = groups.get(key);
       if (!gk) groups.set(key, { key, projekt, kategorie, typ, items: [a] });
@@ -333,20 +341,16 @@ export default function ExportModal({
     const { utils, writeFile } = xlsx;
     // Raw sheet
     const rawHeader = [
-      'ID',
       'Datum',
       'Start',
       'Ende',
       'Dauer (Minuten)',
       'Typ',
       'Titel',
-      'Projekt-ID',
       'Projekt',
       'Projekt-Typ',
-      'Kategorie-IDs',
       'Kategorien',
       'Tags',
-      'Ort-ID',
       'Ort',
       'Mitarbeitende',
       'Teilnehmende (Total)',
@@ -357,27 +361,22 @@ export default function ExportModal({
       ...cohortColumns.map((c) => `Kohorte: ${c.name}`),
     ];
     const rawRows = activities.map((a) => {
-      const isOpenDoor = a.project?.type === 'open_door';
-      const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
-      const catIds = isOpenDoor ? '' : a.categories?.map((c) => c.id).join('|') || '';
+  const isOpenDoor = a.project?.type === 'open_door';
+  const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
       const cohortTotals = cohortColumns.map((c) => getCohortTotal(a, c.id));
       return [
-        a.id,
         a.date?.slice(0, 10) || '',
-        a.startTime || '',
-        a.endTime || '',
+        hhmm(a.startTime),
+        hhmm(a.endTime),
         computeDurationMinutes(a),
         typeLabel(a.type),
         a.title || '',
-        a.project?.id || '',
         a.project?.title || '',
         typeLabel(a.project?.type),
-        catIds,
         cats,
         tags,
-        a.location?.id || '',
         a.location?.name || '',
         staff,
         a.countTotal ?? 0,
@@ -444,6 +443,25 @@ export default function ExportModal({
       setCellStyle(0, genderStart, { font: { bold: true }, ...grayFill });
     if (consHeaderTop[cohortStart])
       setCellStyle(0, cohortStart, { font: { bold: true }, ...greenFill });
+
+    // Colorize the Typ column (index 2) using app type colors (font color)
+    const typeColIndex = 2;
+    for (let r = 2; r < matrix.length; r++) {
+      const typeText = String(matrix[r][typeColIndex] ?? '');
+      // Map back to code by inverse label match is tricky; instead, inspect first item's type of group during build
+      // We will approximate by deriving color from the visible label using known mapping
+      const labelToCode: Record<string, string> = {
+        'Offene Tür': 'open_door',
+        'Projekt (offen)': 'project_open',
+        'Projekt (geschlossen)': 'project_closed',
+        'Veranstaltung': 'event',
+        'Aufsuchend': 'outreach',
+      };
+      const code = labelToCode[typeText] || undefined;
+      const hex = colorForActivityType(code);
+      const rgb = 'FF' + hex.replace('#', '').toUpperCase();
+      setCellStyle(r, typeColIndex, { font: { color: { rgb } } });
+    }
 
     const wb = utils.book_new();
     utils.book_append_sheet(wb, rawSheet, 'Rohdaten');

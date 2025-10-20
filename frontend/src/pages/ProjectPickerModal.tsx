@@ -1,6 +1,7 @@
 import { useProjects, Project } from '@/lib/projects';
 import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { Link } from 'react-router-dom';
 import { X as XIcon } from 'lucide-react';
 import { Star } from 'lucide-react';
@@ -17,6 +18,8 @@ export default function ProjectPickerModal({
   onPick: (p: Project) => void;
   onClose: () => void;
 }) {
+  // This component mounts only when open – lock body scroll while mounted
+  useBodyScrollLock(true);
   const [search, setSearch] = useState('');
   const { data } = useProjects({ archived: false, search });
   const projects = useMemo(() => {

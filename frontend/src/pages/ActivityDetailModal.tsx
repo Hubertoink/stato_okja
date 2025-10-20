@@ -9,6 +9,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import type { Activity } from '@/lib/activities';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 const typeLabel: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -27,6 +28,8 @@ export default function ActivityDetailModal({
   onClose: () => void;
   onEdit?: (a: Activity) => void;
 }) {
+  // Component mounts only when open – lock body scroll while mounted
+  useBodyScrollLock(true);
   const dateStr = (() => {
     const s = (activity.date || '').slice(0, 10);
     const [y, m, d] = s.split('-');

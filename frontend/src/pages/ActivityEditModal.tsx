@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import type { KeyboardEvent } from 'react';
 import { X as XIcon, Save as SaveIcon, Trash2 as TrashIcon } from 'lucide-react';
 import { useActivity, useUpdateActivity, useRemoveActivity, Activity } from '@/lib/activities';
@@ -15,6 +16,8 @@ import { useToast } from '@/components/Toast';
 type GenderKey = 'm' | 'w' | 'd';
 
 export default function ActivityEditModal({ id, onClose }: { id: string; onClose: () => void }) {
+  // This component mounts only when open – lock body scroll while mounted
+  useBodyScrollLock(true);
   const { data: activity } = useActivity(id);
   const { data: projects } = useProjects({ archived: false });
   const { data: locations } = useLocations({ active: true });

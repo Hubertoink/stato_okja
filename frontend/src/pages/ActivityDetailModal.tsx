@@ -9,6 +9,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import type { Activity } from '@/lib/activities';
+import { getBgClass } from '@/lib/colorPalette';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 const typeLabel: Record<string, string> = {
@@ -144,7 +145,7 @@ export default function ActivityDetailModal({
                 {activity.categories.map((c) => (
                   <span
                     key={c.id}
-                    className="px-2 py-1 rounded-full text-xs border border-gray-300 text-gray-700"
+                    className={`px-2 py-1 rounded-full text-xs text-white ${getBgClass(c.color as string, 'bg-slate-400')}`}
                     title={c.name}
                   >
                     {c.name}
@@ -163,7 +164,7 @@ export default function ActivityDetailModal({
                 {activity.tags.map((t) => (
                   <span
                     key={t.id}
-                    className="px-2 py-1 rounded-full text-xs border border-gray-300 text-gray-700"
+                    className={`px-2 py-1 rounded-full text-xs text-white ${getBgClass(t.color as string, 'bg-slate-500')}`}
                     title={t.name}
                   >
                     {t.name}

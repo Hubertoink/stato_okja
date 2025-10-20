@@ -12,6 +12,7 @@ import { useLocations } from '@/lib/locations';
 import { useToast } from '@/components/Toast';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { createPortal } from 'react-dom';
+import { getBgClass } from '@/lib/colorPalette';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -207,19 +208,29 @@ export default function ActivityQuickAdd({
         </h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1">Datum *</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="activity-date">
+              Datum *
+            </label>
             <input
+              id="activity-date"
               type="date"
               value={(form.date || '').slice(0, 10)}
-              onChange={(e: any) => setForm({ ...form, date: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setForm({ ...form, date: e.target.value })
+              }
               className="w-full border rounded px-3 py-2"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Standort</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="location-select">
+              Standort
+            </label>
             <select
+              id="location-select"
               value={form.locationId || ''}
-              onChange={(e: any) => setForm({ ...form, locationId: e.target.value || undefined })}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setForm({ ...form, locationId: e.target.value || undefined })
+              }
               className="w-full border rounded px-3 py-2"
             >
               <option value="">— Standort wählen —</option>
@@ -231,10 +242,15 @@ export default function ActivityQuickAdd({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Titel</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="activity-title">
+              Titel
+            </label>
             <input
+              id="activity-title"
               value={form.title || ''}
-              onChange={(e: any) => setForm({ ...form, title: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setForm({ ...form, title: e.target.value })
+              }
               className="w-full border rounded px-3 py-2"
               placeholder="z. B. Werkraum, Offene Tür"
             />
@@ -275,7 +291,9 @@ export default function ActivityQuickAdd({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">Start</label>
+              <label className="block text-sm font-medium mb-1" htmlFor="start-time">
+                Start
+              </label>
               <input
                 id="start-time"
                 type="time"
@@ -284,6 +302,8 @@ export default function ActivityQuickAdd({
                   setForm({ ...form, start: e.target.value })
                 }
                 className="w-full border rounded px-3 py-2"
+                placeholder="HH:MM"
+                title="Start"
               />
             </div>
             <div>
@@ -298,6 +318,8 @@ export default function ActivityQuickAdd({
                   setForm({ ...form, end: e.target.value })
                 }
                 className="w-full border rounded px-3 py-2"
+                placeholder="HH:MM"
+                title="Ende"
               />
             </div>
           </div>
@@ -386,8 +408,13 @@ export default function ActivityQuickAdd({
                 };
                 const ageLabel = (() => {
                   const from =
-                    typeof (c as any).minAge === 'number' ? (c as any).minAge : undefined;
-                  const to = typeof (c as any).maxAge === 'number' ? (c as any).maxAge : undefined;
+                    typeof (c as { minAge?: number }).minAge === 'number'
+                      ? (c as { minAge?: number }).minAge
+                      : undefined;
+                  const to =
+                    typeof (c as { maxAge?: number }).maxAge === 'number'
+                      ? (c as { maxAge?: number }).maxAge
+                      : undefined;
                   if (from != null && to != null) return `${from}–${to} Jahre`;
                   if (from != null) return `ab ${from} Jahre`;
                   if (to != null) return `bis ${to} Jahre`;
@@ -451,7 +478,7 @@ export default function ActivityQuickAdd({
                         else set.add(c.id);
                         setForm({ ...form, categoryIds: Array.from(set) });
                       }}
-                      className={`px-2 py-1 rounded-full text-xs border ${active ? 'bg-cambridge-blue text-white border-cambridge-blue' : 'bg-white text-gray-700 border-gray-300'}`}
+                      className={`px-2 py-1 rounded-full text-xs border ${active ? `${getBgClass(c.color as string, 'bg-slate-400')} text-white border-transparent` : 'bg-white text-gray-700 border-gray-300'}`}
                     >
                       {c.name}
                     </button>
@@ -478,7 +505,7 @@ export default function ActivityQuickAdd({
                       else set.add(t.id);
                       setForm({ ...form, tagIds: Array.from(set) });
                     }}
-                    className={`px-2 py-1 rounded-full text-xs border ${active ? 'bg-cambridge-blue text-white border-cambridge-blue' : 'bg-white text-gray-700 border-gray-300'}`}
+                    className={`px-2 py-1 rounded-full text-xs border ${active ? `${getBgClass(t.color as string, 'bg-slate-500')} text-white border-transparent` : 'bg-white text-gray-700 border-gray-300'}`}
                   >
                     {t.name}
                   </button>

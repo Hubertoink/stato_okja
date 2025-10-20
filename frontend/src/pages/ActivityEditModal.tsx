@@ -12,6 +12,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { Boxes } from 'lucide-react';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useToast } from '@/components/Toast';
+import { getBgClass } from '@/lib/colorPalette';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -172,18 +173,25 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                         },
                       });
                     }}
+                    placeholder="0"
+                    title={g === 'm' ? 'Männlich' : g === 'w' ? 'Weiblich' : 'Divers'}
                     className={`w-full border rounded px-3 py-2 ${
                       hasCohortData ? 'bg-gray-100 cursor-not-allowed' : ''
                     }`}
                     disabled={hasCohortData}
                   />
                   <div>
-                    <label className="block text-sm font-medium mb-1">Ende</label>
+                    <label className="block text-sm font-medium mb-1" htmlFor={`inline-end-${g}`}>
+                      Ende
+                    </label>
                     <input
+                      id={`inline-end-${g}`}
                       type="time"
                       value={form.end || ''}
                       onChange={(e) => setForm({ ...form, end: e.target.value })}
                       className="w-full border rounded px-3 py-2"
+                      placeholder="HH:MM"
+                      title="Ende"
                     />
                   </div>
                 </div>
@@ -196,8 +204,11 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Standort *</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="location-select-edit">
+              Standort *
+            </label>
             <select
+              id="location-select-edit"
               value={form.locationId || ''}
               onChange={(e) => setForm({ ...form, locationId: e.target.value || undefined })}
               className="w-full border rounded px-3 py-2"
@@ -255,13 +266,17 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">Start</label>
+              <label className="block text-sm font-medium mb-1" htmlFor="start-time-edit">
+                Start
+              </label>
               <input
                 id="start-time-edit"
                 type="time"
                 value={form.start || ''}
                 onChange={(e) => setForm({ ...form, start: e.target.value })}
                 className="w-full border rounded px-3 py-2"
+                placeholder="HH:MM"
+                title="Start"
               />
             </div>
             <div>
@@ -275,6 +290,8 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                   value={form.end || ''}
                   onChange={(e) => setForm({ ...form, end: e.target.value })}
                   className="w-full border rounded px-3 py-2 pr-10"
+                  placeholder="HH:MM"
+                  title="Ende"
                 />
                 <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-500 text-sm">
                   Uhr
@@ -429,7 +446,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                         else set.add(c.id);
                         setForm({ ...form, categoryIds: Array.from(set) });
                       }}
-                      className={`px-2 py-1 rounded-full text-xs border ${active ? 'bg-cambridge-blue text-white border-cambridge-blue' : 'bg-white text-gray-700 border-gray-300'}`}
+                      className={`px-2 py-1 rounded-full text-xs border ${active ? `${getBgClass(c.color as string, 'bg-slate-400')} text-white border-transparent` : 'bg-white text-gray-700 border-gray-300'}`}
                     >
                       {c.name}
                     </button>
@@ -454,7 +471,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                       else set.add(t.id);
                       setForm({ ...form, tagIds: Array.from(set) });
                     }}
-                    className={`px-2 py-1 rounded-full text-xs border ${active ? 'bg-cambridge-blue text-white border-cambridge-blue' : 'bg-white text-gray-700 border-gray-300'}`}
+                    className={`px-2 py-1 rounded-full text-xs border ${active ? `${getBgClass(t.color as string, 'bg-slate-500')} text-white border-transparent` : 'bg-white text-gray-700 border-gray-300'}`}
                   >
                     {t.name}
                   </button>

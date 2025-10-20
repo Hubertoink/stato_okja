@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FIXED_PALETTE, isInFixedPalette, getBgClass } from '@/lib/colorPalette';
+import { TAG_PALETTE, isInTagPalette, getBgClass } from '@/lib/colorPalette';
 import Toggle from '@/components/Toggle';
 import { Tag, useCreateTag, useDeleteTag, useTags, useUpdateTag } from '@/lib/taxonomy';
 import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
@@ -19,7 +19,7 @@ function TagForm({
 }) {
   const [form, setForm] = useState<Partial<Tag>>({ active: true, ...initial });
   const update = <K extends keyof Tag>(k: K, v: Tag[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const swatches = FIXED_PALETTE;
+  const swatches = TAG_PALETTE;
   return (
     <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
       <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
@@ -52,7 +52,7 @@ function TagForm({
                 />
               ))}
             </div>
-            {!isInFixedPalette(form.color as string) && (
+            {!isInTagPalette(form.color as string) && (
               <p className="text-xs text-gray-500">
                 Hinweis: Farben sind auf die feste Palette begrenzt.
               </p>
@@ -248,9 +248,7 @@ export default function SettingsTags() {
             if (modal.mode === 'create') {
               // Tags sind per Default aktiv
               // Enforce palette on create: fallback to first palette color if invalid
-              const color = isInFixedPalette(values.color as string)
-                ? values.color
-                : FIXED_PALETTE[0];
+              const color = isInTagPalette(values.color as string) ? values.color : TAG_PALETTE[0];
               create.mutate(
                 { ...values, color, active: true },
                 { onSuccess: () => setModal(null) },
@@ -259,11 +257,11 @@ export default function SettingsTags() {
               const { id: _r, ...rest } = (values || {}) as Partial<Tag>;
               void _r;
               // Enforce palette on update
-              const color = isInFixedPalette(rest.color as string)
+              const color = isInTagPalette(rest.color as string)
                 ? rest.color
-                : isInFixedPalette(modal.tag?.color as string)
+                : isInTagPalette(modal.tag?.color as string)
                   ? modal.tag?.color
-                  : FIXED_PALETTE[0];
+                  : TAG_PALETTE[0];
               update.mutate(
                 { id: modal.tag.id, data: { ...rest, color } },
                 { onSuccess: () => setModal(null) },

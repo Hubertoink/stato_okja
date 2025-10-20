@@ -7,8 +7,33 @@ import { X as XIcon } from 'lucide-react';
 import { Star } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
 
-function pickBg(p: Project) {
-  return p.color || colorFromStringHash(p.title);
+// Map project to one of a stable set of Tailwind classes (avoid inline styles)
+function bgClassForProject(p: Project) {
+  const colors = [
+    'bg-rose-200',
+    'bg-pink-200',
+    'bg-fuchsia-200',
+    'bg-purple-200',
+    'bg-violet-200',
+    'bg-indigo-200',
+    'bg-blue-200',
+    'bg-sky-200',
+    'bg-cyan-200',
+    'bg-teal-200',
+    'bg-emerald-200',
+    'bg-green-200',
+    'bg-lime-200',
+    'bg-yellow-200',
+    'bg-amber-200',
+    'bg-orange-200',
+    'bg-red-200',
+    'bg-stone-200',
+  ];
+  const key = p.color || colorFromStringHash(p.title);
+  // Simple stable hash to bucket index
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return colors[h % colors.length];
 }
 
 export default function ProjectPickerModal({
@@ -77,7 +102,7 @@ export default function ProjectPickerModal({
                     className="absolute inset-0 w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="absolute inset-0" style={{ backgroundColor: pickBg(p) }} />
+                  <div className={`absolute inset-0 ${bgClassForProject(p)}`} />
                 )}
                 {/* Type badge overlay */}
                 <div className="absolute top-1 left-1 z-10">

@@ -229,7 +229,11 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
               >
                 <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
                   {selectedProject.imageUrl ? (
-                    <img src={selectedProject.imageUrl} className="w-full h-full object-cover" />
+                    <img
+                      src={selectedProject.imageUrl}
+                      alt={selectedProject.title}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <Boxes className="w-6 h-6 text-gray-500" />
                   )}
@@ -253,6 +257,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             <div>
               <label className="block text-sm font-medium mb-1">Start</label>
               <input
+                id="start-time-edit"
                 type="time"
                 value={form.start || ''}
                 onChange={(e) => setForm({ ...form, start: e.target.value })}
@@ -260,9 +265,12 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Ende</label>
+              <label htmlFor="end-time-edit" className="block text-sm font-medium mb-1">
+                Ende
+              </label>
               <div className="relative">
                 <input
+                  id="end-time-edit"
                   type="time"
                   value={form.end || ''}
                   onChange={(e) => setForm({ ...form, end: e.target.value })}
@@ -411,7 +419,6 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
               <div className="flex flex-wrap gap-2">
                 {(categories || []).map((c) => {
                   const active = (form.categoryIds || []).includes(c.id);
-                  const bg = c.color || '#7aa39a';
                   return (
                     <button
                       key={c.id}
@@ -422,12 +429,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                         else set.add(c.id);
                         setForm({ ...form, categoryIds: Array.from(set) });
                       }}
-                      className={`px-2 py-1 rounded-full text-xs border`}
-                      style={
-                        active
-                          ? { backgroundColor: bg, color: '#fff', borderColor: bg }
-                          : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
-                      }
+                      className={`px-2 py-1 rounded-full text-xs border ${active ? 'bg-cambridge-blue text-white border-cambridge-blue' : 'bg-white text-gray-700 border-gray-300'}`}
                     >
                       {c.name}
                     </button>
@@ -442,7 +444,6 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             <div className="flex flex-wrap gap-2">
               {(tags || []).map((t) => {
                 const active = form.tagIds?.includes(t.id);
-                const bg = t.color || '#7aa39a';
                 return (
                   <button
                     key={t.id}
@@ -453,12 +454,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                       else set.add(t.id);
                       setForm({ ...form, tagIds: Array.from(set) });
                     }}
-                    className={`px-2 py-1 rounded-full text-xs border`}
-                    style={
-                      active
-                        ? { backgroundColor: bg, color: '#fff', borderColor: bg }
-                        : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
-                    }
+                    className={`px-2 py-1 rounded-full text-xs border ${active ? 'bg-cambridge-blue text-white border-cambridge-blue' : 'bg-white text-gray-700 border-gray-300'}`}
                   >
                     {t.name}
                   </button>
@@ -531,12 +527,17 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
           </div>
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium mb-1">Notizen</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="activity-notes-edit">
+              Notizen
+            </label>
             <textarea
+              id="activity-notes-edit"
               value={form.notes || ''}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={3}
               className="w-full border rounded px-3 py-2"
+              placeholder="Notizen zur Aktivität"
+              aria-label="Notizen zur Aktivität"
             />
           </div>
         </div>

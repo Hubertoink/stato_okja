@@ -144,11 +144,8 @@ export default function ActivityDetailModal({
                 {activity.categories.map((c) => (
                   <span
                     key={c.id}
-                    className="px-2 py-1 rounded-full text-xs border"
-                    style={{
-                      backgroundColor: c.color ? `${c.color}26` : undefined,
-                      borderColor: c.color || undefined,
-                    }}
+                    className="px-2 py-1 rounded-full text-xs border border-gray-300 text-gray-700"
+                    title={c.name}
                   >
                     {c.name}
                   </span>
@@ -166,12 +163,8 @@ export default function ActivityDetailModal({
                 {activity.tags.map((t) => (
                   <span
                     key={t.id}
-                    className="px-2 py-1 rounded-full text-xs border"
-                    style={{
-                      backgroundColor: t.color || '#fff',
-                      color: t.color ? '#fff' : '#374151',
-                      borderColor: t.color || '#cbd5e1',
-                    }}
+                    className="px-2 py-1 rounded-full text-xs border border-gray-300 text-gray-700"
+                    title={t.name}
                   >
                     {t.name}
                   </span>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { FIXED_PALETTE, getBgClass, isInFixedPalette } from '@/lib/colorPalette';
 import Toggle from '@/components/Toggle';
 import {
   Category,
@@ -25,18 +26,7 @@ function CategoryForm({
   const [form, setForm] = useState<Partial<Category>>({ active: true, ...initial });
   const update = <K extends keyof Category>(k: K, v: Category[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
-  const swatches = [
-    '#2563eb',
-    '#ef4444',
-    '#f59e0b',
-    '#10b981',
-    '#8b5cf6',
-    '#ec4899',
-    '#f97316',
-    '#14b8a6',
-    '#22c55e',
-    '#0ea5e9',
-  ];
+  const swatches = FIXED_PALETTE;
   return (
     <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
       <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
@@ -45,16 +35,24 @@ function CategoryForm({
         </h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1">Name *</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="category-name">
+              Name *
+            </label>
             <input
+              id="category-name"
+              placeholder="z. B. Beratung"
               value={form.name || ''}
               onChange={(e) => update('name', e.target.value)}
               className="w-full border rounded px-3 py-2"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Beschreibung</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="category-desc">
+              Beschreibung
+            </label>
             <textarea
+              id="category-desc"
+              placeholder="Optional: kurze Beschreibung…"
               value={form.description || ''}
               onChange={(e) => update('description', e.target.value)}
               rows={3}
@@ -65,6 +63,8 @@ function CategoryForm({
             <div>
               <label className="block text-sm font-medium mb-1">Standard-Referenz</label>
               <input
+                id="category-standard-ref"
+                placeholder="z. B. §11 Nr. 3 SGB VIII"
                 value={form.standardRef || ''}
                 onChange={(e) => update('standardRef', e.target.value)}
                 className="w-full border rounded px-3 py-2"
@@ -78,18 +78,16 @@ function CategoryForm({
                     key={c}
                     type="button"
                     onClick={() => update('color', c as unknown as string)}
-                    className="w-8 h-8 rounded-full border"
-                    style={{ backgroundColor: c }}
+                    className={`w-8 h-8 rounded-full border ${getBgClass(c)} ${form.color === c ? 'ring-2 ring-offset-2 ring-viridian' : ''}`}
                     aria-label={`Farbe ${c}`}
                   />
                 ))}
               </div>
-              <input
-                type="color"
-                value={(form.color as string) || '#7aa39a'}
-                onChange={(e) => update('color', e.target.value)}
-                className="w-full h-10 border rounded"
-              />
+              {!isInFixedPalette(form.color as string) && (
+                <p className="text-xs text-gray-500">
+                  Hinweis: Farben sind auf die feste Palette begrenzt.
+                </p>
+              )}
             </div>
           </div>
           {/* Kategorien werden immer aktiv angelegt; kein Toggle im UI */}
@@ -178,25 +176,32 @@ export default function SettingsCategories() {
     description?: string;
     standardRef?: string;
   }> = [
-    { name: 'Beratung', color: '#2563eb' },
-    { name: 'Erlebnispädagogik', color: '#ef4444' },
-    { name: 'Ernährung und Gesundheit', color: '#f59e0b' },
-    { name: 'Ferienfreizeiten und -angebote', color: '#10b981' },
-    { name: 'Genderpädagogik', color: '#8b5cf6' },
-    { name: 'Handwerk und Technik', color: '#ec4899' },
-    { name: 'Hausaufgaben- und Lernbetreuung', color: '#f97316' },
-    { name: 'Künstlerisches Gestalten (u.a. Basteln, Malen)', color: '#14b8a6' },
-    { name: 'Medienbildung', color: '#22c55e' },
-    { name: 'Multiplikator*innenarbeit', color: '#0ea5e9' },
-    { name: 'Musik und Tanz', color: '#7c3aed' },
-    { name: 'Natur und Umwelt', color: '#16a34a' },
-    { name: 'Politische und gesellschaftliche Bildung', color: '#ea580c' },
-    { name: 'Prävention und Soziales Lernen', color: '#dc2626' },
-    { name: 'Sonderveranstaltungen und Stadtteilfeste', color: '#3b82f6' },
-    { name: 'Sonstiges', color: '#64748b' },
-    { name: 'Spiel', color: '#0ea5e9' },
-    { name: 'Sport', color: '#22c55e' },
-    { name: 'Theater und Kultur', color: '#a855f7' },
+    // Map defaults into the fixed palette; reuse colors if more than 12
+    { name: 'Beratung', color: FIXED_PALETTE[0] },
+    { name: 'Erlebnispädagogik', color: FIXED_PALETTE[1] },
+    { name: 'Ernährung und Gesundheit', color: FIXED_PALETTE[2] },
+    { name: 'Ferienfreizeiten und -angebote', color: FIXED_PALETTE[3] },
+    { name: 'Genderpädagogik', color: FIXED_PALETTE[4] },
+    { name: 'Handwerk und Technik', color: FIXED_PALETTE[5] },
+    { name: 'Hausaufgaben- und Lernbetreuung', color: FIXED_PALETTE[6] },
+    { name: 'Künstlerisches Gestalten (u.a. Basteln, Malen)', color: FIXED_PALETTE[7] },
+    { name: 'Medienbildung', color: FIXED_PALETTE[8] },
+    { name: 'Multiplikator*innenarbeit', color: FIXED_PALETTE[9] },
+    { name: 'Musik und Tanz', color: FIXED_PALETTE[10 % FIXED_PALETTE.length] },
+    { name: 'Natur und Umwelt', color: FIXED_PALETTE[11 % FIXED_PALETTE.length] },
+    {
+      name: 'Politische und gesellschaftliche Bildung',
+      color: FIXED_PALETTE[12 % FIXED_PALETTE.length],
+    },
+    { name: 'Prävention und Soziales Lernen', color: FIXED_PALETTE[13 % FIXED_PALETTE.length] },
+    {
+      name: 'Sonderveranstaltungen und Stadtteilfeste',
+      color: FIXED_PALETTE[14 % FIXED_PALETTE.length],
+    },
+    { name: 'Sonstiges', color: FIXED_PALETTE[15 % FIXED_PALETTE.length] },
+    { name: 'Spiel', color: FIXED_PALETTE[16 % FIXED_PALETTE.length] },
+    { name: 'Sport', color: FIXED_PALETTE[17 % FIXED_PALETTE.length] },
+    { name: 'Theater und Kultur', color: FIXED_PALETTE[18 % FIXED_PALETTE.length] },
   ];
 
   const existingNames = useMemo(
@@ -272,8 +277,7 @@ export default function SettingsCategories() {
             <div className="min-w-0">
               <div className="font-medium text-viridian flex items-center gap-2">
                 <span
-                  className="inline-block w-3 h-3 rounded-full"
-                  style={{ backgroundColor: c.color || '#7aa39a' }}
+                  className={`inline-block w-3 h-3 rounded-full ${getBgClass(c.color as string, 'bg-slate-400')}`}
                 />
                 {c.name}
               </div>
@@ -333,12 +337,23 @@ export default function SettingsCategories() {
           initial={modal.mode === 'edit' ? modal.category : undefined}
           onSubmit={(values) => {
             if (modal.mode === 'create') {
-              create.mutate({ ...values, active: true }, { onSuccess: () => setModal(null) });
+              const color = isInFixedPalette(values.color as string)
+                ? values.color
+                : FIXED_PALETTE[0];
+              create.mutate(
+                { ...values, color, active: true },
+                { onSuccess: () => setModal(null) },
+              );
             } else if (modal.category?.id) {
               const { id: _r, ...rest } = (values || {}) as Partial<Category>;
               void _r;
+              const color = isInFixedPalette(rest.color as string)
+                ? rest.color
+                : isInFixedPalette(modal.category?.color as string)
+                  ? modal.category?.color
+                  : FIXED_PALETTE[0];
               update.mutate(
-                { id: modal.category.id, data: rest },
+                { id: modal.category.id, data: { ...rest, color } },
                 { onSuccess: () => setModal(null) },
               );
             }

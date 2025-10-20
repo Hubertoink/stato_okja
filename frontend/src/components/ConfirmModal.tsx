@@ -30,7 +30,10 @@ export default function ConfirmModal({
   // Lock background scroll while this modal is open
   useBodyScrollLock(true);
   const content = (
-    <div className="fixed inset-0 z-[70] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
+    <div
+      className="fixed inset-0 z-[70] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
+      onWheel={(e) => e.stopPropagation()}
+    >
       <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-lg p-4 md:p-6 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-semibold text-viridian">{title || 'Hinweis'}</h3>

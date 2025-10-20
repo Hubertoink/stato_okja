@@ -7,6 +7,8 @@ let restoreState: {
   position: string;
   top: string;
   width: string;
+  htmlOverflow: string;
+  htmlOverscroll: string;
 } | null = null;
 
 function lockBody() {
@@ -20,14 +22,17 @@ function lockBody() {
       position: body.style.position,
       top: body.style.top,
       width: body.style.width,
+      htmlOverflow: docEl.style.overflow,
+      htmlOverscroll: docEl.style.getPropertyValue('overscroll-behavior-y') || '',
     };
     if (scrollBarWidth > 0) body.style.paddingRight = `${scrollBarWidth}px`;
     // Prevent background scroll and retain visual position
     body.style.position = 'fixed';
     body.style.top = `-${restoreState.scrollY}px`;
     body.style.width = '100%';
-    // Reduce overscroll effects on some mobile browsers
-    body.style.setProperty('overscroll-behavior', 'contain');
+    // Additionally block root scrolling (covers browsers that scroll <html>)
+    docEl.style.overflow = 'hidden';
+    // Reduce overscroll effects on some browsers
     docEl.style.setProperty('overscroll-behavior-y', 'none');
     body.setAttribute('data-scroll-locked', 'true');
   }
@@ -45,8 +50,10 @@ function unlockBody() {
     body.style.top = restoreState.top;
     body.style.width = restoreState.width;
     body.removeAttribute('data-scroll-locked');
-    document.body.style.removeProperty('overscroll-behavior');
-    docEl.style.removeProperty('overscroll-behavior-y');
+    docEl.style.overflow = restoreState.htmlOverflow;
+    if (restoreState.htmlOverscroll)
+      docEl.style.setProperty('overscroll-behavior-y', restoreState.htmlOverscroll);
+    else docEl.style.removeProperty('overscroll-behavior-y');
     window.scrollTo(0, restoreState.scrollY);
     restoreState = null;
   }

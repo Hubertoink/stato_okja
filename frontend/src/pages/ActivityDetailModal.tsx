@@ -59,8 +59,9 @@ export default function ActivityDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-2"
+      className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-2 modal-overlay"
       onClick={onClose}
+      onWheel={(e) => e.stopPropagation()}
     >
       <div
         className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[96vh] supports-[height:100dvh]:max-h-[96dvh] overflow-y-auto scrollbar-hide bottom-sheet-animate"

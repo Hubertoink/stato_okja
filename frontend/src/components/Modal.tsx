@@ -22,7 +22,10 @@ export default function Modal({
     maxWidth
   ];
   return (
-    <div className="fixed inset-0 z-[70] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
+    <div
+      className="fixed inset-0 z-[70] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
+      onWheel={(e) => e.stopPropagation()}
+    >
       <div
         className={`bg-white w-full ${maxW} rounded-t-2xl md:rounded-lg p-4 md:p-6 max-h-[85vh] overflow-y-auto bottom-sheet-animate`}
       >

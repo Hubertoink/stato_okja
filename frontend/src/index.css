@@ -204,6 +204,11 @@ code {
   display: none; /* Chrome, Safari, Opera */
 }
 
+/* Prevent scroll chaining from modal content to page */
+.modal-overlay {
+  overscroll-behavior: contain;
+}
+
 /* Decorative note card for Daily Log (CSS-only, no images) */
 .note-card {
   position: relative;

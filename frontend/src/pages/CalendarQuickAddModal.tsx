@@ -10,6 +10,8 @@ import { useCreateActivity, useUpdateActivity, useRemoveActivity } from '@/lib/a
 import ConfirmModal from '@/components/ConfirmModal';
 import { useLocations } from '@/lib/locations';
 import { useToast } from '@/components/Toast';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { createPortal } from 'react-dom';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -38,6 +40,8 @@ export default function ActivityQuickAdd({
   project?: Project;
   activity?: Activity;
 }) {
+  // This modal mounts only while open – lock body scroll while mounted
+  useBodyScrollLock(true);
   const { data: projects } = useProjects({ archived: false });
   const { data: staff } = useStaff({ active: true });
   const { data: tags } = useTags({ active: true });
@@ -187,8 +191,11 @@ export default function ActivityQuickAdd({
   const update = useUpdateActivity();
   const remove = useRemoveActivity();
 
-  return (
-    <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
+  const content = (
+    <div
+      className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
+      onWheel={(e) => e.stopPropagation()}
+    >
       <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-2">
           Aktivität am{' '}
@@ -741,4 +748,6 @@ export default function ActivityQuickAdd({
       </div>
     </div>
   );
+  if (typeof document !== 'undefined') return createPortal(content, document.body);
+  return content;
 }

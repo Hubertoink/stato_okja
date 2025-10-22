@@ -61,7 +61,7 @@ export default function ProjectPickerPage() {
     const qp = new URLSearchParams();
     if (date) qp.set('date', date);
     qp.set('projectId', p.id);
-    navigate(`/activities/new?${qp.toString()}`);
+    navigate(`/activities/new?${qp.toString()}`, { state: { fromProjectPicker: true } });
   };
 
   return (

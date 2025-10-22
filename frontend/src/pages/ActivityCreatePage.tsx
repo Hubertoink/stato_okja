@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { X as XIcon, Boxes } from 'lucide-react';
 import { useCreateActivity, type Activity } from '@/lib/activities';
 import { useProjects, type Project } from '@/lib/projects';
@@ -30,6 +30,7 @@ type FormState = {
 export default function ActivityCreatePage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const location = useLocation();
   const qpProjectId = params.get('projectId') || undefined;
   const qpDate = params.get('date') || undefined;
 
@@ -42,12 +43,6 @@ export default function ActivityCreatePage() {
   const create = useCreateActivity();
   const { showToast } = useToast();
 
-  const selectedProject: Project | undefined = useMemo(
-    () => (projects || []).find((p) => p.id === qpProjectId),
-    [projects, qpProjectId],
-  );
-  const isOpenDoor = selectedProject?.type === 'open_door';
-
   const [picker, setPicker] = useState(false);
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(() => ({
@@ -55,6 +50,12 @@ export default function ActivityCreatePage() {
     date: (qpDate || new Date().toISOString()).slice(0, 10),
     projectId: qpProjectId,
   }));
+
+  const selectedProject: Project | undefined = useMemo(() => {
+    const id = form.projectId || qpProjectId;
+    return (projects || []).find((p) => p.id === id);
+  }, [projects, qpProjectId, form.projectId]);
+  const isOpenDoor = selectedProject?.type === 'open_door';
 
   // Default times; if project provided, prefill from defaults
   useEffect(() => {
@@ -200,6 +201,15 @@ export default function ActivityCreatePage() {
     });
   };
 
+  const handleCancel = () => {
+    // If we navigated here from the project picker route, go back two steps
+    if (picker) setPicker(false);
+    const fromPicker = (location.state as unknown as { fromProjectPicker?: boolean })
+      ?.fromProjectPicker;
+    if (fromPicker) navigate(-2);
+    else navigate(-1);
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4 mt-1">
@@ -207,7 +217,7 @@ export default function ActivityCreatePage() {
         <button
           type="button"
           className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-          onClick={() => navigate(-1)}
+          onClick={handleCancel}
           title="Abbrechen"
           aria-label="Abbrechen"
         >
@@ -599,7 +609,7 @@ export default function ActivityCreatePage() {
         </div>
 
         {/* Sticky actions above bottom nav on mobile */}
-        <div className="sticky bottom-[var(--mobile-nav-space,0px)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-3 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex flex-col sm:flex-row gap-4">
+        <div className="sticky z-20 bottom-[calc(var(--mobile-nav-space,0px)+12px)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-3 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex flex-col sm:flex-row gap-4">
           <button
             type="submit"
             className="bg-viridian text-white px-8 py-3 rounded-lg hover:bg-cambridge-blue transition-colors"
@@ -609,7 +619,7 @@ export default function ActivityCreatePage() {
           <button
             type="button"
             className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-400 transition-colors"
-            onClick={() => navigate(-1)}
+            onClick={handleCancel}
           >
             Abbrechen
           </button>

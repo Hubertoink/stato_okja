@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { X as XIcon, Boxes } from 'lucide-react';
+import { X as XIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
 import { useCreateActivity, type Activity } from '@/lib/activities';
 import { useProjects, type Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
@@ -211,7 +211,7 @@ export default function ActivityCreatePage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 pb-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+96px)]">
+    <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 pb-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+72px)]">
       <div className="flex items-center justify-between mb-4 mt-1">
         <h2 className="text-2xl font-bold text-viridian">Neue Aktivität</h2>
         <button
@@ -609,20 +609,29 @@ export default function ActivityCreatePage() {
         </div>
 
         {/* Sticky actions above bottom nav on mobile */}
-        <div className="sticky z-50 bottom-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+16px)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-3 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex flex-col sm:flex-row gap-4">
-          <button
-            type="submit"
-            className="bg-viridian text-white px-8 py-3 rounded-lg hover:bg-cambridge-blue transition-colors"
-          >
-            Aktivität speichern
-          </button>
-          <button
-            type="button"
-            className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-400 transition-colors"
-            onClick={handleCancel}
-          >
-            Abbrechen
-          </button>
+        <div className="sticky z-50 bottom-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+8px)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex items-center justify-between gap-3">
+          <div className="flex-1 flex items-center">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+              onClick={handleCancel}
+              title="Abbrechen"
+              aria-label="Abbrechen"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-end">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+              onClick={handleSave}
+              title="Aktivität speichern"
+              aria-label="Aktivität speichern"
+            >
+              <PlusIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </form>
 

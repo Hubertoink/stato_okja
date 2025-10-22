@@ -40,7 +40,6 @@ export default function ActivityEditPage() {
     notes?: string;
     staffIds?: string[];
     cohortCounts?: Record<string, { m: number; w: number; d: number }>;
-    topCounts?: { m: number; w: number; d: number; total: number };
   }>({ cohortCounts: {} });
 
   useEffect(() => {
@@ -56,9 +55,6 @@ export default function ActivityEditPage() {
         };
       }
     }
-    const m = activity.countMale || 0;
-    const w = activity.countFemale || 0;
-    const d = activity.countDiverse || 0;
     setForm({
       projectId: activity.projectId || activity.project?.id || undefined,
       locationId: activity.locationId || activity.location?.id || undefined,
@@ -70,7 +66,6 @@ export default function ActivityEditPage() {
       notes: activity.notes || undefined,
       staffIds: (activity.staff || []).map((s) => s.id),
       cohortCounts,
-      topCounts: { m, w, d, total: (activity.countTotal ?? m + w + d) || 0 },
     });
   }, [activity]);
 
@@ -112,7 +107,7 @@ export default function ActivityEditPage() {
 
   if (!activity) return null;
 
-  // Derive cohort-based totals; if present, lock top-level counts
+  // Derive cohort-based totals
   const cohortSums = useMemo(() => {
     const sums: { m: number; w: number; d: number } = { m: 0, w: 0, d: 0 };
     Object.values(form.cohortCounts || {}).forEach((e) => {
@@ -122,13 +117,7 @@ export default function ActivityEditPage() {
     });
     return sums;
   }, [form.cohortCounts]);
-  const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
-  const hasCohortData = cohortTotal > 0;
-  const displayCounts = useMemo(() => {
-    if (hasCohortData) return { ...cohortSums, total: cohortTotal };
-    const t = form.topCounts || { m: 0, w: 0, d: 0, total: 0 };
-    return { ...t, total: (t.m || 0) + (t.w || 0) + (t.d || 0) };
-  }, [hasCohortData, cohortSums, cohortTotal, form.topCounts]);
+  // const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
@@ -146,52 +135,6 @@ export default function ActivityEditPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 md:p-6 space-y-3">
-        {/* Participants summary (editable if no cohort data) */}
-        <div>
-          <h3 className="text-lg font-semibold mb-2 text-viridian">Teilnehmende</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {(['m', 'w', 'd'] as const).map((g) => (
-              <div key={g}>
-                <label className="block text-sm font-medium mb-1">
-                  {g === 'm' ? 'Männlich' : g === 'w' ? 'Weiblich' : 'Divers'}
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={displayCounts[g] ?? 0}
-                  onChange={(e) => {
-                    if (hasCohortData) return;
-                    const val = Number(e.target.value || 0);
-                    const cur = form.topCounts || { m: 0, w: 0, d: 0, total: 0 };
-                    setForm({
-                      ...form,
-                      topCounts: {
-                        ...cur,
-                        [g]: val,
-                        total:
-                          (g === 'm' ? val : cur.m) +
-                          (g === 'w' ? val : cur.w) +
-                          (g === 'd' ? val : cur.d),
-                      },
-                    });
-                  }}
-                  placeholder="0"
-                  title={g === 'm' ? 'Männlich' : g === 'w' ? 'Weiblich' : 'Divers'}
-                  className={`w-full border rounded px-3 py-2 ${
-                    hasCohortData ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
-                  disabled={hasCohortData}
-                />
-              </div>
-            ))}
-          </div>
-          {hasCohortData && (
-            <p className="text-xs text-gray-500 mt-1">
-              Die Werte ergeben sich aus den Alterskohorten.
-            </p>
-          )}
-        </div>
-
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="location-select-edit">
             Standort *
@@ -291,8 +234,7 @@ export default function ActivityEditPage() {
         <div>
           <label className="block text-sm font-medium mb-1">Alterskohorten</label>
           <div className="text-xs text-gray-600 mb-2">
-            Summe aktuell: m:{displayCounts.m ?? 0} · w:{displayCounts.w ?? 0} · d:
-            {displayCounts.d ?? 0}
+            Summe aktuell: m:{cohortSums.m ?? 0} · w:{cohortSums.w ?? 0} · d:{cohortSums.d ?? 0}
           </div>
           <div className="space-y-2">
             <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2">
@@ -410,11 +352,6 @@ export default function ActivityEditPage() {
                 </div>
               );
             })}
-            {!hasCohortData && (
-              <p className="text-xs text-gray-500">
-                Noch keine Kohorten erfasst – die Gesamtsummen oben sind editierbar.
-              </p>
-            )}
           </div>
         </div>
 
@@ -593,14 +530,7 @@ export default function ActivityEditPage() {
                   cohortSumsLocal.w += e.w || 0;
                   cohortSumsLocal.d += e.d || 0;
                 });
-                const useCoh = cohortSumsLocal.m + cohortSumsLocal.w + cohortSumsLocal.d > 0;
-                const counts = useCoh
-                  ? cohortSumsLocal
-                  : {
-                      m: form.topCounts?.m || 0,
-                      w: form.topCounts?.w || 0,
-                      d: form.topCounts?.d || 0,
-                    };
+                const counts = cohortSumsLocal;
                 const payload: Record<string, unknown> = {
                   date: activity.date,
                   startTime: form.start || null,
@@ -617,17 +547,16 @@ export default function ActivityEditPage() {
                   countFemale: counts.w,
                   countDiverse: counts.d,
                   countTotal: counts.m + counts.w + counts.d,
-                  cohorts: useCoh
-                    ? Object.entries(form.cohortCounts || {}).flatMap(([cohortId, gcounts]) => {
-                        const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> =
-                          [];
-                        (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
-                          const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
-                          if (v > 0) arr.push({ cohortId, count: v, gender: g });
-                        });
-                        return arr;
-                      })
-                    : [],
+                  cohorts: Object.entries(form.cohortCounts || {}).flatMap(
+                    ([cohortId, gcounts]) => {
+                      const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> = [];
+                      (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
+                        const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
+                        if (v > 0) arr.push({ cohortId, count: v, gender: g });
+                      });
+                      return arr;
+                    },
+                  ),
                   categoryIds: isOpenDoor ? [] : form.categoryIds || [],
                 };
                 update.mutate(

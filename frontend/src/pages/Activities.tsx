@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { useCohorts } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
@@ -22,6 +24,8 @@ import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
 import { colorForActivityType } from '@/lib/colors';
 
 export default function Activities() {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   // Basic filter UI removed; we keep only advanced filter state
   const [filterDrawer, setFilterDrawer] = useState(false);
   const [advanced, setAdvanced] = useState<ActivitiesFilter>({});
@@ -271,7 +275,10 @@ export default function Activities() {
           {/* Mobile icon-only: New activity */}
           <button
             className="md:hidden inline-flex items-center justify-center rounded-full bg-viridian text-white hover:bg-cambridge-blue transition-colors w-10 h-10"
-            onClick={() => setPicker(true)}
+            onClick={() => {
+              if (isMobile) navigate('/activities/new/select-project');
+              else setPicker(true);
+            }}
             title="Neue Aktivität"
             aria-label="Neue Aktivität"
           >

@@ -209,6 +209,16 @@ code {
   overscroll-behavior: contain;
 }
 
+/* Subtle darkening overlay for images behind calendar list items */
+.calendar-img-overlay {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.28) 0%,
+    rgba(0, 0, 0, 0.15) 45%,
+    rgba(0, 0, 0, 0.05) 85%
+  );
+}
+
 /* Decorative note card for Daily Log (CSS-only, no images) */
 .note-card {
   position: relative;

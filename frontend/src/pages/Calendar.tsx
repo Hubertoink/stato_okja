@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/lib/useIsMobile';
 import type { Project } from '@/lib/projects';
 import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useActivities, Activity } from '@/lib/activities';
-import { colorForActivityType, translucent } from '@/lib/colors';
+// colorForActivityType no longer needed after switching to class-based palette
 import ActivityDetailModal from './ActivityDetailModal';
 import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holidays';
 import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
@@ -44,6 +46,8 @@ function getISOWeek(d: Date) {
 }
 
 export default function Calendar() {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState<Date>(new Date());
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
@@ -161,28 +165,34 @@ export default function Calendar() {
     event: 'Veranstaltung',
     outreach: 'Aufsuchend',
   };
-  const palette = [
-    '#2563eb',
-    '#ef4444',
-    '#f59e0b',
-    '#10b981',
-    '#8b5cf6',
-    '#ec4899',
-    '#f97316',
-    '#14b8a6',
-    '#22c55e',
-    '#eab308',
-    '#0ea5e9',
-    '#a855f7',
+  // Tailwind class palette (translucent backgrounds) to avoid inline styles
+  const paletteClasses = [
+    'bg-blue-500/20',
+    'bg-red-500/20',
+    'bg-amber-500/20',
+    'bg-emerald-500/20',
+    'bg-violet-500/20',
+    'bg-pink-500/20',
+    'bg-orange-500/20',
+    'bg-teal-500/20',
+    'bg-green-500/20',
+    'bg-yellow-500/20',
+    'bg-sky-500/20',
+    'bg-purple-500/20',
   ];
-  const pickBg = (title?: string, type?: string) => {
-    // Prefer type color when available; fallback to hashed title color
-    const typeColor = colorForActivityType(type);
-    if (typeColor) return translucent(typeColor);
-    if (!title) return '#bfd8d333';
+  const typeBgClass: Record<string, string> = {
+    open_door: 'bg-emerald-600/20',
+    project_open: 'bg-viridian/20',
+    project_closed: 'bg-gray-500/20',
+    event: 'bg-amber-600/20',
+    outreach: 'bg-slate-600/20',
+  };
+  const pickBgClass = (title?: string, type?: string) => {
+    if (type && typeBgClass[type]) return typeBgClass[type];
+    if (!title) return 'bg-slate-300/30';
     let h = 0;
     for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
-    return palette[h % palette.length] + '33'; // translucent
+    return paletteClasses[h % paletteClasses.length];
   };
   const renderEntries = (iso: string, maxRows = 3) => {
     const items = activitiesByDate.get(iso) || [];
@@ -193,9 +203,10 @@ export default function Calendar() {
       <div className="mt-1 space-y-1">
         {visible.map((a: Activity, i: number) => {
           const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
-          const bg = a.project?.color
-            ? `${a.project.color}33`
-            : pickBg(a.project?.title || a.title || typeLabel[a.type] || '', a.type);
+          const bgClass = pickBgClass(
+            a.project?.title || a.title || typeLabel[a.type] || '',
+            a.type,
+          );
           const time = fmtTimeRange(a.startTime, a.endTime);
           const total = a.countTotal ?? 0;
           const m = a.countMale ?? 0;
@@ -219,8 +230,7 @@ export default function Calendar() {
                 e.stopPropagation();
                 setDetail(a);
               }}
-              className="relative w-full h-5 rounded text-[10px] leading-5 px-1 truncate text-left overflow-hidden"
-              style={{ backgroundColor: bg }}
+              className={`relative w-full h-5 rounded text-[10px] leading-5 px-1 truncate text-left overflow-hidden ${bgClass}`}
               title={tooltip}
               aria-label={label}
             >
@@ -232,16 +242,7 @@ export default function Calendar() {
                   className="absolute inset-0 w-full h-full object-cover blur-[2px] opacity-40"
                 />
               )}
-              {hasImg && (
-                <div
-                  className="absolute inset-0"
-                  aria-hidden
-                  style={{
-                    background:
-                      'linear-gradient(90deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.05) 85%)',
-                  }}
-                />
-              )}
+              {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
               <span className={`relative z-10 ${hasImg ? 'text-white drop-shadow-sm' : ''}`}>
                 {label}
               </span>
@@ -266,9 +267,10 @@ export default function Calendar() {
         {items.map((a: Activity, i: number) => {
           const title = a.project?.title || typeLabel[a.type] || a.type;
           const subtitle = a.title ? a.title : undefined;
-          const bg = a.project?.color
-            ? `${a.project.color}33`
-            : pickBg(a.project?.title || a.title || typeLabel[a.type] || '', a.type);
+          const bgClass = pickBgClass(
+            a.project?.title || a.title || typeLabel[a.type] || '',
+            a.type,
+          );
           const time = fmtTimeRange(a.startTime, a.endTime);
           const counts = a.countTotal ?? 0;
           const m = a.countMale ?? 0;
@@ -283,8 +285,7 @@ export default function Calendar() {
                 e.stopPropagation();
                 setDetail(a);
               }}
-              className="relative w-full rounded px-2 py-1.5 text-left shadow-sm hover:shadow transition-shadow overflow-hidden"
-              style={{ backgroundColor: bg }}
+              className={`relative w-full rounded px-2 py-1.5 text-left shadow-sm hover:shadow transition-shadow overflow-hidden ${bgClass}`}
               title="Details anzeigen"
             >
               {hasImg && a.project && (
@@ -295,16 +296,7 @@ export default function Calendar() {
                   className="absolute inset-0 w-full h-full object-cover blur-[3px] opacity-35"
                 />
               )}
-              {hasImg && (
-                <div
-                  className="absolute inset-0"
-                  aria-hidden
-                  style={{
-                    background:
-                      'linear-gradient(90deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.05) 85%)',
-                  }}
-                />
-              )}
+              {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
               <div
                 className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-800'}`}
               >
@@ -359,6 +351,7 @@ export default function Calendar() {
           </button>
           <select
             value={view}
+            title="Ansicht wählen"
             onChange={(e) => setView(e.target.value as View)}
             className="border rounded px-2 py-2"
           >
@@ -393,7 +386,10 @@ export default function Calendar() {
                         ? 'bg-mint-green/40'
                         : 'bg-white'
                   } ${isToday ? 'ring-1 ring-mint-green/60 border-mint-green/60' : ''}`}
-                  onClick={() => setPicker({ date: iso })}
+                  onClick={() => {
+                    if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
+                    else setPicker({ date: iso });
+                  }}
                   title={`Aktivität am ${day.toLocaleDateString('de-DE')} hinzufügen`}
                 >
                   <div className="absolute top-1 left-1 text-xs md:text-sm font-medium">
@@ -452,7 +448,10 @@ export default function Calendar() {
                 <button
                   key={iso}
                   className={`min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left focus:outline-none transition-colors ${isToday ? 'bg-mint-green/40 ring-1 ring-mint-green/60 border-mint-green/60' : ''}`}
-                  onClick={() => setPicker({ date: iso })}
+                  onClick={() => {
+                    if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
+                    else setPicker({ date: iso });
+                  }}
                   title={`Aktivität am ${d.toLocaleDateString('de-DE')} hinzufügen`}
                 >
                   {!!holidaysByDate.get(iso)?.length && (

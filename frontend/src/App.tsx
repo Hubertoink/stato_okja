@@ -17,6 +17,7 @@ import OrgUserManagement from './pages/OrgUserManagement';
 import AcceptInvite from './pages/AcceptInvite';
 import ResetRequest from './pages/ResetRequest';
 import ResetPassword from './pages/ResetPassword';
+import ProjectPickerPage from '@/pages/ProjectPickerPage';
 
 function App() {
   // App-level providers
@@ -31,13 +32,16 @@ function App() {
           <Route path="/reset-password-request" element={<ResetRequest />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           {/* Everything else requires auth */}
-          <Route path="/*" element={
-            <AuthProvider>
-              <OrgScopeProvider>
-                <AuthedRoutes />
-              </OrgScopeProvider>
-            </AuthProvider>
-          } />
+          <Route
+            path="/*"
+            element={
+              <AuthProvider>
+                <OrgScopeProvider>
+                  <AuthedRoutes />
+                </OrgScopeProvider>
+              </AuthProvider>
+            }
+          />
         </Routes>
       </ToastProvider>
     </BrowserRouter>
@@ -59,17 +63,17 @@ function AuthedRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="activities" element={<Activities />} />
+        {/* Mobile-first flow: select project then create */}
+        <Route path="activities/new/select-project" element={<ProjectPickerPage />} />
         <Route path="activities/new" element={<ActivityForm />} />
         <Route path="activities/:id/edit" element={<ActivityForm />} />
         <Route path="projects" element={<Projects />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="statistics" element={<Statistics />} />
-  <Route path="me" element={<MyProfile />} />
+        <Route path="me" element={<MyProfile />} />
         <Route path="settings" element={<Settings />} />
         {/* Mock admin routes */}
-        {user.role === 'superadmin' && (
-          <Route path="admin/orgs" element={<AdminOrgSetup />} />
-        )}
+        {user.role === 'superadmin' && <Route path="admin/orgs" element={<AdminOrgSetup />} />}
         {(user.role === 'org_admin' || user.role === 'superadmin') && (
           <Route path="admin/users" element={<OrgUserManagement />} />
         )}

@@ -3,7 +3,10 @@ import Layout from './components/Layout';
 import { ToastProvider } from './components/Toast';
 import Dashboard from './pages/Dashboard';
 import Activities from './pages/Activities';
-import ActivityForm from './pages/ActivityForm';
+// import ActivityForm from './pages/ActivityForm';
+import ActivityDetailPage from '@/pages/ActivityDetailPage';
+import ActivityEditPage from '@/pages/ActivityEditPage';
+import ActivityCreatePage from '@/pages/ActivityCreatePage';
 import Statistics from './pages/Statistics';
 import Settings from './pages/Settings';
 import MyProfile from './pages/MyProfile';
@@ -65,8 +68,9 @@ function AuthedRoutes() {
         <Route path="activities" element={<Activities />} />
         {/* Mobile-first flow: select project then create */}
         <Route path="activities/new/select-project" element={<ProjectPickerPage />} />
-        <Route path="activities/new" element={<ActivityForm />} />
-        <Route path="activities/:id/edit" element={<ActivityForm />} />
+        <Route path="activities/new" element={<ActivityCreatePage />} />
+        <Route path="activities/:id" element={<ActivityDetailPage />} />
+        <Route path="activities/:id/edit" element={<ActivityEditPage />} />
         <Route path="projects" element={<Projects />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="statistics" element={<Statistics />} />

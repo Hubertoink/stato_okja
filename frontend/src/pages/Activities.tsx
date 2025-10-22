@@ -579,12 +579,16 @@ export default function Activities() {
             className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-azure-web/50 focus:outline-none focus:ring-2 focus:ring-viridian/40 relative overflow-hidden"
             role="button"
             tabIndex={0}
-            aria-label="Aktivität bearbeiten"
-            onClick={() => setEditId(a.id)}
+            aria-label="Aktivität öffnen"
+            onClick={() => {
+              if (isMobile) navigate(`/activities/${a.id}`);
+              else setEditId(a.id);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                setEditId(a.id);
+                if (isMobile) navigate(`/activities/${a.id}`);
+                else setEditId(a.id);
               }
             }}
           >

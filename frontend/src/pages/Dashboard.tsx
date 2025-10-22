@@ -5,6 +5,7 @@ import { useActivities } from '@/lib/activities';
 import { useAuditLogs } from '@/lib/audit';
 import { Pencil, PlusCircle, Trash2, StickyNote, Tag as TagIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/lib/useIsMobile';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import ExportModal from '@/components/ExportModal';
@@ -56,6 +57,7 @@ export default function Dashboard() {
   const year = now.getFullYear();
   const month = now.getMonth() + 1; // 1-12
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [picker, setPicker] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const { data: summary } = useMonthSummary(year, month, scope);
@@ -176,7 +178,14 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             className="bg-viridian text-white px-6 py-3 rounded-lg hover:bg-cambridge-blue transition-colors"
-            onClick={() => setPicker(true)}
+            onClick={() => {
+              const dateISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+              if (isMobile) {
+                navigate(`/activities/new/select-project?date=${encodeURIComponent(dateISO)}`);
+              } else {
+                setPicker(true);
+              }
+            }}
           >
             Neue Aktivität erfassen
           </button>

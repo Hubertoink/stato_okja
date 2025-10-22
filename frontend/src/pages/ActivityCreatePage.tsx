@@ -211,7 +211,7 @@ export default function ActivityCreatePage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
+    <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 pb-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+96px)]">
       <div className="flex items-center justify-between mb-4 mt-1">
         <h2 className="text-2xl font-bold text-viridian">Neue Aktivität</h2>
         <button
@@ -609,7 +609,7 @@ export default function ActivityCreatePage() {
         </div>
 
         {/* Sticky actions above bottom nav on mobile */}
-        <div className="sticky z-20 bottom-[calc(var(--mobile-nav-space,0px)+12px)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-3 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex flex-col sm:flex-row gap-4">
+        <div className="sticky z-50 bottom-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+16px)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-3 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex flex-col sm:flex-row gap-4">
           <button
             type="submit"
             className="bg-viridian text-white px-8 py-3 rounded-lg hover:bg-cambridge-blue transition-colors"

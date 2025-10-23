@@ -551,7 +551,7 @@ export default function ActivityCreatePage() {
                       setForm({ ...form, staffIds: Array.from(set) });
                     }}
                     className={`px-2 py-1 rounded-full text-xs border ${
-                      active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
+                      active ? 'bg-viridian text-white' : 'bg-white text-gray-700'
                     }`}
                   >
                     {s.name}
@@ -567,8 +567,8 @@ export default function ActivityCreatePage() {
             {(staff || [])
               .filter((s) =>
                 Array.isArray(s.roles)
-                  ? s.roles.includes('volunteer') || s.roles.includes('helper')
-                  : s.role === 'volunteer' || s.role === 'helper',
+                  ? s.roles.includes('volunteer')
+                  : s.role === 'volunteer',
               )
               .map((s) => {
                 const active = form.staffIds?.includes(s.id);
@@ -584,6 +584,36 @@ export default function ActivityCreatePage() {
                     }}
                     className={`px-2 py-1 rounded-full text-xs border ${
                       active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
+                    }`}
+                  >
+                    {s.name}
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Helfer</label>
+          <div className="flex flex-wrap gap-2">
+            {(staff || [])
+              .filter((s) =>
+                Array.isArray(s.roles) ? s.roles.includes('helper') : s.role === 'helper',
+              )
+              .map((s) => {
+                const active = form.staffIds?.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      const set = new Set(form.staffIds || []);
+                      if (set.has(s.id)) set.delete(s.id);
+                      else set.add(s.id);
+                      setForm({ ...form, staffIds: Array.from(set) });
+                    }}
+                    className={`px-2 py-1 rounded-full text-xs border ${
+                      active ? 'bg-amber-400 text-white' : 'bg-white text-gray-700'
                     }`}
                   >
                     {s.name}

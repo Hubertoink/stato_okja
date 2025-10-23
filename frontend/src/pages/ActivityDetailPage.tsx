@@ -54,6 +54,14 @@ export default function ActivityDetailPage() {
     return s !== undefined && e !== undefined && e >= s ? `${e - s} min` : '';
   })();
 
+  const roleBadgeClass = (roles?: string[] | null, role?: string | null) => {
+    const r = (Array.isArray(roles) ? roles[0] : role) || '';
+    if (r === 'lead' || r === 'employee') return 'bg-viridian text-white';
+    if (r === 'volunteer') return 'bg-cambridge-blue text-white';
+    if (r === 'helper') return 'bg-amber-200 text-gray-900';
+    return 'bg-azure-web text-viridian';
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4">
@@ -161,8 +169,23 @@ export default function ActivityDetailPage() {
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
               <Users className="w-4 h-4" /> Mitarbeitende
             </div>
-            <div className="text-sm text-gray-700">
-              {activity.staff.map((s) => s.name).join(', ')}
+            <div className="flex flex-wrap gap-2">
+              {activity.staff.map((s) => {
+                const obj = s as unknown as Record<string, unknown>;
+                const roles = Array.isArray(obj.roles)
+                  ? (obj.roles as unknown[]).filter((x): x is string => typeof x === 'string')
+                  : undefined;
+                const role = typeof obj.role === 'string' ? (obj.role as string) : undefined;
+                return (
+                  <span
+                    key={s.id}
+                    className={`px-2 py-1 rounded-full text-xs ${roleBadgeClass(roles, role)}`}
+                    title={s.name}
+                  >
+                    {s.name}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}

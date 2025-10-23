@@ -27,22 +27,23 @@ function StaffForm({ initial, onCancel, onSubmit }: { initial?: Partial<StaffMem
         <h3 className="text-xl font-semibold text-viridian mb-4">{initial?.id ? 'Teammitglied bearbeiten' : 'Neues Teammitglied'}</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Name *</label>
-            <input value={form.name || ''} onChange={(e) => update('name', e.target.value)} className="w-full border rounded px-3 py-2" />
+            <label htmlFor="staff-name" className="block text-sm font-medium mb-1">Name *</label>
+            <input id="staff-name" placeholder="Vollständiger Name" value={form.name || ''} onChange={(e) => update('name', e.target.value)} className="w-full border rounded px-3 py-2" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">E-Mail</label>
-              <input value={form.email || ''} onChange={(e) => update('email', e.target.value)} className="w-full border rounded px-3 py-2" />
+              <label htmlFor="staff-email" className="block text-sm font-medium mb-1">E-Mail</label>
+              <input id="staff-email" type="email" placeholder="name@example.org" value={form.email || ''} onChange={(e) => update('email', e.target.value)} className="w-full border rounded px-3 py-2" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Telefon</label>
-              <input value={form.phone || ''} onChange={(e) => update('phone', e.target.value)} className="w-full border rounded px-3 py-2" />
+              <label htmlFor="staff-phone" className="block text-sm font-medium mb-1">Telefon</label>
+              <input id="staff-phone" type="tel" placeholder="z. B. 01234 567890" value={form.phone || ''} onChange={(e) => update('phone', e.target.value)} className="w-full border rounded px-3 py-2" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Rolle</label>
+            <label htmlFor="staff-role" className="block text-sm font-medium mb-1">Rolle</label>
             <select
+              id="staff-role"
               value={Array.isArray(form.roles) ? form.roles[0] : (form.role && ROLE_LABEL[form.role] ? form.role : 'employee')}
               onChange={(e) => update('roles', [e.target.value as StaffRole])}
               className="w-full border rounded px-3 py-2"
@@ -55,8 +56,8 @@ function StaffForm({ initial, onCancel, onSubmit }: { initial?: Partial<StaffMem
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Notizen</label>
-            <textarea value={form.notes || ''} onChange={(e) => update('notes', e.target.value)} rows={3} className="w-full border rounded px-3 py-2" />
+            <label htmlFor="staff-notes" className="block text-sm font-medium mb-1">Notizen</label>
+            <textarea id="staff-notes" placeholder="Interne Hinweise, Verfügbarkeit…" value={form.notes || ''} onChange={(e) => update('notes', e.target.value)} rows={3} className="w-full border rounded px-3 py-2" />
           </div>
           {/* "Aktiv" wird nicht mehr umgeschaltet; Teammitglieder sind immer aktiv. */}
         </div>
@@ -105,6 +106,20 @@ export default function SettingsTeam() {
 
   const members = data || [];
 
+  const roleBadgeClass = (role?: StaffRole | null) => {
+    const r = (role || 'employee') as StaffRole;
+    switch (r) {
+      case 'employee':
+        return 'bg-viridian text-white';
+      case 'volunteer':
+        return 'bg-cambridge-blue text-white';
+      case 'helper':
+        return 'bg-amber-200 text-gray-900';
+      default:
+        return 'bg-azure-web text-viridian';
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4 gap-3">
@@ -136,7 +151,11 @@ export default function SettingsTeam() {
                 {m.phone && <span>{m.phone}</span>}
               </div>
               <div className="mt-2">
-                <span className="inline-block px-2 py-0.5 rounded-full bg-azure-web text-viridian text-xs">
+                <span
+                  className={`inline-block px-2 py-0.5 rounded-full text-xs ${roleBadgeClass(
+                    (m.role || (Array.isArray(m.roles) ? m.roles[0] : 'employee')) as StaffRole,
+                  )}`}
+                >
                   {ROLE_LABEL[(m.role || (Array.isArray(m.roles) ? m.roles[0] : 'employee')) as StaffRole] || '–'}
                 </span>
               </div>

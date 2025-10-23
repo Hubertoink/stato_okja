@@ -271,19 +271,19 @@ export default function SettingsCategories() {
           </span>
         </div>
       </div>
-      <div className="divide-y">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {categories.map((c) => (
-          <div key={c.id} className="py-3 flex items-center justify-between">
-            <div className="min-w-0">
-              <div className="font-medium text-viridian flex items-center gap-2">
-                <span
-                  className={`inline-block w-3 h-3 rounded-full ${getBgClass(c.color as string, 'bg-slate-400')}`}
-                />
-                {c.name}
+          <div key={c.id} className="p-3 rounded border flex items-center justify-between">
+            <div className="min-w-0 flex items-center gap-3">
+              <span
+                className={`inline-block w-4 h-4 rounded ${getBgClass(c.color as string, 'bg-slate-400')}`}
+              />
+              <div>
+                <div className="font-medium text-viridian">{c.name}</div>
+                {c.description && (
+                  <div className="text-sm text-gray-600 line-clamp-2">{c.description}</div>
+                )}
               </div>
-              {c.description && (
-                <div className="text-sm text-gray-600 line-clamp-2">{c.description}</div>
-              )}
             </div>
             <div className="flex gap-2">
               {showArchived && (c as Category).active === false && (
@@ -327,9 +327,7 @@ export default function SettingsCategories() {
             </div>
           </div>
         ))}
-        {categories.length === 0 && (
-          <div className="text-gray-500 py-6">Noch keine Kategorien.</div>
-        )}
+        {categories.length === 0 && <div className="text-gray-500 py-6">Noch keine Kategorien.</div>}
       </div>
 
       {modal && (

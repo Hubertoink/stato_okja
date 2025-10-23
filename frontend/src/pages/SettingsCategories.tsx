@@ -327,7 +327,9 @@ export default function SettingsCategories() {
             </div>
           </div>
         ))}
-        {categories.length === 0 && <div className="text-gray-500 py-6">Noch keine Kategorien.</div>}
+        {categories.length === 0 && (
+          <div className="text-gray-500 py-6">Noch keine Kategorien.</div>
+        )}
       </div>
 
       {modal && (

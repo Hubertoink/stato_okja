@@ -566,9 +566,7 @@ export default function ActivityCreatePage() {
           <div className="flex flex-wrap gap-2">
             {(staff || [])
               .filter((s) =>
-                Array.isArray(s.roles)
-                  ? s.roles.includes('volunteer')
-                  : s.role === 'volunteer',
+                Array.isArray(s.roles) ? s.roles.includes('volunteer') : s.role === 'volunteer',
               )
               .map((s) => {
                 const active = form.staffIds?.includes(s.id);

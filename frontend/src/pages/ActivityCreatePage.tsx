@@ -10,6 +10,7 @@ import ProjectPickerModal from './ProjectPickerModal';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getBgClass } from '@/lib/colorPalette';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -42,6 +43,7 @@ export default function ActivityCreatePage() {
   const { data: locations } = useLocations({ active: true });
   const create = useCreateActivity();
   const { showToast } = useToast();
+  const keyboardOpen = useKeyboardOpen();
 
   const [picker, setPicker] = useState(false);
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
@@ -210,8 +212,15 @@ export default function ActivityCreatePage() {
     else navigate(-1);
   };
 
+  const containerPad = keyboardOpen
+    ? 'pb-[calc(env(safe-area-inset-bottom,0px)+72px)]'
+    : 'pb-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+72px)]';
+  const stickyBottom = keyboardOpen
+    ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+8px)]'
+    : 'bottom-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+8px)]';
+
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 pb-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+72px)]">
+    <div className={`max-w-3xl mx-auto px-4 md:px-6 py-4 ${containerPad}`}>
       <div className="flex items-center justify-between mb-4 mt-1">
         <h2 className="text-2xl font-bold text-viridian">Neue Aktivität</h2>
         <button
@@ -637,7 +646,9 @@ export default function ActivityCreatePage() {
         </div>
 
         {/* Sticky actions above bottom nav on mobile */}
-        <div className="sticky z-50 bottom-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+8px)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex items-center justify-between gap-3">
+        <div
+          className={`sticky z-50 ${stickyBottom} bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex items-center justify-between gap-3`}
+        >
           <div className="flex-1 flex items-center">
             <button
               type="button"

@@ -10,6 +10,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useToast } from '@/components/Toast';
 import { getBgClass } from '@/lib/colorPalette';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -26,6 +27,7 @@ export default function ActivityEditPage() {
   const update = useUpdateActivity();
   const remove = useRemoveActivity();
   const { showToast } = useToast();
+  const keyboardOpen = useKeyboardOpen();
   const [picker, setPicker] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -118,6 +120,10 @@ export default function ActivityEditPage() {
     return sums;
   }, [form.cohortCounts]);
   // const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
+
+  const stickyBottom = keyboardOpen
+    ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+16px)]'
+    : 'bottom-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+16px)]';
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
@@ -522,7 +528,9 @@ export default function ActivityEditPage() {
           />
         </div>
 
-        <div className="mt-4 sticky z-50 bottom-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+16px)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center justify-between gap-3 border-t">
+        <div
+          className={`mt-4 sticky z-50 ${stickyBottom} bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center justify-between gap-3 border-t`}
+        >
           <div className="flex-1 flex items-center">
             <button
               type="button"

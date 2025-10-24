@@ -67,6 +67,9 @@ export default function Layout() {
   const [newOrgName, setNewOrgName] = useState('');
   const [parentForNewOrg, setParentForNewOrg] = useState<string | 'root' | ''>('');
   const keyboardOpen = useKeyboardOpen();
+  const isActivityFull =
+    location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
+  const hideBottomNav = isActivityFull || keyboardOpen;
 
   // Resolve the active org name once on load and whenever scope/user changes
   useEffect(() => {
@@ -409,13 +412,15 @@ export default function Layout() {
 
       {/* Main Content */}
       <main
-        className={`container mx-auto px-4 py-8 pt-24 md:pt-32 ${keyboardOpen ? 'pb-0' : 'pb-[5.5rem]'} md:pb-8`}
+        className={`container mx-auto px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-[5.5rem]'} md:pb-8`}
       >
         <Outlet />
       </main>
 
       {/* Bottom Navigation (mobile) */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white border-t shadow md:hidden z-50">
+      <nav
+        className={`fixed bottom-0 inset-x-0 bg-white border-t shadow md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
+      >
         <ul className="grid grid-cols-6 text-xs">
           <li>
             <Link

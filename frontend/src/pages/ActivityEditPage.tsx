@@ -10,7 +10,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useToast } from '@/components/Toast';
 import { getBgClass } from '@/lib/colorPalette';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+// import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -27,7 +27,6 @@ export default function ActivityEditPage() {
   const update = useUpdateActivity();
   const remove = useRemoveActivity();
   const { showToast } = useToast();
-  const keyboardOpen = useKeyboardOpen();
   const [picker, setPicker] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -121,9 +120,8 @@ export default function ActivityEditPage() {
   }, [form.cohortCounts]);
   // const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
 
-  const stickyBottom = keyboardOpen
-    ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+16px)]'
-    : 'bottom-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+16px)]';
+  // Bottom nav ist im Activity-Route ausgeblendet; orientiere dich nur an Safe-Area
+  const stickyBottom = 'bottom-[calc(env(safe-area-inset-bottom,0px)+16px)]';
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">

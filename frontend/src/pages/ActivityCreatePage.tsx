@@ -10,7 +10,7 @@ import ProjectPickerModal from './ProjectPickerModal';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getBgClass } from '@/lib/colorPalette';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+// import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -43,7 +43,7 @@ export default function ActivityCreatePage() {
   const { data: locations } = useLocations({ active: true });
   const create = useCreateActivity();
   const { showToast } = useToast();
-  const keyboardOpen = useKeyboardOpen();
+  // const keyboardOpen = useKeyboardOpen();
 
   const [picker, setPicker] = useState(false);
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
@@ -212,12 +212,9 @@ export default function ActivityCreatePage() {
     else navigate(-1);
   };
 
-  const containerPad = keyboardOpen
-    ? 'pb-[calc(env(safe-area-inset-bottom,0px)+72px)]'
-    : 'pb-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+72px)]';
-  const stickyBottom = keyboardOpen
-    ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+8px)]'
-    : 'bottom-[calc(var(--mobile-nav-space,56px)+env(safe-area-inset-bottom,0px)+8px)]';
+  // Bottom nav ist im Activity-Route ausgeblendet; orientiere dich nur an Safe-Area
+  const containerPad = 'pb-[calc(env(safe-area-inset-bottom,0px)+72px)]';
+  const stickyBottom = 'bottom-[calc(env(safe-area-inset-bottom,0px)+8px)]';
 
   return (
     <div className={`max-w-3xl mx-auto px-4 md:px-6 py-4 ${containerPad}`}>

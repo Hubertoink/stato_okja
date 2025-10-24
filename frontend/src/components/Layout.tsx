@@ -1,8 +1,17 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Activity, BarChart3, Settings, Calendar as CalendarIcon, Boxes, UserCircle2 } from 'lucide-react';
+import {
+  Home,
+  Activity,
+  BarChart3,
+  Settings,
+  Calendar as CalendarIcon,
+  Boxes,
+  UserCircle2,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
 import { useEffect, useRef, useState } from 'react';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import Modal from '@/components/Modal';
 import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
@@ -15,7 +24,11 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { scope, setScope } = useOrgScope();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
-  const roleLabel: Record<string,string> = { superadmin: 'Superadmin', org_admin: 'Org-Admin', user: 'Benutzer' };
+  const roleLabel: Record<string, string> = {
+    superadmin: 'Superadmin',
+    org_admin: 'Org-Admin',
+    user: 'Benutzer',
+  };
   const [menuOpen, setMenuOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
   const [hoverable, setHoverable] = useState(false);
@@ -24,10 +37,21 @@ export default function Layout() {
     try {
       const mq = window.matchMedia && window.matchMedia('(pointer: fine)');
       setHoverable(!!mq?.matches);
-    } catch { setHoverable(false); }
+    } catch {
+      setHoverable(false);
+    }
   }, []);
-  const openMenu = () => { if (closeTimer.current) { window.clearTimeout(closeTimer.current); closeTimer.current = null; } setMenuOpen(true); };
-  const scheduleClose = () => { if (closeTimer.current) window.clearTimeout(closeTimer.current); closeTimer.current = window.setTimeout(() => setMenuOpen(false), 300); };
+  const openMenu = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setMenuOpen(true);
+  };
+  const scheduleClose = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setMenuOpen(false), 300);
+  };
 
   const isActive = (path: string) => {
     return location.pathname.startsWith(path);
@@ -42,21 +66,47 @@ export default function Layout() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const [parentForNewOrg, setParentForNewOrg] = useState<string | 'root' | ''>('');
+  const keyboardOpen = useKeyboardOpen();
 
   // Resolve the active org name once on load and whenever scope/user changes
   useEffect(() => {
     const ORG_NAME_CACHE_KEY = 'org_name_cache';
     const readCache = (): Record<string, string> => {
-      try { return JSON.parse(localStorage.getItem(ORG_NAME_CACHE_KEY) || '{}') as Record<string,string>; } catch { return {}; }
+      try {
+        return JSON.parse(localStorage.getItem(ORG_NAME_CACHE_KEY) || '{}') as Record<
+          string,
+          string
+        >;
+      } catch {
+        return {};
+      }
     };
-    const writeCache = (map: Record<string,string>) => { try { localStorage.setItem(ORG_NAME_CACHE_KEY, JSON.stringify(map)); } catch { /* ignore */ } };
+    const writeCache = (map: Record<string, string>) => {
+      try {
+        localStorage.setItem(ORG_NAME_CACHE_KEY, JSON.stringify(map));
+      } catch {
+        /* ignore */
+      }
+    };
 
-    if (typeof scope === 'undefined') { setActiveOrgName('Alle Organisationen'); return; }
-    if (scope === null) { setActiveOrgName('Ohne Organisation'); return; }
+    if (typeof scope === 'undefined') {
+      setActiveOrgName('Alle Organisationen');
+      return;
+    }
+    if (scope === null) {
+      setActiveOrgName('Ohne Organisation');
+      return;
+    }
     // scope is an orgId string
-    if (user?.orgId === scope && user?.orgName) { setActiveOrgName(user.orgName); return; }
+    if (user?.orgId === scope && user?.orgName) {
+      setActiveOrgName(user.orgName);
+      return;
+    }
     const cache = readCache();
-    if (cache[scope]) { setActiveOrgName(cache[scope]); return; }
+    if (cache[scope]) {
+      setActiveOrgName(cache[scope]);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -67,20 +117,23 @@ export default function Layout() {
           const res = await api.get<OrgDto[]>('/orgs/subtree');
           list = res.data;
         }
-        const found = list.find(o => o.id === scope);
+        const found = list.find((o) => o.id === scope);
         if (!cancelled) {
           if (found?.name) {
             setActiveOrgName(found.name);
-            cache[scope] = found.name; writeCache(cache);
+            cache[scope] = found.name;
+            writeCache(cache);
           } else {
-            setActiveOrgName(`Org ${scope.substring(0,6)}…`);
+            setActiveOrgName(`Org ${scope.substring(0, 6)}…`);
           }
         }
       } catch {
-        if (!cancelled) setActiveOrgName(`Org ${scope.substring(0,6)}…`);
+        if (!cancelled) setActiveOrgName(`Org ${scope.substring(0, 6)}…`);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [scope, user?.id, user?.role, user?.orgId, user?.orgName]);
   useEffect(() => {
     if (!scopeModalOpen) return;
@@ -94,9 +147,11 @@ export default function Layout() {
         } else {
           setOrgList([]);
         }
-      } catch { /* ignore */ }
-  // If current scope is null but we removed the null option from UI, default selection to undefined (superadmin) or keep user's scope
-  setPendingScope(scope === null ? undefined : scope);
+      } catch {
+        /* ignore */
+      }
+      // If current scope is null but we removed the null option from UI, default selection to undefined (superadmin) or keep user's scope
+      setPendingScope(scope === null ? undefined : scope);
     })();
   }, [scopeModalOpen]);
   // Load org list when opening quick-create modal as well
@@ -118,7 +173,9 @@ export default function Layout() {
         } else {
           setParentForNewOrg('root');
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
   }, [createModalOpen]);
 
@@ -128,24 +185,44 @@ export default function Layout() {
       <header className="fixed top-0 inset-x-0 z-40 header-surface text-white shadow-lg">
         <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <img src={logoUrl} alt="StatO Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain select-none" />
+            <img
+              src={logoUrl}
+              alt="StatO Logo"
+              className="w-8 h-8 md:w-10 md:h-10 object-contain select-none"
+            />
             <div className="leading-tight min-w-0">
               <h1 className="text-xl md:text-2xl font-bold truncate">StatO</h1>
-              <p className="text-[11px] md:text-sm text-mint-green truncate">OKJA Statistik & Dokumentation</p>
+              <p className="text-[11px] md:text-sm text-mint-green truncate">
+                OKJA Statistik & Dokumentation
+              </p>
             </div>
           </div>
           {/* Current user and org summary (moved next to avatar on desktop) */}
           <div className="hidden"></div>
           {/* User menu */}
-          <div className="relative flex items-center" {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}>
+          <div
+            className="relative flex items-center"
+            {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}
+          >
             {/* Summary on sm+ placed just left of the avatar */}
             <div className="hidden sm:flex flex-col items-end text-sm mr-3">
               <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
-              <div className="opacity-90 text-mint-green truncate max-w-[40vw]">{roleLabel[user?.role || 'user']}{activeOrgName ? ` · ${activeOrgName}` : ''}</div>
+              <div className="opacity-90 text-mint-green truncate max-w-[40vw]">
+                {roleLabel[user?.role || 'user']}
+                {activeOrgName ? ` · ${activeOrgName}` : ''}
+              </div>
             </div>
-            <button aria-label="Benutzer" className="flex items-center gap-2 hover:bg-white/10 rounded px-1 py-1" onClick={()=> setMenuOpen((v)=>!v)}>
+            <button
+              aria-label="Benutzer"
+              className="flex items-center gap-2 hover:bg-white/10 rounded px-1 py-1"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
               {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
+                <img
+                  src={user.avatarUrl}
+                  alt="Avatar"
+                  className="w-8 h-8 rounded-full object-cover"
+                />
               ) : (
                 <UserCircle2 className="w-8 h-8" />
               )}
@@ -153,36 +230,101 @@ export default function Layout() {
             {/* Compact user/org on mobile */}
             <div className="flex sm:hidden flex-col items-end ml-2 text-[11px] leading-4">
               <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
-              <div className="opacity-90 text-mint-green truncate max-w-[40vw]">{activeOrgName || (typeof scope === 'string' ? `Org ${scope.substring(0,6)}…` : '')}</div>
+              <div className="opacity-90 text-mint-green truncate max-w-[40vw]">
+                {activeOrgName ||
+                  (typeof scope === 'string' ? `Org ${scope.substring(0, 6)}…` : '')}
+              </div>
             </div>
             {menuOpen && (
-            <div className="absolute right-0 top-full mt-2 bg-white text-gray-800 rounded shadow-lg w-56 z-50" {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}>
-              <div className="px-4 py-3 border-b">
-                <div className="font-semibold">{user?.name || user?.email}</div>
-                <div className="text-xs text-gray-500">{roleLabel[user?.role || 'user']}{user?.orgName ? ` · ${user.orgName}` : (user?.orgId ? ` · Org ${user.orgId}` : '')}</div>
-              </div>
-              <ul className="py-1 text-sm">
-                <li><button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={()=>{ navigate('/me'); setMenuOpen(false); }}>Meine Daten</button></li>
-                {(user?.role === 'org_admin' || user?.role === 'superadmin') && (
-                  <li><button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={()=>{ setScopeModalOpen(true); setMenuOpen(false); }}>Organisation wechseln</button></li>
-                )}
-                {user?.role === 'org_admin' && (
+              <div
+                className="absolute right-0 top-full mt-2 bg-white text-gray-800 rounded shadow-lg w-56 z-50"
+                {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}
+              >
+                <div className="px-4 py-3 border-b">
+                  <div className="font-semibold">{user?.name || user?.email}</div>
+                  <div className="text-xs text-gray-500">
+                    {roleLabel[user?.role || 'user']}
+                    {user?.orgName
+                      ? ` · ${user.orgName}`
+                      : user?.orgId
+                        ? ` · Org ${user.orgId}`
+                        : ''}
+                  </div>
+                </div>
+                <ul className="py-1 text-sm">
                   <li>
                     <button
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                      onClick={() => { setCreateModalOpen(true); setMenuOpen(false); }}
-                    >Organisation anlegen</button>
+                      onClick={() => {
+                        navigate('/me');
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Meine Daten
+                    </button>
                   </li>
-                )}
-                {user?.role === 'superadmin' && (
-                  <li><button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={()=>{ navigate('/admin/orgs'); setMenuOpen(false); }}>Organisationen</button></li>
-                )}
-                {(user?.role === 'org_admin' || user?.role === 'superadmin') && (
-                  <li><button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={()=>navigate('/admin/users')}>Benutzer</button></li>
-                )}
-                <li><button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={()=>{ logout(); setMenuOpen(false); }}>Abmelden</button></li>
-              </ul>
-            </div>
+                  {(user?.role === 'org_admin' || user?.role === 'superadmin') && (
+                    <li>
+                      <button
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        onClick={() => {
+                          setScopeModalOpen(true);
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Organisation wechseln
+                      </button>
+                    </li>
+                  )}
+                  {user?.role === 'org_admin' && (
+                    <li>
+                      <button
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        onClick={() => {
+                          setCreateModalOpen(true);
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Organisation anlegen
+                      </button>
+                    </li>
+                  )}
+                  {user?.role === 'superadmin' && (
+                    <li>
+                      <button
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        onClick={() => {
+                          navigate('/admin/orgs');
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Organisationen
+                      </button>
+                    </li>
+                  )}
+                  {(user?.role === 'org_admin' || user?.role === 'superadmin') && (
+                    <li>
+                      <button
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        onClick={() => navigate('/admin/users')}
+                      >
+                        Benutzer
+                      </button>
+                    </li>
+                  )}
+                  <li>
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                      onClick={() => {
+                        logout();
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Abmelden
+                    </button>
+                  </li>
+                </ul>
+              </div>
             )}
           </div>
         </div>
@@ -266,15 +408,14 @@ export default function Layout() {
       <div className="hidden md:block h-[5px]" aria-hidden="true" />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 pt-24 md:pt-32 pb-[var(--mobile-nav-space,8rem)] md:pb-8">
+      <main
+        className={`container mx-auto px-4 py-8 pt-24 md:pt-32 ${keyboardOpen ? 'pb-0' : 'pb-[5.5rem]'} md:pb-8`}
+      >
         <Outlet />
       </main>
 
       {/* Bottom Navigation (mobile) */}
-      <nav
-        className="fixed bottom-0 inset-x-0 bg-white border-t shadow md:hidden z-50"
-        style={{ ...( { ['--mobile-nav-space']: '5.5rem' } as Record<string, string>) }}
-      >
+      <nav className="fixed bottom-0 inset-x-0 bg-white border-t shadow md:hidden z-50">
         <ul className="grid grid-cols-6 text-xs">
           <li>
             <Link
@@ -337,60 +478,111 @@ export default function Layout() {
       <footer className="bg-azure-web text-gray-600 mt-12">
         <div className="container mx-auto px-4 py-6 text-center text-sm">
           <p>
-            © {new Date().getFullYear()} StatO · Version {import.meta.env.VITE_APP_VERSION || '0.7'}
-            {import.meta.env.VITE_COMMIT_SHA ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0,7)})` : ''} ·{' '}
-            <a href="mailto:nikolas.haefner@mannheim.de" className="underline hover:text-viridian">Nikolas Häfner</a>
+            © {new Date().getFullYear()} StatO · Version{' '}
+            {import.meta.env.VITE_APP_VERSION || '0.7'}
+            {import.meta.env.VITE_COMMIT_SHA
+              ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0, 7)})`
+              : ''}{' '}
+            ·{' '}
+            <a href="mailto:nikolas.haefner@mannheim.de" className="underline hover:text-viridian">
+              Nikolas Häfner
+            </a>
           </p>
         </div>
       </footer>
       {/* Quick Create Organisation Modal (org_admin) */}
-      <Modal open={createModalOpen} onClose={()=> { setCreateModalOpen(false); setNewOrgName(''); }} title="Organisation anlegen" maxWidth="sm">
+      <Modal
+        open={createModalOpen}
+        onClose={() => {
+          setCreateModalOpen(false);
+          setNewOrgName('');
+        }}
+        title="Organisation anlegen"
+        maxWidth="sm"
+      >
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium mb-1">Name der Organisation</label>
             <input
               value={newOrgName}
-              onChange={(e)=> setNewOrgName(e.target.value)}
+              onChange={(e) => setNewOrgName(e.target.value)}
               className="border rounded px-3 py-2 w-full"
               placeholder="z. B. Jugendzentrum Nord"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Übergeordnete Organisation</label>
+            <label htmlFor="parent-org-select" className="block text-sm font-medium mb-1">
+              Übergeordnete Organisation
+            </label>
             <select
+              id="parent-org-select"
               value={parentForNewOrg}
-              onChange={(e)=> setParentForNewOrg((e.target.value || (user?.role === 'superadmin' ? 'root' : '')) as 'root' | string | '')}
+              onChange={(e) =>
+                setParentForNewOrg(
+                  (e.target.value || (user?.role === 'superadmin' ? 'root' : '')) as
+                    | 'root'
+                    | string
+                    | '',
+                )
+              }
               className="border rounded px-3 py-2 w-full"
             >
               {user?.role === 'superadmin' && <option value="root">(Keine, oberste Ebene)</option>}
-              {orgList.map(o => (<option key={o.id} value={o.id}>{o.name}</option>))}
+              {orgList.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="mt-3 flex items-center justify-end gap-2">
-            <button className="px-3 py-1.5 rounded bg-gray-200 text-gray-700" onClick={()=> { setCreateModalOpen(false); setNewOrgName(''); }}>Abbrechen</button>
+            <button
+              className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
+              onClick={() => {
+                setCreateModalOpen(false);
+                setNewOrgName('');
+              }}
+            >
+              Abbrechen
+            </button>
             <button
               className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
               disabled={!newOrgName.trim() || (user?.role !== 'superadmin' && !parentForNewOrg)}
               onClick={async () => {
                 try {
-                  const parentId = user?.role === 'superadmin'
-                    ? (parentForNewOrg === 'root' ? null : parentForNewOrg || null)
-                    : (parentForNewOrg || (user?.orgId as string | undefined) || null);
-                  const created = await createOrgApi(newOrgName.trim(), parentId as string | null | undefined);
+                  const parentId =
+                    user?.role === 'superadmin'
+                      ? parentForNewOrg === 'root'
+                        ? null
+                        : parentForNewOrg || null
+                      : parentForNewOrg || (user?.orgId as string | undefined) || null;
+                  const created = await createOrgApi(
+                    newOrgName.trim(),
+                    parentId as string | null | undefined,
+                  );
                   setNewOrgName('');
                   setCreateModalOpen(false);
                   showToast(`Organisation „${created.name}” angelegt.`, { type: 'success' });
                 } catch (e: unknown) {
-                  const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Anlegen fehlgeschlagen';
+                  const msg =
+                    (e as { response?: { data?: { message?: unknown } } })?.response?.data
+                      ?.message || 'Anlegen fehlgeschlagen';
                   showToast(String(msg), { type: 'error', durationMs: 3500 });
                 }
               }}
-            >Organisation anlegen</button>
+            >
+              Organisation anlegen
+            </button>
           </div>
         </div>
       </Modal>
       {/* Org Scope Switcher Modal */}
-      <Modal open={scopeModalOpen} onClose={()=> setScopeModalOpen(false)} title="Organisation wechseln" maxWidth="sm">
+      <Modal
+        open={scopeModalOpen}
+        onClose={() => setScopeModalOpen(false)}
+        title="Organisation wechseln"
+        maxWidth="sm"
+      >
         <div className="space-y-3">
           {user?.role === 'superadmin' && (
             <div className="flex items-center justify-between p-2 border rounded">
@@ -399,7 +591,7 @@ export default function Layout() {
                   type="radio"
                   name="orgscope"
                   checked={typeof pendingScope === 'undefined'}
-                  onChange={()=> setPendingScope(undefined)}
+                  onChange={() => setPendingScope(undefined)}
                 />
                 <span>Alle Organisationen (global)</span>
               </label>
@@ -408,14 +600,14 @@ export default function Layout() {
           <div className="max-h-64 overflow-auto border rounded">
             <ul>
               {/* For non-superadmin, limit to subtree visually; backend enforces anyway */}
-              {orgList.map(o => (
+              {orgList.map((o) => (
                 <li key={o.id}>
                   <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
                     <input
                       type="radio"
                       name="orgscope"
                       checked={pendingScope === o.id}
-                      onChange={()=> setPendingScope(o.id)}
+                      onChange={() => setPendingScope(o.id)}
                     />
                     <span className="truncate">{o.name}</span>
                   </label>
@@ -424,8 +616,21 @@ export default function Layout() {
             </ul>
           </div>
           <div className="mt-3 flex items-center justify-end gap-2">
-            <button className="px-3 py-1.5 rounded bg-gray-200 text-gray-700" onClick={()=> setScopeModalOpen(false)}>Abbrechen</button>
-            <button className="px-3 py-1.5 rounded bg-viridian text-white" onClick={()=>{ setScope(pendingScope); setScopeModalOpen(false); }}>Übernehmen</button>
+            <button
+              className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
+              onClick={() => setScopeModalOpen(false)}
+            >
+              Abbrechen
+            </button>
+            <button
+              className="px-3 py-1.5 rounded bg-viridian text-white"
+              onClick={() => {
+                setScope(pendingScope);
+                setScopeModalOpen(false);
+              }}
+            >
+              Übernehmen
+            </button>
           </div>
         </div>
       </Modal>

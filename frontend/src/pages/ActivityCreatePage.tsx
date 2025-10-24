@@ -214,8 +214,11 @@ export default function ActivityCreatePage() {
 
   // Bottom nav ist im Activity-Route ausgeblendet; orientiere dich nur an Safe-Area.
   // Wenn die Tastatur offen ist, reduziere das zusätzliche Padding deutlich, um den sichtbaren Gap zu vermeiden.
+  // Wenn die Tastatur offen ist, entferne das zusätzliche 72px-Polster vollständig
+  // (nur noch die echte Safe-Area bleibt bestehen). Das reduziert den sichtbaren
+  // Abstand zum Keyboard deutlich.
   const containerPad = keyboardOpen
-    ? 'pb-[calc(env(safe-area-inset-bottom,0px)+8px)]'
+    ? 'pb-[env(safe-area-inset-bottom,0px)]'
     : 'pb-[calc(env(safe-area-inset-bottom,0px)+72px)]';
   const stickyBottom = 'bottom-[calc(env(safe-area-inset-bottom,0px)+8px)]';
 

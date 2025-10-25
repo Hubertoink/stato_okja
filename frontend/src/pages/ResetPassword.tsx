@@ -14,9 +14,19 @@ export default function ResetPassword() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!token) { setError('Ungültiger Link'); return; }
-    if (password.length < 8) { setError('Mindestens 8 Zeichen'); return; }
-    if (password !== confirm) { setError('Passwörter stimmen nicht überein'); return; }
+    if (!token) {
+      setError('Ungültiger Link');
+      return;
+    }
+    const strong = /^(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(password);
+    if (!strong) {
+      setError('Mind. 6 Zeichen, eine Zahl und ein Sonderzeichen');
+      return;
+    }
+    if (password !== confirm) {
+      setError('Passwörter stimmen nicht überein');
+      return;
+    }
     try {
       await resetPassword(token, password);
       setOk(true);
@@ -33,21 +43,55 @@ export default function ResetPassword() {
         {ok ? (
           <div className="space-y-4">
             <p className="text-sm text-gray-700">Passwort gesetzt. Du wirst weitergeleitet…</p>
-            <p className="text-xs text-gray-600">Falls nichts passiert: <a href="/" className="text-viridian hover:underline">Zum Login</a></p>
+            <p className="text-xs text-gray-600">
+              Falls nichts passiert:{' '}
+              <a href="/" className="text-viridian hover:underline">
+                Zum Login
+              </a>
+            </p>
           </div>
         ) : (
           <form className="space-y-4" onSubmit={onSubmit}>
             <div>
-              <label className="block text-sm font-medium mb-2">Neues Passwort</label>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-300 rounded px-4 py-2" />
+              <label className="block text-sm font-medium mb-2" htmlFor="new-pass">
+                Neues Passwort
+              </label>
+              <input
+                id="new-pass"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full border border-gray-300 rounded px-4 py-2"
+                placeholder="Mind. 6 Zeichen, Zahl & Sonderzeichen"
+                title="Neues Passwort"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Bestätigung</label>
-              <input type="password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} className="w-full border border-gray-300 rounded px-4 py-2" />
+              <label className="block text-sm font-medium mb-2" htmlFor="new-pass-confirm">
+                Bestätigung
+              </label>
+              <input
+                id="new-pass-confirm"
+                type="password"
+                required
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className="w-full border border-gray-300 rounded px-4 py-2"
+                placeholder="Wiederholen"
+                title="Passwort bestätigen"
+              />
             </div>
-            <button type="submit" className="w-full bg-viridian text-white py-2 rounded">Speichern</button>
+            <button type="submit" className="w-full bg-viridian text-white py-2 rounded">
+              Speichern
+            </button>
             {error && <div className="text-red-600 text-sm">{error}</div>}
-            <p className="text-xs text-gray-600">Abbrechen? <a href="/" className="text-viridian hover:underline">Zurück zum Login</a></p>
+            <p className="text-xs text-gray-600">
+              Abbrechen?{' '}
+              <a href="/" className="text-viridian hover:underline">
+                Zurück zum Login
+              </a>
+            </p>
           </form>
         )}
       </div>

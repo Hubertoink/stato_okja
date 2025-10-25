@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects, type Project } from '@/lib/projects';
 import { Star, ArrowLeft } from 'lucide-react';
@@ -49,6 +49,7 @@ export default function ProjectPickerPage() {
       return a.title.localeCompare(b.title, 'de');
     });
   }, [data]);
+  const [compact, setCompact] = useState<boolean>(false);
   const typeLabel: Record<string, string> = {
     open_door: 'Offene Tür',
     project_open: 'Projekt (offen)',
@@ -63,6 +64,15 @@ export default function ProjectPickerPage() {
     qp.set('projectId', p.id);
     navigate(`/activities/new?${qp.toString()}`, { state: { fromProjectPicker: true } });
   };
+
+  useEffect(() => {
+    // Always start scrolled to top when opening the picker route
+    try {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, []);
 
   return (
     <div className="min-h-[100dvh] bg-white">
@@ -80,53 +90,97 @@ export default function ProjectPickerPage() {
       </div>
 
       <div className="px-4 py-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Suchen…"
-          className="w-full border rounded px-3 py-2 mb-3"
-        />
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {(projects || []).map((p) => (
-            <button
-              key={p.id}
-              onClick={() => onPick(p)}
-              className="rounded-xl overflow-hidden shadow focus:outline-none focus:ring-2 focus:ring-viridian text-left"
-            >
-              <div className="relative h-24">
-                {p.imageUrl ? (
-                  <img
-                    src={p.imageUrl}
-                    alt={p.title}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className={`absolute inset-0 ${bgClassForProject(p)}`} />
-                )}
-                <div className="absolute top-1 left-1 z-10">
-                  <span
-                    className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${p.imageUrl ? 'bg-black/45 text-white' : 'bg-white/80 text-gray-800 border border-white/60'}`}
-                  >
-                    {typeLabel[p.type] || p.type}
-                  </span>
-                </div>
-                {getStarredProjectIds().includes(p.id) && (
-                  <div className="absolute top-1 right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400 shadow">
-                    <Star className="w-3.5 h-3.5 text-gray-900" />
-                  </div>
-                )}
-              </div>
-              <div className="p-2">
-                <div className="font-medium text-viridian truncate">{p.title}</div>
-              </div>
-            </button>
-          ))}
-          {(projects || []).length === 0 && (
-            <div className="col-span-full text-center py-6 text-gray-500">
-              Keine Projekte gefunden.
-            </div>
-          )}
+        <div className="flex items-center gap-2 mb-3">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Suchen…"
+            className="flex-1 border rounded px-3 py-2"
+          />
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={compact}
+              onChange={(e) => setCompact(e.target.checked)}
+            />
+            Kompakt
+          </label>
         </div>
+
+        {!compact && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {(projects || []).map((p) => (
+              <button
+                key={p.id}
+                onClick={() => onPick(p)}
+                className="rounded-xl overflow-hidden shadow focus:outline-none focus:ring-2 focus:ring-viridian text-left"
+              >
+                <div className="relative h-24">
+                  {p.imageUrl ? (
+                    <img
+                      src={p.imageUrl}
+                      alt={p.title}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className={`absolute inset-0 ${bgClassForProject(p)}`} />
+                  )}
+                  <div className="absolute top-1 left-1 z-10">
+                    <span
+                      className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${p.imageUrl ? 'bg-black/45 text-white' : 'bg-white/80 text-gray-800 border border-white/60'}`}
+                    >
+                      {typeLabel[p.type] || p.type}
+                    </span>
+                  </div>
+                  {getStarredProjectIds().includes(p.id) && (
+                    <div className="absolute top-1 right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400 shadow">
+                      <Star className="w-3.5 h-3.5 text-gray-900" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-2">
+                  <div className="font-medium text-viridian truncate">{p.title}</div>
+                </div>
+              </button>
+            ))}
+            {(projects || []).length === 0 && (
+              <div className="col-span-full text-center py-6 text-gray-500">
+                Keine Projekte gefunden.
+              </div>
+            )}
+          </div>
+        )}
+
+        {compact && (
+          <ul className="divide-y border rounded">
+            {(projects || []).map((p) => (
+              <li key={p.id}>
+                <button
+                  onClick={() => onPick(p)}
+                  className="w-full text-left flex items-center gap-3 px-3 py-2 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-viridian"
+                >
+                  <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className={`${bgClassForProject(p)} w-full h-full`} />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-viridian truncate">{p.title}</div>
+                    <div className="text-[11px] text-gray-600">{typeLabel[p.type] || p.type}</div>
+                  </div>
+                  {getStarredProjectIds().includes(p.id) && (
+                    <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                  )}
+                </button>
+              </li>
+            ))}
+            {(projects || []).length === 0 && (
+              <li className="px-3 py-6 text-center text-gray-500">Keine Projekte gefunden.</li>
+            )}
+          </ul>
+        )}
       </div>
     </div>
   );

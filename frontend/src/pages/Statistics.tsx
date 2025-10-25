@@ -167,7 +167,7 @@ export default function Statistics() {
         { name: 'divers', value: gender.diverse, color: '#a78bfa' },
       ]
     : [];
-  const genderTotal = (genderData || []).reduce((sum, g) => sum + (g.value || 0), 0);
+  // Hinweis: genderTotal wird für Tooltip nicht mehr benötigt, da dort absolute Werte gezeigt werden
 
   const fmtNumber = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
 
@@ -569,12 +569,14 @@ export default function Statistics() {
                     ))}
                   </Pie>
                   <Tooltip
+                    // Hover zeigt jeweils die "gegenteilige" Darstellung
+                    // (wenn Labels absolute zeigen, Tooltip prozentual und umgekehrt)
                     formatter={(
                       value: number,
                       _name: string,
                       entry?: { payload?: { name?: string } },
                     ) => [
-                      typeShowAbsolute
+                      !typeShowAbsolute
                         ? fmtNumber(value)
                         : byTypeTotal > 0
                           ? `${((value / byTypeTotal) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
@@ -610,16 +612,12 @@ export default function Statistics() {
                     ))}
                   </Pie>
                   <Tooltip
+                    // Labels sind relativ (Prozent), daher im Tooltip die absoluten Werte anzeigen
                     formatter={(
                       value: number,
                       _name: string,
                       entry?: { payload?: { name?: string } },
-                    ) => [
-                      genderTotal > 0
-                        ? `${((value / genderTotal) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
-                        : '0 %',
-                      entry?.payload?.name || '',
-                    ]}
+                    ) => [fmtNumber(value), entry?.payload?.name || '']}
                   />
                   <Legend />
                 </PieChart>

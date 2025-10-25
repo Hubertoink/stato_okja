@@ -86,7 +86,7 @@ export default function ProjectPickerModal({
       className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate">
+      <div className="bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] md:max-h-[90vh] overflow-y-auto bottom-sheet-animate">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xl font-semibold text-viridian">Projekt wählen</h3>
           <button
@@ -175,9 +175,9 @@ export default function ProjectPickerModal({
         )}
 
         {compact && (
-          <ul className="divide-y border rounded">
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-3 divide-y md:divide-y-0 border rounded">
             {projects.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className="md:border-b md:last:border-b-0 md:odd:border-r">
                 <button
                   onClick={() => onPick(p)}
                   className="w-full text-left flex items-center gap-3 px-3 py-2 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-viridian"
@@ -200,7 +200,9 @@ export default function ProjectPickerModal({
               </li>
             ))}
             {projects.length === 0 && (
-              <li className="px-3 py-6 text-center text-gray-500">Keine Projekte gefunden.</li>
+              <li className="col-span-full px-3 py-6 text-center text-gray-500">
+                Keine Projekte gefunden.
+              </li>
             )}
           </ul>
         )}

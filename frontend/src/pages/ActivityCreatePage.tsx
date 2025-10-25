@@ -221,9 +221,12 @@ export default function ActivityCreatePage() {
     ? 'pb-[env(safe-area-inset-bottom,0px)]'
     : 'pb-[calc(env(safe-area-inset-bottom,0px)+72px)]';
   const stickyBottom = 'bottom-[calc(env(safe-area-inset-bottom,0px)+8px)]';
+  // Wenn Tastatur offen: Action-Bar wird relative, kein Padding/Margin, Border-Top nur zur optischen Trennung
   const actionBarClass = keyboardOpen
-    ? 'relative z-10 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex items-center justify-between gap-3'
+    ? 'relative z-10 bg-white border-t -mx-4 md:-mx-6 px-4 md:px-6 py-1.5 flex items-center justify-between gap-3'
     : `sticky z-50 ${stickyBottom} bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex items-center justify-between gap-3`;
+  // Reduziere Form-Spacing bei geöffneter Tastatur, um weniger "Leerraum" zu haben
+  const formSpacing = keyboardOpen ? 'space-y-2' : 'space-y-4';
 
   return (
     <div className={`max-w-3xl mx-auto px-4 md:px-6 py-4 ${containerPad}`}>
@@ -241,7 +244,7 @@ export default function ActivityCreatePage() {
       </div>
 
       <form
-        className="bg-white rounded-lg shadow p-4 md:p-6 space-y-4"
+        className={`bg-white rounded-lg shadow p-4 md:p-6 ${formSpacing}`}
         onSubmit={(e) => {
           e.preventDefault();
           handleSave();

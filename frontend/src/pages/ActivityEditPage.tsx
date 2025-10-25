@@ -123,9 +123,12 @@ export default function ActivityEditPage() {
 
   // Bottom nav ist im Activity-Route ausgeblendet; orientiere dich nur an Safe-Area
   const stickyBottom = 'bottom-[calc(env(safe-area-inset-bottom,0px)+16px)]';
+  // Keyboard offen: Action-Bar nicht sticky, minimales Padding, kein backdrop-blur
   const actionBarClass = keyboardOpen
-    ? 'relative z-10 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center justify-between gap-3 border-t'
+    ? 'relative z-10 bg-white border-t -mx-4 md:-mx-6 px-4 md:px-6 py-1.5 flex items-center justify-between gap-3'
     : `mt-4 sticky z-50 ${stickyBottom} bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center justify-between gap-3 border-t`;
+  // Reduziere Container-Spacing bei Tastatur
+  const contentSpacing = keyboardOpen ? 'space-y-2' : 'space-y-3';
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
@@ -142,7 +145,7 @@ export default function ActivityEditPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 md:p-6 space-y-3">
+      <div className={`bg-white rounded-lg shadow p-4 md:p-6 ${contentSpacing}`}>
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="location-select-edit">
             Standort *

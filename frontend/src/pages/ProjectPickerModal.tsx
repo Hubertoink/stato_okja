@@ -57,7 +57,22 @@ export default function ProjectPickerModal({
       return a.title.localeCompare(b.title, 'de');
     });
   }, [data]);
-  const [compact, setCompact] = useState<boolean>(false);
+  // Lade Kompakt-Einstellung aus localStorage, damit sie beim Wiederkommen erhalten bleibt
+  const [compact, setCompact] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('projectPickerCompact') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const toggleCompact = (val: boolean) => {
+    setCompact(val);
+    try {
+      localStorage.setItem('projectPickerCompact', String(val));
+    } catch {
+      /* ignore */
+    }
+  };
   const typeLabel: Record<string, string> = {
     open_door: 'Offene Tür',
     project_open: 'Projekt (offen)',
@@ -93,7 +108,7 @@ export default function ProjectPickerModal({
             <input
               type="checkbox"
               checked={compact}
-              onChange={(e) => setCompact(e.target.checked)}
+              onChange={(e) => toggleCompact(e.target.checked)}
             />
             Kompakt
           </label>

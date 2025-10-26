@@ -12,7 +12,6 @@ import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
 import { useEffect, useRef, useState } from 'react';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
-import { useVisualViewportCssVar } from '@/lib/useVisualViewportCssVar';
 import Modal from '@/components/Modal';
 import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
@@ -68,8 +67,6 @@ export default function Layout() {
   const [newOrgName, setNewOrgName] = useState('');
   const [parentForNewOrg, setParentForNewOrg] = useState<string | 'root' | ''>('');
   const keyboardOpen = useKeyboardOpen();
-  // Keep a CSS var --vvh in sync with the real visual viewport height to avoid gaps above the keyboard
-  useVisualViewportCssVar();
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
   const hideBottomNav = isActivityFull || keyboardOpen;
@@ -187,10 +184,7 @@ export default function Layout() {
   }, [createModalOpen]);
 
   return (
-    <div
-      className="bg-mint-cream min-h-[var(--vvh,100vh)]"
-      // Use dynamic visual viewport height to size the app shell and prevent bottom gaps when the keyboard opens
-    >
+    <div className="bg-mint-cream min-h-screen">
       {/* Header */}
       <header className="fixed top-0 inset-x-0 z-40 header-surface text-white shadow-lg">
         <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-3">

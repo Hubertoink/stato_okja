@@ -19,7 +19,7 @@ import {
   LabelList,
 } from 'recharts';
 import { useAuth } from '@/lib/auth';
-import { useActivities } from '@/lib/activities';
+import { useActivities, type Activity } from '@/lib/activities';
 import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import jsPDF from 'jspdf';
@@ -117,7 +117,9 @@ export default function Statistics() {
   const [yearPickerOpen, setYearPickerOpen] = useState<boolean>(false);
   const yearPickerRef = useRef<HTMLDivElement | null>(null);
   const [yearDraft, setYearDraft] = useState<string>('');
-  const [typeShowAbsolute, setTypeShowAbsolute] = useState<boolean>(false);
+  // We no longer show toggle buttons; default to percentage labels in the chart
+
+  const [pdfMode, setPdfMode] = useState(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -159,7 +161,7 @@ export default function Statistics() {
     value: d.count,
     color: COLORS[i % COLORS.length],
   }));
-  const byTypeTotal = (byTypeData || []).reduce((sum, d) => sum + (d.value || 0), 0);
+
   const genderData = gender
     ? [
         { name: 'männlich', value: gender.male, color: '#60a5fa' },
@@ -249,6 +251,9 @@ export default function Statistics() {
   async function exportPdf() {
     // Render the report container to images and assemble into a PDF (A4 portrait)
     if (!reportRef.current) return;
+    // Force export layout (e.g., 2-column grid, hide interactive bits)
+    setPdfMode(true);
+    await new Promise(requestAnimationFrame);
     const el = reportRef.current;
     // Ensure charts are fully rendered
     await new Promise(requestAnimationFrame);
@@ -373,6 +378,7 @@ export default function Statistics() {
     }
 
     pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
+    setPdfMode(false);
   }
 
   return (
@@ -529,24 +535,11 @@ export default function Statistics() {
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-viridian">Verteilung nach Tätigkeitstyp</h3>
-              <div className="flex items-center gap-2 text-sm">
-                <button
-                  className={`px-2 py-1 rounded ${!typeShowAbsolute ? 'bg-viridian text-white' : 'bg-gray-100 text-gray-700'}`}
-                  onClick={() => setTypeShowAbsolute(false)}
-                >
-                  Prozent
-                </button>
-                <button
-                  className={`px-2 py-1 rounded ${typeShowAbsolute ? 'bg-viridian text-white' : 'bg-gray-100 text-gray-700'}`}
-                  onClick={() => setTypeShowAbsolute(true)}
-                >
-                  Anzahl
-                </button>
-              </div>
+              {/* Toggle entfernt (Prozent/Anzahl). Labels zeigen Prozent, Tooltip absolute Werte. */}
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -559,9 +552,9 @@ export default function Statistics() {
                     cy="50%"
                     outerRadius={80}
                     label={(entry: { value?: number; percent?: number }) =>
-                      typeShowAbsolute
-                        ? fmtNumber(entry.value || 0)
-                        : `${((entry.percent || 0) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
+                      `${((entry.percent || 0) * 100).toLocaleString('de-DE', {
+                        maximumFractionDigits: 1,
+                      })} %`
                     }
                   >
                     {byTypeData.map((entry, index) => (
@@ -575,14 +568,7 @@ export default function Statistics() {
                       value: number,
                       _name: string,
                       entry?: { payload?: { name?: string } },
-                    ) => [
-                      !typeShowAbsolute
-                        ? fmtNumber(value)
-                        : byTypeTotal > 0
-                          ? `${((value / byTypeTotal) * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
-                          : '0 %',
-                      entry?.payload?.name || '',
-                    ]}
+                    ) => [fmtNumber(value), entry?.payload?.name || '']}
                   />
                   <Legend />
                 </PieChart>
@@ -771,6 +757,157 @@ export default function Statistics() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Aktivitäten-Tabelle (nach Diagrammen) */}
+        <div className="bg-white rounded-lg shadow p-6 mt-8">
+          <h3 className="text-lg font-semibold mb-4 text-viridian">Alle Aktivitäten (gefiltert)</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-azure-web text-gray-700">
+                  <th className="px-3 py-2 text-left">Datum</th>
+                  <th className="px-3 py-2 text-left">Typ</th>
+                  <th className="px-3 py-2 text-left">Titel</th>
+                  <th className="px-3 py-2 text-left">Projekt</th>
+                  <th className="px-3 py-2 text-right">TN ges.</th>
+                  <th className="px-3 py-2 text-right">m</th>
+                  <th className="px-3 py-2 text-right">w</th>
+                  <th className="px-3 py-2 text-right">d</th>
+                  <th className="px-3 py-2 text-right">Dauer (min)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {(activities as Activity[]).map((a) => {
+                  const s = String(a.date || '').slice(0, 10);
+                  const [y, m, d] = s.split('-');
+                  const dateDE = `${d}.${m}.${y}`;
+                  const typeLabel: Record<string, string> = {
+                    open_door: 'Offene Tür',
+                    project_open: 'Projekt (offen)',
+                    project_closed: 'Projekt (geschlossen)',
+                    event: 'Veranstaltung',
+                    outreach: 'Aufsuchend',
+                  };
+                  const total =
+                    (a.countTotal ??
+                      (a.countMale || 0) + (a.countFemale || 0) + (a.countDiverse || 0)) ||
+                    0;
+                  const duration = (() => {
+                    if (typeof a.durationMinutes === 'number') return a.durationMinutes;
+                    const parse = (t?: string | null) => {
+                      if (!t) return undefined;
+                      const [hh, mm] = String(t)
+                        .split(':')
+                        .map((v) => parseInt(v, 10));
+                      if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
+                      return hh * 60 + mm;
+                    };
+                    const s = parse(a.startTime);
+                    const e = parse(a.endTime);
+                    return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
+                  })();
+                  return (
+                    <tr key={a.id}>
+                      <td className="px-3 py-1.5">{dateDE}</td>
+                      <td className="px-3 py-1.5">{typeLabel[a.type] || a.type}</td>
+                      <td className="px-3 py-1.5">{a.title || ''}</td>
+                      <td className="px-3 py-1.5">{a.project?.title || ''}</td>
+                      <td className="px-3 py-1.5 text-right">{fmtNumber(total)}</td>
+                      <td className="px-3 py-1.5 text-right">{fmtNumber(a.countMale || 0)}</td>
+                      <td className="px-3 py-1.5 text-right">{fmtNumber(a.countFemale || 0)}</td>
+                      <td className="px-3 py-1.5 text-right">{fmtNumber(a.countDiverse || 0)}</td>
+                      <td className="px-3 py-1.5 text-right">{duration ?? ''}</td>
+                    </tr>
+                  );
+                })}
+                {(activities as Activity[]).length === 0 && (
+                  <tr>
+                    <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
+                      Keine Aktivitäten im Zeitraum.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Konsolidiert (kompakt) */}
+        <div className="bg-white rounded-lg shadow p-6 mt-6">
+          <h3 className="text-lg font-semibold mb-4 text-viridian">Konsolidiert</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-medium text-gray-700 mb-2">Nach Tätigkeitstyp</h4>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-azure-web text-gray-700">
+                    <th className="px-3 py-2 text-left">Typ</th>
+                    <th className="px-3 py-2 text-right">Aktivitäten</th>
+                    <th className="px-3 py-2 text-right">Teilnehmende</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {(() => {
+                    const map = new Map<string, { c: number; p: number }>();
+                    (activities as Activity[]).forEach((a) => {
+                      const key = a.type || 'unknown';
+                      const v = map.get(key) || { c: 0, p: 0 };
+                      v.c += 1;
+                      const total =
+                        (a.countTotal ??
+                          (a.countMale || 0) + (a.countFemale || 0) + (a.countDiverse || 0)) ||
+                        0;
+                      v.p += total;
+                      map.set(key, v);
+                    });
+                    const typeLabel: Record<string, string> = {
+                      open_door: 'Offene Tür',
+                      project_open: 'Projekt (offen)',
+                      project_closed: 'Projekt (geschlossen)',
+                      event: 'Veranstaltung',
+                      outreach: 'Aufsuchend',
+                      unknown: 'Unbekannt',
+                    };
+                    return Array.from(map.entries()).map(([k, v]) => (
+                      <tr key={k}>
+                        <td className="px-3 py-1.5">{typeLabel[k] || k}</td>
+                        <td className="px-3 py-1.5 text-right">{fmtNumber(v.c)}</td>
+                        <td className="px-3 py-1.5 text-right">{fmtNumber(v.p)}</td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-700 mb-2">Nach Kategorie</h4>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-azure-web text-gray-700">
+                    <th className="px-3 py-2 text-left">Kategorie</th>
+                    <th className="px-3 py-2 text-right">Aktivitäten</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {(() => {
+                    const map = new Map<string, number>();
+                    (activities as Activity[]).forEach((a) => {
+                      (a.categories || []).forEach((c: { id: string; name: string }) => {
+                        map.set(c.name, (map.get(c.name) || 0) + 1);
+                      });
+                    });
+                    return Array.from(map.entries()).map(([name, count]) => (
+                      <tr key={name}>
+                        <td className="px-3 py-1.5">{name}</td>
+                        <td className="px-3 py-1.5 text-right">{fmtNumber(count)}</td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

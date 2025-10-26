@@ -212,20 +212,12 @@ export default function ActivityCreatePage() {
     else navigate(-1);
   };
 
-  // Bottom nav ist im Activity-Route ausgeblendet; orientiere dich nur an Safe-Area.
-  // Wenn die Tastatur offen ist, reduziere das zusätzliche Padding deutlich, um den sichtbaren Gap zu vermeiden.
-  // Wenn die Tastatur offen ist, entferne das zusätzliche 72px-Polster vollständig
-  // (nur noch die echte Safe-Area bleibt bestehen). Das reduziert den sichtbaren
-  // Abstand zum Keyboard deutlich.
-  const containerPad = keyboardOpen
-    ? 'pb-[env(safe-area-inset-bottom,0px)]'
-    : 'pb-[calc(env(safe-area-inset-bottom,0px)+72px)]';
-  const stickyBottom = 'bottom-[calc(env(safe-area-inset-bottom,0px)+8px)]';
-  // Wenn Tastatur offen: Action-Bar wird relative, kein Padding/Margin, Border-Top nur zur optischen Trennung
-  const actionBarClass = keyboardOpen
-    ? 'relative z-10 bg-white border-t -mx-4 md:-mx-6 px-4 md:px-6 py-1.5 flex items-center justify-between gap-3'
-    : `sticky z-50 ${stickyBottom} bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 border-t flex items-center justify-between gap-3`;
-  // Reduziere Form-Spacing bei geöffneter Tastatur, um weniger "Leerraum" zu haben
+  // Vereinfachte Strategie: Keine sticky Action-Bar mehr auf Mobil/Route-Seiten.
+  // So kann die Tastatur ohne Layout-Konflikte aufgehen. Wir behalten nur die echte Safe-Area unten.
+  const containerPad = 'pb-[env(safe-area-inset-bottom,0px)]';
+  const actionBarClass =
+    'relative z-10 bg-white border-t -mx-4 md:-mx-6 px-4 md:px-6 py-2 flex items-center justify-between gap-3';
+  // Etwas kompakter, wenn die Tastatur offen ist
   const formSpacing = keyboardOpen ? 'space-y-2' : 'space-y-4';
 
   return (

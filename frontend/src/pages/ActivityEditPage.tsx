@@ -121,12 +121,9 @@ export default function ActivityEditPage() {
   }, [form.cohortCounts]);
   // const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
 
-  // Bottom nav ist im Activity-Route ausgeblendet; orientiere dich nur an Safe-Area
-  const stickyBottom = 'bottom-[calc(env(safe-area-inset-bottom,0px)+16px)]';
-  // Keyboard offen: Action-Bar nicht sticky, minimales Padding, kein backdrop-blur
-  const actionBarClass = keyboardOpen
-    ? 'relative z-10 bg-white border-t -mx-4 md:-mx-6 px-4 md:px-6 py-1.5 flex items-center justify-between gap-3'
-    : `mt-4 sticky z-50 ${stickyBottom} bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center justify-between gap-3 border-t`;
+  // Vereinfachung: Action-Bar grundsätzlich nicht sticky, nur Safe-Area berücksichtigen.
+  const actionBarClass =
+    'relative z-10 bg-white border-t -mx-4 md:-mx-6 px-4 md:px-6 py-2 flex items-center justify-between gap-3';
   // Reduziere Container-Spacing bei Tastatur
   const contentSpacing = keyboardOpen ? 'space-y-2' : 'space-y-3';
 
@@ -356,7 +353,7 @@ export default function ActivityEditPage() {
                       data-gender={g}
                       enterKeyHint="next"
                       className="w-full border rounded px-2 py-1 text-center"
-                      placeholder={g.toUpperCase()}
+                      placeholder={g === 'm' ? '♂' : g === 'w' ? '♀' : '⚧'}
                       aria-label={`${c.name} ${g.toUpperCase()}`}
                     />
                   ))}

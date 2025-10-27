@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Brackets, IsNull } from 'typeorm';
+import { Repository, In, Brackets } from 'typeorm';
 import { Activity } from './entities/activity.entity';
 import { ActivityType } from '../common/enums';
 import { AuditService } from '../common/audit.service';
@@ -9,15 +9,12 @@ import { Tag } from '../taxonomy/entities/tag.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { Staff } from '../staff/entities/staff.entity';
 import { Project } from '../projects/entities/project.entity';
-import { ActivityAck } from './entities/activity-ack.entity';
 
 @Injectable()
 export class ActivitiesService {
   constructor(
     @InjectRepository(Activity)
     private readonly activityRepository: Repository<Activity>,
-    @InjectRepository(ActivityAck)
-    private readonly ackRepository: Repository<ActivityAck>,
     @InjectRepository(Tag)
     private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Category)
@@ -464,53 +461,56 @@ export class ActivitiesService {
     });
   }
 
-  // Daily Log acknowledgements (per user, per activity, scoped by org)
-  async getAcksForUser(
+  // --- Ack helpers for Daily Log ---
+  async getAcks(
     activityIds: string[],
-    user: { id: string; role: string; orgId?: string | null },
-  ) {
-    if (!Array.isArray(activityIds) || activityIds.length === 0)
-      return {} as Record<string, boolean>;
-    const orgId = user.role === 'superadmin' ? (user.orgId ?? null) : (user.orgId ?? null);
-    const rows = await this.ackRepository.find({
-      where: {
-        activityId: In(activityIds),
-        userId: user.id,
-        orgId: orgId === null ? IsNull() : (orgId as string),
-      },
-    });
-    const out: Record<string, boolean> = {};
-    for (const r of rows) out[r.activityId] = !!r.done;
-    return out;
+    orgFilter?: { orgId?: string | null; orgIds?: string[] },
+  ): Promise<Record<string, boolean>> {
+    if (!Array.isArray(activityIds) || activityIds.length === 0) return {};
+    const qb = this.activityRepository
+      .createQueryBuilder('a')
+      .select(['a.id', 'a.ackDone'])
+      .where('a.id IN (:...ids)', { ids: activityIds });
+
+    if (Array.isArray(orgFilter?.orgIds) && orgFilter!.orgIds!.length) {
+      qb.andWhere('a.orgId IN (:...orgIds)', { orgIds: orgFilter!.orgIds! });
+    } else if (typeof orgFilter?.orgId !== 'undefined') {
+      if (orgFilter.orgId === null) qb.andWhere('a.orgId IS NULL');
+      else qb.andWhere('a.orgId = :orgId', { orgId: orgFilter.orgId });
+    }
+
+    const rows = await qb.getMany();
+    const map: Record<string, boolean> = {};
+    for (const r of rows) {
+      map[r.id] = !!(r as { ackDone?: boolean }).ackDone;
+    }
+    return map;
   }
 
-  async setAckForUser(
-    activityId: string,
+  async setAckScoped(
+    id: string,
     done: boolean,
-    user: { id: string; role: string; orgId?: string | null },
-  ) {
-    // Ensure activity belongs to the same org scope unless superadmin across explicit org
-    const act = await this.activityRepository.findOne({ where: { id: activityId } });
-    if (!act) throw new BadRequestException('Invalid activityId');
-    const actOrg = act.orgId ?? null;
-    const userOrg = user.orgId ?? null;
-    if (user.role !== 'superadmin' && actOrg !== userOrg) {
+    user: { id?: string; name?: string | null; role: string; orgId?: string | null },
+  ): Promise<Activity | null> {
+    const existing = await this.activityRepository.findOne({ where: { id } });
+    if (!existing) return null;
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
       throw new ForbiddenException('Not allowed');
     }
-    // Upsert by (userId, activityId, orgId)
-    let row = await this.ackRepository.findOne({
-      where: {
-        activityId,
-        userId: user.id,
-        orgId: actOrg === null ? IsNull() : (actOrg as string),
-      },
-    });
-    if (!row) {
-      row = this.ackRepository.create({ activityId, userId: user.id, orgId: actOrg, done: !!done });
-    } else {
-      row.done = !!done;
+    existing.ackDone = !!done;
+    await this.activityRepository.save(existing);
+    const updated = await this.findOne(id);
+    if (updated) {
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entityType: 'activity',
+        entityId: updated.id,
+        entityTitle: updated.title || updated.project?.title || updated.location?.name || null,
+        orgId: updated.orgId ?? null,
+        details: { ackDone: !!done },
+        user: { id: user.id, name: user.name ?? undefined, orgId: user.orgId ?? null },
+      });
     }
-    await this.ackRepository.save(row);
-    return { activityId, done: row.done } as const;
+    return updated;
   }
 }

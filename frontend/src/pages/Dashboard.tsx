@@ -136,7 +136,6 @@ export default function Dashboard() {
       /* ignore */
     }
   }, [doneMap]);
-
   const dailyLog = useMemo(() => {
     const candidates = (activitiesMonth || []).filter(
       (a) =>
@@ -166,23 +165,22 @@ export default function Dashboard() {
     }));
   }, [activitiesMonth, audit]);
 
-  // Sync doneMap with server for the currently visible Daily Log items
+  // Sync server-side ack state for the visible Daily Log items
   useEffect(() => {
-    const ids = dailyLog.map((d) => d.id);
-    if (ids.length === 0) return;
-    let aborted = false;
+    let cancelled = false;
     (async () => {
       try {
+        const ids = dailyLog.map((d) => d.id);
+        if (ids.length === 0) return;
         const server = await fetchActivityAcks(ids);
-        if (aborted) return;
-        // merge into local map (server wins for listed ids)
+        if (cancelled) return;
         setDoneMap((prev) => ({ ...prev, ...server }));
       } catch {
-        // best-effort; keep local state
+        // ignore; fall back to local storage state
       }
     })();
     return () => {
-      aborted = true;
+      cancelled = true;
     };
   }, [dailyLog.map((d) => d.id).join(',')]);
 

@@ -151,6 +151,62 @@ export class ActivitiesController {
     return this.activitiesService.findOneScoped(id, req.user);
   }
 
+  // Acknowledgments (Daily Log "done" flag)
+  @Get('acks')
+  @ApiOperation({ summary: 'Ack-Status (done) für eine Liste von Aktivitäten abrufen' })
+  @ApiQuery({ name: 'activityIds', required: true, description: 'CSV Liste von Activity-IDs' })
+  async getAcks(
+    @Req()
+    req: {
+      user: { role: string; orgId?: string | null };
+      effectiveOrgId?: string | null | undefined;
+    },
+    @Query('activityIds') activityIdsCsv: string,
+  ) {
+    const ids = (activityIdsCsv || '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0);
+    if (ids.length === 0) return {};
+
+    // Determine org filter similar to findAll
+    const superAdminScoped = typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId;
+    const orgIdRaw =
+      req.user.role === 'superadmin'
+        ? typeof superAdminScoped === 'undefined'
+          ? null
+          : superAdminScoped
+        : typeof req.effectiveOrgId === 'undefined'
+          ? req.user.orgId || null
+          : req.effectiveOrgId;
+
+    let orgId: string | null | undefined = orgIdRaw;
+    let orgIds: string[] | undefined = undefined;
+    if (typeof orgIdRaw === 'string') {
+      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
+      orgId = undefined;
+    }
+    return this.activitiesService.getAcks(ids, { orgId, orgIds });
+  }
+
+  @Patch(':id/ack')
+  @ApiOperation({ summary: 'Ack-Status (done) für eine Aktivität setzen' })
+  async setAck(
+    @Param('id') id: string,
+    @Body() body: { done?: boolean },
+    @Req()
+    req: { user: { id?: string; role: string; orgId?: string | null; name?: string | null } },
+  ) {
+    const done = !!body?.done;
+    const updated = await this.activitiesService.setAckScoped(id, done, {
+      id: req.user.id,
+      name: req.user.name || undefined,
+      role: req.user.role,
+      orgId: req.user.orgId ?? null,
+    });
+    return { activityId: id, done: !!updated?.ackDone };
+  }
+
   @Post()
   @ApiOperation({ summary: 'Neue Aktivität anlegen' })
   create(
@@ -208,48 +264,5 @@ export class ActivitiesController {
       ...req.user,
       name: req.user.name || undefined,
     });
-  }
-
-  // Daily Log acknowledgements (per user)
-  @Get('acks')
-  @ApiOperation({ summary: 'Ack-Status für aktuelle Nutzer:in und Liste von Aktivitäten abrufen' })
-  @ApiQuery({ name: 'activityIds', required: true, description: 'CSV Liste von Activity-IDs' })
-  getAcks(
-    @Req()
-    req: {
-      user: { id: string; role: string; orgId?: string | null };
-      effectiveOrgId?: string | null | undefined;
-    },
-    @Query('activityIds') activityIdsCsv: string,
-  ) {
-    const ids = (activityIdsCsv || '')
-      .split(',')
-      .map((v) => v.trim())
-      .filter(Boolean);
-    // Scope orgId based on effective scope (align with other endpoints)
-    const scopeOrgId =
-      req.user.role === 'superadmin'
-        ? typeof req.effectiveOrgId === 'undefined'
-          ? null
-          : req.effectiveOrgId
-        : typeof req.effectiveOrgId === 'undefined'
-          ? req.user.orgId || null
-          : req.effectiveOrgId;
-    return this.activitiesService.getAcksForUser(ids, {
-      id: req.user.id,
-      role: req.user.role,
-      orgId: scopeOrgId ?? null,
-    });
-  }
-
-  @Patch(':id/ack')
-  @ApiOperation({ summary: 'Ack-Status für aktuelle Nutzer:in setzen/aktualisieren' })
-  setAck(
-    @Param('id') id: string,
-    @Body() body: { done?: boolean },
-    @Req() req: { user: { id: string; role: string; orgId?: string | null } },
-  ) {
-    const done = !!body?.done;
-    return this.activitiesService.setAckForUser(id, done, req.user);
   }
 }

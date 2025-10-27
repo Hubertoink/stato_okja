@@ -132,6 +132,11 @@ export class Activity {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  // Daily Log acknowledgment (per activity/org)
+  // When true, the activity has been marked as "discussed/done" in the Daily Log
+  @Column({ type: 'boolean', default: false })
+  ackDone: boolean;
+
   // Projekt-Bezug (optional)
   @ManyToOne(() => Project, { eager: true, nullable: true })
   @JoinColumn({ name: 'projectId' })

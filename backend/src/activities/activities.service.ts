@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Brackets } from 'typeorm';
+import { Repository, In, Brackets, IsNull } from 'typeorm';
 import { Activity } from './entities/activity.entity';
 import { ActivityType } from '../common/enums';
 import { AuditService } from '../common/audit.service';
@@ -9,12 +9,15 @@ import { Tag } from '../taxonomy/entities/tag.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { Staff } from '../staff/entities/staff.entity';
 import { Project } from '../projects/entities/project.entity';
+import { ActivityAck } from './entities/activity-ack.entity';
 
 @Injectable()
 export class ActivitiesService {
   constructor(
     @InjectRepository(Activity)
     private readonly activityRepository: Repository<Activity>,
+    @InjectRepository(ActivityAck)
+    private readonly ackRepository: Repository<ActivityAck>,
     @InjectRepository(Tag)
     private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Category)
@@ -27,22 +30,31 @@ export class ActivitiesService {
   ) {}
 
   private buildListQuery(filters?: {
-    from?: string; to?: string;
-    type?: string; types?: string[];
-    locationId?: string; locationIds?: string[];
-  projectIds?: string[]; categoryIds?: string[]; tagIds?: string[]; staffIds?: string[];
-  cohortIds?: string[];
+    from?: string;
+    to?: string;
+    type?: string;
+    types?: string[];
+    locationId?: string;
+    locationIds?: string[];
+    projectIds?: string[];
+    categoryIds?: string[];
+    tagIds?: string[];
+    staffIds?: string[];
+    cohortIds?: string[];
     hasNotes?: boolean;
-    participantsMin?: number; participantsMax?: number;
-    durationMin?: number; durationMax?: number;
-    orgId?: string|null;
+    participantsMin?: number;
+    participantsMax?: number;
+    durationMin?: number;
+    durationMax?: number;
+    orgId?: string | null;
     orgIds?: string[];
-    order?: 'asc'|'desc';
+    order?: 'asc' | 'desc';
   }) {
-    const qb = this.activityRepository.createQueryBuilder('a')
+    const qb = this.activityRepository
+      .createQueryBuilder('a')
       .leftJoinAndSelect('a.location', 'location')
       .leftJoinAndSelect('a.categories', 'categories')
-  .leftJoinAndSelect('a.tags', 'tags')
+      .leftJoinAndSelect('a.tags', 'tags')
       .leftJoinAndSelect('a.staff', 'staff')
       .leftJoinAndSelect('a.attachments', 'attachments')
       .leftJoinAndSelect('a.project', 'project')
@@ -82,12 +94,16 @@ export class ActivitiesService {
       qb.andWhere('staff.id IN (:...staffIds)', { staffIds: filters.staffIds });
     }
     if (filters?.cohortIds && filters.cohortIds.length) {
-      qb.andWhere(new Brackets((b) => {
-        filters.cohortIds!.forEach((id, i) => {
-          const param = `cid${i}`;
-          (i === 0 ? b.where : b.orWhere)(`a.cohorts LIKE :${param}`, { [param]: `%"cohortId":"${id}"%` });
-        });
-      }));
+      qb.andWhere(
+        new Brackets((b) => {
+          filters.cohortIds!.forEach((id, i) => {
+            const param = `cid${i}`;
+            (i === 0 ? b.where : b.orWhere)(`a.cohorts LIKE :${param}`, {
+              [param]: `%"cohortId":"${id}"%`,
+            });
+          });
+        }),
+      );
     }
     if (typeof filters?.hasNotes !== 'undefined') {
       // Treat whitespace-only as empty; TRIM works in Postgres/SQLite
@@ -107,41 +123,56 @@ export class ActivitiesService {
       qb.andWhere('a.durationMinutes <= :dMax', { dMax: filters.durationMax });
     }
 
-    const dir = (filters?.order?.toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
-    qb.orderBy('a.date', dir as ('ASC'|'DESC')).addOrderBy('a.startTime', dir as ('ASC'|'DESC'));
+    const dir = filters?.order?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    qb.orderBy('a.date', dir as 'ASC' | 'DESC').addOrderBy('a.startTime', dir as 'ASC' | 'DESC');
     return qb;
   }
 
   async findAll(filters?: {
-    from?: string; to?: string;
-    type?: string; types?: string[];
-    locationId?: string; locationIds?: string[];
-    projectIds?: string[]; categoryIds?: string[]; tagIds?: string[];
+    from?: string;
+    to?: string;
+    type?: string;
+    types?: string[];
+    locationId?: string;
+    locationIds?: string[];
+    projectIds?: string[];
+    categoryIds?: string[];
+    tagIds?: string[];
     cohortIds?: string[];
     hasNotes?: boolean;
-    participantsMin?: number; participantsMax?: number;
-    durationMin?: number; durationMax?: number;
-    orgId?: string|null;
+    participantsMin?: number;
+    participantsMax?: number;
+    durationMin?: number;
+    durationMax?: number;
+    orgId?: string | null;
     orgIds?: string[];
-    order?: 'asc'|'desc';
+    order?: 'asc' | 'desc';
   }): Promise<Activity[]> {
     const qb = this.buildListQuery(filters);
     return qb.getMany();
   }
 
   async findAllPaged(filters: {
-    from?: string; to?: string;
-    type?: string; types?: string[];
-    locationId?: string; locationIds?: string[];
-    projectIds?: string[]; categoryIds?: string[]; tagIds?: string[];
+    from?: string;
+    to?: string;
+    type?: string;
+    types?: string[];
+    locationId?: string;
+    locationIds?: string[];
+    projectIds?: string[];
+    categoryIds?: string[];
+    tagIds?: string[];
     cohortIds?: string[];
     hasNotes?: boolean;
-    participantsMin?: number; participantsMax?: number;
-    durationMin?: number; durationMax?: number;
-    orgId?: string|null;
+    participantsMin?: number;
+    participantsMax?: number;
+    durationMin?: number;
+    durationMax?: number;
+    orgId?: string | null;
     orgIds?: string[];
-    order?: 'asc'|'desc';
-    page: number; limit: number;
+    order?: 'asc' | 'desc';
+    page: number;
+    limit: number;
   }): Promise<{ data: Activity[]; total: number; page: number; pageSize: number }> {
     const qb = this.buildListQuery(filters);
     const page = Math.max(filters.page || 1, 1);
@@ -154,11 +185,20 @@ export class ActivitiesService {
   findOne(id: string): Promise<Activity | null> {
     return this.activityRepository.findOne({
       where: { id },
-      relations: ['location', 'categories', 'tags', 'staff', 'attachments', 'createdBy', 'updatedBy', 'project'],
+      relations: [
+        'location',
+        'categories',
+        'tags',
+        'staff',
+        'attachments',
+        'createdBy',
+        'updatedBy',
+        'project',
+      ],
     });
   }
 
-  async findOneScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async findOneScoped(id: string, user: { role: string; orgId?: string | null }) {
     const a = await this.findOne(id);
     if (!a) return null;
     if (user.role !== 'superadmin' && (a.orgId ?? null) !== (user.orgId ?? null)) {
@@ -167,28 +207,36 @@ export class ActivitiesService {
     return a;
   }
 
-  async create(data: (Partial<Activity> & {
-    tagIds?: string[];
-    staffIds?: string[];
-    categoryIds?: string[];
-    cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number }>
-            | Array<{ cohortId: string; count: number; gender?: string }>;
-  }), user?: { id?: string; name?: string; orgId?: string | null }): Promise<Activity> {
+  async create(
+    data: Partial<Activity> & {
+      tagIds?: string[];
+      staffIds?: string[];
+      categoryIds?: string[];
+      cohorts?:
+        | Array<{ cohortId: string; m?: number; w?: number; d?: number }>
+        | Array<{ cohortId: string; count: number; gender?: string }>;
+    },
+    user?: { id?: string; name?: string; orgId?: string | null },
+  ): Promise<Activity> {
     const { tagIds, staffIds, categoryIds, cohorts, ...rest } = data as Partial<Activity> & {
       tagIds?: string[];
       staffIds?: string[];
       categoryIds?: string[];
-      cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number }> | Array<{ cohortId: string; count: number; gender?: 'm'|'w'|'d' }>;
+      cohorts?:
+        | Array<{ cohortId: string; m?: number; w?: number; d?: number }>
+        | Array<{ cohortId: string; count: number; gender?: 'm' | 'w' | 'd' }>;
     };
 
     // locationId is optional; if omitted, activity can still be created
 
-  const activity = this.activityRepository.create(rest);
+    const activity = this.activityRepository.create(rest);
 
     // If a project is linked, enforce the activity type to match the project's type
     const restWithProject = rest as Partial<Activity> & { projectId?: string | null };
     if (restWithProject.projectId) {
-      const project = await this.projectRepository.findOne({ where: { id: restWithProject.projectId } });
+      const project = await this.projectRepository.findOne({
+        where: { id: restWithProject.projectId },
+      });
       if (!project) throw new BadRequestException('Invalid projectId');
       activity.project = project;
       activity.type = project.type as ActivityType;
@@ -211,7 +259,10 @@ export class ActivitiesService {
     // Cohorts: allow two input shapes; normalize to per-gender {cohortId,m,w,d}
     if (Array.isArray(cohorts)) {
       const byId = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
-      for (const c of cohorts as Array<{ cohortId: string; m?: number; w?: number; d?: number } | { cohortId: string; count: number; gender?: 'm'|'w'|'d' }>) {
+      for (const c of cohorts as Array<
+        | { cohortId: string; m?: number; w?: number; d?: number }
+        | { cohortId: string; count: number; gender?: 'm' | 'w' | 'd' }
+      >) {
         if (!c || !('cohortId' in c) || !c.cohortId) continue;
         const cur = byId.get(c.cohortId) || { cohortId: c.cohortId, m: 0, w: 0, d: 0 };
         if ('m' in c || 'w' in c || 'd' in c) {
@@ -222,7 +273,7 @@ export class ActivitiesService {
           cur.w += cw;
           cur.d += cd;
         } else if ('count' in c) {
-          const g = (c as { gender?: 'm'|'w'|'d' }).gender;
+          const g = (c as { gender?: 'm' | 'w' | 'd' }).gender;
           const cnt = (c as { count: number }).count || 0;
           if (g === 'm') cur.m += cnt;
           else if (g === 'w') cur.w += cnt;
@@ -232,7 +283,15 @@ export class ActivitiesService {
       }
       activity.cohorts = Array.from(byId.values());
       // derive totals
-      const totals = Array.from(byId.values()).reduce((acc, e) => { acc.m += e.m; acc.w += e.w; acc.d += e.d; return acc; }, { m: 0, w: 0, d: 0 });
+      const totals = Array.from(byId.values()).reduce(
+        (acc, e) => {
+          acc.m += e.m;
+          acc.w += e.w;
+          acc.d += e.d;
+          return acc;
+        },
+        { m: 0, w: 0, d: 0 },
+      );
       activity.countMale = totals.m;
       activity.countFemale = totals.w;
       activity.countDiverse = totals.d;
@@ -252,20 +311,32 @@ export class ActivitiesService {
     return saved;
   }
 
-  async update(id: string, data: Partial<Activity> & {
-    tagIds?: string[];
-    staffIds?: string[];
-    categoryIds?: string[];
-    cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number } | { cohortId: string; count: number; gender?: string }>;
-  }, user?: { id?: string; name?: string | null; orgId?: string | null }): Promise<Activity | null> {
-    const existing = await this.activityRepository.findOne({ where: { id }, relations: ['tags', 'staff', 'categories'] });
+  async update(
+    id: string,
+    data: Partial<Activity> & {
+      tagIds?: string[];
+      staffIds?: string[];
+      categoryIds?: string[];
+      cohorts?: Array<
+        | { cohortId: string; m?: number; w?: number; d?: number }
+        | { cohortId: string; count: number; gender?: string }
+      >;
+    },
+    user?: { id?: string; name?: string | null; orgId?: string | null },
+  ): Promise<Activity | null> {
+    const existing = await this.activityRepository.findOne({
+      where: { id },
+      relations: ['tags', 'staff', 'categories'],
+    });
     if (!existing) return null;
 
     const { tagIds, staffIds, categoryIds, cohorts, ...rest } = data as Partial<Activity> & {
       tagIds?: string[];
       staffIds?: string[];
       categoryIds?: string[];
-      cohorts?: Array<{ cohortId: string; m?: number; w?: number; d?: number }> | Array<{ cohortId: string; count: number; gender?: 'm'|'w'|'d' }>;
+      cohorts?:
+        | Array<{ cohortId: string; m?: number; w?: number; d?: number }>
+        | Array<{ cohortId: string; count: number; gender?: 'm' | 'w' | 'd' }>;
     };
 
     Object.assign(existing, rest);
@@ -286,16 +357,23 @@ export class ActivitiesService {
       existing.tags = tagIds.length ? await this.tagRepository.findBy({ id: In(tagIds) }) : [];
     }
     if (Array.isArray(staffIds)) {
-      existing.staff = staffIds.length ? await this.staffRepository.findBy({ id: In(staffIds) }) : [];
+      existing.staff = staffIds.length
+        ? await this.staffRepository.findBy({ id: In(staffIds) })
+        : [];
     }
     if (Array.isArray(categoryIds)) {
-      existing.categories = categoryIds.length ? await this.categoryRepository.findBy({ id: In(categoryIds) }) : [];
+      existing.categories = categoryIds.length
+        ? await this.categoryRepository.findBy({ id: In(categoryIds) })
+        : [];
     }
 
     // Cohorts: normalize to per-gender and recompute totals
     if (Array.isArray(cohorts)) {
       const byId = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
-      for (const c of cohorts as Array<{ cohortId: string; m?: number; w?: number; d?: number } | { cohortId: string; count: number; gender?: 'm'|'w'|'d' }>) {
+      for (const c of cohorts as Array<
+        | { cohortId: string; m?: number; w?: number; d?: number }
+        | { cohortId: string; count: number; gender?: 'm' | 'w' | 'd' }
+      >) {
         if (!c || !('cohortId' in c) || !c.cohortId) continue;
         const cur = byId.get(c.cohortId) || { cohortId: c.cohortId, m: 0, w: 0, d: 0 };
         if ('m' in c || 'w' in c || 'd' in c) {
@@ -306,7 +384,7 @@ export class ActivitiesService {
           cur.w += cw;
           cur.d += cd;
         } else if ('count' in c) {
-          const g = (c as { gender?: 'm'|'w'|'d' }).gender;
+          const g = (c as { gender?: 'm' | 'w' | 'd' }).gender;
           const cnt = (c as { count: number }).count || 0;
           if (g === 'm') cur.m += cnt;
           else if (g === 'w') cur.w += cnt;
@@ -315,7 +393,15 @@ export class ActivitiesService {
         byId.set(c.cohortId, cur);
       }
       existing.cohorts = Array.from(byId.values());
-      const totals = Array.from(byId.values()).reduce((acc, e) => { acc.m += e.m; acc.w += e.w; acc.d += e.d; return acc; }, { m: 0, w: 0, d: 0 });
+      const totals = Array.from(byId.values()).reduce(
+        (acc, e) => {
+          acc.m += e.m;
+          acc.w += e.w;
+          acc.d += e.d;
+          return acc;
+        },
+        { m: 0, w: 0, d: 0 },
+      );
       existing.countMale = totals.m;
       existing.countFemale = totals.w;
       existing.countDiverse = totals.d;
@@ -338,7 +424,11 @@ export class ActivitiesService {
     return updated;
   }
 
-  async updateScoped(id: string, data: Partial<Activity>, user: { id?: string; role: string; orgId?: string|null; name?: string|null }) {
+  async updateScoped(
+    id: string,
+    data: Partial<Activity>,
+    user: { id?: string; role: string; orgId?: string | null; name?: string | null },
+  ) {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return null;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
@@ -347,10 +437,17 @@ export class ActivitiesService {
     // enforce orgId remains same for non-superadmin
     const patch: Partial<Activity> = { ...data };
     if (user.role !== 'superadmin') patch.orgId = existing.orgId ?? null;
-    return this.update(id, patch, { id: user.id, name: user.name ?? null, orgId: user.orgId ?? null });
+    return this.update(id, patch, {
+      id: user.id,
+      name: user.name ?? null,
+      orgId: user.orgId ?? null,
+    });
   }
 
-  async removeScoped(id: string, user: { id?: string; role: string; orgId?: string|null; name?: string|null }): Promise<void> {
+  async removeScoped(
+    id: string,
+    user: { id?: string; role: string; orgId?: string | null; name?: string | null },
+  ): Promise<void> {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
@@ -365,5 +462,55 @@ export class ActivitiesService {
       orgId: existing.orgId ?? null,
       user,
     });
+  }
+
+  // Daily Log acknowledgements (per user, per activity, scoped by org)
+  async getAcksForUser(
+    activityIds: string[],
+    user: { id: string; role: string; orgId?: string | null },
+  ) {
+    if (!Array.isArray(activityIds) || activityIds.length === 0)
+      return {} as Record<string, boolean>;
+    const orgId = user.role === 'superadmin' ? (user.orgId ?? null) : (user.orgId ?? null);
+    const rows = await this.ackRepository.find({
+      where: {
+        activityId: In(activityIds),
+        userId: user.id,
+        orgId: orgId === null ? IsNull() : (orgId as string),
+      },
+    });
+    const out: Record<string, boolean> = {};
+    for (const r of rows) out[r.activityId] = !!r.done;
+    return out;
+  }
+
+  async setAckForUser(
+    activityId: string,
+    done: boolean,
+    user: { id: string; role: string; orgId?: string | null },
+  ) {
+    // Ensure activity belongs to the same org scope unless superadmin across explicit org
+    const act = await this.activityRepository.findOne({ where: { id: activityId } });
+    if (!act) throw new BadRequestException('Invalid activityId');
+    const actOrg = act.orgId ?? null;
+    const userOrg = user.orgId ?? null;
+    if (user.role !== 'superadmin' && actOrg !== userOrg) {
+      throw new ForbiddenException('Not allowed');
+    }
+    // Upsert by (userId, activityId, orgId)
+    let row = await this.ackRepository.findOne({
+      where: {
+        activityId,
+        userId: user.id,
+        orgId: actOrg === null ? IsNull() : (actOrg as string),
+      },
+    });
+    if (!row) {
+      row = this.ackRepository.create({ activityId, userId: user.id, orgId: actOrg, done: !!done });
+    } else {
+      row.done = !!done;
+    }
+    await this.ackRepository.save(row);
+    return { activityId, done: row.done } as const;
   }
 }

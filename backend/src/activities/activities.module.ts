@@ -11,9 +11,14 @@ import { Project } from '../projects/entities/project.entity';
 import { AuditModule } from '../common/audit.module';
 import { OrgsModule } from '../orgs/orgs.module';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { ActivityAck } from './entities/activity-ack.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Activity, Attachment, Tag, Category, Staff, Project]), AuditModule, OrgsModule],
+  imports: [
+    TypeOrmModule.forFeature([Activity, Attachment, Tag, Category, Staff, Project, ActivityAck]),
+    AuditModule,
+    OrgsModule,
+  ],
   controllers: [ActivitiesController],
   providers: [ActivitiesService, OrgScopeGuard],
   exports: [ActivitiesService],

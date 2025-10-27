@@ -22,6 +22,7 @@ import type { Project } from '@/lib/projects';
 import { useAuth } from '@/lib/auth';
 import { listOrgs, type OrgDto } from '@/lib/orgs';
 import { useOrgScope } from '@/lib/orgScope';
+import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 
 function useMonthSummary(year: number, month: number, scopeKey: string | null | undefined) {
   // month is 1-12
@@ -135,6 +136,7 @@ export default function Dashboard() {
       /* ignore */
     }
   }, [doneMap]);
+
   const dailyLog = useMemo(() => {
     const candidates = (activitiesMonth || []).filter(
       (a) =>
@@ -163,6 +165,26 @@ export default function Dashboard() {
       createdAt: createById.get(a.id)?.at || `${a.date || ''} ${a.startTime || ''}`,
     }));
   }, [activitiesMonth, audit]);
+
+  // Sync doneMap with server for the currently visible Daily Log items
+  useEffect(() => {
+    const ids = dailyLog.map((d) => d.id);
+    if (ids.length === 0) return;
+    let aborted = false;
+    (async () => {
+      try {
+        const server = await fetchActivityAcks(ids);
+        if (aborted) return;
+        // merge into local map (server wins for listed ids)
+        setDoneMap((prev) => ({ ...prev, ...server }));
+      } catch {
+        // best-effort; keep local state
+      }
+    })();
+    return () => {
+      aborted = true;
+    };
+  }, [dailyLog.map((d) => d.id).join(',')]);
 
   return (
     <div>
@@ -265,7 +287,17 @@ export default function Dashboard() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setDoneMap((m) => ({ ...m, [item.id]: !m[item.id] }))}
+                      onClick={async () => {
+                        const next = !doneMap[item.id];
+                        // optimistic update
+                        setDoneMap((m) => ({ ...m, [item.id]: next }));
+                        try {
+                          await setActivityAck(item.id, next);
+                        } catch {
+                          // revert on error
+                          setDoneMap((m) => ({ ...m, [item.id]: !next }));
+                        }
+                      }}
                       className={`p-1 rounded-full border ${doneMap[item.id] ? 'border-green-600 text-green-600' : 'border-gray-300 text-gray-400'} hover:bg-gray-50`}
                       title={
                         doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'

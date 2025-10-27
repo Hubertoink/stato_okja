@@ -3,7 +3,16 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
 import { useAuditLogs } from '@/lib/audit';
-import { Pencil, PlusCircle, Trash2, StickyNote, Tag as TagIcon } from 'lucide-react';
+import {
+  Pencil,
+  PlusCircle,
+  Trash2,
+  StickyNote,
+  Tag as TagIcon,
+  Calendar as CalendarIcon,
+  Circle,
+  CheckCircle2,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import ProjectPickerModal from './ProjectPickerModal';
@@ -110,6 +119,22 @@ export default function Dashboard() {
   const from14 = `${fourteenDaysAgo.getFullYear()}-${String(fourteenDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(fourteenDaysAgo.getDate()).padStart(2, '0')}`;
   const toToday = `${nowISO.getFullYear()}-${String(nowISO.getMonth() + 1).padStart(2, '0')}-${String(nowISO.getDate()).padStart(2, '0')}`;
   const { data: activitiesMonth = [] } = useActivities({ from: from14, to: toToday });
+  // Persist a simple "done" flag per activity id for the Daily Log
+  const [doneMap, setDoneMap] = useState<Record<string, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem('dailyLogDone_v1');
+      return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+    } catch {
+      return {};
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('dailyLogDone_v1', JSON.stringify(doneMap));
+    } catch {
+      /* ignore */
+    }
+  }, [doneMap]);
   const dailyLog = useMemo(() => {
     const candidates = (activitiesMonth || []).filter(
       (a) =>
@@ -206,7 +231,10 @@ export default function Dashboard() {
 
       {/* Daily Log */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h3 className="text-xl font-semibold mb-4 text-viridian">Daily Log</h3>
+        <h3 className="text-xl font-semibold mb-4 text-viridian">
+          Daily Log
+          <span className="ml-2 text-xs italic text-gray-500 align-middle">(letzte 14 Tage)</span>
+        </h3>
         {dailyLog.length === 0 ? (
           <div className="text-gray-500">
             Keine Aktivitäten mit Notizen oder Tags im aktuellen Zeitraum.
@@ -215,24 +243,44 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {dailyLog.map((item) => (
               <div key={item.id} className="note-card border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 gap-2">
                   <h4 className="font-semibold text-viridian truncate" title={item.title}>
                     {item.title}
                   </h4>
-                  <span
-                    className="text-xs text-gray-600"
-                    title={new Date(item.createdAt || '').toLocaleString('de-DE')}
-                  >
-                    {(() => {
-                      const d = new Date(item.createdAt || '');
-                      return d.toLocaleDateString('de-DE', {
-                        weekday: 'long',
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                      });
-                    })()}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className="inline-flex items-center gap-1 text-xs text-gray-600"
+                      title={new Date(item.createdAt || '').toLocaleString('de-DE')}
+                    >
+                      <CalendarIcon className="w-3.5 h-3.5" />
+                      {(() => {
+                        const d = new Date(item.createdAt || '');
+                        return d.toLocaleDateString('de-DE', {
+                          weekday: 'long',
+                          day: '2-digit',
+                          month: '2-digit',
+                          // year intentionally omitted for recent daily log
+                        });
+                      })()}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDoneMap((m) => ({ ...m, [item.id]: !m[item.id] }))}
+                      className={`p-1 rounded-full border ${doneMap[item.id] ? 'border-green-600 text-green-600' : 'border-gray-300 text-gray-400'} hover:bg-gray-50`}
+                      title={
+                        doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'
+                      }
+                      aria-label={
+                        doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'
+                      }
+                    >
+                      {doneMap[item.id] ? (
+                        <CheckCircle2 className="w-4 h-4" />
+                      ) : (
+                        <Circle className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div className="text-xs text-gray-700 mb-2">
                   {(() => {
@@ -283,10 +331,7 @@ export default function Dashboard() {
                     ))}
                   </div>
                 )}
-                <div className="text-xs text-gray-600">
-                  Erstellt von: {item.createdBy || '—'} ·{' '}
-                  {new Date(item.createdAt || '').toLocaleString('de-DE')}
-                </div>
+                {/* Removed creator footer to simplify card */}
               </div>
             ))}
           </div>

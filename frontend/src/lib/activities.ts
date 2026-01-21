@@ -36,6 +36,7 @@ export type ActivitiesFilter = {
   locationIds?: string[];
   projectIds?: string[];
   categoryIds?: string[];
+  uncategorized?: boolean;
   tagIds?: string[];
   cohortIds?: string[];
   hasNotes?: boolean;

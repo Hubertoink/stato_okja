@@ -36,6 +36,7 @@ export class ActivitiesController {
   @ApiQuery({ name: 'locationIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'projectIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'categoryIds', required: false, description: 'CSV Liste' })
+  @ApiQuery({ name: 'uncategorized', required: false, description: 'Nur Aktivitäten ohne Kategorien' })
   @ApiQuery({ name: 'tagIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'staffIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'cohortIds', required: false, description: 'CSV Liste' })
@@ -69,6 +70,7 @@ export class ActivitiesController {
     @Query('locationIds') locationIdsCsv?: string,
     @Query('projectIds') projectIdsCsv?: string,
     @Query('categoryIds') categoryIdsCsv?: string,
+    @Query('uncategorized') uncategorized?: string, // Added support for filtering uncategorized activities
     @Query('tagIds') tagIdsCsv?: string,
     @Query('cohortIds') cohortIdsCsv?: string,
     @Query('staffIds') staffIdsCsv?: string,
@@ -121,6 +123,7 @@ export class ActivitiesController {
       locationIds: csvToArray(locationIdsCsv),
       projectIds: csvToArray(projectIdsCsv),
       categoryIds: csvToArray(categoryIdsCsv),
+      uncategorized: typeof uncategorized !== 'undefined' ? uncategorized === 'true' || uncategorized === '1' : undefined, // Added filtering logic for uncategorized
       tagIds: csvToArray(tagIdsCsv),
       staffIds: csvToArray(staffIdsCsv),
       cohortIds: csvToArray(cohortIdsCsv),

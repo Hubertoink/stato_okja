@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
@@ -22,20 +22,63 @@ import {
 import { useActivity } from '@/lib/activities';
 import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
 import { colorForActivityType } from '@/lib/colors';
+import { getBgClass } from '@/lib/colorPalette';
 
 export default function Activities() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const STORAGE_KEY = 'activities:advancedFilters:v1';
+  const STORAGE_ORDER_KEY = 'activities:order:v1';
   // Basic filter UI removed; we keep only advanced filter state
   const [filterDrawer, setFilterDrawer] = useState(false);
-  const [advanced, setAdvanced] = useState<ActivitiesFilter>({});
+  const [advanced, setAdvanced] = useState<ActivitiesFilter>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? (JSON.parse(raw) as unknown) : undefined;
+      return parsed && typeof parsed === 'object' ? (parsed as ActivitiesFilter) : {};
+    } catch {
+      return {};
+    }
+  });
   const [picker, setPicker] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
-  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  const [order, setOrder] = useState<'asc' | 'desc'>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_ORDER_KEY);
+      return raw === 'asc' ? 'asc' : 'desc';
+    } catch {
+      return 'desc';
+    }
+  });
   const pageSize = 50;
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const { data: cohorts = [] } = useCohorts({ active: true });
   const [exporting, setExporting] = useState(false);
+  // Persist filters across route/tab changes; reset only via the explicit reset button.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('activitiesFilters_v1');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        advanced?: ActivitiesFilter;
+        order?: 'asc' | 'desc';
+      };
+      if (parsed?.advanced && typeof parsed.advanced === 'object') setAdvanced(parsed.advanced);
+      if (parsed?.order === 'asc' || parsed?.order === 'desc') setOrder(parsed.order);
+    } catch {
+      /* ignore */
+    }
+    // run once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('activitiesFilters_v1', JSON.stringify({ advanced, order }));
+    } catch {
+      /* ignore */
+    }
+  }, [advanced, order]);
   const filters = {
     from: advanced.from,
     to: advanced.to,
@@ -43,6 +86,7 @@ export default function Activities() {
     locationIds: advanced.locationIds,
     projectIds: advanced.projectIds,
     categoryIds: advanced.categoryIds,
+    uncategorized: advanced.uncategorized,
     tagIds: advanced.tagIds,
     cohortIds: advanced.cohortIds,
     hasNotes: advanced.hasNotes,
@@ -52,6 +96,16 @@ export default function Activities() {
     durationMax: advanced.durationMax,
     order,
   } as ActivitiesFilter;
+
+  // Persist filters across navigation/tab switches (only reset when user explicitly clicks "Zurücksetzen")
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(advanced));
+      localStorage.setItem(STORAGE_ORDER_KEY, order);
+    } catch {
+      /* ignore */
+    }
+  }, [advanced, order]);
   const { data: paged } = useActivitiesPaged(filters, page, pageSize);
   // no quick location filter
   const activities = useMemo(() => paged?.data || [], [paged]);
@@ -320,6 +374,11 @@ export default function Activities() {
               Kategorien: {advanced.categoryIds.length}
             </span>
           ) : null}
+          {advanced.uncategorized ? (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
+              Unkategorisiert
+            </span>
+          ) : null}
           {advanced.tagIds?.length ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
               Tags: {advanced.tagIds.length}
@@ -370,7 +429,14 @@ export default function Activities() {
               aria-label="Filter zurücksetzen"
               onClick={() => {
                 setAdvanced({});
+                setOrder('desc');
                 setPage(1);
+                try {
+                  localStorage.removeItem(STORAGE_KEY);
+                  localStorage.removeItem(STORAGE_ORDER_KEY);
+                } catch {
+                  /* ignore */
+                }
               }}
             >
               <XCircle className="w-4 h-4 mr-1" /> Zurücksetzen
@@ -412,7 +478,7 @@ export default function Activities() {
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Dauer</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                Tags & Notizen
+                Kategorien, Tags & Notizen
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Aktion</th>
             </tr>
@@ -480,7 +546,10 @@ export default function Activities() {
                     {(a.categories || []).map((c) => (
                       <span
                         key={c.id}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-gray-300 text-gray-700"
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white ${getBgClass(
+                          c.color as string,
+                          'bg-slate-400',
+                        )}`}
                         title={c.name}
                       >
                         {c.name}
@@ -489,7 +558,10 @@ export default function Activities() {
                     {(a.tags || []).map((t) => (
                       <span
                         key={t.id}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-gray-300 text-gray-700"
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white ${getBgClass(
+                          t.color as string,
+                          'bg-slate-500',
+                        )}`}
                         title={t.name}
                       >
                         <TagIcon className="w-3 h-3" /> {t.name}
@@ -510,7 +582,7 @@ export default function Activities() {
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm relative overflow-hidden">
-                  {a.project?.imageUrl && (
+                  {a.project?.imageUrl ? (
                     <>
                       <img
                         src={a.project.imageUrl || undefined}
@@ -523,7 +595,19 @@ export default function Activities() {
                         aria-hidden
                       />
                     </>
-                  )}
+                  ) : a.project?.color ? (
+                    <>
+                      <div
+                        className="absolute inset-0 opacity-30"
+                        style={{ backgroundColor: a.project.color || undefined }}
+                        aria-hidden
+                      />
+                      <div
+                        className="absolute inset-0 bg-gradient-to-l from-transparent via-white/70 to-white"
+                        aria-hidden
+                      />
+                    </>
+                  ) : null}
                   <button
                     onClick={() => setEditId(a.id)}
                     className="relative z-10 inline-flex items-center justify-center rounded-full bg-white border p-2 text-viridian hover:bg-azure-web"
@@ -592,7 +676,7 @@ export default function Activities() {
               }
             }}
           >
-            {a.project?.imageUrl && (
+            {a.project?.imageUrl ? (
               <>
                 <img
                   src={a.project.imageUrl || undefined}
@@ -605,7 +689,19 @@ export default function Activities() {
                   aria-hidden
                 />
               </>
-            )}
+            ) : a.project?.color ? (
+              <>
+                <div
+                  className="absolute inset-y-0 right-0 w-28 opacity-40"
+                  style={{ backgroundColor: a.project.color || undefined }}
+                  aria-hidden
+                />
+                <div
+                  className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-transparent via-white/70 to-white"
+                  aria-hidden
+                />
+              </>
+            ) : null}
             <div className="relative z-10 flex justify-between items-start mb-2">
               <div>
                 <div className="text-sm text-gray-500">
@@ -669,7 +765,10 @@ export default function Activities() {
               {(a.categories || []).map((c) => (
                 <span
                   key={c.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border border-gray-300 text-gray-700"
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white ${getBgClass(
+                    c.color as string,
+                    'bg-slate-400',
+                  )}`}
                   title={c.name}
                 >
                   {c.name}
@@ -678,7 +777,10 @@ export default function Activities() {
               {(a.tags || []).map((t) => (
                 <span
                   key={t.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border border-gray-300 text-gray-700"
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white ${getBgClass(
+                    t.color as string,
+                    'bg-slate-500',
+                  )}`}
                   title={t.name}
                 >
                   <TagIcon className="w-3 h-3" /> {t.name}
@@ -731,7 +833,12 @@ export default function Activities() {
         onClose={() => setFilterDrawer(false)}
         onApply={(f) => {
           setAdvanced(f);
-          setPage(1);
+                setOrder('desc');
+                try {
+                  localStorage.removeItem('activitiesFilters_v1');
+                } catch {
+                  /* ignore */
+                }
           setFilterDrawer(false);
         }}
       />

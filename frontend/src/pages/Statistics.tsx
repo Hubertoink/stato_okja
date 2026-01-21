@@ -35,7 +35,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
 
-function useStatsSummary(params: { from?: string; to?: string }) {
+function useStatsSummary(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
     queryKey: ['stats:summary', params],
     queryFn: async () => {
@@ -54,7 +54,7 @@ function useStatsSummary(params: { from?: string; to?: string }) {
   });
 }
 
-function useStatsByType(params: { from?: string; to?: string }) {
+function useStatsByType(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
     queryKey: ['stats:by-type', params],
     queryFn: async () => {
@@ -64,7 +64,7 @@ function useStatsByType(params: { from?: string; to?: string }) {
   });
 }
 
-function useStatsGender(params: { from?: string; to?: string }) {
+function useStatsGender(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
     queryKey: ['stats:gender', params],
     queryFn: async () => {
@@ -74,7 +74,7 @@ function useStatsGender(params: { from?: string; to?: string }) {
   });
 }
 
-function useStatsParticipantsTimeseries(params: { from?: string; to?: string }) {
+function useStatsParticipantsTimeseries(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
     queryKey: ['stats:participants-timeseries', params],
     queryFn: async () => {
@@ -84,7 +84,7 @@ function useStatsParticipantsTimeseries(params: { from?: string; to?: string }) 
   });
 }
 
-function useStatsByCohort(params: { from?: string; to?: string }) {
+function useStatsByCohort(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
     queryKey: ['stats:by-cohort', params],
     queryFn: async () => {
@@ -101,7 +101,7 @@ function useStatsByCohort(params: { from?: string; to?: string }) {
   });
 }
 
-function useStatsByCategory(params: { from?: string; to?: string }) {
+function useStatsByCategory(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
     queryKey: ['stats:by-category', params],
     queryFn: async () => {
@@ -114,6 +114,7 @@ function useStatsByCategory(params: { from?: string; to?: string }) {
 export default function Statistics() {
   const [from, setFrom] = useState<string>('');
   const [to, setTo] = useState<string>('');
+  const [projectId, setProjectId] = useState<string>('');
   const [yearPickerOpen, setYearPickerOpen] = useState<boolean>(false);
   const yearPickerRef = useRef<HTMLDivElement | null>(null);
   const [yearDraft, setYearDraft] = useState<string>('');
@@ -123,11 +124,18 @@ export default function Statistics() {
   const reportRef = useRef<HTMLDivElement | null>(null);
   const qc = useQueryClient();
   const { user } = useAuth();
-  const params = useMemo(() => ({ from: from || undefined, to: to || undefined }), [from, to]);
-  const { data: summary } = useStatsSummary(params);
-  const { data: byType } = useStatsByType(params);
-  const { data: gender } = useStatsGender(params);
-  const { data: timeseries } = useStatsParticipantsTimeseries(params);
+  const statsParams = useMemo(
+    () => ({ from: from || undefined, to: to || undefined, projectId: projectId || undefined }),
+    [from, to, projectId],
+  );
+  const activitiesParams = useMemo(
+    () => ({ from: from || undefined, to: to || undefined, projectIds: projectId ? [projectId] : undefined }),
+    [from, to, projectId],
+  );
+  const { data: summary } = useStatsSummary(statsParams);
+  const { data: byType } = useStatsByType(statsParams);
+  const { data: gender } = useStatsGender(statsParams);
+  const { data: timeseries } = useStatsParticipantsTimeseries(statsParams);
   // All-time series to build available years for quick picker
   const { data: timeseriesAll = [] } = useStatsParticipantsTimeseries({});
   const activityYears = useMemo(() => {
@@ -137,11 +145,17 @@ export default function Statistics() {
     }
     return Array.from(set).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   }, [timeseriesAll]);
-  const { data: byCohort } = useStatsByCohort(params);
-  const { data: byCategory } = useStatsByCategory(params);
-  const { data: activities = [] } = useActivities(params);
+  const { data: byCohort } = useStatsByCohort(statsParams);
+  const { data: byCategory } = useStatsByCategory(statsParams);
+  const { data: activities = [] } = useActivities(activitiesParams);
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
+
+  // If the selected project disappears (e.g. archived/deleted), reset to "all"
+  useEffect(() => {
+    if (!projectId) return;
+    if (!projectsAll.some((p) => p.id === projectId)) setProjectId('');
+  }, [projectId, projectsAll]);
 
   // Close year dropdown on click-away
   useEffect(() => {
@@ -172,6 +186,23 @@ export default function Statistics() {
   // Hinweis: genderTotal wird für Tooltip nicht mehr benötigt, da dort absolute Werte gezeigt werden
 
   const fmtNumber = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
+
+  const fmtDateCompact = (iso: string) => {
+    const s = String(iso || '').slice(0, 10);
+    const [yy, mm, dd] = s.split('-');
+    const y = Number(yy);
+    const m = Number(mm);
+    const d = Number(dd);
+    if (!y || !m || !d) return s || String(iso || '');
+    // Use noon UTC to avoid timezone edge cases around midnight.
+    const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    const y2 = String(y).slice(-2);
+    const mon = new Intl.DateTimeFormat('de-DE', { month: 'short' })
+      .format(dt)
+      .replace('.', '');
+    const d2 = String(d).padStart(2, '0');
+    return `${y2} ${mon} ${d2}`;
+  };
 
   // Top Tags (by activities that include the tag)
   type ActivityLite = {
@@ -208,6 +239,21 @@ export default function Statistics() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
   }, [activities]);
+
+  const topDays = useMemo(() => {
+    const list = Array.isArray(timeseries) ? timeseries : [];
+    return list
+      .filter((d) => d && typeof d.totalParticipants === 'number')
+      .slice()
+      .sort((a, b) => b.totalParticipants - a.totalParticipants)
+      .slice(0, 10)
+      .map((d) => ({
+        id: d.date,
+        date: d.date,
+        name: fmtDateCompact(d.date),
+        count: d.totalParticipants,
+      }));
+  }, [timeseries]);
 
   // Color maps
   const tagColor = useMemo(() => {
@@ -475,7 +521,7 @@ export default function Statistics() {
           >
             Aktualisieren
           </button>
-          {(from || to) && (
+          {(from || to || yearDraft) && (
             <button
               title="Filter zurücksetzen"
               aria-label="Filter zurücksetzen"
@@ -503,6 +549,98 @@ export default function Statistics() {
             Export (PDF)
           </button>
         </div>
+
+        {/* Project quick filter tiles */}
+        {projectsAll.length > 0 && (
+          <div className="mt-5">
+            <div className="text-sm font-medium text-gray-700 mb-2">Projekte</div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setProjectId('')}
+                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                  !projectId
+                    ? 'bg-viridian text-white border-viridian'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Alle Projekte
+              </button>
+              {projectsAll
+                .slice()
+                .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'de'))
+                .map((p) => {
+                  const active = projectId === p.id;
+                  const color = typeof p.color === 'string' && p.color.trim() ? p.color.trim() : undefined;
+                  const imageUrl = typeof p.imageUrl === 'string' && p.imageUrl.trim() ? p.imageUrl.trim() : undefined;
+                  const fallbackColor = '#0f766e'; // viridian-ish
+                  const overlayColor = color || fallbackColor;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setProjectId(p.id)}
+                      className={`relative overflow-hidden px-3 py-1.5 rounded-full text-sm border flex items-center gap-2 max-w-full transition-colors ${
+                        active
+                          ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/30'
+                          : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
+                      }`}
+                      style={{
+                        borderColor: active ? overlayColor : color || undefined,
+                      }}
+                      title={p.title}
+                    >
+                      {active && imageUrl ? (
+                        <span
+                          aria-hidden
+                          className="absolute inset-0"
+                          style={{
+                            backgroundImage: `url(${imageUrl})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }}
+                        />
+                      ) : null}
+
+                      {active ? (
+                        <>
+                          {/* ensure strong contrast for text */}
+                          <span aria-hidden className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/45 to-black/60" />
+                          <span
+                            aria-hidden
+                            className="absolute inset-0"
+                            style={{ backgroundColor: overlayColor, opacity: 0.25 }}
+                          />
+                        </>
+                      ) : null}
+
+                      <span className="relative flex items-center gap-2 min-w-0">
+                        {imageUrl ? (
+                          <span
+                            className={`w-5 h-5 rounded-full overflow-hidden border flex-shrink-0 ${
+                              active ? 'border-white/40 bg-white/15' : 'border-gray-300 bg-gray-100'
+                            }`}
+                          >
+                            <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+                          </span>
+                        ) : (
+                          <span
+                            aria-hidden
+                            className="w-2.5 h-2.5 rounded-full border flex-shrink-0"
+                            style={{
+                              backgroundColor: overlayColor,
+                              borderColor: active ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.08)',
+                            }}
+                          />
+                        )}
+                        <span className={`truncate ${active ? 'drop-shadow' : ''}`}>{p.title}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div ref={reportRef} className="">
@@ -621,11 +759,15 @@ export default function Statistics() {
                   margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(v) => fmtDateCompact(String(v))}
+                  />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                   <Tooltip
                     formatter={(value: number) => value.toLocaleString('de-DE')}
-                    labelFormatter={(l) => `Datum: ${l}`}
+                    labelFormatter={(l) => `Datum: ${fmtDateCompact(String(l))}`}
                   />
                   <Legend />
                   <Line
@@ -729,35 +871,67 @@ export default function Statistics() {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4 text-viridian">Top Projekte</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topProjects} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 12 }}
-                    interval={0}
-                    angle={-15}
-                    textAnchor="end"
-                    height={50}
-                  />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
-                  <Bar dataKey="count" name="Aktivitäten">
-                    {topProjects.map((p, i) => (
-                      <Cell
-                        key={`tp-${p.id}`}
-                        fill={
-                          projectColor.get(p.id) || fallbackBarColors[i % fallbackBarColors.length]
-                        }
+            {projectId ? (
+              <>
+                <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tage</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topDays} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 12 }}
+                        interval={0}
+                        angle={-15}
+                        textAnchor="end"
+                        height={50}
                       />
-                    ))}
-                    <LabelList dataKey="count" content={<ValueLabel />} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                      <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <Tooltip
+                        formatter={(value: number) => value.toLocaleString('de-DE')}
+                        labelFormatter={(l) => `Datum: ${l}`}
+                      />
+                      <Bar dataKey="count" name="Teilnehmende" fill="#10b981">
+                        <LabelList dataKey="count" content={<ValueLabel />} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold mb-4 text-viridian">Top Projekte</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topProjects} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 12 }}
+                        interval={0}
+                        angle={-15}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
+                      <Bar dataKey="count" name="Aktivitäten">
+                        {topProjects.map((p, i) => (
+                          <Cell
+                            key={`tp-${p.id}`}
+                            fill={
+                              projectColor.get(p.id) ||
+                              fallbackBarColors[i % fallbackBarColors.length]
+                            }
+                          />
+                        ))}
+                        <LabelList dataKey="count" content={<ValueLabel />} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

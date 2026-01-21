@@ -110,9 +110,6 @@ export default function SettingsCohorts() {
                   onClick={() => update.mutate({ id: c.id, data: { active: true } })}
                 >Wiederherstellen</button>
               )}
-              {showArchived && c.active === false && (
-                <button className="text-viridian hover:underline" onClick={() => update.mutate({ id: c.id, data: { active: true } })}>Wiederherstellen</button>
-              )}
               <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
                 title="Bearbeiten"

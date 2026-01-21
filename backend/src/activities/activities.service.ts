@@ -35,6 +35,7 @@ export class ActivitiesService {
     locationIds?: string[];
     projectIds?: string[];
     categoryIds?: string[];
+    uncategorized?: boolean;
     tagIds?: string[];
     staffIds?: string[];
     cohortIds?: string[];
@@ -81,7 +82,19 @@ export class ActivitiesService {
     if (filters?.projectIds && filters.projectIds.length) {
       qb.andWhere('a.projectId IN (:...projectIds)', { projectIds: filters.projectIds });
     }
-    if (filters?.categoryIds && filters.categoryIds.length) {
+    // Categories: allow filtering by explicit categories, uncategorized, or both (union)
+    if (filters?.uncategorized) {
+      if (filters?.categoryIds && filters.categoryIds.length) {
+        qb.andWhere(
+          new Brackets((b) => {
+            b.where('categories.id IN (:...categoryIds)', { categoryIds: filters.categoryIds });
+            b.orWhere('categories.id IS NULL');
+          }),
+        );
+      } else {
+        qb.andWhere('categories.id IS NULL');
+      }
+    } else if (filters?.categoryIds && filters.categoryIds.length) {
       qb.andWhere('categories.id IN (:...categoryIds)', { categoryIds: filters.categoryIds });
     }
     if (filters?.tagIds && filters.tagIds.length) {
@@ -137,7 +150,7 @@ export class ActivitiesService {
     tagIds?: string[];
     cohortIds?: string[];
     hasNotes?: boolean;
-    participantsMin?: number;
+    uncategorized?: boolean;
     participantsMax?: number;
     durationMin?: number;
     durationMax?: number;
@@ -162,7 +175,7 @@ export class ActivitiesService {
     cohortIds?: string[];
     hasNotes?: boolean;
     participantsMin?: number;
-    participantsMax?: number;
+    uncategorized?: boolean;
     durationMin?: number;
     durationMax?: number;
     orgId?: string | null;

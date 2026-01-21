@@ -15,10 +15,12 @@ export class StatsController {
   @ApiOperation({ summary: 'KPI-Zusammenfassung' })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'projectId', required: false })
   async getSummary(
     @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
     const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
@@ -30,17 +32,19 @@ export class StatsController {
     if (typeof orgIdRaw === 'string') {
       orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
     }
-    return this.statsService.getSummary(from, to, orgId, orgIds);
+    return this.statsService.getSummary(from, to, orgId, orgIds, projectId);
   }
 
   @Get('by-type')
   @ApiOperation({ summary: 'Verteilung nach Tätigkeitstyp' })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'projectId', required: false })
   async getByType(
     @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
     const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
@@ -52,17 +56,19 @@ export class StatsController {
     if (typeof orgIdRaw === 'string') {
       orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
     }
-    return this.statsService.getByType(from, to, orgId, orgIds);
+    return this.statsService.getByType(from, to, orgId, orgIds, projectId);
   }
 
   @Get('gender')
   @ApiOperation({ summary: 'Geschlechterverteilung (Summen)' })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'projectId', required: false })
   async getGender(
     @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
     const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
@@ -74,17 +80,19 @@ export class StatsController {
     if (typeof orgIdRaw === 'string') {
       orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
     }
-    return this.statsService.getGender(from, to, orgId, orgIds);
+    return this.statsService.getGender(from, to, orgId, orgIds, projectId);
   }
 
   @Get('participants-timeseries')
   @ApiOperation({ summary: 'Zeitverlauf der Teilnehmenden (pro Tag)' })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'projectId', required: false })
   async getParticipantsTimeseries(
     @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
     const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
@@ -96,17 +104,19 @@ export class StatsController {
     if (typeof orgIdRaw === 'string') {
       orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
     }
-    return this.statsService.getParticipantsTimeseries(from, to, orgId, orgIds);
+    return this.statsService.getParticipantsTimeseries(from, to, orgId, orgIds, projectId);
   }
 
   @Get('by-category')
   @ApiOperation({ summary: 'Verteilung nach Kategorien' })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'projectId', required: false })
   async getByCategory(
     @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
     const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
@@ -118,17 +128,19 @@ export class StatsController {
     if (typeof orgIdRaw === 'string') {
       orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
     }
-    return this.statsService.getByCategory(from, to, orgId, orgIds);
+    return this.statsService.getByCategory(from, to, orgId, orgIds, projectId);
   }
 
   @Get('by-cohort')
   @ApiOperation({ summary: 'Verteilung nach Alterskohorten' })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'projectId', required: false })
   async getByCohort(
     @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
     const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
@@ -140,6 +152,6 @@ export class StatsController {
     if (typeof orgIdRaw === 'string') {
       orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
     }
-    return this.statsService.getByCohort(from, to, orgId, orgIds);
+    return this.statsService.getByCohort(from, to, orgId, orgIds, projectId);
   }
 }

@@ -19,6 +19,11 @@ export default function ActivitiesFilterDrawer({
   onApply: (f: ActivitiesFilter) => void;
 }) {
   const [f, setF] = useState<ActivitiesFilter>(initial);
+  useEffect(() => {
+    if (!open) return;
+    setF(initial);
+  }, [open, initial]);
+
   const { data: tags = [] } = useTags({ active: true });
   const { data: categories = [] } = useCategories({ active: true });
   const { data: cohorts = [] } = useCohorts({ active: true });
@@ -30,6 +35,7 @@ export default function ActivitiesFilterDrawer({
   // Availability is expressed via counts; sets removed to avoid unused-state warnings
   const [catCounts, setCatCounts] = useState<Map<string, number>>(new Map());
   const [tagCounts, setTagCounts] = useState<Map<string, number>>(new Map());
+  const [uncategorizedCount, setUncategorizedCount] = useState<number>(0);
 
   // Debounce inputs to avoid spamming the API while typing
   const depsKey = useMemo(
@@ -82,7 +88,9 @@ export default function ActivitiesFilterDrawer({
         const tset = new Set<string>();
         const ccount = new Map<string, number>();
         const tcount = new Map<string, number>();
+        let uncat = 0;
         for (const a of list) {
+          if (!Array.isArray(a.categories) || a.categories.length === 0) uncat += 1;
           for (const c of a.categories || [])
             if (c?.id) {
               cset.add(c.id);
@@ -97,11 +105,13 @@ export default function ActivitiesFilterDrawer({
         if (!cancelled) {
           setCatCounts(ccount);
           setTagCounts(tcount);
+          setUncategorizedCount(uncat);
         }
       } catch {
         if (!cancelled) {
           setCatCounts(new Map());
           setTagCounts(new Map());
+          setUncategorizedCount(0);
         }
       }
     }, 250);
@@ -123,9 +133,28 @@ export default function ActivitiesFilterDrawer({
   const toggleIn = (key: keyof ActivitiesFilter, id: string) => {
     setF((prev) => {
       const cur = new Set<string>((prev[key] as string[] | undefined) || []);
+      if (key === 'categoryIds') {
+        // Selecting concrete categories clears the uncategorized-only filter.
+        const cur = new Set<string>((prev[key] as string[] | undefined) || []);
+        if (cur.has(id)) cur.delete(id);
+        else cur.add(id);
+        return { ...prev, uncategorized: false, [key]: Array.from(cur) };
+      }
       if (cur.has(id)) cur.delete(id);
       else cur.add(id);
       return { ...prev, [key]: Array.from(cur) };
+    });
+  };
+
+  const toggleUncategorized = () => {
+    setF((prev) => {
+      const next = !prev.uncategorized;
+      return {
+        ...prev,
+        uncategorized: next,
+        // Mutually exclusive with specific category selection
+        categoryIds: next ? [] : prev.categoryIds,
+      };
     });
   };
 
@@ -263,6 +292,35 @@ export default function ActivitiesFilterDrawer({
             <div>
               <div className="text-xs text-gray-600 mb-1">Kategorien</div>
               <div className="flex flex-wrap gap-2">
+                {(() => {
+                  const active = !!f.uncategorized;
+                  const present = uncategorizedCount > 0;
+                  const base = present
+                    ? 'bg-azure-web text-viridian'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed';
+                  const disabled = !present && !active;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!disabled) toggleUncategorized();
+                      }}
+                      disabled={disabled}
+                      title={
+                        disabled
+                          ? 'Keine unkategorisierten Aktivitäten mit aktuellen Filtern'
+                          : undefined
+                      }
+                      className={`text-xs px-2 py-1 rounded-full border ${
+                        active
+                          ? 'bg-viridian text-white border-viridian'
+                          : `${base} border-transparent`
+                      } ${present ? '' : 'opacity-80'}`}
+                    >
+                      Unkategorisiert ({uncategorizedCount})
+                    </button>
+                  );
+                })()}
                 {categories.map((c) => {
                   const active = !!f.categoryIds?.includes(c.id);
                   const count = catCounts.get(c.id) ?? 0;

@@ -41,8 +41,13 @@ export class StatsService {
     return { ...where, ...extra } as FindOptionsWhere<Activity>;
   }
 
-  async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
+  private applyProject(where: FindOptionsWhere<Activity>, projectId?: string): FindOptionsWhere<Activity> {
+    if (!projectId) return where;
+    return { ...where, projectId: Equal(projectId) } as FindOptionsWhere<Activity>;
+  }
+
+  async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
+    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
     const activities = await this.activityRepository.find({ where });
 
     const totalActivities = activities.length;
@@ -64,8 +69,8 @@ export class StatsService {
     };
   }
 
-  async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
+  async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
+    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
     const activities = await this.activityRepository.find({ where });
     const map = new Map<string, number>();
     for (const a of activities) {
@@ -74,8 +79,8 @@ export class StatsService {
     return Array.from(map.entries()).map(([type, count]) => ({ type, count }));
   }
 
-  async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
+  async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
+    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
     const activities = await this.activityRepository.find({ where });
     const male = activities.reduce((s, a) => s + (a.countMale || 0), 0);
     const female = activities.reduce((s, a) => s + (a.countFemale || 0), 0);
@@ -83,8 +88,8 @@ export class StatsService {
     return { male, female, diverse };
   }
 
-  async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
+  async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
+    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
     const activities = await this.activityRepository.find({ where });
     const map = new Map<string, number>();
     for (const a of activities) {
@@ -98,34 +103,38 @@ export class StatsService {
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
-    // Count by the category of the linked project (user-managed categories)
+  async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
+    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
+    // Count by activity categories (same semantics as the UI "Nach Kategorie" table)
     const activities = await this.activityRepository.find({ where });
-    const map = new Map<string, number>();
+    const map = new Map<string, { id: string; name: string; count: number }>();
+
     for (const a of activities) {
-      const catId = a.project?.categoryId || '__uncategorized__';
-      map.set(catId, (map.get(catId) || 0) + 1);
+      const cats = Array.isArray(a.categories) ? a.categories : [];
+      if (!cats.length) {
+        const id = '__uncategorized__';
+        const v = map.get(id) || { id, name: 'Unkategorisiert', count: 0 };
+        v.count += 1;
+        map.set(id, v);
+        continue;
+      }
+
+      // Defensive: prevent accidental double-counting if a.categories contains duplicates
+      const seen = new Set<string>();
+      for (const c of cats) {
+        if (!c?.id || seen.has(c.id)) continue;
+        seen.add(c.id);
+        const v = map.get(c.id) || { id: c.id, name: c.name || c.id, count: 0 };
+        v.count += 1;
+        map.set(c.id, v);
+      }
     }
-  const catQB = this.categoryRepository.createQueryBuilder('c');
-    if (Array.isArray(orgIds) && orgIds.length) {
-      catQB.where('c.orgId IN (:...orgIds)', { orgIds });
-    } else if (typeof orgId !== 'undefined') {
-      if (orgId === null) catQB.where('c.orgId IS NULL');
-      else catQB.where('c.orgId = :orgId', { orgId });
-    }
-    const categories = await catQB.getMany();
-    const nameMap = new Map<string, string>(categories.map((c) => [c.id, c.name] as const));
-    const result = Array.from(map.entries()).map(([id, count]) => ({
-      id,
-      name: id === '__uncategorized__' ? 'Unkategorisiert' : (nameMap.get(id) || id),
-      count,
-    }));
-    return result.sort((a, b) => b.count - a.count).slice(0, 10);
+
+    return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 10);
   }
 
-  async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
-    const where = this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds);
+  async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
+    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
     const activities = await this.activityRepository.find({ where });
     // Sum cohorts JSON m/w/d by cohortId and count distinct activities per cohort
     const map = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
@@ -150,14 +159,19 @@ export class StatsService {
     }
     const cohorts = await cohQB.getMany();
     const nameMap = new Map(cohorts.map((c) => [c.id, c.name] as const));
-    return Array.from(map.values()).map((v) => ({
-      cohortId: v.cohortId,
-      name: nameMap.get(v.cohortId) || v.cohortId,
-      male: v.m,
-      female: v.w,
-      diverse: v.d,
-      total: v.m + v.w + v.d,
-      activities: usage.get(v.cohortId)?.size || 0,
-    })).sort((a, b) => b.total - a.total);
+
+    // Ignore cohortIds that don't exist anymore, so the UI doesn't show raw IDs or a generic bucket.
+    return Array.from(map.values())
+      .filter((v) => nameMap.has(v.cohortId))
+      .map((v) => ({
+        cohortId: v.cohortId,
+        name: nameMap.get(v.cohortId)!,
+        male: v.m,
+        female: v.w,
+        diverse: v.d,
+        total: v.m + v.w + v.d,
+        activities: usage.get(v.cohortId)?.size || 0,
+      }))
+      .sort((a, b) => b.total - a.total);
   }
 }

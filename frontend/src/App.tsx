@@ -21,6 +21,7 @@ import AcceptInvite from './pages/AcceptInvite';
 import ResetRequest from './pages/ResetRequest';
 import ResetPassword from './pages/ResetPassword';
 import ProjectPickerPage from '@/pages/ProjectPickerPage';
+import PostLoginPrefetch from '@/components/PostLoginPrefetch';
 
 function App() {
   // App-level providers
@@ -61,27 +62,29 @@ function AuthedRoutes() {
   if (!user) return <Login />;
 
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="activities" element={<Activities />} />
-        {/* Mobile-first flow: select project then create */}
-        <Route path="activities/new/select-project" element={<ProjectPickerPage />} />
-        <Route path="activities/new" element={<ActivityCreatePage />} />
-        <Route path="activities/:id" element={<ActivityDetailPage />} />
-        <Route path="activities/:id/edit" element={<ActivityEditPage />} />
-        <Route path="projects" element={<Projects />} />
-        <Route path="calendar" element={<Calendar />} />
-        <Route path="statistics" element={<Statistics />} />
-        <Route path="me" element={<MyProfile />} />
-        <Route path="settings" element={<Settings />} />
-        {/* Mock admin routes */}
-        {user.role === 'superadmin' && <Route path="admin/orgs" element={<AdminOrgSetup />} />}
-        {(user.role === 'org_admin' || user.role === 'superadmin') && (
-          <Route path="admin/users" element={<OrgUserManagement />} />
-        )}
-      </Route>
-    </Routes>
+    <PostLoginPrefetch>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="activities" element={<Activities />} />
+          {/* Mobile-first flow: select project then create */}
+          <Route path="activities/new/select-project" element={<ProjectPickerPage />} />
+          <Route path="activities/new" element={<ActivityCreatePage />} />
+          <Route path="activities/:id" element={<ActivityDetailPage />} />
+          <Route path="activities/:id/edit" element={<ActivityEditPage />} />
+          <Route path="projects" element={<Projects />} />
+          <Route path="calendar" element={<Calendar />} />
+          <Route path="statistics" element={<Statistics />} />
+          <Route path="me" element={<MyProfile />} />
+          <Route path="settings" element={<Settings />} />
+          {/* Mock admin routes */}
+          {user.role === 'superadmin' && <Route path="admin/orgs" element={<AdminOrgSetup />} />}
+          {(user.role === 'org_admin' || user.role === 'superadmin') && (
+            <Route path="admin/users" element={<OrgUserManagement />} />
+          )}
+        </Route>
+      </Routes>
+    </PostLoginPrefetch>
   );
 }

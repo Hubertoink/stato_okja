@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { CalendarClock } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import {
   PieChart,
@@ -37,7 +37,7 @@ const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'
 
 function useStatsSummary(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
-    queryKey: ['stats:summary', params],
+    queryKey: ['stats:summary', params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/summary', { params });
       return res.data as {
@@ -51,42 +51,58 @@ function useStatsSummary(params: { from?: string; to?: string; projectId?: strin
         averageParticipants: number;
       };
     },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+    refetchOnMount: false,
+    placeholderData: keepPreviousData,
   });
 }
 
 function useStatsByType(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
-    queryKey: ['stats:by-type', params],
+    queryKey: ['stats:by-type', params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/by-type', { params });
       return res.data as Array<{ type: string; count: number }>;
     },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+    refetchOnMount: false,
+    placeholderData: keepPreviousData,
   });
 }
 
 function useStatsGender(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
-    queryKey: ['stats:gender', params],
+    queryKey: ['stats:gender', params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/gender', { params });
       return res.data as { male: number; female: number; diverse: number };
     },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+    refetchOnMount: false,
+    placeholderData: keepPreviousData,
   });
 }
 
 function useStatsParticipantsTimeseries(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
-    queryKey: ['stats:participants-timeseries', params],
+    queryKey: ['stats:participants-timeseries', params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/participants-timeseries', { params });
       return res.data as Array<{ date: string; totalParticipants: number }>;
     },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+    refetchOnMount: false,
+    placeholderData: keepPreviousData,
   });
 }
 
 function useStatsByCohort(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
-    queryKey: ['stats:by-cohort', params],
+    queryKey: ['stats:by-cohort', params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/by-cohort', { params });
       return res.data as Array<{
@@ -98,16 +114,24 @@ function useStatsByCohort(params: { from?: string; to?: string; projectId?: stri
         diverse: number;
       }>;
     },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+    refetchOnMount: false,
+    placeholderData: keepPreviousData,
   });
 }
 
 function useStatsByCategory(params: { from?: string; to?: string; projectId?: string }) {
   return useQuery({
-    queryKey: ['stats:by-category', params],
+    queryKey: ['stats:by-category', params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/by-category', { params });
       return res.data as Array<{ id: string; name: string; count: number }>;
     },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+    refetchOnMount: false,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -132,12 +156,17 @@ export default function Statistics() {
     () => ({ from: from || undefined, to: to || undefined, projectIds: projectId ? [projectId] : undefined }),
     [from, to, projectId],
   );
-  const { data: summary } = useStatsSummary(statsParams);
-  const { data: byType } = useStatsByType(statsParams);
-  const { data: gender } = useStatsGender(statsParams);
-  const { data: timeseries } = useStatsParticipantsTimeseries(statsParams);
+  const summaryQ = useStatsSummary(statsParams);
+  const byTypeQ = useStatsByType(statsParams);
+  const genderQ = useStatsGender(statsParams);
+  const timeseriesQ = useStatsParticipantsTimeseries(statsParams);
+  const { data: summary } = summaryQ;
+  const { data: byType } = byTypeQ;
+  const { data: gender } = genderQ;
+  const { data: timeseries } = timeseriesQ;
   // All-time series to build available years for quick picker
-  const { data: timeseriesAll = [] } = useStatsParticipantsTimeseries({});
+  const timeseriesAllQ = useStatsParticipantsTimeseries({});
+  const { data: timeseriesAll = [] } = timeseriesAllQ;
   const activityYears = useMemo(() => {
     const set = new Set<string>();
     for (const d of timeseriesAll || []) {
@@ -145,11 +174,31 @@ export default function Statistics() {
     }
     return Array.from(set).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   }, [timeseriesAll]);
-  const { data: byCohort } = useStatsByCohort(statsParams);
-  const { data: byCategory } = useStatsByCategory(statsParams);
+  const byCohortQ = useStatsByCohort(statsParams);
+  const byCategoryQ = useStatsByCategory(statsParams);
+  const { data: byCohort } = byCohortQ;
+  const { data: byCategory } = byCategoryQ;
   const { data: activities = [] } = useActivities(activitiesParams);
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
+
+  const initialLoading =
+    summaryQ.isLoading ||
+    byTypeQ.isLoading ||
+    genderQ.isLoading ||
+    timeseriesQ.isLoading ||
+    byCohortQ.isLoading ||
+    byCategoryQ.isLoading;
+
+  const backgroundRefreshing =
+    !initialLoading &&
+    (summaryQ.isFetching ||
+      byTypeQ.isFetching ||
+      genderQ.isFetching ||
+      timeseriesQ.isFetching ||
+      byCohortQ.isFetching ||
+      byCategoryQ.isFetching ||
+      timeseriesAllQ.isFetching);
 
   // If the selected project disappears (e.g. archived/deleted), reset to "all"
   useEffect(() => {
@@ -430,6 +479,22 @@ export default function Statistics() {
   return (
     <div>
       <h2 className="text-3xl font-bold text-viridian mb-6">Statistiken & Auswertungen</h2>
+
+      {(initialLoading || backgroundRefreshing) && (
+        <div
+          className={`mb-4 rounded border px-3 py-2 text-sm ${
+            initialLoading
+              ? 'bg-azure-web border-viridian/20 text-viridian'
+              : 'bg-gray-50 border-gray-200 text-gray-600'
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {initialLoading
+            ? 'Statistikdaten werden geladen…'
+            : 'Statistikdaten werden aktualisiert…'}
+        </div>
+      )}
 
       {/* Time Range Selector */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">

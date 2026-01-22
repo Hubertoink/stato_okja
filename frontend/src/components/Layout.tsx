@@ -17,6 +17,7 @@ import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
+import { useIsFetching } from '@tanstack/react-query';
 
 export default function Layout() {
   const location = useLocation();
@@ -24,6 +25,14 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { scope, setScope } = useOrgScope();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
+
+  const statsFetchingCount = useIsFetching({
+    predicate: (q) => {
+      const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
+      return typeof key0 === 'string' && key0.startsWith('stats:');
+    },
+  });
+  const statsFetching = statsFetchingCount > 0;
   const roleLabel: Record<string, string> = {
     superadmin: 'Superadmin',
     org_admin: 'Org-Admin',
@@ -390,7 +399,20 @@ export default function Layout() {
                 }`}
               >
                 <BarChart3 className="w-5 h-5 mr-2" />
-                Statistiken
+                <span className="inline-flex items-center">
+                  Statistiken
+                  {statsFetching && (
+                    <span
+                      className="ml-2 inline-flex items-center gap-1 text-xs text-white/90"
+                      role="status"
+                      aria-live="polite"
+                      title="Statistikdaten werden geladen"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" aria-hidden />
+                      lädt…
+                    </span>
+                  )}
+                </span>
               </Link>
             </li>
             <li>
@@ -464,7 +486,15 @@ export default function Layout() {
               to="/statistics"
               className={`flex flex-col items-center py-2 hover:bg-black/5 ${isActive('/statistics') ? 'text-viridian' : 'text-gray-600'}`}
             >
-              <BarChart3 className="w-5 h-5" />
+              <span className="relative">
+                <BarChart3 className="w-5 h-5" />
+                {statsFetching && (
+                  <span
+                    className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"
+                    aria-hidden
+                  />
+                )}
+              </span>
               <span>Stats</span>
             </Link>
           </li>

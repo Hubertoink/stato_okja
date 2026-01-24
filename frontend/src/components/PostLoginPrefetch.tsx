@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { useIsRestoring, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useOrgScope } from '@/lib/orgScope';
 import type { ActivitiesFilter, PagedActivitiesResult } from '@/lib/activities';
 import type { Project } from '@/lib/projects';
 import LoadingOverlay from '@/components/LoadingOverlay';
@@ -64,15 +65,12 @@ async function fetchStats<T>(path: string, params: { from?: string; to?: string;
 
 export default function PostLoginPrefetch({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { scope } = useOrgScope();
   const qc = useQueryClient();
+  const isRestoring = useIsRestoring();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string>('Daten werden vorbereitet…');
   const didRunRef = useRef(false);
-
-  const shouldRun = useMemo(() => {
-    if (!user) return false;
-    return !didRunRef.current;
-  }, [user?.id]);
 
   useEffect(() => {
     // Reset per-user so switching accounts runs prefetch again.
@@ -81,76 +79,160 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
 
   useEffect(() => {
     if (!user) return;
-    if (!shouldRun) return;
+    if (isRestoring) return;
+    if (didRunRef.current) return;
 
+    didRunRef.current = true;
     let cancelled = false;
 
+    const scopeForKey = typeof scope === 'undefined' ? 'GLOBAL' : scope === null ? 'NULL' : scope;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // 1-12
+    const from = `${year}-${String(month).padStart(2, '0')}-01`;
+    const to = new Date(year, month, 0);
+    const toISO = `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, '0')}-${String(
+      to.getDate(),
+    ).padStart(2, '0')}`;
+
+    const dashboardMonthSummaryKey = [
+      'stats:summary',
+      {
+        from,
+        to: toISO,
+        scope: scopeForKey,
+      },
+    ] as const;
+
+    const hasProjects = qc.getQueryState(['projects', undefined])?.status === 'success';
+    const hasDashboardMonthSummary = qc.getQueryState(dashboardMonthSummaryKey)?.status === 'success';
+    const hasBaseStatsSummary = qc.getQueryState(['stats:summary', '', '', ''])?.status === 'success';
+    const hasBaseStatsByType = qc.getQueryState(['stats:by-type', '', '', ''])?.status === 'success';
+    const hasBaseStatsGender = qc.getQueryState(['stats:gender', '', '', ''])?.status === 'success';
+    const hasBaseStatsTimeseries =
+      qc.getQueryState(['stats:participants-timeseries', '', '', ''])?.status === 'success';
+    const hasBaseStatsByCohort = qc.getQueryState(['stats:by-cohort', '', '', ''])?.status === 'success';
+    const hasBaseStatsByCategory =
+      qc.getQueryState(['stats:by-category', '', '', ''])?.status === 'success';
+
+    const needsBlockingWarmup =
+      !hasProjects ||
+      !hasDashboardMonthSummary ||
+      !hasBaseStatsSummary ||
+      !hasBaseStatsByType ||
+      !hasBaseStatsGender ||
+      !hasBaseStatsTimeseries ||
+      !hasBaseStatsByCohort ||
+      !hasBaseStatsByCategory;
+
     (async () => {
-      setOpen(true);
-      didRunRef.current = true;
       try {
-        // 1) Projects (needed for Statistics project filter badges)
-        setMessage('Projekte werden geladen…');
-        await qc.prefetchQuery({
-          queryKey: ['projects', undefined],
-          queryFn: () => fetchProjects(undefined),
-        });
+        if (needsBlockingWarmup) {
+          setOpen(true);
 
-        if (cancelled) return;
+          if (!hasProjects) {
+            setMessage('Projekte werden geladen…');
+            await qc.prefetchQuery({
+              queryKey: ['projects', undefined],
+              queryFn: () => fetchProjects(undefined),
+            });
+          }
 
-        // 2) Statistics (base, unfiltered)
-        setMessage('Statistiken werden vorbereitet…');
-        const statsParams = { from: undefined, to: undefined, projectId: undefined } as const;
-        await Promise.all([
-          qc.prefetchQuery({
-            queryKey: ['stats:summary', '', '', ''],
-            queryFn: () => fetchStats('/stats/summary', statsParams),
-          }),
-          qc.prefetchQuery({
-            queryKey: ['stats:by-type', '', '', ''],
-            queryFn: () => fetchStats('/stats/by-type', statsParams),
-          }),
-          qc.prefetchQuery({
-            queryKey: ['stats:gender', '', '', ''],
-            queryFn: () => fetchStats('/stats/gender', statsParams),
-          }),
-          qc.prefetchQuery({
-            queryKey: ['stats:participants-timeseries', '', '', ''],
-            queryFn: () => fetchStats('/stats/participants-timeseries', statsParams),
-          }),
-          qc.prefetchQuery({
-            queryKey: ['stats:by-cohort', '', '', ''],
-            queryFn: () => fetchStats('/stats/by-cohort', statsParams),
-          }),
-          qc.prefetchQuery({
-            queryKey: ['stats:by-category', '', '', ''],
-            queryFn: () => fetchStats('/stats/by-category', statsParams),
-          }),
-        ]);
+          if (cancelled) return;
 
-        if (cancelled) return;
+          setMessage('Statistiken werden vorbereitet…');
+          const baseStatsParams = { from: undefined, to: undefined, projectId: undefined } as const;
+          const tasks: Promise<unknown>[] = [];
 
-        // 3) Activities first page using persisted filters (if any)
-        setMessage('Aktivitäten werden vorbereitet…');
-        const { params, page, limit } = readActivitiesPrefetchParams();
-        await qc.prefetchQuery({
-          queryKey: ['activities', 'paged', params, page, limit],
-          queryFn: () => fetchActivitiesPaged(params, page, limit),
-        });
+          if (!hasBaseStatsSummary)
+            tasks.push(
+              qc.prefetchQuery({
+                queryKey: ['stats:summary', '', '', ''],
+                queryFn: () => fetchStats('/stats/summary', baseStatsParams),
+              }),
+            );
+          if (!hasBaseStatsByType)
+            tasks.push(
+              qc.prefetchQuery({
+                queryKey: ['stats:by-type', '', '', ''],
+                queryFn: () => fetchStats('/stats/by-type', baseStatsParams),
+              }),
+            );
+          if (!hasBaseStatsGender)
+            tasks.push(
+              qc.prefetchQuery({
+                queryKey: ['stats:gender', '', '', ''],
+                queryFn: () => fetchStats('/stats/gender', baseStatsParams),
+              }),
+            );
+          if (!hasBaseStatsTimeseries)
+            tasks.push(
+              qc.prefetchQuery({
+                queryKey: ['stats:participants-timeseries', '', '', ''],
+                queryFn: () => fetchStats('/stats/participants-timeseries', baseStatsParams),
+              }),
+            );
+          if (!hasBaseStatsByCohort)
+            tasks.push(
+              qc.prefetchQuery({
+                queryKey: ['stats:by-cohort', '', '', ''],
+                queryFn: () => fetchStats('/stats/by-cohort', baseStatsParams),
+              }),
+            );
+          if (!hasBaseStatsByCategory)
+            tasks.push(
+              qc.prefetchQuery({
+                queryKey: ['stats:by-category', '', '', ''],
+                queryFn: () => fetchStats('/stats/by-category', baseStatsParams),
+              }),
+            );
 
-        if (cancelled) return;
+          if (!hasDashboardMonthSummary)
+            tasks.push(
+              qc.prefetchQuery({
+                queryKey: dashboardMonthSummaryKey,
+                queryFn: async () => {
+                  const res = await api.get('/stats/summary', {
+                    params: {
+                      from,
+                      to: toISO,
+                      orgId:
+                        typeof scope === 'undefined' ? undefined : scope === null ? 'null' : scope,
+                    },
+                  });
+                  return res.data;
+                },
+              }),
+            );
 
+          await Promise.all(tasks);
+        }
       } catch {
-        // Never block the app if prefetch fails (e.g. slow network) — UI will load normally.
+        // Never block the app if prefetch fails — UI will load normally.
       } finally {
         if (!cancelled) setOpen(false);
+      }
+
+      // Activities first page using persisted filters (if any) — always background.
+      try {
+        const { params, page, limit } = readActivitiesPrefetchParams();
+        const hasActivities =
+          qc.getQueryState(['activities', 'paged', params, page, limit])?.status === 'success';
+        if (!hasActivities) {
+          await qc.prefetchQuery({
+            queryKey: ['activities', 'paged', params, page, limit],
+            queryFn: () => fetchActivitiesPaged(params, page, limit),
+          });
+        }
+      } catch {
+        /* ignore */
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [user, shouldRun, qc]);
+  }, [user?.id, isRestoring, qc, scope]);
 
   return (
     <>

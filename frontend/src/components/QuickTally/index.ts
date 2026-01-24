@@ -1,4 +1,4 @@
-export { default as QuickTally } from './QuickTally';
+export { default as QuickTally, QuickTallyMinimizedPill } from './QuickTally';
 export { default as QuickTallyButton } from './QuickTallyButton';
 export { default as QuickTallyReviewModal } from './QuickTallyReviewModal';
 export { useQuickTallySession } from './useQuickTallySession';

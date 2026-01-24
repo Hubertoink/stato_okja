@@ -5,7 +5,7 @@ import { useActivities } from '@/lib/activities';
 import { useAuditLogs } from '@/lib/audit';
 import { Pencil, PlusCircle, Trash2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { QuickTally, useQuickTallySession } from '@/components/QuickTally';
+import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import ExportModal from '@/components/ExportModal';
@@ -58,6 +58,7 @@ export default function Dashboard() {
   const { data: audit } = useAuditLogs(10);
   const [exportOpen, setExportOpen] = useState(false);
   const [quickTallyOpen, setQuickTallyOpen] = useState(false);
+  const [quickTallyMinimized, setQuickTallyMinimized] = useState(false);
   const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
 
@@ -123,11 +124,21 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Tally - Daily Attendance Counter */}
-      {(quickTallyOpen || activeQuickTallySession) ? (
-        <div className="mb-8">
-          <QuickTally onClose={() => setQuickTallyOpen(false)} />
-        </div>
-      ) : (
+      {/* Show QuickTally modal if open and not minimized */}
+      {(quickTallyOpen || activeQuickTallySession) && !quickTallyMinimized && (
+        <QuickTally 
+          onClose={() => setQuickTallyOpen(false)} 
+          onMinimize={() => setQuickTallyMinimized(true)}
+        />
+      )}
+
+      {/* Show minimized pill when session is active but minimized */}
+      {quickTallyMinimized && activeQuickTallySession && (
+        <QuickTallyMinimizedPill onRestore={() => setQuickTallyMinimized(false)} />
+      )}
+
+      {/* Show start button only when no active session and not open */}
+      {!quickTallyOpen && !activeQuickTallySession && (
         <div className="bg-gradient-to-r from-viridian to-cambridge-blue rounded-lg shadow-lg p-6 mb-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -140,7 +151,7 @@ export default function Dashboard() {
               </div>
             </div>
             <button
-              onClick={() => setQuickTallyOpen(true)}
+              onClick={() => { setQuickTallyOpen(true); setQuickTallyMinimized(false); }}
               className="bg-white text-viridian px-6 py-3 rounded-lg font-semibold hover:bg-mint-green transition-colors flex items-center justify-center gap-2"
             >
               <Users className="w-5 h-5" />

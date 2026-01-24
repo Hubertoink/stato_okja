@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
 import { useIsFetching } from '@tanstack/react-query';
+import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 
 export default function Layout() {
   const location = useLocation();
@@ -25,6 +26,12 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { scope, setScope } = useOrgScope();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
+
+  const { session: quickTallySession } = useQuickTallySession();
+  const [quickTallyOpen, setQuickTallyOpen] = useState(false);
+
+  const openQuickTally = () => setQuickTallyOpen(true);
+  const minimizeQuickTally = () => setQuickTallyOpen(false);
 
   const statsFetchingCount = useIsFetching({
     predicate: (q) => {
@@ -437,8 +444,16 @@ export default function Layout() {
       <main
         className={`container mx-auto px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-[5.5rem]'} md:pb-8`}
       >
-        <Outlet />
+        <Outlet context={{ openQuickTally }} />
       </main>
+
+      {/* QuickTally overlay (global) */}
+      {quickTallyOpen && (
+        <QuickTally onClose={() => setQuickTallyOpen(false)} onMinimize={minimizeQuickTally} />
+      )}
+      {!!quickTallySession && !quickTallyOpen && (
+        <QuickTallyMinimizedPill onRestore={openQuickTally} />
+      )}
 
       {/* Bottom Navigation (mobile) */}
       <nav

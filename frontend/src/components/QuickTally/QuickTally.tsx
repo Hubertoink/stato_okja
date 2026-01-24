@@ -405,7 +405,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
   const content = (
     <button
       onClick={onRestore}
-      className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-viridian to-cambridge-blue text-white pl-4 pr-5 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-3"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 right-4 md:right-6 z-50 bg-gradient-to-r from-viridian to-cambridge-blue text-white pl-4 pr-5 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-3"
       style={{ animation: 'pulse 2s infinite' }}
     >
       <div className="p-1.5 bg-white/20 rounded-full">

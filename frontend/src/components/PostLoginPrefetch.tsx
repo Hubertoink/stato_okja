@@ -104,6 +104,16 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
       },
     ] as const;
 
+    const { params: activitiesParams, page: activitiesPage, limit: activitiesLimit } =
+      readActivitiesPrefetchParams();
+    const activitiesFirstPageKey = [
+      'activities',
+      'paged',
+      activitiesParams,
+      activitiesPage,
+      activitiesLimit,
+    ] as const;
+
     const hasProjects = qc.getQueryState(['projects', undefined])?.status === 'success';
     const hasDashboardMonthSummary = qc.getQueryState(dashboardMonthSummaryKey)?.status === 'success';
     const hasBaseStatsSummary = qc.getQueryState(['stats:summary', '', '', ''])?.status === 'success';
@@ -115,6 +125,8 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
     const hasBaseStatsByCategory =
       qc.getQueryState(['stats:by-category', '', '', ''])?.status === 'success';
 
+    const hasActivitiesFirstPage = qc.getQueryState(activitiesFirstPageKey)?.status === 'success';
+
     const needsBlockingWarmup =
       !hasProjects ||
       !hasDashboardMonthSummary ||
@@ -123,7 +135,8 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
       !hasBaseStatsGender ||
       !hasBaseStatsTimeseries ||
       !hasBaseStatsByCohort ||
-      !hasBaseStatsByCategory;
+      !hasBaseStatsByCategory ||
+      !hasActivitiesFirstPage;
 
     (async () => {
       try {
@@ -206,6 +219,16 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
             );
 
           await Promise.all(tasks);
+
+          if (cancelled) return;
+
+          if (!hasActivitiesFirstPage) {
+            setMessage('Aktivitäten werden vorbereitet…');
+            await qc.prefetchQuery({
+              queryKey: activitiesFirstPageKey,
+              queryFn: () => fetchActivitiesPaged(activitiesParams, activitiesPage, activitiesLimit),
+            });
+          }
         }
       } catch {
         // Never block the app if prefetch fails — UI will load normally.
@@ -215,13 +238,11 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
 
       // Activities first page using persisted filters (if any) — always background.
       try {
-        const { params, page, limit } = readActivitiesPrefetchParams();
-        const hasActivities =
-          qc.getQueryState(['activities', 'paged', params, page, limit])?.status === 'success';
+        const hasActivities = qc.getQueryState(activitiesFirstPageKey)?.status === 'success';
         if (!hasActivities) {
           await qc.prefetchQuery({
-            queryKey: ['activities', 'paged', params, page, limit],
-            queryFn: () => fetchActivitiesPaged(params, page, limit),
+            queryKey: activitiesFirstPageKey,
+            queryFn: () => fetchActivitiesPaged(activitiesParams, activitiesPage, activitiesLimit),
           });
         }
       } catch {

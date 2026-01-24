@@ -37,8 +37,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           shouldDehydrateQuery: (query) => {
             if (query.state.status !== 'success') return false;
             const k0 = query.queryKey[0];
-            // Avoid persisting potentially large lists.
-            if (k0 === 'activities') return false;
+            // Avoid persisting potentially large lists, except the first paged Activities page.
+            if (k0 === 'activities') {
+              const k1 = query.queryKey[1];
+              if (k1 !== 'paged') return false;
+              const page = query.queryKey[3];
+              const limit = query.queryKey[4];
+              if (page !== 1) return false;
+              if (typeof limit !== 'number') return false;
+              if (limit > 50) return false;
+              return true;
+            }
             return true;
           },
         },

@@ -5,8 +5,10 @@ Dieses Dokument beschreibt, wie du das Projekt auf Mittwald mit separater API-Do
 ## 1) Images aus GHCR verwenden
 
 - CI baut und pusht Images nach GHCR:
-  - Backend: `ghcr.io/<Owner>/stato-backend:latest`
-  - Frontend: `ghcr.io/<Owner>/stato-frontend:latest`
+  - Backend (Prod/main): `ghcr.io/<Owner>/stato-backend:latest`
+  - Frontend (Prod/main): `ghcr.io/<Owner>/stato-frontend:latest`
+  - Backend (Dev/dev): `ghcr.io/<Owner>/stato-backend:dev`
+  - Frontend (Dev/dev): `ghcr.io/<Owner>/stato-frontend:dev`
 – Optional Tags (z. B. `v2.0.0`) verwenden für reproduzierbare Deploys.
 - Entweder Packages auf `Public` stellen oder Mittwald mit GHCR-Login (PAT mit `read:packages`) konfigurieren.
 
@@ -16,9 +18,17 @@ Dieses Dokument beschreibt, wie du das Projekt auf Mittwald mit separater API-Do
 - Backend: `api.stato-okja.de` → Backend-Container
 - SSL (Let's Encrypt) für beide aktivieren.
 
+### Dev-Umgebung
+
+- Frontend: `devapp.stato-okja.de` → Frontend-Container (Image-Tag `:dev`)
+- Backend: `devapi.stato-okja.de` → Backend-Container (Image-Tag `:dev`)
+
+Wichtig: Wenn deine Dev-Umgebung „komisch alte Features“ zeigt, läuft sehr oft noch `:latest` (main) statt `:dev`.
+
 ## 3) Backend-Container
 
-- Image: `ghcr.io/<Owner>/stato-backend:latest`
+- Image (Prod): `ghcr.io/<Owner>/stato-backend:latest`
+- Image (Dev): `ghcr.io/<Owner>/stato-backend:dev`
 - Port: 3000
 - Volume: `/app/uploads` (persistent)
 - ENV:
@@ -34,11 +44,14 @@ Dieses Dokument beschreibt, wie du das Projekt auf Mittwald mit separater API-Do
 
 ## 4) Frontend-Container
 
-- Image: `ghcr.io/<Owner>/stato-frontend:latest`
+- Image (Prod): `ghcr.io/<Owner>/stato-frontend:latest`
+- Image (Dev): `ghcr.io/<Owner>/stato-frontend:dev`
 - Port: 80
 - ENV zur Build-Zeit: `VITE_API_BASE_URL=https://api.stato-okja.de/api`
   - Die CI übergibt den Wert automatisch via Workflow-Variable `FRONTEND_API_BASE_URL`.
   - Stelle im Repo unter `Settings → Secrets and variables → Actions → Variables` den Wert ein.
+
+Für Dev setzt die CI automatisch `VITE_API_BASE_URL=https://devapi.stato-okja.de/api`.
 
 ## 5) Managed Dienste
 

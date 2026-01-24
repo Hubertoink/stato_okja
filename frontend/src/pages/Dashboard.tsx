@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
 import { useAuditLogs } from '@/lib/audit';
-import { Pencil, PlusCircle, Trash2 } from 'lucide-react';
+import { Pencil, PlusCircle, Trash2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { QuickTally, useQuickTallySession } from '@/components/QuickTally';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import ExportModal from '@/components/ExportModal';
@@ -56,6 +57,8 @@ export default function Dashboard() {
   useActivities({ from, to });
   const { data: audit } = useAuditLogs(10);
   const [exportOpen, setExportOpen] = useState(false);
+  const [quickTallyOpen, setQuickTallyOpen] = useState(false);
+  const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -118,6 +121,34 @@ export default function Dashboard() {
           <p className="text-3xl font-bold text-viridian">{summary?.totalHours?.toLocaleString('de-DE') || '0'}</p>
         </div>
       </div>
+
+      {/* Quick Tally - Daily Attendance Counter */}
+      {(quickTallyOpen || activeQuickTallySession) ? (
+        <div className="mb-8">
+          <QuickTally onClose={() => setQuickTallyOpen(false)} />
+        </div>
+      ) : (
+        <div className="bg-gradient-to-r from-viridian to-cambridge-blue rounded-lg shadow-lg p-6 mb-8 text-white">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/20 rounded-full">
+                <Users className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold">Tageserfassung</h3>
+                <p className="text-white/80 text-sm">Schnelle Anwesenheitserfassung am Tablet</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setQuickTallyOpen(true)}
+              className="bg-white text-viridian px-6 py-3 rounded-lg font-semibold hover:bg-mint-green transition-colors flex items-center justify-center gap-2"
+            >
+              <Users className="w-5 h-5" />
+              Erfassung starten
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">

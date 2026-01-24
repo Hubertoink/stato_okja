@@ -22,6 +22,13 @@ export default function QuickTallyButton({
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartY = useRef<number | null>(null);
   const wasLongPress = useRef(false);
+  const lastTouchAt = useRef<number>(0);
+
+  const isLikelySyntheticMouseEvent = useCallback(() => {
+    // Mobile browsers often fire mouse events after touch.
+    // Ignore mouse events shortly after a touch interaction to prevent double triggers.
+    return Date.now() - lastTouchAt.current < 800;
+  }, []);
 
   const triggerHaptic = useCallback(() => {
     if (navigator.vibrate) {
@@ -44,6 +51,8 @@ export default function QuickTallyButton({
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (disabled) return;
+
+      lastTouchAt.current = Date.now();
       touchStartY.current = e.touches[0].clientY;
       wasLongPress.current = false;
 
@@ -57,6 +66,7 @@ export default function QuickTallyButton({
 
   const handleTouchEnd = useCallback(
     (e: React.TouchEvent) => {
+      lastTouchAt.current = Date.now();
       if (longPressTimer.current) {
         clearTimeout(longPressTimer.current);
         longPressTimer.current = null;
@@ -86,6 +96,7 @@ export default function QuickTallyButton({
   );
 
   const handleTouchMove = useCallback(() => {
+    lastTouchAt.current = Date.now();
     // Cancel long press if user moves finger
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -95,14 +106,16 @@ export default function QuickTallyButton({
 
   const handleMouseDown = useCallback(() => {
     if (disabled) return;
+    if (isLikelySyntheticMouseEvent()) return;
     wasLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
       wasLongPress.current = true;
       decrement();
     }, 500);
-  }, [disabled, decrement]);
+  }, [disabled, decrement, isLikelySyntheticMouseEvent]);
 
   const handleMouseUp = useCallback(() => {
+    if (isLikelySyntheticMouseEvent()) return;
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
@@ -110,7 +123,7 @@ export default function QuickTallyButton({
     if (!wasLongPress.current && !disabled) {
       increment();
     }
-  }, [increment, disabled]);
+  }, [increment, disabled, isLikelySyntheticMouseEvent]);
 
   const handleMouseLeave = useCallback(() => {
     if (longPressTimer.current) {
@@ -123,9 +136,10 @@ export default function QuickTallyButton({
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
+      if (isLikelySyntheticMouseEvent()) return;
       decrement();
     },
-    [decrement]
+    [decrement, isLikelySyntheticMouseEvent]
   );
 
   return (

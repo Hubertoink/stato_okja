@@ -162,11 +162,11 @@ export default function QuickTallyReviewModal({
         type: project?.type || 'open_door',
       } as Record<string, unknown>);
 
-      showToast('Aktivität erfolgreich gespeichert!', 'success');
+      showToast('Aktivität erfolgreich gespeichert!', { type: 'success' });
       onSaved();
     } catch (error) {
       console.error('Failed to save activity:', error);
-      showToast('Fehler beim Speichern. Bitte erneut versuchen.', 'error');
+      showToast('Fehler beim Speichern. Bitte erneut versuchen.', { type: 'error' });
     } finally {
       setSaving(false);
     }

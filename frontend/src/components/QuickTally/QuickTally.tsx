@@ -9,7 +9,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import ProjectPickerModal from '@/pages/ProjectPickerModal';
 import QuickTallyButton from './QuickTallyButton';
 import QuickTallyReviewModal from './QuickTallyReviewModal';
-import { useQuickTallySession, type TallySession } from './useQuickTallySession';
+import { useQuickTallySession } from './useQuickTallySession';
 
 type GenderKey = 'm' | 'w' | 'd';
 

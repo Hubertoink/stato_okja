@@ -2,10 +2,11 @@ name: Build and publish Docker images (backend, frontend)
 
 on:
   push:
-    branches: [main, dev]
+    branches: [dev]
     tags: ['v*']
   pull_request:
-    branches: [main]
+    branches: [dev]
+  workflow_dispatch:
 
 permissions:
   contents: read

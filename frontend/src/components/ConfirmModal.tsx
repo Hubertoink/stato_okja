@@ -26,9 +26,9 @@ export default function ConfirmModal({
   secondaryLabel?: string;
   onSecondaryConfirm?: () => void;
 }) {
-  if (!open) return null;
   // Lock background scroll while this modal is open
-  useBodyScrollLock(true);
+  useBodyScrollLock(open);
+  if (!open) return null;
   const content = (
     <div
       className="fixed inset-0 z-[70] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"

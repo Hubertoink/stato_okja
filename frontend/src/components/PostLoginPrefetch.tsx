@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { ActivitiesFilter, PagedActivitiesResult } from '@/lib/activities';
 import type { Project } from '@/lib/projects';
 import LoadingOverlay from '@/components/LoadingOverlay';
-
-const PREFETCH_FLAG = 'post_login_prefetch_done_v1';
 
 function readActivitiesPrefetchParams(): { params: ActivitiesFilter; page: number; limit: number } {
   const page = 1;
@@ -69,25 +67,17 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string>('Daten werden vorbereitet…');
+  const didRunRef = useRef(false);
 
   const shouldRun = useMemo(() => {
     if (!user) return false;
-    try {
-      return sessionStorage.getItem(PREFETCH_FLAG) !== '1';
-    } catch {
-      return true;
-    }
+    return !didRunRef.current;
   }, [user?.id]);
 
   useEffect(() => {
-    // Clear flag when logged out so next login runs again.
-    if (user) return;
-    try {
-      sessionStorage.removeItem(PREFETCH_FLAG);
-    } catch {
-      /* ignore */
-    }
-  }, [user]);
+    // Reset per-user so switching accounts runs prefetch again.
+    didRunRef.current = false;
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -97,6 +87,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
 
     (async () => {
       setOpen(true);
+      didRunRef.current = true;
       try {
         // 1) Projects (needed for Statistics project filter badges)
         setMessage('Projekte werden geladen…');
@@ -149,11 +140,6 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
 
         if (cancelled) return;
 
-        try {
-          sessionStorage.setItem(PREFETCH_FLAG, '1');
-        } catch {
-          /* ignore */
-        }
       } catch {
         // Never block the app if prefetch fails (e.g. slow network) — UI will load normally.
       } finally {

@@ -12,33 +12,48 @@ export interface TallySession {
 }
 
 const STORAGE_KEY = 'stato_quick_tally_session';
+const SYNC_EVENT = 'stato:quick-tally-session-changed';
+
+function readSessionFromStorage(): TallySession | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as TallySession;
+    const today = new Date().toISOString().slice(0, 10);
+    if (parsed.date === today) return parsed;
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionToStorage(session: TallySession | null) {
+  try {
+    if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    else localStorage.removeItem(STORAGE_KEY);
+  } finally {
+    // Ensure all hook instances in the same tab update immediately.
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event(SYNC_EVENT));
+  }
+}
 
 export function useQuickTallySession() {
   const [session, setSession] = useState<TallySession | null>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as TallySession;
-        // Check if session is from today
-        const today = new Date().toISOString().slice(0, 10);
-        if (parsed.date === today) {
-          return parsed;
-        }
-        // Old session - clear it
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    } catch {
-      // ignore parse errors
-    }
-    return null;
+    return readSessionFromStorage();
   });
 
-  // Persist to localStorage whenever session changes
+  // Keep multiple hook instances in sync (same tab + other tabs)
   useEffect(() => {
-    if (session) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    }
-  }, [session]);
+    const sync = () => setSession(readSessionFromStorage());
+    window.addEventListener(SYNC_EVENT, sync);
+    // 'storage' fires in other tabs/windows when localStorage changes.
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(SYNC_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
 
   const startSession = useCallback(
     (projectId: string, locationId?: string, startTime?: string) => {
@@ -52,7 +67,7 @@ export function useQuickTallySession() {
         startedAt: now.toISOString(),
       };
       setSession(newSession);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+      writeSessionToStorage(newSession);
       return newSession;
     },
     []
@@ -72,7 +87,7 @@ export function useQuickTallySession() {
             },
           },
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        writeSessionToStorage(updated);
         return updated;
       });
     },
@@ -94,7 +109,7 @@ export function useQuickTallySession() {
             },
           },
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        writeSessionToStorage(updated);
         return updated;
       });
     },
@@ -103,7 +118,7 @@ export function useQuickTallySession() {
 
   const clearSession = useCallback(() => {
     setSession(null);
-    localStorage.removeItem(STORAGE_KEY);
+    writeSessionToStorage(null);
   }, []);
 
   const getTotals = useCallback(() => {

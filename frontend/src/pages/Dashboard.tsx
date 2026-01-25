@@ -23,24 +23,18 @@ import ExportModal from '@/components/ExportModal';
 import type { Project } from '@/lib/projects';
 import { useAuth } from '@/lib/auth';
 import { listOrgs, type OrgDto } from '@/lib/orgs';
-import { useOrgScope } from '@/lib/orgScope';
+import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 
-function useMonthSummary(year: number, month: number, scopeKey: string | null | undefined) {
+function useMonthSummary(year: number, month: number, scopeKey: string) {
   // month is 1-12
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to = new Date(year, month, 0); // last day of month
   const toISO = `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, '0')}-${String(to.getDate()).padStart(2, '0')}`;
+  const { scope } = useOrgScope();
   return useQuery({
-    // Include scope in key so a scope change forces refetch after login/reload
-    queryKey: [
-      'stats:summary',
-      {
-        from,
-        to: toISO,
-        scope: scopeKey === undefined ? 'GLOBAL' : scopeKey === null ? 'NULL' : scopeKey,
-      },
-    ],
+    // Use consistent format: ['stats:summary', scopeKey, from, to, projectId]
+    queryKey: ['stats:summary', scopeKey, from, toISO, ''],
     queryFn: async () => {
       const res = await api.get('/stats/summary', {
         params: {
@@ -48,7 +42,7 @@ function useMonthSummary(year: number, month: number, scopeKey: string | null | 
           to: toISO,
           // Pass orgId explicitly so superadmin gets correctly scoped KPIs even before header is applied
           orgId:
-            typeof scopeKey === 'undefined' ? undefined : scopeKey === null ? 'null' : scopeKey,
+            typeof scope === 'undefined' ? undefined : scope === null ? 'null' : scope,
         },
       });
       return res.data as {
@@ -64,7 +58,7 @@ function useMonthSummary(year: number, month: number, scopeKey: string | null | 
 
 export default function Dashboard() {
   const { openQuickTally } = useOutletContext<{ openQuickTally: () => void }>();
-  const { scope } = useOrgScope();
+  const scopeKey = useOrgScopeKey();
   const { user } = useAuth();
   const now = new Date();
   const year = now.getFullYear();
@@ -73,7 +67,7 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const [picker, setPicker] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
-  const { data: summary } = useMonthSummary(year, month, scope);
+  const { data: summary } = useMonthSummary(year, month, scopeKey);
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
   useActivities({ from, to });

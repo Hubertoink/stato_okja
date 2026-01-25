@@ -148,112 +148,93 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
       try {
         if (needsBlockingWarmup) {
           setOpen(true);
+          setMessage('Daten werden geladen…');
 
+          // Run ALL prefetches in parallel for maximum performance
+          const allTasks: Promise<unknown>[] = [];
+
+          // Projects
           if (!hasProjects) {
-            setMessage('Projekte werden geladen…');
-            await qc.prefetchQuery({
-              queryKey: ['projects', scopeKey, undefined],
-              queryFn: () => fetchProjects(undefined),
-            });
+            allTasks.push(
+              qc.prefetchQuery({
+                queryKey: ['projects', scopeKey, undefined],
+                queryFn: () => fetchProjects(undefined),
+              }),
+            );
           }
 
-          if (cancelled) return;
-
-          setMessage('Statistiken werden vorbereitet…');
+          // Base stats (all 6 endpoints)
           const baseStatsParams = { from: undefined, to: undefined, projectId: undefined } as const;
-          const tasks: Promise<unknown>[] = [];
-
           if (!hasBaseStatsSummary)
-            tasks.push(
+            allTasks.push(
               qc.prefetchQuery({
                 queryKey: ['stats:summary', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/summary', baseStatsParams),
               }),
             );
           if (!hasBaseStatsByType)
-            tasks.push(
+            allTasks.push(
               qc.prefetchQuery({
                 queryKey: ['stats:by-type', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/by-type', baseStatsParams),
               }),
             );
           if (!hasBaseStatsGender)
-            tasks.push(
+            allTasks.push(
               qc.prefetchQuery({
                 queryKey: ['stats:gender', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/gender', baseStatsParams),
               }),
             );
           if (!hasBaseStatsTimeseries)
-            tasks.push(
+            allTasks.push(
               qc.prefetchQuery({
                 queryKey: ['stats:participants-timeseries', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/participants-timeseries', baseStatsParams),
               }),
             );
           if (!hasBaseStatsByCohort)
-            tasks.push(
+            allTasks.push(
               qc.prefetchQuery({
                 queryKey: ['stats:by-cohort', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/by-cohort', baseStatsParams),
               }),
             );
           if (!hasBaseStatsByCategory)
-            tasks.push(
+            allTasks.push(
               qc.prefetchQuery({
                 queryKey: ['stats:by-category', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/by-category', baseStatsParams),
               }),
             );
 
+          // Dashboard month summary
           if (!hasDashboardMonthSummary)
-            tasks.push(
+            allTasks.push(
               qc.prefetchQuery({
                 queryKey: dashboardMonthSummaryKey,
-                queryFn: async () => {
-                  const res = await api.get('/stats/summary', {
-                    params: {
-                      from,
-                      to: toISO,
-                      orgId:
-                        typeof scope === 'undefined' ? undefined : scope === null ? 'null' : scope,
-                    },
-                  });
-                  return res.data;
-                },
+                queryFn: () => fetchStats('/stats/summary', { from, to: toISO, projectId: undefined }),
               }),
             );
 
-          await Promise.all(tasks);
-
-          if (cancelled) return;
-
+          // Activities first page
           if (!hasActivitiesFirstPage) {
-            setMessage('Aktivitäten werden vorbereitet…');
-            await qc.prefetchQuery({
-              queryKey: activitiesFirstPageKey,
-              queryFn: () => fetchActivitiesPaged(activitiesParams, activitiesPage, activitiesLimit),
-            });
+            allTasks.push(
+              qc.prefetchQuery({
+                queryKey: activitiesFirstPageKey,
+                queryFn: () => fetchActivitiesPaged(activitiesParams, activitiesPage, activitiesLimit),
+              }),
+            );
           }
+
+          // Wait for all parallel requests
+          await Promise.all(allTasks);
         }
       } catch {
         // Never block the app if prefetch fails — UI will load normally.
       } finally {
         // Always close the overlay for the latest run.
         if (!cancelled && runIdRef.current === runId) setOpen(false);
-      }
-
-      // Activities first page using persisted filters (if any) — always background.
-      try {
-        const hasActivities = qc.getQueryState(activitiesFirstPageKey)?.status === 'success';
-        if (!hasActivities) {
-          await qc.prefetchQuery({
-            queryKey: activitiesFirstPageKey,
-            queryFn: () => fetchActivitiesPaged(activitiesParams, activitiesPage, activitiesLimit),
-          });
-        }
-      } catch {
-        /* ignore */
       }
     })();
 

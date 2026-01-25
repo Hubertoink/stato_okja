@@ -65,7 +65,7 @@ async function fetchStats<T>(path: string, params: { from?: string; to?: string;
 
 export default function PostLoginPrefetch({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { scope } = useOrgScope();
+  const { scope, switching } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const qc = useQueryClient();
   const isRestoring = useIsRestoring();
@@ -73,15 +73,38 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
   const [message, setMessage] = useState<string>('Daten werden vorbereitet…');
   const didRunKeyRef = useRef<string>('');
   const runIdRef = useRef(0);
+  const lastScopeKeyRef = useRef<string>('');
+  const wasSwitchingRef = useRef(false);
 
   useEffect(() => {
     // Reset per-user so switching accounts runs prefetch again.
     didRunKeyRef.current = '';
+    lastScopeKeyRef.current = '';
   }, [user?.id]);
+
+  // Track switching state to trigger prefetch when switching completes
+  useEffect(() => {
+    if (wasSwitchingRef.current && !switching) {
+      // Switching just completed - reset to trigger prefetch with new scope
+      didRunKeyRef.current = '';
+    }
+    wasSwitchingRef.current = switching;
+  }, [switching]);
+
+  // Also reset when scopeKey changes (org switch) to re-run prefetch
+  useEffect(() => {
+    if (lastScopeKeyRef.current && lastScopeKeyRef.current !== scopeKey) {
+      // Org was switched - reset so prefetch runs again
+      didRunKeyRef.current = '';
+    }
+    lastScopeKeyRef.current = scopeKey;
+  }, [scopeKey]);
 
   useEffect(() => {
     if (!user) return;
     if (isRestoring) return;
+    // Wait for org switching to complete before running prefetch
+    if (switching) return;
     const scopeForKey = typeof scope === 'undefined' ? 'GLOBAL' : scope === null ? 'NULL' : scope;
     const runKey = `${user.id}:${scopeForKey}`;
     if (didRunKeyRef.current === runKey) return;
@@ -243,7 +266,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
       // If a newer run starts (e.g., org scope hydrates/changes), ensure the old overlay doesn't stay stuck open.
       if (runIdRef.current === runId) setOpen(false);
     };
-  }, [user?.id, isRestoring, qc, scope, scopeKey]);
+  }, [user?.id, isRestoring, qc, scope, scopeKey, switching]);
 
   return (
     <>

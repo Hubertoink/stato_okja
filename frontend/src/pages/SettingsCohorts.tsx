@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import Toggle from '@/components/Toggle';
 import { Cohort, useCohorts, useCreateCohort, useDeleteCohort, useUpdateCohort } from '@/lib/taxonomy';
-import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
+import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, Trash2, Share2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
+import { useOrgScope } from '@/lib/orgScope';
 
-function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void }) {
-  const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
+function CohortForm({ initial, onSubmit, onCancel, onArchive, canInherit }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void; canInherit?: boolean }) {
+  const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, inheritToChildren: false, ...initial });
   const update = <K extends keyof Cohort>(k: K, v: Cohort[K]) => setForm((f) => ({ ...f, [k]: v }));
   return (
   <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
@@ -31,6 +32,21 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
               <input type="number" value={form.sortOrder ?? 0} onChange={(e) => update('sortOrder', Number(e.target.value))} className="w-full border rounded px-3 py-2" />
             </div>
           </div>
+          {canInherit && (
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="inheritToChildren"
+                checked={form.inheritToChildren ?? false}
+                onChange={(e) => update('inheritToChildren', e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+              />
+              <label htmlFor="inheritToChildren" className="text-sm text-gray-700 flex items-center gap-1">
+                <Share2 className="w-4 h-4 text-viridian" />
+                Für Unterorganisationen übernehmen
+              </label>
+            </div>
+          )}
           {/* Kohorten werden immer aktiv angelegt; kein Toggle im UI */}
         </div>
   <div className="mt-6 flex items-center justify-between gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
@@ -63,6 +79,7 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
 }
 
 export default function SettingsCohorts() {
+  const { scope } = useOrgScope();
   const [showArchived, setShowArchived] = useState(false);
   const { data } = useCohorts(showArchived ? undefined : { active: true });
   const { data: archivedOnly } = useCohorts({ active: false });
@@ -74,6 +91,9 @@ export default function SettingsCohorts() {
   const [confirm, setConfirm] = useState<{ open: boolean; cohort?: Cohort; countActivities?: number; countParticipants?: number; loading?: boolean }>({ open: false });
 
   const cohorts = data || [];
+  
+  // Users with an org scope can inherit cohorts to children
+  const canInherit = typeof scope === 'string';
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -97,56 +117,76 @@ export default function SettingsCohorts() {
         </div>
       </div>
       <div className="divide-y">
-        {cohorts.map((c) => (
-          <div key={c.id} className="py-3 flex items-center justify-between">
+        {cohorts.map((c) => {
+          // Check if cohort is inherited (belongs to a parent org)
+          const isInherited = scope && c.orgId && c.orgId !== scope;
+          return (
+          <div key={c.id} className={`py-3 flex items-center justify-between ${isInherited ? 'bg-gray-50' : ''}`}>
             <div className="min-w-0">
-              <div className="font-medium text-viridian">{c.name}</div>
+              <div className="font-medium text-viridian flex items-center gap-2">
+                {c.name}
+                {c.inheritToChildren && !isInherited && (
+                  <span className="tooltip-wrapper">
+                    <Share2 className="w-3.5 h-3.5 text-cambridge-blue" />
+                    <span className="tooltip-bubble text-xs">Wird an Unterorganisationen vererbt</span>
+                  </span>
+                )}
+                {isInherited && (
+                  <span className="text-xs bg-cambridge-blue/20 text-cambridge-blue px-1.5 py-0.5 rounded">geerbt</span>
+                )}
+              </div>
               <div className="text-sm text-gray-600">{c.minAge}–{c.maxAge} Jahre</div>
             </div>
             <div className="flex gap-2">
-              {showArchived && c.active === false && (
+              {showArchived && c.active === false && !isInherited && (
                 <button
                   className="text-viridian hover:underline"
                   onClick={() => update.mutate({ id: c.id, data: { active: true } })}
                 >Wiederherstellen</button>
               )}
-              <button
-                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
-                title="Bearbeiten"
-                aria-label={`Kohorte ${c.name} bearbeiten`}
-                onClick={() => setModal({ mode: 'edit', cohort: c })}
-              >
-                <Pencil className="w-4 h-4 text-viridian" />
-              </button>
-              <button
-                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 p-1.5"
-                aria-label="Löschen"
-                title="Löschen"
-                onClick={async () => {
-                setConfirm({ open: true, cohort: c, loading: true });
-                try {
-                  const resStats = await api.get('/stats/by-cohort');
-                  const statsList = Array.isArray(resStats.data) ? (resStats.data as Array<{ cohortId: string; total: number; activities?: number }>) : [];
-                  const statEntry = statsList.find((s) => s.cohortId === c.id);
-                  const participants = statEntry?.total || 0;
-                  const acts = typeof statEntry?.activities === 'number' ? statEntry!.activities : 0;
-                  setConfirm({ open: true, cohort: c, countActivities: acts, countParticipants: participants, loading: false });
-                } catch {
-                  setConfirm((prv) => ({ ...prv, loading: false }));
-                }
-              }}
-              >
-                <Trash2 className="w-4 h-4 text-red-600" />
-              </button>
+              {!isInherited && (
+                <>
+                  <button
+                    className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
+                    title="Bearbeiten"
+                    aria-label={`Kohorte ${c.name} bearbeiten`}
+                    onClick={() => setModal({ mode: 'edit', cohort: c })}
+                  >
+                    <Pencil className="w-4 h-4 text-viridian" />
+                  </button>
+                  <button
+                    className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 p-1.5"
+                    aria-label="Löschen"
+                    title="Löschen"
+                    onClick={async () => {
+                    setConfirm({ open: true, cohort: c, loading: true });
+                    try {
+                      const resStats = await api.get('/stats/by-cohort');
+                      const statsList = Array.isArray(resStats.data) ? (resStats.data as Array<{ cohortId: string; total: number; activities?: number }>) : [];
+                      const statEntry = statsList.find((s) => s.cohortId === c.id);
+                      const participants = statEntry?.total || 0;
+                      const acts = typeof statEntry?.activities === 'number' ? statEntry!.activities : 0;
+                      setConfirm({ open: true, cohort: c, countActivities: acts, countParticipants: participants, loading: false });
+                    } catch {
+                      setConfirm((prv) => ({ ...prv, loading: false }));
+                    }
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
-        ))}
+          );
+        })}
         {cohorts.length === 0 && <div className="text-gray-500 py-6">Noch keine Kohorten.</div>}
       </div>
 
       {modal && (
         <CohortForm
           initial={modal.mode === 'edit' ? modal.cohort : undefined}
+          canInherit={canInherit}
           onSubmit={(values) => {
             if (modal.mode === 'create') {
               create.mutate({ ...values, active: true }, { onSuccess: () => setModal(null) });

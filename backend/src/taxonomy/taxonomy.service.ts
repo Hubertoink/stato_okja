@@ -6,6 +6,7 @@ import { Tag } from './entities/tag.entity';
 import { Cohort } from './entities/cohort.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
+import { OrgsService } from '../orgs/orgs.service';
 
 @Injectable()
 export class TaxonomyService {
@@ -17,6 +18,7 @@ export class TaxonomyService {
     @InjectRepository(Cohort)
     private cohortRepository: Repository<Cohort>,
     private readonly audit: AuditService,
+    private readonly orgsService: OrgsService,
   ) {}
 
   // Categories
@@ -87,14 +89,60 @@ export class TaxonomyService {
   }
 
   // Cohorts
-  findAllCohorts(active?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Cohort[]> {
+  async findAllCohorts(active?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Cohort[]> {
     const where: FindOptionsWhere<Cohort> = {};
     if (active !== undefined) Object.assign(where, { active });
+    
+    // Build list of org IDs to include
+    let targetOrgIds: string[] | undefined;
+    
     if (Array.isArray(orgIds) && orgIds.length) {
-      Object.assign(where, { orgId: In(orgIds) });
-    } else if (typeof orgId !== 'undefined') {
-      Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+      targetOrgIds = orgIds;
+    } else if (typeof orgId === 'string') {
+      targetOrgIds = [orgId];
+    } else if (orgId === null) {
+      // Global scope - only show cohorts with orgId = null
+      Object.assign(where, { orgId: IsNull() });
+      return this.cohortRepository.find({ where, order: { sortOrder: 'ASC', minAge: 'ASC' } });
     }
+    
+    // If we have target org IDs, also include inherited cohorts from ancestor orgs
+    if (targetOrgIds && targetOrgIds.length) {
+      // Get ancestor org IDs for inheritance
+      const ancestorIds = new Set<string>();
+      for (const tid of targetOrgIds) {
+        const ancestors = await this.orgsService.getAncestorOrgIds(tid);
+        for (const aid of ancestors) {
+          if (!targetOrgIds.includes(aid)) {
+            ancestorIds.add(aid);
+          }
+        }
+      }
+      
+      // Query: own cohorts OR inherited cohorts from ancestors
+      const ownCohorts = await this.cohortRepository.find({
+        where: { ...where, orgId: In(targetOrgIds) },
+        order: { sortOrder: 'ASC', minAge: 'ASC' },
+      });
+      
+      let inheritedCohorts: Cohort[] = [];
+      if (ancestorIds.size > 0) {
+        inheritedCohorts = await this.cohortRepository.find({
+          where: { ...where, orgId: In([...ancestorIds]), inheritToChildren: true },
+          order: { sortOrder: 'ASC', minAge: 'ASC' },
+        });
+      }
+      
+      // Merge and sort
+      const all = [...ownCohorts, ...inheritedCohorts];
+      all.sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+        return a.minAge - b.minAge;
+      });
+      return all;
+    }
+    
+    // No org filter - return all
     return this.cohortRepository.find({ where, order: { sortOrder: 'ASC', minAge: 'ASC' } });
   }
 
@@ -215,7 +263,7 @@ export class TaxonomyService {
     const c = await this.updateCohort(id, data);
     if (c) {
       const diff: Record<string, { from: unknown; to: unknown }> = {};
-      const keys: Array<keyof Cohort> = ['name', 'minAge', 'maxAge', 'sortOrder', 'active'];
+      const keys: Array<keyof Cohort> = ['name', 'minAge', 'maxAge', 'sortOrder', 'active', 'inheritToChildren'];
       for (const k of keys) {
         const beforeVal = (existing as unknown as Record<string, unknown>)[k as string];
         const afterVal = (c as unknown as Record<string, unknown>)[k as string];

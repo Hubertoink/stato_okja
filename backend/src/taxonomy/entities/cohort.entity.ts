@@ -29,6 +29,10 @@ export class Cohort {
   @Column({ type: 'int', default: 0 })
   sortOrder: number;
 
+  /** When true, this cohort is visible to all child organizations */
+  @Column({ default: false })
+  inheritToChildren: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

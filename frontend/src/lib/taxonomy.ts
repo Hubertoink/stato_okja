@@ -27,6 +27,8 @@ export interface Cohort {
   maxAge: number;
   sortOrder?: number;
   active?: boolean;
+  inheritToChildren?: boolean;
+  orgId?: string | null;
 }
 
 // Categories

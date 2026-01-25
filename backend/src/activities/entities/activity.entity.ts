@@ -142,7 +142,7 @@ export class Activity {
   @JoinColumn({ name: 'projectId' })
   project?: Project | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   projectId?: string | null;
 
   // Mandantentrennung

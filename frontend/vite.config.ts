@@ -13,8 +13,8 @@ export default defineConfig({
         name: 'Stato 2.0 - OKJA Statistik',
         short_name: 'Stato',
         description: 'Statistik- und Dokumentationssystem für offene Kinder- und Jugendarbeit',
-        theme_color: '#6b9080',
-        background_color: '#f6fff8',
+        theme_color: '#5B6CFF',
+        background_color: '#FAFBFF',
         display: 'standalone',
         icons: [
           {

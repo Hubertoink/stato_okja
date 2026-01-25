@@ -167,29 +167,29 @@ export default function Calendar() {
   };
   // Tailwind class palette (translucent backgrounds) to avoid inline styles
   const paletteClasses = [
-    'bg-blue-500/20',
-    'bg-red-500/20',
-    'bg-amber-500/20',
-    'bg-emerald-500/20',
-    'bg-violet-500/20',
-    'bg-pink-500/20',
-    'bg-orange-500/20',
-    'bg-teal-500/20',
-    'bg-green-500/20',
-    'bg-yellow-500/20',
-    'bg-sky-500/20',
-    'bg-purple-500/20',
+    'bg-blue-500/35',
+    'bg-red-500/35',
+    'bg-amber-500/35',
+    'bg-emerald-500/35',
+    'bg-violet-500/35',
+    'bg-pink-500/35',
+    'bg-orange-500/35',
+    'bg-teal-500/35',
+    'bg-green-500/35',
+    'bg-yellow-500/35',
+    'bg-sky-500/35',
+    'bg-purple-500/35',
   ];
   const typeBgClass: Record<string, string> = {
-    open_door: 'bg-emerald-600/20',
-    project_open: 'bg-viridian/20',
-    project_closed: 'bg-gray-500/20',
-    event: 'bg-amber-600/20',
-    outreach: 'bg-slate-600/20',
+    open_door: 'bg-emerald-600/35',
+    project_open: 'bg-viridian/35',
+    project_closed: 'bg-gray-500/35',
+    event: 'bg-amber-600/35',
+    outreach: 'bg-slate-600/35',
   };
   const pickBgClass = (title?: string, type?: string) => {
     if (type && typeBgClass[type]) return typeBgClass[type];
-    if (!title) return 'bg-slate-300/30';
+    if (!title) return 'bg-slate-300/40';
     let h = 0;
     for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
     return paletteClasses[h % paletteClasses.length];
@@ -230,7 +230,7 @@ export default function Calendar() {
                 e.stopPropagation();
                 setDetail(a);
               }}
-              className={`relative w-full h-5 rounded text-[10px] leading-5 px-1 truncate text-left overflow-hidden ${bgClass}`}
+              className={`relative w-full h-5 rounded text-[10px] leading-5 px-1 truncate text-left overflow-hidden border border-black/10 ${bgClass}`}
               title={tooltip}
               aria-label={label}
             >
@@ -243,14 +243,18 @@ export default function Calendar() {
                 />
               )}
               {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
-              <span className={`relative z-10 ${hasImg ? 'text-white drop-shadow-sm' : ''}`}>
+              <span
+                className={`relative z-10 font-medium ${
+                  hasImg ? 'text-white drop-shadow-sm' : 'text-gray-900'
+                }`}
+              >
                 {label}
               </span>
             </button>
           );
         })}
         {hidden > 0 && (
-          <div className="h-5 rounded bg-cambridge-blue/20 text-[10px] leading-5 px-1">
+          <div className="h-5 rounded bg-cambridge-blue/35 text-[10px] leading-5 px-1 text-gray-900 font-medium border border-black/10">
             +{hidden}
           </div>
         )}
@@ -285,7 +289,7 @@ export default function Calendar() {
                 e.stopPropagation();
                 setDetail(a);
               }}
-              className={`relative w-full rounded px-2 py-1.5 text-left shadow-sm hover:shadow transition-shadow overflow-hidden ${bgClass}`}
+              className={`relative w-full rounded px-2 py-1.5 text-left shadow-sm hover:shadow transition-shadow overflow-hidden border border-black/10 ${bgClass}`}
               title="Details anzeigen"
             >
               {hasImg && a.project && (

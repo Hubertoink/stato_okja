@@ -6,6 +6,8 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import App from './App';
 import './index.css';
 
+import { applyStoredBackground } from './lib/background';
+
 const persister = createSyncStoragePersister({
   storage: window.localStorage,
   key: 'stato_rq_cache_v1',
@@ -21,6 +23,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+applyStoredBackground();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

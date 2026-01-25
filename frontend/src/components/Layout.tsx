@@ -200,19 +200,19 @@ export default function Layout() {
   }, [createModalOpen]);
 
   return (
-    <div className="bg-mint-cream min-h-screen">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="fixed top-0 inset-x-0 z-40 header-surface text-white shadow-lg">
+      <header className="fixed top-0 inset-x-0 z-40 header-surface text-gray-900">
         <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <img
               src={logoUrl}
               alt="StatO Logo"
-              className="w-8 h-8 md:w-10 md:h-10 object-contain select-none"
+              className="w-9 h-9 md:w-11 md:h-11 object-contain select-none drop-shadow-lg"
             />
             <div className="leading-tight min-w-0">
-              <h1 className="text-xl md:text-2xl font-bold truncate">StatO</h1>
-              <p className="text-[11px] md:text-sm text-mint-green truncate">
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight truncate">StatO</h1>
+              <p className="text-[11px] md:text-sm text-gray-600 truncate">
                 OKJA Statistik & Dokumentation
               </p>
             </div>
@@ -227,14 +227,14 @@ export default function Layout() {
             {/* Summary on sm+ placed just left of the avatar */}
             <div className="hidden sm:flex flex-col items-end text-sm mr-3">
               <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
-              <div className="opacity-90 text-mint-green truncate max-w-[40vw]">
+              <div className="text-gray-600 truncate max-w-[40vw]">
                 {roleLabel[user?.role || 'user']}
                 {activeOrgName ? ` · ${activeOrgName}` : ''}
               </div>
             </div>
             <button
               aria-label="Benutzer"
-              className="flex items-center gap-2 hover:bg-white/10 rounded px-1 py-1"
+              className="flex items-center gap-2 hover:bg-black/5 rounded px-1 py-1"
               onClick={() => setMenuOpen((v) => !v)}
             >
               {user?.avatarUrl ? (
@@ -250,7 +250,7 @@ export default function Layout() {
             {/* Compact user/org on mobile */}
             <div className="flex sm:hidden flex-col items-end ml-2 text-[11px] leading-4">
               <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
-              <div className="opacity-90 text-mint-green truncate max-w-[40vw]">
+              <div className="text-gray-600 truncate max-w-[40vw]">
                 {activeOrgName ||
                   (typeof scope === 'string' ? `Org ${scope.substring(0, 6)}…` : '')}
               </div>
@@ -351,14 +351,16 @@ export default function Layout() {
       </header>
 
       {/* Navigation (desktop) - fixed under header */}
-      <nav className="nav-surface text-white shadow-md hidden md:block fixed top-14 md:top-20 inset-x-0 z-30">
+      <nav className="nav-surface hidden md:block fixed top-14 md:top-20 inset-x-0 z-30">
         <div className="container mx-auto px-4">
           <ul className="flex space-x-1">
             <li>
               <Link
                 to="/dashboard"
-                className={`flex items-center px-4 py-3 hover:bg-white/10 transition-colors ${
-                  isActive('/dashboard') ? 'bg-viridian' : ''
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                  isActive('/dashboard')
+                    ? 'bg-black/5 text-viridian font-semibold'
+                    : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 <Home className="w-5 h-5 mr-2" />
@@ -368,8 +370,10 @@ export default function Layout() {
             <li>
               <Link
                 to="/activities"
-                className={`flex items-center px-4 py-3 hover:bg-white/10 transition-colors ${
-                  isActive('/activities') ? 'bg-viridian' : ''
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                  isActive('/activities')
+                    ? 'bg-black/5 text-viridian font-semibold'
+                    : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 <Activity className="w-5 h-5 mr-2" />
@@ -379,8 +383,10 @@ export default function Layout() {
             <li>
               <Link
                 to="/calendar"
-                className={`flex items-center px-4 py-3 hover:bg-white/10 transition-colors ${
-                  isActive('/calendar') ? 'bg-viridian' : ''
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                  isActive('/calendar')
+                    ? 'bg-black/5 text-viridian font-semibold'
+                    : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 <CalendarIcon className="w-5 h-5 mr-2" />
@@ -390,8 +396,10 @@ export default function Layout() {
             <li>
               <Link
                 to="/projects"
-                className={`flex items-center px-4 py-3 hover:bg-white/10 transition-colors ${
-                  isActive('/projects') ? 'bg-viridian' : ''
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                  isActive('/projects')
+                    ? 'bg-black/5 text-viridian font-semibold'
+                    : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 <Boxes className="w-5 h-5 mr-2" />
@@ -401,8 +409,10 @@ export default function Layout() {
             <li>
               <Link
                 to="/statistics"
-                className={`flex items-center px-4 py-3 hover:bg-white/10 transition-colors ${
-                  isActive('/statistics') ? 'bg-viridian' : ''
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                  isActive('/statistics')
+                    ? 'bg-black/5 text-viridian font-semibold'
+                    : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 <BarChart3 className="w-5 h-5 mr-2" />
@@ -410,7 +420,7 @@ export default function Layout() {
                   Statistiken
                   {statsFetching && (
                     <span
-                      className="ml-2 inline-flex items-center gap-1 text-xs text-white/90"
+                      className="ml-2 inline-flex items-center gap-1 text-xs text-gray-600"
                       role="status"
                       aria-live="polite"
                       title="Statistikdaten werden geladen"
@@ -425,8 +435,10 @@ export default function Layout() {
             <li>
               <Link
                 to="/settings"
-                className={`flex items-center px-4 py-3 hover:bg-white/10 transition-colors ${
-                  isActive('/settings') ? 'bg-viridian' : ''
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                  isActive('/settings')
+                    ? 'bg-black/5 text-viridian font-semibold'
+                    : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 <Settings className="w-5 h-5 mr-2" />
@@ -457,13 +469,13 @@ export default function Layout() {
 
       {/* Bottom Navigation (mobile) */}
       <nav
-        className={`fixed bottom-0 inset-x-0 bg-white border-t shadow md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
+        className={`fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-lg md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
       >
         <ul className="grid grid-cols-6 text-xs">
           <li>
             <Link
               to="/dashboard"
-              className={`flex flex-col items-center py-2 hover:bg-black/5 ${isActive('/dashboard') ? 'text-viridian' : 'text-gray-600'}`}
+              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/dashboard') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <Home className="w-5 h-5" />
               <span>Home</span>
@@ -472,7 +484,7 @@ export default function Layout() {
           <li>
             <Link
               to="/activities"
-              className={`flex flex-col items-center py-2 hover:bg-black/5 ${isActive('/activities') ? 'text-viridian' : 'text-gray-600'}`}
+              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/activities') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <Activity className="w-5 h-5" />
               <span>Aktiv.</span>
@@ -481,7 +493,7 @@ export default function Layout() {
           <li>
             <Link
               to="/calendar"
-              className={`flex flex-col items-center py-2 hover:bg-black/5 ${isActive('/calendar') ? 'text-viridian' : 'text-gray-600'}`}
+              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/calendar') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <CalendarIcon className="w-5 h-5" />
               <span>Kalender</span>
@@ -490,7 +502,7 @@ export default function Layout() {
           <li>
             <Link
               to="/projects"
-              className={`flex flex-col items-center py-2 hover:bg-black/5 ${isActive('/projects') ? 'text-viridian' : 'text-gray-600'}`}
+              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/projects') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <Boxes className="w-5 h-5" />
               <span>Projekte</span>
@@ -499,13 +511,13 @@ export default function Layout() {
           <li>
             <Link
               to="/statistics"
-              className={`flex flex-col items-center py-2 hover:bg-black/5 ${isActive('/statistics') ? 'text-viridian' : 'text-gray-600'}`}
+              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/statistics') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <span className="relative">
                 <BarChart3 className="w-5 h-5" />
                 {statsFetching && (
                   <span
-                    className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"
+                    className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-accent-orange animate-pulse"
                     aria-hidden
                   />
                 )}
@@ -516,7 +528,7 @@ export default function Layout() {
           <li>
             <Link
               to="/settings"
-              className={`flex flex-col items-center py-2 hover:bg-black/5 ${isActive('/settings') ? 'text-viridian' : 'text-gray-600'}`}
+              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/settings') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <Settings className="w-5 h-5" />
               <span>Einst.</span>
@@ -527,8 +539,8 @@ export default function Layout() {
 
       {/* Footer (hidden on full activity views or while keyboard open) */}
       {!hideFooter && (
-        <footer className="bg-azure-web text-gray-600 mt-12">
-          <div className="container mx-auto px-4 py-6 text-center text-sm">
+        <footer className="mt-12">
+          <div className="container mx-auto px-4 py-6 text-center text-sm text-gray-700 bg-white/60 backdrop-blur-md supports-[backdrop-filter]:bg-white/45 border-t border-white/50">
             <p>
               © {new Date().getFullYear()} StatO · Version{' '}
               {import.meta.env.VITE_APP_VERSION || '0.7'}

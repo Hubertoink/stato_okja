@@ -190,32 +190,32 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-viridian mb-6">Dashboard</h2>
+      <h2 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-viridian">
-          <h3 className="text-sm text-gray-600 mb-1">Aktivitäten (Monat)</h3>
-          <p className="text-3xl font-bold text-viridian">{fmt(summary?.totalActivities)}</p>
+        <div className="kpi-card">
+          <h3 className="text-sm text-gray-500 font-medium mb-2">Aktivitäten (Monat)</h3>
+          <p className="text-3xl font-bold text-gray-800">{fmt(summary?.totalActivities)}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-cambridge-blue">
-          <h3 className="text-sm text-gray-600 mb-1">Teilnehmende (Monat)</h3>
-          <p className="text-3xl font-bold text-cambridge-blue">
+        <div className="kpi-card">
+          <h3 className="text-sm text-gray-500 font-medium mb-2">Teilnehmende (Monat)</h3>
+          <p className="text-3xl font-bold text-gray-800">
             {fmt(summary?.totalParticipants)}
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-mint-green">
-          <h3 className="text-sm text-gray-600 mb-1">Durchschnitt pro Aktivität</h3>
-          <p className="text-3xl font-bold text-viridian">
+        <div className="kpi-card">
+          <h3 className="text-sm text-gray-500 font-medium mb-2">Durchschnitt pro Aktivität</h3>
+          <p className="text-3xl font-bold text-gray-800">
             {summary?.averageParticipants?.toLocaleString('de-DE') || '0'}
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-viridian">
-          <h3 className="text-sm text-gray-600 mb-1">Gesamt-Stunden</h3>
-          <p className="text-3xl font-bold text-viridian">
+        <div className="kpi-card">
+          <h3 className="text-sm text-gray-500 font-medium mb-2">Gesamt-Stunden</h3>
+          <p className="text-3xl font-bold text-gray-800">
             {summary?.totalHours?.toLocaleString('de-DE') || '0'}
           </p>
         </div>
@@ -224,20 +224,20 @@ export default function Dashboard() {
       {/* Quick Tally - Daily Attendance Counter */}
       {/* Show start button only when no active session */}
       {!activeQuickTallySession && (
-        <div className="bg-gradient-to-r from-viridian to-cambridge-blue rounded-lg shadow-lg p-6 mb-8 text-white">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 mb-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/20 rounded-full">
+              <div className="p-3 bg-white/20 rounded-xl">
                 <Users className="w-8 h-8" />
               </div>
               <div>
-                <h3 className="text-xl font-bold">Tageserfassung</h3>
+                <h3 className="text-xl font-semibold">Tageserfassung</h3>
                 <p className="text-white/80 text-sm">Schnelle Anwesenheitserfassung am Tablet</p>
               </div>
             </div>
             <button
               onClick={openQuickTally}
-              className="bg-white text-viridian px-6 py-3 rounded-lg font-semibold hover:bg-mint-green transition-colors flex items-center justify-center gap-2"
+              className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
             >
               <Users className="w-5 h-5" />
               Erfassung starten
@@ -247,11 +247,11 @@ export default function Dashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h3 className="text-xl font-semibold mb-4 text-viridian">Schnellzugriff</h3>
+      <div className="modern-card p-6 mb-8">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Schnellzugriff</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            className="bg-viridian text-white px-6 py-3 rounded-lg hover:bg-cambridge-blue transition-colors"
+            className="bg-blue-500 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors"
             onClick={() => {
               const dateISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
               if (isMobile) {
@@ -264,13 +264,13 @@ export default function Dashboard() {
             Neue Aktivität erfassen
           </button>
           <button
-            className="bg-cambridge-blue text-white px-6 py-3 rounded-lg hover:bg-viridian transition-colors"
+            className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
             onClick={() => navigate('/statistics')}
           >
             Statistik anzeigen
           </button>
           <button
-            className="bg-mint-green text-viridian px-6 py-3 rounded-lg hover:bg-cambridge-blue hover:text-white transition-colors"
+            className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
             onClick={() => setExportOpen(true)}
           >
             Daten exportieren
@@ -279,10 +279,10 @@ export default function Dashboard() {
       </div>
 
       {/* Daily Log */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h3 className="text-xl font-semibold mb-4 text-viridian">
+      <div className="modern-card p-6 mb-8">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Daily Log
-          <span className="ml-2 text-xs italic text-gray-500 align-middle">(letzte 14 Tage)</span>
+          <span className="ml-2 text-xs text-gray-400 font-normal">(letzte 14 Tage)</span>
         </h3>
         {dailyLog.length === 0 ? (
           <div className="text-gray-500">
@@ -291,17 +291,17 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {dailyLog.map((item) => (
-              <div key={item.id} className="note-card border rounded-lg p-4">
+              <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2 gap-2">
-                  <h4 className="font-semibold text-viridian truncate" title={item.title}>
+                  <h4 className="font-medium text-gray-800 truncate" title={item.title}>
                     {item.title}
                   </h4>
                   <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className="inline-flex items-center gap-1 text-xs text-gray-600"
+                      className="text-xs text-gray-500 flex items-center"
                       title={new Date(item.createdAt || '').toLocaleString('de-DE')}
                     >
-                      <CalendarIcon className="w-3.5 h-3.5" />
+                      <CalendarIcon className="w-3.5 h-3.5 mr-1" />
                       {(() => {
                         const d = new Date(item.createdAt || '');
                         return d.toLocaleDateString('de-DE', {
@@ -325,7 +325,7 @@ export default function Dashboard() {
                           setDoneMap((m) => ({ ...m, [item.id]: !next }));
                         }
                       }}
-                      className={`p-1 rounded-full border ${doneMap[item.id] ? 'border-green-600 text-green-600' : 'border-gray-300 text-gray-400'} hover:bg-gray-50`}
+                      className={`p-1.5 rounded-full transition-all duration-200 ${doneMap[item.id] ? 'bg-accent-green/10 text-accent-green' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                       title={
                         doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'
                       }
@@ -351,17 +351,17 @@ export default function Dashboard() {
                       outreach: 'Aufsuchend',
                     };
                     const typeBgClass: Record<string, string> = {
-                      open_door: 'bg-cambridge-blue text-white',
+                      open_door: 'bg-emerald-700 text-white',
                       project_open: 'bg-viridian text-white',
-                      project_closed: 'bg-azure-web text-viridian',
-                      event: 'bg-mint-green text-viridian',
-                      outreach: 'bg-gray-700 text-white',
+                      project_closed: 'bg-slate-700 text-white',
+                      event: 'bg-amber-700 text-white',
+                      outreach: 'bg-red-700 text-white',
                     };
-                    const cls = typeBgClass[item.type] || 'bg-gray-600 text-white';
+                    const cls = typeBgClass[item.type] || 'bg-gray-700 text-white';
                     const label = labelMap[item.type] || item.type;
                     return (
                       <span
-                        className={`inline-flex items-center gap-1 rounded px-2 py-0.5 mr-2 ${cls}`}
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 mr-2 text-xs font-medium border border-black/10 ${cls}`}
                       >
                         {label}
                       </span>
@@ -398,17 +398,17 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Actions */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-semibold mb-4 text-viridian">Letzte Aktionen</h3>
+      <div className="modern-card p-6">
+        <h3 className="text-xl font-bold mb-4 text-gray-800">Letzte Aktionen</h3>
         <div className="space-y-3">
           {(lastFive || []).map((e) => {
             const icon =
               e.action === 'create' ? (
-                <PlusCircle className="w-4 h-4 text-viridian" />
+                <PlusCircle className="w-5 h-5 text-green-600" />
               ) : e.action === 'update' ? (
-                <Pencil className="w-4 h-4 text-cambridge-blue" />
+                <Pencil className="w-5 h-5 text-blue-600" />
               ) : (
-                <Trash2 className="w-4 h-4 text-red-600" />
+                <Trash2 className="w-5 h-5 text-red-500" />
               );
             const labelMap: Record<string, string> = {
               activity: 'Aktivität',
@@ -430,12 +430,12 @@ export default function Dashboard() {
             // Prefer backend-provided orgName; fallback to local mapping for older entries
             const orgName = e.orgName || (e.orgId ? orgMap[e.orgId] : undefined);
             return (
-              <div key={e.id} className="border-l-4 border-viridian pl-4 py-2 bg-azure-web">
+              <div key={e.id} className="bg-gray-50 rounded-lg px-4 py-3">
                 <div className="flex justify-between items-start gap-3">
-                  <div className="flex items-start gap-2">
-                    {icon}
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">{icon}</div>
                     <div>
-                      <h4 className="font-semibold">
+                      <h4 className="font-semibold text-gray-800">
                         {who} hat {what}
                         {title} {verb}.
                       </h4>

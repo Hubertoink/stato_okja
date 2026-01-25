@@ -23,16 +23,16 @@ export default function Modal({
   ];
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
+      className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className={`bg-white w-full ${maxW} rounded-t-2xl md:rounded-lg p-4 md:p-6 max-h-[85vh] overflow-y-auto bottom-sheet-animate`}
+        className={`bg-white/95 backdrop-blur-xl w-full ${maxW} rounded-t-3xl md:rounded-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto bottom-sheet-animate shadow-2xl border border-white/50`}
       >
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-viridian">{title}</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold gradient-text">{title}</h3>
           <button
-            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+            className="inline-flex items-center justify-center p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all duration-200 hover:scale-105"
             onClick={onClose}
             aria-label="Schließen"
           >

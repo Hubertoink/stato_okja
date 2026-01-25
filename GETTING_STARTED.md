@@ -134,13 +134,16 @@
 ### Alles auf einmal starten:
 
 ```powershell
-# Terminal 1 (Root)
-docker-compose up -d
+# Empfohlen: startet Docker-Services + Backend + Frontend in einem Schritt
+npm run dev:full
 
-# Terminal 2 (Root) - ODER nutze npm run dev im Root
-# Startet Backend + Frontend gleichzeitig
+# Alternativ (2 Schritte):
+docker-compose up -d
 npm run dev
 ```
+
+Hinweis: Wenn das Frontend `api/auth/login` mit **500** meldet, ist das in der Dev-Umgebung oft nur der Vite-Proxy, weil das Backend auf `localhost:3000` nicht läuft.
+Schnellcheck: `Test-NetConnection localhost -Port 3000` (muss `TcpTestSucceeded : True` sein).
 
 ### Einzeln starten:
 

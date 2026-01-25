@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
+import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
 
 export default function MyProfile() {
   const { user, refresh } = useAuth();
@@ -22,6 +23,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>(theme);
+  const [selectedBackground, setSelectedBackground] = useState<BackgroundId>(getStoredBackgroundId());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function handleFile(file: File) {
@@ -74,6 +76,16 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
             <label className="block text-sm font-medium mb-1">Design-Theme</label>
             <ThemePicker value={selectedTheme} onChange={(t)=>{ setSelectedTheme(t); try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ } }} />
           </div>
+      <div>
+      <label className="block text-sm font-medium mb-1">Hintergrund</label>
+      <BackgroundPicker
+        value={selectedBackground}
+        onChange={(bg) => {
+          setSelectedBackground(bg);
+          applyBackground(bg);
+        }}
+      />
+      </div>
           {msg && <div className="text-green-700 text-sm">{msg}</div>}
           {err && <div className="text-red-600 text-sm">{err}</div>}
           <button
@@ -147,7 +159,8 @@ function PasswordCard() {
 
 function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)=>void }) {
   const themes: Array<{ name: string; colors: string[] }> = [
-    { name: 'Default Theme', colors: ['#6b9080','#a4c3b2','#cce3de','#eaf4f4','#f6fff8'] },
+    // Show primary + secondary + real UI accents + background
+    { name: 'Default Theme', colors: ['#5B6CFF','#7C8FFF','#16a34a','#f59e0b','#FAFBFF'] },
     { name: 'Earthy Tones', colors: ['#6d6875','#b5838d','#e5989b','#ffb4a2','#f5f2f1'] },
     { name: 'Peachy Delight', colors: ['#d8e2dc','#ffe5d9','#ffcad4','#f4acb7','#9d8189'] },
     { name: 'Ocean Pearl', colors: ['#006d77','#83c5be','#edf6f9','#ffddd2','#f3f4f6'] },
@@ -170,6 +183,30 @@ function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)
         ))}
       </div>
       <div className="text-xs text-gray-500">Auswahl wird sofort als Vorschau angewendet und beim Speichern dauerhaft übernommen.</div>
+    </div>
+  );
+}
+
+function BackgroundPicker({ value, onChange }: { value: BackgroundId; onChange: (b: BackgroundId) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {BACKGROUNDS.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            onClick={() => onChange(b.id)}
+            className={`border rounded p-2 text-left ${value === b.id ? 'ring-2 ring-viridian' : ''}`}
+          >
+            <div className="font-medium text-sm mb-2">{b.label}</div>
+            <div
+              className="w-full h-16 rounded border bg-cover bg-center"
+              style={{ backgroundImage: `url(${b.url})` }}
+            />
+          </button>
+        ))}
+      </div>
+      <div className="text-xs text-gray-500">Auswahl wird sofort angewendet und lokal gespeichert.</div>
     </div>
   );
 }

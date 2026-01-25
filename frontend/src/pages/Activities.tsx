@@ -508,14 +508,20 @@ export default function Activities() {
                         } as Record<string, string>
                       )[a.type] || a.type;
                     const typeBgClass: Record<string, string> = {
-                      open_door: 'bg-cambridge-blue',
-                      project_open: 'bg-viridian',
-                      project_closed: 'bg-azure-web text-viridian',
-                      event: 'bg-mint-green text-viridian',
-                      outreach: 'bg-gray-700 text-white',
+                      open_door: 'bg-emerald-700 text-white',
+                      project_open: 'bg-viridian text-white',
+                      project_closed: 'bg-slate-700 text-white',
+                      event: 'bg-amber-700 text-white',
+                      outreach: 'bg-red-700 text-white',
                     };
-                    const cls = typeBgClass[a.type] || 'bg-gray-600 text-white';
-                    return <span className={`px-2 py-1 rounded text-xs ${cls}`}>{label}</span>;
+                    const cls = typeBgClass[a.type] || 'bg-gray-700 text-white';
+                    return (
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium tracking-tight border border-black/10 ${cls}`}
+                      >
+                        {label}
+                      </span>
+                    );
                   })()}
                 </td>
                 <td className="px-6 py-4 text-sm">

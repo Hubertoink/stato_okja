@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
+import { useOrgScopeKey } from './orgScope';
 
 export interface Location {
   id: string;
@@ -10,8 +11,9 @@ export interface Location {
 }
 
 export function useLocations(params?: { active?: boolean }) {
+  const scopeKey = useOrgScopeKey();
   return useQuery({
-    queryKey: ['locations', params],
+    queryKey: ['locations', scopeKey, params],
     queryFn: async () => {
       const res = await api.get('/locations', { params });
       return res.data as Location[];

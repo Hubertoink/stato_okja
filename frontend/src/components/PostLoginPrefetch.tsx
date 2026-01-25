@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useIsRestoring, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useOrgScope } from '@/lib/orgScope';
+import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import type { ActivitiesFilter, PagedActivitiesResult } from '@/lib/activities';
 import type { Project } from '@/lib/projects';
 import LoadingOverlay from '@/components/LoadingOverlay';
@@ -66,6 +66,7 @@ async function fetchStats<T>(path: string, params: { from?: string; to?: string;
 export default function PostLoginPrefetch({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { scope } = useOrgScope();
+  const scopeKey = useOrgScopeKey();
   const qc = useQueryClient();
   const isRestoring = useIsRestoring();
   const [open, setOpen] = useState(false);
@@ -98,35 +99,37 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
       to.getDate(),
     ).padStart(2, '0')}`;
 
+    // Use scopeKey in all query keys for proper cache isolation per org
     const dashboardMonthSummaryKey = [
       'stats:summary',
-      {
-        from,
-        to: toISO,
-        scope: scopeForKey,
-      },
+      scopeKey,
+      from,
+      toISO,
+      '',
     ] as const;
 
     const { params: activitiesParams, page: activitiesPage, limit: activitiesLimit } =
       readActivitiesPrefetchParams();
     const activitiesFirstPageKey = [
       'activities',
+      scopeKey,
       'paged',
       activitiesParams,
       activitiesPage,
       activitiesLimit,
     ] as const;
 
-    const hasProjects = qc.getQueryState(['projects', undefined])?.status === 'success';
+    // Check cached data using scope-aware keys
+    const hasProjects = qc.getQueryState(['projects', scopeKey, undefined])?.status === 'success';
     const hasDashboardMonthSummary = qc.getQueryState(dashboardMonthSummaryKey)?.status === 'success';
-    const hasBaseStatsSummary = qc.getQueryState(['stats:summary', '', '', ''])?.status === 'success';
-    const hasBaseStatsByType = qc.getQueryState(['stats:by-type', '', '', ''])?.status === 'success';
-    const hasBaseStatsGender = qc.getQueryState(['stats:gender', '', '', ''])?.status === 'success';
+    const hasBaseStatsSummary = qc.getQueryState(['stats:summary', scopeKey, '', '', ''])?.status === 'success';
+    const hasBaseStatsByType = qc.getQueryState(['stats:by-type', scopeKey, '', '', ''])?.status === 'success';
+    const hasBaseStatsGender = qc.getQueryState(['stats:gender', scopeKey, '', '', ''])?.status === 'success';
     const hasBaseStatsTimeseries =
-      qc.getQueryState(['stats:participants-timeseries', '', '', ''])?.status === 'success';
-    const hasBaseStatsByCohort = qc.getQueryState(['stats:by-cohort', '', '', ''])?.status === 'success';
+      qc.getQueryState(['stats:participants-timeseries', scopeKey, '', '', ''])?.status === 'success';
+    const hasBaseStatsByCohort = qc.getQueryState(['stats:by-cohort', scopeKey, '', '', ''])?.status === 'success';
     const hasBaseStatsByCategory =
-      qc.getQueryState(['stats:by-category', '', '', ''])?.status === 'success';
+      qc.getQueryState(['stats:by-category', scopeKey, '', '', ''])?.status === 'success';
 
     const hasActivitiesFirstPage = qc.getQueryState(activitiesFirstPageKey)?.status === 'success';
 
@@ -149,7 +152,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
           if (!hasProjects) {
             setMessage('Projekte werden geladen…');
             await qc.prefetchQuery({
-              queryKey: ['projects', undefined],
+              queryKey: ['projects', scopeKey, undefined],
               queryFn: () => fetchProjects(undefined),
             });
           }
@@ -163,42 +166,42 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
           if (!hasBaseStatsSummary)
             tasks.push(
               qc.prefetchQuery({
-                queryKey: ['stats:summary', '', '', ''],
+                queryKey: ['stats:summary', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/summary', baseStatsParams),
               }),
             );
           if (!hasBaseStatsByType)
             tasks.push(
               qc.prefetchQuery({
-                queryKey: ['stats:by-type', '', '', ''],
+                queryKey: ['stats:by-type', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/by-type', baseStatsParams),
               }),
             );
           if (!hasBaseStatsGender)
             tasks.push(
               qc.prefetchQuery({
-                queryKey: ['stats:gender', '', '', ''],
+                queryKey: ['stats:gender', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/gender', baseStatsParams),
               }),
             );
           if (!hasBaseStatsTimeseries)
             tasks.push(
               qc.prefetchQuery({
-                queryKey: ['stats:participants-timeseries', '', '', ''],
+                queryKey: ['stats:participants-timeseries', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/participants-timeseries', baseStatsParams),
               }),
             );
           if (!hasBaseStatsByCohort)
             tasks.push(
               qc.prefetchQuery({
-                queryKey: ['stats:by-cohort', '', '', ''],
+                queryKey: ['stats:by-cohort', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/by-cohort', baseStatsParams),
               }),
             );
           if (!hasBaseStatsByCategory)
             tasks.push(
               qc.prefetchQuery({
-                queryKey: ['stats:by-category', '', '', ''],
+                queryKey: ['stats:by-category', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/by-category', baseStatsParams),
               }),
             );
@@ -259,7 +262,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
       // If a newer run starts (e.g., org scope hydrates/changes), ensure the old overlay doesn't stay stuck open.
       if (runIdRef.current === runId) setOpen(false);
     };
-  }, [user?.id, isRestoring, qc, scope]);
+  }, [user?.id, isRestoring, qc, scope, scopeKey]);
 
   return (
     <>

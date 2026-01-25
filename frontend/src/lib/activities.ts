@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
+import { useOrgScopeKey } from './orgScope';
 import type { Location } from './locations';
 import type { Project } from './projects';
 
@@ -48,8 +49,9 @@ export type ActivitiesFilter = {
 };
 
 export function useActivities(params?: ActivitiesFilter) {
+  const scopeKey = useOrgScopeKey();
   return useQuery({
-    queryKey: ['activities', params],
+    queryKey: ['activities', scopeKey, params],
     queryFn: async () => {
       // Encode arrays as comma-separated strings for simple query parsing
       const qp: Record<string, unknown> = { ...params };
@@ -74,8 +76,9 @@ export interface PagedActivitiesResult {
 }
 
 export function useActivitiesPaged(params: ActivitiesFilter | undefined, page: number, limit: number = 50) {
+  const scopeKey = useOrgScopeKey();
   return useQuery({
-    queryKey: ['activities', 'paged', params, page, limit],
+    queryKey: ['activities', scopeKey, 'paged', params, page, limit],
     queryFn: async () => {
       const qp: Record<string, unknown> = { ...params };
       const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','cohortIds'];
@@ -95,8 +98,9 @@ export function useActivitiesPaged(params: ActivitiesFilter | undefined, page: n
 }
 
 export function useActivity(id?: string) {
+  const scopeKey = useOrgScopeKey();
   return useQuery({
-    queryKey: ['activity', id],
+    queryKey: ['activity', scopeKey, id],
     queryFn: async () => {
       if (!id) return null;
       const res = await api.get(`/activities/${id}`);
@@ -108,41 +112,44 @@ export function useActivity(id?: string) {
 
 export function useCreateActivity() {
   const qc = useQueryClient();
+  const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async (data: Partial<Activity> & Record<string, unknown>) => {
       const res = await api.post('/activities', data);
       return res.data as Activity;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['activities'] });
+      qc.invalidateQueries({ queryKey: ['activities', scopeKey] });
     },
   });
 }
 
 export function useUpdateActivity() {
   const qc = useQueryClient();
+  const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Activity> & Record<string, unknown> }) => {
       const res = await api.patch(`/activities/${id}`, data);
       return res.data as Activity;
     },
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['activities'] });
-      if (variables?.id) qc.invalidateQueries({ queryKey: ['activity', variables.id] });
+      qc.invalidateQueries({ queryKey: ['activities', scopeKey] });
+      if (variables?.id) qc.invalidateQueries({ queryKey: ['activity', scopeKey, variables.id] });
     },
   });
 }
 
 export function useRemoveActivity() {
   const qc = useQueryClient();
+  const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/activities/${id}`);
       return true;
     },
     onSuccess: (_data, id) => {
-      qc.invalidateQueries({ queryKey: ['activities'] });
-      if (id) qc.invalidateQueries({ queryKey: ['activity', id] });
+      qc.invalidateQueries({ queryKey: ['activities', scopeKey] });
+      if (id) qc.invalidateQueries({ queryKey: ['activity', scopeKey, id] });
     },
   });
 }

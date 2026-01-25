@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
+import { useOrgScopeKey } from './orgScope';
 
 export interface AuditLog {
   id: string;
@@ -16,8 +17,9 @@ export interface AuditLog {
 }
 
 export function useAuditLogs(limit = 10) {
+  const scopeKey = useOrgScopeKey();
   return useQuery({
-    queryKey: ['audit', { limit }],
+    queryKey: ['audit', scopeKey, { limit }],
     queryFn: async () => {
       const res = await api.get('/audit', { params: { limit } });
       return res.data as AuditLog[];

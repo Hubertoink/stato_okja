@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
+import { useOrgScopeKey } from './orgScope';
 
 export type ProjectTemplateDto = {
   id: string;
@@ -18,8 +19,9 @@ export type ProjectTemplateDto = {
 };
 
 export function useProjectTemplates() {
+  const scopeKey = useOrgScopeKey();
   return useQuery({
-    queryKey: ['project-templates'],
+    queryKey: ['project-templates', scopeKey],
     queryFn: async () => {
       const res = await api.get('/project-templates');
       return res.data as ProjectTemplateDto[];
@@ -28,8 +30,9 @@ export function useProjectTemplates() {
 }
 
 export function useOwnedProjectTemplates() {
+  const scopeKey = useOrgScopeKey();
   return useQuery({
-    queryKey: ['project-templates', 'owned'],
+    queryKey: ['project-templates', scopeKey, 'owned'],
     queryFn: async () => {
       const res = await api.get('/project-templates/owned');
       return res.data as ProjectTemplateDto[];
@@ -39,39 +42,42 @@ export function useOwnedProjectTemplates() {
 
 export function useCreateProjectTemplate() {
   const qc = useQueryClient();
+  const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async (data: Partial<ProjectTemplateDto>) => {
       const res = await api.post('/project-templates', data);
       return res.data as ProjectTemplateDto;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project-templates'] });
+      qc.invalidateQueries({ queryKey: ['project-templates', scopeKey] });
     },
   });
 }
 
 export function useUpdateProjectTemplate() {
   const qc = useQueryClient();
+  const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ProjectTemplateDto> }) => {
       const res = await api.patch(`/project-templates/${id}`, data);
       return res.data as ProjectTemplateDto;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project-templates'] });
+      qc.invalidateQueries({ queryKey: ['project-templates', scopeKey] });
     },
   });
 }
 
 export function useDeleteProjectTemplate() {
   const qc = useQueryClient();
+  const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/project-templates/${id}`);
       return true;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project-templates'] });
+      qc.invalidateQueries({ queryKey: ['project-templates', scopeKey] });
     },
   });
 }

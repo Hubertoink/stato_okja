@@ -22,6 +22,7 @@ import { useAuth } from '@/lib/auth';
 import { useActivities, type Activity } from '@/lib/activities';
 import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
+import { useOrgScopeKey } from '@/lib/orgScope';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -35,9 +36,9 @@ const TYPE_LABEL: Record<string, string> = {
 
 const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
 
-function useStatsSummary(params: { from?: string; to?: string; projectId?: string }) {
+function useStatsSummary(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:summary', params.from ?? '', params.to ?? '', params.projectId ?? ''],
+    queryKey: ['stats:summary', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/summary', { params });
       return res.data as {
@@ -58,9 +59,9 @@ function useStatsSummary(params: { from?: string; to?: string; projectId?: strin
   });
 }
 
-function useStatsByType(params: { from?: string; to?: string; projectId?: string }) {
+function useStatsByType(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:by-type', params.from ?? '', params.to ?? '', params.projectId ?? ''],
+    queryKey: ['stats:by-type', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/by-type', { params });
       return res.data as Array<{ type: string; count: number }>;
@@ -72,9 +73,9 @@ function useStatsByType(params: { from?: string; to?: string; projectId?: string
   });
 }
 
-function useStatsGender(params: { from?: string; to?: string; projectId?: string }) {
+function useStatsGender(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:gender', params.from ?? '', params.to ?? '', params.projectId ?? ''],
+    queryKey: ['stats:gender', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/gender', { params });
       return res.data as { male: number; female: number; diverse: number };
@@ -86,9 +87,9 @@ function useStatsGender(params: { from?: string; to?: string; projectId?: string
   });
 }
 
-function useStatsParticipantsTimeseries(params: { from?: string; to?: string; projectId?: string }) {
+function useStatsParticipantsTimeseries(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:participants-timeseries', params.from ?? '', params.to ?? '', params.projectId ?? ''],
+    queryKey: ['stats:participants-timeseries', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/participants-timeseries', { params });
       return res.data as Array<{ date: string; totalParticipants: number }>;
@@ -100,9 +101,9 @@ function useStatsParticipantsTimeseries(params: { from?: string; to?: string; pr
   });
 }
 
-function useStatsByCohort(params: { from?: string; to?: string; projectId?: string }) {
+function useStatsByCohort(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:by-cohort', params.from ?? '', params.to ?? '', params.projectId ?? ''],
+    queryKey: ['stats:by-cohort', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/by-cohort', { params });
       return res.data as Array<{
@@ -121,9 +122,9 @@ function useStatsByCohort(params: { from?: string; to?: string; projectId?: stri
   });
 }
 
-function useStatsByCategory(params: { from?: string; to?: string; projectId?: string }) {
+function useStatsByCategory(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:by-category', params.from ?? '', params.to ?? '', params.projectId ?? ''],
+    queryKey: ['stats:by-category', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/by-category', { params });
       return res.data as Array<{ id: string; name: string; count: number }>;
@@ -148,6 +149,7 @@ export default function Statistics() {
   const reportRef = useRef<HTMLDivElement | null>(null);
   const qc = useQueryClient();
   const { user } = useAuth();
+  const scopeKey = useOrgScopeKey();
   const statsParams = useMemo(
     () => ({ from: from || undefined, to: to || undefined, projectId: projectId || undefined }),
     [from, to, projectId],
@@ -156,16 +158,16 @@ export default function Statistics() {
     () => ({ from: from || undefined, to: to || undefined, projectIds: projectId ? [projectId] : undefined }),
     [from, to, projectId],
   );
-  const summaryQ = useStatsSummary(statsParams);
-  const byTypeQ = useStatsByType(statsParams);
-  const genderQ = useStatsGender(statsParams);
-  const timeseriesQ = useStatsParticipantsTimeseries(statsParams);
+  const summaryQ = useStatsSummary(statsParams, scopeKey);
+  const byTypeQ = useStatsByType(statsParams, scopeKey);
+  const genderQ = useStatsGender(statsParams, scopeKey);
+  const timeseriesQ = useStatsParticipantsTimeseries(statsParams, scopeKey);
   const { data: summary } = summaryQ;
   const { data: byType } = byTypeQ;
   const { data: gender } = genderQ;
   const { data: timeseries } = timeseriesQ;
   // All-time series to build available years for quick picker
-  const timeseriesAllQ = useStatsParticipantsTimeseries({});
+  const timeseriesAllQ = useStatsParticipantsTimeseries({}, scopeKey);
   const { data: timeseriesAll = [] } = timeseriesAllQ;
   const activityYears = useMemo(() => {
     const set = new Set<string>();
@@ -174,8 +176,8 @@ export default function Statistics() {
     }
     return Array.from(set).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   }, [timeseriesAll]);
-  const byCohortQ = useStatsByCohort(statsParams);
-  const byCategoryQ = useStatsByCategory(statsParams);
+  const byCohortQ = useStatsByCohort(statsParams, scopeKey);
+  const byCategoryQ = useStatsByCategory(statsParams, scopeKey);
   const { data: byCohort } = byCohortQ;
   const { data: byCategory } = byCategoryQ;
   const { data: activities = [] } = useActivities(activitiesParams);

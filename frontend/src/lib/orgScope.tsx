@@ -172,3 +172,12 @@ export function useOrgScope() {
   if (!ctx) throw new Error('useOrgScope must be used within OrgScopeProvider');
   return ctx;
 }
+
+/**
+ * Returns a stable string representation of the current org scope for use in query keys.
+ * This ensures each org scope has its own cache entries.
+ */
+export function useOrgScopeKey(): string {
+  const { scope } = useOrgScope();
+  return typeof scope === 'undefined' ? '__GLOBAL__' : scope === null ? '__NULL__' : scope;
+}

@@ -70,22 +70,25 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
   const isRestoring = useIsRestoring();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string>('Daten werden vorbereitet…');
-  const didRunRef = useRef(false);
+  const didRunKeyRef = useRef<string>('');
+  const runIdRef = useRef(0);
 
   useEffect(() => {
     // Reset per-user so switching accounts runs prefetch again.
-    didRunRef.current = false;
+    didRunKeyRef.current = '';
   }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
     if (isRestoring) return;
-    if (didRunRef.current) return;
+    const scopeForKey = typeof scope === 'undefined' ? 'GLOBAL' : scope === null ? 'NULL' : scope;
+    const runKey = `${user.id}:${scopeForKey}`;
+    if (didRunKeyRef.current === runKey) return;
 
-    didRunRef.current = true;
+    didRunKeyRef.current = runKey;
+    const runId = ++runIdRef.current;
     let cancelled = false;
 
-    const scopeForKey = typeof scope === 'undefined' ? 'GLOBAL' : scope === null ? 'NULL' : scope;
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1; // 1-12
@@ -233,7 +236,8 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
       } catch {
         // Never block the app if prefetch fails — UI will load normally.
       } finally {
-        if (!cancelled) setOpen(false);
+        // Always close the overlay for the latest run.
+        if (!cancelled && runIdRef.current === runId) setOpen(false);
       }
 
       // Activities first page using persisted filters (if any) — always background.
@@ -252,6 +256,8 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
 
     return () => {
       cancelled = true;
+      // If a newer run starts (e.g., org scope hydrates/changes), ensure the old overlay doesn't stay stuck open.
+      if (runIdRef.current === runId) setOpen(false);
     };
   }, [user?.id, isRestoring, qc, scope]);
 

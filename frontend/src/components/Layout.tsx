@@ -25,7 +25,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { scope, setScope } = useOrgScope();
+  const { scope, setScope, switching: orgSwitching } = useOrgScope();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
 
   const notifySession = useCallback(
@@ -257,6 +257,7 @@ export default function Layout() {
               <div className="text-gray-600 truncate max-w-[40vw]">
                 {roleLabel[user?.role || 'user']}
                 {activeOrgName ? ` · ${activeOrgName}` : ''}
+                {orgSwitching ? ' · lädt…' : ''}
               </div>
             </div>
             <button
@@ -280,6 +281,7 @@ export default function Layout() {
               <div className="text-gray-600 truncate max-w-[40vw]">
                 {activeOrgName ||
                   (typeof scope === 'string' ? `Org ${scope.substring(0, 6)}…` : '')}
+                {orgSwitching ? ' · lädt…' : ''}
               </div>
             </div>
             {menuOpen && (
@@ -723,8 +725,9 @@ export default function Layout() {
                 setScope(pendingScope);
                 setScopeModalOpen(false);
               }}
+              disabled={orgSwitching}
             >
-              Übernehmen
+              {orgSwitching ? 'Lade…' : 'Übernehmen'}
             </button>
           </div>
         </div>

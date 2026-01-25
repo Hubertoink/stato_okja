@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuth } from './auth';
@@ -6,6 +6,7 @@ import { useAuth } from './auth';
 type OrgScopeValue = string | null | undefined;
 interface OrgScopeState {
   scope: OrgScopeValue; // undefined=global (superadmin only), null=root, string=orgId
+  switching: boolean;
   setScope: (v: OrgScopeValue) => void;
   clear: () => void;
 }
@@ -73,16 +74,23 @@ try {
 export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [scope, setScopeState] = useState<OrgScopeValue>(initialStoredScope);
+  const [switching, setSwitching] = useState(false);
   const qc = useQueryClient();
+  const scopeChangeSourceRef = useRef<'init' | 'user'>('init');
+  const switchRunIdRef = useRef(0);
 
   // Load persisted scope on mount and whenever user changes
   useEffect(() => {
     // Reset when user logs out
     if (!user) {
+      scopeChangeSourceRef.current = 'init';
       setScopeState(undefined);
       try { localStorage.removeItem(LEGACY_KEY); } catch { /* ignore */ }
       return;
     }
+
+    // Any scope updates in this effect are hydration/init.
+    scopeChangeSourceRef.current = 'init';
     const key = storageKeyFor(user.id);
     // Migrate legacy key -> user-specific key if needed
     try {
@@ -121,13 +129,25 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     } else {
       api.defaults.headers.common['X-Org-Scope'] = scope;
     }
-    // Clear query cache and refetch all active queries to ensure fresh data for the new org
-    // Using removeQueries + refetchQueries ensures no stale data from the old org is shown
-    qc.removeQueries({ predicate: () => true });
-    qc.refetchQueries({ predicate: () => true });
+
+    // Only reinitialize data when the user explicitly changes the org scope.
+    // On initial load we must NOT clear/remove queries, otherwise PostLoginPrefetch can hang.
+    if (scopeChangeSourceRef.current !== 'user') return;
+    scopeChangeSourceRef.current = 'init';
+
+    const runId = ++switchRunIdRef.current;
+    setSwitching(true);
+    void qc
+      .cancelQueries({ predicate: () => true })
+      .then(() => qc.resetQueries({ predicate: () => true }))
+      .then(() => qc.refetchQueries({ predicate: () => true, type: 'active' }))
+      .finally(() => {
+        if (switchRunIdRef.current === runId) setSwitching(false);
+      });
   }, [scope, qc]);
 
   const setScope = useCallback((v: OrgScopeValue) => {
+    scopeChangeSourceRef.current = 'user';
     setScopeState(v);
     try {
       const key = storageKeyFor(user?.id);
@@ -139,9 +159,10 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<OrgScopeState>(() => ({
     scope,
+    switching,
     setScope,
     clear: () => setScope(undefined),
-  }), [scope, setScope]);
+  }), [scope, switching, setScope]);
 
   return <OrgScopeCtx.Provider value={value}>{children}</OrgScopeCtx.Provider>;
 }

@@ -118,7 +118,7 @@ export class OrgsController {
   @Patch(':id/opening-hours')
   async updateOpeningHours(
     @Param('id') id: string,
-    @Body() body: { openingHours: OpeningHours },
+    @Body() body: OpeningHours,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
     // superadmin or org_admin of that org (or parent org)
@@ -128,6 +128,6 @@ export class OrgsController {
       const subtree = await this.service.getSubtreeOrgIds(myOrgId);
       if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
     }
-    return this.service.updateOpeningHours(id, body.openingHours);
+    return this.service.updateOpeningHours(id, body);
   }
 }

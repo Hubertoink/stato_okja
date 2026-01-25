@@ -12,6 +12,7 @@ import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holida
 import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
 import { getOpeningHours, OpeningHours } from '@/lib/orgs';
 import { useAuth } from '@/lib/auth';
+import { useOrgScope } from '@/lib/orgScope';
 import type React from 'react';
 // duplicate import removed
 
@@ -52,6 +53,7 @@ export default function Calendar() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const { scope } = useOrgScope();
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState<Date>(new Date());
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
@@ -59,11 +61,16 @@ export default function Calendar() {
   const [detail, setDetail] = useState<Activity | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
 
+  // Determine effective orgId for opening hours
+  const effectiveOrgId = user?.role === 'superadmin'
+    ? (typeof scope === 'string' ? scope : null)
+    : (user?.orgId ?? null);
+
   // Fetch opening hours for the current organization
   const { data: openingHours } = useQuery({
-    queryKey: ['opening-hours', user?.orgId],
-    queryFn: () => getOpeningHours(user!.orgId!),
-    enabled: !!user?.orgId,
+    queryKey: ['opening-hours', effectiveOrgId],
+    queryFn: () => getOpeningHours(effectiveOrgId!),
+    enabled: !!effectiveOrgId,
   });
 
   // Helper to get opening hours for a weekday (0=Monday, 6=Sunday)

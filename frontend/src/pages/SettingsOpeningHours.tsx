@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getOpeningHours, updateOpeningHours, OpeningHours, DayOpeningHours, DEFAULT_OPENING_HOURS } from '@/lib/orgs';
 import { useAuth } from '@/lib/auth';
+import { useOrgScope } from '@/lib/orgScope';
 import { Save as SaveIcon, Clock } from 'lucide-react';
 
 const DAYS: Array<{ key: keyof OpeningHours; labelDe: string }> = [
@@ -16,13 +17,19 @@ const DAYS: Array<{ key: keyof OpeningHours; labelDe: string }> = [
 
 export default function SettingsOpeningHours() {
   const { user } = useAuth();
-  const orgId = user?.orgId;
+  const { scope } = useOrgScope();
   const qc = useQueryClient();
 
+  // Determine effective orgId: for superadmin use scope, for others use user.orgId
+  // scope can be: undefined (global), null (root), or a string (specific orgId)
+  const effectiveOrgId = user?.role === 'superadmin'
+    ? (typeof scope === 'string' ? scope : null)
+    : (user?.orgId ?? null);
+
   const { data: savedHours, isLoading } = useQuery({
-    queryKey: ['opening-hours', orgId],
-    queryFn: () => getOpeningHours(orgId!),
-    enabled: !!orgId,
+    queryKey: ['opening-hours', effectiveOrgId],
+    queryFn: () => getOpeningHours(effectiveOrgId!),
+    enabled: !!effectiveOrgId,
   });
 
   const [hours, setHours] = useState<OpeningHours>(DEFAULT_OPENING_HOURS);
@@ -31,13 +38,17 @@ export default function SettingsOpeningHours() {
   useEffect(() => {
     if (savedHours) {
       setHours(savedHours);
+    } else {
+      // Reset to defaults when switching org
+      setHours(DEFAULT_OPENING_HOURS);
     }
-  }, [savedHours]);
+    setDirty(false);
+  }, [savedHours, effectiveOrgId]);
 
   const mutation = useMutation({
-    mutationFn: () => updateOpeningHours(orgId!, hours),
+    mutationFn: () => updateOpeningHours(effectiveOrgId!, hours),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['opening-hours', orgId] });
+      qc.invalidateQueries({ queryKey: ['opening-hours', effectiveOrgId] });
       setDirty(false);
     },
   });
@@ -50,7 +61,17 @@ export default function SettingsOpeningHours() {
     setDirty(true);
   };
 
-  if (!orgId) return <p className="text-gray-600">Keine Organisation ausgewählt.</p>;
+  if (!effectiveOrgId) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <p className="text-gray-600">
+          {user?.role === 'superadmin'
+            ? 'Bitte wähle eine Organisation aus dem Dropdown oben rechts, um deren Öffnungszeiten zu bearbeiten.'
+            : 'Keine Organisation ausgewählt.'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

@@ -60,6 +60,7 @@ function useMonthSummary(year: number, month: number, scopeKey: string) {
 export default function Dashboard() {
   const { openQuickTally } = useOutletContext<{ openQuickTally: () => void }>();
   const scopeKey = useOrgScopeKey();
+  const { scope } = useOrgScope();
   const { user } = useAuth();
   const now = new Date();
   const year = now.getFullYear();
@@ -77,11 +78,16 @@ export default function Dashboard() {
   const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
 
+  // Determine effective orgId for opening hours
+  const effectiveOrgId = user?.role === 'superadmin'
+    ? (typeof scope === 'string' ? scope : null)
+    : (user?.orgId ?? null);
+
   // Fetch opening hours for today's display
   const { data: openingHours } = useQuery({
-    queryKey: ['opening-hours', user?.orgId],
-    queryFn: () => getOpeningHours(user!.orgId!),
-    enabled: !!user?.orgId,
+    queryKey: ['opening-hours', effectiveOrgId],
+    queryFn: () => getOpeningHours(effectiveOrgId!),
+    enabled: !!effectiveOrgId,
   });
 
   // Get today's opening hours

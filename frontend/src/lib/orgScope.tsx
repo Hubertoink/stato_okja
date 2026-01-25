@@ -90,9 +90,11 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     } else {
       api.defaults.headers.common['X-Org-Scope'] = scope;
     }
-    // Invalidate all queries so pages refetch under the new org scope
-    qc.invalidateQueries({ predicate: () => true });
-  }, [scope]);
+    // Clear query cache and refetch all active queries to ensure fresh data for the new org
+    // Using removeQueries + refetchQueries ensures no stale data from the old org is shown
+    qc.removeQueries({ predicate: () => true });
+    qc.refetchQueries({ predicate: () => true });
+  }, [scope, qc]);
 
   const setScope = (v: OrgScopeValue) => {
     setScopeState(v);

@@ -46,8 +46,15 @@ export class EmailService {
       this.logger.log(`Invite for ${to}: ${link}`);
       return { queued: false, logged: true };
     }
-    await transporter.sendMail({ from, to, subject, text, html });
-    return { queued: true };
+    try {
+      await transporter.sendMail({ from, to, subject, text, html });
+      this.logger.log(`Invite email sent successfully to ${to}`);
+      return { queued: true };
+    } catch (error) {
+      this.logger.error(`Failed to send invite email to ${to}: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`SMTP Config: host=${process.env.SMTP_HOST}, port=${process.env.SMTP_PORT}, user=${process.env.SMTP_USER}, from=${from}`);
+      throw error;
+    }
   }
 
   async sendPasswordResetEmail(to: string, name: string, link: string) {
@@ -66,7 +73,14 @@ export class EmailService {
       this.logger.log(`Password reset for ${to}: ${link}`);
       return { queued: false, logged: true };
     }
-    await transporter.sendMail({ from, to, subject, text, html });
-    return { queued: true };
+    try {
+      await transporter.sendMail({ from, to, subject, text, html });
+      this.logger.log(`Password reset email sent successfully to ${to}`);
+      return { queued: true };
+    } catch (error) {
+      this.logger.error(`Failed to send password reset email to ${to}: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`SMTP Config: host=${process.env.SMTP_HOST}, port=${process.env.SMTP_PORT}, user=${process.env.SMTP_USER}, from=${from}`);
+      throw error;
+    }
   }
 }

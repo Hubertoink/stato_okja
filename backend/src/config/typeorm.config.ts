@@ -6,9 +6,17 @@ dotenvConfig();
 
 function buildTypeOrmConfig(): DataSourceOptions {
   const dbType = (process.env.DB_TYPE || 'postgres').toLowerCase();
+  const migrationsRunEnv = (process.env.DB_MIGRATIONS_RUN ?? '').toLowerCase();
+  const migrationsRun =
+    migrationsRunEnv === 'true'
+      ? true
+      : migrationsRunEnv === 'false'
+        ? false
+        : (process.env.NODE_ENV || '').toLowerCase() === 'production';
   const base = {
     entities: [path.join(__dirname, '/../**/*.entity{.ts,.js}')],
     migrations: [path.join(__dirname, '/../database/migrations/*{.ts,.js}')],
+    migrationsRun,
     synchronize: process.env.DB_SYNCHRONIZE === 'true',
     logging: process.env.DB_LOGGING === 'true',
   } as const;
@@ -20,6 +28,7 @@ function buildTypeOrmConfig(): DataSourceOptions {
       location: process.env.DB_DATABASE || path.resolve(process.cwd(), 'stato_dev.sqlite'),
       entities: [...base.entities],
       migrations: [...base.migrations],
+      migrationsRun: base.migrationsRun,
       synchronize: base.synchronize,
       logging: base.logging,
     };
@@ -40,6 +49,7 @@ function buildTypeOrmConfig(): DataSourceOptions {
     database: process.env.DB_DATABASE || 'stato_dev',
     entities: [...base.entities],
     migrations: [...base.migrations],
+    migrationsRun: base.migrationsRun,
     synchronize: base.synchronize,
     logging: base.logging,
     ...(useSsl ? { ssl: { rejectUnauthorized } } : {}),

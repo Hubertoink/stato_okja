@@ -5,11 +5,66 @@ import { OrgsService } from '../orgs/orgs.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 
+type ReqWithScope = {
+  user: { role: string; orgId?: string | null };
+  effectiveOrgId?: string | null | undefined;
+};
+
 @ApiTags('stats')
 @UseGuards(JwtAuthGuard, OrgScopeGuard)
 @Controller('stats')
 export class StatsController {
   constructor(private readonly statsService: StatsService, private readonly orgs: OrgsService) {}
+
+  /**
+   * Resolve org filtering based on effectiveOrgId and optional orgIdQuery param.
+   * Returns { orgId, orgIds } for use in service calls.
+   * 
+   * Logic:
+   * - Superadmin with effectiveOrgId === undefined (global): no filter (see all)
+   * - Superadmin with effectiveOrgId === null: filter by null org only
+   * - Superadmin with effectiveOrgId === string: filter by subtree
+   * - Non-superadmin: always filter by effectiveOrgId or user.orgId
+   */
+  private async resolveOrgFilter(
+    req: ReqWithScope,
+    orgIdQuery?: string,
+  ): Promise<{ orgId: string | null | undefined; orgIds: string[] | undefined }> {
+    let orgId: string | null | undefined = undefined;
+    let orgIds: string[] | undefined = undefined;
+
+    if (req.user.role === 'superadmin') {
+      // Check if orgIdQuery param overrides header
+      if (typeof orgIdQuery !== 'undefined') {
+        const oid = orgIdQuery || null;
+        if (typeof oid === 'string' && oid !== 'null') {
+          orgIds = await this.orgs.getSubtreeOrgIds(oid);
+        } else {
+          orgId = null;
+        }
+      } else if (typeof req.effectiveOrgId === 'undefined') {
+        // Global - no org filter (see all organizations)
+        orgId = undefined;
+        orgIds = undefined;
+      } else if (req.effectiveOrgId === null) {
+        // Root/no-org selected - filter by null org
+        orgId = null;
+      } else {
+        // Specific org selected - filter by subtree
+        orgIds = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
+      }
+    } else {
+      // Non-superadmin: use effectiveOrgId or fallback to user.orgId
+      const oid = typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId;
+      if (typeof oid === 'string') {
+        orgIds = await this.orgs.getSubtreeOrgIds(oid);
+      } else {
+        orgId = null;
+      }
+    }
+
+    return { orgId, orgIds };
+  }
 
   @Get('summary')
   @ApiOperation({ summary: 'KPI-Zusammenfassung' })
@@ -17,21 +72,13 @@ export class StatsController {
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'projectId', required: false })
   async getSummary(
-    @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
+    @Req() req: ReqWithScope,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
-    const orgIdRaw = req.user.role === 'superadmin'
-      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
-    const orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined;
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-    }
+    const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
     return this.statsService.getSummary(from, to, orgId, orgIds, projectId);
   }
 
@@ -41,21 +88,13 @@ export class StatsController {
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'projectId', required: false })
   async getByType(
-    @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
+    @Req() req: ReqWithScope,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
-    const orgIdRaw = req.user.role === 'superadmin'
-      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
-    const orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined;
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-    }
+    const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
     return this.statsService.getByType(from, to, orgId, orgIds, projectId);
   }
 
@@ -65,21 +104,13 @@ export class StatsController {
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'projectId', required: false })
   async getGender(
-    @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
+    @Req() req: ReqWithScope,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
-    const orgIdRaw = req.user.role === 'superadmin'
-      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
-    const orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined;
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-    }
+    const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
     return this.statsService.getGender(from, to, orgId, orgIds, projectId);
   }
 
@@ -89,21 +120,13 @@ export class StatsController {
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'projectId', required: false })
   async getParticipantsTimeseries(
-    @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
+    @Req() req: ReqWithScope,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
-    const orgIdRaw = req.user.role === 'superadmin'
-      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
-    const orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined;
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-    }
+    const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
     return this.statsService.getParticipantsTimeseries(from, to, orgId, orgIds, projectId);
   }
 
@@ -113,21 +136,13 @@ export class StatsController {
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'projectId', required: false })
   async getByCategory(
-    @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
+    @Req() req: ReqWithScope,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
-    const orgIdRaw = req.user.role === 'superadmin'
-      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
-    const orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined;
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-    }
+    const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
     return this.statsService.getByCategory(from, to, orgId, orgIds, projectId);
   }
 
@@ -137,21 +152,13 @@ export class StatsController {
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'projectId', required: false })
   async getByCohort(
-    @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined },
+    @Req() req: ReqWithScope,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
   ) {
-    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
-    const orgIdRaw = req.user.role === 'superadmin'
-      ? (typeof orgIdQuery === 'undefined' ? superAdminScoped : (orgIdQuery || null))
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
-    const orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined;
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-    }
+    const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
     return this.statsService.getByCohort(from, to, orgId, orgIds, projectId);
   }
 }

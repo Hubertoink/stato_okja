@@ -34,6 +34,13 @@ export class OrgsService {
     return all.filter(o => (o.path || o.id).startsWith(pathPrefix)).map(o => o.id);
   }
 
+  async getAncestorOrgIds(id: string) {
+    const org = await this.repo.findOne({ where: { id } });
+    if (!org) return [] as string[];
+    const path = org.path || org.id;
+    return path.split('/').filter(Boolean);
+  }
+
   async moveOrg(id: string, newParentId: string | null) {
     const org = await this.repo.findOne({ where: { id } });
     if (!org) return null;

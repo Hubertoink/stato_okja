@@ -20,10 +20,14 @@ import {
 import { Star, StarOff } from 'lucide-react';
 import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
 import { api } from '@/lib/api';
-import { useCategories, useTags } from '@/lib/taxonomy';
+import { useCategories, useTags, useUpdateCategory } from '@/lib/taxonomy';
 import { useStaff } from '@/lib/staff';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
+import { useQueryClient } from '@tanstack/react-query';
+import { PROJECT_TEMPLATES, type ProjectTemplate } from '@/lib/projectTemplates';
+import { defaultCategoryByName } from '@/lib/defaultCategories';
+import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTemplatesApi';
 
 function ArchiveRestoreControls({
   id,
@@ -194,9 +198,16 @@ function ProjectForm({
     return base;
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const templateRunIdRef = useRef(0);
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('');
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { data: categories } = useCategories({ active: true });
+  const { data: allCategories } = useCategories();
+  const { data: orgTemplates } = useProjectTemplates();
+  const updateCategory = useUpdateCategory();
+  const qc = useQueryClient();
   const { data: tags } = useTags({ active: true });
   const { data: staff } = useStaff({ active: true });
 
@@ -209,6 +220,123 @@ function ProjectForm({
     const url = res.data?.url as string;
     if (url) setForm((f) => ({ ...f, imageUrl: url }));
   }, []);
+
+  const findCategoryByName = useCallback(
+    (name: string) => {
+      const needle = (name || '').trim().toLowerCase();
+      const list = Array.isArray(allCategories) ? allCategories : [];
+      return list.find((c) => (c.name || '').trim().toLowerCase() === needle);
+    },
+    [allCategories],
+  );
+
+  const ensureCategoryByName = useCallback(
+    async (name: string): Promise<{ id: string } | null> => {
+      const def = defaultCategoryByName(name);
+      const existing = findCategoryByName(name);
+      if (existing?.id) {
+        // Reactivate if archived/inactive
+        if (existing.active === false) {
+          try {
+            await updateCategory.mutateAsync({
+              id: existing.id,
+              data: { active: true, ...(def?.color ? { color: def.color } : {}) },
+            });
+            await qc.invalidateQueries({ queryKey: ['categories'] });
+          } catch {
+            // If it fails, continue; user can still pick manually.
+          }
+        }
+        return { id: existing.id };
+      }
+      try {
+        const created = await api.post('/taxonomy/categories', {
+          name: name,
+          active: true,
+          ...(def?.color ? { color: def.color } : {}),
+        });
+        await qc.invalidateQueries({ queryKey: ['categories'] });
+        const id = created?.data?.id as string | undefined;
+        return id ? { id } : null;
+      } catch {
+        // Race-condition fallback: re-fetch by name
+        try {
+          const res = await api.get('/taxonomy/categories');
+          const list = (res.data || []) as Array<{ id: string; name: string }>;
+          const found = list.find((c) => (c.name || '').trim().toLowerCase() === (name || '').trim().toLowerCase());
+          return found?.id ? { id: found.id } : null;
+        } catch {
+          return null;
+        }
+      }
+    },
+    [findCategoryByName, qc, updateCategory],
+  );
+
+  const applyTemplate = useCallback(
+    async (tpl: ProjectTemplate | ProjectTemplateDto) => {
+      // Only for create mode
+      if (initial?.id) return;
+      const runId = ++templateRunIdRef.current;
+      setApplyingTemplate(true);
+      const key = 'key' in tpl ? tpl.key : `org:${tpl.id}`;
+      setSelectedTemplateKey(key);
+      try {
+        if ('project' in tpl) {
+          // Built-in template
+          setForm((f) => ({
+            ...f,
+            title: tpl.project.title,
+            type: tpl.project.type,
+            targetGroup: tpl.project.targetGroup || '',
+            description: tpl.project.description || '',
+          }));
+
+          if (tpl.project.type !== 'open_door' && tpl.project.categoryName) {
+            const ensured = await ensureCategoryByName(tpl.project.categoryName);
+            if (templateRunIdRef.current === runId && ensured?.id) {
+              setForm((f) => ({ ...f, categoryId: ensured.id }));
+            }
+          }
+
+          // Upload template image into backend so stored URL remains stable across frontend deploys
+          try {
+            const resp = await fetch(tpl.image.fetchUrl);
+            const blob = await resp.blob();
+            const file = new File([blob], tpl.image.filename, { type: blob.type || 'image/jpeg' });
+            if (templateRunIdRef.current === runId) {
+              await uploadImage(file);
+            }
+          } catch {
+            if (templateRunIdRef.current === runId) {
+              setForm((f) => ({ ...f, imageUrl: tpl.image.previewUrl }));
+            }
+          }
+        } else {
+          // Org/inherited template from backend
+          setForm((f) => ({
+            ...f,
+            title: tpl.title,
+            type: tpl.type,
+            targetGroup: tpl.targetGroup || '',
+            description: tpl.description || '',
+            ...(tpl.color ? { color: tpl.color } : {}),
+            ...(tpl.imageUrl ? { imageUrl: tpl.imageUrl } : {}),
+          }));
+
+          if (tpl.type !== 'open_door' && tpl.categoryName) {
+            const ensured = await ensureCategoryByName(tpl.categoryName);
+            if (templateRunIdRef.current === runId && ensured?.id) {
+              setForm((f) => ({ ...f, categoryId: ensured.id }));
+            }
+          }
+        }
+      } finally {
+        if (templateRunIdRef.current === runId) setApplyingTemplate(false);
+      }
+    },
+    [ensureCategoryByName, initial?.id, uploadImage],
+  );
 
   // Global paste handler to support Ctrl+V for screenshots anywhere while the modal is open
   useEffect(() => {
@@ -274,6 +402,100 @@ function ProjectForm({
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? 'Projekt bearbeiten' : 'Neues Projekt'}
         </h3>
+
+        {!initial?.id && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div>
+                <div className="text-sm font-medium">Vorlage</div>
+                <div className="text-xs text-gray-600">
+                  Wähle eine Vorlage, um Titel, Beschreibung, Zielgruppe, Bild und Kategorie vorzubelegen.
+                </div>
+              </div>
+              {applyingTemplate && (
+                <div className="text-xs text-gray-500">Übernehme Vorlage…</div>
+              )}
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTemplateKey('');
+                }}
+                className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden flex items-center justify-center text-sm px-3 ${
+                  selectedTemplateKey === '' ? 'border-viridian ring-2 ring-viridian/30' : 'border-gray-200'
+                }`}
+                disabled={applyingTemplate}
+                title="Ohne Vorlage"
+              >
+                Ohne Vorlage
+              </button>
+              {PROJECT_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.key}
+                  type="button"
+                  onClick={() => void applyTemplate(tpl)}
+                  className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden relative ${
+                    selectedTemplateKey === tpl.key ? 'border-viridian ring-2 ring-viridian/30' : 'border-gray-200'
+                  }`}
+                  disabled={applyingTemplate}
+                  title={tpl.label}
+                >
+                  <img
+                    src={tpl.image.previewUrl}
+                    alt={tpl.label}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/10" />
+                  <div className="absolute bottom-2 left-2 right-2 text-left">
+                    <div className="text-white text-sm font-semibold drop-shadow">{tpl.label}</div>
+                    <div className="text-white/90 text-[11px] leading-tight drop-shadow">
+                      {tpl.description}
+                    </div>
+                  </div>
+                </button>
+              ))}
+
+              {(orgTemplates || [])
+                .filter((t) => !t.archived)
+                .map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => void applyTemplate(t)}
+                    className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden relative ${
+                      selectedTemplateKey === `org:${t.id}`
+                        ? 'border-viridian ring-2 ring-viridian/30'
+                        : 'border-gray-200'
+                    }`}
+                    disabled={applyingTemplate}
+                    title={t.title}
+                  >
+                    {t.imageUrl ? (
+                      <img
+                        src={t.imageUrl}
+                        alt={t.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 w-full h-full bg-gray-100" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/10" />
+                    <div className="absolute bottom-2 left-2 right-2 text-left">
+                      <div className="text-white text-sm font-semibold drop-shadow truncate">
+                        {t.title}
+                      </div>
+                      <div className="text-white/90 text-[11px] leading-tight drop-shadow line-clamp-2">
+                        {t.categoryName ? `Kategorie: ${t.categoryName}` : 'Vorlage'}
+                        {t.org?.name ? ` · ${t.org.name}` : ''}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Titel *</label>

@@ -1,19 +1,25 @@
 import { useState } from 'react';
-import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun } from 'lucide-react';
+import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate } from 'lucide-react';
 import SettingsTeam from './SettingsTeam';
 import SettingsCategories from './SettingsCategories';
 import SettingsTags from './SettingsTags';
 import SettingsCohorts from './SettingsCohorts';
 import SettingsLocations from './SettingsLocations';
 import SettingsHolidays from './SettingsHolidays';
+import SettingsProjectTemplates from './SettingsProjectTemplates';
+import { useAuth } from '@/lib/auth';
 
-type Tab = 'categories' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays';
+type Tab = 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays';
 
 export default function Settings() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('categories');
+
+  const canManageTemplates = user?.role === 'superadmin' || user?.role === 'org_admin';
 
   const tabs = [
     { id: 'categories' as Tab, label: 'Kategorien', icon: Folder },
+    ...(canManageTemplates ? [{ id: 'templates' as Tab, label: 'Vorlagen', icon: LayoutTemplate }] : []),
     { id: 'tags' as Tab, label: 'Tags', icon: TagIcon },
     { id: 'cohorts' as Tab, label: 'Kohorten', icon: Calendar },
     { id: 'team' as Tab, label: 'Team', icon: UsersIcon },
@@ -50,6 +56,8 @@ export default function Settings() {
 
       {/* Tab Content */}
       {activeTab === 'categories' && <SettingsCategories />}
+
+      {activeTab === 'templates' && <SettingsProjectTemplates />}
 
       {activeTab === 'tags' && <SettingsTags />}
 

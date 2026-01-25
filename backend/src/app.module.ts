@@ -13,6 +13,7 @@ import { OrgsModule } from './orgs/orgs.module';
 import { UsersModule } from './users/users.module';
 import { AuditModule } from './common/audit.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { ProjectTemplatesModule } from './project-templates/project-templates.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { UploadsModule } from './uploads/uploads.module';
     LocationsModule,
     StatsModule,
     ProjectsModule,
+    ProjectTemplatesModule,
     OrgsModule,
     UsersModule,
     AuditModule,

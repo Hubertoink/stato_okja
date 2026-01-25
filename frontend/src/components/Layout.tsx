@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import Modal from '@/components/Modal';
 import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
@@ -19,6 +19,7 @@ import { useOrgScope } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
 import { useIsFetching } from '@tanstack/react-query';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
+import { useSessionTimeout } from '@/lib/sessionTimeout';
 
 export default function Layout() {
   const location = useLocation();
@@ -26,6 +27,32 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { scope, setScope } = useOrgScope();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
+
+  const notifySession = useCallback(
+    (msg: string) => showToast(msg, { type: 'info', durationMs: 3500 }),
+    [showToast],
+  );
+
+  const onSessionLogout = useCallback(
+    (reason: 'idle' | 'expired' | 'remote') => {
+      // For cross-tab logout, avoid double notifications.
+      if (reason === 'remote') {
+        logout();
+        return;
+      }
+
+      logout();
+      // AuthedRoutes will render <Login/> once user is null.
+      try {
+        if (location.pathname !== '/login') navigate('/');
+      } catch {
+        /* ignore */
+      }
+    },
+    [logout, location.pathname, navigate],
+  );
+
+  useSessionTimeout({ enabled: !!user, onNotify: notifySession, onLogout: onSessionLogout });
 
   const { session: quickTallySession } = useQuickTallySession();
   const [quickTallyOpen, setQuickTallyOpen] = useState(false);

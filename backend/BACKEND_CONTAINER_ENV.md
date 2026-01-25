@@ -1,0 +1,166 @@
+# Backend Container – Environment Variables
+
+Dieses Dokument beschreibt die Environment-Variablen, die der Stato-Backend-Container versteht (Pflicht/optional), inkl. typischer Werte für Docker/Compose.
+
+Referenz: [backend/.env.example](../backend/.env.example)
+
+## Quickstart (minimal lauffähig)
+
+Für einen laufenden Backend-Container brauchst du mindestens:
+
+- **DB-Zugangsdaten** (damit TypeORM verbinden kann)
+- **JWT_SECRET** (sonst ist Auth unsicher / Tokens brechen bei Neustarts)
+- optional: **SUPERADMIN_EMAIL/SUPERADMIN_PASSWORD** (für reproduzierbares Seed-Login)
+
+## Server / HTTP
+
+- `NODE_ENV` (optional)
+  - Default: `development`
+  - Üblich: `production` im Live-Betrieb
+
+- `PORT` (optional)
+  - Default: `3000`
+  - Port, auf dem NestJS lauscht.
+
+- `API_PREFIX` (optional)
+  - Default: `api`
+  - Damit sind Endpoints typischerweise unter `/<API_PREFIX>/...` erreichbar.
+
+- `CORS_ORIGINS` (optional, aber meist nötig)
+  - Default: `http://localhost:5173`
+  - Komma-separierte Liste erlaubter Origins, z. B. `https://app.example.com,https://admin.example.com`
+
+- `APP_ORIGIN` (optional, aber wichtig für Mails)
+  - Default: `http://localhost:5173`
+  - Wird genutzt, um Links in Invite-/Reset-E-Mails zu bauen (z. B. `${APP_ORIGIN}/reset-password?...`).
+
+## Datenbank (TypeORM)
+
+- `DB_TYPE` (optional)
+  - Default: `postgres`
+  - Unterstützt: Postgres (Default) und dev-Varianten von SQLite (siehe Code in `src/config/typeorm.config.ts`).
+
+**Für Postgres (typisch in Docker):**
+
+- `DB_HOST` (optional)
+  - Default: `localhost`
+  - In Compose meist: `postgres` (Service-Name)
+
+- `DB_PORT` (optional)
+  - Default: `5432`
+
+- `DB_USERNAME` (optional)
+  - Default: `stato_user`
+
+- `DB_PASSWORD` (optional)
+  - Default: `stato_dev_password`
+
+- `DB_DATABASE` (optional)
+  - Default: `stato_dev`
+
+- `DB_SYNCHRONIZE` (optional)
+  - Default: `false`
+  - Vorsicht: In Production i. d. R. `false` lassen.
+
+- `DB_LOGGING` (optional)
+  - Default: `true`
+
+**SSL (nur wenn DB es erfordert):**
+
+- `DB_SSL` (optional)
+  - Werte: `true|false|require|1`
+
+- `DB_SSL_REJECT_UNAUTHORIZED` (optional)
+  - Default: `false`
+  - Setze auf `true`, wenn du saubere Zertifikate hast.
+
+## Auth / JWT
+
+- `JWT_SECRET` (**Pflicht in Production**)
+  - Ohne gesetztes Secret nutzt der Code einen unsicheren Dev-Default.
+  - Wichtig: Wenn du `JWT_SECRET` änderst, werden bestehende Tokens ungültig (alle Nutzer müssen sich neu einloggen).
+
+- `JWT_ACCESS_EXPIRATION` (optional)
+  - Default: `12h` (Backend)
+  - Beispielwerte: `15m`, `1h`, `12h`, `1d`
+  - Steuert, wie lange Access-Tokens gültig sind.
+
+- `INVITE_TOKEN_EXPIRATION` (optional)
+  - Default: `7d`
+
+- `RESET_TOKEN_EXPIRATION` (optional)
+  - Default: `1h`
+
+Hinweis: In [backend/.env.example](../backend/.env.example) existiert auch `JWT_REFRESH_EXPIRATION` – aktuell wird im Backend-Code aber kein Refresh-Token-Flow genutzt.
+
+## Seed Superadmin (Startup)
+
+Beim Start stellt das Backend sicher, dass ein `superadmin` existiert.
+
+- `SUPERADMIN_EMAIL` (empfohlen)
+  - Default im Code: eine Dev-Mailadresse
+  - Wird beim Start „erzwungen“, damit Reset-/Invite-Mails an ein echtes Postfach gehen können.
+
+- `SUPERADMIN_PASSWORD` (optional, aber empfohlen)
+  - Wenn gesetzt (mind. 6 Zeichen), wird das Passwort des Superadmins beim Start (re-)gesetzt.
+  - Wenn nicht gesetzt und noch kein Superadmin existiert, ist das Default-Passwort `admin`.
+
+## SMTP (Einladungen / Passwort Reset)
+
+- `SMTP_HOST` (optional)
+  - Wenn **nicht** gesetzt: Backend sendet keine Mails, sondern loggt die Links (Invite/Reset) in die Konsole.
+
+- `SMTP_PORT` (optional)
+  - Default: `587`
+  - Für Mailpit lokal oft: `1025`
+
+- `SMTP_USER` / `SMTP_PASS` (optional)
+  - Wenn leer: Backend versucht unauthenticated SMTP (z. B. Mailpit).
+
+- `SMTP_FROM` (optional)
+  - Default: `no-reply@stato.local`
+
+## Docker Compose – Beispielwerte
+
+Wenn dein Backend-Container im selben Compose-Netzwerk läuft wie Postgres/Mailpit aus der Repo-Compose:
+
+- `DB_HOST=postgres`
+- `DB_PORT=5432`
+- `SMTP_HOST=mailpit`
+- `SMTP_PORT=1025`
+
+Beispiel (Ausschnitt) für einen Backend-Service:
+
+```yaml
+services:
+  backend:
+    image: <dein-backend-image>
+    environment:
+      PORT: 3000
+      API_PREFIX: api
+      CORS_ORIGINS: http://localhost:5173
+      APP_ORIGIN: http://localhost:5173
+
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: stato_user
+      DB_PASSWORD: stato_dev_password
+      DB_DATABASE: stato_dev
+
+      JWT_SECRET: <setze_einen_langen_random_string>
+      JWT_ACCESS_EXPIRATION: 12h
+
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_FROM: no-reply@stato.local
+
+      SUPERADMIN_EMAIL: admin@example.org
+      SUPERADMIN_PASSWORD: admin00
+```
+
+## Troubleshooting
+
+- **Login klappt, dann plötzlich 401 nach Neustart**: Prüfe, dass `JWT_SECRET` stabil gesetzt ist (nicht wechselnd).
+- **Frontend darf nicht auf API zugreifen (CORS)**: `CORS_ORIGINS` muss die Frontend-Origin enthalten.
+- **Einladungen/Reset kommen nicht an**: Setze `SMTP_HOST` (oder nutze Mailpit) und prüfe `APP_ORIGIN` für korrekte Links.

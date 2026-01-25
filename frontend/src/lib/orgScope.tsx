@@ -137,10 +137,12 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
 
     const runId = ++switchRunIdRef.current;
     setSwitching(true);
+    // Keep org switching lightweight:
+    // - cancel in-flight requests from the previous scope
+    // - do NOT reset/refetch everything (slow, and causes late "initializing" overlays)
+    // New queries will naturally run under the new scope-aware query keys.
     void qc
       .cancelQueries({ predicate: () => true })
-      .then(() => qc.resetQueries({ predicate: () => true }))
-      .then(() => qc.refetchQueries({ predicate: () => true, type: 'active' }))
       .finally(() => {
         if (switchRunIdRef.current === runId) setSwitching(false);
       });
@@ -148,6 +150,8 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
 
   const setScope = useCallback((v: OrgScopeValue) => {
     scopeChangeSourceRef.current = 'user';
+    // Make UI react immediately on confirm (e.g. show initializer overlay).
+    setSwitching(true);
     setScopeState(v);
     try {
       const key = storageKeyFor(user?.id);

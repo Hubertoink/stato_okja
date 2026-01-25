@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuth } from './auth';
@@ -15,11 +15,42 @@ const OrgScopeCtx = createContext<OrgScopeState | undefined>(undefined);
 const LEGACY_KEY = 'x_org_scope';
 const storageKeyFor = (userId?: string | null) => userId ? `x_org_scope:${userId}` : LEGACY_KEY;
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = (token || '').split('.');
+    if (parts.length < 2) return null;
+    // base64url decode
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    const json = atob(padded);
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function userIdFromStoredToken(): string | null {
+  try {
+    const token = localStorage.getItem('auth_token') || '';
+    if (!token) return null;
+    const payload = decodeJwtPayload(token);
+    const sub = payload?.sub;
+    return typeof sub === 'string' && sub.length ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
 // Read persisted scope synchronously to avoid initial flash to global for superadmin
 const initialStoredScope: OrgScopeValue = (() => {
   try {
-    // Best effort: read legacy key before user context is ready
-    const raw = localStorage.getItem(LEGACY_KEY);
+    // Best effort: if we have a stored auth token, decode userId (sub) and read the per-user scope key.
+    // This prevents a flash back to global on refresh for superadmins.
+    const uid = userIdFromStoredToken();
+    const primaryKey = uid ? storageKeyFor(uid) : LEGACY_KEY;
+    let raw = localStorage.getItem(primaryKey);
+    // Fallback to legacy key if per-user is missing (supports migration / older sessions)
+    if (raw === null && primaryKey !== LEGACY_KEY) raw = localStorage.getItem(LEGACY_KEY);
     if (raw === null) return undefined; // no persisted choice
     if (raw === 'null') return null;
     return raw; // orgId string
@@ -96,7 +127,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     qc.refetchQueries({ predicate: () => true });
   }, [scope, qc]);
 
-  const setScope = (v: OrgScopeValue) => {
+  const setScope = useCallback((v: OrgScopeValue) => {
     setScopeState(v);
     try {
       const key = storageKeyFor(user?.id);
@@ -104,13 +135,13 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
       else if (v === null) localStorage.setItem(key, 'null');
       else localStorage.setItem(key, v);
     } catch { /* ignore */ }
-  };
+  }, [user?.id]);
 
   const value = useMemo<OrgScopeState>(() => ({
     scope,
     setScope,
     clear: () => setScope(undefined),
-  }), [scope]);
+  }), [scope, setScope]);
 
   return <OrgScopeCtx.Provider value={value}>{children}</OrgScopeCtx.Provider>;
 }

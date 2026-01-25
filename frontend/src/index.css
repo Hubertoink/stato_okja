@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 :root {
   --app-bg-image: url('/Background_Stato.jpg');
 }
@@ -80,9 +81,6 @@ body {
   /* Respect safe areas on iOS */
   padding-bottom: env(safe-area-inset-bottom);
 }
-
-/* Modern Inter font import */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* Override color utility classes to use theme variables */
 .bg-viridian {

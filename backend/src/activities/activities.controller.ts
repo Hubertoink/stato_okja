@@ -85,23 +85,42 @@ export class ActivitiesController {
     @Query('limit') limitStr?: string,
   ) {
     // Determine organization filter from scope
-    // Superadmin: if no explicit scope header provided (effectiveOrgId === undefined), treat as orgId=null ("SuperAdmin-Orga"),
-    // otherwise use the selected orgId or null if explicit 'null'.
-    const superAdminScoped = typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId;
-    const orgIdRaw =
-      req.user.role === 'superadmin'
-        ? typeof orgIdQuery === 'undefined'
-          ? superAdminScoped
-          : orgIdQuery || null
-        : typeof req.effectiveOrgId === 'undefined'
-          ? req.user.orgId || null
-          : req.effectiveOrgId;
-    let orgId: string | null | undefined = orgIdRaw;
+    // Superadmin:
+    //   - effectiveOrgId === undefined (global) -> no org filter (see all)
+    //   - effectiveOrgId === null (root/no-org) -> filter by orgId IS NULL
+    //   - effectiveOrgId === string -> filter by that org's subtree
+    // Others: always filter by effectiveOrgId (or user.orgId as fallback)
+    let orgId: string | null | undefined = undefined;
     let orgIds: string[] | undefined = undefined;
-    if (typeof orgIdRaw === 'string') {
-      // Expand to subtree for list queries
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-      orgId = undefined;
+    
+    if (req.user.role === 'superadmin') {
+      // Check if orgIdQuery param overrides header
+      if (typeof orgIdQuery !== 'undefined') {
+        const oid = orgIdQuery || null;
+        if (typeof oid === 'string') {
+          orgIds = await this.orgs.getSubtreeOrgIds(oid);
+        } else {
+          orgId = null; // Filter by null org
+        }
+      } else if (typeof req.effectiveOrgId === 'undefined') {
+        // Global - no org filter
+        orgId = undefined;
+        orgIds = undefined;
+      } else if (req.effectiveOrgId === null) {
+        // Root/no-org selected
+        orgId = null;
+      } else {
+        // Specific org selected
+        orgIds = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
+      }
+    } else {
+      // Non-superadmin: use effectiveOrgId or fallback to user.orgId
+      const oid = typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId;
+      if (typeof oid === 'string') {
+        orgIds = await this.orgs.getSubtreeOrgIds(oid);
+      } else {
+        orgId = null;
+      }
     }
     const csvToArray = (s?: string) =>
       s

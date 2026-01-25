@@ -71,6 +71,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
   const isRestoring = useIsRestoring();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string>('Daten werden vorbereitet…');
+  const [progress, setProgress] = useState<{ current: number; total: number } | undefined>(undefined);
   const didRunKeyRef = useRef<string>('');
   const runIdRef = useRef(0);
   const lastScopeKeyRef = useRef<string>('');
@@ -91,6 +92,16 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
     wasSwitchingRef.current = switching;
   }, [switching]);
 
+  // Show initializer overlay immediately when an org switch starts.
+  useEffect(() => {
+    if (!user) return;
+    if (switching) {
+      setOpen(true);
+      setMessage('Organisation wird gewechselt…');
+      setProgress(undefined);
+    }
+  }, [switching, user?.id]);
+
   // Also reset when scopeKey changes (org switch) to re-run prefetch
   useEffect(() => {
     if (lastScopeKeyRef.current && lastScopeKeyRef.current !== scopeKey) {
@@ -103,7 +114,8 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
   useEffect(() => {
     if (!user) return;
     if (isRestoring) return;
-    // Wait for org switching to complete before running prefetch
+    // Wait for org switching to complete before running prefetch,
+    // but keep the overlay open while switching.
     if (switching) return;
     const scopeForKey = typeof scope === 'undefined' ? 'GLOBAL' : scope === null ? 'NULL' : scope;
     const runKey = `${user.id}:${scopeForKey}`;
@@ -172,6 +184,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
         if (needsBlockingWarmup) {
           setOpen(true);
           setMessage('Daten werden geladen…');
+          setProgress(undefined);
 
           // Run ALL prefetches in parallel for maximum performance
           const allTasks: Promise<unknown>[] = [];
@@ -250,28 +263,49 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
             );
           }
 
+          // Progress tracking
+          const total = allTasks.length;
+          setProgress(total > 0 ? { current: 0, total } : undefined);
+
+          let done = 0;
+          const tracked = allTasks.map((p) =>
+            p.finally(() => {
+              done += 1;
+              if (!cancelled && runIdRef.current === runId) {
+                setProgress({ current: done, total });
+                setMessage(`Daten werden geladen… (${done}/${total})`);
+              }
+            }),
+          );
+
           // Wait for all parallel requests
-          await Promise.all(allTasks);
+          await Promise.allSettled(tracked);
         }
       } catch {
         // Never block the app if prefetch fails — UI will load normally.
       } finally {
         // Always close the overlay for the latest run.
-        if (!cancelled && runIdRef.current === runId) setOpen(false);
+        if (!cancelled && runIdRef.current === runId) {
+          setOpen(false);
+          setProgress(undefined);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
       // If a newer run starts (e.g., org scope hydrates/changes), ensure the old overlay doesn't stay stuck open.
-      if (runIdRef.current === runId) setOpen(false);
+      if (runIdRef.current === runId) {
+        setOpen(false);
+        setProgress(undefined);
+      }
     };
   }, [user?.id, isRestoring, qc, scope, scopeKey, switching]);
 
   return (
     <>
       {children}
-      <LoadingOverlay open={open} title="Initialisiere StatO…" message={message} />
+      <LoadingOverlay open={open} title="Initialisiere StatO…" message={message} progress={progress} />
     </>
   );
 }

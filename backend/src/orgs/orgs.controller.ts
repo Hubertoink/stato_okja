@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from '../users/users.service';
+import type { OpeningHours } from './entities/organization.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('orgs')
@@ -95,5 +96,38 @@ export class OrgsController {
     const ids = await this.service.getSubtreeOrgIds(myOrgId);
     const all = await this.service.findAll();
     return all.filter(o => ids.includes(o.id));
+  }
+
+  // Get opening hours for an org
+  @Get(':id/opening-hours')
+  async getOpeningHours(
+    @Param('id') id: string,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    // Allow access if superadmin or if org is in user's subtree
+    if (req.user.role !== 'superadmin') {
+      const myOrgId = req.user.orgId || null;
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
+      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
+    }
+    return this.service.getOpeningHours(id);
+  }
+
+  // Update opening hours for an org
+  @Patch(':id/opening-hours')
+  async updateOpeningHours(
+    @Param('id') id: string,
+    @Body() body: OpeningHours,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    // superadmin or org_admin of that org (or parent org)
+    if (req.user.role !== 'superadmin') {
+      const myOrgId = req.user.orgId || null;
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
+      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
+    }
+    return this.service.updateOpeningHours(id, body);
   }
 }

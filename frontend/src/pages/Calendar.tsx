@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useIsMobile } from '@/lib/useIsMobile';
 import type { Project } from '@/lib/projects';
 import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
@@ -9,6 +10,9 @@ import { useActivities, Activity } from '@/lib/activities';
 import ActivityDetailModal from './ActivityDetailModal';
 import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holidays';
 import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
+import { getOpeningHours, OpeningHours } from '@/lib/orgs';
+import { useAuth } from '@/lib/auth';
+import { useOrgScope } from '@/lib/orgScope';
 import type React from 'react';
 // duplicate import removed
 
@@ -48,12 +52,35 @@ function getISOWeek(d: Date) {
 export default function Calendar() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  const { scope } = useOrgScope();
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState<Date>(new Date());
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
   const [picker, setPicker] = useState<{ date: string } | null>(null);
   const [detail, setDetail] = useState<Activity | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
+
+  // Determine effective orgId for opening hours
+  const effectiveOrgId = user?.role === 'superadmin'
+    ? (typeof scope === 'string' ? scope : null)
+    : (user?.orgId ?? null);
+
+  // Fetch opening hours for the current organization
+  const { data: openingHours } = useQuery({
+    queryKey: ['opening-hours', effectiveOrgId],
+    queryFn: () => getOpeningHours(effectiveOrgId!),
+    enabled: !!effectiveOrgId,
+  });
+
+  // Helper to get opening hours for a weekday (0=Monday, 6=Sunday)
+  const getOpeningHoursForDay = (dayIdx: number): string | null => {
+    if (!openingHours) return null;
+    const dayKeys: (keyof OpeningHours)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const dayData = openingHours[dayKeys[dayIdx]];
+    if (!dayData?.open) return 'Geschl.';
+    return `${dayData.from || '–'} – ${dayData.to || '–'}`;
+  };
 
   const label = useMemo(() => {
     const base = cursor.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
@@ -369,9 +396,14 @@ export default function Calendar() {
       {view === 'month' && (
         <div className="bg-white rounded-lg shadow">
           <div className="grid grid-cols-7 text-xs md:text-sm font-medium text-gray-600 border-b">
-            {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d) => (
+            {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d, idx) => (
               <div key={d} className="px-2 py-2 text-center">
-                {d}
+                <div>{d}</div>
+                {openingHours && (
+                  <div className="text-[10px] text-viridian font-normal">
+                    {getOpeningHoursForDay(idx)}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -434,13 +466,20 @@ export default function Calendar() {
       {view === 'week' && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="grid grid-cols-7 bg-azure-web text-xs md:text-sm font-medium text-gray-600 border-b">
-            {weekDays.map((d) => (
+            {weekDays.map((d, idx) => (
               <div key={d.toISOString()} className="px-2 py-2 text-center">
-                {d.toLocaleDateString('de-DE', {
-                  weekday: 'short',
-                  day: '2-digit',
-                  month: '2-digit',
-                })}
+                <div>
+                  {d.toLocaleDateString('de-DE', {
+                    weekday: 'short',
+                    day: '2-digit',
+                    month: '2-digit',
+                  })}
+                </div>
+                {openingHours && (
+                  <div className="text-[10px] text-viridian font-normal">
+                    {getOpeningHoursForDay(idx)}
+                  </div>
+                )}
               </div>
             ))}
           </div>

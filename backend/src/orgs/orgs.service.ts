@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Organization } from './entities/organization.entity';
+import { Organization, OpeningHours } from './entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
 
 @Injectable()
@@ -75,5 +75,16 @@ export class OrgsService {
     if (hasChildren) return false;
     await this.repo.delete({ id });
     return true;
+  }
+
+  async getOpeningHours(id: string): Promise<OpeningHours | null> {
+    const org = await this.repo.findOne({ where: { id } });
+    return org?.openingHours || null;
+  }
+
+  async updateOpeningHours(id: string, openingHours: OpeningHours): Promise<OpeningHours | null> {
+    await this.repo.update({ id }, { openingHours });
+    const org = await this.repo.findOne({ where: { id } });
+    return org?.openingHours || null;
   }
 }

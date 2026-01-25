@@ -31,6 +31,14 @@ export class ProjectTemplate {
   @Column({ type: 'varchar', length: 120, nullable: true })
   categoryName?: string | null;
 
+  // Category color to use when auto-creating in child orgs
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  categoryColor?: string | null;
+
+  // Tags stored as comma-separated "name:color" pairs for auto-creation in child orgs
+  @Column({ type: 'text', nullable: true })
+  tags?: string | null;
+
   @Column({ type: 'varchar', nullable: true })
   imageUrl?: string | null;
 

@@ -8,6 +8,8 @@ export type ProjectTemplateDto = {
   targetGroup?: string | null;
   description?: string | null;
   categoryName?: string | null;
+  categoryColor?: string | null;
+  tags?: string | null; // comma-separated "name:color" pairs
   imageUrl?: string | null;
   color?: string | null;
   archived: boolean;

@@ -25,6 +25,14 @@ export class CreateProjectTemplateDto {
 
   @IsOptional()
   @IsString()
+  categoryColor?: string;
+
+  @IsOptional()
+  @IsString()
+  tags?: string;
+
+  @IsOptional()
+  @IsString()
   imageUrl?: string;
 
   @IsOptional()

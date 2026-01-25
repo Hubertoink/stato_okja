@@ -41,6 +41,8 @@ END$$;`);
             { name: 'targetGroup', type: 'varchar', length: '120', isNullable: true },
             { name: 'description', type: 'text', isNullable: true },
             { name: 'categoryName', type: 'varchar', length: '120', isNullable: true },
+            { name: 'categoryColor', type: 'varchar', length: '16', isNullable: true },
+            { name: 'tags', type: 'text', isNullable: true },
             { name: 'imageUrl', type: 'varchar', isNullable: true },
             { name: 'color', type: 'varchar', length: '16', isNullable: true },
             { name: 'archived', type: 'boolean', isNullable: false, default: 'false' },
@@ -72,6 +74,8 @@ END$$;`);
       await ensureColumn('targetGroup', new TableColumn({ name: 'targetGroup', type: 'varchar', length: '120', isNullable: true }));
       await ensureColumn('description', new TableColumn({ name: 'description', type: 'text', isNullable: true }));
       await ensureColumn('categoryName', new TableColumn({ name: 'categoryName', type: 'varchar', length: '120', isNullable: true }));
+      await ensureColumn('categoryColor', new TableColumn({ name: 'categoryColor', type: 'varchar', length: '16', isNullable: true }));
+      await ensureColumn('tags', new TableColumn({ name: 'tags', type: 'text', isNullable: true }));
       await ensureColumn('imageUrl', new TableColumn({ name: 'imageUrl', type: 'varchar', isNullable: true }));
       await ensureColumn('color', new TableColumn({ name: 'color', type: 'varchar', length: '16', isNullable: true }));
       await ensureColumn('archived', new TableColumn({ name: 'archived', type: 'boolean', isNullable: false, default: 'false' }));

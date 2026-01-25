@@ -572,7 +572,7 @@ export default function Layout() {
           <div className="container mx-auto px-4 py-6 text-center text-sm text-gray-700 bg-white/60 backdrop-blur-md supports-[backdrop-filter]:bg-white/45 border-t border-white/50">
             <p>
               © {new Date().getFullYear()} StatO · Version{' '}
-              {import.meta.env.VITE_APP_VERSION || '0.7'}
+              {import.meta.env.VITE_APP_VERSION || '0.8'}
               {import.meta.env.VITE_COMMIT_SHA
                 ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0, 7)})`
                 : ''}{' '}

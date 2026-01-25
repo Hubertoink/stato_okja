@@ -70,7 +70,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-sm text-gray-400 mt-6">
-          © 2025 StatO - OKJA Team
+          © 2026 StatO - <a href="mailto:Hubertoink@outlook.com" className="hover:text-viridian transition-colors">OKJA Team</a>
         </p>
       </div>
     </div>

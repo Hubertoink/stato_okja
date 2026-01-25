@@ -1,6 +1,23 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
+// Öffnungszeiten pro Wochentag
+export interface DayOpeningHours {
+  open: boolean;
+  from?: string; // HH:mm format
+  to?: string;   // HH:mm format
+}
+
+export interface OpeningHours {
+  monday: DayOpeningHours;
+  tuesday: DayOpeningHours;
+  wednesday: DayOpeningHours;
+  thursday: DayOpeningHours;
+  friday: DayOpeningHours;
+  saturday: DayOpeningHours;
+  sunday: DayOpeningHours;
+}
+
 @Entity('organizations')
 export class Organization {
   @PrimaryGeneratedColumn('uuid')
@@ -27,4 +44,8 @@ export class Organization {
   @Index()
   @Column({ type: 'varchar', length: 1200, nullable: true })
   path!: string | null;
+
+  // Öffnungszeiten als JSON
+  @Column({ type: 'simple-json', nullable: true })
+  openingHours!: OpeningHours | null;
 }

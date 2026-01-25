@@ -37,3 +37,40 @@ export async function deleteOrgApi(id: string): Promise<{ ok: true }> {
   const res = await api.delete(`/orgs/${id}`);
   return res.data as { ok: true };
 }
+
+// --- Opening Hours ---
+export interface DayOpeningHours {
+  open: boolean;
+  from?: string; // HH:mm format
+  to?: string;   // HH:mm format
+}
+
+export interface OpeningHours {
+  monday: DayOpeningHours;
+  tuesday: DayOpeningHours;
+  wednesday: DayOpeningHours;
+  thursday: DayOpeningHours;
+  friday: DayOpeningHours;
+  saturday: DayOpeningHours;
+  sunday: DayOpeningHours;
+}
+
+export const DEFAULT_OPENING_HOURS: OpeningHours = {
+  monday:    { open: true,  from: '08:00', to: '17:00' },
+  tuesday:   { open: true,  from: '08:00', to: '17:00' },
+  wednesday: { open: true,  from: '08:00', to: '17:00' },
+  thursday:  { open: true,  from: '08:00', to: '17:00' },
+  friday:    { open: true,  from: '08:00', to: '17:00' },
+  saturday:  { open: false },
+  sunday:    { open: false },
+};
+
+export async function getOpeningHours(orgId: string): Promise<OpeningHours | null> {
+  const res = await api.get<OpeningHours | null>(`/orgs/${orgId}/opening-hours`);
+  return res.data;
+}
+
+export async function updateOpeningHours(orgId: string, hours: OpeningHours): Promise<OpeningHours> {
+  const res = await api.patch<OpeningHours>(`/orgs/${orgId}/opening-hours`, hours);
+  return res.data;
+}

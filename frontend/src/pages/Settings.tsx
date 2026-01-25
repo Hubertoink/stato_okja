@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate } from 'lucide-react';
+import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate, Clock } from 'lucide-react';
 import SettingsTeam from './SettingsTeam';
 import SettingsCategories from './SettingsCategories';
 import SettingsTags from './SettingsTags';
@@ -7,9 +7,10 @@ import SettingsCohorts from './SettingsCohorts';
 import SettingsLocations from './SettingsLocations';
 import SettingsHolidays from './SettingsHolidays';
 import SettingsProjectTemplates from './SettingsProjectTemplates';
+import SettingsOpeningHours from './SettingsOpeningHours';
 import { useAuth } from '@/lib/auth';
 
-type Tab = 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays';
+type Tab = 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays' | 'openingHours';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -25,6 +26,7 @@ export default function Settings() {
     { id: 'team' as Tab, label: 'Team', icon: UsersIcon },
     { id: 'locations' as Tab, label: 'Einrichtungen', icon: MapPin },
     { id: 'holidays' as Tab, label: 'Feiertage', icon: Sun },
+    { id: 'openingHours' as Tab, label: 'Öffnungszeiten', icon: Clock },
   ];
 
   return (
@@ -67,6 +69,7 @@ export default function Settings() {
 
       {activeTab === 'locations' && <SettingsLocations />}
       {activeTab === 'holidays' && <SettingsHolidays />}
+      {activeTab === 'openingHours' && <SettingsOpeningHours />}
     </div>
   );
 }

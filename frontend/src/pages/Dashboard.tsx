@@ -13,6 +13,7 @@ import {
   Calendar as CalendarIcon,
   Circle,
   CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -22,7 +23,7 @@ import ActivityQuickAdd from './CalendarQuickAddModal';
 import ExportModal from '@/components/ExportModal';
 import type { Project } from '@/lib/projects';
 import { useAuth } from '@/lib/auth';
-import { listOrgs, type OrgDto } from '@/lib/orgs';
+import { listOrgs, type OrgDto, getOpeningHours, OpeningHours } from '@/lib/orgs';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 
@@ -75,6 +76,23 @@ export default function Dashboard() {
   const [exportOpen, setExportOpen] = useState(false);
   const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
+
+  // Fetch opening hours for today's display
+  const { data: openingHours } = useQuery({
+    queryKey: ['opening-hours', user?.orgId],
+    queryFn: () => getOpeningHours(user!.orgId!),
+    enabled: !!user?.orgId,
+  });
+
+  // Get today's opening hours
+  const todayOpeningHours = useMemo(() => {
+    if (!openingHours) return null;
+    const dayKeys: (keyof OpeningHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const today = new Date().getDay(); // 0=Sunday, 1=Monday, etc
+    const dayData = openingHours[dayKeys[today]];
+    if (!dayData) return null;
+    return dayData;
+  }, [openingHours]);
 
   useEffect(() => {
     let mounted = true;
@@ -185,6 +203,19 @@ export default function Dashboard() {
   return (
     <div>
       <h2 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2>
+
+      {/* Today's Opening Hours */}
+      {openingHours && (
+        <div className="bg-gradient-to-r from-viridian to-cambridge-blue rounded-xl p-4 mb-6 text-white flex items-center gap-3">
+          <Clock className="w-5 h-5 flex-shrink-0" />
+          <span className="font-medium">
+            Heute:{' '}
+            {todayOpeningHours?.open
+              ? `${todayOpeningHours.from || '–'} – ${todayOpeningHours.to || '–'} Uhr`
+              : 'Geschlossen'}
+          </span>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

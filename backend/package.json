@@ -23,7 +23,10 @@
     "migration:create": "npm run typeorm -- migration:create",
     "migration:run": "npm run typeorm -- migration:run -d src/config/typeorm.config.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/typeorm.config.ts",
-    "seed": "ts-node src/database/seeds/run-seed.ts"
+    "seed": "ts-node src/database/seeds/run-seed.ts",
+    "seed:quick": "ts-node src/database/seeds/quick-seed.ts",
+    "seed:perf": "cross-env SEED_ACTIVITIES=50000 ts-node src/database/seeds/run-seed.ts",
+    "seed:clear": "cross-env SEED_CLEAR=true ts-node src/database/seeds/run-seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",

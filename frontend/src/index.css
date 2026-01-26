@@ -64,6 +64,11 @@
 
 /* Default Theme (modern blue/purple) - duplicate selector removed, see top */
 
+html {
+  /* Prevent layout shift when scrollbar appears/disappears */
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   font-family:
@@ -174,6 +179,28 @@ code {
   backdrop-filter: blur(20px) saturate(120%);
   -webkit-backdrop-filter: blur(20px) saturate(120%);
   border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Navigation label – reserves space for bold text to prevent layout shift */
+.nav-label {
+  display: inline-block;
+  position: relative;
+  font-weight: 400;
+}
+/* Invisible pseudo-element with bold text to reserve width */
+.nav-label::after {
+  content: attr(data-text);
+  display: block;
+  height: 0;
+  visibility: hidden;
+  overflow: hidden;
+  font-weight: 600;
+  user-select: none;
+  pointer-events: none;
+}
+/* Active state: make visible text bold */
+.nav-label-active {
+  font-weight: 600;
 }
 
 /* Utility helpers for mobile safe areas and tooltips */

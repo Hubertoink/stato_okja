@@ -1,4 +1,4 @@
-# Backend Container – Environment Variables
+re# Backend Container – Environment Variables
 
 Dieses Dokument beschreibt die Environment-Variablen, die der Stato-Backend-Container versteht (Pflicht/optional), inkl. typischer Werte für Docker/Compose.
 

@@ -1,5 +1,4 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { CalendarClock } from 'lucide-react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import {
@@ -137,13 +136,20 @@ function useStatsByCategory(params: { from?: string; to?: string; projectId?: st
 }
 
 export default function Statistics() {
-  const [from, setFrom] = useState<string>('');
-  const [to, setTo] = useState<string>('');
+  // Aktuelles Jahr als Standard
+  const currentYear = new Date().getFullYear();
+  const [from, setFrom] = useState<string>(`${currentYear}-01-01`);
+  const [to, setTo] = useState<string>(`${currentYear}-12-31`);
   const [projectId, setProjectId] = useState<string>('');
-  const [yearPickerOpen, setYearPickerOpen] = useState<boolean>(false);
-  const yearPickerRef = useRef<HTMLDivElement | null>(null);
-  const [yearDraft, setYearDraft] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
   // We no longer show toggle buttons; default to percentage labels in the chart
+
+  // Zeitverlauf Aggregation: 'day' | 'week' | 'month'
+  const [timeAggregation, setTimeAggregation] = useState<'day' | 'week' | 'month'>('day');
+  
+  // Pagination für Aktivitäten-Tabelle
+  const [activitiesPage, setActivitiesPage] = useState<number>(1);
+  const ACTIVITIES_PER_PAGE = 50;
 
   const [pdfMode, setPdfMode] = useState(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
@@ -208,18 +214,18 @@ export default function Statistics() {
     if (!projectsAll.some((p) => p.id === projectId)) setProjectId('');
   }, [projectId, projectsAll]);
 
-  // Close year dropdown on click-away
-  useEffect(() => {
-    function onDocMouseDown(e: MouseEvent) {
-      if (!yearPickerOpen) return;
-      const el = yearPickerRef.current;
-      if (el && e.target instanceof Node && !el.contains(e.target)) {
-        setYearPickerOpen(false);
-      }
+  // Helper: Select a year quickly (year is a string like "2024" or empty for "all")
+  const selectYear = (year: string) => {
+    if (!year) {
+      setFrom('');
+      setTo('');
+      setSelectedYear('');
+    } else {
+      setFrom(`${year}-01-01`);
+      setTo(`${year}-12-31`);
+      setSelectedYear(year);
     }
-    document.addEventListener('mousedown', onDocMouseDown);
-    return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [yearPickerOpen]);
+  };
 
   const byTypeData = (byType || []).map((d, i) => ({
     name: TYPE_LABEL[d.type] || d.type,
@@ -235,6 +241,57 @@ export default function Statistics() {
       ]
     : [];
   // Hinweis: genderTotal wird für Tooltip nicht mehr benötigt, da dort absolute Werte gezeigt werden
+
+  // Aggregierte Timeseries-Daten basierend auf timeAggregation
+  const aggregatedTimeseries = useMemo(() => {
+    if (!timeseries || timeseries.length === 0) return [];
+    
+    if (timeAggregation === 'day') {
+      return timeseries;
+    }
+    
+    const getWeekKey = (dateStr: string) => {
+      const d = new Date(dateStr);
+      // ISO week number
+      const jan4 = new Date(d.getFullYear(), 0, 4);
+      const dayOfYear = Math.floor((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
+      const weekNum = Math.ceil((dayOfYear + jan4.getDay() - 1) / 7);
+      return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+    };
+    
+    const getMonthKey = (dateStr: string) => {
+      return dateStr.slice(0, 7); // YYYY-MM
+    };
+    
+    const grouped = new Map<string, number>();
+    
+    for (const item of timeseries) {
+      const key = timeAggregation === 'week' 
+        ? getWeekKey(item.date) 
+        : getMonthKey(item.date);
+      grouped.set(key, (grouped.get(key) || 0) + item.totalParticipants);
+    }
+    
+    return Array.from(grouped.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, totalParticipants]) => ({ date, totalParticipants }));
+  }, [timeseries, timeAggregation]);
+
+  // Pagination für Aktivitäten
+  const paginatedActivities = useMemo(() => {
+    const sorted = [...(activities as Activity[])].sort((a, b) => 
+      String(b.date).localeCompare(String(a.date))
+    );
+    const startIndex = (activitiesPage - 1) * ACTIVITIES_PER_PAGE;
+    return sorted.slice(startIndex, startIndex + ACTIVITIES_PER_PAGE);
+  }, [activities, activitiesPage]);
+  
+  const totalActivityPages = Math.ceil((activities as Activity[]).length / ACTIVITIES_PER_PAGE);
+  
+  // Reset page when filters change
+  useEffect(() => {
+    setActivitiesPage(1);
+  }, [from, to, projectId]);
 
   const fmtNumber = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
 
@@ -523,55 +580,36 @@ export default function Statistics() {
               onChange={(e) => setTo(e.target.value)}
             />
           </div>
-          {/* Quick year picker */}
-          <div className="relative" ref={yearPickerRef}>
+          {/* Quick year buttons */}
+          <div>
             <label className="block text-sm font-medium mb-1">Jahr</label>
-            <button
-              type="button"
-              title="Jahr auswählen"
-              aria-label="Jahr auswählen"
-              className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded"
-              onClick={() => setYearPickerOpen((v) => !v)}
-            >
-              <CalendarClock className="w-4 h-4" />
-              Schnell wählen
-            </button>
-            {yearPickerOpen && (
-              <div className="absolute z-10 mt-2 bg-white border border-gray-200 rounded shadow p-2">
-                <select
-                  title="Jahr auswählen"
-                  aria-label="Jahr auswählen"
-                  className="border rounded px-2 py-1"
-                  value={yearDraft}
-                  onChange={(e) => {
-                    const y = parseInt(e.target.value, 10);
-                    if (!Number.isNaN(y)) {
-                      setFrom(`${y}-01-01`);
-                      setTo(`${y}-12-31`);
-                      setYearDraft(String(y));
-                      // Trigger refetch of stats queries
-                      qc.invalidateQueries({
-                        predicate: (q) => {
-                          const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
-                          return typeof key0 === 'string' && key0.startsWith('stats:');
-                        },
-                        refetchType: 'active',
-                      });
-                    }
-                    setYearPickerOpen(false);
-                  }}
+            <div className="inline-flex items-center gap-1 flex-wrap">
+              <button
+                type="button"
+                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  !selectedYear
+                    ? 'bg-viridian text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                }`}
+                onClick={() => selectYear('')}
+              >
+                Alle
+              </button>
+              {activityYears.map((y) => (
+                <button
+                  key={y}
+                  type="button"
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    selectedYear === y
+                      ? 'bg-viridian text-white'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                  }`}
+                  onClick={() => selectYear(y)}
                 >
-                  <option value="" disabled>
-                    Jahr wählen
-                  </option>
-                  {activityYears.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+                  {y}
+                </button>
+              ))}
+            </div>
           </div>
           <button
             className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
@@ -588,23 +626,12 @@ export default function Statistics() {
           >
             Aktualisieren
           </button>
-          {(from || to || yearDraft) && (
+          {selectedYear && (
             <button
-              title="Filter zurücksetzen"
+              title="Filter zurücksetzen (alle Jahre)"
               aria-label="Filter zurücksetzen"
               className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
-              onClick={() => {
-                setFrom('');
-                setTo('');
-                setYearDraft('');
-                qc.invalidateQueries({
-                  predicate: (q) => {
-                    const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
-                    return typeof key0 === 'string' && key0.startsWith('stats:');
-                  },
-                  refetchType: 'active',
-                });
-              }}
+              onClick={() => selectYear('')}
             >
               ×
             </button>
@@ -816,25 +843,95 @@ export default function Statistics() {
             </div>
           </div>
 
-          {/* Other charts remain placeholders for now */}
+          {/* Zeitverlauf Teilnehmende mit Aggregation */}
           <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-            <h3 className="text-lg font-semibold mb-4 text-viridian">Zeitverlauf Teilnehmende</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-viridian">Zeitverlauf Teilnehmende</h3>
+              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setTimeAggregation('day')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    timeAggregation === 'day'
+                      ? 'bg-white text-viridian shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Tag
+                </button>
+                <button
+                  onClick={() => setTimeAggregation('week')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    timeAggregation === 'week'
+                      ? 'bg-white text-viridian shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Woche
+                </button>
+                <button
+                  onClick={() => setTimeAggregation('month')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    timeAggregation === 'month'
+                      ? 'bg-white text-viridian shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Monat
+                </button>
+              </div>
+            </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
-                  data={timeseries || []}
+                  data={aggregatedTimeseries}
                   margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(v) => fmtDateCompact(String(v))}
+                    tickFormatter={(v) => {
+                      const s = String(v);
+                      if (timeAggregation === 'week') {
+                        // Format: 2026-W05 -> KW 05
+                        const match = s.match(/^\d{4}-W(\d{2})$/);
+                        if (match) return `KW ${match[1]}`;
+                      }
+                      if (timeAggregation === 'month') {
+                        // Format: 2026-01 -> Jan 26
+                        const [y, m] = s.split('-');
+                        const dt = new Date(Number(y), Number(m) - 1, 15);
+                        const mon = new Intl.DateTimeFormat('de-DE', { month: 'short' }).format(dt).replace('.', '');
+                        return `${mon} ${y.slice(-2)}`;
+                      }
+                      return fmtDateCompact(s);
+                    }}
                   />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                   <Tooltip
-                    formatter={(value: number) => value.toLocaleString('de-DE')}
-                    labelFormatter={(l) => `Datum: ${fmtDateCompact(String(l))}`}
+                    formatter={(value: number) => [value.toLocaleString('de-DE'), 'Teilnehmende']}
+                    labelFormatter={(l) => {
+                      const s = String(l);
+                      if (timeAggregation === 'week') {
+                        const match = s.match(/^(\d{4})-W(\d{2})$/);
+                        if (match) return `Kalenderwoche ${match[2]}, ${match[1]}`;
+                        return s;
+                      }
+                      if (timeAggregation === 'month') {
+                        const match = s.match(/^(\d{4})-(\d{2})$/);
+                        if (match) {
+                          const y = Number(match[1]);
+                          const m = Number(match[2]);
+                          const dt = new Date(y, m - 1, 15);
+                          if (!isNaN(dt.getTime())) {
+                            const mon = new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(dt);
+                            return `${mon} ${match[1]}`;
+                          }
+                        }
+                        return s;
+                      }
+                      return `Datum: ${fmtDateCompact(s)}`;
+                    }}
                   />
                   <Legend />
                   <Line
@@ -843,7 +940,7 @@ export default function Statistics() {
                     name="Teilnehmende"
                     stroke="#10b981"
                     strokeWidth={2}
-                    dot={false}
+                    dot={timeAggregation !== 'day'}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1004,7 +1101,21 @@ export default function Statistics() {
 
         {/* Aktivitäten-Tabelle (nach Diagrammen) */}
         <div className="bg-white rounded-lg shadow p-6 mt-8">
-          <h3 className="text-lg font-semibold mb-4 text-viridian">Alle Aktivitäten (gefiltert)</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-viridian">
+              Alle Aktivitäten (gefiltert)
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                {(activities as Activity[]).length} Einträge
+              </span>
+            </h3>
+            {totalActivityPages > 1 && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-500">
+                  Seite {activitiesPage} von {totalActivityPages}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -1021,7 +1132,7 @@ export default function Statistics() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {(activities as Activity[]).map((a) => {
+                {paginatedActivities.map((a) => {
                   const s = String(a.date || '').slice(0, 10);
                   const [y, m, d] = s.split('-');
                   const dateDE = `${d}.${m}.${y}`;
@@ -1064,7 +1175,7 @@ export default function Statistics() {
                     </tr>
                   );
                 })}
-                {(activities as Activity[]).length === 0 && (
+                {paginatedActivities.length === 0 && (
                   <tr>
                     <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
                       Keine Aktivitäten im Zeitraum.
@@ -1074,6 +1185,85 @@ export default function Statistics() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalActivityPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+              <div className="text-xs text-gray-500">
+                Zeige {((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, (activities as Activity[]).length)} von {(activities as Activity[]).length}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setActivitiesPage(1)}
+                  disabled={activitiesPage === 1}
+                  className="px-2 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Erste Seite"
+                >
+                  ««
+                </button>
+                <button
+                  onClick={() => setActivitiesPage((p) => Math.max(1, p - 1))}
+                  disabled={activitiesPage === 1}
+                  className="px-3 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Zurück
+                </button>
+                
+                {/* Page number buttons */}
+                {(() => {
+                  const pages: (number | 'ellipsis')[] = [];
+                  const total = totalActivityPages;
+                  const current = activitiesPage;
+                  
+                  if (total <= 7) {
+                    for (let i = 1; i <= total; i++) pages.push(i);
+                  } else {
+                    pages.push(1);
+                    if (current > 3) pages.push('ellipsis');
+                    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+                      pages.push(i);
+                    }
+                    if (current < total - 2) pages.push('ellipsis');
+                    pages.push(total);
+                  }
+                  
+                  return pages.map((p, idx) => 
+                    p === 'ellipsis' ? (
+                      <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setActivitiesPage(p)}
+                        className={`px-3 py-1 text-xs rounded border ${
+                          p === current
+                            ? 'bg-viridian text-white border-viridian'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  );
+                })()}
+                
+                <button
+                  onClick={() => setActivitiesPage((p) => Math.min(totalActivityPages, p + 1))}
+                  disabled={activitiesPage === totalActivityPages}
+                  className="px-3 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Weiter
+                </button>
+                <button
+                  onClick={() => setActivitiesPage(totalActivityPages)}
+                  disabled={activitiesPage === totalActivityPages}
+                  className="px-2 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Letzte Seite"
+                >
+                  »»
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Konsolidiert (kompakt) */}

@@ -386,92 +386,90 @@ export default function Layout() {
             <li>
               <Link
                 to="/dashboard"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/dashboard')
-                    ? 'bg-black/5 text-viridian font-semibold'
+                    ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <Home className="w-5 h-5 mr-2" />
-                Dashboard
+                <Home className="w-5 h-5 mr-2 flex-shrink-0" />
+                <span className={`nav-label ${isActive('/dashboard') ? 'nav-label-active' : ''}`} data-text="Dashboard">Dashboard</span>
               </Link>
             </li>
             <li>
               <Link
                 to="/activities"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/activities')
-                    ? 'bg-black/5 text-viridian font-semibold'
+                    ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <Activity className="w-5 h-5 mr-2" />
-                Aktivitäten
+                <Activity className="w-5 h-5 mr-2 flex-shrink-0" />
+                <span className={`nav-label ${isActive('/activities') ? 'nav-label-active' : ''}`} data-text="Aktivitäten">Aktivitäten</span>
               </Link>
             </li>
             <li>
               <Link
                 to="/calendar"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/calendar')
-                    ? 'bg-black/5 text-viridian font-semibold'
+                    ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <CalendarIcon className="w-5 h-5 mr-2" />
-                Kalender
+                <CalendarIcon className="w-5 h-5 mr-2 flex-shrink-0" />
+                <span className={`nav-label ${isActive('/calendar') ? 'nav-label-active' : ''}`} data-text="Kalender">Kalender</span>
               </Link>
             </li>
             <li>
               <Link
                 to="/projects"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/projects')
-                    ? 'bg-black/5 text-viridian font-semibold'
+                    ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <Boxes className="w-5 h-5 mr-2" />
-                Projekte
+                <Boxes className="w-5 h-5 mr-2 flex-shrink-0" />
+                <span className={`nav-label ${isActive('/projects') ? 'nav-label-active' : ''}`} data-text="Projekte">Projekte</span>
               </Link>
             </li>
             <li>
               <Link
                 to="/statistics"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/statistics')
-                    ? 'bg-black/5 text-viridian font-semibold'
+                    ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <BarChart3 className="w-5 h-5 mr-2" />
-                <span className="inline-flex items-center">
-                  Statistiken
-                  {statsFetching && (
-                    <span
-                      className="ml-2 inline-flex items-center gap-1 text-xs text-gray-600"
-                      role="status"
-                      aria-live="polite"
-                      title="Statistikdaten werden geladen"
-                    >
-                      <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" aria-hidden />
-                      lädt…
-                    </span>
-                  )}
-                </span>
+                <BarChart3 className="w-5 h-5 mr-2 flex-shrink-0" />
+                <span className={`nav-label ${isActive('/statistics') ? 'nav-label-active' : ''}`} data-text="Statistiken">Statistiken</span>
+                {statsFetching && (
+                  <span
+                    className="ml-2 inline-flex items-center gap-1 text-xs text-gray-600"
+                    role="status"
+                    aria-live="polite"
+                    title="Statistikdaten werden geladen"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" aria-hidden />
+                    lädt…
+                  </span>
+                )}
               </Link>
             </li>
             <li>
               <Link
                 to="/settings"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-all duration-200 hover:bg-black/5 ${
+                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/settings')
-                    ? 'bg-black/5 text-viridian font-semibold'
+                    ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <Settings className="w-5 h-5 mr-2" />
-                Einstellungen
+                <Settings className="w-5 h-5 mr-2 flex-shrink-0" />
+                <span className={`nav-label ${isActive('/settings') ? 'nav-label-active' : ''}`} data-text="Einstellungen">Einstellungen</span>
               </Link>
             </li>
           </ul>

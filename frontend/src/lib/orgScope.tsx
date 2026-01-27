@@ -72,7 +72,7 @@ try {
 } catch { /* ignore */ }
 
 export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [scope, setScopeState] = useState<OrgScopeValue>(initialStoredScope);
   const [switching, setSwitching] = useState(false);
   const qc = useQueryClient();
@@ -81,8 +81,10 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
 
   // Load persisted scope on mount and whenever user changes
   useEffect(() => {
-    // Reset when user logs out
+    // During initial auth hydration, `user` can be null even though a valid token exists.
+    // Do NOT clear scope in that case; otherwise early queries (e.g. Calendar) will run as GLOBAL.
     if (!user) {
+      if (loading) return;
       scopeChangeSourceRef.current = 'init';
       setScopeState(undefined);
       try { localStorage.removeItem(LEGACY_KEY); } catch { /* ignore */ }
@@ -118,7 +120,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     const next = (typeof parsed === 'string') ? parsed : (user.orgId ?? null);
     setScopeState(next);
     try { localStorage.setItem(key, next === null ? 'null' : String(next)); } catch { /* ignore */ }
-  }, [user?.id, user?.role, user?.orgId]);
+  }, [user?.id, user?.role, user?.orgId, loading]);
 
   // Apply header to axios
   useEffect(() => {
@@ -144,6 +146,20 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     void qc
       .cancelQueries({ predicate: () => true })
       .finally(() => {
+        // Ensure mounted screens immediately refresh (e.g. Calendar activities) after a scope switch.
+        // Cancellation alone can leave a query in a non-refetching state until params change.
+        void qc.invalidateQueries({
+          predicate: (q) => {
+            const k0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
+            return (
+              k0 === 'activities' ||
+              k0 === 'projects' ||
+              k0 === 'locations' ||
+              (typeof k0 === 'string' && k0.startsWith('stats:'))
+            );
+          },
+          refetchType: 'active',
+        });
         if (switchRunIdRef.current === runId) setSwitching(false);
       });
   }, [scope, qc]);

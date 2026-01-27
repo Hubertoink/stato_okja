@@ -386,65 +386,70 @@ export default function Layout() {
             <li>
               <Link
                 to="/dashboard"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                data-tooltip="Dashboard"
+                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/dashboard')
                     ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <Home className="w-5 h-5 mr-2 flex-shrink-0" />
+                <Home className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/dashboard') ? 'nav-label-active' : ''}`} data-text="Dashboard">Dashboard</span>
               </Link>
             </li>
             <li>
               <Link
                 to="/activities"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                data-tooltip="Aktivitäten"
+                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/activities')
                     ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <Activity className="w-5 h-5 mr-2 flex-shrink-0" />
+                <Activity className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/activities') ? 'nav-label-active' : ''}`} data-text="Aktivitäten">Aktivitäten</span>
               </Link>
             </li>
             <li>
               <Link
                 to="/calendar"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                data-tooltip="Kalender"
+                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/calendar')
                     ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <CalendarIcon className="w-5 h-5 mr-2 flex-shrink-0" />
+                <CalendarIcon className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/calendar') ? 'nav-label-active' : ''}`} data-text="Kalender">Kalender</span>
               </Link>
             </li>
             <li>
               <Link
                 to="/projects"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                data-tooltip="Projekte"
+                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/projects')
                     ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <Boxes className="w-5 h-5 mr-2 flex-shrink-0" />
+                <Boxes className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/projects') ? 'nav-label-active' : ''}`} data-text="Projekte">Projekte</span>
               </Link>
             </li>
             <li>
               <Link
                 to="/statistics"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                data-tooltip="Statistiken"
+                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/statistics')
                     ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <BarChart3 className="w-5 h-5 mr-2 flex-shrink-0" />
+                <BarChart3 className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/statistics') ? 'nav-label-active' : ''}`} data-text="Statistiken">Statistiken</span>
                 {statsFetching && (
                   <span
@@ -462,13 +467,14 @@ export default function Layout() {
             <li>
               <Link
                 to="/settings"
-                className={`flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                data-tooltip="Einstellungen"
+                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
                   isActive('/settings')
                     ? 'bg-black/5 text-viridian'
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                <Settings className="w-5 h-5 mr-2 flex-shrink-0" />
+                <Settings className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/settings') ? 'nav-label-active' : ''}`} data-text="Einstellungen">Einstellungen</span>
               </Link>
             </li>
@@ -567,7 +573,7 @@ export default function Layout() {
       {/* Footer (hidden on full activity views or while keyboard open) */}
       {!hideFooter && (
         <footer className="mt-12">
-          <div className="container mx-auto px-4 py-6 text-center text-sm text-gray-700 bg-white/60 backdrop-blur-md supports-[backdrop-filter]:bg-white/45 border-t border-white/50">
+          <div className="w-full px-4 py-6 text-center text-sm text-gray-700 bg-white/60 backdrop-blur-md supports-[backdrop-filter]:bg-white/45 border-t border-white/50">
             <p>
               © {new Date().getFullYear()} StatO · Version{' '}
               {import.meta.env.VITE_APP_VERSION || '0.8'}
@@ -576,7 +582,7 @@ export default function Layout() {
                 : ''}{' '}
               ·{' '}
               <a
-                href="mailto:nikolas.haefner@mannheim.de"
+                href="mailto:hubertoink@outlook.com"
                 className="underline hover:text-viridian"
               >
                 Nikolas Häfner

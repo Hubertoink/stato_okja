@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -14,6 +14,49 @@ import { getOpeningHours, OpeningHours } from '@/lib/orgs';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import type React from 'react';
+
+// Custom tooltip component for calendar activities
+interface ActivityTooltipProps {
+  activity: Activity | null;
+  position: { x: number; y: number } | null;
+  typeLabel: Record<string, string>;
+  fmtTimeRange: (s?: string | null, e?: string | null) => string;
+}
+
+function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: ActivityTooltipProps) {
+  if (!activity || !position) return null;
+  
+  const label = `${activity.project?.title || typeLabel[activity.type] || activity.type}${activity.title ? ` (${activity.title})` : ''}`;
+  const time = fmtTimeRange(activity.startTime, activity.endTime);
+  const total = activity.countTotal ?? 0;
+  const m = activity.countMale ?? 0;
+  const w = activity.countFemale ?? 0;
+  const d = activity.countDiverse ?? 0;
+  const loc = activity.location?.name;
+  
+  return (
+    <div 
+      className="fixed z-[9999] pointer-events-none animate-tooltip-fade-in"
+      style={{ 
+        left: position.x, 
+        top: position.y,
+        transform: 'translate(-50%, -100%) translateY(-8px)'
+      }}
+    >
+      <div className="bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl max-w-xs backdrop-blur-sm">
+        <div className="font-semibold mb-1 text-mint-green">{label}</div>
+        {time && <div className="text-gray-300"><span className="text-gray-400">Zeit:</span> {time}</div>}
+        <div className="text-gray-300">
+          <span className="text-gray-400">Teilnehmende:</span> {total} 
+          <span className="text-[10px] text-gray-400 ml-1">(m:{m}, w:{w}, d:{d})</span>
+        </div>
+        {loc && <div className="text-gray-300"><span className="text-gray-400">Ort:</span> {loc}</div>}
+        {/* Tooltip arrow */}
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-gray-900/95 rotate-45" />
+      </div>
+    </div>
+  );
+}
 // duplicate import removed
 
 type View = 'month' | 'week';
@@ -60,6 +103,11 @@ export default function Calendar() {
   const [picker, setPicker] = useState<{ date: string } | null>(null);
   const [detail, setDetail] = useState<Activity | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
+  
+  // Tooltip state for activity hover
+  const [tooltipActivity, setTooltipActivity] = useState<Activity | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const tooltipTimeoutRef = useRef<number | null>(null);
 
   // Determine effective orgId for opening hours
   const effectiveOrgId = user?.role === 'superadmin'
@@ -221,33 +269,65 @@ export default function Calendar() {
     for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
     return paletteClasses[h % paletteClasses.length];
   };
+  
+  // Tooltip handlers
+  const handleActivityMouseEnter = (e: React.MouseEvent, activity: Activity) => {
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltipPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top
+    });
+    setTooltipActivity(activity);
+  };
+  
+  const handleActivityMouseLeave = () => {
+    tooltipTimeoutRef.current = window.setTimeout(() => {
+      setTooltipActivity(null);
+      setTooltipPosition(null);
+    }, 100);
+  };
+  
+  // State for "+x more" tooltip
+  const [moreTooltip, setMoreTooltip] = useState<{ activities: Activity[]; position: { x: number; y: number } } | null>(null);
+  const moreTooltipTimeoutRef = useRef<number | null>(null);
+  
+  const handleMoreMouseEnter = (e: React.MouseEvent, hiddenActivities: Activity[]) => {
+    if (moreTooltipTimeoutRef.current) {
+      clearTimeout(moreTooltipTimeoutRef.current);
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMoreTooltip({
+      activities: hiddenActivities,
+      position: {
+        x: rect.left + rect.width / 2,
+        y: rect.top
+      }
+    });
+  };
+  
+  const handleMoreMouseLeave = () => {
+    moreTooltipTimeoutRef.current = window.setTimeout(() => {
+      setMoreTooltip(null);
+    }, 150);
+  };
+  
   const renderEntries = (iso: string, maxRows = 3) => {
     const items = activitiesByDate.get(iso) || [];
     if (!items.length) return null;
     const visible = items.slice(0, maxRows);
-    const hidden = items.length - visible.length;
+    const hiddenItems = items.slice(maxRows);
+    const hidden = hiddenItems.length;
     return (
-      <div className="mt-1 space-y-1">
+      <div className="space-y-0.5">
         {visible.map((a: Activity, i: number) => {
           const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
           const bgClass = pickBgClass(
             a.project?.title || a.title || typeLabel[a.type] || '',
             a.type,
           );
-          const time = fmtTimeRange(a.startTime, a.endTime);
-          const total = a.countTotal ?? 0;
-          const m = a.countMale ?? 0;
-          const w = a.countFemale ?? 0;
-          const d = a.countDiverse ?? 0;
-          const loc = a.location?.name;
-          const tooltip = [
-            label,
-            time ? `Zeit: ${time}` : null,
-            `Teilnehmende: ${total} (m:${m}, w:${w}, d:${d})`,
-            loc ? `Ort: ${loc}` : null,
-          ]
-            .filter(Boolean)
-            .join('\n');
           const hasImg = Boolean(a.project?.imageUrl);
           return (
             <button
@@ -257,8 +337,9 @@ export default function Calendar() {
                 e.stopPropagation();
                 setDetail(a);
               }}
-              className={`relative w-full h-5 rounded text-[10px] leading-5 px-1 truncate text-left overflow-hidden border border-black/10 ${bgClass}`}
-              title={tooltip}
+              onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
+              onMouseLeave={handleActivityMouseLeave}
+              className={`relative w-full h-4 md:h-5 rounded text-[9px] md:text-[10px] leading-4 md:leading-5 px-1 truncate text-left overflow-hidden border border-black/10 ${bgClass}`}
               aria-label={label}
             >
               {hasImg && a.project && (
@@ -281,7 +362,11 @@ export default function Calendar() {
           );
         })}
         {hidden > 0 && (
-          <div className="h-5 rounded bg-cambridge-blue/35 text-[10px] leading-5 px-1 text-gray-900 font-medium border border-black/10">
+          <div 
+            className="h-4 rounded bg-cambridge-blue/35 text-[9px] md:text-[10px] leading-4 px-1 text-gray-900 font-medium border border-black/10 cursor-pointer hover:bg-cambridge-blue/50 transition-colors"
+            onMouseEnter={(e) => handleMoreMouseEnter(e, hiddenItems)}
+            onMouseLeave={handleMoreMouseLeave}
+          >
             +{hidden}
           </div>
         )}
@@ -316,8 +401,9 @@ export default function Calendar() {
                 e.stopPropagation();
                 setDetail(a);
               }}
+              onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
+              onMouseLeave={handleActivityMouseLeave}
               className={`relative w-full rounded px-2 py-1.5 text-left shadow-sm hover:shadow transition-shadow overflow-hidden border border-black/10 ${bgClass}`}
-              title="Details anzeigen"
             >
               {hasImg && a.project && (
                 <img
@@ -412,30 +498,32 @@ export default function Calendar() {
               const iso = fmtLocalISO(day);
               const isToday = iso === todayISO;
               const isOtherMonth = day.getMonth() !== cursor.getMonth();
+              const hasHoliday = !!holidaysByDate.get(iso)?.length;
+              const hasSchoolHoliday = showSchool && schoolLabelFor(iso);
               return (
                 <button
                   key={idx}
                   className={`relative h-24 md:h-32 border p-1 text-left focus:outline-none focus:ring-2 focus:ring-viridian transition-colors ${
                     isOtherMonth
-                      ? 'bg-azure-web/60 text-gray-500'
+                      ? 'bg-gray-100/80 text-gray-400 border-gray-200'
                       : isToday
-                        ? 'bg-mint-green/40'
-                        : 'bg-white'
-                  } ${isToday ? 'ring-1 ring-mint-green/60 border-mint-green/60' : ''}`}
+                        ? 'bg-mint-green/40 ring-2 ring-mint-green border-mint-green'
+                        : 'bg-white hover:bg-gray-50/50'
+                  }`}
                   onClick={() => {
                     if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
                     else setPicker({ date: iso });
                   }}
                   title={`Aktivität am ${day.toLocaleDateString('de-DE')} hinzufügen`}
                 >
-                  <div className="absolute top-1 left-1 text-xs md:text-sm font-medium">
-                    {day.getDate()}
-                  </div>
-                  {/* Holiday badge */}
-                  {!!holidaysByDate.get(iso)?.length && (
-                    <div className="absolute top-1 right-1 max-w-[70%]">
+                  {/* Top row: Day number + Holiday badge inline */}
+                  <div className="flex items-start gap-1 mb-0.5">
+                    <span className={`text-xs md:text-sm font-medium shrink-0 ${isOtherMonth ? 'text-gray-400' : ''}`}>
+                      {day.getDate()}
+                    </span>
+                    {hasHoliday && (
                       <div
-                        className="px-1 py-[1px] rounded text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 truncate"
+                        className="px-1 py-[1px] rounded text-[9px] md:text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 truncate max-w-[calc(100%-1.5rem)]"
                         title={holidaysByDate
                           .get(iso)!
                           .map((h) => h.name)
@@ -443,18 +531,18 @@ export default function Calendar() {
                       >
                         {holidaysByDate.get(iso)![0].name}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {/* School holiday band */}
-                  {showSchool && schoolLabelFor(iso) && (
+                  {hasSchoolHoliday && (
                     <div
-                      className="absolute left-0 right-0 top-6 h-4 bg-amber-100 border-y border-amber-200 text-[10px] text-amber-800 overflow-hidden px-1"
+                      className="w-full h-3.5 rounded-sm bg-amber-100 border border-amber-200 text-[9px] md:text-[10px] text-amber-800 overflow-hidden px-1 mb-0.5"
                       title={schoolLabelFor(iso) || undefined}
                     >
-                      <span className="truncate inline-block align-top">{schoolLabelFor(iso)}</span>
+                      <span className="truncate inline-block align-top leading-[14px]">{schoolLabelFor(iso)}</span>
                     </div>
                   )}
-                  {renderEntries(iso, 3)}
+                  {renderEntries(iso, hasSchoolHoliday ? 2 : 3)}
                 </button>
               );
             })}
@@ -557,6 +645,46 @@ export default function Calendar() {
           project={edit.project ?? undefined}
           activity={edit}
         />
+      )}
+      
+      {/* Custom tooltip for activity hover */}
+      <ActivityTooltip
+        activity={tooltipActivity}
+        position={tooltipPosition}
+        typeLabel={typeLabel}
+        fmtTimeRange={fmtTimeRange}
+      />
+      
+      {/* Tooltip for "+x more" badge */}
+      {moreTooltip && (
+        <div 
+          className="fixed z-[9999] pointer-events-none animate-tooltip-fade-in"
+          style={{ 
+            left: moreTooltip.position.x, 
+            top: moreTooltip.position.y,
+            transform: 'translate(-50%, -100%) translateY(-8px)'
+          }}
+        >
+          <div className="bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl max-w-xs backdrop-blur-sm">
+            <div className="font-semibold mb-1.5 text-mint-green border-b border-gray-700 pb-1">
+              +{moreTooltip.activities.length} weitere Aktivitäten
+            </div>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {moreTooltip.activities.map((a, i) => {
+                const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
+                const time = fmtTimeRange(a.startTime, a.endTime);
+                return (
+                  <div key={i} className="text-gray-200">
+                    <span className="font-medium">{label}</span>
+                    {time && <span className="text-gray-400 ml-1 text-[10px]">{time}</span>}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Tooltip arrow */}
+            <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-gray-900/95 rotate-45" />
+          </div>
+        </div>
       )}
     </div>
   );

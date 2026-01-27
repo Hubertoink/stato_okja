@@ -142,7 +142,9 @@ export default function Statistics() {
   const [to, setTo] = useState<string>(`${currentYear}-12-31`);
   const [projectId, setProjectId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
-  // We no longer show toggle buttons; default to percentage labels in the chart
+  
+  // Toggle für absolute vs. relative (Durchschnitt) Zahlen in KPIs
+  const [showAverage, setShowAverage] = useState<boolean>(false);
 
   // Zeitverlauf Aggregation: 'day' | 'week' | 'month'
   const [timeAggregation, setTimeAggregation] = useState<'day' | 'week' | 'month'>('day');
@@ -246,10 +248,6 @@ export default function Statistics() {
   const aggregatedTimeseries = useMemo(() => {
     if (!timeseries || timeseries.length === 0) return [];
     
-    if (timeAggregation === 'day') {
-      return timeseries;
-    }
-    
     const getWeekKey = (dateStr: string) => {
       const d = new Date(dateStr);
       // ISO week number
@@ -262,20 +260,50 @@ export default function Statistics() {
     const getMonthKey = (dateStr: string) => {
       return dateStr.slice(0, 7); // YYYY-MM
     };
+
+    // Count activities per date to calculate averages
+    const activityCountByDate = new Map<string, number>();
+    for (const a of activities as Array<{ date?: string }>) {
+      const dateKey = String(a.date || '').slice(0, 10);
+      if (dateKey) {
+        activityCountByDate.set(dateKey, (activityCountByDate.get(dateKey) || 0) + 1);
+      }
+    }
     
-    const grouped = new Map<string, number>();
+    if (timeAggregation === 'day') {
+      if (showAverage) {
+        return timeseries.map(item => {
+          const count = activityCountByDate.get(item.date) || 1;
+          return {
+            date: item.date,
+            totalParticipants: Math.round((item.totalParticipants / count) * 10) / 10
+          };
+        });
+      }
+      return timeseries;
+    }
+    
+    const grouped = new Map<string, { total: number; activityCount: number }>();
     
     for (const item of timeseries) {
       const key = timeAggregation === 'week' 
         ? getWeekKey(item.date) 
         : getMonthKey(item.date);
-      grouped.set(key, (grouped.get(key) || 0) + item.totalParticipants);
+      const current = grouped.get(key) || { total: 0, activityCount: 0 };
+      current.total += item.totalParticipants;
+      current.activityCount += activityCountByDate.get(item.date) || 1;
+      grouped.set(key, current);
     }
     
     return Array.from(grouped.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, totalParticipants]) => ({ date, totalParticipants }));
-  }, [timeseries, timeAggregation]);
+      .map(([date, data]) => ({
+        date,
+        totalParticipants: showAverage 
+          ? Math.round((data.total / data.activityCount) * 10) / 10
+          : data.total
+      }));
+  }, [timeseries, timeAggregation, showAverage, activities]);
 
   // Pagination für Aktivitäten
   const paginatedActivities = useMemo(() => {
@@ -738,7 +766,29 @@ export default function Statistics() {
       </div>
 
       <div ref={reportRef} className="">
-        {/* KPI Summary */}
+        {/* KPI Summary with Toggle */}
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                !showAverage ? 'bg-white shadow text-viridian font-medium' : 'text-gray-600 hover:text-gray-800'
+              }`}
+              onClick={() => setShowAverage(false)}
+            >
+              Absolut
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                showAverage ? 'bg-white shadow text-viridian font-medium' : 'text-gray-600 hover:text-gray-800'
+              }`}
+              onClick={() => setShowAverage(true)}
+            >
+              Ø / Aktivität
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
@@ -748,21 +798,37 @@ export default function Statistics() {
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-cambridge-blue">
-              {fmtNumber(summary?.totalParticipants)}
+              {showAverage
+                ? summary?.averageParticipants?.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                : fmtNumber(summary?.totalParticipants)}
             </p>
-            <p className="text-sm text-gray-600 mt-2">Teilnehmende</p>
+            <p className="text-sm text-gray-600 mt-2">
+              {showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
-              {summary?.averageParticipants?.toLocaleString('de-DE')}
+              {showAverage
+                ? (summary?.totalActivities && summary?.totalActivities > 0
+                    ? ((summary?.totalDurationMinutes ?? 0) / summary.totalActivities / 60).toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                    : '0')
+                : summary?.totalHours?.toLocaleString('de-DE')}
             </p>
-            <p className="text-sm text-gray-600 mt-2">Ø pro Aktivität</p>
+            <p className="text-sm text-gray-600 mt-2">
+              {showAverage ? 'Ø Stunden' : 'Gesamt-Stunden'}
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-cambridge-blue">
-              {summary?.totalHours?.toLocaleString('de-DE')}
+              {showAverage
+                ? (summary?.totalActivities && summary?.totalActivities > 0
+                    ? (((summary?.totalMale ?? 0) + (summary?.totalFemale ?? 0) + (summary?.totalDiverse ?? 0)) / summary.totalActivities).toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                    : '0')
+                : fmtNumber((summary?.totalMale ?? 0) + (summary?.totalFemale ?? 0) + (summary?.totalDiverse ?? 0))}
             </p>
-            <p className="text-sm text-gray-600 mt-2">Gesamt-Stunden</p>
+            <p className="text-sm text-gray-600 mt-2">
+              {showAverage ? 'Ø pro Aktivität' : 'Gesamt-Personen'}
+            </p>
           </div>
         </div>
 
@@ -846,7 +912,9 @@ export default function Statistics() {
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
           <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-viridian">Zeitverlauf Teilnehmende</h3>
+              <h3 className="text-lg font-semibold text-viridian">
+                {showAverage ? 'Zeitverlauf Ø Teilnehmende' : 'Zeitverlauf Teilnehmende'}
+              </h3>
               <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setTimeAggregation('day')}
@@ -909,7 +977,10 @@ export default function Statistics() {
                   />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                   <Tooltip
-                    formatter={(value: number) => [value.toLocaleString('de-DE'), 'Teilnehmende']}
+                    formatter={(value: number) => [
+                      value.toLocaleString('de-DE', { maximumFractionDigits: 1 }),
+                      showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'
+                    ]}
                     labelFormatter={(l) => {
                       const s = String(l);
                       if (timeAggregation === 'week') {
@@ -937,7 +1008,7 @@ export default function Statistics() {
                   <Line
                     type="monotone"
                     dataKey="totalParticipants"
-                    name="Teilnehmende"
+                    name={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
                     stroke="#10b981"
                     strokeWidth={2}
                     dot={timeAggregation !== 'day'}
@@ -951,7 +1022,7 @@ export default function Statistics() {
             <h3 className="text-lg font-semibold mb-4 text-viridian">Alterskohorten</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byCohort || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <BarChart data={byCohort || []} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="name"
@@ -977,7 +1048,7 @@ export default function Statistics() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={byCategory || []}
-                  margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                  margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
@@ -1008,7 +1079,7 @@ export default function Statistics() {
             <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tags</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topTags} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <BarChart data={topTags} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="name"
@@ -1040,7 +1111,7 @@ export default function Statistics() {
                 <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tage</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topDays} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <BarChart data={topDays} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
                         dataKey="name"
@@ -1067,7 +1138,7 @@ export default function Statistics() {
                 <h3 className="text-lg font-semibold mb-4 text-viridian">Top Projekte</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topProjects} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <BarChart data={topProjects} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
                         dataKey="name"

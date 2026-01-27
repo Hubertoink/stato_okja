@@ -447,11 +447,11 @@ export default function Activities() {
 
       {/* Activity List */}
       {/* Desktop Table */}
-      <div className="bg-white rounded-lg shadow hidden md:block">
-        <table className="w-full">
+      <div className="bg-white rounded-lg shadow hidden md:block overflow-x-auto">
+        <table className="w-full min-w-[700px]">
           <thead className="bg-azure-web">
             <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
                 <button
                   type="button"
                   className="inline-flex items-center gap-1 hover:text-viridian"
@@ -469,24 +469,24 @@ export default function Activities() {
                   )}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Typ</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700">Typ</th>
+              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
                 Titel / Projekt
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
                 Teilnehmende
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Dauer</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 hidden lg:table-cell">Dauer</th>
+              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 hidden xl:table-cell">
                 Kategorien, Tags & Notizen
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Aktion</th>
+              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">Aktion</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {activities.map((a) => (
               <tr key={a.id} className="bg-white hover:bg-azure-web">
-                <td className="px-6 py-4 text-sm">
+                <td className="px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
                   <span>
                     {(() => {
                       const s = (a.date || '').slice(0, 10);
@@ -495,7 +495,7 @@ export default function Activities() {
                     })()}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm">
+                <td className="px-3 lg:px-6 py-4 text-sm">
                   {(() => {
                     const label =
                       (
@@ -519,20 +519,23 @@ export default function Activities() {
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium tracking-tight border border-black/10 ${cls}`}
                       >
-                        {label}
+                        <span className="hidden lg:inline">{label}</span>
+                        <span className="lg:hidden" title={label}>{label.split(' ')[0]}</span>
                       </span>
                     );
                   })()}
                 </td>
-                <td className="px-6 py-4 text-sm">
-                  <div className="font-medium text-gray-900">{a.title || '-'}</div>
-                  <div className="text-xs text-gray-600">{a.project?.title || '-'}</div>
+                <td className="px-3 lg:px-6 py-4 text-sm max-w-[150px] lg:max-w-none">
+                  <div className="font-medium text-gray-900 truncate">{a.title || '-'}</div>
+                  <div className="text-xs text-gray-600 truncate">{a.project?.title || '-'}</div>
                 </td>
-                <td className="px-6 py-4 text-sm">
-                  {a.countTotal ?? 0} (m:{a.countMale ?? 0}, w:{a.countFemale ?? 0}, d:
-                  {a.countDiverse ?? 0})
+                <td className="px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
+                  <span className="font-medium">{a.countTotal ?? 0}</span>
+                  <span className="text-gray-500 text-xs ml-1 hidden lg:inline">
+                    (m:{a.countMale ?? 0}, w:{a.countFemale ?? 0}, d:{a.countDiverse ?? 0})
+                  </span>
                 </td>
-                <td className="px-6 py-4 text-sm">
+                <td className="px-3 lg:px-6 py-4 text-sm hidden lg:table-cell">
                   {(() => {
                     if (a.durationMinutes) return `${a.durationMinutes} min`;
                     const parse = (t?: string | null) => {
@@ -547,7 +550,7 @@ export default function Activities() {
                     return '-';
                   })()}
                 </td>
-                <td className="px-6 py-4 text-sm">
+                <td className="px-3 lg:px-6 py-4 text-sm hidden xl:table-cell">
                   <div className="flex flex-wrap gap-2 mb-2">
                     {(a.categories || []).map((c) => (
                       <span
@@ -587,7 +590,7 @@ export default function Activities() {
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm relative overflow-hidden">
+                <td className="px-3 lg:px-6 py-4 text-sm relative overflow-hidden">
                   {a.project?.imageUrl ? (
                     <>
                       <img
@@ -627,7 +630,7 @@ export default function Activities() {
             ))}
             {activities.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-6 text-center text-gray-500 text-sm">
+                <td colSpan={7} className="px-3 lg:px-6 py-6 text-center text-gray-500 text-sm">
                   Keine Aktivitäten im Zeitraum.
                 </td>
               </tr>

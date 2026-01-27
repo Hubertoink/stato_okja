@@ -4,7 +4,6 @@ import { useToast } from '@/components/Toast';
 import { createOrgApi, inviteUserApi, listOrgs, acceptInviteApi, type OrgDto, listUsersByOrg, moveOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { fetchUsers } from '@/lib/users';
 import { Link as LinkIcon, Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
 
@@ -401,9 +400,10 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
     let mounted = true;
     (async () => {
       try {
-        const list = await fetchUsers();
-        const admins = list.filter(u => u.orgId === org.id && u.role === 'org_admin').map(u => ({ name: u.name || u.email }));
-        const users = list.filter(u => u.orgId === org.id && u.role === 'user').map(u => ({ name: u.name || u.email }));
+        // Use listUsersByOrg to fetch users for this specific org, ignoring scope
+        const list = await listUsersByOrg(org.id, false);
+        const admins = list.filter((u: { role: string; name?: string; email?: string }) => u.role === 'org_admin').map((u: { name?: string; email?: string }) => ({ name: u.name || u.email || '' }));
+        const users = list.filter((u: { role: string; name?: string; email?: string }) => u.role === 'user').map((u: { name?: string; email?: string }) => ({ name: u.name || u.email || '' }));
         if (mounted) setOrgUsers({ admins, users });
       } catch { /* ignore */ }
     })();

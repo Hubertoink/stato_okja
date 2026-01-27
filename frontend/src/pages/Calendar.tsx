@@ -455,13 +455,39 @@ export default function Calendar() {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl md:text-3xl font-bold text-viridian">Kalender</h2>
-          <div className="text-gray-600 text-base md:text-lg">{label}</div>
+    <div className="pb-20 md:pb-0">
+      {/* Mobile: stacked layout; Desktop: row layout */}
+      <div className="flex flex-col gap-2 mb-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center justify-between md:block">
+          <div>
+            <h2 className="text-xl md:text-3xl font-bold text-viridian">Kalender</h2>
+            <div className="text-gray-600 text-sm md:text-lg">{label}</div>
+          </div>
+          {/* Navigation controls on mobile - inline with title */}
+          <div className="flex gap-1.5 md:hidden">
+            <button className="bg-viridian text-white px-2.5 py-1.5 rounded text-sm" onClick={gotoToday}>
+              Heute
+            </button>
+            <button
+              className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm"
+              onClick={() =>
+                setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), -7) : addMonths(c, -1)))
+              }
+            >
+              «
+            </button>
+            <button
+              className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm"
+              onClick={() =>
+                setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), 7) : addMonths(c, 1)))
+              }
+            >
+              »
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
+        {/* Desktop controls */}
+        <div className="hidden md:flex gap-2">
           <button className="bg-viridian text-white px-3 py-2 rounded" onClick={gotoToday}>
             Heute
           </button>

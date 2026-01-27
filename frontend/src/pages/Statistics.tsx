@@ -24,6 +24,7 @@ import { useProjects } from '@/lib/projects';
 import { useOrgScopeKey } from '@/lib/orgScope';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { RefreshCw, X as XIcon } from 'lucide-react';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -637,10 +638,30 @@ export default function Statistics() {
                   {y}
                 </button>
               ))}
+              {selectedYear && (
+                <button
+                  type="button"
+                  title="Filter zurücksetzen (alle Jahre)"
+                  aria-label="Filter zurücksetzen"
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  onClick={() => selectYear('')}
+                >
+                  <XIcon className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
           <button
-            className="bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
+            className="bg-cambridge-blue text-white px-6 py-2 rounded-lg hover:bg-viridian transition-colors"
+            onClick={exportPdf}
+          >
+            Export (PDF)
+          </button>
+          <button
+            type="button"
+            title="Aktualisieren"
+            aria-label="Aktualisieren"
+            className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
             onClick={() => {
               // Force refetch of all stats queries even if params didn't change
               qc.invalidateQueries({
@@ -652,23 +673,7 @@ export default function Statistics() {
               });
             }}
           >
-            Aktualisieren
-          </button>
-          {selectedYear && (
-            <button
-              title="Filter zurücksetzen (alle Jahre)"
-              aria-label="Filter zurücksetzen"
-              className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
-              onClick={() => selectYear('')}
-            >
-              ×
-            </button>
-          )}
-          <button
-            className="bg-cambridge-blue text-white px-6 py-2 rounded-lg hover:bg-viridian transition-colors"
-            onClick={exportPdf}
-          >
-            Export (PDF)
+            <RefreshCw className="h-4 w-4" />
           </button>
         </div>
 

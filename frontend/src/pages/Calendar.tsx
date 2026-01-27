@@ -99,6 +99,13 @@ export default function Calendar() {
   const { scope } = useOrgScope();
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState<Date>(new Date());
+  const [showAdjacentMonthActivities, setShowAdjacentMonthActivities] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('calendar:show-adjacent-activities') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
   const [picker, setPicker] = useState<{ date: string } | null>(null);
   const [detail, setDetail] = useState<Activity | null>(null);
@@ -108,6 +115,14 @@ export default function Calendar() {
   const [tooltipActivity, setTooltipActivity] = useState<Activity | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const tooltipTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('calendar:show-adjacent-activities', showAdjacentMonthActivities ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [showAdjacentMonthActivities]);
 
   // Determine effective orgId for opening hours
   const effectiveOrgId = user?.role === 'superadmin'
@@ -475,6 +490,17 @@ export default function Calendar() {
             <option value="month">Monat</option>
             <option value="week">Woche</option>
           </select>
+          {view === 'month' && (
+            <label className="flex items-center gap-2 bg-white border text-gray-700 px-3 py-2 rounded select-none" title="Aktivitäten aus dem Vor- und Folgemonat in der Monatsansicht anzeigen">
+              <input
+                type="checkbox"
+                className="accent-viridian"
+                checked={showAdjacentMonthActivities}
+                onChange={(e) => setShowAdjacentMonthActivities(e.target.checked)}
+              />
+              <span className="text-sm whitespace-nowrap">Vormonat/Folgemonat</span>
+            </label>
+          )}
         </div>
       </div>
 
@@ -498,6 +524,7 @@ export default function Calendar() {
               const iso = fmtLocalISO(day);
               const isToday = iso === todayISO;
               const isOtherMonth = day.getMonth() !== cursor.getMonth();
+              const showEntriesForDay = !isOtherMonth || showAdjacentMonthActivities;
               const hasHoliday = !!holidaysByDate.get(iso)?.length;
               const hasSchoolHoliday = showSchool && schoolLabelFor(iso);
               return (
@@ -542,7 +569,7 @@ export default function Calendar() {
                       <span className="truncate inline-block align-top leading-[14px]">{schoolLabelFor(iso)}</span>
                     </div>
                   )}
-                  {renderEntries(iso, hasSchoolHoliday ? 2 : 3)}
+                  {showEntriesForDay ? renderEntries(iso, hasSchoolHoliday ? 2 : 3) : null}
                 </button>
               );
             })}

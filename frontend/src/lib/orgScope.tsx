@@ -159,6 +159,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
               k0 === 'activities' ||
               k0 === 'projects' ||
               k0 === 'locations' ||
+              k0 === 'users' ||
               (typeof k0 === 'string' && k0.startsWith('stats:'))
             );
           },

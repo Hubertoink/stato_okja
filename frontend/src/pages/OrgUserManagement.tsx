@@ -51,7 +51,9 @@ export default function OrgUserManagement() {
     }
   }
 
-  useEffect(() => { reload(); }, []);
+  // When switching org scope, this screen stays mounted.
+  // Ensure we refetch immediately so users update without needing a manual refresh.
+  useEffect(() => { void reload(); }, [scope]);
   
   useEffect(() => {
     (async ()=>{
@@ -381,6 +383,8 @@ function UserRow({
 }) {
   const isCurrentUser = userData.id === currentUser.id;
   const isSuperadmin = userData.role === 'superadmin';
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [pendingRole, setPendingRole] = useState<'org_admin' | 'user'>(userData.role === 'org_admin' ? 'org_admin' : 'user');
 
   return (
     <li className="px-3 py-3 hover:bg-gray-50 transition-colors">
@@ -422,26 +426,19 @@ function UserRow({
             {isSuperadmin ? 'Superadmin' : userData.role === 'org_admin' ? 'Admin' : 'Benutzer'}
           </span>
 
-          {/* Role change dropdown (not for superadmin or self) */}
+          {/* Role change (requires explicit confirmation; not for superadmin or self) */}
           {!isSuperadmin && !isCurrentUser && (
-            <select
-              className="border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 cursor-pointer"
-              value={userData.role}
-              onChange={async (e) => {
-                try {
-                  const newRole = e.target.value as 'org_admin' | 'user';
-                  await updateUserApi(userData.id, { role: newRole });
-                  await onReload();
-                  showToast('Rolle geändert', { type: 'success' });
-                } catch (err: unknown) {
-                  const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Rolle ändern fehlgeschlagen';
-                  showToast(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg), { type: 'error' });
-                }
+            <button
+              className="inline-flex items-center gap-1.5 border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 transition-colors"
+              title="Rolle ändern"
+              onClick={() => {
+                setPendingRole(userData.role === 'org_admin' ? 'org_admin' : 'user');
+                setRoleModalOpen(true);
               }}
             >
-              <option value="user">→ Benutzer</option>
-              <option value="org_admin">→ Admin</option>
-            </select>
+              <Shield className="w-3.5 h-3.5 text-gray-600" />
+              Rolle ändern
+            </button>
           )}
 
           {/* Org assign button */}
@@ -485,6 +482,61 @@ function UserRow({
           )}
         </div>
       </div>
+
+      {/* Change role modal */}
+      <Modal
+        open={roleModalOpen}
+        onClose={() => setRoleModalOpen(false)}
+        title="Rolle ändern"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">
+            Rolle von <span className="font-medium">{userData.name || userData.email}</span> ändern.
+          </p>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Neue Rolle</label>
+            <select
+              className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
+              value={pendingRole}
+              onChange={(e) => setPendingRole(e.target.value as 'org_admin' | 'user')}
+            >
+              <option value="user">Benutzer</option>
+              <option value="org_admin">Administrator</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-2">
+              Änderungen an Rollen können Berechtigungen stark beeinflussen.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t">
+            <button
+              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+              onClick={() => setRoleModalOpen(false)}
+            >
+              Abbrechen
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={pendingRole === (userData.role === 'org_admin' ? 'org_admin' : 'user')}
+              onClick={async () => {
+                try {
+                  await updateUserApi(userData.id, { role: pendingRole });
+                  setRoleModalOpen(false);
+                  await onReload();
+                  showToast('Rolle geändert', { type: 'success' });
+                } catch (err: unknown) {
+                  const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Rolle ändern fehlgeschlagen';
+                  showToast(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg), { type: 'error' });
+                }
+              }}
+            >
+              Rolle ändern
+            </button>
+          </div>
+        </div>
+      </Modal>
     </li>
   );
 }

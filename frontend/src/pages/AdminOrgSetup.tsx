@@ -424,9 +424,73 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
   return (
     <li 
       className="border rounded-lg bg-white hover:bg-gray-50 transition-colors" 
-      style={{ marginLeft: depth * 20 }}
+      style={{ marginLeft: depth * 12 }}
     >
-      <div className="flex items-center gap-2 px-3 py-2">
+      {/* Mobile: Stacked layout */}
+      <div className="flex flex-col gap-1.5 px-3 py-2 sm:hidden">
+        {/* Row 1: Toggle + Org Name (full width) */}
+        <div className="flex items-center gap-2">
+          <button 
+            className={`w-5 h-5 flex-shrink-0 flex items-center justify-center rounded hover:bg-gray-200 transition-colors ${!hasChildren ? 'invisible' : ''}`}
+            onClick={onToggleExpand}
+          >
+            {hasChildren && (expanded ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />)}
+          </button>
+          <button 
+            className="flex-1 text-left font-medium text-gray-800 hover:text-viridian transition-colors"
+            onClick={async()=>{ setOpen(true); try { setMembers(await listUsersByOrg(org.id, true)); } catch { /* ignore */ } }}
+            title="Benutzer anzeigen"
+          >
+            {org.name}
+          </button>
+        </div>
+        {/* Row 2: Counts + Actions */}
+        <div className="flex items-center gap-2 pl-7">
+          <Tooltip label="Administratoren" names={orgUsers?.admins.map(a => a.name)}>
+            <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-1 text-xs text-gray-600 cursor-default">
+              <Shield className="w-3.5 h-3.5" /> {orgUsers?.admins.length ?? '–'}
+            </span>
+          </Tooltip>
+          <Tooltip label="Benutzer" names={orgUsers?.users.map(u => u.name)}>
+            <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-1 text-xs text-gray-600 cursor-default">
+              <UserIcon className="w-3.5 h-3.5" /> {orgUsers?.users.length ?? '–'}
+            </span>
+          </Tooltip>
+          <select
+            className="border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 cursor-pointer flex-1 min-w-0"
+            title="Verschieben unter…"
+            value=""
+            onChange={async (e)=>{
+              try {
+                const newParent = e.target.value || 'root';
+                await moveOrgApi(org.id, newParent === 'root' ? null : newParent);
+                showToast('Organisation verschoben.', { type: 'success' });
+                onMoved();
+              } catch {
+                showToast('Verschieben fehlgeschlagen.', { type: 'error' });
+              }
+            }}
+          >
+            <option value="">Versch…</option>
+            <option value="root">(Oben)</option>
+            {validParents.map(({ o, depth: d }) => (
+              <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
+            ))}
+          </select>
+          {user?.role === 'superadmin' && (
+            <button
+              className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 transition-colors text-xs flex-shrink-0"
+              title="Organisation löschen"
+              onClick={()=> setDeleteModalOpen(true)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop: Single row layout */}
+      <div className="hidden sm:flex items-center gap-2 px-3 py-2">
         {/* Expand/Collapse Toggle */}
         <button 
           className={`w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 transition-colors ${!hasChildren ? 'invisible' : ''}`}

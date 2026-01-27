@@ -8,6 +8,21 @@ import { fetchUsers } from '@/lib/users';
 import { Link as LinkIcon, Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
 
+/** Instant hover tooltip */
+function Tooltip({ label, children }: { label: string; children: React.ReactNode }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-flex" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      {children}
+      {show && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 rounded bg-gray-800 text-white text-xs whitespace-nowrap shadow-lg z-50 pointer-events-none">
+          {label}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export default function AdminOrgSetup() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -423,12 +438,16 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
         
         {/* User Counts */}
         <div className="flex items-center gap-2 text-xs text-gray-600">
-          <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-1" title="Admins">
-            <Shield className="w-3.5 h-3.5" /> {counts?.admins ?? '–'}
-          </span>
-          <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-1" title="Benutzer">
-            <UserIcon className="w-3.5 h-3.5" /> {counts?.users ?? '–'}
-          </span>
+          <Tooltip label="Administratoren">
+            <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-1 cursor-default">
+              <Shield className="w-3.5 h-3.5" /> {counts?.admins ?? '–'}
+            </span>
+          </Tooltip>
+          <Tooltip label="Benutzer">
+            <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-1 cursor-default">
+              <UserIcon className="w-3.5 h-3.5" /> {counts?.users ?? '–'}
+            </span>
+          </Tooltip>
         </div>
         
         {/* Move Dropdown */}

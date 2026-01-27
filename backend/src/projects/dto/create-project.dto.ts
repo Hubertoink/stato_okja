@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsDateString, IsEnum, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, Length, MaxLength, Min } from 'class-validator';
 import { ActivityType } from '../../common/enums';
 
 export class CreateProjectDto {
@@ -26,6 +26,11 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  imageSize?: number | null;
 
   @IsOptional()
   @IsString()

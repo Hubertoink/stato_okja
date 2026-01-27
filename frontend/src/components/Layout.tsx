@@ -137,11 +137,12 @@ export default function Layout() {
     };
 
     if (typeof scope === 'undefined') {
-      setActiveOrgName('Alle Organisationen');
+      // Should be rare (legacy). Treat as safe superadmin area.
+      setActiveOrgName('Superadmin Bereich');
       return;
     }
     if (scope === null) {
-      setActiveOrgName('Ohne Organisation');
+      setActiveOrgName('Superadmin Bereich');
       return;
     }
     // scope is an orgId string
@@ -197,8 +198,8 @@ export default function Layout() {
       } catch {
         /* ignore */
       }
-      // If current scope is null but we removed the null option from UI, default selection to undefined (superadmin) or keep user's scope
-      setPendingScope(scope === null ? undefined : scope);
+      // Default selection to current scope; for legacy undefined use null (safe)
+      setPendingScope((typeof scope === 'undefined') ? null : scope);
     })();
   }, [scopeModalOpen]);
   // Load org list when opening quick-create modal as well
@@ -351,11 +352,27 @@ export default function Layout() {
                       </button>
                     </li>
                   )}
+                  {user?.role === 'superadmin' && (
+                    <li>
+                      <button
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        onClick={() => {
+                          navigate('/admin/audit');
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Audit
+                      </button>
+                    </li>
+                  )}
                   {(user?.role === 'org_admin' || user?.role === 'superadmin') && (
                     <li>
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                        onClick={() => navigate('/admin/users')}
+                        onClick={() => {
+                          navigate('/admin/users');
+                          setMenuOpen(false);
+                        }}
                       >
                         Benutzer
                       </button>
@@ -691,10 +708,10 @@ export default function Layout() {
                 <input
                   type="radio"
                   name="orgscope"
-                  checked={typeof pendingScope === 'undefined'}
-                  onChange={() => setPendingScope(undefined)}
+                  checked={pendingScope === null}
+                  onChange={() => setPendingScope(null)}
                 />
-                <span>Alle Organisationen (global)</span>
+                <span>Superadmin Bereich (ohne Orga-Daten)</span>
               </label>
             </div>
           )}

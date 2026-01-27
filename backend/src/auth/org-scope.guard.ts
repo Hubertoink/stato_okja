@@ -7,7 +7,7 @@ import { OrgsService } from '../orgs/orgs.service';
  *
  * Semantics:
  * - Superadmin:
- *   - Header absent -> effectiveOrgId = undefined (no org filter)
+ *   - Header absent -> effectiveOrgId = null (no-org)  (global scope intentionally disabled)
  *   - Header 'null' or empty -> effectiveOrgId = null
  *   - Header '<uuid>' -> effectiveOrgId = that uuid (no subtree validation here)
  * - org_admin / user:
@@ -45,8 +45,9 @@ export class OrgScopeGuard implements CanActivate {
     const requested = parseHeader(value);
 
     if (user.role === 'superadmin') {
-      // Superadmin can scope arbitrarily; undefined means global
-      request.effectiveOrgId = requested;
+      // Superadmin can scope arbitrarily; but global (undefined) is intentionally disabled.
+      // If no header is set, default to null (no-org) to avoid cross-tenant data aggregation.
+      request.effectiveOrgId = (typeof requested === 'undefined') ? null : requested;
       return true;
     }
 

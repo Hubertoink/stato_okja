@@ -20,9 +20,9 @@ export class StatsController {
    * Resolve org filtering based on effectiveOrgId and optional orgIdQuery param.
    * Returns { orgId, orgIds } for use in service calls.
    * 
-   * Logic:
-   * - Superadmin with effectiveOrgId === undefined (global): no filter (see all)
-   * - Superadmin with effectiveOrgId === null: filter by null org only
+  * Logic:
+  * - Superadmin with effectiveOrgId === undefined: treated as null (global intentionally disabled)
+  * - Superadmin with effectiveOrgId === null: filter by null org only
    * - Superadmin with effectiveOrgId === string: filter by subtree
    * - Non-superadmin: always filter by effectiveOrgId or user.orgId
    */
@@ -42,12 +42,8 @@ export class StatsController {
         } else {
           orgId = null;
         }
-      } else if (typeof req.effectiveOrgId === 'undefined') {
-        // Global - no org filter (see all organizations)
-        orgId = undefined;
-        orgIds = undefined;
-      } else if (req.effectiveOrgId === null) {
-        // Root/no-org selected - filter by null org
+      } else if (typeof req.effectiveOrgId === 'undefined' || req.effectiveOrgId === null) {
+        // Root/no-org selected - filter by null org (global disabled)
         orgId = null;
       } else {
         // Specific org selected - filter by subtree

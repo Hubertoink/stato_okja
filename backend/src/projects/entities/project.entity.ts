@@ -32,6 +32,10 @@ export class Project {
   @Column({ type: 'varchar', nullable: true })
   imageUrl?: string | null;
 
+  // Größe des Projektbildes in Bytes (für Speicherstatistik)
+  @Column({ type: 'bigint', nullable: true })
+  imageSize?: number | null;
+
   // Anzeige-Farbe für Kalender/Badges (HEX)
   @Column({ type: 'varchar', length: 16, nullable: true })
   color?: string | null;

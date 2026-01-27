@@ -220,7 +220,8 @@ function ProjectForm({
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     const url = res.data?.url as string;
-    if (url) setForm((f) => ({ ...f, imageUrl: url }));
+    const size = res.data?.size as number | undefined;
+    if (url) setForm((f) => ({ ...f, imageUrl: url, imageSize: size ?? null }));
   }, []);
 
   const findCategoryByName = useCallback(
@@ -640,6 +641,14 @@ function ProjectForm({
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">Bild</label>
+            {/* Hidden file input - always rendered for replace functionality */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onFileChange}
+            />
             {form.imageUrl ? (
               <div className="space-y-2">
                 <img
@@ -650,7 +659,7 @@ function ProjectForm({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => update('imageUrl', '')}
+                    onClick={() => setForm((f) => ({ ...f, imageUrl: '', imageSize: null }))}
                     className="px-3 py-1 rounded bg-gray-200 text-gray-700"
                   >
                     Entfernen
@@ -677,13 +686,6 @@ function ProjectForm({
                   >
                     Datei wählen…
                   </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={onFileChange}
-                  />
                 </div>
                 <div className="text-xs text-gray-500 mt-2">
                   Unterstützt JPG, PNG, GIF. Max ~10MB (Browser-abhängig).
@@ -900,6 +902,7 @@ function ProjectForm({
                     'categoryId',
                     'targetGroup',
                     'imageUrl',
+                    'imageSize',
                     'color',
                     'dateFrom',
                     'dateTo',
@@ -916,6 +919,7 @@ function ProjectForm({
                     'categoryId',
                     'targetGroup',
                     'imageUrl',
+                    'imageSize',
                     'color',
                     'dateFrom',
                     'dateTo',

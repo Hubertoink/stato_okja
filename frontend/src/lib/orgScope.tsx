@@ -5,7 +5,7 @@ import { useAuth } from './auth';
 
 type OrgScopeValue = string | null | undefined;
 interface OrgScopeState {
-  scope: OrgScopeValue; // undefined=global (superadmin only), null=root, string=orgId
+  scope: OrgScopeValue; // undefined=legacy/none (treated as null for superadmin), null=no-org, string=orgId
   switching: boolean;
   setScope: (v: OrgScopeValue) => void;
   clear: () => void;
@@ -112,8 +112,11 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     } catch { parsed = undefined; }
 
     if (user.role === 'superadmin') {
-      // Keep superadmin's stored selection; if none, leave current state as-is (could be legacy)
-      if (typeof parsed !== 'undefined') setScopeState(parsed);
+      // Superadmin: do NOT allow implicit "global" scope.
+      // If nothing is stored, default to null (superadmin area without tenant data).
+      const next = (typeof parsed === 'undefined') ? null : parsed;
+      setScopeState(next);
+      try { localStorage.setItem(key, next === null ? 'null' : String(next)); } catch { /* ignore */ }
       return;
     }
     // org_admin/user: allow persisted selection within subtree; sanitize null/undefined to own orgId
@@ -125,6 +128,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
   // Apply header to axios
   useEffect(() => {
     if (typeof scope === 'undefined') {
+      // Legacy/initial state. Backends treat missing header as null for superadmin.
       delete api.defaults.headers.common['X-Org-Scope'];
     } else if (scope === null) {
       api.defaults.headers.common['X-Org-Scope'] = 'null';
@@ -165,6 +169,9 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
   }, [scope, qc]);
 
   const setScope = useCallback((v: OrgScopeValue) => {
+    // Prevent switching to the same scope (causes infinite loading)
+    if (v === scope) return;
+
     scopeChangeSourceRef.current = 'user';
     // Make UI react immediately on confirm (e.g. show initializer overlay).
     setSwitching(true);
@@ -175,7 +182,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
       else if (v === null) localStorage.setItem(key, 'null');
       else localStorage.setItem(key, v);
     } catch { /* ignore */ }
-  }, [user?.id]);
+  }, [user?.id, scope]);
 
   const value = useMemo<OrgScopeState>(() => ({
     scope,

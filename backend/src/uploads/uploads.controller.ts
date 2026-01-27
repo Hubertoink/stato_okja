@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { join } from 'path';
+import { statSync } from 'fs';
 
 import type { Express } from 'express';
 
@@ -48,6 +49,15 @@ export class UploadsController {
     }
     // Return relative URL that frontend nginx proxies to backend
     const url = `/uploads/images/${file.filename}`;
-    return { url };
+    // Multer should provide file.size, but we also stat() the saved file for reliability.
+    const size = (() => {
+      try {
+        const p = join(process.cwd(), 'uploads', 'images', file.filename);
+        return statSync(p).size;
+      } catch {
+        return file.size;
+      }
+    })();
+    return { url, size };
   }
 }

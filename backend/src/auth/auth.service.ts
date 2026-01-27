@@ -8,6 +8,8 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { EmailService } from '../email/email.service';
 import type { UserRole } from '../users/entities/user.entity';
+import { AuditService } from '../common/audit.service';
+import { AuditAction } from '../common/enums';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +19,7 @@ export class AuthService {
     @InjectRepository(Location) private readonly locations: Repository<Location>,
     private readonly jwt: JwtService,
     private readonly email: EmailService,
+    private readonly audit: AuditService,
   ) {}
 
   private isPasswordStrong(pw: string) {
@@ -79,6 +82,20 @@ export class AuthService {
     // Normalize missing/legacy theme values to the new default so first-visit users see the proper theme
     const theme =
       !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel' ? 'Default Theme' : rawTheme;
+    // Audit successful login (for superadmin metrics)
+    try {
+      await this.audit.log({
+        action: AuditAction.LOGIN,
+        entityType: 'auth',
+        entityId: user.id,
+        entityTitle: user.email || user.name || null,
+        user: { id: user.id, name: user.name || null, orgId: user.orgId ?? null },
+        orgId: user.orgId ?? null,
+      });
+    } catch {
+      // Do not block login on audit failure
+    }
+
     return {
       access_token: token,
       user: {

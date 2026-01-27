@@ -70,8 +70,8 @@ export default function OrgUserManagement() {
 
   // Get current org name for display
   const activeOrgName = (() => {
-    if (typeof scope === 'undefined') return 'Alle Organisationen';
-    if (scope === null) return 'Ohne Organisation';
+    if (typeof scope === 'undefined') return 'Superadmin Bereich';
+    if (scope === null) return 'Superadmin Bereich';
     const found = orgs.find(o => o.id === scope);
     if (found?.name) return found.name;
     if (user?.orgId === scope && (user as { orgName?: string }).orgName) return (user as { orgName?: string }).orgName as string;

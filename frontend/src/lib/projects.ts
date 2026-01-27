@@ -10,6 +10,7 @@ export interface Project {
   categories?: Array<{ id: string; name: string; color?: string | null }>;
   targetGroup?: string | null;
   imageUrl?: string | null;
+  imageSize?: number | null;
   color?: string | null;
   dateFrom?: string | null;
   dateTo?: string | null;

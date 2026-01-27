@@ -17,6 +17,7 @@ import { AuthProvider, useAuth } from './lib/auth';
 import { OrgScopeProvider } from './lib/orgScope';
 import AdminOrgSetup from './pages/AdminOrgSetup';
 import OrgUserManagement from './pages/OrgUserManagement';
+import SuperAdminAudit from './pages/SuperAdminAudit';
 import AcceptInvite from './pages/AcceptInvite';
 import ResetRequest from './pages/ResetRequest';
 import ResetPassword from './pages/ResetPassword';
@@ -80,6 +81,7 @@ function AuthedRoutes() {
           <Route path="settings" element={<Settings />} />
           {/* Mock admin routes */}
           {user.role === 'superadmin' && <Route path="admin/orgs" element={<AdminOrgSetup />} />}
+          {user.role === 'superadmin' && <Route path="admin/audit" element={<SuperAdminAudit />} />}
           {(user.role === 'org_admin' || user.role === 'superadmin') && (
             <Route path="admin/users" element={<OrgUserManagement />} />
           )}

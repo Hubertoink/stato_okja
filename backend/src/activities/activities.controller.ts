@@ -86,7 +86,7 @@ export class ActivitiesController {
   ) {
     // Determine organization filter from scope
     // Superadmin:
-    //   - effectiveOrgId === undefined (global) -> no org filter (see all)
+    //   - effectiveOrgId === undefined -> treat as null (global intentionally disabled)
     //   - effectiveOrgId === null (root/no-org) -> filter by orgId IS NULL
     //   - effectiveOrgId === string -> filter by that org's subtree
     // Others: always filter by effectiveOrgId (or user.orgId as fallback)
@@ -102,11 +102,7 @@ export class ActivitiesController {
         } else {
           orgId = null; // Filter by null org
         }
-      } else if (typeof req.effectiveOrgId === 'undefined') {
-        // Global - no org filter
-        orgId = undefined;
-        orgIds = undefined;
-      } else if (req.effectiveOrgId === null) {
+      } else if (typeof req.effectiveOrgId === 'undefined' || req.effectiveOrgId === null) {
         // Root/no-org selected
         orgId = null;
       } else {
@@ -192,6 +188,7 @@ export class ActivitiesController {
     if (ids.length === 0) return {};
 
     // Determine org filter similar to findAll
+    // Note: global scope is disabled; undefined behaves like null.
     const superAdminScoped = typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId;
     const orgIdRaw =
       req.user.role === 'superadmin'

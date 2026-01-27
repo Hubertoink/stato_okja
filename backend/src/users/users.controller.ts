@@ -14,9 +14,8 @@ export class UsersController {
   @Get()
   async list(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
     if (req.user.role === 'superadmin') {
-      // If a superadmin provided an effective scope, list users for that org subtree; else list all
-      if (typeof req.effectiveOrgId === 'undefined') return this.service.findAll();
-      if (req.effectiveOrgId === null) return this.service.findByOrg(null);
+      // Superadmin must scope explicitly to see tenant users; global listing is intentionally disabled.
+      if (typeof req.effectiveOrgId === 'undefined' || req.effectiveOrgId === null) return this.service.findByOrg(null);
       const subtree = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
       return this.service.findByOrgIds(subtree);
     }

@@ -24,7 +24,7 @@ import { useProjects } from '@/lib/projects';
 import { useOrgScopeKey } from '@/lib/orgScope';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { RefreshCw, X as XIcon } from 'lucide-react';
+import { FileDown, RefreshCw, X as XIcon } from 'lucide-react';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -613,6 +613,17 @@ export default function Statistics() {
           <div>
             <label className="block text-sm font-medium mb-1">Jahr</label>
             <div className="inline-flex items-center gap-1 flex-wrap">
+              {selectedYear && (
+                <button
+                  type="button"
+                  title="Filter zurücksetzen (alle Jahre)"
+                  aria-label="Filter zurücksetzen"
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  onClick={() => selectYear('')}
+                >
+                  <XIcon className="h-4 w-4" />
+                </button>
+              )}
               <button
                 type="button"
                 className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
@@ -638,43 +649,38 @@ export default function Statistics() {
                   {y}
                 </button>
               ))}
-              {selectedYear && (
-                <button
-                  type="button"
-                  title="Filter zurücksetzen (alle Jahre)"
-                  aria-label="Filter zurücksetzen"
-                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
-                  onClick={() => selectYear('')}
-                >
-                  <XIcon className="h-4 w-4" />
-                </button>
-              )}
             </div>
           </div>
-          <button
-            className="bg-cambridge-blue text-white px-6 py-2 rounded-lg hover:bg-viridian transition-colors"
-            onClick={exportPdf}
-          >
-            Export (PDF)
-          </button>
-          <button
-            type="button"
-            title="Aktualisieren"
-            aria-label="Aktualisieren"
-            className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-            onClick={() => {
-              // Force refetch of all stats queries even if params didn't change
-              qc.invalidateQueries({
-                predicate: (q) => {
-                  const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
-                  return typeof key0 === 'string' && key0.startsWith('stats:');
-                },
-                refetchType: 'active',
-              });
-            }}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
+          <div className="ml-auto flex items-end gap-2">
+            <button
+              type="button"
+              className="bg-cambridge-blue text-white px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2"
+              onClick={exportPdf}
+              title="Exportieren (PDF)"
+              aria-label="Exportieren (PDF)"
+            >
+              <FileDown className="h-4 w-4" />
+              Export (PDF)
+            </button>
+            <button
+              type="button"
+              title="Aktualisieren"
+              aria-label="Aktualisieren"
+              className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              onClick={() => {
+                // Force refetch of all stats queries even if params didn't change
+                qc.invalidateQueries({
+                  predicate: (q) => {
+                    const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
+                    return typeof key0 === 'string' && key0.startsWith('stats:');
+                  },
+                  refetchType: 'active',
+                });
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Project quick filter tiles */}

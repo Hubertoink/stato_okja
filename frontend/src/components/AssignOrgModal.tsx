@@ -195,9 +195,9 @@ export default function AssignOrgModal({
           ))}
         </div>
 
-        <div className="mt-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center justify-end gap-2">
-          <button className="px-3 py-1.5 rounded bg-gray-200 text-gray-700" onClick={onClose}>Abbrechen</button>
-          <button className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60" disabled={selected === (currentOrgId ?? null)} onClick={handleAssign}>Zuweisen</button>
+        <div className="mt-3 sticky bottom-0 bg-gray-50 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center justify-end gap-2 border-t">
+          <button className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors" onClick={onClose}>Abbrechen</button>
+          <button className="px-3 py-1.5 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 transition-colors" disabled={selected === (currentOrgId ?? null)} onClick={handleAssign}>Zuweisen</button>
         </div>
       </div>
     </Modal>

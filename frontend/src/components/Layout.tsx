@@ -326,20 +326,7 @@ export default function Layout() {
                       </button>
                     </li>
                   )}
-                  {user?.role === 'org_admin' && (
-                    <li>
-                      <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                        onClick={() => {
-                          setCreateModalOpen(true);
-                          setMenuOpen(false);
-                        }}
-                      >
-                        Organisation anlegen
-                      </button>
-                    </li>
-                  )}
-                  {user?.role === 'superadmin' && (
+                  {(user?.role === 'org_admin' || user?.role === 'superadmin') && (
                     <li>
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"

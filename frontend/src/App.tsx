@@ -79,8 +79,10 @@ function AuthedRoutes() {
           <Route path="statistics" element={<Statistics />} />
           <Route path="me" element={<MyProfile />} />
           <Route path="settings" element={<Settings />} />
-          {/* Mock admin routes */}
-          {user.role === 'superadmin' && <Route path="admin/orgs" element={<AdminOrgSetup />} />}
+          {/* Admin routes */}
+          {(user.role === 'org_admin' || user.role === 'superadmin') && (
+            <Route path="admin/orgs" element={<AdminOrgSetup />} />
+          )}
           {user.role === 'superadmin' && <Route path="admin/audit" element={<SuperAdminAudit />} />}
           {(user.role === 'org_admin' || user.role === 'superadmin') && (
             <Route path="admin/users" element={<OrgUserManagement />} />

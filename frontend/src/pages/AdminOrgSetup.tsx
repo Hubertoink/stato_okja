@@ -8,15 +8,23 @@ import { fetchUsers } from '@/lib/users';
 import { Link as LinkIcon, Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
 
-/** Instant hover tooltip */
-function Tooltip({ label, children }: { label: string; children: React.ReactNode }) {
+/** Instant hover tooltip with optional user list */
+function Tooltip({ label, names, children }: { label: string; names?: string[]; children: React.ReactNode }) {
   const [show, setShow] = useState(false);
   return (
     <span className="relative inline-flex" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
       {children}
       {show && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 rounded bg-gray-800 text-white text-xs whitespace-nowrap shadow-lg z-50 pointer-events-none">
-          {label}
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1.5 rounded bg-gray-800 text-white text-xs shadow-lg z-50 pointer-events-none min-w-max">
+          <div className="font-medium mb-0.5">{label}</div>
+          {names && names.length > 0 ? (
+            <ul className="text-gray-300 text-[11px] space-y-0.5">
+              {names.slice(0, 5).map((n, i) => <li key={i}>• {n}</li>)}
+              {names.length > 5 && <li className="text-gray-400">… +{names.length - 5} weitere</li>}
+            </ul>
+          ) : (
+            <div className="text-gray-400 text-[11px]">Keine</div>
+          )}
         </span>
       )}
     </span>
@@ -359,7 +367,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
 }) {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [counts, setCounts] = useState<{ admins: number; users: number } | null>(null);
+  const [orgUsers, setOrgUsers] = useState<{ admins: { name: string }[]; users: { name: string }[] } | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<Array<{ id: string; email: string; name: string; role: string }> | null>(null);
@@ -394,9 +402,9 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
     (async () => {
       try {
         const list = await fetchUsers();
-        const admins = list.filter(u => u.orgId === org.id && u.role === 'org_admin').length;
-        const users = list.filter(u => u.orgId === org.id && u.role === 'user').length;
-        if (mounted) setCounts({ admins, users });
+        const admins = list.filter(u => u.orgId === org.id && u.role === 'org_admin').map(u => ({ name: u.name || u.email }));
+        const users = list.filter(u => u.orgId === org.id && u.role === 'user').map(u => ({ name: u.name || u.email }));
+        if (mounted) setOrgUsers({ admins, users });
       } catch { /* ignore */ }
     })();
     return () => { mounted = false; };
@@ -438,14 +446,14 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
         
         {/* User Counts */}
         <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Tooltip label="Administratoren">
+          <Tooltip label="Administratoren" names={orgUsers?.admins.map(a => a.name)}>
             <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-1 cursor-default">
-              <Shield className="w-3.5 h-3.5" /> {counts?.admins ?? '–'}
+              <Shield className="w-3.5 h-3.5" /> {orgUsers?.admins.length ?? '–'}
             </span>
           </Tooltip>
-          <Tooltip label="Benutzer">
+          <Tooltip label="Benutzer" names={orgUsers?.users.map(u => u.name)}>
             <span className="inline-flex items-center gap-1 bg-gray-100 rounded px-2 py-1 cursor-default">
-              <UserIcon className="w-3.5 h-3.5" /> {counts?.users ?? '–'}
+              <UserIcon className="w-3.5 h-3.5" /> {orgUsers?.users.length ?? '–'}
             </span>
           </Tooltip>
         </div>

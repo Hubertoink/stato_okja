@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stato_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-stato_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [stato]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      API_PREFIX: ${API_PREFIX:-api}
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER:-stato_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      DB_DATABASE: ${POSTGRES_DB:-stato_prod}
+
+      JWT_SECRET: ${JWT_SECRET:-please_change}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-12h}
+
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.org}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
+
+      # SMTP (optional)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@stato.local}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Persistiert /uploads (u.a. /uploads/images)
+      - backend-uploads:/app/uploads
+    networks: [stato]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Wichtig für On‑Prem: Proxy auf den Backend‑Service
+        NGINX_MODE: proxy
+        # Optional (nur wenn ihr Option B wollt):
+        # VITE_API_BASE_URL: https://<eure-domain>/api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks: [stato]
+
+  # Optional: lokale SMTP-Testbox (Mailpit)
+  # mailpit:
+  #   image: axllent/mailpit:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "1025:1025"
+  #     - "8025:8025"
+  #   networks: [stato]
+
+volumes:
+  postgres-data: {}
+  backend-uploads: {}
+
+networks:
+  stato: {}

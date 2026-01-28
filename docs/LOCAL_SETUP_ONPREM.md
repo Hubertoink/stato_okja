@@ -1,0 +1,165 @@
+# StatO 2.0 – Local/On‑Prem Setup (Docker)
+
+Dieses Dokument beschreibt ein **On‑Prem / Local** Setup, bei dem StatO vollständig auf einem eigenen PC/Server läuft (ohne die von uns bereitgestellten Online‑Backends wie `api.stato-okja.de` / `devapi.stato-okja.de`).
+
+Ziel: Ein Kommune/Träger kann StatO in einem eigenen Netzwerk betreiben (VM, Bare Metal, NAS, Kubernetes/Compose), inkl. Datenbank und optional Mail‑Server.
+
+---
+
+## Architektur (Container)
+
+**Minimal nötig**
+- **PostgreSQL** (Datenbank)
+- **Backend** (NestJS API)
+- **Frontend** (React/Vite Build, ausgeliefert über Nginx)
+
+**Optional (empfohlen je nach Betrieb)**
+- **Reverse Proxy + TLS** (z. B. Caddy/Traefik/Nginx) vor dem Frontend
+- **SMTP** (für Einladungen/Passwort‑Reset)
+  - lokal zum Testen: Mailpit
+  - produktiv: euer SMTP/Exchange/Relay
+- **Object Storage (MinIO)** ist im Repo vorbereitet, wird aber im aktuellen `docker-compose.prod.yml` nicht benötigt. Wenn ihr Datei‑Anhänge später über S3/MinIO abbildet, könnt ihr MinIO ergänzen.
+
+---
+
+## Ports (Standard)
+
+- Frontend: `80` (HTTP) → später i. d. R. per Reverse Proxy auf `443` (HTTPS)
+- Backend: `3000` (intern im Docker‑Netz; optional extern für Debug)
+- Postgres: `5432` (nur intern empfohlen)
+
+---
+
+## Wichtige Umgebungsvariablen (Backend)
+
+Siehe auch: `backend/BACKEND_CONTAINER_ENV.md` und `backend/.env.example`.
+
+**Minimal für On‑Prem**
+- `NODE_ENV=production`
+- `PORT=3000`
+- `API_PREFIX=api`
+- `APP_ORIGIN=https://<eure-domain>` (wichtig für Links in Mails)
+- `CORS_ORIGINS=https://<eure-domain>` (oder mehrere Origins kommasepariert)
+- `DB_TYPE=postgres`
+- `DB_HOST=postgres` (Compose‑Service‑Name)
+- `DB_PORT=5432`
+- `DB_USERNAME=...`
+- `DB_PASSWORD=...`
+- `DB_DATABASE=...`
+- `JWT_SECRET=<langer-random-string>`
+- `SUPERADMIN_EMAIL=admin@<kommune>.de`
+- `SUPERADMIN_PASSWORD=<starkes-passwort>` (empfohlen)
+
+**SMTP (optional, produktiv empfohlen)**
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+
+---
+
+## Frontend: API‑Anbindung (wichtig für On‑Prem)
+
+Damit das Frontend **nicht** gegen öffentliche APIs läuft, gibt es zwei saubere Betriebsarten:
+
+### Option A (empfohlen): Nginx „proxy mode“
+Das Frontend wird auf derselben Domain ausgeliefert und Nginx proxyt `/api/*` und `/uploads/*` an den Backend‑Container.
+- Vorteil: Kein CORS‑Stress, „same origin“.
+- Im Repo vorhanden: `frontend/nginx.proxy.conf`
+- Im `frontend/Dockerfile` auswählbar via `NGINX_MODE=proxy`
+
+### Option B: API Base URL per Build‑Arg
+Frontend wird mit `VITE_API_BASE_URL` gebaut (z. B. `https://backend.intern/api`).
+- Vorteil: getrennte Domains möglich.
+- Nachteil: CORS muss sauber eingestellt sein.
+
+---
+
+## On‑Prem Docker Compose (Beispiel)
+
+Im Repo ist ein simples Compose‑Setup enthalten:
+- `docker-compose.onprem.yml`
+- `.env.onprem.example`
+
+Empfohlenes Vorgehen:
+
+```bash
+# Windows
+copy .env.onprem.example .env.onprem
+
+# macOS/Linux
+cp .env.onprem.example .env.onprem
+```
+
+Dann `APP_ORIGIN`, `CORS_ORIGINS`, `JWT_SECRET`, `SUPERADMIN_*` und DB‑Credentials in `.env.onprem` setzen.
+
+---
+
+## Start/Stop
+
+```bash
+# Start (Build + run)
+docker compose -f docker-compose.onprem.yml --env-file .env.onprem up -d --build
+
+# Logs
+docker compose -f docker-compose.onprem.yml --env-file .env.onprem logs -f --tail=200
+
+# Stop
+docker compose -f docker-compose.onprem.yml --env-file .env.onprem down
+```
+
+---
+
+## Datenbank-Migrationen (wichtig!)
+
+Aktuell werden Migrationen in der Entwicklung per TypeORM + TS ausgeführt (siehe `backend/package.json` Scripts). Der Production‑Backend‑Container installiert **nur Produktions‑Dependencies** – je nach Setup kann das bedeuten, dass `npm run migration:run` **im Container nicht** verfügbar ist.
+
+Empfehlung für On‑Prem:
+
+### Variante 1: Migrationen auf dem Server (Node.js installiert)
+1. Repo auf den Server kopieren/klonen
+2. `cd backend && npm ci`
+3. `npm run migration:run`
+4. Danach `docker compose up -d`
+
+### Variante 2: „Migrations“-One‑Shot Container
+Ihr könnt einen One‑Shot Container mit Node nutzen, der den `backend/` Ordner mountet und die Migrationen ausführt:
+
+```bash
+docker run --rm -it \
+  --network stato \
+  -v "$PWD/backend:/app" \
+  -w /app \
+  node:20-alpine sh -lc "npm ci && npm run migration:run"
+```
+
+Hinweis: Dafür muss das Compose‑Netzwerk (`stato`) existieren und Postgres bereits laufen.
+
+---
+
+## Backups (On‑Prem Betrieb)
+
+- **Postgres**: Backup via `pg_dump` (regelmäßig) oder Volume‑Backup.
+- **Uploads**: `backend-uploads` Volume sichern (enthält u.a. Bilder unter `/uploads/images`).
+
+Beispiel `pg_dump` (wenn Postgres nicht nach außen exposed ist):
+
+```bash
+docker exec -t <postgres-container> pg_dump -U <user> <db> > stato_backup.sql
+```
+
+---
+
+## Produktions-Hinweise / Hardening
+
+- Setze zwingend ein starkes `JWT_SECRET` (stabil, nicht wechselnd).
+- Setze `SUPERADMIN_PASSWORD` und ändere es nach Übergabe.
+- Exponiere Postgres nicht nach außen (nur internes Docker‑Netz).
+- Nutze TLS (Reverse Proxy) und sichere Admin‑Zugänge.
+- Logging/Monitoring: je nach Kommune z. B. Promtail/Loki, ELK, oder Docker‑Logdriver.
+
+---
+
+## Troubleshooting
+
+- **Frontend lädt, aber API 404/405**: Stelle sicher, dass `NGINX_MODE=proxy` gebaut wurde oder `VITE_API_BASE_URL` korrekt ist.
+- **CORS Fehler** (Option B): `CORS_ORIGINS` muss exakt die Frontend‑Origin enthalten.
+- **Login geht nicht nach Neustart**: `JWT_SECRET` darf nicht wechseln.
+- **Uploads fehlen nach Neustart**: Volume `backend-uploads` muss persistent sein.

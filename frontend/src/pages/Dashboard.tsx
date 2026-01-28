@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
 import { useAuditLogs } from '@/lib/audit';
+<<<<<<< Updated upstream
 import {
   Pencil,
   PlusCircle,
@@ -18,6 +19,10 @@ import {
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useQuickTallySession } from '@/components/QuickTally';
+=======
+import { Pencil, PlusCircle, Trash2, LogIn } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+>>>>>>> Stashed changes
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import ExportModal from '@/components/ExportModal';
@@ -434,6 +439,7 @@ export default function Dashboard() {
         <div className="space-y-3">
           {(lastFive || []).map((e) => {
             const icon =
+<<<<<<< Updated upstream
               e.action === 'create' ? (
                 <PlusCircle className="w-5 h-5 text-green-600" />
               ) : e.action === 'update' ? (
@@ -448,24 +454,44 @@ export default function Dashboard() {
               category: 'Kategorie',
               cohort: 'Kohorte',
             };
+=======
+              e.action === 'login'
+                ? <LogIn className="w-4 h-4 text-sky-600" />
+                : e.action === 'create'
+                  ? <PlusCircle className="w-4 h-4 text-viridian" />
+                  : e.action === 'update'
+                    ? <Pencil className="w-4 h-4 text-cambridge-blue" />
+                    : <Trash2 className="w-4 h-4 text-red-600" />;
+
+            const labelMap: Record<string, string> = { activity: 'Aktivität', project: 'Projekt', tag: 'Tag', category: 'Kategorie', cohort: 'Kohorte', auth: 'Anmeldung' };
+>>>>>>> Stashed changes
             const who = e.userName || 'Jemand';
             const what = labelMap[e.entityType] || e.entityType;
             const title = e.entityTitle ? ` „${e.entityTitle}“` : '';
             const when = new Date(e.createdAt).toLocaleString('de-DE');
+<<<<<<< Updated upstream
             const verb =
               e.action === 'create'
                 ? 'angelegt'
                 : e.action === 'update'
                   ? 'bearbeitet'
                   : 'gelöscht';
+=======
+            const verb = e.action === 'login' ? 'angemeldet' : e.action === 'create' ? 'angelegt' : e.action === 'update' ? 'bearbeitet' : 'gelöscht';
+>>>>>>> Stashed changes
             // Prefer backend-provided orgName; fallback to local mapping for older entries
             const orgName = e.orgName || (e.orgId ? orgMap[e.orgId] : undefined);
+
+            const titleLine = e.action === 'login'
+              ? `${who} hat sich angemeldet.`
+              : `${who} hat ${what}${title} ${verb}.`;
             return (
               <div key={e.id} className="bg-gray-50 rounded-lg px-4 py-3">
                 <div className="flex justify-between items-start gap-3">
                   <div className="flex items-start gap-3">
                     <div className="p-2 bg-white rounded-lg shadow-sm">{icon}</div>
                     <div>
+<<<<<<< Updated upstream
                       <h4 className="font-semibold text-gray-800">
                         {who} hat {what}
                         {title} {verb}.
@@ -476,6 +502,14 @@ export default function Dashboard() {
                           Organisation: {orgName}
                         </span>
                       )}
+=======
+                      <h4 className="font-semibold">{titleLine}</h4>
+                      <p className="text-xs text-gray-600">{when}</p>
+                      {e.action === 'login' && e.entityTitle && (
+                        <span className="inline-block mt-1 text-[11px] text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">Account: {e.entityTitle}</span>
+                      )}
+                      {orgName && <span className="inline-block mt-1 text-[11px] text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">Organisation: {orgName}</span>}
+>>>>>>> Stashed changes
                       {e.diff && Object.keys(e.diff).length > 0 && (
                         <ul className="mt-2 text-sm text-gray-700 list-disc pl-5 space-y-0.5">
                           {Object.entries(

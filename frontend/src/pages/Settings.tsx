@@ -34,7 +34,7 @@ export default function Settings() {
       <h2 className="text-3xl font-bold text-viridian mb-6">Einstellungen</h2>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-lg shadow mb-6 overflow-x-auto">
+      <div className="bg-white rounded-lg shadow mb-6 overflow-x-auto md:overflow-x-visible">
         <div className="flex border-b">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -42,14 +42,22 @@ export default function Settings() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors whitespace-nowrap ${
+                className={`group relative inline-flex items-center justify-center lg:justify-start gap-2 px-4 py-3 font-medium transition-colors whitespace-nowrap w-12 sm:w-14 md:w-16 lg:w-auto ${
                   activeTab === tab.id
                     ? 'text-viridian border-b-2 border-viridian'
                     : 'text-gray-600 hover:text-viridian'
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                {/* Labels only on desktop to prevent tablet horizontal scroll */}
+                <span className="hidden lg:inline">{tab.label}</span>
+                {/* Custom tooltip for icon-only mode (mobile/tablet) */}
+                <span
+                  className="lg:hidden pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 whitespace-nowrap rounded-md bg-gray-900/95 text-white text-xs px-2 py-1 shadow-lg opacity-0 translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0"
+                  role="tooltip"
+                >
+                  {tab.label}
+                </span>
               </button>
             );
           })}

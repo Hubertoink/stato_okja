@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -14,6 +14,64 @@ import { getOpeningHours, OpeningHours } from '@/lib/orgs';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import type React from 'react';
+import { createPortal } from 'react-dom';
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(Math.max(n, min), max);
+}
+
+type TooltipLayout = {
+  left: number;
+  top: number;
+  transform: string;
+  arrowCenterPx: number;
+  arrowClass: string;
+};
+
+function useClampedTooltipLayout(position: { x: number; y: number } | null, visible: boolean) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [layout, setLayout] = useState<TooltipLayout | null>(null);
+
+  useLayoutEffect(() => {
+    if (!visible || !position || !ref.current) {
+      setLayout(null);
+      return;
+    }
+
+    const rect = ref.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const padding = 12;
+    const gap = 8;
+
+    // Prefer above cursor/anchor, but flip below if it would go off-screen.
+    const preferTop = position.y - rect.height - gap > padding;
+    const placeTop = preferTop;
+
+    // Center-align, but clamp to viewport using measured width.
+    const clampedCenterX = clamp(position.x, padding + rect.width / 2, vw - padding - rect.width / 2);
+    const transform = placeTop
+      ? 'translate(-50%, -100%) translateY(-8px)'
+      : 'translate(-50%, 0%) translateY(8px)';
+
+    // Arrow: point to original x, but clamp within tooltip body.
+    const leftEdge = clampedCenterX - rect.width / 2;
+    const arrowCenterPx = clamp(position.x - leftEdge, 18, rect.width - 18);
+
+    // If bottom placement would overflow viewport, nudge up slightly (rare).
+    const top = clamp(position.y, padding, vh - padding);
+
+    setLayout({
+      left: clampedCenterX,
+      top,
+      transform,
+      arrowCenterPx,
+      arrowClass: placeTop ? '-bottom-1 rotate-45' : '-top-1 rotate-45',
+    });
+  }, [position?.x, position?.y, visible]);
+
+  return { ref, layout };
+}
 
 // Custom tooltip component for calendar activities
 interface ActivityTooltipProps {
@@ -34,27 +92,52 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
   const d = activity.countDiverse ?? 0;
   const loc = activity.location?.name;
   
-  return (
-    <div 
+  const { ref, layout } = useClampedTooltipLayout(position, true);
+  if (!layout) {
+    // First paint: render off-screen to measure without flashing.
+    return createPortal(
+      <div className="fixed left-[-9999px] top-[-9999px] z-[9999] pointer-events-none" aria-hidden>
+        <div
+          ref={ref}
+          className="bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] backdrop-blur-sm"
+        >
+          <div className="font-semibold mb-1 text-mint-green">{label}</div>
+          {time && <div className="text-gray-300"><span className="text-gray-400">Zeit:</span> {time}</div>}
+          <div className="text-gray-300">
+            <span className="text-gray-400">Teilnehmende:</span> {total}
+            <span className="text-[10px] text-gray-400 ml-1">(m:{m}, w:{w}, d:{d})</span>
+          </div>
+          {loc && <div className="text-gray-300"><span className="text-gray-400">Ort:</span> {loc}</div>}
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  return createPortal(
+    <div
       className="fixed z-[9999] pointer-events-none animate-tooltip-fade-in"
-      style={{ 
-        left: position.x, 
-        top: position.y,
-        transform: 'translate(-50%, -100%) translateY(-8px)'
-      }}
+      style={{ left: layout.left, top: layout.top, transform: layout.transform }}
     >
-      <div className="bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl max-w-xs backdrop-blur-sm">
+      <div
+        ref={ref}
+        className="relative bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] backdrop-blur-sm"
+      >
         <div className="font-semibold mb-1 text-mint-green">{label}</div>
         {time && <div className="text-gray-300"><span className="text-gray-400">Zeit:</span> {time}</div>}
         <div className="text-gray-300">
-          <span className="text-gray-400">Teilnehmende:</span> {total} 
+          <span className="text-gray-400">Teilnehmende:</span> {total}
           <span className="text-[10px] text-gray-400 ml-1">(m:{m}, w:{w}, d:{d})</span>
         </div>
         {loc && <div className="text-gray-300"><span className="text-gray-400">Ort:</span> {loc}</div>}
         {/* Tooltip arrow */}
-        <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-gray-900/95 rotate-45" />
+        <div
+          className={`absolute w-2 h-2 bg-gray-900/95 -translate-x-1/2 ${layout.arrowClass}`}
+          style={{ left: layout.arrowCenterPx }}
+        />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 // duplicate import removed
@@ -709,36 +792,73 @@ export default function Calendar() {
       />
       
       {/* Tooltip for "+x more" badge */}
-      {moreTooltip && (
-        <div 
-          className="fixed z-[9999] pointer-events-none animate-tooltip-fade-in"
-          style={{ 
-            left: moreTooltip.position.x, 
-            top: moreTooltip.position.y,
-            transform: 'translate(-50%, -100%) translateY(-8px)'
-          }}
-        >
-          <div className="bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl max-w-xs backdrop-blur-sm">
-            <div className="font-semibold mb-1.5 text-mint-green border-b border-gray-700 pb-1">
-              +{moreTooltip.activities.length} weitere Aktivitäten
-            </div>
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {moreTooltip.activities.map((a, i) => {
-                const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
-                const time = fmtTimeRange(a.startTime, a.endTime);
-                return (
-                  <div key={i} className="text-gray-200">
-                    <span className="font-medium">{label}</span>
-                    {time && <span className="text-gray-400 ml-1 text-[10px]">{time}</span>}
+      {moreTooltip && (() => {
+        const MoreTooltipContent = () => {
+          const { ref, layout } = useClampedTooltipLayout(moreTooltip.position, true);
+
+          if (!layout) {
+            return (
+              <div className="fixed left-[-9999px] top-[-9999px] z-[9999] pointer-events-none" aria-hidden>
+                <div
+                  ref={ref}
+                  className="bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] backdrop-blur-sm"
+                >
+                  <div className="font-semibold mb-1.5 text-mint-green border-b border-gray-700 pb-1">
+                    +{moreTooltip.activities.length} weitere Aktivitäten
                   </div>
-                );
-              })}
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {moreTooltip.activities.map((a, i) => {
+                      const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
+                      const time = fmtTimeRange(a.startTime, a.endTime);
+                      return (
+                        <div key={i} className="text-gray-200">
+                          <span className="font-medium">{label}</span>
+                          {time && <span className="text-gray-400 ml-1 text-[10px]">{time}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              className="fixed z-[9999] pointer-events-none animate-tooltip-fade-in"
+              style={{ left: layout.left, top: layout.top, transform: layout.transform }}
+            >
+              <div
+                ref={ref}
+                className="relative bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] backdrop-blur-sm"
+              >
+                <div className="font-semibold mb-1.5 text-mint-green border-b border-gray-700 pb-1">
+                  +{moreTooltip.activities.length} weitere Aktivitäten
+                </div>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {moreTooltip.activities.map((a, i) => {
+                    const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
+                    const time = fmtTimeRange(a.startTime, a.endTime);
+                    return (
+                      <div key={i} className="text-gray-200">
+                        <span className="font-medium">{label}</span>
+                        {time && <span className="text-gray-400 ml-1 text-[10px]">{time}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Tooltip arrow */}
+                <div
+                  className={`absolute w-2 h-2 bg-gray-900/95 -translate-x-1/2 ${layout.arrowClass}`}
+                  style={{ left: layout.arrowCenterPx }}
+                />
+              </div>
             </div>
-            {/* Tooltip arrow */}
-            <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-gray-900/95 rotate-45" />
-          </div>
-        </div>
-      )}
+          );
+        };
+
+        return createPortal(<MoreTooltipContent />, document.body);
+      })()}
     </div>
   );
 }

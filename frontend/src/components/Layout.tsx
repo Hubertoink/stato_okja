@@ -470,17 +470,6 @@ export default function Layout() {
               >
                 <BarChart3 className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/statistics') ? 'nav-label-active' : ''}`} data-text="Statistiken">Statistiken</span>
-                {statsFetching && (
-                  <span
-                    className="ml-2 inline-flex items-center gap-1 text-xs text-gray-600"
-                    role="status"
-                    aria-live="polite"
-                    title="Statistikdaten werden geladen"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" aria-hidden />
-                    lädt…
-                  </span>
-                )}
               </Link>
             </li>
             <li>
@@ -565,15 +554,7 @@ export default function Layout() {
               to="/statistics"
               className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/statistics') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
-              <span className="relative">
-                <BarChart3 className="w-5 h-5" />
-                {statsFetching && (
-                  <span
-                    className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-accent-orange animate-pulse"
-                    aria-hidden
-                  />
-                )}
-              </span>
+              <BarChart3 className="w-5 h-5" />
               <span>Stats</span>
             </Link>
           </li>

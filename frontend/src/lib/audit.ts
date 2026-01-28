@@ -17,14 +17,9 @@ export interface AuditLog {
 }
 
 export function useAuditLogs(limit = 10) {
-<<<<<<< Updated upstream
   const scopeKey = useOrgScopeKey();
-  return useQuery({
-    queryKey: ['audit', scopeKey, { limit }],
-=======
   return useQuery<AuditLog[]>({
-    queryKey: ['audit', { limit }],
->>>>>>> Stashed changes
+    queryKey: ['audit', scopeKey, { limit }],
     queryFn: async () => {
       const res = await api.get('/audit', { params: { limit } });
       return res.data as AuditLog[];

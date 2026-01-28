@@ -17,7 +17,6 @@ import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
-import { useIsFetching } from '@tanstack/react-query';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
 
@@ -60,13 +59,6 @@ export default function Layout() {
   const openQuickTally = () => setQuickTallyOpen(true);
   const minimizeQuickTally = () => setQuickTallyOpen(false);
 
-  const statsFetchingCount = useIsFetching({
-    predicate: (q) => {
-      const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
-      return typeof key0 === 'string' && key0.startsWith('stats:');
-    },
-  });
-  const statsFetching = statsFetchingCount > 0;
   const roleLabel: Record<string, string> = {
     superadmin: 'Superadmin',
     org_admin: 'Org-Admin',

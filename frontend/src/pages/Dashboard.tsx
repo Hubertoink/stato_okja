@@ -477,9 +477,7 @@ export default function Dashboard() {
                   <div className="flex items-start gap-3">
                     <div className="p-2 bg-white rounded-lg shadow-sm">{icon}</div>
                     <div>
-                      <h4 className="font-semibold text-gray-800">
-                        {titleLine}
-                      </h4>
+                      <h4 className="font-semibold text-gray-800">{titleLine}</h4>
                       <p className="text-xs text-gray-600">{when}</p>
                       {e.action === 'login' && e.entityTitle && (
                         <span className="inline-block mt-1 text-[11px] text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">

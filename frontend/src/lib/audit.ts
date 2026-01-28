@@ -4,9 +4,9 @@ import { useOrgScopeKey } from './orgScope';
 
 export interface AuditLog {
   id: string;
-  entityType: 'activity' | 'project' | 'tag' | 'category' | 'cohort' | string;
+  entityType: 'activity' | 'project' | 'tag' | 'category' | 'cohort' | 'auth' | string;
   entityId: string;
-  action: 'create' | 'update' | 'delete';
+  action: 'create' | 'update' | 'delete' | 'login';
   userId?: string | null;
   userName?: string | null;
   orgId?: string | null;
@@ -18,7 +18,7 @@ export interface AuditLog {
 
 export function useAuditLogs(limit = 10) {
   const scopeKey = useOrgScopeKey();
-  return useQuery({
+  return useQuery<AuditLog[]>({
     queryKey: ['audit', scopeKey, { limit }],
     queryFn: async () => {
       const res = await api.get('/audit', { params: { limit } });

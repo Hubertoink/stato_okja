@@ -7,6 +7,7 @@ import {
   Pencil,
   PlusCircle,
   Trash2,
+  LogIn,
   Users,
   StickyNote,
   Tag as TagIcon,
@@ -434,7 +435,9 @@ export default function Dashboard() {
         <div className="space-y-3">
           {(lastFive || []).map((e) => {
             const icon =
-              e.action === 'create' ? (
+              e.action === 'login' ? (
+                <LogIn className="w-5 h-5 text-sky-600" />
+              ) : e.action === 'create' ? (
                 <PlusCircle className="w-5 h-5 text-green-600" />
               ) : e.action === 'update' ? (
                 <Pencil className="w-5 h-5 text-blue-600" />
@@ -447,19 +450,27 @@ export default function Dashboard() {
               tag: 'Tag',
               category: 'Kategorie',
               cohort: 'Kohorte',
+              auth: 'Anmeldung',
             };
             const who = e.userName || 'Jemand';
             const what = labelMap[e.entityType] || e.entityType;
             const title = e.entityTitle ? ` „${e.entityTitle}“` : '';
             const when = new Date(e.createdAt).toLocaleString('de-DE');
             const verb =
-              e.action === 'create'
+              e.action === 'login'
+                ? 'angemeldet'
+                : e.action === 'create'
                 ? 'angelegt'
                 : e.action === 'update'
                   ? 'bearbeitet'
                   : 'gelöscht';
             // Prefer backend-provided orgName; fallback to local mapping for older entries
             const orgName = e.orgName || (e.orgId ? orgMap[e.orgId] : undefined);
+
+            const titleLine =
+              e.action === 'login'
+                ? `${who} hat sich angemeldet.`
+                : `${who} hat ${what}${title} ${verb}.`;
             return (
               <div key={e.id} className="bg-gray-50 rounded-lg px-4 py-3">
                 <div className="flex justify-between items-start gap-3">
@@ -467,10 +478,14 @@ export default function Dashboard() {
                     <div className="p-2 bg-white rounded-lg shadow-sm">{icon}</div>
                     <div>
                       <h4 className="font-semibold text-gray-800">
-                        {who} hat {what}
-                        {title} {verb}.
+                        {titleLine}
                       </h4>
                       <p className="text-xs text-gray-600">{when}</p>
+                      {e.action === 'login' && e.entityTitle && (
+                        <span className="inline-block mt-1 text-[11px] text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">
+                          Account: {e.entityTitle}
+                        </span>
+                      )}
                       {orgName && (
                         <span className="inline-block mt-1 text-[11px] text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">
                           Organisation: {orgName}

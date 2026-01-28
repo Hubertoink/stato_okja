@@ -11,6 +11,7 @@ coverage/
 # Env files
 .env
 .env.*
+!.env.onprem.example
 
 # Editor/OS
 .DS_Store

@@ -72,6 +72,71 @@ Frontend wird mit `VITE_API_BASE_URL` gebaut (z. B. `https://backend.intern/api`
 
 ---
 
+## Kurzanleitung: On‑Prem mit `NGINX_MODE=proxy`
+
+Ziel: **Eine Domain**, Frontend und API laufen „same origin“. Das Frontend spricht intern über Nginx‑Proxy mit dem Backend via `/api/*`.
+
+1) **DNS / URL festlegen**
+- Entscheide die URL, z. B. `https://stato.kommune.local` (oder `http://<server-ip>` für Test ohne TLS).
+
+2) **ENV Datei anlegen**
+
+```bash
+# Windows
+copy .env.onprem.example .env.onprem
+
+# macOS/Linux
+cp .env.onprem.example .env.onprem
+```
+
+3) **`.env.onprem` ausfüllen** (Pflicht)
+- `APP_ORIGIN=https://stato.kommune.local`
+- `CORS_ORIGINS=https://stato.kommune.local`
+- `JWT_SECRET=<sehr lang & random>`
+- `SUPERADMIN_EMAIL=...` / `SUPERADMIN_PASSWORD=...`
+- `POSTGRES_*` (DB Name/User/Passwort)
+
+4) **Sicherstellen, dass Proxy‑Mode aktiv ist**
+- In `docker-compose.onprem.yml` ist `frontend.build.args.NGINX_MODE=proxy` bereits gesetzt.
+- `VITE_API_BASE_URL` muss dafür **nicht** gesetzt werden.
+
+5) **Container bauen & starten**
+
+```bash
+docker compose -f docker-compose.onprem.yml --env-file .env.onprem up -d --build
+```
+
+6) **Migrationen ausführen (einmalig nach Erststart / nach Updates)**
+
+Variante A (empfohlen, wenn Node auf dem Server verfügbar ist):
+
+```bash
+cd backend
+npm ci
+npm run migration:run
+```
+
+Variante B (ohne Node-Installation, via One‑Shot Container):
+
+```bash
+docker run --rm -it \
+  --network stato \
+  -v "$PWD/backend:/app" \
+  -w /app \
+  node:20-alpine sh -lc "npm ci && npm run migration:run"
+```
+
+7) **Funktionstest / Checkpoints**
+- Frontend: `http(s)://<eure-domain>` lädt.
+- API über Proxy: `http(s)://<eure-domain>/api/health` (oder ein anderer API‑Endpoint) antwortet.
+- Login mit `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` funktioniert.
+
+8) **TLS (Produktiv)**
+- Empfohlen: Reverse Proxy (Caddy/Traefik/Nginx) vor den `frontend`‑Container schalten und nur `443` nach außen öffnen.
+- Danach `APP_ORIGIN` und `CORS_ORIGINS` auf die finale `https://` URL setzen.
+
+---
+
 ## On‑Prem Docker Compose (Beispiel)
 
 Im Repo ist ein simples Compose‑Setup enthalten:

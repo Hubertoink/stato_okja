@@ -31,6 +31,9 @@ services:
       DB_DATABASE: ${POSTGRES_DB:-stato_prod}
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
       DB_LOGGING: ${DB_LOGGING:-false}
+      # Superadmin credentials (set on startup)
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.org}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
     # SMTP_* optional
     # SMTP_HOST: ${SMTP_HOST}
     # SMTP_PORT: ${SMTP_PORT}

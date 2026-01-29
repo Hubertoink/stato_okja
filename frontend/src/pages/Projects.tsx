@@ -193,9 +193,10 @@ function ProjectForm({
       ...(initial || {}),
     };
     // Postgres returns bigint columns as strings; coerce for later PATCH validation.
-    const anyBase = base as Partial<Project> & { categories?: Array<{ id: string }>; imageSize?: unknown };
-    if (typeof anyBase.imageSize === 'string' && anyBase.imageSize.trim() !== '') {
-      const n = Number(anyBase.imageSize);
+    const anyBase = base as Partial<Project> & { categories?: Array<{ id: string }> };
+    const imageSizeRaw: unknown = (base as unknown as { imageSize?: unknown }).imageSize;
+    if (typeof imageSizeRaw === 'string' && imageSizeRaw.trim() !== '') {
+      const n = Number(imageSizeRaw);
       if (Number.isFinite(n)) base.imageSize = n;
     }
     // Backward compatibility: if legacy data has categories[] but no categoryId, pick the first

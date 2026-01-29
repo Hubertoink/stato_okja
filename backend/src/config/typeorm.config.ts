@@ -7,6 +7,7 @@ dotenvConfig();
 function buildTypeOrmConfig(): DataSourceOptions {
   const dbType = (process.env.DB_TYPE || 'postgres').toLowerCase();
   const migrationsRunEnv = (process.env.DB_MIGRATIONS_RUN ?? '').toLowerCase();
+  const synchronize = process.env.DB_SYNCHRONIZE === 'true';
   const migrationsRun =
     migrationsRunEnv === 'true'
       ? true
@@ -16,8 +17,11 @@ function buildTypeOrmConfig(): DataSourceOptions {
   const base = {
     entities: [path.join(__dirname, '/../**/*.entity{.ts,.js}')],
     migrations: [path.join(__dirname, '/../database/migrations/*{.ts,.js}')],
-    migrationsRun,
-    synchronize: process.env.DB_SYNCHRONIZE === 'true',
+    // IMPORTANT: TypeORM runs migrations before synchronize().
+    // For fresh/bootstrap environments where DB_SYNCHRONIZE=true we must not run migrations,
+    // because many migrations assume base tables already exist.
+    migrationsRun: synchronize ? false : migrationsRun,
+    synchronize,
     logging: process.env.DB_LOGGING === 'true',
   } as const;
 

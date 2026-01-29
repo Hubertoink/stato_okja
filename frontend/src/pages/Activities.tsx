@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { useCohorts } from '@/lib/taxonomy';
@@ -26,6 +26,7 @@ import { getBgClass } from '@/lib/colorPalette';
 
 export default function Activities() {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const STORAGE_KEY = 'activities:advancedFilters:v1';
   const STORAGE_ORDER_KEY = 'activities:order:v1';
@@ -674,13 +675,19 @@ export default function Activities() {
             tabIndex={0}
             aria-label="Aktivität öffnen"
             onClick={() => {
-              if (isMobile) navigate(`/activities/${a.id}`);
+              if (isMobile)
+                navigate(`/activities/${a.id}`, {
+                  state: { from: `${location.pathname}${location.search}` },
+                });
               else setEditId(a.id);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                if (isMobile) navigate(`/activities/${a.id}`);
+                if (isMobile)
+                  navigate(`/activities/${a.id}`, {
+                    state: { from: `${location.pathname}${location.search}` },
+                  });
                 else setEditId(a.id);
               }
             }}

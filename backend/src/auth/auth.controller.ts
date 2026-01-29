@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Patch, Req, UnauthorizedException, UseGuards, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Patch, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
 import { Roles } from './roles.decorator';
@@ -11,9 +11,7 @@ export class AuthController {
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
     const email = String(body?.email || '').toLowerCase();
-    const user = await this.auth.validateUser(email, body?.password);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-    return this.auth.login(user);
+    return this.auth.loginWithPassword(email, String(body?.password || ''));
   }
 
   @UseGuards(JwtAuthGuard)

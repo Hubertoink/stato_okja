@@ -34,4 +34,14 @@ export class User {
 
   @Column({ type: 'varchar', length: 50, default: 'Default Theme' })
   theme!: string;
+
+  // Login brute-force protection
+  @Column({ type: 'int', default: 0 })
+  failedLoginAttempts!: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastFailedLoginAt!: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lockoutUntil!: Date | null;
 }

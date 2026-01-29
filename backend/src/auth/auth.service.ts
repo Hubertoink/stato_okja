@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
@@ -13,6 +13,9 @@ import { AuditAction } from '../common/enums';
 
 @Injectable()
 export class AuthService {
+  private readonly MAX_FAILED_LOGINS = 5;
+  private readonly LOGIN_LOCKOUT_MS = 10 * 60 * 1000;
+
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Organization) private readonly orgs: Repository<Organization>,
@@ -69,6 +72,63 @@ export class AuthService {
     if (!u) return null;
     const ok = await bcrypt.compare(password, u.passwordHash || '');
     return ok ? u : null;
+  }
+
+  async loginWithPassword(email: string, password: string) {
+    const normalizedEmail = String(email || '').toLowerCase();
+    const now = new Date();
+
+    const user = await this.users
+      .createQueryBuilder('u')
+      .where('LOWER(u.email) = LOWER(:email)', { email: normalizedEmail })
+      .getOne();
+
+    if (!user) throw new UnauthorizedException('Invalid credentials');
+
+    // Clear lockout if expired
+    if (user.lockoutUntil && user.lockoutUntil.getTime() <= now.getTime()) {
+      user.lockoutUntil = null;
+      user.failedLoginAttempts = 0;
+      user.lastFailedLoginAt = null;
+      await this.users.save(user);
+    }
+
+    if (user.lockoutUntil && user.lockoutUntil.getTime() > now.getTime()) {
+      const remainingMs = user.lockoutUntil.getTime() - now.getTime();
+      const remainingMin = Math.max(1, Math.ceil(remainingMs / 60000));
+      throw new HttpException(
+        `Zu viele Fehlversuche. Bitte in ${remainingMin} Minute(n) erneut versuchen.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // Reset attempt window if last failure is long ago
+    if (user.lastFailedLoginAt && now.getTime() - user.lastFailedLoginAt.getTime() > this.LOGIN_LOCKOUT_MS) {
+      user.failedLoginAttempts = 0;
+      user.lastFailedLoginAt = null;
+      await this.users.save(user);
+    }
+
+    const ok = await bcrypt.compare(password, user.passwordHash || '');
+    if (!ok) {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      user.lastFailedLoginAt = now;
+      if (user.failedLoginAttempts >= this.MAX_FAILED_LOGINS) {
+        user.lockoutUntil = new Date(now.getTime() + this.LOGIN_LOCKOUT_MS);
+      }
+      await this.users.save(user);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Successful login resets counters
+    if (user.failedLoginAttempts || user.lockoutUntil || user.lastFailedLoginAt) {
+      user.failedLoginAttempts = 0;
+      user.lockoutUntil = null;
+      user.lastFailedLoginAt = null;
+      await this.users.save(user);
+    }
+
+    return this.login(user);
   }
 
   async login(user: User) {

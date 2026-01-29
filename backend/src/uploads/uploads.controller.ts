@@ -5,7 +5,17 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { join } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
-import sharp from 'sharp';
+// sharp is a native dependency; on some dev platforms it may be missing.
+// We load it dynamically so the backend can still compile/run (uploads will error gracefully).
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const sharp: any = (() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('sharp');
+  } catch {
+    return null;
+  }
+})();
 
 import type { Express } from 'express';
 
@@ -51,6 +61,12 @@ export class UploadsController {
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       return { message: 'No file uploaded' };
+    }
+
+    if (!sharp) {
+      throw new BadRequestException(
+        'Image processing is not available (dependency "sharp" is missing).',
+      );
     }
     const uploadsDir = join(process.cwd(), 'uploads', 'images');
     try {

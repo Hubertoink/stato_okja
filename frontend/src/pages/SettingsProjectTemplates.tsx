@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, X } from 'lucide-react';
 import { api } from '@/lib/api';
+import Modal from '@/components/Modal';
+import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useAuth } from '@/lib/auth';
@@ -90,19 +92,32 @@ export default function SettingsProjectTemplates() {
   }, [editing, categories]);
 
   const [form, setForm] = useState<FormState>(initialForm);
+  const [imageIssue, setImageIssue] = useState<{ open: boolean; title: string; message: string }>(
+    { open: false, title: '', message: '' },
+  );
 
   useEffect(() => {
     setForm(initialForm);
   }, [initialForm]);
 
   const uploadImage = async (file: File) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const res = await api.post('/uploads/images', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    const url = res.data?.url as string;
-    if (url) setForm((f) => ({ ...f, imageUrl: url }));
+    try {
+      const processed = await processImageForUpload(file);
+      const fd = new FormData();
+      fd.append('file', processed.file);
+      const res = await api.post('/uploads/images', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data?.url as string;
+      if (url) setForm((f) => ({ ...f, imageUrl: url }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Bild konnte nicht verarbeitet werden.';
+      setImageIssue({
+        open: true,
+        title: 'Bild zu groß oder nicht unterstützt',
+        message: `${msg} (Max ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB, wird auf ${600}px Breite reduziert)`,
+      });
+    }
   };
 
   const onDrop = useCallback(
@@ -339,10 +354,30 @@ export default function SettingsProjectTemplates() {
                       />
                     </div>
                     <div className="text-xs text-gray-500 mt-2">
-                      Unterstützt JPG, PNG, GIF. Max ~10MB (Browser-abhängig).
+                      Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
                     </div>
                   </div>
                 )}
+
+                <Modal
+                  open={imageIssue.open}
+                  onClose={() => setImageIssue((s) => ({ ...s, open: false }))}
+                  title={imageIssue.title}
+                  maxWidth="sm"
+                >
+                  <div className="text-sm text-gray-700 space-y-4">
+                    <div>{imageIssue.message}</div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        className="px-3 py-2 rounded bg-viridian text-white"
+                        onClick={() => setImageIssue((s) => ({ ...s, open: false }))}
+                      >
+                        Ok
+                      </button>
+                    </div>
+                  </div>
+                </Modal>
                 <div className="mt-3">
                   <label className="block text-sm font-medium mb-1">Farbe</label>
                   <input

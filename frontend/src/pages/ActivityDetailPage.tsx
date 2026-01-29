@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useActivity } from '@/lib/activities';
 import {
   X as XIcon,
@@ -22,8 +22,14 @@ const typeLabel: Record<string, string> = {
 
 export default function ActivityDetailPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const { data: activity } = useActivity(id);
+
+  const from = (() => {
+    const raw = (location.state as unknown as { from?: unknown } | null)?.from;
+    return typeof raw === 'string' && raw.length > 0 ? raw : '/activities';
+  })();
 
   if (!activity) return null;
 
@@ -78,7 +84,7 @@ export default function ActivityDetailPage() {
         <div className="flex items-center gap-2">
           {!!activity.id && (
             <button
-              onClick={() => navigate(`/activities/${activity.id}/edit`)}
+              onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from } })}
               aria-label="Bearbeiten"
               title="Bearbeiten"
               className="inline-flex items-center justify-center p-2 rounded-full bg-white border text-viridian"

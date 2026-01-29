@@ -24,7 +24,8 @@ import { useProjects } from '@/lib/projects';
 import { useOrgScopeKey } from '@/lib/orgScope';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { FileDown, RefreshCw, X as XIcon } from 'lucide-react';
+import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import Modal from '@/components/Modal';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -139,10 +140,16 @@ function useStatsByCategory(params: { from?: string; to?: string; projectId?: st
 export default function Statistics() {
   // Aktuelles Jahr als Standard
   const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1; // 1-12
   const [from, setFrom] = useState<string>(`${currentYear}-01-01`);
   const [to, setTo] = useState<string>(`${currentYear}-12-31`);
   const [projectId, setProjectId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null); // null = ganzes Jahr
+  const [filterMode, setFilterMode] = useState<'year' | 'month'>('year');
+  const [customFilterOpen, setCustomFilterOpen] = useState(false);
+  const [tempFrom, setTempFrom] = useState<string>(from);
+  const [tempTo, setTempTo] = useState<string>(to);
   
   // Toggle für absolute vs. relative (Durchschnitt) Zahlen in KPIs
   const [showAverage, setShowAverage] = useState<boolean>(false);
@@ -217,17 +224,116 @@ export default function Statistics() {
     if (!projectsAll.some((p) => p.id === projectId)) setProjectId('');
   }, [projectId, projectsAll]);
 
-  // Helper: Select a year quickly (year is a string like "2024" or empty for "all")
-  const selectYear = (year: string) => {
+  // Monatsnamen für die Anzeige
+  const MONTH_NAMES = [
+    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+  ];
+  const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+
+  // Helper: Update date range based on year and month selection
+  const updateDateRange = (year: string, month: number | null) => {
     if (!year) {
       setFrom('');
       setTo('');
-      setSelectedYear('');
-    } else {
+      return;
+    }
+    if (month === null) {
+      // Ganzes Jahr
       setFrom(`${year}-01-01`);
       setTo(`${year}-12-31`);
-      setSelectedYear(year);
+    } else {
+      // Spezifischer Monat
+      const lastDay = new Date(Number(year), month, 0).getDate();
+      setFrom(`${year}-${String(month).padStart(2, '0')}-01`);
+      setTo(`${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
     }
+  };
+
+  // Helper: Select a year quickly (year is a string like "2024" or empty for "all")
+  const selectYear = (year: string) => {
+    setSelectedYear(year);
+    setSelectedMonth(null);
+    setFilterMode('year');
+    updateDateRange(year, null);
+  };
+
+  // Helper: Select a month
+  const selectMonth = (month: number) => {
+    const year = selectedYear || String(currentYear);
+    setSelectedYear(year);
+    setSelectedMonth(month);
+    setFilterMode('month');
+    updateDateRange(year, month);
+  };
+
+  // Navigate to previous/next month
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    let year = Number(selectedYear || currentYear);
+    let month = selectedMonth ?? currentMonth;
+    
+    if (direction === 'prev') {
+      month -= 1;
+      if (month < 1) {
+        month = 12;
+        year -= 1;
+      }
+    } else {
+      month += 1;
+      if (month > 12) {
+        month = 1;
+        year += 1;
+      }
+    }
+    
+    setSelectedYear(String(year));
+    setSelectedMonth(month);
+    setFilterMode('month');
+    updateDateRange(String(year), month);
+  };
+
+  // Apply custom date range from modal
+  const applyCustomRange = () => {
+    setFrom(tempFrom);
+    setTo(tempTo);
+    setSelectedYear('');
+    setSelectedMonth(null);
+    setFilterMode('year');
+    setCustomFilterOpen(false);
+  };
+
+  // Check if custom range is active (not matching year or month pattern)
+  const isCustomRange = useMemo(() => {
+    if (!from || !to) return false;
+    // Check if it matches a full year
+    const yearMatch = from.match(/^(\d{4})-01-01$/) && to.match(/^(\d{4})-12-31$/);
+    if (yearMatch && from.slice(0, 4) === to.slice(0, 4)) return false;
+    // Check if it matches a full month
+    const monthMatch = from.match(/^(\d{4})-(\d{2})-01$/) && to.match(/^(\d{4})-(\d{2})-\d{2}$/);
+    if (monthMatch && from.slice(0, 7) === to.slice(0, 7)) {
+      const year = Number(from.slice(0, 4));
+      const month = Number(from.slice(5, 7));
+      const lastDay = new Date(year, month, 0).getDate();
+      if (to === `${from.slice(0, 7)}-${String(lastDay).padStart(2, '0')}`) return false;
+    }
+    return true;
+  }, [from, to]);
+
+  // Format the current range for display
+  const formatRangeDisplay = () => {
+    if (isCustomRange) {
+      const fmtDate = (d: string) => {
+        if (!d) return '';
+        const [y, m, day] = d.split('-');
+        return `${day}.${m}.${y}`;
+      };
+      return `${fmtDate(from)} – ${fmtDate(to)}`;
+    }
+    if (!selectedYear) return 'Alle Zeiträume';
+    if (selectedMonth !== null) {
+      return `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
+    }
+    return selectedYear;
   };
 
   const byTypeData = (byType || []).map((d, i) => ({
@@ -565,110 +671,173 @@ export default function Statistics() {
   }
 
   return (
-    <div>
+    <div className="relative">
       <h2 className="text-3xl font-bold text-viridian mb-6">Statistiken & Auswertungen</h2>
 
+      {/* Loading indicator - fixed position bottom right */}
       {(initialLoading || backgroundRefreshing) && (
         <div
-          className={`mb-4 rounded border px-3 py-2 text-sm ${
-            initialLoading
-              ? 'bg-azure-web border-viridian/20 text-viridian'
-              : 'bg-gray-50 border-gray-200 text-gray-600'
-          }`}
+          className="fixed bottom-20 md:bottom-6 right-4 z-40 flex items-center gap-2 bg-white/95 backdrop-blur-sm shadow-lg rounded-full px-4 py-2 text-sm border border-gray-200"
           role="status"
           aria-live="polite"
         >
-          {initialLoading
-            ? 'Statistikdaten werden geladen…'
-            : 'Statistikdaten werden aktualisiert…'}
+          <span className="w-2 h-2 rounded-full bg-viridian animate-pulse" />
+          <span className="text-gray-700">
+            {initialLoading ? 'Laden…' : 'Aktualisieren…'}
+          </span>
         </div>
       )}
 
-      {/* Time Range Selector */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex gap-4 items-end flex-wrap relative">
-          <div>
-            <label className="block text-sm font-medium mb-1">Von</label>
-            <input
-              type="date"
-              title="Von"
-              aria-label="Von"
-              className="border border-gray-300 rounded px-3 py-2"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
+      {/* Time Range Selector - Redesigned */}
+      <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
+        {/* Main Filter Row */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+          {/* Mode Toggle: Jahr / Monat */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 self-start">
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                filterMode === 'year' && !isCustomRange
+                  ? 'bg-white shadow text-viridian font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+              onClick={() => {
+                setFilterMode('year');
+                setSelectedMonth(null);
+                updateDateRange(selectedYear || String(currentYear), null);
+              }}
+            >
+              Jahr
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                filterMode === 'month' && !isCustomRange
+                  ? 'bg-white shadow text-viridian font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+              onClick={() => {
+                setFilterMode('month');
+                const month = selectedMonth ?? currentMonth;
+                setSelectedMonth(month);
+                updateDateRange(selectedYear || String(currentYear), month);
+              }}
+            >
+              Monat
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Bis</label>
-            <input
-              type="date"
-              title="Bis"
-              aria-label="Bis"
-              className="border border-gray-300 rounded px-3 py-2"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
-          </div>
-          {/* Quick year buttons */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Jahr</label>
-            <div className="inline-flex items-center gap-1 flex-wrap">
-              {selectedYear && (
+
+          {/* Year Selection */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {filterMode === 'month' && !isCustomRange ? (
+              /* Month Navigation */
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  title="Filter zurücksetzen (alle Jahre)"
-                  aria-label="Filter zurücksetzen"
-                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
-                  onClick={() => selectYear('')}
+                  className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
+                  onClick={() => navigateMonth('prev')}
+                  title="Vorheriger Monat"
                 >
-                  <XIcon className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
-              )}
-              <button
-                type="button"
-                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
-                  !selectedYear
-                    ? 'bg-viridian text-white'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                }`}
-                onClick={() => selectYear('')}
-              >
-                Alle
-              </button>
-              {activityYears.map((y) => (
+                <div className="flex items-center gap-1 bg-gray-50 rounded-lg px-3 py-2 min-w-[140px] justify-center">
+                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium text-gray-800">
+                    {selectedMonth !== null ? MONTH_NAMES_SHORT[selectedMonth - 1] : MONTH_NAMES_SHORT[currentMonth - 1]} {selectedYear || currentYear}
+                  </span>
+                </div>
                 <button
-                  key={y}
                   type="button"
-                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
-                    selectedYear === y
+                  className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
+                  onClick={() => navigateMonth('next')}
+                  title="Nächster Monat"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              /* Year Pills */
+              <div className="flex items-center gap-1 flex-wrap">
+                <button
+                  type="button"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
+                    !selectedYear && !isCustomRange
                       ? 'bg-viridian text-white'
                       : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                   }`}
-                  onClick={() => selectYear(y)}
+                  onClick={() => selectYear('')}
                 >
-                  {y}
+                  Alle
                 </button>
-              ))}
-            </div>
+                {activityYears.map((y) => (
+                  <button
+                    key={y}
+                    type="button"
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
+                      selectedYear === y && !isCustomRange
+                        ? 'bg-viridian text-white'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                    }`}
+                    onClick={() => selectYear(y)}
+                  >
+                    {y}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="ml-auto flex items-end gap-2">
+
+          {/* Custom Range Button & Badge */}
+          <div className="flex items-center gap-2 sm:ml-auto">
+            {isCustomRange && (
+              <div className="flex items-center gap-2 bg-viridian/10 text-viridian px-3 py-1.5 rounded-lg text-sm">
+                <Calendar className="h-4 w-4" />
+                <span className="font-medium">{formatRangeDisplay()}</span>
+                <button
+                  type="button"
+                  className="p-0.5 hover:bg-viridian/20 rounded"
+                  onClick={() => selectYear(String(currentYear))}
+                  title="Zurücksetzen"
+                >
+                  <XIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             <button
               type="button"
-              className="bg-cambridge-blue text-white px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2"
+              className={`p-2 rounded-lg border transition-colors touch-manipulation ${
+                isCustomRange
+                  ? 'border-viridian text-viridian bg-viridian/5'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
+              onClick={() => {
+                setTempFrom(from);
+                setTempTo(to);
+                setCustomFilterOpen(true);
+              }}
+              title="Erweiterter Zeitfilter"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 sm:ml-0">
+            <button
+              type="button"
+              className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation"
               onClick={exportPdf}
               title="Exportieren (PDF)"
-              aria-label="Exportieren (PDF)"
             >
               <FileDown className="h-4 w-4" />
-              Export (PDF)
+              <span className="hidden sm:inline">Export (PDF)</span>
+              <span className="sm:hidden">PDF</span>
             </button>
             <button
               type="button"
               title="Aktualisieren"
-              aria-label="Aktualisieren"
-              className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 touch-manipulation"
               onClick={() => {
-                // Force refetch of all stats queries even if params didn't change
                 qc.invalidateQueries({
                   predicate: (q) => {
                     const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
@@ -682,6 +851,35 @@ export default function Statistics() {
             </button>
           </div>
         </div>
+
+        {/* Month Picker Grid (shown in month mode) */}
+        {filterMode === 'month' && !isCustomRange && (
+          <div className="mt-4 pt-4 border-t">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
+              {MONTH_NAMES_SHORT.map((name, idx) => {
+                const month = idx + 1;
+                const isActive = selectedMonth === month;
+                const isCurrent = month === currentMonth && selectedYear === String(currentYear);
+                return (
+                  <button
+                    key={month}
+                    type="button"
+                    className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
+                      isActive
+                        ? 'bg-viridian text-white'
+                        : isCurrent
+                          ? 'bg-viridian/10 text-viridian hover:bg-viridian/20'
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
+                    onClick={() => selectMonth(month)}
+                  >
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Project quick filter tiles */}
         {projectsAll.length > 0 && (
@@ -1278,17 +1476,20 @@ export default function Statistics() {
                 <button
                   onClick={() => setActivitiesPage(1)}
                   disabled={activitiesPage === 1}
-                  className="px-2 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Erste Seite"
+                  aria-label="Erste Seite"
                 >
                   ««
                 </button>
                 <button
                   onClick={() => setActivitiesPage((p) => Math.max(1, p - 1))}
                   disabled={activitiesPage === 1}
-                  className="px-3 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Vorherige Seite"
+                  aria-label="Vorherige Seite"
                 >
-                  Zurück
+                  «
                 </button>
                 
                 {/* Page number buttons */}
@@ -1331,15 +1532,18 @@ export default function Statistics() {
                 <button
                   onClick={() => setActivitiesPage((p) => Math.min(totalActivityPages, p + 1))}
                   disabled={activitiesPage === totalActivityPages}
-                  className="px-3 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Nächste Seite"
+                  aria-label="Nächste Seite"
                 >
-                  Weiter
+                  »
                 </button>
                 <button
                   onClick={() => setActivitiesPage(totalActivityPages)}
                   disabled={activitiesPage === totalActivityPages}
-                  className="px-2 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Letzte Seite"
+                  aria-label="Letzte Seite"
                 >
                   »»
                 </button>
@@ -1425,6 +1629,126 @@ export default function Statistics() {
           </div>
         </div>
       </div>
+
+      {/* Custom Date Range Modal */}
+      <Modal
+        open={customFilterOpen}
+        onClose={() => setCustomFilterOpen(false)}
+        title="Erweiterter Zeitfilter"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Wähle einen individuellen Zeitraum für die Statistik-Auswertung.
+          </p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Von</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
+                value={tempFrom}
+                onChange={(e) => setTempFrom(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bis</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
+                value={tempTo}
+                onChange={(e) => setTempTo(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Quick presets */}
+          <div className="pt-2 border-t">
+            <div className="text-xs font-medium text-gray-500 mb-2">Schnellauswahl</div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                onClick={() => {
+                  const today = new Date();
+                  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                  setTempFrom(firstDay.toISOString().slice(0, 10));
+                  setTempTo(today.toISOString().slice(0, 10));
+                }}
+              >
+                Diesen Monat
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                onClick={() => {
+                  const today = new Date();
+                  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                  const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+                  setTempFrom(lastMonth.toISOString().slice(0, 10));
+                  setTempTo(lastDay.toISOString().slice(0, 10));
+                }}
+              >
+                Letzten Monat
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                onClick={() => {
+                  const today = new Date();
+                  const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+                  setTempFrom(threeMonthsAgo.toISOString().slice(0, 10));
+                  setTempTo(today.toISOString().slice(0, 10));
+                }}
+              >
+                Letzte 3 Monate
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                onClick={() => {
+                  const today = new Date();
+                  const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
+                  setTempFrom(sixMonthsAgo.toISOString().slice(0, 10));
+                  setTempTo(today.toISOString().slice(0, 10));
+                }}
+              >
+                Letzte 6 Monate
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                onClick={() => {
+                  const today = new Date();
+                  const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+                  setTempFrom(yearAgo.toISOString().slice(0, 10));
+                  setTempTo(today.toISOString().slice(0, 10));
+                }}
+              >
+                Letztes Jahr
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              onClick={() => setCustomFilterOpen(false)}
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
+              onClick={applyCustomRange}
+            >
+              Übernehmen
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

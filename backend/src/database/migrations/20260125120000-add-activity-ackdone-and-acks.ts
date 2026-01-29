@@ -11,17 +11,21 @@ export class AddActivityAckdoneAndAcks20260125120000 implements MigrationInterfa
       await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
     }
 
-    const hasAckDone = await queryRunner.hasColumn('activities', 'ackDone');
-    if (!hasAckDone) {
-      await queryRunner.addColumn(
-        'activities',
-        new TableColumn({
-          name: 'ackDone',
-          type: 'boolean',
-          isNullable: false,
-          default: 'false',
-        }),
-      );
+    // Prüfe ob die activities Tabelle existiert (bei frischer DB mit synchronize=true möglicherweise nicht)
+    const hasActivitiesTable = await queryRunner.hasTable('activities');
+    if (hasActivitiesTable) {
+      const hasAckDone = await queryRunner.hasColumn('activities', 'ackDone');
+      if (!hasAckDone) {
+        await queryRunner.addColumn(
+          'activities',
+          new TableColumn({
+            name: 'ackDone',
+            type: 'boolean',
+            isNullable: false,
+            default: 'false',
+          }),
+        );
+      }
     }
 
     const hasAcksTable = await queryRunner.hasTable('activity_acks');
@@ -77,9 +81,12 @@ export class AddActivityAckdoneAndAcks20260125120000 implements MigrationInterfa
       await queryRunner.dropTable('activity_acks', true);
     }
 
-    const hasAckDone = await queryRunner.hasColumn('activities', 'ackDone');
-    if (hasAckDone) {
-      await queryRunner.dropColumn('activities', 'ackDone');
+    const hasActivitiesTable = await queryRunner.hasTable('activities');
+    if (hasActivitiesTable) {
+      const hasAckDone = await queryRunner.hasColumn('activities', 'ackDone');
+      if (hasAckDone) {
+        await queryRunner.dropColumn('activities', 'ackDone');
+      }
     }
   }
 }

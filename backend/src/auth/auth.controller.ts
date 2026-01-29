@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Patch, Req, UnauthorizedException, UseGuards, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Patch, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
 import { Roles } from './roles.decorator';
@@ -8,12 +8,20 @@ import { RolesGuard } from './roles.guard';
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
+  @Get('public-config')
+  publicConfig() {
+    const appName = String(process.env.PUBLIC_APP_NAME || 'StatO');
+    const orgNameRaw = process.env.PUBLIC_ORG_NAME;
+    const orgName = typeof orgNameRaw === 'string' && orgNameRaw.trim() ? orgNameRaw.trim() : null;
+    const loginSubtitle = String(process.env.PUBLIC_LOGIN_SUBTITLE || 'OKJA Statistik & Dokumentation');
+    const loginTitle = orgName ? `${appName} - ${orgName}` : appName;
+    return { appName, orgName, loginTitle, loginSubtitle };
+  }
+
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
     const email = String(body?.email || '').toLowerCase();
-    const user = await this.auth.validateUser(email, body?.password);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-    return this.auth.login(user);
+    return this.auth.loginWithPassword(email, String(body?.password || ''));
   }
 
   @UseGuards(JwtAuthGuard)

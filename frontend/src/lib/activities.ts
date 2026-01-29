@@ -1,8 +1,22 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useOrgScopeKey } from './orgScope';
 import type { Location } from './locations';
 import type { Project } from './projects';
+
+function invalidateStatsQueries(qc: QueryClient, scopeKey: string) {
+  void qc.invalidateQueries({
+    predicate: (q) => {
+      const k = q.queryKey;
+      return (
+        Array.isArray(k) &&
+        typeof k[0] === 'string' &&
+        (k[0] as string).startsWith('stats:') &&
+        k[1] === scopeKey
+      );
+    },
+  });
+}
 
 export interface Activity {
   id: string;
@@ -120,6 +134,7 @@ export function useCreateActivity() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['activities', scopeKey] });
+      invalidateStatsQueries(qc, scopeKey);
     },
   });
 }
@@ -135,6 +150,7 @@ export function useUpdateActivity() {
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['activities', scopeKey] });
       if (variables?.id) qc.invalidateQueries({ queryKey: ['activity', scopeKey, variables.id] });
+      invalidateStatsQueries(qc, scopeKey);
     },
   });
 }
@@ -150,6 +166,7 @@ export function useRemoveActivity() {
     onSuccess: (_data, id) => {
       qc.invalidateQueries({ queryKey: ['activities', scopeKey] });
       if (id) qc.invalidateQueries({ queryKey: ['activity', scopeKey, id] });
+      invalidateStatsQueries(qc, scopeKey);
     },
   });
 }

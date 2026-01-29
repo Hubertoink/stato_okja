@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, Length, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, Length, MaxLength, Min, ValidateIf } from 'class-validator';
 import { ActivityType } from '../../common/enums';
 
 export class CreateProjectDto {
@@ -10,8 +10,9 @@ export class CreateProjectDto {
   type!: ActivityType;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  categoryId?: string;
+  categoryId?: string | null;
 
   // Mehrfachkategorien (optional)
   @IsOptional()
@@ -19,58 +20,71 @@ export class CreateProjectDto {
   categoryIds?: string[];
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
   @MaxLength(120)
-  targetGroup?: string;
+  targetGroup?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  imageUrl?: string;
+  imageUrl?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsInt()
   @Min(0)
   imageSize?: number | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  color?: string;
+  color?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsDateString()
-  dateFrom?: string;
+  dateFrom?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsDateString()
-  dateTo?: string;
+  dateTo?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  defaultStartTime?: string;
+  defaultStartTime?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  defaultEndTime?: string;
+  defaultEndTime?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  defaultStaff?: string;
+  defaultStaff?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  defaultVolunteers?: string;
+  defaultVolunteers?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  tag?: string;
+  tag?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  activityField?: string;
+  activityField?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
   @IsString()
-  description?: string;
+  description?: string | null;
 
   @IsOptional()
   @IsBoolean()

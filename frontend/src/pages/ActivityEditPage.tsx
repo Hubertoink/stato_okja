@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { X as XIcon, Save as SaveIcon, Trash2 as TrashIcon, Boxes } from 'lucide-react';
 import { useActivity, useUpdateActivity, useRemoveActivity, type Activity } from '@/lib/activities';
 import { useProjects, type Project } from '@/lib/projects';
@@ -16,6 +16,7 @@ type GenderKey = 'm' | 'w' | 'd';
 
 export default function ActivityEditPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const { data: activity } = useActivity(id);
   const { data: projects } = useProjects({ archived: false });
@@ -30,6 +31,11 @@ export default function ActivityEditPage() {
   const [picker, setPicker] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const keyboardOpen = useKeyboardOpen();
+
+  const returnTo = (() => {
+    const raw = (location.state as unknown as { from?: unknown } | null)?.from;
+    return typeof raw === 'string' && raw.length > 0 ? raw : '/activities';
+  })();
 
   const [form, setForm] = useState<{
     projectId?: string;
@@ -653,7 +659,7 @@ export default function ActivityEditPage() {
               onSuccess: () => {
                 showToast('Aktivität gelöscht');
                 setDeleteOpen(false);
-                navigate(-1);
+                navigate(returnTo, { replace: true });
               },
               onError: () => {
                 setDeleteOpen(false);

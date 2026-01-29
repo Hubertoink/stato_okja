@@ -17,7 +17,6 @@ import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
-import { useIsFetching } from '@tanstack/react-query';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
 
@@ -60,13 +59,6 @@ export default function Layout() {
   const openQuickTally = () => setQuickTallyOpen(true);
   const minimizeQuickTally = () => setQuickTallyOpen(false);
 
-  const statsFetchingCount = useIsFetching({
-    predicate: (q) => {
-      const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
-      return typeof key0 === 'string' && key0.startsWith('stats:');
-    },
-  });
-  const statsFetching = statsFetchingCount > 0;
   const roleLabel: Record<string, string> = {
     superadmin: 'Superadmin',
     org_admin: 'Org-Admin',
@@ -231,7 +223,7 @@ export default function Layout() {
     <div className="min-h-screen">
       {/* Header */}
       <header className="fixed top-0 inset-x-0 z-40 header-surface text-gray-900">
-        <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-3">
+        <div className="container mx-auto px-2 sm:px-3 md:px-4 py-3 md:py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <img
               src={logoUrl}
@@ -263,7 +255,7 @@ export default function Layout() {
             </div>
             <button
               aria-label="Benutzer"
-              className="flex items-center gap-2 hover:bg-black/5 rounded px-1 py-1"
+              className="hidden sm:flex items-center gap-2 hover:bg-black/5 rounded px-1 py-1"
               onClick={() => setMenuOpen((v) => !v)}
             >
               {user?.avatarUrl ? (
@@ -276,15 +268,30 @@ export default function Layout() {
                 <UserCircle2 className="w-8 h-8" />
               )}
             </button>
-            {/* Compact user/org on mobile */}
-            <div className="flex sm:hidden flex-col items-end ml-2 text-[11px] leading-4">
-              <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
-              <div className="text-gray-600 truncate max-w-[40vw]">
-                {activeOrgName ||
-                  (typeof scope === 'string' ? `Org ${scope.substring(0, 6)}…` : '')}
-                {orgSwitching ? ' · lädt…' : ''}
+            {/* Compact user/org on mobile - entire area clickable */}
+            <button
+              aria-label="Benutzermenü öffnen"
+              className="flex sm:hidden items-center gap-2 hover:bg-black/5 rounded px-1 py-1"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt="Avatar"
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <UserCircle2 className="w-8 h-8" />
+              )}
+              <div className="flex flex-col items-end text-[11px] leading-4">
+                <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
+                <div className="text-gray-600 truncate max-w-[40vw]">
+                  {activeOrgName ||
+                    (typeof scope === 'string' ? `Org ${scope.substring(0, 6)}…` : '')}
+                  {orgSwitching ? ' · lädt…' : ''}
+                </div>
               </div>
-            </div>
+            </button>
             {menuOpen && (
               <div
                 className="absolute right-0 top-full mt-2 bg-white text-gray-800 rounded shadow-lg w-56 z-50"
@@ -455,17 +462,6 @@ export default function Layout() {
               >
                 <BarChart3 className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/statistics') ? 'nav-label-active' : ''}`} data-text="Statistiken">Statistiken</span>
-                {statsFetching && (
-                  <span
-                    className="ml-2 inline-flex items-center gap-1 text-xs text-gray-600"
-                    role="status"
-                    aria-live="polite"
-                    title="Statistikdaten werden geladen"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" aria-hidden />
-                    lädt…
-                  </span>
-                )}
               </Link>
             </li>
             <li>
@@ -491,7 +487,7 @@ export default function Layout() {
 
       {/* Main Content */}
       <main
-        className={`container mx-auto px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-[5.5rem]'} md:pb-8`}
+        className={`container mx-auto px-2 sm:px-3 md:px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-[5.5rem]'} md:pb-8`}
       >
         <Outlet context={{ openQuickTally }} />
       </main>
@@ -550,15 +546,7 @@ export default function Layout() {
               to="/statistics"
               className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/statistics') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
-              <span className="relative">
-                <BarChart3 className="w-5 h-5" />
-                {statsFetching && (
-                  <span
-                    className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-accent-orange animate-pulse"
-                    aria-hidden
-                  />
-                )}
-              </span>
+              <BarChart3 className="w-5 h-5" />
               <span>Stats</span>
             </Link>
           </li>

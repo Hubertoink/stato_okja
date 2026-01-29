@@ -34,7 +34,7 @@ export default function SettingsHolidays() {
       <h3 className="text-xl font-semibold text-viridian mb-2">Feiertage im Kalender</h3>
       <p className="text-gray-600 mb-4">
         Wähle dein Bundesland, damit gesetzliche Feiertage im Kalender angezeigt werden. Optional
-        können Schulferien einblendet werden.
+        können Schulferien eingeblendet werden.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">

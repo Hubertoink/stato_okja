@@ -644,23 +644,27 @@ export default function Activities() {
         <div className="text-sm text-gray-600">
           {total > 0 ? `Seite ${page} von ${pageCount} · ${total} Einträge` : 'Keine Einträge'}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
-            className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+            className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => setPage((p) => Math.max(p - 1, 1))}
             disabled={page <= 1}
+            title="Vorherige Seite"
+            aria-label="Vorherige Seite"
           >
-            Zurück
+            «
           </button>
           <span className="text-sm">
             {page} / {pageCount}
           </span>
           <button
-            className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+            className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => setPage((p) => Math.min(p + 1, pageCount))}
             disabled={page >= pageCount}
+            title="Nächste Seite"
+            aria-label="Nächste Seite"
           >
-            Weiter
+            »
           </button>
         </div>
       </div>

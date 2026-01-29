@@ -1476,17 +1476,20 @@ export default function Statistics() {
                 <button
                   onClick={() => setActivitiesPage(1)}
                   disabled={activitiesPage === 1}
-                  className="px-2 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Erste Seite"
+                  aria-label="Erste Seite"
                 >
                   ««
                 </button>
                 <button
                   onClick={() => setActivitiesPage((p) => Math.max(1, p - 1))}
                   disabled={activitiesPage === 1}
-                  className="px-3 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Vorherige Seite"
+                  aria-label="Vorherige Seite"
                 >
-                  Zurück
+                  «
                 </button>
                 
                 {/* Page number buttons */}
@@ -1529,15 +1532,18 @@ export default function Statistics() {
                 <button
                   onClick={() => setActivitiesPage((p) => Math.min(totalActivityPages, p + 1))}
                   disabled={activitiesPage === totalActivityPages}
-                  className="px-3 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Nächste Seite"
+                  aria-label="Nächste Seite"
                 >
-                  Weiter
+                  »
                 </button>
                 <button
                   onClick={() => setActivitiesPage(totalActivityPages)}
                   disabled={activitiesPage === totalActivityPages}
-                  className="px-2 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Letzte Seite"
+                  aria-label="Letzte Seite"
                 >
                   »»
                 </button>

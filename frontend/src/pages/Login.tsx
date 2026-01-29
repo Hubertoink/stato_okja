@@ -1,5 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import { api } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 
@@ -9,7 +10,34 @@ export default function Login() {
   const [password, setPassword] = useState('admin');
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [branding, setBranding] = useState({
+    loginTitle: 'StatO',
+    loginSubtitle: 'OKJA Statistik & Dokumentation',
+  });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/auth/public-config');
+        const loginTitle = String(res?.data?.loginTitle || '').trim();
+        const loginSubtitle = String(res?.data?.loginSubtitle || '').trim();
+
+        if (!cancelled) {
+          setBranding({
+            loginTitle: loginTitle || 'StatO',
+            loginSubtitle: loginSubtitle || 'OKJA Statistik & Dokumentation',
+          });
+        }
+      } catch {
+        // If the endpoint is unavailable, keep defaults.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -22,8 +50,10 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #5B6CFF 0%, #7C8FFF 30%, #9F7AEA 70%, #00CFE8 100%)'}}>
       <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white/50">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold gradient-text">StatO</h1>
-          <p className="text-gray-500 mt-2 font-medium">OKJA Statistik & Dokumentation</p>
+          <h1 className="text-3xl md:text-4xl font-extrabold gradient-text leading-tight whitespace-normal break-words">
+            {branding.loginTitle}
+          </h1>
+          <p className="text-gray-500 mt-2 font-medium">{branding.loginSubtitle}</p>
         </div>
 
         <form className="space-y-6" onSubmit={onSubmit}>

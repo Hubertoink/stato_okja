@@ -1,4 +1,4 @@
-re# Backend Container – Environment Variables
+# Backend Container – Environment Variables
 
 Dieses Dokument beschreibt die Environment-Variablen, die der Stato-Backend-Container versteht (Pflicht/optional), inkl. typischer Werte für Docker/Compose.
 
@@ -33,6 +33,22 @@ Für einen laufenden Backend-Container brauchst du mindestens:
 - `APP_ORIGIN` (optional, aber wichtig für Mails)
   - Default: `http://localhost:5173`
   - Wird genutzt, um Links in Invite-/Reset-E-Mails zu bauen (z. B. `${APP_ORIGIN}/reset-password?...`).
+
+## Branding (Login-Seite / On-Prem)
+
+Diese Variablen sind **optional** und werden vom Backend über `GET /auth/public-config` bereitgestellt. Das Frontend nutzt sie u. a. auf der Login-Seite, um Instanz-/Orga-Branding anzuzeigen.
+
+- `PUBLIC_APP_NAME` (optional)
+  - Default: `StatO`
+  - Basisname der Anwendung.
+
+- `PUBLIC_ORG_NAME` (optional)
+  - Default: *(leer)*
+  - Wenn gesetzt, wird der Login-Titel als `${PUBLIC_APP_NAME} - ${PUBLIC_ORG_NAME}` angezeigt (z. B. `StatO - Stadt Mannheim`).
+
+- `PUBLIC_LOGIN_SUBTITLE` (optional)
+  - Default: `OKJA Statistik & Dokumentation`
+  - Untertitel auf der Login-Seite.
 
 ## Datenbank (TypeORM)
 

@@ -8,6 +8,16 @@ import { RolesGuard } from './roles.guard';
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
+  @Get('public-config')
+  publicConfig() {
+    const appName = String(process.env.PUBLIC_APP_NAME || 'StatO');
+    const orgNameRaw = process.env.PUBLIC_ORG_NAME;
+    const orgName = typeof orgNameRaw === 'string' && orgNameRaw.trim() ? orgNameRaw.trim() : null;
+    const loginSubtitle = String(process.env.PUBLIC_LOGIN_SUBTITLE || 'OKJA Statistik & Dokumentation');
+    const loginTitle = orgName ? `${appName} - ${orgName}` : appName;
+    return { appName, orgName, loginTitle, loginSubtitle };
+  }
+
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
     const email = String(body?.email || '').toLowerCase();

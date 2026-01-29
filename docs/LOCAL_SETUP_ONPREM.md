@@ -53,6 +53,11 @@ Siehe auch: `backend/BACKEND_CONTAINER_ENV.md` und `backend/.env.example`.
 **SMTP (optional, produktiv empfohlen)**
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 
+**Branding / Instanzname (optional, On‑Prem)**
+- `PUBLIC_APP_NAME=StatO`
+- `PUBLIC_ORG_NAME=Stadt Mannheim` (führt zu Login-Titel `StatO - Stadt Mannheim`)
+- `PUBLIC_LOGIN_SUBTITLE=OKJA Statistik & Dokumentation`
+
 ---
 
 ## Frontend: API‑Anbindung (wichtig für On‑Prem)

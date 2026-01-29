@@ -115,11 +115,14 @@ Beim Start stellt das Backend sicher, dass ein `superadmin` existiert.
 
 - `SUPERADMIN_EMAIL` (empfohlen)
   - Default im Code: eine Dev-Mailadresse
-  - Wird beim Start „erzwungen“, damit Reset-/Invite-Mails an ein echtes Postfach gehen können.
+  - Wird für das **initiale** Superadmin-Konto genutzt.
+  - Optional erzwingen (überschreibt bestehende E-Mail beim Start): `SUPERADMIN_EMAIL_FORCE=true`
 
 - `SUPERADMIN_PASSWORD` (optional, aber empfohlen)
-  - Wenn gesetzt (mind. 6 Zeichen), wird das Passwort des Superadmins beim Start (re-)gesetzt.
+  - Wird für das **initiale** Superadmin-Konto genutzt (wenn noch keines existiert).
   - Wenn nicht gesetzt und noch kein Superadmin existiert, ist das Default-Passwort `admin`.
+  - Wichtig: Das Passwort wird **nicht** bei jedem Start überschrieben (damit UI-Passwortänderungen nicht „zurückspringen“).
+  - Optional erzwingen (setzt bestehendes Passwort beim Start neu): `SUPERADMIN_PASSWORD_FORCE=true`
 
 ## SMTP (Einladungen / Passwort Reset)
 

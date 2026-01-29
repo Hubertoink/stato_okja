@@ -35,6 +35,8 @@ export class AuthService {
   async ensureSeed() {
     const seedEmail = (process.env.SUPERADMIN_EMAIL || 'Hubertoink@outlook.com').toLowerCase();
     const forcedPassword = process.env.SUPERADMIN_PASSWORD;
+    const forceEmail = (process.env.SUPERADMIN_EMAIL_FORCE || '').toLowerCase() === 'true';
+    const forcePassword = (process.env.SUPERADMIN_PASSWORD_FORCE || '').toLowerCase() === 'true';
     const existing = await this.users.findOne({ where: { role: 'superadmin' } });
     if (!existing) {
       const u = this.users.create({
@@ -46,18 +48,20 @@ export class AuthService {
       await this.users.save(u);
     } else {
       let changed = false;
-      if (existing.email.toLowerCase() !== seedEmail) {
-        // Overwrite email so you can receive reset mails during testing/production
+      if (forceEmail && existing.email.toLowerCase() !== seedEmail) {
+        // Optional: overwrite email so you can receive reset mails during testing/ops.
         existing.email = seedEmail;
         changed = true;
       }
-      if (typeof forcedPassword === 'string' && forcedPassword.length >= 6) {
-        // Allow resetting the superadmin password via ENV
+
+      if (forcePassword && typeof forcedPassword === 'string' && forcedPassword.length >= 6) {
+        // IMPORTANT: only overwrite password when explicitly forced.
+        // Otherwise users changing the password in the UI would have it reverted on container restarts.
         existing.passwordHash = await bcrypt.hash(forcedPassword, 10);
         changed = true;
       } else if (!existing.passwordHash) {
-        // If somehow no password is set (e.g., invited user), ensure a default
-        existing.passwordHash = await bcrypt.hash('admin', 10);
+        // If somehow no password is set (e.g., legacy/invited user), ensure a default.
+        existing.passwordHash = await bcrypt.hash(forcedPassword || 'admin', 10);
         changed = true;
       }
       if (changed) await this.users.save(existing);

@@ -24,10 +24,12 @@ import { useCategories, useTags, useUpdateCategory, Tag } from '@/lib/taxonomy';
 import { useStaff } from '@/lib/staff';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
+import Modal from '@/components/Modal';
 import { useQueryClient } from '@tanstack/react-query';
 import { PROJECT_TEMPLATES, type ProjectTemplate } from '@/lib/projectTemplates';
 import { defaultCategoryByName } from '@/lib/defaultCategories';
 import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTemplatesApi';
+import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 
 function ArchiveRestoreControls({
   id,
@@ -190,8 +192,13 @@ function ProjectForm({
       type: 'project_open',
       ...(initial || {}),
     };
+    // Postgres returns bigint columns as strings; coerce for later PATCH validation.
+    const anyBase = base as Partial<Project> & { categories?: Array<{ id: string }>; imageSize?: unknown };
+    if (typeof anyBase.imageSize === 'string' && anyBase.imageSize.trim() !== '') {
+      const n = Number(anyBase.imageSize);
+      if (Number.isFinite(n)) base.imageSize = n;
+    }
     // Backward compatibility: if legacy data has categories[] but no categoryId, pick the first
-    const anyBase = base as Partial<Project> & { categories?: Array<{ id: string }> };
     if (!base.categoryId && Array.isArray(anyBase.categories) && anyBase.categories.length) {
       base.categoryId = anyBase.categories[0].id;
     }
@@ -204,6 +211,9 @@ function ProjectForm({
   const [showTemplates, setShowTemplates] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [imageIssue, setImageIssue] = useState<{ open: boolean; title: string; message: string }>(
+    { open: false, title: '', message: '' },
+  );
   const { data: categories } = useCategories({ active: true });
   const { data: allCategories } = useCategories();
   const { data: allTags } = useTags();
@@ -214,14 +224,25 @@ function ProjectForm({
   const { data: staff } = useStaff({ active: true });
 
   const uploadImage = useCallback(async (file: File) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const res = await api.post('/uploads/images', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    const url = res.data?.url as string;
-    const size = res.data?.size as number | undefined;
-    if (url) setForm((f) => ({ ...f, imageUrl: url, imageSize: size ?? null }));
+    try {
+      const processed = await processImageForUpload(file);
+      const fd = new FormData();
+      fd.append('file', processed.file);
+      const res = await api.post('/uploads/images', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data?.url as string;
+      const sizeRaw = res.data?.size as unknown;
+      const size = typeof sizeRaw === 'number' ? sizeRaw : typeof sizeRaw === 'string' ? Number(sizeRaw) : undefined;
+      if (url) setForm((f) => ({ ...f, imageUrl: url, imageSize: Number.isFinite(size as number) ? (size as number) : null }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Bild konnte nicht verarbeitet werden.';
+      setImageIssue({
+        open: true,
+        title: 'Bild zu groß oder nicht unterstützt',
+        message: `${msg} (Max ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB, wird auf ${600}px Breite reduziert)`,
+      });
+    }
   }, []);
 
   const findCategoryByName = useCallback(
@@ -688,7 +709,7 @@ function ProjectForm({
                   </button>
                 </div>
                 <div className="text-xs text-gray-500 mt-2">
-                  Unterstützt JPG, PNG, GIF. Max ~10MB (Browser-abhängig).
+                  Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
                 </div>
               </div>
             )}
@@ -936,10 +957,26 @@ function ProjectForm({
                     if (v === '') {
                       if (clearable.has(k)) (acc as Record<string, unknown>)[k as string] = null;
                     } else if (v !== undefined) {
-                      (acc as Record<string, unknown>)[k as string] = v as unknown;
+                      // Coerce imageSize to number if it came from Postgres as string
+                      if (k === 'imageSize' && typeof v === 'string' && v.trim() !== '') {
+                        const n = Number(v);
+                        if (Number.isFinite(n)) (acc as Record<string, unknown>)[k as string] = n;
+                      } else {
+                        (acc as Record<string, unknown>)[k as string] = v as unknown;
+                      }
                     }
                     return acc;
                   }, {} as Partial<Project>);
+                  const imgSize = (cleaned as Partial<Project> & { imageSize?: unknown }).imageSize;
+                  const bytes = typeof imgSize === 'number' ? imgSize : typeof imgSize === 'string' ? Number(imgSize) : undefined;
+                  if (typeof bytes === 'number' && Number.isFinite(bytes) && bytes > MAX_IMAGE_BYTES) {
+                    setImageIssue({
+                      open: true,
+                      title: 'Bild zu groß',
+                      message: `Das Projektbild ist größer als ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB. Bitte ein kleineres Bild hochladen (wird automatisch auf 600px reduziert).`,
+                    });
+                    return;
+                  }
                   onSubmit(cleaned);
                 }}
                 className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
@@ -965,8 +1002,70 @@ function ProjectForm({
           </div>
         </div>
       </div>
+
+      <Modal
+        open={imageIssue.open}
+        onClose={() => setImageIssue((s) => ({ ...s, open: false }))}
+        title={imageIssue.title}
+        maxWidth="sm"
+      >
+        <div className="text-sm text-gray-700 space-y-4">
+          <div>{imageIssue.message}</div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="px-3 py-2 rounded bg-viridian text-white"
+              onClick={() => setImageIssue((s) => ({ ...s, open: false }))}
+            >
+              Ok
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
+}
+
+function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<Project> {
+  const v = (values || {}) as Record<string, unknown>;
+  const allowed = [
+    'title',
+    'type',
+    'categoryId',
+    'categoryIds',
+    'targetGroup',
+    'imageUrl',
+    'imageSize',
+    'color',
+    'dateFrom',
+    'dateTo',
+    'defaultStartTime',
+    'defaultEndTime',
+    'defaultStaff',
+    'defaultVolunteers',
+    'tag',
+    'activityField',
+    'description',
+    'archived',
+  ] as const;
+
+  const out: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (!Object.prototype.hasOwnProperty.call(v, key)) continue;
+    const val = v[key];
+    if (key === 'imageSize') {
+      if (typeof val === 'number' && Number.isFinite(val)) out[key] = val;
+      else if (typeof val === 'string' && val.trim() !== '') {
+        const n = Number(val);
+        if (Number.isFinite(n)) out[key] = n;
+      } else if (val === null) {
+        out[key] = null;
+      }
+      continue;
+    }
+    out[key] = val;
+  }
+  return out as Partial<Project>;
 }
 
 export default function Projects() {
@@ -1293,17 +1392,15 @@ export default function Projects() {
           initial={modal.mode === 'edit' ? modal.project : undefined}
           onSubmit={(values) => {
             if (modal.mode === 'create') {
-              create.mutate(values, {
+              create.mutate(toProjectUpsertPayload(values), {
                 onSuccess: () => {
                   setModal(null);
                   showToast('Projekt erstellt');
                 },
               });
             } else if (modal.project?.id) {
-              // Omit fields not allowed by UpdateProjectDto (e.g., id)
-              const { id: _removed, ...rest } = (values || {}) as Partial<Project>;
-              void _removed; // mark as used to satisfy linter
-              const data: Partial<Project> = { ...rest };
+              // Only send DTO-allowed fields; the loaded project includes read-only fields like `categories`.
+              const data = toProjectUpsertPayload(values);
               update.mutate(
                 { id: modal.project.id, data },
                 {

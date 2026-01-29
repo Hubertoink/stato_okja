@@ -1,22 +1,30 @@
-import { Controller, Post, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { BadRequestException, Controller, Post, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import { join } from 'path';
-import { statSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
+import sharp from 'sharp';
 
 import type { Express } from 'express';
 
-// Create a safe filename: timestamp-random-original.ext (lowercased, spaces -> -)
-function sanitizeFilename(originalName: string) {
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const MAX_IMAGE_WIDTH = 600;
+
+function sanitizeBaseName(originalName: string) {
   const name = (originalName || 'file').toLowerCase().replace(/[^a-z0-9_.-]+/g, '-');
+  const parts = name.split('.');
+  const base = parts.join('.') || 'file';
+  return base.replace(/^-+/, '').replace(/-+$/, '') || 'file';
+}
+
+function makeFilename(originalName: string, ext: string) {
   const ts = Date.now();
   const rnd = Math.random().toString(36).slice(2, 8);
-  const parts = name.split('.');
-  const ext = parts.length > 1 ? '.' + parts.pop() : '';
-  const base = parts.join('.') || 'file';
-  return `${ts}-${rnd}-${base}${ext}`;
+  const base = sanitizeBaseName(originalName);
+  const safeExt = (ext || '').startsWith('.') ? ext : `.${ext || ''}`;
+  return `${ts}-${rnd}-${base}${safeExt}`;
 }
 
 @ApiTags('uploads')
@@ -31,14 +39,11 @@ export class UploadsController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: join(process.cwd(), 'uploads', 'images'),
-        filename: (req, file, cb) => cb(null, sanitizeFilename(file.originalname)),
-      }),
-      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // allow larger originals; we enforce the processed max below
       fileFilter: (req, file, cb) => {
-        // Basic image mimetype allowlist
-        const ok = /^image\/(png|jpe?g|gif|webp|bmp|svg\+xml)$/.test(file.mimetype || '');
+        // Basic image mimetype allowlist (raster only; we re-encode/resize)
+        const ok = /^image\/(png|jpe?g|webp)$/.test(file.mimetype || '');
         cb(ok ? null : new Error('Unsupported file type'), ok);
       },
     }),
@@ -47,17 +52,32 @@ export class UploadsController {
     if (!file) {
       return { message: 'No file uploaded' };
     }
-    // Return relative URL that frontend nginx proxies to backend
-    const url = `/uploads/images/${file.filename}`;
-    // Multer should provide file.size, but we also stat() the saved file for reliability.
-    const size = (() => {
-      try {
-        const p = join(process.cwd(), 'uploads', 'images', file.filename);
-        return statSync(p).size;
-      } catch {
-        return file.size;
-      }
-    })();
-    return { url, size };
+    const uploadsDir = join(process.cwd(), 'uploads', 'images');
+    try {
+      mkdirSync(uploadsDir, { recursive: true });
+    } catch {
+      // ignore
+    }
+
+    const mime = (file.mimetype || '').toLowerCase();
+    const format: 'jpeg' | 'png' | 'webp' = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpeg';
+    const ext = format === 'jpeg' ? 'jpg' : format;
+    const filename = makeFilename(file.originalname, ext);
+    const outPath = join(uploadsDir, filename);
+
+    // Resize and re-encode. rotate() fixes EXIF orientation.
+    const { data, info } = await sharp(file.buffer)
+      .rotate()
+      .resize({ width: MAX_IMAGE_WIDTH, withoutEnlargement: true })
+      .toFormat(format, format === 'jpeg' ? { quality: 82 } : format === 'webp' ? { quality: 82 } : { compressionLevel: 9 })
+      .toBuffer({ resolveWithObject: true });
+
+    if (info.size > MAX_IMAGE_BYTES) {
+      throw new BadRequestException(`Image too large (max ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB)`);
+    }
+
+    writeFileSync(outPath, data);
+    const url = `/uploads/images/${filename}`;
+    return { url, size: info.size };
   }
 }

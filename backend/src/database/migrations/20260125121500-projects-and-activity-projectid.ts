@@ -145,47 +145,50 @@ END$$;`);
     }
 
     // ---- activities.projectId ----
-    const hasProjectId = await queryRunner.hasColumn('activities', 'projectId');
-    if (!hasProjectId) {
-      await queryRunner.addColumn(
-        'activities',
-        new TableColumn({
-          name: 'projectId',
-          type: isPostgres ? 'uuid' : 'varchar',
-          isNullable: true,
-        }),
-      );
-    } else if (isPostgres) {
-      // If column exists but is varchar, convert to uuid for correct joins
-      const rows = (await queryRunner.query(
-        `SELECT data_type FROM information_schema.columns WHERE table_name = 'activities' AND column_name = 'projectId' LIMIT 1`,
-      )) as Array<{ data_type?: string }>;
-      const dataType = (rows?.[0]?.data_type || '').toLowerCase();
-      if (dataType && dataType !== 'uuid') {
-        await queryRunner.query(
-          `ALTER TABLE "activities" ALTER COLUMN "projectId" TYPE uuid USING NULLIF("projectId", '')::uuid`,
+    const hasActivitiesTable = await queryRunner.hasTable('activities');
+    if (hasActivitiesTable) {
+      const hasProjectId = await queryRunner.hasColumn('activities', 'projectId');
+      if (!hasProjectId) {
+        await queryRunner.addColumn(
+          'activities',
+          new TableColumn({
+            name: 'projectId',
+            type: isPostgres ? 'uuid' : 'varchar',
+            isNullable: true,
+          }),
         );
-      }
-    }
-
-    if (isPostgres) {
-      // Add FK if not already present
-      try {
-        const table = await queryRunner.getTable('activities');
-        const hasFk = (table?.foreignKeys || []).some((fk) => fk.columnNames.includes('projectId'));
-        if (!hasFk) {
-          await queryRunner.createForeignKey(
-            'activities',
-            new TableForeignKey({
-              columnNames: ['projectId'],
-              referencedTableName: 'projects',
-              referencedColumnNames: ['id'],
-              onDelete: 'SET NULL',
-            }),
+      } else if (isPostgres) {
+        // If column exists but is varchar, convert to uuid for correct joins
+        const rows = (await queryRunner.query(
+          `SELECT data_type FROM information_schema.columns WHERE table_name = 'activities' AND column_name = 'projectId' LIMIT 1`,
+        )) as Array<{ data_type?: string }>;
+        const dataType = (rows?.[0]?.data_type || '').toLowerCase();
+        if (dataType && dataType !== 'uuid') {
+          await queryRunner.query(
+            `ALTER TABLE "activities" ALTER COLUMN "projectId" TYPE uuid USING NULLIF("projectId", '')::uuid`,
           );
         }
-      } catch {
-        // If projects table doesn't exist yet, or FK already exists, ignore
+      }
+
+      if (isPostgres) {
+        // Add FK if not already present
+        try {
+          const table = await queryRunner.getTable('activities');
+          const hasFk = (table?.foreignKeys || []).some((fk) => fk.columnNames.includes('projectId'));
+          if (!hasFk) {
+            await queryRunner.createForeignKey(
+              'activities',
+              new TableForeignKey({
+                columnNames: ['projectId'],
+                referencedTableName: 'projects',
+                referencedColumnNames: ['id'],
+                onDelete: 'SET NULL',
+              }),
+            );
+          }
+        } catch {
+          // If projects table doesn't exist yet, or FK already exists, ignore
+        }
       }
     }
   }
@@ -197,17 +200,20 @@ END$$;`);
       await queryRunner.dropTable('project_categories', true);
     }
 
-    const hasProjectId = await queryRunner.hasColumn('activities', 'projectId');
-    if (hasProjectId) {
-      // Drop FK first if present
-      try {
-        const table = await queryRunner.getTable('activities');
-        const fks = (table?.foreignKeys || []).filter((fk) => fk.columnNames.includes('projectId'));
-        for (const fk of fks) await queryRunner.dropForeignKey('activities', fk);
-      } catch {
-        // noop
+    const hasActivitiesTable = await queryRunner.hasTable('activities');
+    if (hasActivitiesTable) {
+      const hasProjectId = await queryRunner.hasColumn('activities', 'projectId');
+      if (hasProjectId) {
+        // Drop FK first if present
+        try {
+          const table = await queryRunner.getTable('activities');
+          const fks = (table?.foreignKeys || []).filter((fk) => fk.columnNames.includes('projectId'));
+          for (const fk of fks) await queryRunner.dropForeignKey('activities', fk);
+        } catch {
+          // noop
+        }
+        await queryRunner.dropColumn('activities', 'projectId');
       }
-      await queryRunner.dropColumn('activities', 'projectId');
     }
   }
 }

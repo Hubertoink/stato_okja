@@ -814,11 +814,11 @@ function GettingStartedTutorialModal({
   const isLastStep = stepIndex === steps.length - 1;
 
   return (
-    <Modal open={open} onClose={onClose} title="Stato Schritt fuer Schritt" maxWidth="xl">
+    <Modal open={open} onClose={onClose} title="Stato Schritt fuer Schritt" maxWidth="3xl">
       <div className="space-y-6">
         <div className="rounded-[28px] border border-white/70 bg-[radial-gradient(circle_at_top_left,rgba(124,143,255,0.16),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.15),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,255,0.94))] p-5 md:p-6">
-          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-            <div className="lg:w-[320px] shrink-0">
+          <div className="flex flex-col md:flex-row md:items-start gap-6">
+            <div className="md:w-[340px] shrink-0">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-viridian shadow-sm">
                 <Sparkles className="w-3.5 h-3.5" />
                 Schritt {step.step}
@@ -855,7 +855,7 @@ function GettingStartedTutorialModal({
               </div>
             </div>
 
-            <div className="flex-1 min-w-0">{step.preview}</div>
+            <div className="flex-1 min-w-[240px]">{step.preview}</div>
           </div>
         </div>
 

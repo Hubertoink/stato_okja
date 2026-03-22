@@ -48,7 +48,8 @@ Siehe auch: `backend/BACKEND_CONTAINER_ENV.md` und `backend/.env.example`.
 - `DB_DATABASE=...`
 - `JWT_SECRET=<langer-random-string>`
 - `SUPERADMIN_EMAIL=admin@<kommune>.de`
-- `SUPERADMIN_PASSWORD=<starkes-passwort>` (empfohlen)
+- `SUPERADMIN_PASSWORD=<starkes-passwort>` (empfohlen; initiales Start-Passwort)
+  - Optional (nur für Ops-Fälle): `SUPERADMIN_PASSWORD_FORCE=true` setzt das Superadmin-Passwort beim Container-Start neu.
 
 **SMTP (optional, produktiv empfohlen)**
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
@@ -220,7 +221,8 @@ docker exec -t <postgres-container> pg_dump -U <user> <db> > stato_backup.sql
 ## Produktions-Hinweise / Hardening
 
 - Setze zwingend ein starkes `JWT_SECRET` (stabil, nicht wechselnd).
-- Setze `SUPERADMIN_PASSWORD` und ändere es nach Übergabe.
+- Setze `SUPERADMIN_PASSWORD` als initiales Start-Passwort und ändere es nach Übergabe.
+  - Wenn du das Passwort später per ENV „zurücksetzen“ willst: `SUPERADMIN_PASSWORD_FORCE=true`.
 - Exponiere Postgres nicht nach außen (nur internes Docker‑Netz).
 - Nutze TLS (Reverse Proxy) und sichere Admin‑Zugänge.
 - Logging/Monitoring: je nach Kommune z. B. Promtail/Loki, ELK, oder Docker‑Logdriver.

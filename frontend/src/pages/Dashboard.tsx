@@ -89,20 +89,20 @@ export default function Dashboard() {
   const [exportOpen, setExportOpen] = useState(false);
   const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
-  const tutorialSeenStorageKey = useMemo(
+  const tutorialDismissedStorageKey = useMemo(
     () => `dashboard-getting-started-v1:${user?.id || 'guest'}:${scopeKey}`,
     [scopeKey, user?.id],
   );
-  const [tutorialSeen, setTutorialSeen] = useState(false);
+  const [tutorialDismissed, setTutorialDismissed] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
   useEffect(() => {
     try {
-      setTutorialSeen(localStorage.getItem(tutorialSeenStorageKey) === '1');
+      setTutorialDismissed(localStorage.getItem(tutorialDismissedStorageKey) === '1');
     } catch {
-      setTutorialSeen(false);
+      setTutorialDismissed(false);
     }
-  }, [tutorialSeenStorageKey]);
+  }, [tutorialDismissedStorageKey]);
 
   // Determine effective orgId for opening hours
   const effectiveOrgId = user?.role === 'superadmin'
@@ -144,20 +144,10 @@ export default function Dashboard() {
   }, [user?.role]);
 
   useEffect(() => {
-    if (projectsLoading || projects.length === 0 || tutorialSeen) return;
-    try {
-      localStorage.setItem(tutorialSeenStorageKey, '1');
-    } catch {
-      /* ignore */
-    }
-    setTutorialSeen(true);
-  }, [projects.length, projectsLoading, tutorialSeen, tutorialSeenStorageKey]);
-
-  useEffect(() => {
-    if (!projectsLoading && projects.length === 0 && !tutorialSeen) {
+    if (!projectsLoading && projects.length === 0 && !tutorialDismissed) {
       setTutorialOpen(true);
     }
-  }, [projects.length, projectsLoading, tutorialSeen]);
+  }, [projects.length, projectsLoading, tutorialDismissed]);
 
   const lastFive = useMemo(() => {
     const items = audit || [];
@@ -178,17 +168,17 @@ export default function Dashboard() {
   const fmt = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
   // keep date helpers only where needed; recent actions use locale string
 
-  const markTutorialSeen = () => {
+  const dismissTutorial = () => {
     try {
-      localStorage.setItem(tutorialSeenStorageKey, '1');
+      localStorage.setItem(tutorialDismissedStorageKey, '1');
     } catch {
       /* ignore */
     }
-    setTutorialSeen(true);
+    setTutorialDismissed(true);
   };
 
-  const closeTutorial = () => {
-    markTutorialSeen();
+  const closeTutorial = (dismiss = false) => {
+    if (dismiss) dismissTutorial();
     setTutorialOpen(false);
   };
 
@@ -196,8 +186,8 @@ export default function Dashboard() {
     setTutorialOpen(true);
   };
 
-  const navigateFromTutorial = (path: string) => {
-    markTutorialSeen();
+  const navigateFromTutorial = (path: string, dismiss = false) => {
+    if (dismiss) dismissTutorial();
     setTutorialOpen(false);
     navigate(path);
   };
@@ -627,13 +617,17 @@ function GettingStartedTutorialModal({
   onNavigate,
 }: {
   open: boolean;
-  onClose: () => void;
-  onNavigate: (path: string) => void;
+  onClose: (dismiss?: boolean) => void;
+  onNavigate: (path: string, dismiss?: boolean) => void;
 }) {
   const [stepIndex, setStepIndex] = useState(0);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   useEffect(() => {
-    if (open) setStepIndex(0);
+    if (open) {
+      setStepIndex(0);
+      setDontShowAgain(false);
+    }
   }, [open]);
 
   const steps: Array<{
@@ -860,20 +854,34 @@ function GettingStartedTutorialModal({
         </div>
 
         <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span className="font-medium text-gray-700">{stepIndex + 1}</span>
-            <span>/</span>
-            <span>{steps.length}</span>
-            <div className="ml-2 flex items-center gap-1.5">
-              {steps.map((entry, index) => (
-                <span
-                  key={entry.id}
-                  className={`h-1.5 rounded-full transition-all ${
-                    index === stepIndex ? 'w-8 bg-viridian' : 'w-3 bg-gray-200'
-                  }`}
-                />
-              ))}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span className="font-medium text-gray-700">{stepIndex + 1}</span>
+              <span>/</span>
+              <span>{steps.length}</span>
+              <div className="ml-2 flex items-center gap-1.5">
+                {steps.map((entry, index) => (
+                  <span
+                    key={entry.id}
+                    className={`h-1.5 rounded-full transition-all ${
+                      index === stepIndex ? 'w-8 bg-viridian' : 'w-3 bg-gray-200'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
+
+            {isLastStep && (
+              <label className="inline-flex items-start gap-3 rounded-2xl border border-gray-200 bg-white/90 px-3 py-2.5 text-sm text-gray-700 shadow-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={dontShowAgain}
+                  onChange={(event) => setDontShowAgain(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                />
+                <span>Tutorial nicht mehr automatisch anzeigen</span>
+              </label>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -888,7 +896,7 @@ function GettingStartedTutorialModal({
             </button>
             <button
               type="button"
-              onClick={() => onNavigate(step.actionPath)}
+              onClick={() => onNavigate(step.actionPath, isLastStep && dontShowAgain)}
               className="inline-flex items-center gap-2 rounded-2xl bg-viridian px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[rgba(91,108,255,0.20)] hover:brightness-105 transition"
             >
               {step.icon}
@@ -897,7 +905,7 @@ function GettingStartedTutorialModal({
             <button
               type="button"
               onClick={() => {
-                if (isLastStep) onClose();
+                if (isLastStep) onClose(dontShowAgain);
                 else setStepIndex((index) => Math.min(steps.length - 1, index + 1));
               }}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/90 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition"

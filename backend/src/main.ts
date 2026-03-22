@@ -57,11 +57,6 @@ async function bootstrap() {
     console.warn('Could not ensure uploads directory exists:', e);
   }
 
-  // Serve static files for uploads
-  app.useStaticAssets(uploadsBase, {
-    prefix: '/uploads/',
-  });
-
   const port = process.env.PORT || 3000;
   await app.listen(port);
 

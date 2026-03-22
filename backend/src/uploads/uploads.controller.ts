@@ -1,10 +1,10 @@
-import { BadRequestException, Controller, Post, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { BadRequestException, Controller, Get, NotFoundException, Param, Post, Res, StreamableFile, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { join } from 'path';
-import { mkdirSync, writeFileSync } from 'fs';
+import { basename, extname, join } from 'path';
+import { createReadStream, existsSync, mkdirSync, writeFileSync } from 'fs';
 // sharp is a native dependency; on some dev platforms it may be missing.
 // We load it dynamically so the backend can still compile/run (uploads will error gracefully).
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -18,6 +18,7 @@ const sharp: any = (() => {
 })();
 
 import type { Express } from 'express';
+import type { Response } from 'express';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_WIDTH = 600;
@@ -37,10 +38,33 @@ function makeFilename(originalName: string, ext: string) {
   return `${ts}-${rnd}-${base}${safeExt}`;
 }
 
+function getImageContentType(filename: string) {
+  const ext = extname(filename).toLowerCase();
+  if (ext === '.png') return 'image/png';
+  if (ext === '.webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
 @ApiTags('uploads')
 @UseGuards(JwtAuthGuard)
 @Controller('uploads')
 export class UploadsController {
+  @Get('images/:filename')
+  @ApiOperation({ summary: 'Bild laden (auth-geschützt)' })
+  getImage(@Param('filename') filename: string, @Res({ passthrough: true }) res: Response) {
+    const safeName = basename(filename || '');
+    if (!safeName || safeName !== filename || !/^[a-z0-9][a-z0-9_.-]*$/i.test(safeName)) {
+      throw new NotFoundException();
+    }
+
+    const filePath = join(process.cwd(), 'uploads', 'images', safeName);
+    if (!existsSync(filePath)) throw new NotFoundException();
+
+    res.setHeader('Content-Type', getImageContentType(safeName));
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return new StreamableFile(createReadStream(filePath));
+  }
+
   @Post('images')
   @ApiOperation({
     summary: 'Bild hochladen',

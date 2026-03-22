@@ -25,6 +25,14 @@ function isStrongSecret(value: string) {
   return value.length >= 32 && !isPlaceholderSecret(value);
 }
 
+function isInternalDatabaseHost(host: string) {
+  const normalized = normalize(host).toLowerCase();
+  return normalized === 'localhost'
+    || normalized === '127.0.0.1'
+    || normalized === '::1'
+    || normalized === 'postgres';
+}
+
 export function getJwtSecret() {
   const configured = normalize(process.env.JWT_SECRET);
   if (configured && !isPlaceholderSecret(configured)) return configured;
@@ -48,4 +56,27 @@ export function assertSecureRuntimeConfig() {
   if (!dbPassword || isPlaceholderSecret(dbPassword)) {
     throw new Error('DB_PASSWORD/POSTGRES_PASSWORD muss in dieser Umgebung gesetzt und darf kein Platzhalter sein.');
   }
+}
+
+export function getDatabaseTlsPolicy() {
+  const dbType = normalize(process.env.DB_TYPE || 'postgres').toLowerCase();
+  const host = normalize(process.env.DB_HOST || 'localhost');
+  const sslEnv = normalize(process.env.DB_SSL).toLowerCase();
+  const useSsl = sslEnv === 'true' || sslEnv === 'require' || sslEnv === '1';
+  const rejectUnauthorized = normalize(process.env.DB_SSL_REJECT_UNAUTHORIZED || 'false').toLowerCase() === 'true';
+
+  if (dbType !== 'postgres') {
+    return { useSsl: false, rejectUnauthorized: false };
+  }
+
+  if (isStrictMode() && !isInternalDatabaseHost(host)) {
+    if (!useSsl) {
+      throw new Error('DB_SSL muss für externe Postgres-Verbindungen in dieser Umgebung aktiviert sein.');
+    }
+    if (!rejectUnauthorized) {
+      throw new Error('DB_SSL_REJECT_UNAUTHORIZED muss für externe Postgres-Verbindungen in dieser Umgebung aktiviert sein.');
+    }
+  }
+
+  return { useSsl, rejectUnauthorized };
 }

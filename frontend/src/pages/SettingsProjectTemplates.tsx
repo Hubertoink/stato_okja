@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useAuth } from '@/lib/auth';
 import { useCategories, useTags, useCreateCategory, useCreateTag } from '@/lib/taxonomy';
+import ProtectedImage from '@/components/ProtectedImage';
 import {
   ProjectTemplateDto,
   useCreateProjectTemplate,
@@ -192,7 +193,7 @@ export default function SettingsProjectTemplates() {
             <div key={t.id} className="border rounded p-3 flex gap-3">
               <div className="w-20 h-14 rounded overflow-hidden border bg-gray-50 shrink-0">
                 {t.imageUrl ? (
-                  <img src={t.imageUrl} alt={t.title} className="w-full h-full object-cover" />
+                  <ProtectedImage src={t.imageUrl} alt={t.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">kein Bild</div>
                 )}
@@ -307,7 +308,7 @@ export default function SettingsProjectTemplates() {
                 <label className="block text-sm font-medium mb-1">Bild</label>
                 {form.imageUrl ? (
                   <div className="space-y-2">
-                    <img
+                    <ProtectedImage
                       src={form.imageUrl}
                       alt="Vorlagenbild"
                       className="w-full h-40 object-cover rounded border"

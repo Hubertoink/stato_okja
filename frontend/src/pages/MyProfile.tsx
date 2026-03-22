@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
+import ProtectedImage from '@/components/ProtectedImage';
 
 export default function MyProfile() {
   const { user, refresh } = useAuth();
@@ -38,7 +39,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
       <h3 className="text-lg font-semibold text-viridian mb-4">Profil</h3>
       <div className="flex items-start gap-4">
         <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden bg-azure-web flex items-center justify-center text-gray-500 shrink-0">
-          {image ? <img src={image} className="w-full h-full object-cover" /> : <span className="text-sm">Kein Bild</span>}
+          {image ? <ProtectedImage src={image} alt="Profilbild" className="w-full h-full object-cover" /> : <span className="text-sm">Kein Bild</span>}
         </div>
         <div className="flex-1 space-y-3">
           <div>

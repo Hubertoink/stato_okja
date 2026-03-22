@@ -23,6 +23,7 @@ import { api } from '@/lib/api';
 import { useCategories, useTags, useUpdateCategory, Tag } from '@/lib/taxonomy';
 import { useStaff } from '@/lib/staff';
 import { useToast } from '@/components/Toast';
+import ProtectedImage from '@/components/ProtectedImage';
 import ConfirmModal from '@/components/ConfirmModal';
 import Modal from '@/components/Modal';
 import { useQueryClient } from '@tanstack/react-query';
@@ -594,7 +595,7 @@ function ProjectForm({
                     title={t.title}
                   >
                     {t.imageUrl ? (
-                      <img
+                      <ProtectedImage
                         src={t.imageUrl}
                         alt={t.title}
                         className="absolute inset-0 w-full h-full object-cover"
@@ -673,7 +674,7 @@ function ProjectForm({
             />
             {form.imageUrl ? (
               <div className="space-y-2">
-                <img
+                <ProtectedImage
                   src={form.imageUrl}
                   alt="Projektbild"
                   className="w-full h-40 object-cover rounded border"
@@ -1245,7 +1246,7 @@ export default function Projects() {
                 <div className="absolute inset-0 rounded-2xl overflow-hidden z-0 pointer-events-none">
                   {p.imageUrl ? (
                     <>
-                      <img
+                      <ProtectedImage
                         src={p.imageUrl}
                         alt={p.title}
                         className="absolute inset-0 w-full h-full object-cover transform scale-105 blur-[2px]"

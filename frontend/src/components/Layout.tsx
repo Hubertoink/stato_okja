@@ -13,6 +13,7 @@ import logoUrl from '../../assets/Stato_Logo.png';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import Modal from '@/components/Modal';
+import ProtectedImage from '@/components/ProtectedImage';
 import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
@@ -259,7 +260,7 @@ export default function Layout() {
               onClick={() => setMenuOpen((v) => !v)}
             >
               {user?.avatarUrl ? (
-                <img
+                <ProtectedImage
                   src={user.avatarUrl}
                   alt="Avatar"
                   className="w-8 h-8 rounded-full object-cover"
@@ -275,7 +276,7 @@ export default function Layout() {
               onClick={() => setMenuOpen((v) => !v)}
             >
               {user?.avatarUrl ? (
-                <img
+                <ProtectedImage
                   src={user.avatarUrl}
                   alt="Avatar"
                   className="w-8 h-8 rounded-full object-cover"

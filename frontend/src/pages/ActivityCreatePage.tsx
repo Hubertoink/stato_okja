@@ -7,6 +7,7 @@ import { useLocations } from '@/lib/locations';
 import { useTags, useCohorts, useCategories, type Cohort } from '@/lib/taxonomy';
 import { useStaff } from '@/lib/staff';
 import ProjectPickerModal from './ProjectPickerModal';
+import ProtectedImage from '@/components/ProtectedImage';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getBgClass } from '@/lib/colorPalette';
@@ -298,11 +299,11 @@ export default function ActivityCreatePage() {
             >
               <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
                 {selectedProject.imageUrl ? (
-                  <img
-                    src={selectedProject.imageUrl}
-                    alt={selectedProject.title}
-                    className="w-full h-full object-cover"
-                  />
+                        <ProtectedImage
+                          src={selectedProject.imageUrl}
+                          alt={selectedProject.title}
+                          className="w-full h-full object-cover"
+                        />
                 ) : (
                   <Boxes className="w-6 h-6 text-gray-500" />
                 )}

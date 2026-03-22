@@ -12,6 +12,7 @@ import { useLocations } from '@/lib/locations';
 import { useToast } from '@/components/Toast';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { createPortal } from 'react-dom';
+import ProtectedImage from '@/components/ProtectedImage';
 import { getBgClass } from '@/lib/colorPalette';
 
 type GenderKey = 'm' | 'w' | 'd';
@@ -265,7 +266,7 @@ export default function ActivityQuickAdd({
               >
                 <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
                   {selectedProject.imageUrl ? (
-                    <img
+                    <ProtectedImage
                       src={selectedProject.imageUrl}
                       alt={selectedProject.title}
                       className="w-full h-full object-cover"

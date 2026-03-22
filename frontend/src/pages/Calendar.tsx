@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import type React from 'react';
 import { createPortal } from 'react-dom';
+import ProtectedImage from '@/components/ProtectedImage';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -441,7 +442,7 @@ export default function Calendar() {
               aria-label={label}
             >
               {hasImg && a.project && (
-                <img
+                <ProtectedImage
                   src={a.project.imageUrl || undefined}
                   alt=""
                   aria-hidden
@@ -504,7 +505,7 @@ export default function Calendar() {
               className={`relative w-full rounded px-2 py-1.5 text-left shadow-sm hover:shadow transition-shadow overflow-hidden border border-black/10 ${bgClass}`}
             >
               {hasImg && a.project && (
-                <img
+                <ProtectedImage
                   src={a.project.imageUrl || undefined}
                   alt=""
                   aria-hidden

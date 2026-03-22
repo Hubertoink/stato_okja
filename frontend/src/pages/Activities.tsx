@@ -23,6 +23,7 @@ import { useActivity } from '@/lib/activities';
 import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
 import { colorForActivityType } from '@/lib/colors';
 import { getBgClass } from '@/lib/colorPalette';
+import ProtectedImage from '@/components/ProtectedImage';
 
 export default function Activities() {
   const navigate = useNavigate();
@@ -594,7 +595,7 @@ export default function Activities() {
                 <td className="px-3 lg:px-6 py-4 text-sm relative overflow-hidden">
                   {a.project?.imageUrl ? (
                     <>
-                      <img
+                      <ProtectedImage
                         src={a.project.imageUrl || undefined}
                         alt=""
                         aria-hidden
@@ -698,7 +699,7 @@ export default function Activities() {
           >
             {a.project?.imageUrl ? (
               <>
-                <img
+                <ProtectedImage
                   src={a.project.imageUrl || undefined}
                   alt=""
                   aria-hidden

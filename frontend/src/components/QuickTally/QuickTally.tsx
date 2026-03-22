@@ -10,6 +10,7 @@ import ProjectPickerModal from '@/pages/ProjectPickerModal';
 import QuickTallyButton from './QuickTallyButton';
 import QuickTallyReviewModal from './QuickTallyReviewModal';
 import { useQuickTallySession } from './useQuickTallySession';
+import ProtectedImage from '@/components/ProtectedImage';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -135,7 +136,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 shadow-md">
                       {selectedProject.imageUrl ? (
-                        <img
+                        <ProtectedImage
                           src={selectedProject.imageUrl}
                           alt={selectedProject.title}
                           className="w-full h-full object-cover"

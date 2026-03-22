@@ -302,6 +302,7 @@ export class AuthService {
       );
     }
     user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
     await this.users.save(user);
     return { ok: true };
   }
@@ -312,8 +313,10 @@ export class AuthService {
     const user = await this.users.findOne({ where: { email } });
     // Do not leak existence of the account
     if (!user) return { ok: true };
+    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
+    await this.users.save(user);
     const token = await this.jwt.signAsync(
-      { sub: user.id, purpose: 'reset' },
+      { sub: user.id, purpose: 'reset', version: user.passwordResetTokenVersion },
       { expiresIn: process.env.RESET_TOKEN_EXPIRATION || '1h' },
     );
     const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
@@ -327,18 +330,22 @@ export class AuthService {
   }
 
   async resetPassword(token: string, password: string) {
-    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token, {
+    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(token, {
       secret: getJwtSecret(),
     });
     if (!decoded || decoded.purpose !== 'reset') throw new Error('Invalid reset token');
     const user = await this.users.findOne({ where: { id: decoded.sub } });
     if (!user) throw new Error('User not found');
+    if ((decoded.version ?? -1) !== (user.passwordResetTokenVersion || 0)) {
+      throw new Error('Reset token bereits verbraucht oder ersetzt');
+    }
     if (!this.isPasswordStrong(password)) {
       throw new BadRequestException(
         'Passwort muss mind. 6 Zeichen, eine Zahl und ein Sonderzeichen enthalten',
       );
     }
     user.passwordHash = await bcrypt.hash(password, 10);
+    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
     await this.users.save(user);
     return { ok: true };
   }
@@ -346,8 +353,10 @@ export class AuthService {
   async adminResetPassword(userId: string) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
+    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
+    await this.users.save(user);
     const token = await this.jwt.signAsync(
-      { sub: user.id, purpose: 'reset' },
+      { sub: user.id, purpose: 'reset', version: user.passwordResetTokenVersion },
       { expiresIn: process.env.RESET_TOKEN_EXPIRATION || '1h' },
     );
     const origin = process.env.APP_ORIGIN || 'http://localhost:5173';

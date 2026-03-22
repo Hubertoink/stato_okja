@@ -6,8 +6,10 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import { assertSecureRuntimeConfig } from './config/security.config';
 
 async function bootstrap() {
+  assertSecureRuntimeConfig();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Global prefix

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { getStoredAuthToken, subscribeToAuthEvents } from './authStorage';
 
-const AUTH_TOKEN_KEY = 'auth_token';
 const LAST_ACTIVITY_KEY = 'stato:lastActivityMs';
 
 function parseNumberEnv(value: unknown, fallback: number) {
@@ -42,17 +42,9 @@ function getJwtExpMs(token: string): number | null {
   return exp * 1000;
 }
 
-export function getStoredAuthToken(): string {
-  try {
-    return localStorage.getItem(AUTH_TOKEN_KEY) || '';
-  } catch {
-    return '';
-  }
-}
-
 function readLastActivityMs(now: number): number {
   try {
-    const raw = localStorage.getItem(LAST_ACTIVITY_KEY);
+    const raw = sessionStorage.getItem(LAST_ACTIVITY_KEY);
     const n = raw ? Number(raw) : NaN;
     return Number.isFinite(n) ? n : now;
   } catch {
@@ -62,7 +54,7 @@ function readLastActivityMs(now: number): number {
 
 function writeLastActivityMs(ts: number) {
   try {
-    localStorage.setItem(LAST_ACTIVITY_KEY, String(ts));
+    sessionStorage.setItem(LAST_ACTIVITY_KEY, String(ts));
   } catch {
     // ignore
   }
@@ -169,16 +161,7 @@ export function useSessionTimeout(opts: {
     };
     document.addEventListener('visibilitychange', onVisibility, { passive: true } as AddEventListenerOptions);
 
-    const onStorage = (ev: StorageEvent) => {
-      if (ev.key === AUTH_TOKEN_KEY && !ev.newValue) {
-        onLogout('remote');
-        return;
-      }
-      if (ev.key === LAST_ACTIVITY_KEY) {
-        scheduleIdleLogout();
-      }
-    };
-    window.addEventListener('storage', onStorage);
+    const unsubscribeAuthEvents = subscribeToAuthEvents(() => onLogout('remote'));
 
     return () => {
       clearTimers();
@@ -186,7 +169,7 @@ export function useSessionTimeout(opts: {
         window.removeEventListener(e, bumpActivity);
       }
       document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('storage', onStorage);
+      unsubscribeAuthEvents();
     };
   }, [enabled, onLogout, onNotify]);
 }

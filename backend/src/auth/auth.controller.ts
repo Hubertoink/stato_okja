@@ -1,12 +1,24 @@
-import { Body, Controller, Get, Post, Patch, Req, UseGuards, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Patch, Req, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
+import { OrgsService } from '../orgs/orgs.service';
+
+type InviteRole = 'superadmin' | 'org_admin' | 'user';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly orgs: OrgsService,
+  ) {}
+
+  private parseInviteRole(role: unknown): InviteRole {
+    if (role === 'superadmin' || role === 'org_admin' || role === 'user') return role;
+    if (typeof role === 'undefined' || role === null || role === '') return 'user';
+    throw new BadRequestException('Ungültige Rolle');
+  }
 
   @Get('public-config')
   publicConfig() {
@@ -34,12 +46,45 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('superadmin','org_admin')
   @Post('invite')
-  invite(@Body() body: { email: string; name: string; role?: 'org_admin'|'user'; orgId?: string|null; orgName?: string }) {
+  async invite(
+    @Body() body: { email: string; name: string; role?: 'org_admin'|'user'; orgId?: string|null; orgName?: string },
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
     // Require an organization either by id or by name (for auto-create)
     if (!body?.orgId && !body?.orgName) {
       throw new BadRequestException('Organisation ist erforderlich');
     }
-    return this.auth.inviteUser(body);
+
+    const role = this.parseInviteRole(body?.role);
+    const actor = req.user;
+
+    if (actor.role !== 'superadmin') {
+      if (role === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
+      if (body?.orgName) {
+        throw new ForbiddenException('Organisationen bitte separat innerhalb der eigenen Struktur anlegen');
+      }
+
+      const myOrgId = actor.orgId || null;
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+
+      const requestedOrgId = body?.orgId ?? myOrgId;
+      if (!requestedOrgId) throw new ForbiddenException('Nicht erlaubt');
+
+      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
+      if (!subtree.includes(requestedOrgId)) throw new ForbiddenException('Nicht erlaubt');
+
+      return this.auth.inviteUser({
+        ...body,
+        role,
+        orgId: requestedOrgId,
+        orgName: undefined,
+      });
+    }
+
+    return this.auth.inviteUser({
+      ...body,
+      role,
+    });
   }
 
   @Post('accept-invite')

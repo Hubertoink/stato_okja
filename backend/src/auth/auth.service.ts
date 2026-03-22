@@ -10,6 +10,7 @@ import { EmailService } from '../email/email.service';
 import type { UserRole } from '../users/entities/user.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
+import { getJwtSecret } from '../config/security.config';
 
 @Injectable()
 export class AuthService {
@@ -234,7 +235,7 @@ export class AuthService {
 
   async acceptInvite(token: string, password: string) {
     const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token, {
-      secret: process.env.JWT_SECRET || 'dev_secret_change_me',
+      secret: getJwtSecret(),
     });
     if (!decoded || decoded.purpose !== 'invite') throw new Error('Invalid invite token');
     const user = await this.users.findOne({ where: { id: decoded.sub } });
@@ -327,7 +328,7 @@ export class AuthService {
 
   async resetPassword(token: string, password: string) {
     const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token, {
-      secret: process.env.JWT_SECRET || 'dev_secret_change_me',
+      secret: getJwtSecret(),
     });
     if (!decoded || decoded.purpose !== 'reset') throw new Error('Invalid reset token');
     const user = await this.users.findOne({ where: { id: decoded.sub } });

@@ -659,7 +659,7 @@ function GettingStartedTutorialModal({
       title: 'Projekte anlegen',
       subtitle: 'Hier entsteht die Basis fuer alle Aktivitaeten.',
       description:
-        'Legen Sie zuerst ein Projekt an. Dort definieren Sie Titel, Typ, Zielgruppe, Zeitraum, Bild, Kategorien und Farben. Danach koennen Aktivitaeten mit einem Klick auf dieses Projekt gebucht werden.',
+        'Legen Sie zuerst ein Projekt an. Dort definieren Sie Titel, Typ, Zielgruppe, Standardzeiten, Bild, Farben sowie passende Kategorien und Tags. Neue Kategorien und Tags legen Sie bei Bedarf in den Einstellungen an. Danach koennen Aktivitaeten mit einem Klick auf dieses Projekt gebucht werden.',
       icon: <FolderPlus className="w-5 h-5" />,
       actionLabel: 'Zu Projekte',
       actionPath: '/projects?create=1',
@@ -678,7 +678,8 @@ function GettingStartedTutorialModal({
             </div>
           </div>
           <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-600 leading-5">
-            Kategorien, Tags und Farben koennen direkt im selben Schritt gepflegt werden.
+            Kategorien und Tags legen Sie bei Bedarf in den Einstellungen an; im Projekt waehlen Sie
+            diese dann aus. Die Farbe setzen Sie direkt hier.
           </div>
         </TutorialPreviewCard>
       ),

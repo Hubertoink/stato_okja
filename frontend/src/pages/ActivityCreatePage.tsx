@@ -29,6 +29,21 @@ type FormState = {
   cohortCounts?: Record<string, { m: number; w: number; d: number }>;
 };
 
+function FieldInfoHint({ text }: { text: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs font-normal text-gray-500"
+      title={text}
+      aria-label={text}
+    >
+      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-normal leading-none text-gray-500">
+        i
+      </span>
+      <span>{text}</span>
+    </span>
+  );
+}
+
 export default function ActivityCreatePage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -480,7 +495,10 @@ export default function ActivityCreatePage() {
         {/* Kategorien: ausblenden bei "Offene Tür" */}
         {selectedProject?.type !== 'open_door' && (
           <div>
-            <label className="block text-sm font-medium mb-1">Kategorien</label>
+            <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <label className="block text-sm font-medium">Kategorien</label>
+              <FieldInfoHint text="In Einstellungen anlegen" />
+            </div>
             <div className="flex flex-wrap gap-2 mb-2">
               {(categories || []).map((c) => {
                 const active = (form.categoryIds || []).includes(c.id);
@@ -512,7 +530,10 @@ export default function ActivityCreatePage() {
         )}
 
         <div>
-          <label className="block text-sm font-medium mb-1">Tags</label>
+          <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <label className="block text-sm font-medium">Tags</label>
+            <FieldInfoHint text="In Einstellungen anlegen" />
+          </div>
           <div className="flex flex-wrap gap-2">
             {(tags || []).map((t) => {
               const active = form.tagIds?.includes(t.id);
@@ -541,7 +562,10 @@ export default function ActivityCreatePage() {
 
         {/* Staff multi-select split by roles */}
         <div>
-          <label className="block text-sm font-medium mb-1">Mitarbeitende</label>
+          <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <label className="block text-sm font-medium">Mitarbeitende</label>
+            <FieldInfoHint text="In Einstellungen anlegen" />
+          </div>
           <div className="flex flex-wrap gap-2">
             {(staff || [])
               .filter((s) =>
@@ -573,7 +597,10 @@ export default function ActivityCreatePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Ehrenamtliche</label>
+          <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <label className="block text-sm font-medium">Ehrenamtliche</label>
+            <FieldInfoHint text="In Einstellungen anlegen" />
+          </div>
           <div className="flex flex-wrap gap-2">
             {(staff || [])
               .filter((s) =>

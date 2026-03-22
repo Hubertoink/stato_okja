@@ -178,6 +178,21 @@ function ArchiveRestoreControls({
   );
 }
 
+function FieldInfoHint({ text }: { text: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs font-normal text-gray-500"
+      title={text}
+      aria-label={text}
+    >
+      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-normal leading-none text-gray-500">
+        i
+      </span>
+      <span>{text}</span>
+    </span>
+  );
+}
+
 function ProjectForm({
   initial,
   onSubmit,
@@ -747,7 +762,10 @@ function ProjectForm({
           </div>
           {/* Removed upper free-text staff inputs per spec */}
           <div>
-            <label className="block text-sm font-medium mb-1">Tags (mehrfach)</label>
+            <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <label className="block text-sm font-medium">Tags (mehrfach)</label>
+              <FieldInfoHint text="In Einstellungen anlegen" />
+            </div>
             <div className="flex flex-wrap gap-2">
               {(tags || []).map((t) => {
                 const set = new Set(
@@ -789,7 +807,10 @@ function ProjectForm({
           </div>
           {form.type !== 'open_door' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Kategorie</label>
+              <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <label className="block text-sm font-medium">Kategorie</label>
+                <FieldInfoHint text="In Einstellungen anlegen" />
+              </div>
               <div className="flex flex-wrap gap-2">
                 {(categories || []).map((c) => {
                   const active = String(form.categoryId || '') === c.id;
@@ -798,7 +819,7 @@ function ProjectForm({
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => update('categoryId', active ? null : (c.id as any))}
+                      onClick={() => update('categoryId', active ? null : c.id)}
                       className={`px-2 py-1 rounded-full text-xs border`}
                       style={
                         active
@@ -854,9 +875,10 @@ function ProjectForm({
             </div>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">
-              Ehrenamtliche (mehrfach, aktiv)
-            </label>
+            <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <label className="block text-sm font-medium">Ehrenamtliche (mehrfach, aktiv)</label>
+              <FieldInfoHint text="In Einstellungen anlegen" />
+            </div>
             <div className="flex flex-wrap gap-2">
               {(staff || [])
                 .filter((s) =>

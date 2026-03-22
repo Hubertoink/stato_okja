@@ -22,6 +22,8 @@ import {
   Image as ImageIcon,
   Layers3,
   Sparkles,
+  BookOpen,
+  X,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -91,6 +93,7 @@ export default function Dashboard() {
     [scopeKey, user?.id],
   );
   const [tutorialSeen, setTutorialSeen] = useState(false);
+  const [forceShowTutorial, setForceShowTutorial] = useState(false);
 
   useEffect(() => {
     try {
@@ -166,7 +169,7 @@ export default function Dashboard() {
   }, [audit]);
 
   const fmt = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
-  const showGettingStarted = !projectsLoading && projects.length === 0 && !tutorialSeen;
+  const showGettingStarted = forceShowTutorial || (!projectsLoading && projects.length === 0 && !tutorialSeen);
   // keep date helpers only where needed; recent actions use locale string
 
   // Build Daily Log: last 5 activities in the last 14 days that have notes and/or tags
@@ -241,7 +244,17 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+        <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
+        <button
+          type="button"
+          onClick={() => setForceShowTutorial(true)}
+          className="inline-flex items-center justify-center gap-2 self-start md:self-auto rounded-2xl border border-white/80 bg-white/80 px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-white transition"
+        >
+          <BookOpen className="w-4 h-4 text-viridian" />
+          Tutorial ansehen
+        </button>
+      </div>
 
       {/* Today's Opening Hours */}
       {openingHours && (
@@ -257,7 +270,10 @@ export default function Dashboard() {
       )}
 
       {showGettingStarted && (
-        <GettingStartedTutorial onOpenProjects={() => navigate('/projects?create=1')} />
+        <GettingStartedTutorial
+          onOpenProjects={() => navigate('/projects?create=1')}
+          onClose={() => setForceShowTutorial(false)}
+        />
       )}
 
       {/* KPI Cards */}
@@ -577,10 +593,26 @@ export default function Dashboard() {
   );
 }
 
-function GettingStartedTutorial({ onOpenProjects }: { onOpenProjects: () => void }) {
+function GettingStartedTutorial({
+  onOpenProjects,
+  onClose,
+}: {
+  onOpenProjects: () => void;
+  onClose: () => void;
+}) {
   return (
     <section className="relative overflow-hidden rounded-[28px] border border-white/70 bg-white/75 backdrop-blur-xl shadow-[0_18px_60px_rgba(91,108,255,0.12)] p-6 md:p-8 mb-8">
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(124,143,255,0.22),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.18),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.62),rgba(255,255,255,0.34))]" />
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 inline-flex items-center justify-center w-10 h-10 rounded-2xl border border-white/80 bg-white/80 text-gray-600 hover:bg-white transition shadow-sm"
+        aria-label="Tutorial schließen"
+        title="Tutorial schließen"
+      >
+        <X className="w-4 h-4" />
+      </button>
 
       <div className="relative flex flex-col xl:flex-row gap-6 xl:gap-8">
         <div className="xl:w-[340px] shrink-0">

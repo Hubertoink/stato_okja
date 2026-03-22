@@ -68,6 +68,14 @@ function useMonthSummary(year: number, month: number, scopeKey: string) {
   });
 }
 
+function readTutorialDismissed(storageKey: string) {
+  try {
+    return localStorage.getItem(storageKey) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function Dashboard() {
   const { openQuickTally } = useOutletContext<{ openQuickTally: () => void }>();
   const scopeKey = useOrgScopeKey();
@@ -93,15 +101,13 @@ export default function Dashboard() {
     () => `dashboard-getting-started-v1:${user?.id || 'guest'}:${scopeKey}`,
     [scopeKey, user?.id],
   );
-  const [tutorialDismissed, setTutorialDismissed] = useState(false);
+  const [tutorialDismissed, setTutorialDismissed] = useState(() =>
+    readTutorialDismissed(`dashboard-getting-started-v1:${user?.id || 'guest'}:${scopeKey}`),
+  );
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
   useEffect(() => {
-    try {
-      setTutorialDismissed(localStorage.getItem(tutorialDismissedStorageKey) === '1');
-    } catch {
-      setTutorialDismissed(false);
-    }
+    setTutorialDismissed(readTutorialDismissed(tutorialDismissedStorageKey));
   }, [tutorialDismissedStorageKey]);
 
   // Determine effective orgId for opening hours
@@ -148,6 +154,12 @@ export default function Dashboard() {
       setTutorialOpen(true);
     }
   }, [projects.length, projectsLoading, tutorialDismissed]);
+
+  useEffect(() => {
+    if (tutorialDismissed) {
+      setTutorialOpen(false);
+    }
+  }, [tutorialDismissed]);
 
   const lastFive = useMemo(() => {
     const items = audit || [];

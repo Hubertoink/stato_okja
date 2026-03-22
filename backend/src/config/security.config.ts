@@ -25,6 +25,18 @@ function isStrongSecret(value: string) {
   return value.length >= 32 && !isPlaceholderSecret(value);
 }
 
+function parseBooleanish(value: string | undefined | null) {
+  const normalized = normalize(value).toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'on' || normalized === 'require') {
+    return true;
+  }
+  if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'off' || normalized === 'disable') {
+    return false;
+  }
+  return undefined;
+}
+
 function isInternalDatabaseHost(host: string) {
   const normalized = normalize(host).toLowerCase();
   return normalized === 'localhost'
@@ -64,12 +76,15 @@ export function getDatabaseTlsPolicy() {
   const sslEnv = normalize(process.env.DB_SSL).toLowerCase();
   const useSsl = sslEnv === 'true' || sslEnv === 'require' || sslEnv === '1';
   const rejectUnauthorized = normalize(process.env.DB_SSL_REJECT_UNAUTHORIZED || 'false').toLowerCase() === 'true';
+  const explicitRequireSsl = parseBooleanish(process.env.DB_REQUIRE_SSL);
 
   if (dbType !== 'postgres') {
     return { useSsl: false, rejectUnauthorized: false };
   }
 
-  if (isStrictMode() && !isInternalDatabaseHost(host)) {
+  const requireSsl = explicitRequireSsl ?? (isStrictMode() && !isInternalDatabaseHost(host));
+
+  if (requireSsl) {
     if (!useSsl) {
       throw new Error('DB_SSL muss für externe Postgres-Verbindungen in dieser Umgebung aktiviert sein.');
     }

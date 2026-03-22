@@ -41,6 +41,8 @@ Wichtig: Wenn deine Dev-Umgebung „komisch alte Features“ zeigt, läuft sehr 
   - `DB_TYPE=postgres`
   - `DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE`
   - Optional: `DB_SYNCHRONIZE=false`, `DB_LOGGING=false`
+  - Fuer externe DB mit TLS: `DB_SSL=true`, `DB_SSL_REJECT_UNAUTHORIZED=true`
+  - Fuer bewusst vertraute Nicht-SSL-DB: `DB_REQUIRE_SSL=false`, `DB_SSL=false`
 
 Wichtig:
 - Der Backend-Container startet in Produktion nur, wenn `JWT_SECRET` gesetzt ist, kein Platzhalter ist und mindestens 32 Zeichen hat.
@@ -81,3 +83,11 @@ Behebung:
 2. Unter Umgebungsvariablen `JWT_SECRET` setzen.
 3. Einen neu generierten Zufallswert mit mindestens 32 Zeichen eintragen, z. B. Ausgabe von `openssl rand -base64 48`.
 4. Deployment erneut starten.
+
+Weiteres moegliches Fehlerbild:
+- `DB_SSL muss fuer externe Postgres-Verbindungen in dieser Umgebung aktiviert sein.`
+- `The server does not support SSL connections`
+
+Einordnung:
+- Wenn deine Datenbank TLS anbietet, setze `DB_SSL=true` und `DB_SSL_REJECT_UNAUTHORIZED=true`.
+- Wenn deine Datenbank bewusst ohne TLS nur im vertrauenswuerdigen internen Netz erreichbar ist, setze explizit `DB_REQUIRE_SSL=false` und `DB_SSL=false`.

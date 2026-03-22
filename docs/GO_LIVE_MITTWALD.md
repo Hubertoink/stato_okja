@@ -38,6 +38,8 @@ Setze in Mittwald (Projekt-Umgebung oder Deployment-Variablen):
 - Datenbank (nur wenn du NICHT die Compose-Postgres nutzt)
   - `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`
   - `DB_SYNCHRONIZE=false`, `DB_LOGGING=false`
+  - Externe DB mit TLS: `DB_SSL=true`, `DB_SSL_REJECT_UNAUTHORIZED=true`
+  - Vertraute Nicht-SSL-DB: `DB_REQUIRE_SSL=false`, `DB_SSL=false`
 - SMTP (Mittwald)
   - `SMTP_HOST`, `SMTP_PORT=587` (oder `465` bei SSL), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM=noreply@<deinedomain>`
 - Seed-Admin
@@ -48,6 +50,7 @@ Hinweis: Wenn du die Postgres-DB aus dem Compose nutzt, brauchst du DB_* meist n
 Wichtig:
 - `JWT_SECRET` ist in Produktion Pflicht. Fehlende oder kurze Werte verhindern den Backend-Start absichtlich.
 - Einen geeigneten Wert kannst du z. B. mit `openssl rand -base64 48` erzeugen.
+- Fuer Postgres gilt standardmaessig: Externe Hosts sollen TLS nutzen. Wenn eure DB bewusst intern und ohne TLS betrieben wird, muss das explizit mit `DB_REQUIRE_SSL=false` freigegeben werden.
 
 ## 4) Docker Deploy (Compose)
 
@@ -111,6 +114,9 @@ Multi-Domain (optional, sauber getrennt):
   - Pruefen, ob der Benutzer eingeloggt ist und das Frontend gegen die richtige API-Domain laeuft
   - Backend-Volume `backend-uploads` vorhanden
   - Keine alte Proxy-Regel fuer eine oeffentliche `/uploads`-Auslieferung erzwingen
+- DB verbindet nicht:
+  - Fehler `The server does not support SSL connections`: `DB_SSL=false` setzen und, falls der Host trotzdem als extern gilt, zusaetzlich `DB_REQUIRE_SSL=false`
+  - Fehler `DB_SSL ... muss aktiviert sein`: DB bietet TLS an, aber `DB_SSL=true` und `DB_SSL_REJECT_UNAUTHORIZED=true` fehlen
 
 ## 9) Sicherheitstipps
 

@@ -31,7 +31,7 @@ import { PROJECT_TEMPLATES, type ProjectTemplate } from '@/lib/projectTemplates'
 import { defaultCategoryByName } from '@/lib/defaultCategories';
 import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTemplatesApi';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 
 function ArchiveRestoreControls({
   id,
@@ -178,17 +178,33 @@ function ArchiveRestoreControls({
   );
 }
 
-function FieldInfoHint({ text }: { text: string }) {
+function FieldInfoHint({ label, settingsTab }: { label: string; settingsTab: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <span
-      className="inline-flex items-center gap-1.5 text-xs font-normal text-gray-500"
-      title={text}
-      aria-label={text}
-    >
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-normal leading-none text-gray-500">
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-normal leading-none text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors"
+        aria-label="Info"
+      >
         i
-      </span>
-      <span>{text}</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[80]" onClick={() => setOpen(false)} />
+          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[81] w-56 rounded-xl border border-gray-200 bg-white shadow-lg p-3 text-xs text-gray-600 space-y-2">
+            <p>{label} können Sie in den Einstellungen anlegen und verwalten.</p>
+            <Link
+              to={`/settings?tab=${settingsTab}`}
+              className="inline-flex items-center gap-1 text-viridian font-medium hover:underline"
+              onClick={() => setOpen(false)}
+            >
+              Zu Einstellungen →
+            </Link>
+          </div>
+        </>
+      )}
     </span>
   );
 }
@@ -764,7 +780,7 @@ function ProjectForm({
           <div>
             <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <label className="block text-sm font-medium">Tags (mehrfach)</label>
-              <FieldInfoHint text="In Einstellungen anlegen" />
+              <FieldInfoHint label="Tags" settingsTab="tags" />
             </div>
             <div className="flex flex-wrap gap-2">
               {(tags || []).map((t) => {
@@ -809,7 +825,7 @@ function ProjectForm({
             <div>
               <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <label className="block text-sm font-medium">Kategorie</label>
-                <FieldInfoHint text="In Einstellungen anlegen" />
+                <FieldInfoHint label="Kategorien" settingsTab="categories" />
               </div>
               <div className="flex flex-wrap gap-2">
                 {(categories || []).map((c) => {
@@ -837,9 +853,10 @@ function ProjectForm({
             </div>
           )}
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">
-              Mitarbeitende (mehrfach, Standard)
-            </label>
+            <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <label className="block text-sm font-medium">Mitarbeitende (mehrfach, Standard)</label>
+              <FieldInfoHint label="Teammitglieder" settingsTab="team" />
+            </div>
             <div className="flex flex-wrap gap-2">
               {(staff || [])
                 .filter((s) =>
@@ -877,7 +894,7 @@ function ProjectForm({
           <div className="md:col-span-2">
             <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <label className="block text-sm font-medium">Ehrenamtliche (mehrfach, aktiv)</label>
-              <FieldInfoHint text="In Einstellungen anlegen" />
+              <FieldInfoHint label="Teammitglieder" settingsTab="team" />
             </div>
             <div className="flex flex-wrap gap-2">
               {(staff || [])

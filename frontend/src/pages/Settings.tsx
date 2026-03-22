@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate, Clock } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import SettingsTeam from './SettingsTeam';
 import SettingsCategories from './SettingsCategories';
 import SettingsTags from './SettingsTags';
@@ -11,10 +12,14 @@ import SettingsOpeningHours from './SettingsOpeningHours';
 import { useAuth } from '@/lib/auth';
 
 type Tab = 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays' | 'openingHours';
+const VALID_TABS: ReadonlySet<string> = new Set<Tab>(['categories', 'templates', 'tags', 'cohorts', 'team', 'locations', 'holidays', 'openingHours']);
 
 export default function Settings() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('categories');
+  const [params] = useSearchParams();
+  const tabParam = params.get('tab') || '';
+  const initialTab: Tab = VALID_TABS.has(tabParam) ? (tabParam as Tab) : 'categories';
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   const canManageTemplates = user?.role === 'superadmin' || user?.role === 'org_admin';
 

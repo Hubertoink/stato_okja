@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
@@ -15,6 +15,13 @@ import {
   Circle,
   CheckCircle2,
   Clock,
+  ArrowRight,
+  BarChart3,
+  ClipboardList,
+  FolderPlus,
+  Image as ImageIcon,
+  Layers3,
+  Sparkles,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -22,7 +29,7 @@ import { useQuickTallySession } from '@/components/QuickTally';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import ExportModal from '@/components/ExportModal';
-import type { Project } from '@/lib/projects';
+import { useProjects, type Project } from '@/lib/projects';
 import { useAuth } from '@/lib/auth';
 import { listOrgs, type OrgDto, getOpeningHours, OpeningHours } from '@/lib/orgs';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
@@ -71,6 +78,7 @@ export default function Dashboard() {
   const [picker, setPicker] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const { data: summary } = useMonthSummary(year, month, scopeKey);
+  const { data: projects = [], isLoading: projectsLoading } = useProjects({ archived: false });
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
   useActivities({ from, to });
@@ -78,6 +86,19 @@ export default function Dashboard() {
   const [exportOpen, setExportOpen] = useState(false);
   const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
+  const tutorialSeenStorageKey = useMemo(
+    () => `dashboard-getting-started-v1:${user?.id || 'guest'}:${scopeKey}`,
+    [scopeKey, user?.id],
+  );
+  const [tutorialSeen, setTutorialSeen] = useState(false);
+
+  useEffect(() => {
+    try {
+      setTutorialSeen(localStorage.getItem(tutorialSeenStorageKey) === '1');
+    } catch {
+      setTutorialSeen(false);
+    }
+  }, [tutorialSeenStorageKey]);
 
   // Determine effective orgId for opening hours
   const effectiveOrgId = user?.role === 'superadmin'
@@ -118,6 +139,16 @@ export default function Dashboard() {
     };
   }, [user?.role]);
 
+  useEffect(() => {
+    if (projectsLoading || projects.length === 0 || tutorialSeen) return;
+    try {
+      localStorage.setItem(tutorialSeenStorageKey, '1');
+    } catch {
+      /* ignore */
+    }
+    setTutorialSeen(true);
+  }, [projects.length, projectsLoading, tutorialSeen, tutorialSeenStorageKey]);
+
   const lastFive = useMemo(() => {
     const items = audit || [];
     // Filter duplicate anonymous updates/deletes when a user-attributed entry with same entity/action exists
@@ -135,6 +166,7 @@ export default function Dashboard() {
   }, [audit]);
 
   const fmt = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
+  const showGettingStarted = !projectsLoading && projects.length === 0 && !tutorialSeen;
   // keep date helpers only where needed; recent actions use locale string
 
   // Build Daily Log: last 5 activities in the last 14 days that have notes and/or tags
@@ -222,6 +254,10 @@ export default function Dashboard() {
               : 'Geschlossen'}
           </span>
         </div>
+      )}
+
+      {showGettingStarted && (
+        <GettingStartedTutorial onOpenProjects={() => navigate('/projects?create=1')} />
       )}
 
       {/* KPI Cards */}
@@ -537,6 +573,248 @@ export default function Dashboard() {
           initialMonth={month}
         />
       )}
+    </div>
+  );
+}
+
+function GettingStartedTutorial({ onOpenProjects }: { onOpenProjects: () => void }) {
+  return (
+    <section className="relative overflow-hidden rounded-[28px] border border-white/70 bg-white/75 backdrop-blur-xl shadow-[0_18px_60px_rgba(91,108,255,0.12)] p-6 md:p-8 mb-8">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(124,143,255,0.22),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.18),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.62),rgba(255,255,255,0.34))]" />
+
+      <div className="relative flex flex-col xl:flex-row gap-6 xl:gap-8">
+        <div className="xl:w-[340px] shrink-0">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-viridian shadow-sm">
+            <Sparkles className="w-3.5 h-3.5" />
+            Erste Schritte
+          </div>
+          <h3 className="mt-4 text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
+            Ihr Dashboard wird lebendig, sobald das erste Projekt angelegt ist.
+          </h3>
+          <p className="mt-3 text-sm md:text-base text-gray-600 leading-7 max-w-[34rem]">
+            Stato fuehrt Sie von der Projektstruktur ueber die taegliche Erfassung bis zur Auswertung.
+            Die Vorschau unten zeigt bereits, welche Eingaben und Bereiche Sie anschliessend nutzen koennen.
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-sm text-gray-700 border border-white shadow-sm">
+              <FolderPlus className="w-4 h-4 text-viridian" />
+              Projekt anlegen
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-sm text-gray-700 border border-white shadow-sm">
+              <ClipboardList className="w-4 h-4 text-viridian" />
+              Aktivitaeten erfassen
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-sm text-gray-700 border border-white shadow-sm">
+              <BarChart3 className="w-4 h-4 text-viridian" />
+              Statistiken lesen
+            </span>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm">
+            <div className="text-sm font-semibold text-gray-900">Empfohlener Start</div>
+            <div className="mt-2 text-sm text-gray-600 leading-6">
+              Beginnen Sie mit einem Projekt. Danach stehen Kalendereintraege, Tageserfassung,
+              Teilnehmerzahlen, Notizen, Tags und Auswertungen direkt bereit.
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={onOpenProjects}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-viridian px-5 py-3 text-white font-semibold shadow-lg shadow-[rgba(91,108,255,0.25)] hover:brightness-105 transition"
+            >
+              <FolderPlus className="w-5 h-5" />
+              Erstes Projekt anlegen
+            </button>
+            <button
+              type="button"
+              onClick={onOpenProjects}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/90 bg-white/80 px-5 py-3 text-gray-800 font-semibold hover:bg-white transition"
+            >
+              Projekte ansehen
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
+          <TutorialScreenCard
+            step="01"
+            title="Projekt-Setup"
+            subtitle="Die Basis fuer Ihre Dokumentation"
+            icon={<FolderPlus className="w-4 h-4" />}
+            accentClass="from-viridian/95 to-cambridge-blue/90"
+          >
+            <ScreenField label="Titel" value="Makerspace Mittwoch" />
+            <div className="grid grid-cols-2 gap-2">
+              <ScreenField label="Typ" value="Projekt (offen)" compact />
+              <ScreenField label="Zielgruppe" value="12-16 Jahre" compact />
+            </div>
+            <div className="grid grid-cols-[1fr_84px] gap-2 items-end">
+              <ScreenField label="Zeitraum" value="April - Juli" compact />
+              <div className="rounded-xl border border-dashed border-white/70 bg-white/45 h-[54px] flex items-center justify-center text-[11px] text-gray-600 gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5" />
+                Bild
+              </div>
+            </div>
+            <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[11px] font-medium text-gray-700 border border-white/80">
+              <Layers3 className="w-3.5 h-3.5 text-viridian" />
+              Kategorien, Farben und Tags koennen direkt mit gepflegt werden
+            </div>
+          </TutorialScreenCard>
+
+          <TutorialScreenCard
+            step="02"
+            title="Aktivitaet erfassen"
+            subtitle="Felder fuer Ihren echten Alltag"
+            icon={<ClipboardList className="w-4 h-4" />}
+            accentClass="from-accent-teal/90 to-cambridge-blue/90"
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <ScreenField label="Datum" value="22.03.2026" compact />
+              <ScreenField label="Zeit" value="15:00 - 18:00" compact />
+            </div>
+            <ScreenField label="Projekt" value="Makerspace Mittwoch" />
+            <div className="grid grid-cols-2 gap-2">
+              <ScreenField label="Kategorie" value="Kreativ" compact />
+              <ScreenField label="Standort" value="Jugendhaus" compact />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <MetricPill label="m" value="7" />
+              <MetricPill label="w" value="9" />
+              <MetricPill label="d" value="1" />
+            </div>
+            <div className="rounded-xl border border-white/80 bg-white/55 p-2.5 text-[11px] text-gray-600 leading-5">
+              Notiz: Offene Werkbank, hohe Beteiligung, neue Teilnehmende kamen ueber Ferienprogramm.
+            </div>
+          </TutorialScreenCard>
+
+          <TutorialScreenCard
+            step="03"
+            title="Statistik & Verlauf"
+            subtitle="Von Eintraegen zu belastbaren Zahlen"
+            icon={<BarChart3 className="w-4 h-4" />}
+            accentClass="from-accent-purple/90 to-viridian/90"
+          >
+            <div className="flex flex-wrap gap-2">
+              <FilterChip label="Monat" active />
+              <FilterChip label="Projekt" />
+              <FilterChip label="Kategorie" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <MiniStat label="Aktivitaeten" value="12" />
+              <MiniStat label="Teilnehmende" value="148" />
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/55 p-3">
+              <div className="flex items-end gap-2 h-20">
+                {[38, 62, 48, 84, 70, 56].map((height, index) => (
+                  <div
+                    key={index}
+                    className="flex-1 rounded-t-xl bg-gradient-to-t from-viridian to-cambridge-blue"
+                    style={{ height: `${height}%` }}
+                  />
+                ))}
+              </div>
+              <div className="mt-2 flex justify-between text-[10px] uppercase tracking-[0.12em] text-gray-500">
+                <span>Mo</span>
+                <span>Di</span>
+                <span>Mi</span>
+                <span>Do</span>
+                <span>Fr</span>
+                <span>Sa</span>
+              </div>
+            </div>
+            <div className="text-[11px] text-gray-600 leading-5">
+              Sobald Eintraege vorhanden sind, sehen Sie Trends, Stunden, Durchschnittswerte und exportierbare Uebersichten.
+            </div>
+          </TutorialScreenCard>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TutorialScreenCard({
+  step,
+  title,
+  subtitle,
+  icon,
+  accentClass,
+  children,
+}: {
+  step: string;
+  title: string;
+  subtitle: string;
+  icon: ReactNode;
+  accentClass: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-[24px] border border-white/80 bg-white/70 backdrop-blur-md p-3 shadow-[0_12px_36px_rgba(15,23,42,0.08)]">
+      <div className={`rounded-[20px] bg-gradient-to-br ${accentClass} px-4 py-3 text-white shadow-lg`}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.2em] text-white/75">Schritt {step}</div>
+            <div className="mt-1 text-lg font-semibold leading-tight">{title}</div>
+          </div>
+          <div className="w-9 h-9 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/25">
+            {icon}
+          </div>
+        </div>
+        <p className="mt-2 text-sm text-white/85 leading-6">{subtitle}</p>
+      </div>
+
+      <div className="mt-3 rounded-[20px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(248,250,255,0.88))] p-3 space-y-2.5">
+        <div className="flex items-center gap-1.5 pb-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ScreenField({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
+  return (
+    <div className={`rounded-xl border border-white/80 bg-white/60 px-3 ${compact ? 'py-2' : 'py-2.5'}`}>
+      <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">{label}</div>
+      <div className={`mt-1 font-medium text-gray-800 ${compact ? 'text-xs' : 'text-sm'}`}>{value}</div>
+    </div>
+  );
+}
+
+function MetricPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/80 bg-white/65 px-2.5 py-2 text-center">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-gray-800">{value}</div>
+    </div>
+  );
+}
+
+function FilterChip({ label, active = false }: { label: string; active?: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium border ${
+        active
+          ? 'bg-viridian text-white border-viridian'
+          : 'bg-white/65 text-gray-700 border-white/80'
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/80 bg-white/60 px-3 py-2.5">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-gray-900">{value}</div>
     </div>
   );
 }

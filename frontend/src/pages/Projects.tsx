@@ -31,6 +31,7 @@ import { PROJECT_TEMPLATES, type ProjectTemplate } from '@/lib/projectTemplates'
 import { defaultCategoryByName } from '@/lib/defaultCategories';
 import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTemplatesApi';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
+import { useSearchParams } from 'react-router-dom';
 
 function ArchiveRestoreControls({
   id,
@@ -1071,6 +1072,7 @@ function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<P
 }
 
 export default function Projects() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   // Debounce the search to prevent firing a request for every keystroke on first usage
   const [debounced, setDebounced] = useState('');
@@ -1092,6 +1094,14 @@ export default function Projects() {
   const archivedCount = (archivedOnly || []).length;
   const create = useCreateProject();
   const update = useUpdateProject();
+
+  useEffect(() => {
+    if (searchParams.get('create') !== '1') return;
+    setModal((current) => current ?? { mode: 'create' });
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('create');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const projects = data || [];
   const [starred, setStarred] = useState<string[]>(() => getStarredProjectIds());

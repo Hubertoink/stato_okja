@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
 import ProtectedImage from '@/components/ProtectedImage';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function MyProfile() {
   const { user, refresh } = useAuth();
@@ -114,6 +115,9 @@ function PasswordCard() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -124,15 +128,30 @@ function PasswordCard() {
       <div className="space-y-3">
         <div>
           <label className="block text-sm font-medium">Aktuelles Passwort</label>
-          <input type="password" className="border rounded px-3 py-2 w-full" value={currentPassword} onChange={(e)=> setCurrentPassword(e.target.value)} />
+          <PasswordInput
+            value={currentPassword}
+            visible={showCurrentPassword}
+            onToggleVisibility={() => setShowCurrentPassword((visible) => !visible)}
+            onChange={(value) => setCurrentPassword(value)}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium">Neues Passwort</label>
-          <input type="password" className="border rounded px-3 py-2 w-full" value={newPassword} onChange={(e)=> setNewPassword(e.target.value)} />
+          <PasswordInput
+            value={newPassword}
+            visible={showNewPassword}
+            onToggleVisibility={() => setShowNewPassword((visible) => !visible)}
+            onChange={(value) => setNewPassword(value)}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium">Neues Passwort (Bestätigung)</label>
-          <input type="password" className="border rounded px-3 py-2 w-full" value={confirmPassword} onChange={(e)=> setConfirmPassword(e.target.value)} />
+          <PasswordInput
+            value={confirmPassword}
+            visible={showConfirmPassword}
+            onToggleVisibility={() => setShowConfirmPassword((visible) => !visible)}
+            onChange={(value) => setConfirmPassword(value)}
+          />
         </div>
         {msg && <div className="text-green-700 text-sm">{msg}</div>}
         {err && <div className="text-red-600 text-sm">{err}</div>}
@@ -154,6 +173,38 @@ function PasswordCard() {
           >Passwort speichern</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PasswordInput({
+  value,
+  visible,
+  onChange,
+  onToggleVisibility,
+}: {
+  value: string;
+  visible: boolean;
+  onChange: (value: string) => void;
+  onToggleVisibility: () => void;
+}) {
+  return (
+    <div className="relative">
+      <input
+        type={visible ? 'text' : 'password'}
+        className="border rounded px-3 py-2 pr-11 w-full"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        onClick={onToggleVisibility}
+        className="absolute inset-y-0 right-0 flex items-center justify-center w-11 text-gray-500 hover:text-viridian"
+        aria-label={visible ? 'Passwort verbergen' : 'Passwort anzeigen'}
+        title={visible ? 'Passwort verbergen' : 'Passwort anzeigen'}
+      >
+        {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
     </div>
   );
 }

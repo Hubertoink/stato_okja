@@ -6,7 +6,7 @@ Dieser Leitfaden beschreibt, wie du Stato 2.0 komplett bei Mittwald betreibst �
 
 - Alles bei Mittwald: Postgres, Backend (NestJS), Frontend (Nginx)
 - Öffentliche Domain: `https://app.<deinedomain>` (einfach) oder `https://app.<...>` + `https://api.<...>` (getrennt)
-- Varnish/Proxy routet: `/` → Frontend, `/api` → Backend, `/uploads` → Backend (statische Uploads)
+- Varnish/Proxy routet: `/` → Frontend, `/api` → Backend
 - E-Mail über Mittwald SMTP
 
 ## 1) Vorbereitung
@@ -34,7 +34,7 @@ Setze in Mittwald (Projekt-Umgebung oder Deployment-Variablen):
   - `APP_ORIGIN=https://app.<deinedomain>`
   - `CORS_ORIGINS=https://app.<deinedomain>`
 - Sicherheit
-  - `JWT_SECRET=<langer_random_string>`
+  - `JWT_SECRET=<langer_random_string_mit_mindestens_32_zeichen>`
 - Datenbank (nur wenn du NICHT die Compose-Postgres nutzt)
   - `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`
   - `DB_SYNCHRONIZE=false`, `DB_LOGGING=false`
@@ -45,12 +45,16 @@ Setze in Mittwald (Projekt-Umgebung oder Deployment-Variablen):
 
 Hinweis: Wenn du die Postgres-DB aus dem Compose nutzt, brauchst du DB_* meist nicht setzen (Compose-Defaults greifen).
 
+Wichtig:
+- `JWT_SECRET` ist in Produktion Pflicht. Fehlende oder kurze Werte verhindern den Backend-Start absichtlich.
+- Einen geeigneten Wert kannst du z. B. mit `openssl rand -base64 48` erzeugen.
+
 ## 4) Docker Deploy (Compose)
 
 - Nutze `docker-compose.prod.yml` als Basis. Es enthält folgende Services:
   - `postgres`: Postgres 16
   - `backend`: NestJS API, liest ENV, exponiert Port 3000 intern
-  - `frontend`: Nginx, exponiert Port 80 intern, proxyt `/api` und `/uploads` auf `backend:3000`
+  - `frontend`: Nginx, exponiert Port 80 intern und proxyt `/api` auf `backend:3000`
 - Volumes:
   - `postgres-data`: persistente DB-Daten
   - `backend-uploads`: persistente Uploads (`/app/uploads`)
@@ -66,11 +70,9 @@ Single-Domain (empfohlen für Einfachheit):
 - Domain: `app.<deinedomain>` → Varnish → interner Nginx (oder direkt auf Frontend-Container)
 - Routes:
   - `/api` → `backend:3000/api`
-  - `/uploads` → `backend:3000/uploads`
   - `/` → `frontend:80` (SPA)
 - Caching-Hinweis:
   - `/api`: nicht cachen (Authorization, dynamische Inhalte)
-  - `/uploads`: statische Dateien können gecacht werden, aber respektiere Änderungen (Cache-Control kurz halten oder ETags)
 
 Multi-Domain (optional, sauber getrennt):
 - `app.<deinedomain>` → Frontend
@@ -105,8 +107,10 @@ Multi-Domain (optional, sauber getrennt):
   - SMTP_* prüfen; SPF/DKIM/DMARC für Absenderdomain bei Mittwald setzen
 - 404 bei direktem Reload im Frontend:
   - SPA muss `index.html` serven (in `frontend/nginx.conf` via `try_files` korrekt)
-- Uploads 404:
-  - Proxy-Route `/uploads` auf Backend:3000 prüfen; Volume `backend-uploads` vorhanden
+- Geschuetzte Bilder laden nicht:
+  - Pruefen, ob der Benutzer eingeloggt ist und das Frontend gegen die richtige API-Domain laeuft
+  - Backend-Volume `backend-uploads` vorhanden
+  - Keine alte Proxy-Regel fuer eine oeffentliche `/uploads`-Auslieferung erzwingen
 
 ## 9) Sicherheitstipps
 

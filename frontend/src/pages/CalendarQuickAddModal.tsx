@@ -198,14 +198,25 @@ export default function ActivityQuickAdd({
       onWheel={(e) => e.stopPropagation()}
     >
       <div className="bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate">
-        <h3 className="text-xl font-semibold text-viridian mb-2">
-          Aktivität am{' '}
-          {(() => {
-            const s = (form.date || dateISO || '').slice(0, 10);
-            const [y, m, d] = s.split('-');
-            return `${d}.${m}.${y}`;
-          })()}
-        </h3>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h3 className="text-xl font-semibold text-viridian">
+            Aktivität am{' '}
+            {(() => {
+              const s = (form.date || dateISO || '').slice(0, 10);
+              const [y, m, d] = s.split('-');
+              return `${d}.${m}.${y}`;
+            })()}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+            title="Schließen"
+            aria-label="Schließen"
+          >
+            <XIcon className="w-5 h-5" />
+          </button>
+        </div>
         <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 lg:items-start">
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

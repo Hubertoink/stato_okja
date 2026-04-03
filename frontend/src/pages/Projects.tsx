@@ -30,6 +30,7 @@ import { PROJECT_TEMPLATES, type ProjectTemplate } from '@/lib/projectTemplates'
 import { defaultCategoryByName } from '@/lib/defaultCategories';
 import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTemplatesApi';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 function ArchiveRestoreControls({
   id,
@@ -185,6 +186,7 @@ function ProjectForm({
   onSubmit: (data: Partial<Project>) => void;
   onCancel: () => void;
 }) {
+  useBodyScrollLock(true);
   const [form, setForm] = useState<Partial<Project>>(() => {
     const base: Partial<Project> = {
       title: '',
@@ -496,13 +498,24 @@ function ProjectForm({
   return (
     <div className="fixed inset-0 bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
       <div
-        className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate"
+        className="bg-white w-full md:max-w-4xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate"
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
       >
-        <h3 className="text-xl font-semibold text-viridian mb-4">
-          {initial?.id ? 'Projekt bearbeiten' : 'Neues Projekt'}
-        </h3>
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <h3 className="text-xl font-semibold text-viridian">
+            {initial?.id ? 'Projekt bearbeiten' : 'Neues Projekt'}
+          </h3>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+            title="Schließen"
+            aria-label="Schließen"
+          >
+            <XIcon className="w-5 h-5" />
+          </button>
+        </div>
 
         {!initial?.id && (
           <div className="mb-4">
@@ -620,283 +633,289 @@ function ProjectForm({
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Titel *</label>
-            <input
-              value={form.title || ''}
-              onChange={(e) => update('title', e.target.value)}
-              required
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Typ *</label>
-            <select
-              value={form.type || 'project_open'}
-              onChange={(e) => {
-                const val = e.target.value as Project['type'];
-                setForm((f) => ({
-                  ...f,
-                  type: val,
-                  // For "Offene Tür" projects, categories are not used
-                  ...(val === 'open_door' ? { categoryId: null } : {}),
-                }));
-              }}
-              required
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="open_door">Offene Tür</option>
-              <option value="project_open">Projekt (offen)</option>
-              <option value="project_closed">Projekt (geschlossen)</option>
-              <option value="event">Veranstaltung</option>
-              <option value="outreach">Aufsuchend</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Zielgruppe</label>
-            <input
-              value={form.targetGroup || ''}
-              onChange={(e) => update('targetGroup', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">Bild</label>
-            {/* Hidden file input - always rendered for replace functionality */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onFileChange}
-            />
-            {form.imageUrl ? (
-              <div className="space-y-2">
-                <img
-                  src={form.imageUrl}
-                  alt="Projektbild"
-                  className="w-full h-40 object-cover rounded border"
+        <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 lg:items-start">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Titel *</label>
+                <input
+                  value={form.title || ''}
+                  onChange={(e) => update('title', e.target.value)}
+                  required
+                  className="w-full border rounded px-3 py-2"
                 />
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, imageUrl: '', imageSize: null }))}
-                    className="px-3 py-1 rounded bg-gray-200 text-gray-700"
-                  >
-                    Entfernen
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1 rounded bg-viridian text-white"
-                  >
-                    Ersetzen…
-                  </button>
-                </div>
               </div>
-            ) : (
-              <div className="border-2 border-dashed rounded p-3 text-sm text-gray-600 bg-azure-web/30">
-                <div className="mb-2">
-                  Bild hierher ziehen, klicken zum Auswählen oder per Strg+V einfügen
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1 rounded bg-white border"
-                  >
-                    Datei wählen…
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500 mt-2">
-                  Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Typ *</label>
+                <select
+                  value={form.type || 'project_open'}
+                  onChange={(e) => {
+                    const val = e.target.value as Project['type'];
+                    setForm((f) => ({
+                      ...f,
+                      type: val,
+                      ...(val === 'open_door' ? { categoryId: null } : {}),
+                    }));
+                  }}
+                  required
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="open_door">Offene Tür</option>
+                  <option value="project_open">Projekt (offen)</option>
+                  <option value="project_closed">Projekt (geschlossen)</option>
+                  <option value="event">Veranstaltung</option>
+                  <option value="outreach">Aufsuchend</option>
+                </select>
               </div>
-            )}
-            <div className="mt-3">
-              <label className="block text-sm font-medium mb-1">Farbe</label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Zielgruppe</label>
               <input
-                type="color"
-                value={(form.color as string) || '#7aa39a'}
-                onChange={(e) => update('color', e.target.value)}
-                className="w-20 h-10 p-1 border rounded bg-white"
+                value={form.targetGroup || ''}
+                onChange={(e) => update('targetGroup', e.target.value)}
+                className="w-full border rounded px-3 py-2"
               />
             </div>
-          </div>
-          {/* Zeitraum von/bis wird in Projekten nicht mehr angezeigt (wird erst bei Aktivitäten wichtig) */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Standard Startzeit</label>
-            <input
-              type="time"
-              value={form.defaultStartTime || ''}
-              onChange={(e) => update('defaultStartTime', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Standard Endzeit</label>
-            <input
-              type="time"
-              value={form.defaultEndTime || ''}
-              onChange={(e) => update('defaultEndTime', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          {/* Removed upper free-text staff inputs per spec */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Tags (mehrfach)</label>
-            <div className="flex flex-wrap gap-2">
-              {(tags || []).map((t) => {
-                const set = new Set(
-                  (form.tag || '')
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                );
-                const active = set.has(t.name);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      if (active) set.delete(t.name);
-                      else set.add(t.name);
-                      update('tag', Array.from(set).join(', '));
-                    }}
-                    className={`px-2 py-1 rounded-full text-xs border`}
-                    style={
-                      active
-                        ? {
-                            backgroundColor: t.color || '#7aa39a',
-                            color: '#fff',
-                            borderColor: t.color || '#7aa39a',
-                          }
-                        : {
-                            backgroundColor: '#fff',
-                            color: '#374151',
-                            borderColor: t.color || '#7aa39a',
-                          }
-                    }
-                  >
-                    {t.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {form.type !== 'open_door' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Kategorie</label>
-              <div className="flex flex-wrap gap-2">
-                {(categories || []).map((c) => {
-                  const active = String(form.categoryId || '') === c.id;
-                  const color = c.color || '#7aa39a';
-                  return (
+              <label className="block text-sm font-medium mb-1">Bild</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onFileChange}
+              />
+              {form.imageUrl ? (
+                <div className="space-y-2">
+                  <img
+                    src={form.imageUrl}
+                    alt="Projektbild"
+                    className="w-full h-40 object-cover rounded border"
+                  />
+                  <div className="flex gap-2">
                     <button
-                      key={c.id}
                       type="button"
-                      onClick={() => update('categoryId', active ? null : (c.id as any))}
-                      className={`px-2 py-1 rounded-full text-xs border`}
-                      style={
-                        active
-                          ? { backgroundColor: color, color: '#fff', borderColor: color }
-                          : { backgroundColor: '#fff', color: '#374151', borderColor: color }
-                      }
-                      title={c.name}
-                      aria-pressed={active}
+                      onClick={() => setForm((f) => ({ ...f, imageUrl: '', imageSize: null }))}
+                      className="px-3 py-1 rounded bg-gray-200 text-gray-700"
                     >
-                      {c.name}
+                      Entfernen
                     </button>
-                  );
-                })}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1 rounded bg-viridian text-white"
+                    >
+                      Ersetzen…
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed rounded p-3 text-sm text-gray-600 bg-azure-web/30">
+                  <div className="mb-2">
+                    Bild hierher ziehen, klicken zum Auswählen oder per Strg+V einfügen
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1 rounded bg-white border"
+                    >
+                      Datei wählen…
+                    </button>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
+                  </div>
+                </div>
+              )}
+              <div className="mt-3">
+                <label className="block text-sm font-medium mb-1">Farbe</label>
+                <input
+                  type="color"
+                  value={(form.color as string) || '#7aa39a'}
+                  onChange={(e) => update('color', e.target.value)}
+                  className="w-20 h-10 p-1 border rounded bg-white"
+                />
               </div>
             </div>
-          )}
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">
-              Mitarbeitende (mehrfach, Standard)
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {(staff || [])
-                .filter((s) =>
-                  Array.isArray(s.roles)
-                    ? s.roles.includes('lead') || s.roles.includes('employee')
-                    : s.role === 'lead' || s.role === 'employee',
-                )
-                .map((s) => {
-                  const set = new Set(
-                    (form.defaultStaff || '')
-                      .split(',')
-                      .map((v) => v.trim())
-                      .filter(Boolean),
-                  );
-                  const active = set.has(s.name);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => {
-                        if (active) set.delete(s.name);
-                        else set.add(s.name);
-                        update('defaultStaff', Array.from(set).join(', '));
-                      }}
-                      className={`px-2 py-1 rounded-full text-xs border ${
-                        active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  );
-                })}
-            </div>
           </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">
-              Ehrenamtliche (mehrfach, aktiv)
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {(staff || [])
-                .filter((s) =>
-                  Array.isArray(s.roles)
-                    ? s.roles.includes('volunteer') || s.roles.includes('helper')
-                    : s.role === 'volunteer' || s.role === 'helper',
-                )
-                .map((s) => {
-                  const set = new Set(
-                    (form.defaultVolunteers || '')
-                      .split(',')
-                      .map((v) => v.trim())
-                      .filter(Boolean),
-                  );
-                  const active = set.has(s.name);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => {
-                        if (active) set.delete(s.name);
-                        else set.add(s.name);
-                        update('defaultVolunteers', Array.from(set).join(', '));
-                      }}
-                      className={`px-2 py-1 rounded-full text-xs border ${
-                        active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  );
-                })}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Standard Startzeit</label>
+                <input
+                  type="time"
+                  value={form.defaultStartTime || ''}
+                  onChange={(e) => update('defaultStartTime', e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Standard Endzeit</label>
+                <input
+                  type="time"
+                  value={form.defaultEndTime || ''}
+                  onChange={(e) => update('defaultEndTime', e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
             </div>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">Beschreibung</label>
-            <textarea
-              value={form.description || ''}
-              onChange={(e) => update('description', e.target.value)}
-              rows={4}
-              className="w-full border rounded px-3 py-2"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Tags (mehrfach)</label>
+                <div className="flex flex-wrap gap-2">
+                  {(tags || []).map((t) => {
+                    const set = new Set(
+                      (form.tag || '')
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    );
+                    const active = set.has(t.name);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          if (active) set.delete(t.name);
+                          else set.add(t.name);
+                          update('tag', Array.from(set).join(', '));
+                        }}
+                        className="px-2 py-1 rounded-full text-xs border"
+                        style={
+                          active
+                            ? {
+                                backgroundColor: t.color || '#7aa39a',
+                                color: '#fff',
+                                borderColor: t.color || '#7aa39a',
+                              }
+                            : {
+                                backgroundColor: '#fff',
+                                color: '#374151',
+                                borderColor: t.color || '#7aa39a',
+                              }
+                        }
+                      >
+                        {t.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {form.type !== 'open_door' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Kategorie</label>
+                  <div className="flex flex-wrap gap-2">
+                    {(categories || []).map((c) => {
+                      const active = String(form.categoryId || '') === c.id;
+                      const color = c.color || '#7aa39a';
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => update('categoryId', active ? null : (c.id as any))}
+                          className="px-2 py-1 rounded-full text-xs border"
+                          style={
+                            active
+                              ? { backgroundColor: color, color: '#fff', borderColor: color }
+                              : { backgroundColor: '#fff', color: '#374151', borderColor: color }
+                          }
+                          title={c.name}
+                          aria-pressed={active}
+                        >
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Mitarbeitende (mehrfach, Standard)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(staff || [])
+                  .filter((s) =>
+                    Array.isArray(s.roles)
+                      ? s.roles.includes('lead') || s.roles.includes('employee')
+                      : s.role === 'lead' || s.role === 'employee',
+                  )
+                  .map((s) => {
+                    const set = new Set(
+                      (form.defaultStaff || '')
+                        .split(',')
+                        .map((v) => v.trim())
+                        .filter(Boolean),
+                    );
+                    const active = set.has(s.name);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          if (active) set.delete(s.name);
+                          else set.add(s.name);
+                          update('defaultStaff', Array.from(set).join(', '));
+                        }}
+                        className={`px-2 py-1 rounded-full text-xs border ${
+                          active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Ehrenamtliche (mehrfach, aktiv)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(staff || [])
+                  .filter((s) =>
+                    Array.isArray(s.roles)
+                      ? s.roles.includes('volunteer') || s.roles.includes('helper')
+                      : s.role === 'volunteer' || s.role === 'helper',
+                  )
+                  .map((s) => {
+                    const set = new Set(
+                      (form.defaultVolunteers || '')
+                        .split(',')
+                        .map((v) => v.trim())
+                        .filter(Boolean),
+                    );
+                    const active = set.has(s.name);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          if (active) set.delete(s.name);
+                          else set.add(s.name);
+                          update('defaultVolunteers', Array.from(set).join(', '));
+                        }}
+                        className={`px-2 py-1 rounded-full text-xs border ${
+                          active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Beschreibung</label>
+              <textarea
+                value={form.description || ''}
+                onChange={(e) => update('description', e.target.value)}
+                rows={4}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
           </div>
         </div>
         <div className="mt-6 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">

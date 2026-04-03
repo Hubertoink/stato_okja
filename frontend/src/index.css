@@ -288,6 +288,20 @@ code {
   opacity: 1;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .settings-tab-tooltip.group-hover\:opacity-100 {
+    opacity: 1;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .settings-tab-tooltip,
+  .group:focus-visible .settings-tab-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 /* Calendar activity tooltip animation */
 @keyframes tooltipFadeIn {
   from {

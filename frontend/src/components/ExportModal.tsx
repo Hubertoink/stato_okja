@@ -7,6 +7,27 @@ import type { Cohort } from '@/lib/taxonomy';
 import { useCohorts, useCategories } from '@/lib/taxonomy';
 import { colorForActivityType } from '@/lib/colors';
 
+type SaveFilePickerAcceptType = {
+  description?: string;
+  accept: Record<string, string[]>;
+};
+
+type SaveFilePickerOptions = {
+  suggestedName?: string;
+  types?: SaveFilePickerAcceptType[];
+};
+
+type SaveFilePickerHandle = {
+  createWritable: () => Promise<{
+    write: (data: Blob | BufferSource | string) => Promise<void>;
+    close: () => Promise<void>;
+  }>;
+};
+
+type WindowWithFilePicker = Window & {
+  showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<SaveFilePickerHandle>;
+};
+
 function csvEscape(value: unknown): string {
   const s = String(value ?? '');
   return '"' + s.replace(/"/g, '""') + '"';
@@ -37,25 +58,59 @@ function typeLabel(code?: string | null): string {
   return code ? map[code] || code : '';
 }
 
+function isoDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+async function saveBlobWithPickerOrDownload(
+  blob: Blob,
+  fileName: string,
+  mimeType: string,
+  extensions: string[],
+): Promise<'picker' | 'download'> {
+  const windowWithPicker = window as WindowWithFilePicker;
+  if (typeof windowWithPicker.showSaveFilePicker === 'function') {
+    const handle = await windowWithPicker.showSaveFilePicker({
+      suggestedName: fileName,
+      types: [
+        {
+          description: mimeType,
+          accept: { [mimeType]: extensions },
+        },
+      ],
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return 'picker';
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+  return 'download';
+}
+
 export default function ExportModal({
   open,
   onClose,
-  initialYear,
-  initialMonth,
+  initialFrom,
+  initialTo,
 }: {
   open: boolean;
   onClose: () => void;
-  initialYear: number;
-  initialMonth: number; // 0 = ganzes Jahr, sonst 1-12
+  initialFrom: string;
+  initialTo: string;
 }) {
-  const [year, setYear] = useState<number>(initialYear);
-  const [month, setMonth] = useState<number>(initialMonth);
-  // Support exporting a whole year when month === 0
-  const from = month === 0 ? `${year}-01-01` : `${year}-${String(month).padStart(2, '0')}-01`;
-  const to =
-    month === 0
-      ? `${year}-12-31`
-      : `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
+  const today = useMemo(() => isoDate(new Date()), []);
+  const [from, setFrom] = useState<string>(initialFrom);
+  const [to, setTo] = useState<string>(initialTo);
+  const [saveStatus, setSaveStatus] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  const effectiveTo = from <= to ? to : from;
   const { data: activities = [] } = useActivities({ from, to });
   const { data: cohorts } = useCohorts({ active: true });
   const { data: categoriesList = [] } = useCategories({ active: true });
@@ -105,7 +160,15 @@ export default function ExportModal({
     return sum;
   };
 
-  const downloadRaw = () => {
+  const exportRangeLabel = `${from}-bis-${effectiveTo}`;
+
+  const saveCsv = async (rows: string[][], fileName: string) => {
+    const csv = rows.map((r) => r.map(csvEscape).join(';')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    return saveBlobWithPickerOrDownload(blob, fileName, 'text/csv', ['.csv']);
+  };
+
+  const downloadRaw = async () => {
     const rows: string[][] = [];
     const header = [
       'datum',
@@ -155,14 +218,7 @@ export default function ExportModal({
         ...cohortTotals,
       ]);
     }
-    const csv = rows.map((r) => r.map(csvEscape).join(';')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `stato-rohdaten-${from}-bis-${to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    return saveCsv(rows, `stato-rohdaten-${exportRangeLabel}.csv`);
   };
 
   const buildConsolidatedMatrix = () => {
@@ -256,16 +312,9 @@ export default function ExportModal({
     return rows;
   };
 
-  const downloadConsolidated = () => {
+  const downloadConsolidated = async () => {
     const rows = buildConsolidatedMatrix();
-    const csv = rows.map((r) => r.map(csvEscape).join(';')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `stato-konsolidiert-${from}-bis-${to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    return saveCsv(rows.map((row) => row.map((cell) => String(cell ?? ''))), `stato-konsolidiert-${exportRangeLabel}.csv`);
   };
 
   // Build consolidated matrix specifically for Excel with pretty headers and integer averages
@@ -371,7 +420,7 @@ export default function ExportModal({
 
   const downloadExcel = async () => {
     const xlsx = await import('xlsx-js-style');
-    const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
+    const { utils, write } = xlsx as unknown as typeof import('xlsx-js-style');
     type CellStyle = {
       font?: { bold?: boolean; color?: { rgb: string } };
       fill?: { patternType: 'solid'; fgColor: { rgb: string } };
@@ -509,62 +558,88 @@ export default function ExportModal({
     const wb = utils.book_new();
     utils.book_append_sheet(wb, rawSheet, 'Rohdaten');
     utils.book_append_sheet(wb, consSheet, 'Konsolidiert');
-    writeFile(wb, `stato-export-${from}-bis-${to}.xlsx`);
+    const arrayBuffer = write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+    const blob = new Blob([arrayBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    return saveBlobWithPickerOrDownload(
+      blob,
+      `stato-export-${exportRangeLabel}.xlsx`,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ['.xlsx'],
+    );
   };
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 8 }, (_, i) => currentYear - 6 + i);
-  const months = [
-    { value: 0, label: 'Ganzes Jahr' },
-    { value: 1, label: 'Januar' },
-    { value: 2, label: 'Februar' },
-    { value: 3, label: 'März' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'Mai' },
-    { value: 6, label: 'Juni' },
-    { value: 7, label: 'Juli' },
-    { value: 8, label: 'August' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'Oktober' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'Dezember' },
-  ];
+  const runExport = async (
+    exporter: () => Promise<'picker' | 'download'>,
+    successLabel: string,
+  ) => {
+    if (!from || !to) {
+      setSaveStatus('Bitte einen gültigen Datumsbereich auswählen.');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveStatus('');
+    try {
+      const mode = await exporter();
+      setSaveStatus(
+        mode === 'picker'
+          ? `${successLabel} gespeichert.`
+          : `${successLabel} heruntergeladen. Der Speicherort wird vom Browser bestimmt.`,
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setSaveStatus('Speichern abgebrochen.');
+      } else {
+        setSaveStatus('Export konnte nicht gespeichert werden.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Modal open={open} onClose={onClose} title="Datenexport" maxWidth="lg">
       <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="text-sm text-gray-600">
-            Jahr
-            <select
-              className="block mt-1 border rounded px-2 py-1"
-              value={year}
-              onChange={(e) => setYear(parseInt(e.target.value, 10))}
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+            Von
+            <input
+              type="date"
+              className="block mt-1 w-full border rounded px-3 py-2"
+              value={from}
+              max={today}
+              onChange={(e) => {
+                const nextFrom = e.target.value;
+                setFrom(nextFrom);
+                if (to < nextFrom) setTo(nextFrom);
+              }}
+            />
           </label>
           <label className="text-sm text-gray-600">
-            Monat
-            <select
-              className="block mt-1 border rounded px-2 py-1"
-              value={month}
-              onChange={(e) => setMonth(parseInt(e.target.value, 10))}
-            >
-              {months.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
+            Bis
+            <input
+              type="date"
+              className="block mt-1 w-full border rounded px-3 py-2"
+              value={to}
+              min={from}
+              max={today}
+              onChange={(e) => setTo(e.target.value)}
+            />
           </label>
         </div>
         <div className="text-xs text-gray-500">
-          Zeitraum: {from} bis {to} · Aktivitäten: {activities.length}
+          Zeitraum: {from} bis {effectiveTo} · Aktivitäten: {activities.length}
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+          Wenn der Browser die Dateiauswahl unterstützt, kannst du Zielordner und Dateiname frei wählen. Andernfalls startet ein normaler Download in den Standard-Downloadordner.
+        </div>
+        <div className="text-sm text-gray-600">
+          Zielbestimmung:
+          <span className="ml-1 text-gray-500">
+            bei unterstützten Browsern direkt im Speicherdialog, sonst über den Browser-Download.
+          </span>
         </div>
         <div>
           <h4 className="font-semibold text-viridian mb-1">Rohdaten (CSV)</h4>
@@ -572,10 +647,11 @@ export default function ExportModal({
             Alle Felder je Aktivität. Geeignet für eigene Auswertungen.
           </p>
           <button
-            className="px-4 py-2 rounded bg-viridian text-white hover:bg-cambridge-blue"
-            onClick={downloadRaw}
+            className="px-4 py-2 rounded bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
+            onClick={() => void runExport(downloadRaw, 'CSV-Rohdaten')}
+            disabled={isSaving}
           >
-            CSV herunterladen
+            CSV speichern
           </button>
         </div>
         <div className="border-t pt-4">
@@ -585,10 +661,11 @@ export default function ExportModal({
             Alterskohorte.
           </p>
           <button
-            className="px-4 py-2 rounded bg-cambridge-blue text-white hover:bg-viridian"
-            onClick={downloadConsolidated}
+            className="px-4 py-2 rounded bg-cambridge-blue text-white hover:bg-viridian disabled:opacity-60 disabled:cursor-not-allowed"
+            onClick={() => void runExport(downloadConsolidated, 'Konsolidierte CSV')}
+            disabled={isSaving}
           >
-            CSV herunterladen
+            CSV speichern
           </button>
         </div>
         <div className="border-t pt-4">
@@ -597,12 +674,14 @@ export default function ExportModal({
             Zwei Blätter: Rohdaten und Konsolidiert. Bessere Darstellung in Excel.
           </p>
           <button
-            className="px-4 py-2 rounded bg-azure-web text-viridian hover:bg-mint-green"
-            onClick={downloadExcel}
+            className="px-4 py-2 rounded bg-azure-web text-viridian hover:bg-mint-green disabled:opacity-60 disabled:cursor-not-allowed"
+            onClick={() => void runExport(downloadExcel, 'Excel-Datei')}
+            disabled={isSaving}
           >
-            XLSX herunterladen
+            XLSX speichern
           </button>
         </div>
+        {saveStatus && <div className="text-sm text-gray-600">{saveStatus}</div>}
       </div>
     </Modal>
   );

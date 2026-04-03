@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, Raw, Equal, IsNull, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
-import { Category } from '../taxonomy/entities/category.entity';
 
 @Injectable()
 export class StatsService {
@@ -12,50 +11,63 @@ export class StatsService {
     private activityRepository: Repository<Activity>,
     @InjectRepository(Cohort)
     private cohortRepository: Repository<Cohort>,
-    @InjectRepository(Category)
-    private categoryRepository: Repository<Category>,
   ) {}
 
-  private buildDateWhere(from?: string, to?: string): FindOptionsWhere<Activity> {
-    const where: FindOptionsWhere<Activity> = {};
-    // Use raw string compare on DATE to avoid TZ conversion issues
-    if (from && to) {
-      where.date = Raw((alias) => `${alias} >= :from AND ${alias} <= :to`, { from, to });
-    } else if (from) {
-      where.date = Raw((alias) => `${alias} >= :from`, { from });
-    } else if (to) {
-      where.date = Raw((alias) => `${alias} <= :to`, { to });
-    }
-    return where;
-  }
+  private createFilteredActivityQuery(
+    from?: string,
+    to?: string,
+    orgId?: string | null,
+    orgIds?: string[],
+    projectId?: string,
+  ) {
+    const qb = this.activityRepository.createQueryBuilder('activity');
 
-  private applyOrg(where: FindOptionsWhere<Activity>, orgId?: string | null, orgIds?: string[]): FindOptionsWhere<Activity> {
-    // superadmin ohne orgId → keine Einschränkung
+    if (from) qb.andWhere('activity.date >= :from', { from });
+    if (to) qb.andWhere('activity.date <= :to', { to });
+
     if (Array.isArray(orgIds) && orgIds.length) {
-      return { ...where, orgId: In(orgIds) } as FindOptionsWhere<Activity>;
+      qb.andWhere('activity.orgId IN (:...orgIds)', { orgIds });
+    } else if (typeof orgId !== 'undefined') {
+      if (orgId === null) qb.andWhere('activity.orgId IS NULL');
+      else qb.andWhere('activity.orgId = :orgId', { orgId });
     }
-    if (typeof orgId === 'undefined') return where;
-    const extra: FindOptionsWhere<Activity> = orgId === null
-      ? { orgId: IsNull() }
-      : { orgId: Equal(orgId) };
-    return { ...where, ...extra } as FindOptionsWhere<Activity>;
+
+    if (projectId) {
+      qb.andWhere('activity.projectId = :projectId', { projectId });
+    }
+
+    return qb;
   }
 
-  private applyProject(where: FindOptionsWhere<Activity>, projectId?: string): FindOptionsWhere<Activity> {
-    if (!projectId) return where;
-    return { ...where, projectId: Equal(projectId) } as FindOptionsWhere<Activity>;
+  private toNumber(value: unknown): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Number(value) || 0;
+    return 0;
   }
 
   async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
-    const activities = await this.activityRepository.find({ where });
+    const raw = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+      .select('COUNT(*)', 'totalActivities')
+      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
+      .addSelect('COALESCE(SUM(activity.countMale), 0)', 'totalMale')
+      .addSelect('COALESCE(SUM(activity.countFemale), 0)', 'totalFemale')
+      .addSelect('COALESCE(SUM(activity.countDiverse), 0)', 'totalDiverse')
+      .addSelect('COALESCE(SUM(activity.durationMinutes), 0)', 'totalDurationMinutes')
+      .getRawOne<{
+        totalActivities: string;
+        totalParticipants: string;
+        totalMale: string;
+        totalFemale: string;
+        totalDiverse: string;
+        totalDurationMinutes: string;
+      }>();
 
-    const totalActivities = activities.length;
-    const totalParticipants = activities.reduce((sum, a) => sum + (a.countTotal || 0), 0);
-    const totalMale = activities.reduce((sum, a) => sum + (a.countMale || 0), 0);
-    const totalFemale = activities.reduce((sum, a) => sum + (a.countFemale || 0), 0);
-    const totalDiverse = activities.reduce((sum, a) => sum + (a.countDiverse || 0), 0);
-    const totalDurationMinutes = activities.reduce((sum, a) => sum + (a.durationMinutes || 0), 0);
+    const totalActivities = this.toNumber(raw?.totalActivities);
+    const totalParticipants = this.toNumber(raw?.totalParticipants);
+    const totalMale = this.toNumber(raw?.totalMale);
+    const totalFemale = this.toNumber(raw?.totalFemale);
+    const totalDiverse = this.toNumber(raw?.totalDiverse);
+    const totalDurationMinutes = this.toNumber(raw?.totalDurationMinutes);
 
     return {
       totalActivities,
@@ -70,72 +82,86 @@ export class StatsService {
   }
 
   async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
-    const activities = await this.activityRepository.find({ where });
-    const map = new Map<string, number>();
-    for (const a of activities) {
-      map.set(a.type as unknown as string, (map.get(a.type as unknown as string) || 0) + 1);
-    }
-    return Array.from(map.entries()).map(([type, count]) => ({ type, count }));
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+      .select('activity.type', 'type')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('activity.type')
+      .orderBy('COUNT(*)', 'DESC')
+      .getRawMany<{ type: string; count: string }>();
+
+    return rows.map((row) => ({ type: row.type, count: this.toNumber(row.count) }));
   }
 
   async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
-    const activities = await this.activityRepository.find({ where });
-    const male = activities.reduce((s, a) => s + (a.countMale || 0), 0);
-    const female = activities.reduce((s, a) => s + (a.countFemale || 0), 0);
-    const diverse = activities.reduce((s, a) => s + (a.countDiverse || 0), 0);
+    const raw = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+      .select('COALESCE(SUM(activity.countMale), 0)', 'male')
+      .addSelect('COALESCE(SUM(activity.countFemale), 0)', 'female')
+      .addSelect('COALESCE(SUM(activity.countDiverse), 0)', 'diverse')
+      .getRawOne<{ male: string; female: string; diverse: string }>();
+
+    const male = this.toNumber(raw?.male);
+    const female = this.toNumber(raw?.female);
+    const diverse = this.toNumber(raw?.diverse);
     return { male, female, diverse };
   }
 
   async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
-    const activities = await this.activityRepository.find({ where });
-    const map = new Map<string, number>();
-    for (const a of activities) {
-      const key = (a.date instanceof Date)
-        ? `${a.date.getFullYear()}-${String(a.date.getMonth() + 1).padStart(2, '0')}-${String(a.date.getDate()).padStart(2, '0')}`
-        : String(a.date);
-      map.set(key, (map.get(key) || 0) + (a.countTotal || 0));
-    }
-    return Array.from(map.entries())
-      .map(([date, total]) => ({ date, totalParticipants: total }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+      .select('activity.date', 'date')
+      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
+      .groupBy('activity.date')
+      .orderBy('activity.date', 'ASC')
+      .getRawMany<{ date: string | Date; totalParticipants: string }>();
+
+    return rows.map((row) => ({
+      date: row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date),
+      totalParticipants: this.toNumber(row.totalParticipants),
+    }));
   }
 
   async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
-    // Count by activity categories (same semantics as the UI "Nach Kategorie" table)
-    const activities = await this.activityRepository.find({ where });
-    const map = new Map<string, { id: string; name: string; count: number }>();
+    const baseQuery = this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId);
+    const categorized = await baseQuery
+      .clone()
+      .innerJoin('activity.categories', 'category')
+      .select('category.id', 'id')
+      .addSelect('category.name', 'name')
+      .addSelect('COUNT(DISTINCT activity.id)', 'count')
+      .groupBy('category.id')
+      .addGroupBy('category.name')
+      .orderBy('COUNT(DISTINCT activity.id)', 'DESC')
+      .getRawMany<{ id: string; name: string; count: string }>();
 
-    for (const a of activities) {
-      const cats = Array.isArray(a.categories) ? a.categories : [];
-      if (!cats.length) {
-        const id = '__uncategorized__';
-        const v = map.get(id) || { id, name: 'Unkategorisiert', count: 0 };
-        v.count += 1;
-        map.set(id, v);
-        continue;
-      }
+    const uncategorized = await baseQuery
+      .clone()
+      .leftJoin('activity.categories', 'category')
+      .andWhere('category.id IS NULL')
+      .select('COUNT(DISTINCT activity.id)', 'count')
+      .getRawOne<{ count: string }>();
 
-      // Defensive: prevent accidental double-counting if a.categories contains duplicates
-      const seen = new Set<string>();
-      for (const c of cats) {
-        if (!c?.id || seen.has(c.id)) continue;
-        seen.add(c.id);
-        const v = map.get(c.id) || { id: c.id, name: c.name || c.id, count: 0 };
-        v.count += 1;
-        map.set(c.id, v);
-      }
+    const rows = categorized.map((row) => ({
+      id: row.id,
+      name: row.name,
+      count: this.toNumber(row.count),
+    }));
+
+    const uncategorizedCount = this.toNumber(uncategorized?.count);
+    if (uncategorizedCount > 0) {
+      rows.push({
+        id: '__uncategorized__',
+        name: 'Unkategorisiert',
+        count: uncategorizedCount,
+      });
     }
 
-    return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 10);
+    return rows.sort((a, b) => b.count - a.count).slice(0, 10);
   }
 
   async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const where = this.applyProject(this.applyOrg(this.buildDateWhere(from, to), orgId, orgIds), projectId);
-    const activities = await this.activityRepository.find({ where });
+    const activities = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+      .select(['activity.id', 'activity.cohorts'])
+      .getMany();
+
     // Sum cohorts JSON m/w/d by cohortId and count distinct activities per cohort
     const map = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
     const usage = new Map<string, Set<string>>();

@@ -115,6 +115,9 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
   useEffect(() => {
     if (!user) return;
     if (isRestoring) return;
+    // Wait until the org scope has been hydrated so we do not warm up the
+    // temporary legacy/global cache and immediately repeat the same work.
+    if (typeof scope === 'undefined') return;
     // Wait for org switching to complete before running prefetch,
     // but keep the overlay open while switching.
     if (switching) return;
@@ -284,9 +287,18 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
           setProgress(total > 0 ? { current: 0, total } : undefined);
 
           let done = 0;
-          const tracked = allTasks.map(({ label, promise }) => {
+          const tracked = allTasks.map(async ({ label, promise }) => {
             const taskStartedAt = performance.now();
-            return promise.finally(() => {
+            try {
+              await promise;
+              return { label, status: 'success' as const };
+            } catch (error) {
+              return {
+                label,
+                status: 'error' as const,
+                message: error instanceof Error ? error.message : String(error),
+              };
+            } finally {
               done += 1;
               markDevFlow(flowId, label, {
                 durationMs: Math.round((performance.now() - taskStartedAt) * 10) / 10,
@@ -297,15 +309,46 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
                 setProgress({ current: done, total });
                 setMessage(`Daten werden geladen… (${done}/${total})`);
               }
-            });
+            }
           });
 
           // Wait for all parallel requests
-          await Promise.allSettled(tracked);
-          finishDevFlow(flowId, 'success', {
-            totalTasks: total,
-            completedTasks: done,
-          });
+          const results = await Promise.all(tracked);
+          const failedTasks = results.filter((result) => result.status === 'error');
+
+          if (failedTasks.length > 0) {
+            finishDevFlow(flowId, 'error', {
+              totalTasks: total,
+              completedTasks: done,
+              failedTasks: failedTasks.length,
+              failedLabels: failedTasks.map((task) => task.label),
+              partialFailure: failedTasks.length < total,
+            });
+            addDevMetricEvent({
+              kind: 'flow',
+              status: 'error',
+              name: 'post-login-prefetch',
+              message:
+                failedTasks.length < total
+                  ? 'Warmup completed with partial failures.'
+                  : 'Warmup failed for all requested tasks.',
+              meta: {
+                scopeKey,
+                userId: user.id,
+                totalTasks: total,
+                failedTasks: failedTasks.length,
+                failedLabels: failedTasks.map((task) => ({
+                  label: task.label,
+                  message: task.message,
+                })),
+              },
+            });
+          } else {
+            finishDevFlow(flowId, 'success', {
+              totalTasks: total,
+              completedTasks: done,
+            });
+          }
         } else {
           addDevMetricEvent({
             kind: 'flow',

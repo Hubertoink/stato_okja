@@ -14,6 +14,7 @@ import { UsersModule } from './users/users.module';
 import { AuditModule } from './common/audit.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { ProjectTemplatesModule } from './project-templates/project-templates.module';
+import { DevToolsModule } from './dev-tools/dev-tools.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ProjectTemplatesModule } from './project-templates/project-templates.mo
     UsersModule,
     AuditModule,
     UploadsModule,
+    DevToolsModule,
   ],
 })
 export class AppModule {}

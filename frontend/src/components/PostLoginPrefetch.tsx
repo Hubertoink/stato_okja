@@ -161,26 +161,11 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
     // Check cached data using scope-aware keys
     const hasProjects = qc.getQueryState(['projects', scopeKey, undefined])?.status === 'success';
     const hasDashboardMonthSummary = qc.getQueryState(dashboardMonthSummaryKey)?.status === 'success';
-    const hasBaseStatsSummary = qc.getQueryState(['stats:summary', scopeKey, '', '', ''])?.status === 'success';
-    const hasBaseStatsByType = qc.getQueryState(['stats:by-type', scopeKey, '', '', ''])?.status === 'success';
-    const hasBaseStatsGender = qc.getQueryState(['stats:gender', scopeKey, '', '', ''])?.status === 'success';
-    const hasBaseStatsTimeseries =
-      qc.getQueryState(['stats:participants-timeseries', scopeKey, '', '', ''])?.status === 'success';
-    const hasBaseStatsByCohort = qc.getQueryState(['stats:by-cohort', scopeKey, '', '', ''])?.status === 'success';
-    const hasBaseStatsByCategory =
-      qc.getQueryState(['stats:by-category', scopeKey, '', '', ''])?.status === 'success';
-
     const hasActivitiesFirstPage = qc.getQueryState(activitiesFirstPageKey)?.status === 'success';
 
     const needsBlockingWarmup =
       !hasProjects ||
       !hasDashboardMonthSummary ||
-      !hasBaseStatsSummary ||
-      !hasBaseStatsByType ||
-      !hasBaseStatsGender ||
-      !hasBaseStatsTimeseries ||
-      !hasBaseStatsByCohort ||
-      !hasBaseStatsByCategory ||
       !hasActivitiesFirstPage;
 
     (async () => {
@@ -209,57 +194,6 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
               }),
             });
           }
-
-          // Base stats (all 6 endpoints)
-          const baseStatsParams = { from: undefined, to: undefined, projectId: undefined } as const;
-          if (!hasBaseStatsSummary)
-            allTasks.push({
-              label: 'stats:summary',
-              promise: qc.prefetchQuery({
-                queryKey: ['stats:summary', scopeKey, '', '', ''],
-                queryFn: () => fetchStats('/stats/summary', baseStatsParams),
-              }),
-            });
-          if (!hasBaseStatsByType)
-            allTasks.push({
-              label: 'stats:by-type',
-              promise: qc.prefetchQuery({
-                queryKey: ['stats:by-type', scopeKey, '', '', ''],
-                queryFn: () => fetchStats('/stats/by-type', baseStatsParams),
-              }),
-            });
-          if (!hasBaseStatsGender)
-            allTasks.push({
-              label: 'stats:gender',
-              promise: qc.prefetchQuery({
-                queryKey: ['stats:gender', scopeKey, '', '', ''],
-                queryFn: () => fetchStats('/stats/gender', baseStatsParams),
-              }),
-            });
-          if (!hasBaseStatsTimeseries)
-            allTasks.push({
-              label: 'stats:participants-timeseries',
-              promise: qc.prefetchQuery({
-                queryKey: ['stats:participants-timeseries', scopeKey, '', '', ''],
-                queryFn: () => fetchStats('/stats/participants-timeseries', baseStatsParams),
-              }),
-            });
-          if (!hasBaseStatsByCohort)
-            allTasks.push({
-              label: 'stats:by-cohort',
-              promise: qc.prefetchQuery({
-                queryKey: ['stats:by-cohort', scopeKey, '', '', ''],
-                queryFn: () => fetchStats('/stats/by-cohort', baseStatsParams),
-              }),
-            });
-          if (!hasBaseStatsByCategory)
-            allTasks.push({
-              label: 'stats:by-category',
-              promise: qc.prefetchQuery({
-                queryKey: ['stats:by-category', scopeKey, '', '', ''],
-                queryFn: () => fetchStats('/stats/by-category', baseStatsParams),
-              }),
-            });
 
           // Dashboard month summary
           if (!hasDashboardMonthSummary)

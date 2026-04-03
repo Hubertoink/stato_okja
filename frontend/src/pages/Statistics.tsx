@@ -164,9 +164,12 @@ export default function Statistics() {
 
   const [pdfMode, setPdfMode] = useState(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
-  const statsFlowIdRef = useRef<string | null>(null);
-  const statsFlowCompletedRef = useRef(false);
-  const statsFlowMarksRef = useRef<Record<string, boolean>>({});
+  const statsUiFlowIdRef = useRef<string | null>(null);
+  const statsUiFlowCompletedRef = useRef(false);
+  const statsUiFlowMarksRef = useRef<Record<string, boolean>>({});
+  const statsAuxFlowIdRef = useRef<string | null>(null);
+  const statsAuxFlowCompletedRef = useRef(false);
+  const statsAuxFlowMarksRef = useRef<Record<string, boolean>>({});
   const qc = useQueryClient();
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
@@ -208,6 +211,7 @@ export default function Statistics() {
     () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '']),
     [scopeKey, statsParams.from, statsParams.to, statsParams.projectId],
   );
+  const statsAuxRunKey = useMemo(() => JSON.stringify([scopeKey]), [scopeKey]);
 
   const initialLoading =
     summaryQ.isLoading ||
@@ -228,27 +232,74 @@ export default function Statistics() {
       timeseriesAllQ.isFetching);
 
   useEffect(() => {
-    if (statsFlowIdRef.current && !statsFlowCompletedRef.current) {
-      finishDevFlow(statsFlowIdRef.current, 'error', { reason: 'superseded' });
+    if (statsUiFlowIdRef.current && !statsUiFlowCompletedRef.current) {
+      finishDevFlow(statsUiFlowIdRef.current, 'error', { reason: 'superseded' });
     }
-    statsFlowCompletedRef.current = false;
-    statsFlowMarksRef.current = {};
-    statsFlowIdRef.current = startDevFlow('statistics:load', {
+    statsUiFlowCompletedRef.current = false;
+    statsUiFlowMarksRef.current = {};
+
+    const uiQueriesAlreadyReady =
+      summaryQ.status === 'success' &&
+      byTypeQ.status === 'success' &&
+      genderQ.status === 'success' &&
+      timeseriesQ.status === 'success' &&
+      byCohortQ.status === 'success' &&
+      byCategoryQ.status === 'success';
+
+    if (uiQueriesAlreadyReady) {
+      statsUiFlowIdRef.current = null;
+      statsUiFlowCompletedRef.current = true;
+      return;
+    }
+
+    statsUiFlowIdRef.current = startDevFlow('statistics:ui-load', {
       scopeKey,
       from: statsParams.from ?? null,
       to: statsParams.to ?? null,
       projectId: statsParams.projectId ?? null,
     });
-    markDevFlow(statsFlowIdRef.current, 'filters-applied', {
+    markDevFlow(statsUiFlowIdRef.current, 'filters-applied', {
       from: statsParams.from ?? null,
       to: statsParams.to ?? null,
       projectId: statsParams.projectId ?? null,
     });
-  }, [statsRunKey, scopeKey, statsParams.from, statsParams.to, statsParams.projectId]);
+  }, [
+    byCategoryQ.status,
+    byCohortQ.status,
+    byTypeQ.status,
+    genderQ.status,
+    scopeKey,
+    statsRunKey,
+    statsParams.from,
+    statsParams.projectId,
+    statsParams.to,
+    summaryQ.status,
+    timeseriesQ.status,
+  ]);
 
   useEffect(() => {
-    const flowId = statsFlowIdRef.current;
-    if (!flowId || statsFlowCompletedRef.current) return;
+    if (statsAuxFlowIdRef.current && !statsAuxFlowCompletedRef.current) {
+      finishDevFlow(statsAuxFlowIdRef.current, 'error', { reason: 'superseded' });
+    }
+    statsAuxFlowCompletedRef.current = false;
+    statsAuxFlowMarksRef.current = {};
+
+    if (timeseriesAllQ.status === 'success') {
+      statsAuxFlowIdRef.current = null;
+      statsAuxFlowCompletedRef.current = true;
+      return;
+    }
+
+    statsAuxFlowIdRef.current = startDevFlow('statistics:auxiliary-load', {
+      scopeKey,
+      query: 'timeseries-all',
+    });
+    markDevFlow(statsAuxFlowIdRef.current, 'scope-applied', { scopeKey });
+  }, [scopeKey, statsAuxRunKey, timeseriesAllQ.status]);
+
+  useEffect(() => {
+    const flowId = statsUiFlowIdRef.current;
+    if (!flowId || statsUiFlowCompletedRef.current) return;
 
     const queryStates = [
       {
@@ -280,13 +331,6 @@ export default function Statistics() {
         size: Array.isArray(timeseries) ? timeseries.length : 0,
       },
       {
-        key: 'timeseriesAll',
-        label: 'timeseries-all-ready',
-        status: timeseriesAllQ.status,
-        isError: timeseriesAllQ.isError,
-        size: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
-      },
-      {
         key: 'byCohort',
         label: 'by-cohort-ready',
         status: byCohortQ.status,
@@ -303,21 +347,21 @@ export default function Statistics() {
     ];
 
     for (const queryState of queryStates) {
-      if (queryState.status === 'success' && !statsFlowMarksRef.current[queryState.key]) {
-        statsFlowMarksRef.current[queryState.key] = true;
+      if (queryState.status === 'success' && !statsUiFlowMarksRef.current[queryState.key]) {
+        statsUiFlowMarksRef.current[queryState.key] = true;
         markDevFlow(flowId, queryState.label, { rows: queryState.size });
       }
     }
 
     const failedQueries = queryStates.filter((queryState) => queryState.isError).map((queryState) => queryState.key);
     if (failedQueries.length > 0) {
-      statsFlowCompletedRef.current = true;
+      statsUiFlowCompletedRef.current = true;
       finishDevFlow(flowId, 'error', { failedQueries });
       return;
     }
 
     if (queryStates.every((queryState) => queryState.status === 'success')) {
-      statsFlowCompletedRef.current = true;
+      statsUiFlowCompletedRef.current = true;
       finishDevFlow(flowId, 'success', {
         from: statsParams.from ?? null,
         to: statsParams.to ?? null,
@@ -346,12 +390,32 @@ export default function Statistics() {
     summaryQ.isError,
     summaryQ.status,
     timeseries,
-    timeseriesAll,
-    timeseriesAllQ.isError,
-    timeseriesAllQ.status,
     timeseriesQ.isError,
     timeseriesQ.status,
   ]);
+
+  useEffect(() => {
+    const flowId = statsAuxFlowIdRef.current;
+    if (!flowId || statsAuxFlowCompletedRef.current) return;
+
+    if (timeseriesAllQ.status === 'success' && !statsAuxFlowMarksRef.current.timeseriesAll) {
+      statsAuxFlowMarksRef.current.timeseriesAll = true;
+      markDevFlow(flowId, 'timeseries-all-ready', {
+        rows: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
+      });
+      statsAuxFlowCompletedRef.current = true;
+      finishDevFlow(flowId, 'success', {
+        scopeKey,
+        rows: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
+      });
+      return;
+    }
+
+    if (timeseriesAllQ.isError) {
+      statsAuxFlowCompletedRef.current = true;
+      finishDevFlow(flowId, 'error', { failedQueries: ['timeseriesAll'] });
+    }
+  }, [scopeKey, timeseriesAll, timeseriesAllQ.isError, timeseriesAllQ.status]);
 
   // If the selected project disappears (e.g. archived/deleted), reset to "all"
   useEffect(() => {

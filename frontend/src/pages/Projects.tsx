@@ -924,7 +924,7 @@ function ProjectForm({
               <button
                 type="button"
                 onClick={onCancel}
-                className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+                className="inline-flex md:hidden items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
                 title="Abbrechen"
                 aria-label="Abbrechen"
               >

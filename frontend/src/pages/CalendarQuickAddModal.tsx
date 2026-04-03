@@ -633,7 +633,7 @@ export default function ActivityQuickAdd({
           <div className="flex-1 flex items-center">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+              className="inline-flex md:hidden items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
               onClick={onClose}
               title="Abbrechen"
               aria-label="Abbrechen"

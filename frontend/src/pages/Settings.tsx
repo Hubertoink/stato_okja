@@ -29,7 +29,7 @@ export default function Settings() {
     { id: 'locations' as Tab, label: 'Einrichtungen', icon: MapPin },
     { id: 'holidays' as Tab, label: 'Feiertage', icon: Sun },
     { id: 'openingHours' as Tab, label: 'Öffnungszeiten', icon: Clock },
-    ...(canUseTestData ? [{ id: 'testData' as Tab, label: 'Testdaten', icon: Database }] : []),
+    ...(canUseTestData ? [{ id: 'testData' as Tab, label: 'Dev Tools', icon: Database }] : []),
   ];
 
   return (

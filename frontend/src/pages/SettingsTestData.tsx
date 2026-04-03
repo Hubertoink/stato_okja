@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Database, Trash2, Wand2 } from 'lucide-react';
+import { Activity, AlertTriangle, Database, Download, Eraser, Gauge, Trash2, Wand2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import {
   type GenerateTestDataResult,
@@ -9,6 +9,12 @@ import {
 } from '@/lib/devTools';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
+import {
+  clearDevMetrics,
+  serializeDevMetrics,
+  setDevMetricsEnabled,
+  useDevMetricsStore,
+} from '@/lib/devMetrics';
 
 const PRESETS: Array<{ id: TestDataPreset; label: string; projects: number; activities: number; monthsBack: number; description: string }> = [
   {
@@ -41,10 +47,37 @@ function formatResult(result: GenerateTestDataResult) {
   return `${result.created.projects} Projekte, ${result.created.activities} Aktivitäten über ${result.config.monthsBack} Monate.`;
 }
 
+function formatTime(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function formatDuration(durationMs?: number) {
+  if (typeof durationMs !== 'number') return '—';
+  if (durationMs >= 1000) return `${(durationMs / 1000).toFixed(2)} s`;
+  return `${Math.round(durationMs)} ms`;
+}
+
+function downloadMetricsSnapshot() {
+  const blob = new Blob([serializeDevMetrics()], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `stato-dev-metrics-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function SettingsTestData() {
   const { user } = useAuth();
   const { scope } = useOrgScope();
   const { showToast } = useToast();
+  const metrics = useDevMetricsStore();
   const generate = useGenerateTestData();
   const cleanup = useDeleteGeneratedTestData();
 
@@ -59,12 +92,18 @@ export default function SettingsTestData() {
     () => PRESETS.find((entry) => entry.id === preset) || PRESETS[1],
     [preset],
   );
+  const recentFlows = useMemo(() => metrics.flows.slice(0, 6), [metrics.flows]);
+  const recentEvents = useMemo(() => metrics.events.slice(0, 40), [metrics.events]);
+  const errorCount = useMemo(
+    () => metrics.events.filter((event) => event.status === 'error').length,
+    [metrics.events],
+  );
 
   if (!canUse) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-semibold text-viridian mb-2">Testdaten</h3>
-        <p className="text-gray-600">Nur Superadmin und Org-Admin können Testdaten erzeugen.</p>
+        <h3 className="text-xl font-semibold text-viridian mb-2">Dev Tools</h3>
+        <p className="text-gray-600">Nur Superadmin und Org-Admin können die Entwicklerwerkzeuge nutzen.</p>
       </div>
     );
   }
@@ -73,15 +112,158 @@ export default function SettingsTestData() {
     <div className="bg-white rounded-lg shadow p-6 space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-xl font-semibold text-viridian">Testdaten</h3>
+          <h3 className="text-xl font-semibold text-viridian">Dev Tools</h3>
           <p className="text-sm text-gray-600 mt-1">
-            Erzeugt realistische Projekte und Aktivitäten für die offene Kinder- und Jugendarbeit in der aktuell gewählten Organisation.
+            Live-Logs, Flow-Benchmarks und Testdaten für die aktuell gewählte Organisation.
           </p>
         </div>
         <div className="hidden md:flex items-center justify-center rounded-2xl bg-azure-web text-viridian w-12 h-12">
           <Database className="w-6 h-6" />
         </div>
       </div>
+
+      <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <div className="font-semibold text-gray-800">Datenlade-Observability</div>
+            <div className="text-sm text-gray-600 mt-1">
+              Protokolliert HTTP-Requests, Query-Ladezeiten und Prefetch-Flows lokal im Browser.
+            </div>
+          </div>
+          <label className="inline-flex items-center gap-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={metrics.enabled}
+              onChange={(e) => setDevMetricsEnabled(e.target.checked)}
+            />
+            Logging aktiv
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="rounded-xl bg-gray-50 px-4 py-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Events</div>
+            <div className="text-2xl font-semibold text-gray-800 mt-1">{metrics.events.length}</div>
+          </div>
+          <div className="rounded-xl bg-gray-50 px-4 py-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Flows</div>
+            <div className="text-2xl font-semibold text-gray-800 mt-1">{metrics.flows.length}</div>
+          </div>
+          <div className="rounded-xl bg-gray-50 px-4 py-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Fehler</div>
+            <div className="text-2xl font-semibold text-gray-800 mt-1">{errorCount}</div>
+          </div>
+          <div className="rounded-xl bg-gray-50 px-4 py-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Letztes Update</div>
+            <div className="text-lg font-semibold text-gray-800 mt-1">{formatTime(metrics.updatedAt)}</div>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-3">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-300 text-gray-700"
+            onClick={() => clearDevMetrics()}
+          >
+            <Eraser className="w-4 h-4" />
+            Logs leeren
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-300 text-gray-700"
+            onClick={() => downloadMetricsSnapshot()}
+          >
+            <Download className="w-4 h-4" />
+            JSON exportieren
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
+          <div className="flex items-center gap-2 text-gray-800 font-semibold">
+            <Gauge className="w-4 h-4 text-viridian" />
+            Flow-Benchmarks
+          </div>
+          <div className="text-sm text-gray-600">
+            Besonders relevant ist aktuell der automatische Warmup-Flow nach Login oder Scope-Wechsel.
+          </div>
+          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+            {recentFlows.length === 0 && (
+              <div className="text-sm text-gray-500">Noch keine Flow-Daten vorhanden.</div>
+            )}
+            {recentFlows.map((flow) => (
+              <div key={flow.id} className="rounded-xl border border-gray-200 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-medium text-gray-800">{flow.name}</div>
+                    <div className="text-xs text-gray-500">{formatTime(flow.startedAt)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`text-xs font-medium ${flow.status === 'error' ? 'text-red-700' : flow.status === 'success' ? 'text-viridian' : 'text-amber-700'}`}>
+                      {flow.status}
+                    </div>
+                    <div className="text-sm text-gray-700">{formatDuration(flow.durationMs)}</div>
+                  </div>
+                </div>
+                {flow.marks.length > 0 && (
+                  <div className="space-y-1">
+                    {flow.marks.map((mark, index) => (
+                      <div key={`${flow.id}-${index}`} className="text-xs text-gray-600 flex items-center justify-between gap-3">
+                        <span>{mark.label}</span>
+                        <span>{formatDuration(mark.sinceStartMs)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
+          <div className="flex items-center gap-2 text-gray-800 font-semibold">
+            <Activity className="w-4 h-4 text-viridian" />
+            Live-Datenladelog
+          </div>
+          <div className="text-sm text-gray-600">
+            Enthält HTTP-Requests, Query-Ladephasen und Flow-Events aus der aktuellen Browser-Session.
+          </div>
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+            {recentEvents.length === 0 && (
+              <div className="text-sm text-gray-500">Noch keine Events vorhanden.</div>
+            )}
+            {recentEvents.map((event) => (
+              <div key={event.id} className="rounded-xl border border-gray-200 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="uppercase tracking-wide text-[10px] text-gray-500">{event.kind}</span>
+                      <span className={`text-[10px] font-medium ${event.status === 'error' ? 'text-red-700' : event.status === 'success' ? 'text-viridian' : event.status === 'start' ? 'text-amber-700' : 'text-gray-500'}`}>
+                        {event.status}
+                      </span>
+                    </div>
+                    <div className="font-medium text-gray-800 mt-1 break-words">{event.name}</div>
+                    {event.message && <div className="text-xs text-gray-600 mt-1">{event.message}</div>}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-xs text-gray-500">{formatTime(event.timestamp)}</div>
+                    <div className="text-xs text-gray-700 mt-1">{formatDuration(event.durationMs)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
+        <div>
+          <div className="font-semibold text-gray-800">Testdaten</div>
+          <div className="text-sm text-gray-600 mt-1">
+            Erzeugt realistische Projekte und Aktivitäten für funktionale und Performance-Tests.
+          </div>
+        </div>
 
       {requiresScopedOrg && !hasValidScope && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex gap-3">
@@ -207,6 +389,7 @@ export default function SettingsTestData() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

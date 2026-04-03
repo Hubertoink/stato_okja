@@ -26,6 +26,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import Modal from '@/components/Modal';
+import { finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -163,6 +164,9 @@ export default function Statistics() {
 
   const [pdfMode, setPdfMode] = useState(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
+  const statsFlowIdRef = useRef<string | null>(null);
+  const statsFlowCompletedRef = useRef(false);
+  const statsFlowMarksRef = useRef<Record<string, boolean>>({});
   const qc = useQueryClient();
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
@@ -200,6 +204,11 @@ export default function Statistics() {
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
 
+  const statsRunKey = useMemo(
+    () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '']),
+    [scopeKey, statsParams.from, statsParams.to, statsParams.projectId],
+  );
+
   const initialLoading =
     summaryQ.isLoading ||
     byTypeQ.isLoading ||
@@ -217,6 +226,132 @@ export default function Statistics() {
       byCohortQ.isFetching ||
       byCategoryQ.isFetching ||
       timeseriesAllQ.isFetching);
+
+  useEffect(() => {
+    if (statsFlowIdRef.current && !statsFlowCompletedRef.current) {
+      finishDevFlow(statsFlowIdRef.current, 'error', { reason: 'superseded' });
+    }
+    statsFlowCompletedRef.current = false;
+    statsFlowMarksRef.current = {};
+    statsFlowIdRef.current = startDevFlow('statistics:load', {
+      scopeKey,
+      from: statsParams.from ?? null,
+      to: statsParams.to ?? null,
+      projectId: statsParams.projectId ?? null,
+    });
+    markDevFlow(statsFlowIdRef.current, 'filters-applied', {
+      from: statsParams.from ?? null,
+      to: statsParams.to ?? null,
+      projectId: statsParams.projectId ?? null,
+    });
+  }, [statsRunKey, scopeKey, statsParams.from, statsParams.to, statsParams.projectId]);
+
+  useEffect(() => {
+    const flowId = statsFlowIdRef.current;
+    if (!flowId || statsFlowCompletedRef.current) return;
+
+    const queryStates = [
+      {
+        key: 'summary',
+        label: 'summary-ready',
+        status: summaryQ.status,
+        isError: summaryQ.isError,
+        size: summary ? 1 : 0,
+      },
+      {
+        key: 'byType',
+        label: 'by-type-ready',
+        status: byTypeQ.status,
+        isError: byTypeQ.isError,
+        size: Array.isArray(byType) ? byType.length : 0,
+      },
+      {
+        key: 'gender',
+        label: 'gender-ready',
+        status: genderQ.status,
+        isError: genderQ.isError,
+        size: gender ? 1 : 0,
+      },
+      {
+        key: 'timeseries',
+        label: 'timeseries-ready',
+        status: timeseriesQ.status,
+        isError: timeseriesQ.isError,
+        size: Array.isArray(timeseries) ? timeseries.length : 0,
+      },
+      {
+        key: 'timeseriesAll',
+        label: 'timeseries-all-ready',
+        status: timeseriesAllQ.status,
+        isError: timeseriesAllQ.isError,
+        size: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
+      },
+      {
+        key: 'byCohort',
+        label: 'by-cohort-ready',
+        status: byCohortQ.status,
+        isError: byCohortQ.isError,
+        size: Array.isArray(byCohort) ? byCohort.length : 0,
+      },
+      {
+        key: 'byCategory',
+        label: 'by-category-ready',
+        status: byCategoryQ.status,
+        isError: byCategoryQ.isError,
+        size: Array.isArray(byCategory) ? byCategory.length : 0,
+      },
+    ];
+
+    for (const queryState of queryStates) {
+      if (queryState.status === 'success' && !statsFlowMarksRef.current[queryState.key]) {
+        statsFlowMarksRef.current[queryState.key] = true;
+        markDevFlow(flowId, queryState.label, { rows: queryState.size });
+      }
+    }
+
+    const failedQueries = queryStates.filter((queryState) => queryState.isError).map((queryState) => queryState.key);
+    if (failedQueries.length > 0) {
+      statsFlowCompletedRef.current = true;
+      finishDevFlow(flowId, 'error', { failedQueries });
+      return;
+    }
+
+    if (queryStates.every((queryState) => queryState.status === 'success')) {
+      statsFlowCompletedRef.current = true;
+      finishDevFlow(flowId, 'success', {
+        from: statsParams.from ?? null,
+        to: statsParams.to ?? null,
+        projectId: statsParams.projectId ?? null,
+        totalActivities: activities.length,
+      });
+    }
+  }, [
+    activities.length,
+    byCategory,
+    byCategoryQ.isError,
+    byCategoryQ.status,
+    byCohort,
+    byCohortQ.isError,
+    byCohortQ.status,
+    byType,
+    byTypeQ.isError,
+    byTypeQ.status,
+    gender,
+    genderQ.isError,
+    genderQ.status,
+    statsParams.from,
+    statsParams.projectId,
+    statsParams.to,
+    summary,
+    summaryQ.isError,
+    summaryQ.status,
+    timeseries,
+    timeseriesAll,
+    timeseriesAllQ.isError,
+    timeseriesAllQ.status,
+    timeseriesQ.isError,
+    timeseriesQ.status,
+  ]);
 
   // If the selected project disappears (e.g. archived/deleted), reset to "all"
   useEffect(() => {

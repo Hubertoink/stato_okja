@@ -6,6 +6,7 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import type { ActivitiesFilter, PagedActivitiesResult } from '@/lib/activities';
 import type { Project } from '@/lib/projects';
 import LoadingOverlay from '@/components/LoadingOverlay';
+import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 
 function readActivitiesPrefetchParams(): { params: ActivitiesFilter; page: number; limit: number } {
   const page = 1;
@@ -182,85 +183,100 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
     (async () => {
       try {
         if (needsBlockingWarmup) {
+          const flowId = startDevFlow('post-login-prefetch', {
+            scopeKey,
+            userId: user.id,
+            from,
+            to: toISO,
+          });
           setOpen(true);
           setMessage('Daten werden geladen…');
           setProgress(undefined);
 
           // Run ALL prefetches in parallel for maximum performance
-          const allTasks: Promise<unknown>[] = [];
+          const allTasks: Array<{ label: string; promise: Promise<unknown> }> = [];
 
           // Projects
           if (!hasProjects) {
-            allTasks.push(
-              qc.prefetchQuery({
+            allTasks.push({
+              label: 'projects:list',
+              promise: qc.prefetchQuery({
                 queryKey: ['projects', scopeKey, undefined],
                 queryFn: () => fetchProjects(undefined),
               }),
-            );
+            });
           }
 
           // Base stats (all 6 endpoints)
           const baseStatsParams = { from: undefined, to: undefined, projectId: undefined } as const;
           if (!hasBaseStatsSummary)
-            allTasks.push(
-              qc.prefetchQuery({
+            allTasks.push({
+              label: 'stats:summary',
+              promise: qc.prefetchQuery({
                 queryKey: ['stats:summary', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/summary', baseStatsParams),
               }),
-            );
+            });
           if (!hasBaseStatsByType)
-            allTasks.push(
-              qc.prefetchQuery({
+            allTasks.push({
+              label: 'stats:by-type',
+              promise: qc.prefetchQuery({
                 queryKey: ['stats:by-type', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/by-type', baseStatsParams),
               }),
-            );
+            });
           if (!hasBaseStatsGender)
-            allTasks.push(
-              qc.prefetchQuery({
+            allTasks.push({
+              label: 'stats:gender',
+              promise: qc.prefetchQuery({
                 queryKey: ['stats:gender', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/gender', baseStatsParams),
               }),
-            );
+            });
           if (!hasBaseStatsTimeseries)
-            allTasks.push(
-              qc.prefetchQuery({
+            allTasks.push({
+              label: 'stats:participants-timeseries',
+              promise: qc.prefetchQuery({
                 queryKey: ['stats:participants-timeseries', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/participants-timeseries', baseStatsParams),
               }),
-            );
+            });
           if (!hasBaseStatsByCohort)
-            allTasks.push(
-              qc.prefetchQuery({
+            allTasks.push({
+              label: 'stats:by-cohort',
+              promise: qc.prefetchQuery({
                 queryKey: ['stats:by-cohort', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/by-cohort', baseStatsParams),
               }),
-            );
+            });
           if (!hasBaseStatsByCategory)
-            allTasks.push(
-              qc.prefetchQuery({
+            allTasks.push({
+              label: 'stats:by-category',
+              promise: qc.prefetchQuery({
                 queryKey: ['stats:by-category', scopeKey, '', '', ''],
                 queryFn: () => fetchStats('/stats/by-category', baseStatsParams),
               }),
-            );
+            });
 
           // Dashboard month summary
           if (!hasDashboardMonthSummary)
-            allTasks.push(
-              qc.prefetchQuery({
+            allTasks.push({
+              label: 'stats:summary:month',
+              promise: qc.prefetchQuery({
                 queryKey: dashboardMonthSummaryKey,
                 queryFn: () => fetchStats('/stats/summary', { from, to: toISO, projectId: undefined }),
               }),
-            );
+            });
 
           // Activities first page
           if (!hasActivitiesFirstPage) {
-            allTasks.push(
-              qc.prefetchQuery({
+            allTasks.push({
+              label: 'activities:paged:first-page',
+              promise: qc.prefetchQuery({
                 queryKey: activitiesFirstPageKey,
                 queryFn: () => fetchActivitiesPaged(activitiesParams, activitiesPage, activitiesLimit),
               }),
-            );
+            });
           }
 
           // Progress tracking
@@ -268,20 +284,45 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
           setProgress(total > 0 ? { current: 0, total } : undefined);
 
           let done = 0;
-          const tracked = allTasks.map((p) =>
-            p.finally(() => {
+          const tracked = allTasks.map(({ label, promise }) => {
+            const taskStartedAt = performance.now();
+            return promise.finally(() => {
               done += 1;
+              markDevFlow(flowId, label, {
+                durationMs: Math.round((performance.now() - taskStartedAt) * 10) / 10,
+                completed: done,
+                total,
+              });
               if (!cancelled && runIdRef.current === runId) {
                 setProgress({ current: done, total });
                 setMessage(`Daten werden geladen… (${done}/${total})`);
               }
-            }),
-          );
+            });
+          });
 
           // Wait for all parallel requests
           await Promise.allSettled(tracked);
+          finishDevFlow(flowId, 'success', {
+            totalTasks: total,
+            completedTasks: done,
+          });
+        } else {
+          addDevMetricEvent({
+            kind: 'flow',
+            status: 'info',
+            name: 'post-login-prefetch',
+            message: 'Warmup skipped because relevant data was already cached.',
+            meta: { scopeKey, userId: user.id },
+          });
         }
       } catch {
+        addDevMetricEvent({
+          kind: 'flow',
+          status: 'error',
+          name: 'post-login-prefetch',
+          message: 'Warmup failed unexpectedly.',
+          meta: { scopeKey, userId: user.id },
+        });
         // Never block the app if prefetch fails — UI will load normally.
       } finally {
         // Always close the overlay for the latest run.

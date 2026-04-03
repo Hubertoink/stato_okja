@@ -7,6 +7,7 @@ import App from './App';
 import './index.css';
 
 import { applyStoredBackground } from './lib/background';
+import { attachQueryClientMetrics } from './lib/devMetrics';
 
 const persister = createSyncStoragePersister({
   storage: window.localStorage,
@@ -23,6 +24,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+attachQueryClientMetrics(queryClient);
 
 applyStoredBackground();
 

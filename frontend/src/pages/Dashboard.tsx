@@ -610,8 +610,8 @@ export default function Dashboard() {
         <ExportModal
           open={exportOpen}
           onClose={() => setExportOpen(false)}
-          initialYear={year}
-          initialMonth={month}
+          initialFrom={from}
+          initialTo={to}
         />
       )}
       <GettingStartedTutorialModal

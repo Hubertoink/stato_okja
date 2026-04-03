@@ -93,17 +93,19 @@ export default function ExportModal({
   }, [categoriesList]);
 
   const projectMainCategoryName = (a: Activity): string => {
-    if (a.project?.type === 'open_door') return '';
-    const cid =
-      (a.project && (a.project as unknown as { categoryId?: string | null }).categoryId) || null;
+    const project = a.project as
+      | ({
+          categoryId?: string | null;
+          categories?: Array<{ name?: string }>;
+          type?: string | null;
+        })
+      | null
+      | undefined;
+    if (project?.type === 'open_door') return '';
+    const cid = project?.categoryId || null;
     if (cid && categoryNameById.has(cid)) return categoryNameById.get(cid) || '';
-    // fallback to project.categories if present
-    const names = Array.isArray(
-      (a.project as unknown as { categories?: Array<{ name?: string }> }).categories,
-    )
-      ? ((a.project as unknown as { categories?: Array<{ name?: string }> }).categories || [])
-          .map((c) => c?.name)
-          .filter(Boolean)
+    const names = Array.isArray(project?.categories)
+      ? (project?.categories || []).map((c) => c?.name).filter(Boolean)
       : [];
     return names.join(' | ');
   };

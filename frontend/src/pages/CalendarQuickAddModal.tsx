@@ -197,7 +197,7 @@ export default function ActivityQuickAdd({
       className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
+      <div className="bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-2">
           Aktivität am{' '}
           {(() => {
@@ -206,414 +206,415 @@ export default function ActivityQuickAdd({
             return `${d}.${m}.${y}`;
           })()}
         </h3>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="activity-date">
-              Datum *
-            </label>
-            <input
-              id="activity-date"
-              type="date"
-              value={(form.date || '').slice(0, 10)}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setForm({ ...form, date: e.target.value })
-              }
-              className="w-full border rounded px-3 py-2"
-            />
+        <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 lg:items-start">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1" htmlFor="activity-date">
+                  Datum *
+                </label>
+                <input
+                  id="activity-date"
+                  type="date"
+                  value={(form.date || '').slice(0, 10)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setForm({ ...form, date: e.target.value })
+                  }
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" htmlFor="location-select">
+                  Standort
+                </label>
+                <select
+                  id="location-select"
+                  value={form.locationId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setForm({ ...form, locationId: e.target.value || undefined })
+                  }
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="">— Standort wählen —</option>
+                  {(locations || []).map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="activity-title">
+                Titel
+              </label>
+              <input
+                id="activity-title"
+                value={form.title || ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setForm({ ...form, title: e.target.value })
+                }
+                className="w-full border rounded px-3 py-2"
+                placeholder="z. B. Werkraum, Offene Tür"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Projekt *</label>
+              {selectedProject ? (
+                <button
+                  type="button"
+                  onClick={() => setPicker(true)}
+                  className="w-full border rounded p-2 flex items-center gap-3 text-left"
+                >
+                  <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+                    {selectedProject.imageUrl ? (
+                      <ProtectedImage
+                        src={selectedProject.imageUrl}
+                        alt={selectedProject.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Boxes className="w-6 h-6 text-gray-500" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-medium text-viridian">{selectedProject.title}</div>
+                    <div className="text-xs text-gray-600">{selectedProject.targetGroup || '—'}</div>
+                  </div>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPicker(true)}
+                  className="w-full border rounded p-3 text-left text-gray-600"
+                >
+                  Projekt wählen…
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1" htmlFor="start-time">
+                  Start
+                </label>
+                <input
+                  id="start-time"
+                  type="time"
+                  value={form.start || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setForm({ ...form, start: e.target.value })
+                  }
+                  className="w-full border rounded px-3 py-2"
+                  placeholder="HH:MM"
+                  title="Start"
+                />
+              </div>
+              <div>
+                <label htmlFor="end-time" className="block text-sm font-medium mb-1">
+                  Ende
+                </label>
+                <input
+                  id="end-time"
+                  type="time"
+                  value={form.end || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setForm({ ...form, end: e.target.value })
+                  }
+                  className="w-full border rounded px-3 py-2"
+                  placeholder="HH:MM"
+                  title="Ende"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Alterskohorten</label>
+              <div className="space-y-2">
+                <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2">
+                  <span className="text-xs text-gray-500" />
+                  <span
+                    className="text-xs text-gray-600 font-medium text-center"
+                    title="Männlich"
+                    aria-label="Männlich"
+                  >
+                    ♂
+                  </span>
+                  <span
+                    className="text-xs text-gray-600 font-medium text-center"
+                    title="Weiblich"
+                    aria-label="Weiblich"
+                  >
+                    ♀
+                  </span>
+                  <span
+                    className="text-xs text-gray-600 font-medium text-center"
+                    title="Divers"
+                    aria-label="Divers"
+                  >
+                    ⚧
+                  </span>
+                </div>
+                {(cohorts || []).map((c, rowIndex: number) => {
+                  const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
+                  const update = (g: GenderKey, val: number) => {
+                    setForm({
+                      ...form,
+                      cohortCounts: {
+                        ...form.cohortCounts!,
+                        [c.id]: { ...entry, [g]: val },
+                      },
+                    });
+                  };
+                  const genders: GenderKey[] = ['m', 'w', 'd'];
+                  const handleKeyDown = (
+                    e: KeyboardEvent<HTMLInputElement>,
+                    currentRow: number,
+                    g: GenderKey,
+                  ) => {
+                    const list = cohorts || [];
+                    const col = genders.indexOf(g);
+                    let nextRow = currentRow;
+                    let nextCol = col;
+                    if (e.key === 'Enter' || e.key === 'ArrowRight') {
+                      e.preventDefault();
+                      nextCol = col + 1;
+                      if (nextCol >= genders.length) {
+                        nextCol = 0;
+                        nextRow = currentRow + 1;
+                      }
+                    } else if (e.key === 'ArrowLeft') {
+                      e.preventDefault();
+                      nextCol = col - 1;
+                      if (nextCol < 0) {
+                        nextCol = genders.length - 1;
+                        nextRow = Math.max(0, currentRow - 1);
+                      }
+                    } else if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      nextRow = currentRow + 1;
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      nextRow = Math.max(0, currentRow - 1);
+                    } else {
+                      return;
+                    }
+                    const targetC = list[nextRow];
+                    const targetG = genders[nextCol];
+                    if (targetC && targetG) {
+                      const el = document.querySelector<HTMLInputElement>(
+                        `input[data-cohort-id='${targetC.id}'][data-gender='${targetG}']`,
+                      );
+                      el?.focus();
+                      el?.select();
+                    }
+                  };
+                  const ageLabel = (() => {
+                    const from =
+                      typeof (c as { minAge?: number }).minAge === 'number'
+                        ? (c as { minAge?: number }).minAge
+                        : undefined;
+                    const to =
+                      typeof (c as { maxAge?: number }).maxAge === 'number'
+                        ? (c as { maxAge?: number }).maxAge
+                        : undefined;
+                    if (from != null && to != null) return `${from}–${to} Jahre`;
+                    if (from != null) return `ab ${from} Jahre`;
+                    if (to != null) return `bis ${to} Jahre`;
+                    return '';
+                  })();
+                  return (
+                    <div
+                      key={c.id}
+                      className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2"
+                    >
+                      <span className="text-sm text-gray-700 truncate">
+                        <div className="truncate">{c.name}</div>
+                        {ageLabel && (
+                          <div className="text-[11px] text-gray-500 leading-tight">{ageLabel}</div>
+                        )}
+                      </span>
+                      {(['m', 'w', 'd'] as const).map((g) => (
+                        <input
+                          key={g}
+                          type="number"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          min={0}
+                          value={entry[g] ? String(entry[g]) : ''}
+                          onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
+                            e.currentTarget.select()
+                          }
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            update(g, Number(e.target.value || 0))
+                          }
+                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
+                            handleKeyDown(e, rowIndex, g)
+                          }
+                          data-cohort-id={c.id}
+                          data-gender={g}
+                          enterKeyHint="next"
+                          className="w-full border rounded px-2 py-1 text-center"
+                          placeholder={g === 'm' ? '♂' : g === 'w' ? '♀' : '⚧'}
+                          aria-label={`${c.name} ${g.toUpperCase()}`}
+                        />
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="location-select">
-              Standort
-            </label>
-            <select
-              id="location-select"
-              value={form.locationId || ''}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setForm({ ...form, locationId: e.target.value || undefined })
-              }
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="">— Standort wählen —</option>
-              {(locations || []).map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="activity-title">
-              Titel
-            </label>
-            <input
-              id="activity-title"
-              value={form.title || ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setForm({ ...form, title: e.target.value })
-              }
-              className="w-full border rounded px-3 py-2"
-              placeholder="z. B. Werkraum, Offene Tür"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Projekt *</label>
-            {selectedProject ? (
-              <button
-                type="button"
-                onClick={() => setPicker(true)}
-                className="w-full border rounded p-2 flex items-center gap-3 text-left"
-              >
-                <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
-                  {selectedProject.imageUrl ? (
-                    <img
-                      src={selectedProject.imageUrl}
-                      alt={selectedProject.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Boxes className="w-6 h-6 text-gray-500" />
+          <div className="space-y-3">
+            {(!selectedProject || selectedProject.type !== 'open_door') && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Kategorien</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {(categories || []).map((c) => {
+                    const active = (form.categoryIds || []).includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          const set = new Set(form.categoryIds || []);
+                          if (set.has(c.id)) set.delete(c.id);
+                          else set.add(c.id);
+                          setForm({ ...form, categoryIds: Array.from(set) });
+                        }}
+                        className={`px-2 py-1 rounded-full text-xs border ${active ? `${getBgClass(c.color as string, 'bg-slate-400')} text-white border-transparent` : 'bg-white text-gray-700 border-gray-300'}`}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                  {(categories || []).length === 0 && (
+                    <span className="text-xs text-gray-400">Keine Kategorien vorhanden.</span>
                   )}
                 </div>
-                <div>
-                  <div className="font-medium text-viridian">{selectedProject.title}</div>
-                  <div className="text-xs text-gray-600">{selectedProject.targetGroup || '—'}</div>
-                </div>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setPicker(true)}
-                className="w-full border rounded p-3 text-left text-gray-600"
-              >
-                Projekt wählen…
-              </button>
+              </div>
             )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="start-time">
-                Start
-              </label>
-              <input
-                id="start-time"
-                type="time"
-                value={form.start || ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm({ ...form, start: e.target.value })
-                }
-                className="w-full border rounded px-3 py-2"
-                placeholder="HH:MM"
-                title="Start"
-              />
-            </div>
-            <div>
-              <label htmlFor="end-time" className="block text-sm font-medium mb-1">
-                Ende
-              </label>
-              <input
-                id="end-time"
-                type="time"
-                value={form.end || ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm({ ...form, end: e.target.value })
-                }
-                className="w-full border rounded px-3 py-2"
-                placeholder="HH:MM"
-                title="Ende"
-              />
-            </div>
-          </div>
-          {/* Cohort breakdown per gender */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Alterskohorten</label>
-            <div className="space-y-2">
-              {/* Column headers for gender columns */}
-              <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2">
-                <span className="text-xs text-gray-500" />
-                <span
-                  className="text-xs text-gray-600 font-medium text-center"
-                  title="Männlich"
-                  aria-label="Männlich"
-                >
-                  ♂
-                </span>
-                <span
-                  className="text-xs text-gray-600 font-medium text-center"
-                  title="Weiblich"
-                  aria-label="Weiblich"
-                >
-                  ♀
-                </span>
-                <span
-                  className="text-xs text-gray-600 font-medium text-center"
-                  title="Divers"
-                  aria-label="Divers"
-                >
-                  ⚧
-                </span>
+              <label className="block text-sm font-medium mb-1">Tags</label>
+              <div className="flex flex-wrap gap-2">
+                {(tags || []).map((t) => {
+                  const active = form.tagIds?.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        const set = new Set(form.tagIds || []);
+                        if (set.has(t.id)) set.delete(t.id);
+                        else set.add(t.id);
+                        setForm({ ...form, tagIds: Array.from(set) });
+                      }}
+                      className={`px-2 py-1 rounded-full text-xs border ${active ? `${getBgClass(t.color as string, 'bg-slate-500')} text-white border-transparent` : 'bg-white text-gray-700 border-gray-300'}`}
+                    >
+                      {t.name}
+                    </button>
+                  );
+                })}
               </div>
-              {(cohorts || []).map((c, rowIndex: number) => {
-                const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
-                const update = (g: GenderKey, val: number) => {
-                  setForm({
-                    ...form,
-                    cohortCounts: {
-                      ...form.cohortCounts!,
-                      [c.id]: { ...entry, [g]: val },
-                    },
-                  });
-                };
-                const genders: GenderKey[] = ['m', 'w', 'd'];
-                const handleKeyDown = (
-                  e: KeyboardEvent<HTMLInputElement>,
-                  currentRow: number,
-                  g: GenderKey,
-                ) => {
-                  const list = cohorts || [];
-                  const col = genders.indexOf(g);
-                  let nextRow = currentRow;
-                  let nextCol = col;
-                  if (e.key === 'Enter' || e.key === 'ArrowRight') {
-                    e.preventDefault();
-                    nextCol = col + 1;
-                    if (nextCol >= genders.length) {
-                      nextCol = 0;
-                      nextRow = currentRow + 1;
-                    }
-                  } else if (e.key === 'ArrowLeft') {
-                    e.preventDefault();
-                    nextCol = col - 1;
-                    if (nextCol < 0) {
-                      nextCol = genders.length - 1;
-                      nextRow = Math.max(0, currentRow - 1);
-                    }
-                  } else if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    nextRow = currentRow + 1;
-                  } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    nextRow = Math.max(0, currentRow - 1);
-                  } else {
-                    return;
-                  }
-                  const targetC = list[nextRow];
-                  const targetG = genders[nextCol];
-                  if (targetC && targetG) {
-                    const el = document.querySelector<HTMLInputElement>(
-                      `input[data-cohort-id='${targetC.id}'][data-gender='${targetG}']`,
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Mitarbeitende</label>
+              <div className="flex flex-wrap gap-2">
+                {(staff || [])
+                  .filter((s) =>
+                    Array.isArray(s.roles)
+                      ? s.roles.includes('lead') || s.roles.includes('employee')
+                      : s.role === 'lead' || s.role === 'employee',
+                  )
+                  .map((s) => {
+                    const active = form.staffIds?.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          const set = new Set(form.staffIds || []);
+                          if (set.has(s.id)) set.delete(s.id);
+                          else set.add(s.id);
+                          setForm({ ...form, staffIds: Array.from(set) });
+                        }}
+                        className={`px-2 py-1 rounded-full text-xs border ${
+                          active ? 'bg-viridian text-white' : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        {s.name}
+                      </button>
                     );
-                    el?.focus();
-                    el?.select();
-                  }
-                };
-                const ageLabel = (() => {
-                  const from =
-                    typeof (c as { minAge?: number }).minAge === 'number'
-                      ? (c as { minAge?: number }).minAge
-                      : undefined;
-                  const to =
-                    typeof (c as { maxAge?: number }).maxAge === 'number'
-                      ? (c as { maxAge?: number }).maxAge
-                      : undefined;
-                  if (from != null && to != null) return `${from}–${to} Jahre`;
-                  if (from != null) return `ab ${from} Jahre`;
-                  if (to != null) return `bis ${to} Jahre`;
-                  return '';
-                })();
-                return (
-                  <div
-                    key={c.id}
-                    className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2"
-                  >
-                    <span className="text-sm text-gray-700 truncate">
-                      <div className="truncate">{c.name}</div>
-                      {ageLabel && (
-                        <div className="text-[11px] text-gray-500 leading-tight">{ageLabel}</div>
-                      )}
-                    </span>
-                    {(['m', 'w', 'd'] as const).map((g) => (
-                      <input
-                        key={g}
-                        type="number"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        min={0}
-                        value={entry[g] ? String(entry[g]) : ''}
-                        onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
-                          e.currentTarget.select()
-                        }
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          update(g, Number(e.target.value || 0))
-                        }
-                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
-                          handleKeyDown(e, rowIndex, g)
-                        }
-                        data-cohort-id={c.id}
-                        data-gender={g}
-                        enterKeyHint="next"
-                        className="w-full border rounded px-2 py-1 text-center"
-                        placeholder={g === 'm' ? '♂' : g === 'w' ? '♀' : '⚧'}
-                        aria-label={`${c.name} ${g.toUpperCase()}`}
-                      />
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          {/* Kategorien: ausblenden bei "Offene Tür" */}
-          {(!selectedProject || selectedProject.type !== 'open_door') && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Kategorien</label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {(categories || []).map((c) => {
-                  const active = (form.categoryIds || []).includes(c.id);
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        const set = new Set(form.categoryIds || []);
-                        if (set.has(c.id)) set.delete(c.id);
-                        else set.add(c.id);
-                        setForm({ ...form, categoryIds: Array.from(set) });
-                      }}
-                      className={`px-2 py-1 rounded-full text-xs border ${active ? `${getBgClass(c.color as string, 'bg-slate-400')} text-white border-transparent` : 'bg-white text-gray-700 border-gray-300'}`}
-                    >
-                      {c.name}
-                    </button>
-                  );
-                })}
-                {(categories || []).length === 0 && (
-                  <span className="text-xs text-gray-400">Keine Kategorien vorhanden.</span>
-                )}
+                  })}
               </div>
             </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium mb-1">Tags</label>
-            <div className="flex flex-wrap gap-2">
-              {(tags || []).map((t) => {
-                const active = form.tagIds?.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      const set = new Set(form.tagIds || []);
-                      if (set.has(t.id)) set.delete(t.id);
-                      else set.add(t.id);
-                      setForm({ ...form, tagIds: Array.from(set) });
-                    }}
-                    className={`px-2 py-1 rounded-full text-xs border ${active ? `${getBgClass(t.color as string, 'bg-slate-500')} text-white border-transparent` : 'bg-white text-gray-700 border-gray-300'}`}
-                  >
-                    {t.name}
-                  </button>
-                );
-              })}
+            <div>
+              <label className="block text-sm font-medium mb-1">Ehrenamtliche</label>
+              <div className="flex flex-wrap gap-2">
+                {(staff || [])
+                  .filter((s) =>
+                    Array.isArray(s.roles) ? s.roles.includes('volunteer') : s.role === 'volunteer',
+                  )
+                  .map((s) => {
+                    const active = form.staffIds?.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          const set = new Set(form.staffIds || []);
+                          if (set.has(s.id)) set.delete(s.id);
+                          else set.add(s.id);
+                          setForm({ ...form, staffIds: Array.from(set) });
+                        }}
+                        className={`px-2 py-1 rounded-full text-xs border ${
+                          active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+              </div>
             </div>
-          </div>
-          {/* Staff multi-select split by roles */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Mitarbeitende</label>
-            <div className="flex flex-wrap gap-2">
-              {(staff || [])
-                .filter((s) =>
-                  Array.isArray(s.roles)
-                    ? s.roles.includes('lead') || s.roles.includes('employee')
-                    : s.role === 'lead' || s.role === 'employee',
-                )
-                .map((s) => {
-                  const active = form.staffIds?.includes(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => {
-                        const set = new Set(form.staffIds || []);
-                        if (set.has(s.id)) set.delete(s.id);
-                        else set.add(s.id);
-                        setForm({ ...form, staffIds: Array.from(set) });
-                      }}
-                      className={`px-2 py-1 rounded-full text-xs border ${
-                        active ? 'bg-viridian text-white' : 'bg-white text-gray-700'
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  );
-                })}
+            <div>
+              <label className="block text-sm font-medium mb-1">Helfer</label>
+              <div className="flex flex-wrap gap-2">
+                {(staff || [])
+                  .filter((s) =>
+                    Array.isArray(s.roles) ? s.roles.includes('helper') : s.role === 'helper',
+                  )
+                  .map((s) => {
+                    const active = form.staffIds?.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          const set = new Set(form.staffIds || []);
+                          if (set.has(s.id)) set.delete(s.id);
+                          else set.add(s.id);
+                          setForm({ ...form, staffIds: Array.from(set) });
+                        }}
+                        className={`px-2 py-1 rounded-full text-xs border ${
+                          active ? 'bg-amber-400 text-white' : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Ehrenamtliche</label>
-            <div className="flex flex-wrap gap-2">
-              {(staff || [])
-                .filter((s) =>
-                  Array.isArray(s.roles) ? s.roles.includes('volunteer') : s.role === 'volunteer',
-                )
-                .map((s) => {
-                  const active = form.staffIds?.includes(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => {
-                        const set = new Set(form.staffIds || []);
-                        if (set.has(s.id)) set.delete(s.id);
-                        else set.add(s.id);
-                        setForm({ ...form, staffIds: Array.from(set) });
-                      }}
-                      className={`px-2 py-1 rounded-full text-xs border ${
-                        active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  );
-                })}
+            <div>
+              <label className="block text-sm font-medium mb-1">Notizen</label>
+              <textarea
+                value={form.notes || ''}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                rows={4}
+                className="w-full border rounded px-3 py-2"
+                placeholder="Notizen zur Aktivität"
+                aria-label="Notizen"
+              />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Helfer</label>
-            <div className="flex flex-wrap gap-2">
-              {(staff || [])
-                .filter((s) =>
-                  Array.isArray(s.roles) ? s.roles.includes('helper') : s.role === 'helper',
-                )
-                .map((s) => {
-                  const active = form.staffIds?.includes(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => {
-                        const set = new Set(form.staffIds || []);
-                        if (set.has(s.id)) set.delete(s.id);
-                        else set.add(s.id);
-                        setForm({ ...form, staffIds: Array.from(set) });
-                      }}
-                      className={`px-2 py-1 rounded-full text-xs border ${
-                        active ? 'bg-amber-400 text-white' : 'bg-white text-gray-700'
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Notizen</label>
-            <textarea
-              value={form.notes || ''}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              rows={3}
-              className="w-full border rounded px-3 py-2"
-              placeholder="Notizen zur Aktivität"
-              aria-label="Notizen"
-            />
           </div>
         </div>
 

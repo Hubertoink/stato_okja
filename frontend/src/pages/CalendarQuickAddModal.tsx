@@ -12,6 +12,7 @@ import { useLocations } from '@/lib/locations';
 import { useToast } from '@/components/Toast';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { createPortal } from 'react-dom';
+import ProtectedImage from '@/components/ProtectedImage';
 import { getBgClass } from '@/lib/colorPalette';
 
 type GenderKey = 'm' | 'w' | 'd';

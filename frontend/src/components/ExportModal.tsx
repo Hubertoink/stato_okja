@@ -7,27 +7,6 @@ import type { Cohort } from '@/lib/taxonomy';
 import { useCohorts, useCategories } from '@/lib/taxonomy';
 import { colorForActivityType } from '@/lib/colors';
 
-type SaveFilePickerAcceptType = {
-  description?: string;
-  accept: Record<string, string[]>;
-};
-
-type SaveFilePickerOptions = {
-  suggestedName?: string;
-  types?: SaveFilePickerAcceptType[];
-};
-
-type SaveFilePickerHandle = {
-  createWritable: () => Promise<{
-    write: (data: Blob | BufferSource | string) => Promise<void>;
-    close: () => Promise<void>;
-  }>;
-};
-
-type WindowWithFilePicker = Window & {
-  showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<SaveFilePickerHandle>;
-};
-
 function csvEscape(value: unknown): string {
   const s = String(value ?? '');
   return '"' + s.replace(/"/g, '""') + '"';
@@ -62,36 +41,16 @@ function isoDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-async function saveBlobWithPickerOrDownload(
-  blob: Blob,
-  fileName: string,
-  mimeType: string,
-  extensions: string[],
-): Promise<'picker' | 'download'> {
-  const windowWithPicker = window as WindowWithFilePicker;
-  if (typeof windowWithPicker.showSaveFilePicker === 'function') {
-    const handle = await windowWithPicker.showSaveFilePicker({
-      suggestedName: fileName,
-      types: [
-        {
-          description: mimeType,
-          accept: { [mimeType]: extensions },
-        },
-      ],
-    });
-    const writable = await handle.createWritable();
-    await writable.write(blob);
-    await writable.close();
-    return 'picker';
-  }
-
+function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
-  return 'download';
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export default function ExportModal({
@@ -165,7 +124,7 @@ export default function ExportModal({
   const saveCsv = async (rows: string[][], fileName: string) => {
     const csv = rows.map((r) => r.map(csvEscape).join(';')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    return saveBlobWithPickerOrDownload(blob, fileName, 'text/csv', ['.csv']);
+    downloadBlob(blob, fileName);
   };
 
   const downloadRaw = async () => {
@@ -218,7 +177,7 @@ export default function ExportModal({
         ...cohortTotals,
       ]);
     }
-    return saveCsv(rows, `stato-rohdaten-${exportRangeLabel}.csv`);
+    await saveCsv(rows, `stato-rohdaten-${exportRangeLabel}.csv`);
   };
 
   const buildConsolidatedMatrix = () => {
@@ -314,7 +273,10 @@ export default function ExportModal({
 
   const downloadConsolidated = async () => {
     const rows = buildConsolidatedMatrix();
-    return saveCsv(rows.map((row) => row.map((cell) => String(cell ?? ''))), `stato-konsolidiert-${exportRangeLabel}.csv`);
+    await saveCsv(
+      rows.map((row) => row.map((cell) => String(cell ?? ''))),
+      `stato-konsolidiert-${exportRangeLabel}.csv`,
+    );
   };
 
   // Build consolidated matrix specifically for Excel with pretty headers and integer averages
@@ -562,16 +524,11 @@ export default function ExportModal({
     const blob = new Blob([arrayBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
-    return saveBlobWithPickerOrDownload(
-      blob,
-      `stato-export-${exportRangeLabel}.xlsx`,
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      ['.xlsx'],
-    );
+    downloadBlob(blob, `stato-export-${exportRangeLabel}.xlsx`);
   };
 
   const runExport = async (
-    exporter: () => Promise<'picker' | 'download'>,
+    exporter: () => Promise<void>,
     successLabel: string,
   ) => {
     if (!from || !to) {
@@ -582,18 +539,10 @@ export default function ExportModal({
     setIsSaving(true);
     setSaveStatus('');
     try {
-      const mode = await exporter();
-      setSaveStatus(
-        mode === 'picker'
-          ? `${successLabel} gespeichert.`
-          : `${successLabel} heruntergeladen. Der Speicherort wird vom Browser bestimmt.`,
-      );
+      await exporter();
+      setSaveStatus(`${successLabel} heruntergeladen. Der Speicherort wird vom Browser bestimmt.`);
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        setSaveStatus('Speichern abgebrochen.');
-      } else {
-        setSaveStatus('Export konnte nicht gespeichert werden.');
-      }
+      setSaveStatus('Export konnte nicht heruntergeladen werden.');
     } finally {
       setIsSaving(false);
     }
@@ -633,13 +582,7 @@ export default function ExportModal({
           Zeitraum: {from} bis {effectiveTo} · Aktivitäten: {activities.length}
         </div>
         <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-          Wenn der Browser die Dateiauswahl unterstützt, kannst du Zielordner und Dateiname frei wählen. Andernfalls startet ein normaler Download in den Standard-Downloadordner.
-        </div>
-        <div className="text-sm text-gray-600">
-          Zielbestimmung:
-          <span className="ml-1 text-gray-500">
-            bei unterstützten Browsern direkt im Speicherdialog, sonst über den Browser-Download.
-          </span>
+          Der Export wird direkt als normaler Browser-Download gestartet und im Standard-Downloadordner gespeichert.
         </div>
         <div>
           <h4 className="font-semibold text-viridian mb-1">Rohdaten (CSV)</h4>
@@ -651,7 +594,7 @@ export default function ExportModal({
             onClick={() => void runExport(downloadRaw, 'CSV-Rohdaten')}
             disabled={isSaving}
           >
-            CSV speichern
+            CSV herunterladen
           </button>
         </div>
         <div className="border-t pt-4">
@@ -665,7 +608,7 @@ export default function ExportModal({
             onClick={() => void runExport(downloadConsolidated, 'Konsolidierte CSV')}
             disabled={isSaving}
           >
-            CSV speichern
+            CSV herunterladen
           </button>
         </div>
         <div className="border-t pt-4">
@@ -678,7 +621,7 @@ export default function ExportModal({
             onClick={() => void runExport(downloadExcel, 'Excel-Datei')}
             disabled={isSaving}
           >
-            XLSX speichern
+            XLSX herunterladen
           </button>
         </div>
         {saveStatus && <div className="text-sm text-gray-600">{saveStatus}</div>}

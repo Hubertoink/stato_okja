@@ -35,6 +35,7 @@ export default function AdminOrgSetup() {
   const { showToast } = useToast();
   const [orgs, setOrgs] = useState<OrgDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const isSuperadmin = user?.role === 'superadmin';
   
   // Create org modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -79,10 +80,14 @@ export default function AdminOrgSetup() {
     sortRec(roots);
     return roots;
   }, [orgs]);
+  const fixedParentName = useMemo(() => {
+    if (!user?.orgId) return user?.orgName || 'Eigene Organisation';
+    return orgs.find((o) => o.id === user.orgId)?.name || user.orgName || 'Eigene Organisation';
+  }, [orgs, user?.orgId, user?.orgName]);
 
   const resetCreateForm = () => {
     setOrgName('');
-    setParentId(user?.role !== 'superadmin' ? (user?.orgId ?? 'root') : 'root');
+    setParentId(isSuperadmin ? 'root' : (user?.orgId ?? 'root'));
     setWithAdmin(false);
     setAdminEmail('');
     setAdminName('');
@@ -94,7 +99,8 @@ export default function AdminOrgSetup() {
     
     setCreating(true);
     try {
-      const org = await createOrgApi(orgName.trim(), parentId === 'root' ? null : parentId);
+      const effectiveParentId = isSuperadmin ? (parentId === 'root' ? null : parentId || null) : (user?.orgId ?? null);
+      const org = await createOrgApi(orgName.trim(), effectiveParentId);
       
       if (withAdmin && adminEmail.trim()) {
         const { token } = await inviteUserApi({ 
@@ -201,15 +207,28 @@ export default function AdminOrgSetup() {
           {/* Übergeordnete Organisation */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Übergeordnete Organisation</label>
-            <select 
-              value={parentId} 
-              onChange={(e)=> setParentId((e.target.value || 'root') as 'root' | string)} 
-              className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
-            >
-              <option value="root">(Keine – oberste Ebene)</option>
-              {orgs.map(o => (<option key={o.id} value={o.id}>{o.name}</option>))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">Leer lassen, um eine eigenständige Organisation zu erstellen</p>
+            {isSuperadmin ? (
+              <>
+                <select 
+                  value={parentId} 
+                  onChange={(e)=> setParentId((e.target.value || 'root') as 'root' | string)} 
+                  className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
+                >
+                  <option value="root">(Keine – oberste Ebene)</option>
+                  {orgs.map(o => (<option key={o.id} value={o.id}>{o.name}</option>))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Leer lassen, um eine eigenständige Organisation zu erstellen</p>
+              </>
+            ) : (
+              <>
+                <input
+                  value={fixedParentName}
+                  disabled
+                  className="border rounded-lg px-3 py-2 w-full bg-gray-50 text-gray-600 cursor-not-allowed"
+                />
+                <p className="text-xs text-gray-500 mt-1">Org-Admins können neue Organisationen nur direkt unter ihrer eigenen Organisation anlegen.</p>
+              </>
+            )}
           </div>
 
           {/* Admin gleich mit anlegen? */}
@@ -264,7 +283,7 @@ export default function AdminOrgSetup() {
             </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              disabled={!orgName.trim() || (withAdmin && !adminEmail.trim()) || creating}
+              disabled={!orgName.trim() || (withAdmin && !adminEmail.trim()) || creating || (!isSuperadmin && !user?.orgId)}
               onClick={handleCreate}
             >
               {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
@@ -366,6 +385,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
 }) {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const canMoveOrg = user?.role === 'superadmin';
   const [orgUsers, setOrgUsers] = useState<{ admins: { name: string }[]; users: { name: string }[] } | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -456,27 +476,29 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
               <UserIcon className="w-3.5 h-3.5" /> {orgUsers?.users.length ?? '–'}
             </span>
           </Tooltip>
-          <select
-            className="border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 cursor-pointer flex-1 min-w-0"
-            title="Verschieben unter…"
-            value=""
-            onChange={async (e)=>{
-              try {
-                const newParent = e.target.value || 'root';
-                await moveOrgApi(org.id, newParent === 'root' ? null : newParent);
-                showToast('Organisation verschoben.', { type: 'success' });
-                onMoved();
-              } catch {
-                showToast('Verschieben fehlgeschlagen.', { type: 'error' });
-              }
-            }}
-          >
-            <option value="">Versch…</option>
-            <option value="root">(Oben)</option>
-            {validParents.map(({ o, depth: d }) => (
-              <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
-            ))}
-          </select>
+          {canMoveOrg && (
+            <select
+              className="border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 cursor-pointer flex-1 min-w-0"
+              title="Verschieben unter…"
+              value=""
+              onChange={async (e)=>{
+                try {
+                  const newParent = e.target.value || 'root';
+                  await moveOrgApi(org.id, newParent === 'root' ? null : newParent);
+                  showToast('Organisation verschoben.', { type: 'success' });
+                  onMoved();
+                } catch {
+                  showToast('Verschieben fehlgeschlagen.', { type: 'error' });
+                }
+              }}
+            >
+              <option value="">Versch…</option>
+              <option value="root">(Oben)</option>
+              {validParents.map(({ o, depth: d }) => (
+                <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
+              ))}
+            </select>
+          )}
           {user?.role === 'superadmin' && (
             <button
               className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 transition-colors text-xs flex-shrink-0"
@@ -523,27 +545,29 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
         </div>
         
         {/* Move Dropdown */}
-        <select
-          className="border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 cursor-pointer"
-          title="Verschieben unter…"
-          value=""
-          onChange={async (e)=>{
-            try {
-              const newParent = e.target.value || 'root';
-              await moveOrgApi(org.id, newParent === 'root' ? null : newParent);
-              showToast('Organisation verschoben.', { type: 'success' });
-              onMoved();
-            } catch {
-              showToast('Verschieben fehlgeschlagen.', { type: 'error' });
-            }
-          }}
-        >
-          <option value="">Verschieben…</option>
-          <option value="root">(Obere Ebene)</option>
-          {validParents.map(({ o, depth: d }) => (
-            <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
-          ))}
-        </select>
+        {canMoveOrg && (
+          <select
+            className="border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 cursor-pointer"
+            title="Verschieben unter…"
+            value=""
+            onChange={async (e)=>{
+              try {
+                const newParent = e.target.value || 'root';
+                await moveOrgApi(org.id, newParent === 'root' ? null : newParent);
+                showToast('Organisation verschoben.', { type: 'success' });
+                onMoved();
+              } catch {
+                showToast('Verschieben fehlgeschlagen.', { type: 'error' });
+              }
+            }}
+          >
+            <option value="">Verschieben…</option>
+            <option value="root">(Obere Ebene)</option>
+            {validParents.map(({ o, depth: d }) => (
+              <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
+            ))}
+          </select>
+        )}
         
         {/* Delete Button (nur für Superadmin) */}
         {user?.role === 'superadmin' && (

@@ -103,6 +103,8 @@ export default function Layout() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const [parentForNewOrg, setParentForNewOrg] = useState<string | 'root' | ''>('');
+  const isSuperadmin = user?.role === 'superadmin';
+  const fixedParentOrgName = orgList.find((o) => o.id === user?.orgId)?.name || user?.orgName || 'Eigene Organisation';
   const keyboardOpen = useKeyboardOpen();
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
@@ -622,26 +624,35 @@ export default function Layout() {
             <label htmlFor="parent-org-select" className="block text-sm font-medium mb-1">
               Übergeordnete Organisation
             </label>
-            <select
-              id="parent-org-select"
-              value={parentForNewOrg}
-              onChange={(e) =>
-                setParentForNewOrg(
-                  (e.target.value || (user?.role === 'superadmin' ? 'root' : '')) as
-                    | 'root'
-                    | string
-                    | '',
-                )
-              }
-              className="border rounded px-3 py-2 w-full"
-            >
-              {user?.role === 'superadmin' && <option value="root">(Keine, oberste Ebene)</option>}
-              {orgList.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
+            {isSuperadmin ? (
+              <select
+                id="parent-org-select"
+                value={parentForNewOrg}
+                onChange={(e) =>
+                  setParentForNewOrg(
+                    (e.target.value || 'root') as 'root' | string | '',
+                  )
+                }
+                className="border rounded px-3 py-2 w-full"
+              >
+                <option value="root">(Keine, oberste Ebene)</option>
+                {orgList.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input
+                  id="parent-org-select"
+                  value={fixedParentOrgName}
+                  disabled
+                  className="border rounded px-3 py-2 w-full bg-gray-50 text-gray-600 cursor-not-allowed"
+                />
+                <p className="mt-1 text-xs text-gray-500">Org-Admins können neue Organisationen nur direkt unter ihrer eigenen Organisation anlegen.</p>
+              </>
+            )}
           </div>
           <div className="mt-3 flex items-center justify-end gap-2">
             <button
@@ -655,15 +666,15 @@ export default function Layout() {
             </button>
             <button
               className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
-              disabled={!newOrgName.trim() || (user?.role !== 'superadmin' && !parentForNewOrg)}
+              disabled={!newOrgName.trim() || (!isSuperadmin && !user?.orgId)}
               onClick={async () => {
                 try {
                   const parentId =
-                    user?.role === 'superadmin'
+                    isSuperadmin
                       ? parentForNewOrg === 'root'
                         ? null
                         : parentForNewOrg || null
-                      : parentForNewOrg || (user?.orgId as string | undefined) || null;
+                      : (user?.orgId as string | undefined) || null;
                   const created = await createOrgApi(
                     newOrgName.trim(),
                     parentId as string | null | undefined,

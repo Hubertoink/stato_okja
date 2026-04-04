@@ -11,7 +11,7 @@ import type { UserRole } from '../users/entities/user.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { getJwtSecret } from '../config/security.config';
-import { normalizeUploadPath } from '../uploads/upload-paths';
+import { normalizeUploadPath } from '../common/upload-paths';
 
 @Injectable()
 export class AuthService {

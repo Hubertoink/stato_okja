@@ -5,7 +5,7 @@ import { Project } from './entities/project.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
-import { normalizeUploadPath } from '../uploads/upload-paths';
+import { normalizeUploadPath } from '../common/upload-paths';
 
 @Injectable()
 export class ProjectsService {

@@ -4,7 +4,7 @@ import { IsNull, Repository } from 'typeorm';
 import { ProjectTemplate } from './entities/project-template.entity';
 import { CreateProjectTemplateDto } from './dto/create-project-template.dto';
 import { UpdateProjectTemplateDto } from './dto/update-project-template.dto';
-import { normalizeUploadPath } from '../uploads/upload-paths';
+import { normalizeUploadPath } from '../common/upload-paths';
 
 @Injectable()
 export class ProjectTemplatesService {

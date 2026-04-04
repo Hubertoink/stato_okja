@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { useAuth } from '@/lib/auth';
 import { useCategories, useTags, useCreateCategory, useCreateTag } from '@/lib/taxonomy';
 import ProtectedImage from '@/components/ProtectedImage';
+import { normalizeUploadPath } from '@/lib/uploadPaths';
 import {
   ProjectTemplateDto,
   useCreateProjectTemplate,
@@ -543,7 +544,7 @@ export default function SettingsProjectTemplates() {
                       categoryName: (form.type as string) === 'open_door' ? '' : String(form.categoryName || ''),
                       categoryColor: (form.type as string) === 'open_door' ? '' : String(form.categoryColor || ''),
                       tags: serializeTagsString(form.selectedTags || []),
-                      imageUrl: String(form.imageUrl || ''),
+                      imageUrl: normalizeUploadPath(String(form.imageUrl || '')) || '',
                       color: String(form.color || ''),
                       archived: !!form.archived,
                     };

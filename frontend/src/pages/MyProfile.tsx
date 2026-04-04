@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
 import ProtectedImage from '@/components/ProtectedImage';
 import { Eye, EyeOff } from 'lucide-react';
+import { normalizeUploadPath } from '@/lib/uploadPaths';
 
 export default function MyProfile() {
   const { user, refresh } = useAuth();
@@ -20,7 +21,7 @@ export default function MyProfile() {
 
 function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userName: string; avatarUrl: string | null; email: string; theme: string; onUpdated: ()=>Promise<void>|void }) {
   const [name, setName] = useState(userName);
-  const [image, setImage] = useState<string | null>(avatarUrl);
+  const [image, setImage] = useState<string | null>(normalizeUploadPath(avatarUrl) || null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -32,7 +33,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
     const form = new FormData();
     form.append('file', file);
     const res = await api.post('/uploads/images', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-    return res.data?.url as string;
+    return normalizeUploadPath(res.data?.url as string) as string;
   }
 
   return (
@@ -96,7 +97,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
             onClick={async()=>{
               setBusy(true); setMsg(null); setErr(null);
               try {
-                await api.patch('/auth/me', { name, avatarUrl: image, theme: selectedTheme });
+                await api.patch('/auth/me', { name, avatarUrl: normalizeUploadPath(image) || null, theme: selectedTheme });
                 setMsg('Profil aktualisiert');
                 await onUpdated();
               } catch (e: unknown) {

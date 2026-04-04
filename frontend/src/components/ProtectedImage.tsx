@@ -1,25 +1,23 @@
 import { api } from '@/lib/api';
 import { ImgHTMLAttributes, useEffect, useState } from 'react';
+import { isProtectedUploadPath, normalizeUploadPath } from '@/lib/uploadPaths';
 
 type ProtectedImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
   src?: string | null;
 };
 
-function isProtectedUploadPath(src: string) {
-  return src.startsWith('/uploads/');
-}
-
 export default function ProtectedImage({ src, ...props }: ProtectedImageProps) {
   const [resolvedSrc, setResolvedSrc] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!src) {
+    const normalizedSrc = normalizeUploadPath(src);
+    if (!normalizedSrc) {
       setResolvedSrc(undefined);
       return;
     }
 
-    if (!isProtectedUploadPath(src)) {
-      setResolvedSrc(src);
+    if (!isProtectedUploadPath(normalizedSrc)) {
+      setResolvedSrc(normalizedSrc);
       return;
     }
 
@@ -27,7 +25,7 @@ export default function ProtectedImage({ src, ...props }: ProtectedImageProps) {
     let active = true;
 
     void api
-      .get(src, { responseType: 'blob' })
+      .get(normalizedSrc, { responseType: 'blob' })
       .then((response) => {
         if (!active) return;
         revokedUrl = URL.createObjectURL(response.data as Blob);

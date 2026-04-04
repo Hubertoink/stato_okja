@@ -9,11 +9,13 @@ import { adminResetPassword } from '@/lib/password';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import AssignOrgModal from '@/components/AssignOrgModal';
+import { useIsMobile } from '@/lib/useIsMobile';
 
 export default function OrgUserManagement() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { scope } = useOrgScope();
+  const isMobile = useIsMobile(768);
   const isScopedOrgView = typeof scope === 'string';
 
   // Create user modal state
@@ -142,7 +144,7 @@ export default function OrgUserManagement() {
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-6">
+      <div className="flex items-start justify-between gap-3 mb-6 sm:items-center">
         <div>
           <h2 className="text-2xl font-bold text-viridian flex items-center gap-2">
             <Users className="w-6 h-6" />
@@ -153,8 +155,9 @@ export default function OrgUserManagement() {
           </p>
         </div>
         <button
-          className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
+          className="inline-flex shrink-0 items-center justify-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
           onClick={() => { resetCreateForm(); setCreateModalOpen(true); }}
+          aria-label="Benutzer einladen"
         >
           <Plus className="w-5 h-5" />
           <span className="hidden sm:inline">Benutzer einladen</span>
@@ -164,20 +167,20 @@ export default function OrgUserManagement() {
       {/* Search & User List */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-4 py-3 border-b border-gray-100">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-wrap">
             <div>
               <h3 className="font-semibold text-gray-800">Benutzerliste</h3>
               <span className="text-xs text-gray-500">{users.length} Benutzer{users.length !== 1 ? '' : ''}</span>
             </div>
             {/* Search */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Suchen…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border rounded-lg pl-9 pr-3 py-1.5 text-sm w-48 focus:ring-2 focus:ring-viridian focus:border-viridian"
+                className="border rounded-lg pl-9 pr-3 py-2 text-sm w-full sm:w-48 focus:ring-2 focus:ring-viridian focus:border-viridian"
               />
             </div>
           </div>
@@ -216,12 +219,13 @@ export default function OrgUserManagement() {
           )}
 
           {!loading && !error && filteredUsers.length > 0 && (
-            <ul className="divide-y divide-gray-100">
+            <ul className="space-y-3 sm:space-y-0 sm:divide-y sm:divide-gray-100">
               {filteredUsers.map((u) => (
                 <UserRow 
                   key={u.id} 
                   userData={u} 
                   currentUser={user}
+                  isMobile={isMobile}
                   onReload={reload}
                   onAssign={() => setAssignUser(u)}
                   onDelete={() => setConfirmUser(u)}
@@ -381,6 +385,7 @@ export default function OrgUserManagement() {
 function UserRow({ 
   userData, 
   currentUser, 
+  isMobile,
   onReload, 
   onAssign, 
   onDelete,
@@ -388,6 +393,7 @@ function UserRow({
 }: { 
   userData: UserDto;
   currentUser: { id: string; role: string };
+  isMobile: boolean;
   onReload: () => void;
   onAssign: () => void;
   onDelete: () => void;
@@ -397,17 +403,108 @@ function UserRow({
   const isSuperadmin = userData.role === 'superadmin';
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState<'org_admin' | 'user'>(userData.role === 'org_admin' ? 'org_admin' : 'user');
+  const roleLabel = isSuperadmin ? 'Superadmin' : userData.role === 'org_admin' ? 'Admin' : 'Benutzer';
+  const roleBadgeClass = isSuperadmin
+    ? 'bg-viridian text-white'
+    : userData.role === 'org_admin'
+      ? 'bg-cambridge-blue/20 text-cambridge-blue'
+      : 'bg-gray-100 text-gray-600';
+  const avatarClass = isSuperadmin
+    ? 'bg-viridian text-white'
+    : userData.role === 'org_admin'
+      ? 'bg-cambridge-blue text-white'
+      : 'bg-gray-200 text-gray-600';
+
+  if (isMobile) {
+    return (
+      <li className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${avatarClass}`}>
+            {isSuperadmin ? <Shield className="w-5 h-5" /> :
+             userData.role === 'org_admin' ? <Shield className="w-5 h-5" /> :
+             <UserIcon className="w-5 h-5" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="min-w-0 text-base font-semibold text-gray-900 break-words">
+                {userData.name || userData.email.split('@')[0]}
+              </div>
+              <span className={`text-xs px-2.5 py-1 rounded-full ${roleBadgeClass}`}>
+                {roleLabel}
+              </span>
+              {isCurrentUser && <span className="text-xs font-medium text-viridian">Du</span>}
+            </div>
+            <div className="mt-1 break-all text-sm text-gray-600">{userData.email}</div>
+            {userData.org?.name && (
+              <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-xs text-gray-500">
+                <Building2 className="w-3 h-3 shrink-0" />
+                <span className="truncate">{userData.org.name}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {!isSuperadmin && !isCurrentUser && (
+            <button
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              onClick={() => {
+                setPendingRole(userData.role === 'org_admin' ? 'org_admin' : 'user');
+                setRoleModalOpen(true);
+              }}
+            >
+              <Shield className="w-4 h-4" />
+              Rolle
+            </button>
+          )}
+
+          {(currentUser.role === 'superadmin' || currentUser.role === 'org_admin') && !isCurrentUser && (
+            <button
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              onClick={onAssign}
+            >
+              <Building2 className="w-4 h-4" />
+              Organisation
+            </button>
+          )}
+
+          {currentUser.role === 'superadmin' && (
+            <button
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              onClick={async () => {
+                try {
+                  await adminResetPassword(userData.id);
+                  showToast('Reset-Link gesendet', { type: 'success' });
+                } catch {
+                  showToast('Senden fehlgeschlagen', { type: 'error' });
+                }
+              }}
+            >
+              <KeyRound className="w-4 h-4" />
+              Reset
+            </button>
+          )}
+
+          {!isCurrentUser && (
+            <button
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+              onClick={onDelete}
+            >
+              <Trash2 className="w-4 h-4" />
+              Entfernen
+            </button>
+          )}
+        </div>
+      </li>
+    );
+  }
 
   return (
     <li className="px-3 py-3 hover:bg-gray-50 transition-colors">
       <div className="flex items-center justify-between gap-3">
         {/* User Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-            isSuperadmin ? 'bg-viridian text-white' : 
-            userData.role === 'org_admin' ? 'bg-cambridge-blue text-white' : 
-            'bg-gray-200 text-gray-600'
-          }`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${avatarClass}`}>
             {isSuperadmin ? <Shield className="w-5 h-5" /> : 
              userData.role === 'org_admin' ? <Shield className="w-5 h-5" /> : 
              <UserIcon className="w-5 h-5" />}
@@ -430,13 +527,7 @@ function UserRow({
         {/* Actions */}
         <div className="flex items-center gap-2">
           {/* Role badge */}
-          <span className={`text-xs px-2 py-1 rounded-full ${
-            isSuperadmin ? 'bg-viridian text-white' :
-            userData.role === 'org_admin' ? 'bg-cambridge-blue/20 text-cambridge-blue' :
-            'bg-gray-100 text-gray-600'
-          }`}>
-            {isSuperadmin ? 'Superadmin' : userData.role === 'org_admin' ? 'Admin' : 'Benutzer'}
-          </span>
+          <span className={`text-xs px-2 py-1 rounded-full ${roleBadgeClass}`}>{roleLabel}</span>
 
           {/* Role change (requires explicit confirmation; not for superadmin or self) */}
           {!isSuperadmin && !isCurrentUser && (

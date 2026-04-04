@@ -140,6 +140,7 @@ API_PREFIX=api
 
 JWT_SECRET=CHANGE_ME_SUPER_LONG_RANDOM_STRING
 JWT_ACCESS_EXPIRATION=12h
+DB_MIGRATIONS_RUN=true
 PASSWORD_RESET_MODE=admin_temp_password
 
 SUPERADMIN_EMAIL=admin@kommune.local
@@ -201,6 +202,8 @@ Beispiel:
 ## Schritt 6: Datenbank-Migrationen ausführen
 
 Für einen funktionierenden Produktionsstart müssen die Migrationen gegen die neue Datenbank gelaufen sein.
+
+Wichtig: Wenn der Backend-Container mit `NODE_ENV=development` läuft, werden Migrationen im aktuellen Backend standardmäßig **nicht** automatisch ausgeführt. Setze in diesem Fall `DB_MIGRATIONS_RUN=true`, sonst fehlen neue Spalten trotz korrekt gebautem Container.
 
 Es gibt dafür zwei praktikable Wege.
 

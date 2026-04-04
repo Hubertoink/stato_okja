@@ -18,6 +18,11 @@ Für einen laufenden Backend-Container brauchst du mindestens:
   - Default: `development`
   - Üblich: `production` im Live-Betrieb
 
+- `APP_ENV` (optional)
+  - Default: *(leer)*
+  - Empfohlen für Dev-Container: `development`
+  - Wird u. a. von den Dev-Tools geprüft. Wenn `NODE_ENV=production` oder `APP_ENV=production` gesetzt ist, bleiben die Testdaten-Tools deaktiviert.
+
 - `PORT` (optional)
   - Default: `3000`
   - Port, auf dem NestJS lauscht.
@@ -124,6 +129,22 @@ Beim Start stellt das Backend sicher, dass ein `superadmin` existiert.
   - Wichtig: Das Passwort wird **nicht** bei jedem Start überschrieben (damit UI-Passwortänderungen nicht „zurückspringen“).
   - Optional erzwingen (setzt bestehendes Passwort beim Start neu): `SUPERADMIN_PASSWORD_FORCE=true`
 
+## Dev-Tools / Testdaten
+
+Für die Testdaten-Funktion unter `Einstellungen -> Testdaten` muss der Backend-Container in einer Dev-Umgebung laufen.
+
+Empfohlen:
+
+- `NODE_ENV=development`
+- `APP_ENV=development`
+
+Wichtig:
+
+- Sobald eine der beiden Variablen auf `production` steht, sind die Dev-Tools im Backend deaktiviert.
+- Das betrifft insbesondere die automatische Erzeugung realistischer Projekte und Aktivitäten für Testzwecke.
+
+Weitere Details stehen in [backend/src/dev-tools/README.md](../backend/src/dev-tools/README.md).
+
 ## SMTP (Einladungen / Passwort Reset)
 
 - `SMTP_HOST` (optional)
@@ -155,6 +176,8 @@ services:
   backend:
     image: <dein-backend-image>
     environment:
+      NODE_ENV: development
+      APP_ENV: development
       PORT: 3000
       API_PREFIX: api
       CORS_ORIGINS: http://localhost:5173

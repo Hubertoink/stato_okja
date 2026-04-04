@@ -12,7 +12,8 @@ import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holida
 import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
 import { getOpeningHours, OpeningHours } from '@/lib/orgs';
 import { useAuth } from '@/lib/auth';
-import { useOrgScope } from '@/lib/orgScope';
+import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
+import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import type React from 'react';
 import { createPortal } from 'react-dom';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -181,6 +182,7 @@ export default function Calendar() {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { scope } = useOrgScope();
+  const scopeKey = useOrgScopeKey();
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState<Date>(new Date());
   const [showAdjacentMonthActivities, setShowAdjacentMonthActivities] = useState<boolean>(() => {
@@ -199,6 +201,11 @@ export default function Calendar() {
   const [tooltipActivity, setTooltipActivity] = useState<Activity | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const tooltipTimeoutRef = useRef<number | null>(null);
+  const calendarFlowIdRef = useRef<string | null>(null);
+  const calendarFlowCompletedRef = useRef(false);
+  const calendarFlowMarksRef = useRef<Record<string, boolean>>({});
+  const calendarPendingRunKeyRef = useRef<string | null>(null);
+  const calendarFetchSeenRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     try {
@@ -214,11 +221,12 @@ export default function Calendar() {
     : (user?.orgId ?? null);
 
   // Fetch opening hours for the current organization
-  const { data: openingHours } = useQuery({
+  const openingHoursQ = useQuery({
     queryKey: ['opening-hours', effectiveOrgId],
     queryFn: () => getOpeningHours(effectiveOrgId!),
     enabled: !!effectiveOrgId,
   });
+  const openingHours = openingHoursQ.data;
 
   // Helper to get opening hours for a weekday (0=Monday, 6=Sunday)
   const getOpeningHoursForDay = (dayIdx: number): string | null => {
@@ -278,7 +286,8 @@ export default function Calendar() {
     const end = addDays(start, 6);
     return { from: fmtLocalISO(start), to: fmtLocalISO(end) };
   }, [cursor, view]);
-  const { data: activities } = useActivities({ from: range.from, to: range.to });
+  const activitiesQ = useActivities({ from: range.from, to: range.to });
+  const activities = activitiesQ.data;
   const activitiesByDate = useMemo(() => {
     const map = new Map<string, Activity[]>();
     const list: Activity[] = (activities ?? []) as Activity[];
@@ -309,24 +318,187 @@ export default function Calendar() {
 
   // School holidays (optional)
   const [schoolRanges, setSchoolRanges] = useState<SchoolHolidayRange[] | null>(null);
+  const [schoolRangesStatus, setSchoolRangesStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   useEffect(() => {
     let alive = true;
     (async () => {
       if (!showSchool || !holidayState) {
+        if (alive) setSchoolRangesStatus('idle');
         if (alive) setSchoolRanges(null);
         return;
       }
       try {
+        if (alive) setSchoolRangesStatus('loading');
         const ranges = await getSchoolHolidaysInRange(holidayState, range.from, range.to);
-        if (alive) setSchoolRanges(ranges);
+        if (alive) {
+          setSchoolRanges(ranges);
+          setSchoolRangesStatus('success');
+        }
       } catch {
-        if (alive) setSchoolRanges(null);
+        if (alive) {
+          setSchoolRanges(null);
+          setSchoolRangesStatus('error');
+        }
       }
     })();
     return () => {
       alive = false;
     };
   }, [showSchool, holidayState, range.from, range.to]);
+  const calendarRunKey = `${scopeKey}|${view}|${range.from}|${range.to}|${showSchool ? 'school' : 'no-school'}|${holidayState ?? 'none'}|${effectiveOrgId ?? 'none'}`;
+
+  useEffect(() => {
+    if (calendarFlowIdRef.current && !calendarFlowCompletedRef.current) {
+      finishDevFlow(calendarFlowIdRef.current, 'error', { reason: 'superseded' });
+    }
+    calendarFlowIdRef.current = null;
+    calendarFlowCompletedRef.current = false;
+    calendarFlowMarksRef.current = {};
+    calendarPendingRunKeyRef.current = calendarRunKey;
+    calendarFetchSeenRef.current = {};
+  }, [calendarRunKey]);
+
+  useEffect(() => {
+    const queryStates = [
+      {
+        key: 'activities',
+        label: 'activities-ready',
+        status: activitiesQ.status,
+        isError: activitiesQ.isError,
+        isFetching: activitiesQ.isFetching,
+        size: Array.isArray(activities) ? activities.length : 0,
+      },
+      {
+        key: 'openingHours',
+        label: 'opening-hours-ready',
+        status: openingHoursQ.status,
+        isError: openingHoursQ.isError,
+        isFetching: openingHoursQ.isFetching,
+        size: openingHours ? 1 : 0,
+      },
+      ...(showSchool && holidayState
+        ? [
+            {
+              key: 'schoolHolidays',
+              label: 'school-holidays-ready',
+              status: schoolRangesStatus === 'success' ? 'success' : schoolRangesStatus === 'error' ? 'error' : 'pending',
+              isError: schoolRangesStatus === 'error',
+              isFetching: schoolRangesStatus === 'loading',
+              size: Array.isArray(schoolRanges) ? schoolRanges.length : 0,
+            },
+          ]
+        : []),
+    ];
+
+    const anyFetching = queryStates.some((queryState) => queryState.isFetching);
+    const anyPending = queryStates.some((queryState) => queryState.status !== 'success' && !queryState.isError);
+    const allSettledSuccessfully = queryStates.every(
+      (queryState) => queryState.status === 'success' && !queryState.isFetching,
+    );
+    const shouldStartFlow =
+      !calendarFlowIdRef.current &&
+      !calendarFlowCompletedRef.current &&
+      calendarPendingRunKeyRef.current === calendarRunKey &&
+      (anyFetching || anyPending);
+
+    if (shouldStartFlow) {
+      calendarFlowIdRef.current = startDevFlow('calendar:view-load', {
+        scopeKey,
+        view,
+        from: range.from,
+        to: range.to,
+        showSchool,
+        holidayState: holidayState ?? null,
+      });
+      markDevFlow(calendarFlowIdRef.current, 'view-applied', {
+        view,
+        from: range.from,
+        to: range.to,
+      });
+    }
+
+    if (
+      !calendarFlowIdRef.current &&
+      !calendarFlowCompletedRef.current &&
+      calendarPendingRunKeyRef.current === calendarRunKey &&
+      allSettledSuccessfully
+    ) {
+      calendarFlowCompletedRef.current = true;
+      calendarPendingRunKeyRef.current = null;
+      addDevMetricEvent({
+        kind: 'flow',
+        status: 'info',
+        name: 'calendar:view-load',
+        message: 'Calendar view was served from cache without a new fetch cycle.',
+        meta: {
+          scopeKey,
+          view,
+          from: range.from,
+          to: range.to,
+          cacheHit: true,
+          showSchool,
+          holidayState: holidayState ?? null,
+        },
+      });
+      return;
+    }
+
+    const flowId = calendarFlowIdRef.current;
+    if (!flowId || calendarFlowCompletedRef.current) return;
+
+    for (const queryState of queryStates) {
+      if (queryState.isFetching) {
+        calendarFetchSeenRef.current[queryState.key] = true;
+      }
+      if (queryState.status === 'success' && !calendarFlowMarksRef.current[queryState.key]) {
+        calendarFlowMarksRef.current[queryState.key] = true;
+        markDevFlow(flowId, queryState.label, {
+          rows: queryState.size,
+          fetched: Boolean(calendarFetchSeenRef.current[queryState.key]),
+        });
+      }
+    }
+
+    const failedQueries = queryStates.filter((queryState) => queryState.isError).map((queryState) => queryState.key);
+    if (failedQueries.length > 0) {
+      calendarFlowCompletedRef.current = true;
+      calendarPendingRunKeyRef.current = null;
+      finishDevFlow(flowId, 'error', { failedQueries, view, from: range.from, to: range.to });
+      return;
+    }
+
+    if (allSettledSuccessfully) {
+      calendarFlowCompletedRef.current = true;
+      calendarPendingRunKeyRef.current = null;
+      finishDevFlow(flowId, 'success', {
+        scopeKey,
+        view,
+        from: range.from,
+        to: range.to,
+        showSchool,
+        visibleActivities: Array.isArray(activities) ? activities.length : 0,
+      });
+    }
+  }, [
+    activities,
+    activitiesQ.isError,
+    activitiesQ.isFetching,
+    activitiesQ.status,
+    calendarRunKey,
+    holidayState,
+    openingHours,
+    openingHoursQ.isError,
+    openingHoursQ.isFetching,
+    openingHoursQ.status,
+    range.from,
+    range.to,
+    schoolRanges,
+    schoolRangesStatus,
+    scopeKey,
+    showSchool,
+    view,
+  ]);
+
   const schoolLabelFor = (iso: string): string | null => {
     if (!schoolRanges || !schoolRanges.length) return null;
     const hit = schoolRanges.find((r: SchoolHolidayRange) => !(r.end < iso || r.start > iso));

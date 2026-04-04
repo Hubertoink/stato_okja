@@ -27,6 +27,7 @@ import html2canvas from 'html2canvas';
 import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
+import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -164,6 +165,16 @@ export default function Statistics() {
 
   const [pdfMode, setPdfMode] = useState(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
+  const statsUiFlowIdRef = useRef<string | null>(null);
+  const statsUiFlowCompletedRef = useRef(false);
+  const statsUiFlowMarksRef = useRef<Record<string, boolean>>({});
+  const statsUiPendingRunKeyRef = useRef<string | null>(null);
+  const statsUiFetchSeenRef = useRef<Record<string, boolean>>({});
+  const statsAuxFlowIdRef = useRef<string | null>(null);
+  const statsAuxFlowCompletedRef = useRef(false);
+  const statsAuxFlowMarksRef = useRef<Record<string, boolean>>({});
+  const statsAuxPendingRunKeyRef = useRef<string | null>(null);
+  const statsAuxFetchSeenRef = useRef(false);
   const qc = useQueryClient();
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
@@ -201,6 +212,12 @@ export default function Statistics() {
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
 
+  const statsRunKey = useMemo(
+    () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '']),
+    [scopeKey, statsParams.from, statsParams.to, statsParams.projectId],
+  );
+  const statsAuxRunKey = useMemo(() => JSON.stringify([scopeKey]), [scopeKey]);
+
   const initialLoading =
     summaryQ.isLoading ||
     byTypeQ.isLoading ||
@@ -218,6 +235,263 @@ export default function Statistics() {
       byCohortQ.isFetching ||
       byCategoryQ.isFetching ||
       timeseriesAllQ.isFetching);
+
+  useEffect(() => {
+    if (statsUiFlowIdRef.current && !statsUiFlowCompletedRef.current) {
+      finishDevFlow(statsUiFlowIdRef.current, 'error', { reason: 'superseded' });
+    }
+    statsUiFlowIdRef.current = null;
+    statsUiFlowCompletedRef.current = false;
+    statsUiFlowMarksRef.current = {};
+    statsUiPendingRunKeyRef.current = statsRunKey;
+    statsUiFetchSeenRef.current = {};
+  }, [statsRunKey]);
+
+  useEffect(() => {
+    if (statsAuxFlowIdRef.current && !statsAuxFlowCompletedRef.current) {
+      finishDevFlow(statsAuxFlowIdRef.current, 'error', { reason: 'superseded' });
+    }
+    statsAuxFlowIdRef.current = null;
+    statsAuxFlowCompletedRef.current = false;
+    statsAuxFlowMarksRef.current = {};
+    statsAuxPendingRunKeyRef.current = statsAuxRunKey;
+    statsAuxFetchSeenRef.current = false;
+  }, [statsAuxRunKey]);
+
+  useEffect(() => {
+    const queryStates = [
+      {
+        key: 'summary',
+        label: 'summary-ready',
+        status: summaryQ.status,
+        isError: summaryQ.isError,
+        isFetching: summaryQ.isFetching,
+        size: summary ? 1 : 0,
+      },
+      {
+        key: 'byType',
+        label: 'by-type-ready',
+        status: byTypeQ.status,
+        isError: byTypeQ.isError,
+        isFetching: byTypeQ.isFetching,
+        size: Array.isArray(byType) ? byType.length : 0,
+      },
+      {
+        key: 'gender',
+        label: 'gender-ready',
+        status: genderQ.status,
+        isError: genderQ.isError,
+        isFetching: genderQ.isFetching,
+        size: gender ? 1 : 0,
+      },
+      {
+        key: 'timeseries',
+        label: 'timeseries-ready',
+        status: timeseriesQ.status,
+        isError: timeseriesQ.isError,
+        isFetching: timeseriesQ.isFetching,
+        size: Array.isArray(timeseries) ? timeseries.length : 0,
+      },
+      {
+        key: 'byCohort',
+        label: 'by-cohort-ready',
+        status: byCohortQ.status,
+        isError: byCohortQ.isError,
+        isFetching: byCohortQ.isFetching,
+        size: Array.isArray(byCohort) ? byCohort.length : 0,
+      },
+      {
+        key: 'byCategory',
+        label: 'by-category-ready',
+        status: byCategoryQ.status,
+        isError: byCategoryQ.isError,
+        isFetching: byCategoryQ.isFetching,
+        size: Array.isArray(byCategory) ? byCategory.length : 0,
+      },
+    ];
+
+    const anyFetching = queryStates.some((queryState) => queryState.isFetching);
+    const anyPending = queryStates.some((queryState) => queryState.status !== 'success' && !queryState.isError);
+    const allSettledSuccessfully = queryStates.every(
+      (queryState) => queryState.status === 'success' && !queryState.isFetching,
+    );
+    const shouldStartFlow =
+      !statsUiFlowIdRef.current &&
+      !statsUiFlowCompletedRef.current &&
+      statsUiPendingRunKeyRef.current === statsRunKey &&
+      (anyFetching || anyPending);
+
+    if (shouldStartFlow) {
+      statsUiFlowIdRef.current = startDevFlow('statistics:ui-load', {
+        scopeKey,
+        from: statsParams.from ?? null,
+        to: statsParams.to ?? null,
+        projectId: statsParams.projectId ?? null,
+      });
+      markDevFlow(statsUiFlowIdRef.current, 'filters-applied', {
+        from: statsParams.from ?? null,
+        to: statsParams.to ?? null,
+        projectId: statsParams.projectId ?? null,
+      });
+    }
+
+    if (
+      !statsUiFlowIdRef.current &&
+      !statsUiFlowCompletedRef.current &&
+      statsUiPendingRunKeyRef.current === statsRunKey &&
+      allSettledSuccessfully
+    ) {
+      statsUiFlowCompletedRef.current = true;
+      statsUiPendingRunKeyRef.current = null;
+      addDevMetricEvent({
+        kind: 'flow',
+        status: 'info',
+        name: 'statistics:ui-load',
+        message: 'Statistics view was served from cache without a new fetch cycle.',
+        meta: {
+          scopeKey,
+          from: statsParams.from ?? null,
+          to: statsParams.to ?? null,
+          projectId: statsParams.projectId ?? null,
+          cacheHit: true,
+        },
+      });
+      return;
+    }
+
+    const flowId = statsUiFlowIdRef.current;
+    if (!flowId || statsUiFlowCompletedRef.current) return;
+
+    for (const queryState of queryStates) {
+      if (queryState.isFetching) {
+        statsUiFetchSeenRef.current[queryState.key] = true;
+      }
+      if (queryState.status === 'success' && !statsUiFlowMarksRef.current[queryState.key]) {
+        statsUiFlowMarksRef.current[queryState.key] = true;
+        markDevFlow(flowId, queryState.label, {
+          rows: queryState.size,
+          fetched: Boolean(statsUiFetchSeenRef.current[queryState.key]),
+        });
+      }
+    }
+
+    const failedQueries = queryStates.filter((queryState) => queryState.isError).map((queryState) => queryState.key);
+    if (failedQueries.length > 0) {
+      statsUiFlowCompletedRef.current = true;
+      statsUiPendingRunKeyRef.current = null;
+      finishDevFlow(flowId, 'error', { failedQueries });
+      return;
+    }
+
+    if (allSettledSuccessfully) {
+      statsUiFlowCompletedRef.current = true;
+      statsUiPendingRunKeyRef.current = null;
+      finishDevFlow(flowId, 'success', {
+        from: statsParams.from ?? null,
+        to: statsParams.to ?? null,
+        projectId: statsParams.projectId ?? null,
+        totalActivities: activities.length,
+      });
+    }
+  }, [
+    activities.length,
+    byCategory,
+    byCategoryQ.isError,
+    byCategoryQ.isFetching,
+    byCategoryQ.status,
+    byCohort,
+    byCohortQ.isError,
+    byCohortQ.isFetching,
+    byCohortQ.status,
+    byType,
+    byTypeQ.isError,
+    byTypeQ.isFetching,
+    byTypeQ.status,
+    gender,
+    genderQ.isError,
+    genderQ.isFetching,
+    genderQ.status,
+    scopeKey,
+    statsRunKey,
+    statsParams.from,
+    statsParams.projectId,
+    statsParams.to,
+    summary,
+    summaryQ.isError,
+    summaryQ.isFetching,
+    summaryQ.status,
+    timeseries,
+    timeseriesQ.isError,
+    timeseriesQ.isFetching,
+    timeseriesQ.status,
+  ]);
+
+  useEffect(() => {
+    const shouldStartAuxFlow =
+      !statsAuxFlowIdRef.current &&
+      !statsAuxFlowCompletedRef.current &&
+      statsAuxPendingRunKeyRef.current === statsAuxRunKey &&
+      (timeseriesAllQ.isFetching || (timeseriesAllQ.status !== 'success' && !timeseriesAllQ.isError));
+
+    if (shouldStartAuxFlow) {
+      statsAuxFlowIdRef.current = startDevFlow('statistics:auxiliary-load', {
+        scopeKey,
+        query: 'timeseries-all',
+      });
+      markDevFlow(statsAuxFlowIdRef.current, 'scope-applied', { scopeKey });
+    }
+
+    if (
+      !statsAuxFlowIdRef.current &&
+      !statsAuxFlowCompletedRef.current &&
+      statsAuxPendingRunKeyRef.current === statsAuxRunKey &&
+      timeseriesAllQ.status === 'success' &&
+      !timeseriesAllQ.isFetching
+    ) {
+      statsAuxFlowCompletedRef.current = true;
+      statsAuxPendingRunKeyRef.current = null;
+      addDevMetricEvent({
+        kind: 'flow',
+        status: 'info',
+        name: 'statistics:auxiliary-load',
+        message: 'Auxiliary statistics data was served from cache without a new fetch cycle.',
+        meta: {
+          scopeKey,
+          query: 'timeseries-all',
+          cacheHit: true,
+        },
+      });
+      return;
+    }
+
+    const flowId = statsAuxFlowIdRef.current;
+    if (!flowId || statsAuxFlowCompletedRef.current) return;
+
+    if (timeseriesAllQ.isFetching) {
+      statsAuxFetchSeenRef.current = true;
+    }
+
+    if (timeseriesAllQ.status === 'success' && !timeseriesAllQ.isFetching && !statsAuxFlowMarksRef.current.timeseriesAll) {
+      statsAuxFlowMarksRef.current.timeseriesAll = true;
+      markDevFlow(flowId, 'timeseries-all-ready', {
+        rows: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
+        fetched: statsAuxFetchSeenRef.current,
+      });
+      statsAuxFlowCompletedRef.current = true;
+      statsAuxPendingRunKeyRef.current = null;
+      finishDevFlow(flowId, 'success', {
+        scopeKey,
+        rows: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
+      });
+      return;
+    }
+
+    if (timeseriesAllQ.isError) {
+      statsAuxFlowCompletedRef.current = true;
+      statsAuxPendingRunKeyRef.current = null;
+      finishDevFlow(flowId, 'error', { failedQueries: ['timeseriesAll'] });
+    }
+  }, [scopeKey, statsAuxRunKey, timeseriesAll, timeseriesAllQ.isError, timeseriesAllQ.isFetching, timeseriesAllQ.status]);
 
   // If the selected project disappears (e.g. archived/deleted), reset to "all"
   useEffect(() => {

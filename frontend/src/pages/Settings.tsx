@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate, Clock, Menu, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import SettingsTeam from './SettingsTeam';
 import SettingsCategories from './SettingsCategories';
 import SettingsTags from './SettingsTags';
@@ -9,12 +10,19 @@ import SettingsHolidays from './SettingsHolidays';
 import SettingsProjectTemplates from './SettingsProjectTemplates';
 import SettingsOpeningHours from './SettingsOpeningHours';
 import { useAuth } from '@/lib/auth';
+import { useIsMobile } from '@/lib/useIsMobile';
 
 type Tab = 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays' | 'openingHours';
+const VALID_TABS: ReadonlySet<string> = new Set<Tab>(['categories', 'templates', 'tags', 'cohorts', 'team', 'locations', 'holidays', 'openingHours']);
 
 export default function Settings() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('categories');
+  const isMobile = useIsMobile(768);
+  const [params] = useSearchParams();
+  const tabParam = params.get('tab') || '';
+  const initialTab: Tab = VALID_TABS.has(tabParam) ? (tabParam as Tab) : 'categories';
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const canManageTemplates = user?.role === 'superadmin' || user?.role === 'org_admin';
 
@@ -28,42 +36,102 @@ export default function Settings() {
     { id: 'holidays' as Tab, label: 'Feiertage', icon: Sun },
     { id: 'openingHours' as Tab, label: 'Öffnungszeiten', icon: Clock },
   ];
+  const activeTabMeta = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
+
+  useEffect(() => {
+    if (!isMobile) setMobileMenuOpen(false);
+  }, [isMobile]);
 
   return (
     <div>
       <h2 className="text-3xl font-bold text-viridian mb-6">Einstellungen</h2>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-lg shadow mb-6 overflow-x-auto overflow-y-hidden md:overflow-x-visible md:overflow-y-visible">
-        <div className="flex border-b">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                title={tab.label}
-                className={`group relative inline-flex items-center justify-center lg:justify-start gap-2 px-4 py-3 font-medium transition-colors whitespace-nowrap w-12 sm:w-14 md:w-16 lg:w-auto ${
-                  activeTab === tab.id
-                    ? 'text-viridian border-b-2 border-viridian'
-                    : 'text-gray-600 hover:text-viridian'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {/* Labels only on desktop to prevent tablet horizontal scroll */}
-                <span className="hidden lg:inline">{tab.label}</span>
-                {/* Custom tooltip for icon-only mode (mobile/tablet) */}
-                <span
-                  className="settings-tab-tooltip lg:hidden pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 whitespace-nowrap rounded-md bg-gray-900/95 text-white text-xs px-2 py-1 shadow-lg opacity-0 translate-y-1 transition-all duration-150"
-                  role="tooltip"
-                >
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
+      {isMobile ? (
+        <div className="bg-white rounded-lg shadow mb-6 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="w-full flex items-center justify-between gap-4 px-4 py-4 text-left"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="settings-mobile-navigation"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-viridian/10 text-viridian shrink-0">
+                <activeTabMeta.icon className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Bereich</div>
+                <div className="text-base font-semibold text-viridian truncate">{activeTabMeta.label}</div>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 shrink-0">
+              Menü
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </span>
+          </button>
+
+          {mobileMenuOpen && (
+            <div id="settings-mobile-navigation" className="border-t border-gray-100 bg-gray-50/70 px-3 py-3">
+              <div className="flex flex-col gap-2">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const active = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors ${
+                        active
+                          ? 'bg-viridian text-white shadow-sm'
+                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${active ? 'bg-white/15' : 'bg-viridian/10 text-viridian'}`}>
+                        <Icon className="w-5 h-5" />
+                      </span>
+                      <span className="font-medium">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow mb-6 overflow-x-auto overflow-y-hidden md:overflow-x-visible md:overflow-y-visible">
+          <div className="flex border-b">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  title={tab.label}
+                  className={`group relative inline-flex items-center justify-center lg:justify-start gap-2 px-4 py-3 font-medium transition-colors whitespace-nowrap w-12 sm:w-14 md:w-16 lg:w-auto ${
+                    activeTab === tab.id
+                      ? 'text-viridian border-b-2 border-viridian'
+                      : 'text-gray-600 hover:text-viridian'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="hidden lg:inline">{tab.label}</span>
+                  <span
+                    className="settings-tab-tooltip lg:hidden pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 whitespace-nowrap rounded-md bg-gray-900/95 text-white text-xs px-2 py-1 shadow-lg opacity-0 translate-y-1 transition-all duration-150"
+                    role="tooltip"
+                  >
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === 'categories' && <SettingsCategories />}

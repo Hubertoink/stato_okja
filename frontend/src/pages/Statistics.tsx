@@ -22,6 +22,7 @@ import { useActivities, type Activity } from '@/lib/activities';
 import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useOrgScopeKey } from '@/lib/orgScope';
+import { useIsMobile } from '@/lib/useIsMobile';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -142,6 +143,7 @@ export default function Statistics() {
   // Aktuelles Jahr als Standard
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1; // 1-12
+  const isMobile = useIsMobile(768);
   const [from, setFrom] = useState<string>(`${currentYear}-01-01`);
   const [to, setTo] = useState<string>(`${currentYear}-12-31`);
   const [projectId, setProjectId] = useState<string>('');
@@ -785,6 +787,14 @@ export default function Statistics() {
       m.set(p.id, p.color || undefined);
     return m;
   }, [projectsAll]);
+  const sortedProjects = useMemo(
+    () =>
+      projectsAll
+        .slice()
+        .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'de')),
+    [projectsAll],
+  );
+  const useCompactProjectFilter = isMobile && sortedProjects.length >= 6;
   const fallbackBarColors = [
     '#2563eb',
     '#f59e0b',
@@ -1159,26 +1169,54 @@ export default function Statistics() {
         {projectsAll.length > 0 && (
           <div className="mt-5">
             <div className="text-sm font-medium text-gray-700 mb-2">Projekte</div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setProjectId('')}
-                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                  !projectId
-                    ? 'bg-viridian text-white border-viridian'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Alle Projekte
-              </button>
-              {projectsAll
-                .slice()
-                .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'de'))
-                .map((p) => {
+            {useCompactProjectFilter ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => setProjectId('')}
+                  className={`px-3 py-2 rounded-full text-sm font-medium border transition-colors self-start ${
+                    !projectId
+                      ? 'bg-viridian text-white border-viridian'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  Alle Projekte
+                </button>
+                <label className="flex-1 min-w-0">
+                  <span className="sr-only">Projekt auswählen</span>
+                  <select
+                    value={projectId}
+                    onChange={(event) => setProjectId(event.target.value)}
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 shadow-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                    aria-label="Projekt auswählen"
+                  >
+                    <option value="">Projekt auswählen…</option>
+                    {sortedProjects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProjectId('')}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                    !projectId
+                      ? 'bg-viridian text-white border-viridian'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  Alle Projekte
+                </button>
+                {sortedProjects.map((p) => {
                   const active = projectId === p.id;
                   const color = typeof p.color === 'string' && p.color.trim() ? p.color.trim() : undefined;
                   const imageUrl = typeof p.imageUrl === 'string' && p.imageUrl.trim() ? p.imageUrl.trim() : undefined;
-                  const fallbackColor = '#0f766e'; // viridian-ish
+                  const fallbackColor = '#0f766e';
                   const overlayColor = color || fallbackColor;
                   return (
                     <button
@@ -1209,7 +1247,6 @@ export default function Statistics() {
 
                       {active ? (
                         <>
-                          {/* ensure strong contrast for text */}
                           <span aria-hidden className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/45 to-black/60" />
                           <span
                             aria-hidden
@@ -1243,7 +1280,8 @@ export default function Statistics() {
                     </button>
                   );
                 })}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>

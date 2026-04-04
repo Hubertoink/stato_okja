@@ -65,12 +65,12 @@ describe('StatsController org scoping', () => {
   it('by-type: superadmin scoped string expands to subtree', async () => {
     await controller.getByType({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined, undefined);
     expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.getByType).toHaveBeenCalledWith(undefined, undefined, 'org-1', ['org-1', 'child-1']);
+    expect(service.getByType).toHaveBeenCalledWith(undefined, undefined, undefined, ['org-1', 'child-1'], undefined);
   });
 
   it('overview: superadmin scoped string expands to subtree', async () => {
     await controller.getOverview({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined, undefined);
     expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: 'org-1', orgIds: ['org-1', 'child-1'], projectId: undefined });
+    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: undefined, orgIds: ['org-1', 'child-1'], projectId: undefined });
   });
 });

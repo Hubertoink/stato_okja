@@ -200,13 +200,16 @@ export class StatsService {
   }
 
   async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
+    const categoryIdExpr = "CASE WHEN category.id IS NULL THEN '__uncategorized__' ELSE CAST(category.id AS text) END";
+    const categoryNameExpr = "CASE WHEN category.name IS NULL OR category.name = '' THEN 'Unkategorisiert' ELSE category.name END";
+
     const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
       .leftJoin('activity.categories', 'category')
-      .select("COALESCE(category.id, '__uncategorized__')", 'id')
-      .addSelect("COALESCE(category.name, 'Unkategorisiert')", 'name')
+      .select(categoryIdExpr, 'id')
+      .addSelect(categoryNameExpr, 'name')
       .addSelect('COUNT(DISTINCT activity.id)', 'count')
-      .groupBy("COALESCE(category.id, '__uncategorized__')")
-      .addGroupBy("COALESCE(category.name, 'Unkategorisiert')")
+      .groupBy(categoryIdExpr)
+      .addGroupBy(categoryNameExpr)
       .orderBy('COUNT(DISTINCT activity.id)', 'DESC')
       .getRawMany<{ id: string; name: string; count: string }>();
 

@@ -83,6 +83,11 @@ Diese Variablen sind **optional** und werden vom Backend über `GET /auth/public
   - Default: `false`
   - Vorsicht: In Production i. d. R. `false` lassen.
 
+- `DB_MIGRATIONS_RUN` (optional)
+  - Default: automatisch `true` nur bei `NODE_ENV=production`, sonst `false`
+  - Empfehlung für Docker-/On-Prem-Umgebungen: explizit `true` setzen, wenn das Schema beim Container-Start per Migration aktualisiert werden soll.
+  - Besonders wichtig, wenn `NODE_ENV=development` für Dev-Tools genutzt wird: ohne `DB_MIGRATIONS_RUN=true` laufen Migrationen sonst nicht automatisch.
+
 - `DB_LOGGING` (optional)
   - Default: `true`
 

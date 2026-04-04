@@ -35,12 +35,14 @@ Empfohlene Container-Variablen:
 environment:
   NODE_ENV: development
   APP_ENV: development
+  DB_MIGRATIONS_RUN: true
 ```
 
 Wichtig:
 
 - Wenn `NODE_ENV=production` gesetzt ist, bleibt die Funktion deaktiviert.
 - `APP_ENV=development` allein reicht dann nicht aus.
+- Wenn der Container mit `NODE_ENV=development` läuft, sollten Migrationen explizit über `DB_MIGRATIONS_RUN=true` aktiviert oder vorab manuell ausgeführt werden, damit das Schema aktuell ist.
 - Für `main` oder Produktions-Builds sollte `VITE_ENABLE_DEV_TOOLS=false` bleiben, auch wenn ein `superadmin` eingeloggt ist.
 - Für gezielte Freischaltung in einer Build-Umgebung gilt: Backend nur mit nicht-produktivem `NODE_ENV`/`APP_ENV`, Frontend zusätzlich mit `VITE_ENABLE_DEV_TOOLS=true`.
 

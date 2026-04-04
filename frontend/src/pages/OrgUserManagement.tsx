@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
 import { inviteUserApi, listOrgs, type OrgDto } from '@/lib/orgs';
@@ -15,7 +15,6 @@ export default function OrgUserManagement() {
   const { showToast } = useToast();
   const { scope } = useOrgScope();
   const isScopedOrgView = typeof scope === 'string';
-  const isSuperadminUnscoped = user?.role === 'superadmin' && !isScopedOrgView;
 
   // Create user modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -30,6 +29,7 @@ export default function OrgUserManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const reloadRequestRef = useRef(0);
 
   // Modals
   const [confirmUser, setConfirmUser] = useState<UserDto | null>(null);
@@ -40,22 +40,30 @@ export default function OrgUserManagement() {
   const [orgs, setOrgs] = useState<OrgDto[]>([]);
 
   async function reload() {
+    const requestId = ++reloadRequestRef.current;
     setLoading(true);
     setError(null);
     try {
       const list = await fetchUsers();
+      if (reloadRequestRef.current !== requestId) return;
       setUsers(list);
     } catch (e: unknown) {
+      if (reloadRequestRef.current !== requestId) return;
       const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Fehler beim Laden der Benutzer';
       setError(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg));
     } finally {
+      if (reloadRequestRef.current !== requestId) return;
       setLoading(false);
     }
   }
 
   // When switching org scope, this screen stays mounted.
   // Ensure we refetch immediately so users update without needing a manual refresh.
-  useEffect(() => { void reload(); }, [scope]);
+  useEffect(() => {
+    setUsers([]);
+    setError(null);
+    void reload();
+  }, [scope]);
   
   useEffect(() => {
     (async ()=>{
@@ -141,7 +149,7 @@ export default function OrgUserManagement() {
             Benutzer verwalten
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            {isScopedOrgView ? activeOrgName : isSuperadminUnscoped ? 'Superadmin Bereich ohne Org-Auswahl' : 'Benutzer in Ihrer Organisation'}
+            {isScopedOrgView ? activeOrgName : 'Alle Benutzer im System'}
           </p>
         </div>
         <button
@@ -155,11 +163,6 @@ export default function OrgUserManagement() {
 
       {/* Search & User List */}
       <div className="bg-white rounded-lg shadow">
-        {isSuperadminUnscoped && (
-          <div className="mx-4 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Im Superadmin-Bereich werden absichtlich keine Organisations-Benutzer geladen. Wählen Sie oben zuerst eine Organisation aus, dann sehen Sie wieder die Benutzer dieser Organisation und ihrer Unterorganisationen.
-          </div>
-        )}
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
@@ -198,9 +201,7 @@ export default function OrgUserManagement() {
               <p className="text-gray-500 mb-4">
                 {searchQuery
                   ? 'Keine Benutzer gefunden'
-                  : isSuperadminUnscoped
-                    ? 'Ohne ausgewählte Organisation wird hier bewusst keine Benutzerliste angezeigt'
-                    : `Noch keine Benutzer${isScopedOrgView ? ` in ${activeOrgName}` : ''}`}
+                  : `Noch keine Benutzer${isScopedOrgView ? ` in ${activeOrgName}` : ''}`}
               </p>
               {!searchQuery && (
                 <button

@@ -4,12 +4,21 @@ import { Repository } from 'typeorm';
 import { Organization, OpeningHours } from './entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
 
+const SUBTREE_CACHE_TTL_MS = 10_000;
+type SubtreeCacheEntry = { expiresAt: number; ids: string[] };
+
 @Injectable()
 export class OrgsService {
+  private readonly subtreeCache = new Map<string, SubtreeCacheEntry>();
+
   constructor(
     @InjectRepository(Organization) private readonly repo: Repository<Organization>,
     @InjectRepository(Location) private readonly locations: Repository<Location>,
   ) {}
+
+  private clearSubtreeCache() {
+    this.subtreeCache.clear();
+  }
 
   findAll() { return this.repo.find(); }
 
@@ -23,15 +32,28 @@ export class OrgsService {
     // Create default Location with same name, scoped to org
     const loc = this.locations.create({ name, active: true, orgId: saved.id });
     await this.locations.save(loc);
+    this.clearSubtreeCache();
     return { ...saved, path } as Organization;
   }
 
   async getSubtreeOrgIds(rootId: string) {
+    const cached = this.subtreeCache.get(rootId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.ids;
+    }
+
     const root = await this.repo.findOne({ where: { id: rootId } });
     if (!root) return [] as string[];
     const pathPrefix = root.path || root.id;
-    const all = await this.repo.find();
-    return all.filter(o => (o.path || o.id).startsWith(pathPrefix)).map(o => o.id);
+    const rows = await this.repo
+      .createQueryBuilder('org')
+      .select('org.id', 'id')
+      .where('org.id = :rootId', { rootId })
+      .orWhere('org.path LIKE :pathPrefix', { pathPrefix: `${pathPrefix}/%` })
+      .getRawMany<{ id: string }>();
+    const ids = rows.map((row) => row.id);
+    this.subtreeCache.set(rootId, { ids, expiresAt: Date.now() + SUBTREE_CACHE_TTL_MS });
+    return ids;
   }
 
   async getAncestorOrgIds(id: string) {
@@ -59,6 +81,7 @@ export class OrgsService {
         await this.repo.update({ id: child.id }, { path: `${newPath}/${suffix}` });
       }
     }
+    this.clearSubtreeCache();
     return org;
   }
 
@@ -74,6 +97,7 @@ export class OrgsService {
     const hasChildren = all.some(o => (o.path || o.id).startsWith(path + '/') );
     if (hasChildren) return false;
     await this.repo.delete({ id });
+    this.clearSubtreeCache();
     return true;
   }
 

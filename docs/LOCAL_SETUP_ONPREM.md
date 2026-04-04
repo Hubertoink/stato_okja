@@ -100,6 +100,7 @@ cp .env.onprem.example .env.onprem
 - `JWT_SECRET=<sehr lang & random>`
 - `SUPERADMIN_EMAIL=...` / `SUPERADMIN_PASSWORD=...`
 - `POSTGRES_*` (DB Name/User/Passwort)
+- `DB_SYNCHRONIZE=true` für den ersten Start mit leerer Datenbank
 
 4) **Sicherstellen, dass Proxy‑Mode aktiv ist**
 - In `docker-compose.onprem.yml` ist `frontend.build.args.NGINX_MODE=proxy` bereits gesetzt.
@@ -125,7 +126,7 @@ Variante B (ohne Node-Installation, via One‑Shot Container):
 
 ```bash
 docker run --rm -it \
-  --network stato \
+  --network stato-onprem \
   -v "$PWD/backend:/app" \
   -w /app \
   node:20-alpine sh -lc "npm ci && npm run migration:run"
@@ -194,20 +195,20 @@ Ihr könnt einen One‑Shot Container mit Node nutzen, der den `backend/` Ordner
 
 ```bash
 docker run --rm -it \
-  --network stato \
+  --network stato-onprem \
   -v "$PWD/backend:/app" \
   -w /app \
   node:20-alpine sh -lc "npm ci && npm run migration:run"
 ```
 
-Hinweis: Dafür muss das Compose‑Netzwerk (`stato`) existieren und Postgres bereits laufen.
+Hinweis: Dafür muss das Compose‑Netzwerk (`stato-onprem`) existieren und Postgres bereits laufen.
 
 ---
 
 ## Backups (On‑Prem Betrieb)
 
 - **Postgres**: Backup via `pg_dump` (regelmäßig) oder Volume‑Backup.
-- **Uploads**: `backend-uploads` Volume sichern (enthält u.a. Bilder unter `/uploads/images`).
+- **Uploads**: `stato-onprem-backend-uploads` Volume sichern (enthält u.a. Bilder unter `/uploads/images`).
 
 Beispiel `pg_dump` (wenn Postgres nicht nach außen exposed ist):
 
@@ -232,4 +233,4 @@ docker exec -t <postgres-container> pg_dump -U <user> <db> > stato_backup.sql
 - **Frontend lädt, aber API 404/405**: Stelle sicher, dass `NGINX_MODE=proxy` gebaut wurde oder `VITE_API_BASE_URL` korrekt ist.
 - **CORS Fehler** (Option B): `CORS_ORIGINS` muss exakt die Frontend‑Origin enthalten.
 - **Login geht nicht nach Neustart**: `JWT_SECRET` darf nicht wechseln.
-- **Uploads fehlen nach Neustart**: Volume `backend-uploads` muss persistent sein.
+- **Uploads fehlen nach Neustart**: Volume `stato-onprem-backend-uploads` muss persistent sein.

@@ -15,6 +15,7 @@ import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import Modal from '@/components/Modal';
 import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
+import { canAccessDevTools } from '@/lib/devToolsConfig';
 import { useOrgScope } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
@@ -346,7 +347,7 @@ export default function Layout() {
                       </button>
                     </li>
                   )}
-                  {user?.role === 'superadmin' && (
+                  {canAccessDevTools(user?.role) && (
                     <li>
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { addDevMetricEvent } from './devMetrics';
+import { devToolsFeatureEnabled } from './devToolsConfig';
 
 // Allow overriding the API base URL at build time via Vite env (VITE_API_BASE_URL)
 // Fallback to '/api' which works when the frontend's nginx proxies /api to the backend
@@ -33,6 +34,7 @@ if (!devMetricsInterceptorsAttached) {
   devMetricsInterceptorsAttached = true;
 
   api.interceptors.request.use((config) => {
+    if (!devToolsFeatureEnabled) return config;
     const requestMeta = {
       startedAt: performance.now(),
       requestName: formatRequestName(config),
@@ -50,6 +52,7 @@ if (!devMetricsInterceptorsAttached) {
 
   api.interceptors.response.use(
     (response) => {
+      if (!devToolsFeatureEnabled) return response;
       const meta = (response.config as typeof response.config & {
         __devMetric?: { startedAt: number; requestName: string; params?: Record<string, unknown> };
       }).__devMetric;
@@ -66,6 +69,7 @@ if (!devMetricsInterceptorsAttached) {
       return response;
     },
     (error) => {
+      if (!devToolsFeatureEnabled) return Promise.reject(error);
       const config = error?.config as
         | {
             method?: string;

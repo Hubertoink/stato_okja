@@ -27,6 +27,8 @@ Die Tools sind absichtlich in Produktion gesperrt.
 
 Damit die Funktion im Backend-Container aktiv ist, dürfen `NODE_ENV` und `APP_ENV` **nicht** auf `production` stehen.
 
+Zusätzlich ist das Frontend-Menü für Dev Tools nur sichtbar, wenn das Vite-Feature-Flag `VITE_ENABLE_DEV_TOOLS=true` beim Frontend-Build gesetzt wurde.
+
 Empfohlene Container-Variablen:
 
 ```yaml
@@ -39,15 +41,18 @@ Wichtig:
 
 - Wenn `NODE_ENV=production` gesetzt ist, bleibt die Funktion deaktiviert.
 - `APP_ENV=development` allein reicht dann nicht aus.
+- Für `main` oder Produktions-Builds sollte `VITE_ENABLE_DEV_TOOLS=false` bleiben, auch wenn ein `superadmin` eingeloggt ist.
+- Für gezielte Freischaltung in einer Build-Umgebung gilt: Backend nur mit nicht-produktivem `NODE_ENV`/`APP_ENV`, Frontend zusätzlich mit `VITE_ENABLE_DEV_TOOLS=true`.
 
 ## Nutzung in der Oberfläche
 
-Die Funktion ist im Frontend unter `Einstellungen -> Testdaten` erreichbar.
+Die Funktion ist im Frontend im Benutzer-Menü des `superadmin` unter `Dev Tools` erreichbar.
 
 Voraussetzungen:
 
-- Login als `superadmin` oder `org_admin`
-- Bei `superadmin`: es muss oben ein konkreter Org-Scope ausgewählt sein
+- Login als `superadmin`
+- `VITE_ENABLE_DEV_TOOLS=true` im Frontend-Build
+- Es muss oben ein konkreter Org-Scope ausgewählt sein
 
 Danach:
 

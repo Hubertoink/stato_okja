@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
+import { devToolsFeatureEnabled } from './devToolsConfig';
 
 export type DevMetricKind = 'http' | 'query' | 'flow';
 export type DevMetricStatus = 'start' | 'success' | 'error' | 'info';
@@ -50,6 +51,7 @@ let idCounter = 0;
 let queryMetricsAttached = false;
 
 function readInitialEnabled(): boolean {
+  if (!devToolsFeatureEnabled) return false;
   if (typeof window === 'undefined') return true;
   try {
     const raw = window.localStorage.getItem(ENABLED_STORAGE_KEY);
@@ -119,7 +121,7 @@ export function describeQueryKey(queryKey: unknown): string {
 }
 
 export function addDevMetricEvent(input: Omit<DevMetricEvent, 'id' | 'timestamp'>): DevMetricEvent | null {
-  if (!state.enabled) return null;
+  if (!devToolsFeatureEnabled || !state.enabled) return null;
   const event: DevMetricEvent = {
     id: nextId('evt'),
     timestamp: Date.now(),
@@ -135,7 +137,7 @@ export function addDevMetricEvent(input: Omit<DevMetricEvent, 'id' | 'timestamp'
 }
 
 export function startDevFlow(name: string, meta?: Record<string, unknown>): string | null {
-  if (!state.enabled) return null;
+  if (!devToolsFeatureEnabled || !state.enabled) return null;
   const flow: DevFlowRun = {
     id: nextId('flow'),
     name,
@@ -154,7 +156,7 @@ export function startDevFlow(name: string, meta?: Record<string, unknown>): stri
 }
 
 export function markDevFlow(id: string | null | undefined, label: string, meta?: Record<string, unknown>) {
-  if (!id || !state.enabled) return;
+  if (!id || !devToolsFeatureEnabled || !state.enabled) return;
   let didUpdate = false;
   state = {
     ...state,
@@ -183,7 +185,7 @@ export function finishDevFlow(
   status: Extract<DevFlowStatus, 'success' | 'error'>,
   meta?: Record<string, unknown>,
 ) {
-  if (!id || !state.enabled) return;
+  if (!id || !devToolsFeatureEnabled || !state.enabled) return;
   const existingFlow = state.flows.find((flow) => flow.id === id);
   if (!existingFlow) return;
   const finishedFlow: DevFlowRun = {
@@ -220,13 +222,14 @@ export function clearDevMetrics() {
 }
 
 export function setDevMetricsEnabled(enabled: boolean) {
+  const nextEnabled = devToolsFeatureEnabled ? enabled : false;
   state = {
     ...state,
-    enabled,
+    enabled: nextEnabled,
   };
   if (typeof window !== 'undefined') {
     try {
-      window.localStorage.setItem(ENABLED_STORAGE_KEY, enabled ? '1' : '0');
+      window.localStorage.setItem(ENABLED_STORAGE_KEY, nextEnabled ? '1' : '0');
     } catch {
       // ignore storage access problems
     }
@@ -257,6 +260,7 @@ export function useDevMetricsStore(): DevMetricsState {
 }
 
 export function attachQueryClientMetrics(queryClient: QueryClient) {
+  if (!devToolsFeatureEnabled) return;
   if (queryMetricsAttached) return;
   queryMetricsAttached = true;
 

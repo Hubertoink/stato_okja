@@ -24,6 +24,7 @@ import ResetRequest from './pages/ResetRequest';
 import ResetPassword from './pages/ResetPassword';
 import ProjectPickerPage from '@/pages/ProjectPickerPage';
 import PostLoginPrefetch from '@/components/PostLoginPrefetch';
+import { canAccessDevTools } from './lib/devToolsConfig';
 
 function App() {
   // App-level providers
@@ -84,7 +85,7 @@ function AuthedRoutes() {
           {(user.role === 'org_admin' || user.role === 'superadmin') && (
             <Route path="admin/orgs" element={<AdminOrgSetup />} />
           )}
-          {user.role === 'superadmin' && <Route path="admin/dev-tools" element={<SettingsTestData />} />}
+          {canAccessDevTools(user.role) && <Route path="admin/dev-tools" element={<SettingsTestData />} />}
           {user.role === 'superadmin' && <Route path="admin/audit" element={<SuperAdminAudit />} />}
           {(user.role === 'org_admin' || user.role === 'superadmin') && (
             <Route path="admin/users" element={<OrgUserManagement />} />

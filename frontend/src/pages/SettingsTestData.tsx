@@ -8,6 +8,7 @@ import {
   useGenerateTestData,
 } from '@/lib/devTools';
 import { useAuth } from '@/lib/auth';
+import { canAccessDevTools } from '@/lib/devToolsConfig';
 import { useOrgScope } from '@/lib/orgScope';
 import {
   clearDevMetrics,
@@ -92,9 +93,9 @@ export default function SettingsTestData() {
   const [lastResult, setLastResult] = useState<GenerateTestDataResult | null>(null);
   const [showCacheHitEvents, setShowCacheHitEvents] = useState(false);
 
-  const canUse = user?.role === 'superadmin' || user?.role === 'org_admin';
+  const canUse = canAccessDevTools(user?.role);
   const requiresScopedOrg = user?.role === 'superadmin';
-  const hasValidScope = typeof scope === 'string' || user?.role === 'org_admin';
+  const hasValidScope = typeof scope === 'string';
   const selectedPreset = useMemo(
     () => PRESETS.find((entry) => entry.id === preset) || PRESETS[1],
     [preset],
@@ -113,7 +114,7 @@ export default function SettingsTestData() {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-xl font-semibold text-viridian mb-2">Dev Tools</h3>
-        <p className="text-gray-600">Nur Superadmin und Org-Admin können die Entwicklerwerkzeuge nutzen.</p>
+        <p className="text-gray-600">Dev Tools sind nur mit aktivem Feature-Flag und als Superadmin sichtbar.</p>
       </div>
     );
   }

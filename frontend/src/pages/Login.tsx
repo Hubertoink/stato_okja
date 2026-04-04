@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { api } from '@/lib/api';
+import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
 import { useNavigate } from 'react-router-dom';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 
@@ -10,26 +10,15 @@ export default function Login() {
   const [password, setPassword] = useState('admin');
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [branding, setBranding] = useState({
-    loginTitle: 'StatO',
-    loginSubtitle: 'OKJA Statistik & Dokumentation',
-  });
+  const [branding, setBranding] = useState(DEFAULT_PUBLIC_CONFIG);
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await api.get('/auth/public-config');
-        const loginTitle = String(res?.data?.loginTitle || '').trim();
-        const loginSubtitle = String(res?.data?.loginSubtitle || '').trim();
-
-        if (!cancelled) {
-          setBranding({
-            loginTitle: loginTitle || 'StatO',
-            loginSubtitle: loginSubtitle || 'OKJA Statistik & Dokumentation',
-          });
-        }
+        const config = await fetchPublicConfig();
+        if (!cancelled) setBranding(config);
       } catch {
         // If the endpoint is unavailable, keep defaults.
       }
@@ -92,9 +81,15 @@ export default function Login() {
           >
             Anmelden
           </button>
-          <div className="text-center text-sm mt-2">
-            <a className="text-viridian hover:text-cambridge-blue transition-colors font-medium" href="/reset-password-request">Passwort vergessen?</a>
-          </div>
+          {branding.forgotPasswordEnabled ? (
+            <div className="text-center text-sm mt-2">
+              <a className="text-viridian hover:text-cambridge-blue transition-colors font-medium" href="/reset-password-request">Passwort vergessen?</a>
+            </div>
+          ) : (
+            <div className="text-center text-sm mt-2 text-gray-500">
+              Passwort vergessen? Bitte an den Superadmin wenden.
+            </div>
+          )}
 
           {error && <div className="chip chip-danger mt-2 w-full justify-center">{error}</div>}
         </form>

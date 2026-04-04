@@ -5,12 +5,20 @@ import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId 
 
 export default function MyProfile() {
   const { user, refresh } = useAuth();
+  const mustChangePassword = user?.mustChangePassword === true;
   return (
     <div>
       <h2 className="text-3xl font-bold text-viridian mb-6">Meine Daten</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} />
-        <PasswordCard />
+      {mustChangePassword && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+          Dein Passwort wurde temporär durch einen Superadmin gesetzt. Bitte ändere es jetzt, bevor du StatO weiter benutzt.
+        </div>
+      )}
+      <div className={`grid grid-cols-1 gap-6 ${mustChangePassword ? '' : 'md:grid-cols-2'}`}>
+        {!mustChangePassword && (
+          <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} />
+        )}
+        <PasswordCard mustChangePassword={mustChangePassword} onPasswordChanged={refresh} />
       </div>
     </div>
   );
@@ -109,7 +117,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
   );
 }
 
-function PasswordCard() {
+function PasswordCard({ mustChangePassword, onPasswordChanged }: { mustChangePassword: boolean; onPasswordChanged: () => Promise<void> | void }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -120,6 +128,11 @@ function PasswordCard() {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-viridian mb-4">Passwort ändern</h3>
+      {mustChangePassword && (
+        <p className="mb-4 text-sm text-gray-600">
+          Verwende dein temporäres Passwort als aktuelles Passwort und vergebe danach ein eigenes neues Passwort.
+        </p>
+      )}
       <div className="space-y-3">
         <div>
           <label className="block text-sm font-medium">Aktuelles Passwort</label>
@@ -145,6 +158,7 @@ function PasswordCard() {
                 await api.post('/auth/change-password', { currentPassword, newPassword });
                 setMsg('Passwort wurde aktualisiert.');
                 setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+                await onPasswordChanged();
               } catch (e: unknown) {
                 const m = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Änderung fehlgeschlagen';
                 setErr(Array.isArray(m as []) ? (m as string[]).join(', ') : String(m));

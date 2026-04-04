@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
+import type { AdminResetActionMode } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
@@ -15,7 +16,13 @@ export class AuthController {
     const orgName = typeof orgNameRaw === 'string' && orgNameRaw.trim() ? orgNameRaw.trim() : null;
     const loginSubtitle = String(process.env.PUBLIC_LOGIN_SUBTITLE || 'OKJA Statistik & Dokumentation');
     const loginTitle = orgName ? `${appName} - ${orgName}` : appName;
-    return { appName, orgName, loginTitle, loginSubtitle };
+    return {
+      appName,
+      orgName,
+      loginTitle,
+      loginSubtitle,
+      ...this.auth.getPublicPasswordResetConfig(),
+    };
   }
 
   @Post('login')
@@ -62,9 +69,20 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('superadmin')
   @Post('admin-reset-password')
-  adminResetPassword(@Body() body: { userId: string }) {
+  adminResetPassword(
+    @Req() req: { user: { id: string; name?: string | null; orgId?: string | null } },
+    @Body() body: { userId: string; mode?: AdminResetActionMode; temporaryPassword?: string },
+  ) {
     if (!body?.userId) throw new BadRequestException('userId erforderlich');
-    return this.auth.adminResetPassword(body.userId);
+    return this.auth.adminResetPassword(body.userId, {
+      mode: body?.mode,
+      temporaryPassword: body?.temporaryPassword,
+      actor: {
+        id: req.user.id,
+        name: req.user.name ?? null,
+        orgId: req.user.orgId ?? null,
+      },
+    });
   }
 
   @UseGuards(JwtAuthGuard)

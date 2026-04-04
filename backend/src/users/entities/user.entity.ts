@@ -44,4 +44,10 @@ export class User {
 
   @Column({ type: 'timestamp', nullable: true })
   lockoutUntil!: Date | null;
+
+  @Column({ type: 'int', default: 0 })
+  passwordResetTokenVersion!: number;
+
+  @Column({ type: 'boolean', default: false })
+  mustChangePassword!: boolean;
 }

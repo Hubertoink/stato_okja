@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
 import { Trash2, KeyRound, Users, Plus, Shield, User as UserIcon, Building2, Mail, Search } from 'lucide-react';
 import { adminResetPassword } from '@/lib/password';
+import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig, type AdminResetActionMode, type PublicConfig } from '@/lib/publicConfig';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import AssignOrgModal from '@/components/AssignOrgModal';
@@ -40,6 +41,7 @@ export default function OrgUserManagement() {
   
   // Orgs for dropdown
   const [orgs, setOrgs] = useState<OrgDto[]>([]);
+  const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_PUBLIC_CONFIG);
 
   async function reload() {
     const requestId = ++reloadRequestRef.current;
@@ -81,6 +83,21 @@ export default function OrgUserManagement() {
       } catch { /* ignore */ }
     })();
   }, [user?.id, user?.role, user?.orgId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const config = await fetchPublicConfig();
+        if (!cancelled) setPublicConfig(config);
+      } catch {
+        /* keep defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Get current org name for display
   const activeOrgName = (() => {
@@ -229,6 +246,7 @@ export default function OrgUserManagement() {
                   onReload={reload}
                   onAssign={() => setAssignUser(u)}
                   onDelete={() => setConfirmUser(u)}
+                  resetConfig={publicConfig}
                   showToast={showToast}
                 />
               ))}
@@ -389,6 +407,7 @@ function UserRow({
   onReload, 
   onAssign, 
   onDelete,
+  resetConfig,
   showToast 
 }: { 
   userData: UserDto;
@@ -397,6 +416,7 @@ function UserRow({
   onReload: () => void;
   onAssign: () => void;
   onDelete: () => void;
+  resetConfig: PublicConfig;
   showToast: (msg: string, opts?: { type?: 'success' | 'error' | 'info' }) => void;
 }) {
   const isCurrentUser = userData.id === currentUser.id;
@@ -469,20 +489,14 @@ function UserRow({
           )}
 
           {currentUser.role === 'superadmin' && (
-            <button
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-              onClick={async () => {
-                try {
-                  await adminResetPassword(userData.id);
-                  showToast('Reset-Link gesendet', { type: 'success' });
-                } catch {
-                  showToast('Senden fehlgeschlagen', { type: 'error' });
-                }
-              }}
-            >
-              <KeyRound className="w-4 h-4" />
-              Reset
-            </button>
+            <PasswordResetButton
+              userId={userData.id}
+              userName={userData.name || userData.email}
+              resetConfig={resetConfig}
+              buttonClassName="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              iconClassName="w-4 h-4"
+              showToast={showToast}
+            />
           )}
 
           {!isCurrentUser && (
@@ -557,20 +571,15 @@ function UserRow({
 
           {/* Password reset (superadmin only) */}
           {currentUser.role === 'superadmin' && (
-            <button
-              className="p-2 rounded hover:bg-gray-200 transition-colors"
-              title="Passwort-Reset senden"
-              onClick={async () => {
-                try {
-                  await adminResetPassword(userData.id);
-                  showToast('Reset-Link gesendet', { type: 'success' });
-                } catch {
-                  showToast('Senden fehlgeschlagen', { type: 'error' });
-                }
-              }}
-            >
-              <KeyRound className="w-4 h-4 text-gray-600" />
-            </button>
+            <PasswordResetButton
+              userId={userData.id}
+              userName={userData.name || userData.email}
+              resetConfig={resetConfig}
+              buttonClassName="p-2 rounded hover:bg-gray-200 transition-colors"
+              iconClassName="w-4 h-4 text-gray-600"
+              iconOnly
+              showToast={showToast}
+            />
           )}
 
           {/* Delete button (not for self) */}
@@ -641,6 +650,259 @@ function UserRow({
         </div>
       </Modal>
     </li>
+  );
+}
+
+function buildTemporaryPassword() {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%*?';
+  const all = `${letters}${digits}${symbols}`;
+  const pick = (source: string) => source[Math.floor(Math.random() * source.length)];
+  const chars = [pick(letters), pick(letters), pick(digits), pick(symbols)];
+  while (chars.length < 12) chars.push(pick(all));
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = chars[i];
+    chars[i] = chars[j];
+    chars[j] = tmp;
+  }
+  return chars.join('');
+}
+
+function PasswordResetButton({
+  userId,
+  userName,
+  resetConfig,
+  buttonClassName,
+  iconClassName,
+  iconOnly,
+  showToast,
+}: {
+  userId: string;
+  userName: string;
+  resetConfig: PublicConfig;
+  buttonClassName: string;
+  iconClassName: string;
+  iconOnly?: boolean;
+  showToast: (msg: string, opts?: { type?: 'success' | 'error' | 'info' }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [resetMode, setResetMode] = useState<AdminResetActionMode>(
+    resetConfig.passwordResetMode === 'email' ? 'email' : 'temporary_password',
+  );
+  const [temporaryPassword, setTemporaryPassword] = useState('');
+  const [confirmTemporaryPassword, setConfirmTemporaryPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setResetMode(resetConfig.passwordResetMode === 'email' ? 'email' : 'temporary_password');
+  }, [resetConfig.passwordResetMode]);
+
+  const resetButtonLabel =
+    resetConfig.passwordResetMode === 'admin_temp_password'
+      ? 'Temporäres Passwort'
+      : resetConfig.passwordResetMode === 'hybrid'
+        ? 'Passwort zurücksetzen'
+        : 'Reset';
+  const resetButtonTitle =
+    resetConfig.passwordResetMode === 'admin_temp_password'
+      ? 'Temporäres Passwort setzen'
+      : resetConfig.passwordResetMode === 'hybrid'
+        ? 'Passwort zurücksetzen'
+        : 'Passwort-Reset senden';
+
+  const resetFields = () => {
+    setTemporaryPassword('');
+    setConfirmTemporaryPassword('');
+    setBusy(false);
+    setResetMode(resetConfig.passwordResetMode === 'email' ? 'email' : 'temporary_password');
+  };
+
+  const sendResetEmail = async () => {
+    setBusy(true);
+    try {
+      await adminResetPassword({ userId, mode: 'email' });
+      showToast('Reset-Link gesendet', { type: 'success' });
+      setOpen(false);
+      resetFields();
+    } catch {
+      showToast('Senden fehlgeschlagen', { type: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleClick = async () => {
+    if (resetConfig.passwordResetMode === 'email') {
+      await sendResetEmail();
+      return;
+    }
+    setOpen(true);
+  };
+
+  const submitTemporaryPassword = async () => {
+    if (!temporaryPassword) {
+      showToast('Temporäres Passwort erforderlich', { type: 'error' });
+      return;
+    }
+    if (temporaryPassword !== confirmTemporaryPassword) {
+      showToast('Passwörter stimmen nicht überein', { type: 'error' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await adminResetPassword({
+        userId,
+        mode: 'temporary_password',
+        temporaryPassword,
+      });
+      showToast('Temporäres Passwort gesetzt. Bitte sicher weitergeben.', { type: 'success' });
+      setOpen(false);
+      resetFields();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+      showToast(Array.isArray(msg as unknown[]) ? (msg as unknown[]).join(', ') : String(msg || 'Setzen fehlgeschlagen'), { type: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = async () => {
+    if (resetMode === 'email') {
+      await sendResetEmail();
+      return;
+    }
+    await submitTemporaryPassword();
+  };
+
+  return (
+    <>
+      <button
+        className={buttonClassName}
+        title={resetButtonTitle}
+        onClick={() => {
+          void handleClick();
+        }}
+      >
+        <KeyRound className={iconClassName} />
+        {!iconOnly && resetButtonLabel}
+      </button>
+
+      <Modal
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          resetFields();
+        }}
+        title="Passwort zurücksetzen"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">
+            Passwort für <span className="font-medium">{userName}</span> zurücksetzen.
+          </p>
+
+          {resetConfig.passwordResetMode === 'hybrid' && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-700">Methode</div>
+              <label className="flex items-start gap-2 rounded-lg border border-gray-200 px-3 py-3">
+                <input
+                  type="radio"
+                  name={`reset-mode-${userId}`}
+                  checked={resetMode === 'temporary_password'}
+                  onChange={() => setResetMode('temporary_password')}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-medium text-gray-800">Temporäres Passwort setzen</span>
+                  <span className="block text-xs text-gray-500">Der Benutzer meldet sich damit an und muss es danach sofort ändern.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 rounded-lg border border-gray-200 px-3 py-3">
+                <input
+                  type="radio"
+                  name={`reset-mode-${userId}`}
+                  checked={resetMode === 'email'}
+                  onChange={() => setResetMode('email')}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-medium text-gray-800">Reset-Link per E-Mail senden</span>
+                  <span className="block text-xs text-gray-500">Nutzt den bestehenden E-Mail-Reset-Flow.</span>
+                </span>
+              </label>
+            </div>
+          )}
+
+          {resetMode === 'temporary_password' && (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-900">
+                Das Passwort muss stark sein und der Benutzer wird nach dem Login auf die Passwortänderung umgeleitet.
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Temporäres Passwort</label>
+                <input
+                  type="text"
+                  value={temporaryPassword}
+                  onChange={(event) => setTemporaryPassword(event.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
+                  placeholder="Temporäres Passwort"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bestätigung</label>
+                <input
+                  type="text"
+                  value={confirmTemporaryPassword}
+                  onChange={(event) => setConfirmTemporaryPassword(event.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
+                  placeholder="Passwort wiederholen"
+                />
+              </div>
+              <button
+                type="button"
+                className="text-sm font-medium text-viridian hover:text-cambridge-blue"
+                onClick={() => {
+                  const generated = buildTemporaryPassword();
+                  setTemporaryPassword(generated);
+                  setConfirmTemporaryPassword(generated);
+                }}
+              >
+                Starkes temporäres Passwort generieren
+              </button>
+            </div>
+          )}
+
+          {resetMode === 'email' && (
+            <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-600">
+              Es wird ein normaler Reset-Link per E-Mail ausgelöst.
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t">
+            <button
+              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+              onClick={() => {
+                setOpen(false);
+                resetFields();
+              }}
+            >
+              Abbrechen
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={busy}
+              onClick={() => {
+                void submit();
+              }}
+            >
+              {resetMode === 'temporary_password' ? 'Temporäres Passwort setzen' : 'Reset-Link senden'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }
 

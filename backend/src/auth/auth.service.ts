@@ -11,6 +11,7 @@ import type { UserRole } from '../users/entities/user.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { getJwtSecret } from '../config/security.config';
+import { normalizeUploadPath } from '../uploads/upload-paths';
 
 @Injectable()
 export class AuthService {
@@ -142,7 +143,7 @@ export class AuthService {
     const orgName = user.orgId
       ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
       : null;
-    const avatarUrl = (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null;
+    const avatarUrl = normalizeUploadPath((user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null);
     const rawTheme = (user as unknown as { theme?: string }).theme;
     // Normalize missing/legacy theme values to the new default so first-visit users see the proper theme
     const theme =
@@ -257,7 +258,7 @@ export class AuthService {
     const orgName = user.orgId
       ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
       : null;
-    const avatarUrl = (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null;
+    const avatarUrl = normalizeUploadPath((user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null);
     const rawTheme = (user as unknown as { theme?: string }).theme;
     // Normalize missing/legacy theme values to the new default so first-visit users see the proper theme
     const theme =
@@ -282,7 +283,7 @@ export class AuthService {
     if (!user) throw new Error('User not found');
     if (typeof patch.name === 'string') user.name = patch.name;
     if (typeof patch.avatarUrl !== 'undefined')
-      (user as unknown as { avatarUrl?: string | null }).avatarUrl = patch.avatarUrl;
+      (user as unknown as { avatarUrl?: string | null }).avatarUrl = normalizeUploadPath(patch.avatarUrl);
     if (typeof patch.theme === 'string')
       (user as unknown as { theme?: string }).theme = patch.theme;
     await this.users.save(user);

@@ -4,6 +4,19 @@ import { Repository } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 
+type StatsScope = {
+  from?: string;
+  to?: string;
+  orgId?: string | null;
+  orgIds?: string[];
+  projectId?: string;
+};
+
+type ActivityCohortRow = {
+  id: string;
+  cohorts: string | Array<{ cohortId: string; m?: number; w?: number; d?: number }> | null;
+};
+
 @Injectable()
 export class StatsService {
   constructor(
@@ -43,6 +56,73 @@ export class StatsService {
     if (typeof value === 'number') return value;
     if (typeof value === 'string') return Number(value) || 0;
     return 0;
+  }
+
+  private parseCohorts(value: ActivityCohortRow['cohorts']) {
+    if (!value) return [] as Array<{ cohortId: string; m: number; w: number; d: number }>;
+    if (Array.isArray(value)) {
+      return value.map((entry) => ({
+        cohortId: entry.cohortId,
+        m: entry.m || 0,
+        w: entry.w || 0,
+        d: entry.d || 0,
+      }));
+    }
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value) as Array<{ cohortId: string; m?: number; w?: number; d?: number }>;
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map((entry) => ({
+          cohortId: entry.cohortId,
+          m: entry.m || 0,
+          w: entry.w || 0,
+          d: entry.d || 0,
+        }));
+      } catch {
+        return [];
+      }
+    }
+    return [] as Array<{ cohortId: string; m: number; w: number; d: number }>;
+  }
+
+  async getAvailableYears(orgId?: string | null, orgIds?: string[]) {
+    const rows = await this.createFilteredActivityQuery(undefined, undefined, orgId, orgIds, undefined)
+      .select('activity.date', 'date')
+      .distinct(true)
+      .orderBy('activity.date', 'DESC')
+      .getRawMany<{ date: string | Date }>();
+
+    const years = new Set<string>();
+    for (const row of rows) {
+      const value = row?.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row?.date || '');
+      const year = value.slice(0, 4);
+      if (year) years.add(year);
+    }
+
+    return Array.from(years).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+  }
+
+  async getOverview(scope: StatsScope) {
+    const { from, to, orgId, orgIds, projectId } = scope;
+    const [summary, byType, gender, participantsTimeseries, byCategory, byCohort, availableYears] = await Promise.all([
+      this.getSummary(from, to, orgId, orgIds, projectId),
+      this.getByType(from, to, orgId, orgIds, projectId),
+      this.getGender(from, to, orgId, orgIds, projectId),
+      this.getParticipantsTimeseries(from, to, orgId, orgIds, projectId),
+      this.getByCategory(from, to, orgId, orgIds, projectId),
+      this.getByCohort(from, to, orgId, orgIds, projectId),
+      this.getAvailableYears(orgId, orgIds),
+    ]);
+
+    return {
+      summary,
+      byType,
+      gender,
+      participantsTimeseries,
+      byCategory,
+      byCohort,
+      availableYears,
+    };
   }
 
   async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
@@ -120,53 +200,34 @@ export class StatsService {
   }
 
   async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const baseQuery = this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId);
-    const categorized = await baseQuery
-      .clone()
-      .innerJoin('activity.categories', 'category')
-      .select('category.id', 'id')
-      .addSelect('category.name', 'name')
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+      .leftJoin('activity.categories', 'category')
+      .select("COALESCE(category.id, '__uncategorized__')", 'id')
+      .addSelect("COALESCE(category.name, 'Unkategorisiert')", 'name')
       .addSelect('COUNT(DISTINCT activity.id)', 'count')
-      .groupBy('category.id')
-      .addGroupBy('category.name')
+      .groupBy("COALESCE(category.id, '__uncategorized__')")
+      .addGroupBy("COALESCE(category.name, 'Unkategorisiert')")
       .orderBy('COUNT(DISTINCT activity.id)', 'DESC')
       .getRawMany<{ id: string; name: string; count: string }>();
 
-    const uncategorized = await baseQuery
-      .clone()
-      .leftJoin('activity.categories', 'category')
-      .andWhere('category.id IS NULL')
-      .select('COUNT(DISTINCT activity.id)', 'count')
-      .getRawOne<{ count: string }>();
-
-    const rows = categorized.map((row) => ({
+    return rows.map((row) => ({
       id: row.id,
       name: row.name,
       count: this.toNumber(row.count),
-    }));
-
-    const uncategorizedCount = this.toNumber(uncategorized?.count);
-    if (uncategorizedCount > 0) {
-      rows.push({
-        id: '__uncategorized__',
-        name: 'Unkategorisiert',
-        count: uncategorizedCount,
-      });
-    }
-
-    return rows.sort((a, b) => b.count - a.count).slice(0, 10);
+    })).sort((a, b) => b.count - a.count).slice(0, 10);
   }
 
   async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
     const activities = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
-      .select(['activity.id', 'activity.cohorts'])
-      .getMany();
+      .select('activity.id', 'id')
+      .addSelect('activity.cohorts', 'cohorts')
+      .getRawMany<ActivityCohortRow>();
 
     // Sum cohorts JSON m/w/d by cohortId and count distinct activities per cohort
     const map = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
     const usage = new Map<string, Set<string>>();
     for (const a of activities) {
-      for (const ch of a.cohorts || []) {
+      for (const ch of this.parseCohorts(a.cohorts)) {
         const entry = map.get(ch.cohortId) || { cohortId: ch.cohortId, m: 0, w: 0, d: 0 };
         entry.m += ch.m || 0;
         entry.w += ch.w || 0;
@@ -183,7 +244,7 @@ export class StatsService {
       if (orgId === null) cohQB.where('h.orgId IS NULL');
       else cohQB.where('h.orgId = :orgId', { orgId });
     }
-    const cohorts = await cohQB.getMany();
+    const cohorts = await cohQB.select('h.id', 'id').addSelect('h.name', 'name').getRawMany<{ id: string; name: string }>();
     const nameMap = new Map(cohorts.map((c) => [c.id, c.name] as const));
 
     // Ignore cohortIds that don't exist anymore, so the UI doesn't show raw IDs or a generic bucket.

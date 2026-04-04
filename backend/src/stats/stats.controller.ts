@@ -62,6 +62,22 @@ export class StatsController {
     return { orgId, orgIds };
   }
 
+  @Get('overview')
+  @ApiOperation({ summary: 'Gebündelte Statistikdaten für die Statistikansicht' })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'projectId', required: false })
+  async getOverview(
+    @Req() req: ReqWithScope,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('projectId') projectId?: string,
+    @Query('orgId') orgIdQuery?: string,
+  ) {
+    const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
+    return this.statsService.getOverview({ from, to, orgId, orgIds, projectId });
+  }
+
   @Get('summary')
   @ApiOperation({ summary: 'KPI-Zusammenfassung' })
   @ApiQuery({ name: 'from', required: false })

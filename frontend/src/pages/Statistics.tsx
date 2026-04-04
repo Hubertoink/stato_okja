@@ -39,98 +39,38 @@ const TYPE_LABEL: Record<string, string> = {
 
 const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
 
-function useStatsSummary(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:summary', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/summary', { params });
-      return res.data as {
-        totalActivities: number;
-        totalParticipants: number;
-        totalMale: number;
-        totalFemale: number;
-        totalDiverse: number;
-        totalDurationMinutes: number;
-        totalHours: number;
-        averageParticipants: number;
-      };
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
+type StatsOverviewResponse = {
+  summary: {
+    totalActivities: number;
+    totalParticipants: number;
+    totalMale: number;
+    totalFemale: number;
+    totalDiverse: number;
+    totalDurationMinutes: number;
+    totalHours: number;
+    averageParticipants: number;
+  };
+  byType: Array<{ type: string; count: number }>;
+  gender: { male: number; female: number; diverse: number };
+  participantsTimeseries: Array<{ date: string; totalParticipants: number }>;
+  byCohort: Array<{
+    cohortId: string;
+    name: string;
+    total: number;
+    male: number;
+    female: number;
+    diverse: number;
+  }>;
+  byCategory: Array<{ id: string; name: string; count: number }>;
+  availableYears: string[];
+};
 
-function useStatsByType(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
+function useStatsOverview(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:by-type', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
+    queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
-      const res = await api.get('/stats/by-type', { params });
-      return res.data as Array<{ type: string; count: number }>;
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
-
-function useStatsGender(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:gender', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/gender', { params });
-      return res.data as { male: number; female: number; diverse: number };
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
-
-function useStatsParticipantsTimeseries(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:participants-timeseries', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/participants-timeseries', { params });
-      return res.data as Array<{ date: string; totalParticipants: number }>;
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
-
-function useStatsByCohort(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:by-cohort', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/by-cohort', { params });
-      return res.data as Array<{
-        cohortId: string;
-        name: string;
-        total: number;
-        male: number;
-        female: number;
-        diverse: number;
-      }>;
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
-
-function useStatsByCategory(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:by-category', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/by-category', { params });
-      return res.data as Array<{ id: string; name: string; count: number }>;
+      const res = await api.get('/stats/overview', { params });
+      return res.data as StatsOverviewResponse;
     },
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 30,
@@ -171,11 +111,6 @@ export default function Statistics() {
   const statsUiFlowMarksRef = useRef<Record<string, boolean>>({});
   const statsUiPendingRunKeyRef = useRef<string | null>(null);
   const statsUiFetchSeenRef = useRef<Record<string, boolean>>({});
-  const statsAuxFlowIdRef = useRef<string | null>(null);
-  const statsAuxFlowCompletedRef = useRef(false);
-  const statsAuxFlowMarksRef = useRef<Record<string, boolean>>({});
-  const statsAuxPendingRunKeyRef = useRef<string | null>(null);
-  const statsAuxFetchSeenRef = useRef(false);
   const qc = useQueryClient();
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
@@ -187,28 +122,15 @@ export default function Statistics() {
     () => ({ from: from || undefined, to: to || undefined, projectIds: projectId ? [projectId] : undefined }),
     [from, to, projectId],
   );
-  const summaryQ = useStatsSummary(statsParams, scopeKey);
-  const byTypeQ = useStatsByType(statsParams, scopeKey);
-  const genderQ = useStatsGender(statsParams, scopeKey);
-  const timeseriesQ = useStatsParticipantsTimeseries(statsParams, scopeKey);
-  const { data: summary } = summaryQ;
-  const { data: byType } = byTypeQ;
-  const { data: gender } = genderQ;
-  const { data: timeseries } = timeseriesQ;
-  // All-time series to build available years for quick picker
-  const timeseriesAllQ = useStatsParticipantsTimeseries({}, scopeKey);
-  const { data: timeseriesAll = [] } = timeseriesAllQ;
-  const activityYears = useMemo(() => {
-    const set = new Set<string>();
-    for (const d of timeseriesAll || []) {
-      if (d?.date) set.add(String(d.date).slice(0, 4));
-    }
-    return Array.from(set).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
-  }, [timeseriesAll]);
-  const byCohortQ = useStatsByCohort(statsParams, scopeKey);
-  const byCategoryQ = useStatsByCategory(statsParams, scopeKey);
-  const { data: byCohort } = byCohortQ;
-  const { data: byCategory } = byCategoryQ;
+  const overviewQ = useStatsOverview(statsParams, scopeKey);
+  const overview = overviewQ.data;
+  const summary = overview?.summary;
+  const byType = overview?.byType;
+  const gender = overview?.gender;
+  const timeseries = overview?.participantsTimeseries;
+  const byCohort = overview?.byCohort;
+  const byCategory = overview?.byCategory;
+  const activityYears = overview?.availableYears ?? [];
   const { data: activities = [] } = useActivities(activitiesParams);
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
@@ -217,29 +139,14 @@ export default function Statistics() {
     () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '']),
     [scopeKey, statsParams.from, statsParams.to, statsParams.projectId],
   );
-  const statsAuxRunKey = useMemo(() => JSON.stringify([scopeKey]), [scopeKey]);
 
-  const initialLoading =
-    summaryQ.isLoading ||
-    byTypeQ.isLoading ||
-    genderQ.isLoading ||
-    timeseriesQ.isLoading ||
-    byCohortQ.isLoading ||
-    byCategoryQ.isLoading;
+  const initialLoading = overviewQ.isLoading;
 
-  const backgroundRefreshing =
-    !initialLoading &&
-    (summaryQ.isFetching ||
-      byTypeQ.isFetching ||
-      genderQ.isFetching ||
-      timeseriesQ.isFetching ||
-      byCohortQ.isFetching ||
-      byCategoryQ.isFetching ||
-      timeseriesAllQ.isFetching);
+  const backgroundRefreshing = !initialLoading && overviewQ.isFetching;
 
   useEffect(() => {
     if (statsUiFlowIdRef.current && !statsUiFlowCompletedRef.current) {
-      finishDevFlow(statsUiFlowIdRef.current, 'error', { reason: 'superseded' });
+      finishDevFlow(statsUiFlowIdRef.current, 'cancelled', { reason: 'superseded' });
     }
     statsUiFlowIdRef.current = null;
     statsUiFlowCompletedRef.current = false;
@@ -249,64 +156,53 @@ export default function Statistics() {
   }, [statsRunKey]);
 
   useEffect(() => {
-    if (statsAuxFlowIdRef.current && !statsAuxFlowCompletedRef.current) {
-      finishDevFlow(statsAuxFlowIdRef.current, 'error', { reason: 'superseded' });
-    }
-    statsAuxFlowIdRef.current = null;
-    statsAuxFlowCompletedRef.current = false;
-    statsAuxFlowMarksRef.current = {};
-    statsAuxPendingRunKeyRef.current = statsAuxRunKey;
-    statsAuxFetchSeenRef.current = false;
-  }, [statsAuxRunKey]);
-
-  useEffect(() => {
     const queryStates = [
       {
         key: 'summary',
         label: 'summary-ready',
-        status: summaryQ.status,
-        isError: summaryQ.isError,
-        isFetching: summaryQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: summary ? 1 : 0,
       },
       {
         key: 'byType',
         label: 'by-type-ready',
-        status: byTypeQ.status,
-        isError: byTypeQ.isError,
-        isFetching: byTypeQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: Array.isArray(byType) ? byType.length : 0,
       },
       {
         key: 'gender',
         label: 'gender-ready',
-        status: genderQ.status,
-        isError: genderQ.isError,
-        isFetching: genderQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: gender ? 1 : 0,
       },
       {
         key: 'timeseries',
         label: 'timeseries-ready',
-        status: timeseriesQ.status,
-        isError: timeseriesQ.isError,
-        isFetching: timeseriesQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: Array.isArray(timeseries) ? timeseries.length : 0,
       },
       {
         key: 'byCohort',
         label: 'by-cohort-ready',
-        status: byCohortQ.status,
-        isError: byCohortQ.isError,
-        isFetching: byCohortQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: Array.isArray(byCohort) ? byCohort.length : 0,
       },
       {
         key: 'byCategory',
         label: 'by-category-ready',
-        status: byCategoryQ.status,
-        isError: byCategoryQ.isError,
-        isFetching: byCategoryQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: Array.isArray(byCategory) ? byCategory.length : 0,
       },
     ];
@@ -397,102 +293,20 @@ export default function Statistics() {
   }, [
     activities.length,
     byCategory,
-    byCategoryQ.isError,
-    byCategoryQ.isFetching,
-    byCategoryQ.status,
     byCohort,
-    byCohortQ.isError,
-    byCohortQ.isFetching,
-    byCohortQ.status,
     byType,
-    byTypeQ.isError,
-    byTypeQ.isFetching,
-    byTypeQ.status,
     gender,
-    genderQ.isError,
-    genderQ.isFetching,
-    genderQ.status,
+    overviewQ.isError,
+    overviewQ.isFetching,
+    overviewQ.status,
     scopeKey,
     statsRunKey,
     statsParams.from,
     statsParams.projectId,
     statsParams.to,
     summary,
-    summaryQ.isError,
-    summaryQ.isFetching,
-    summaryQ.status,
     timeseries,
-    timeseriesQ.isError,
-    timeseriesQ.isFetching,
-    timeseriesQ.status,
   ]);
-
-  useEffect(() => {
-    const shouldStartAuxFlow =
-      !statsAuxFlowIdRef.current &&
-      !statsAuxFlowCompletedRef.current &&
-      statsAuxPendingRunKeyRef.current === statsAuxRunKey &&
-      (timeseriesAllQ.isFetching || (timeseriesAllQ.status !== 'success' && !timeseriesAllQ.isError));
-
-    if (shouldStartAuxFlow) {
-      statsAuxFlowIdRef.current = startDevFlow('statistics:auxiliary-load', {
-        scopeKey,
-        query: 'timeseries-all',
-      });
-      markDevFlow(statsAuxFlowIdRef.current, 'scope-applied', { scopeKey });
-    }
-
-    if (
-      !statsAuxFlowIdRef.current &&
-      !statsAuxFlowCompletedRef.current &&
-      statsAuxPendingRunKeyRef.current === statsAuxRunKey &&
-      timeseriesAllQ.status === 'success' &&
-      !timeseriesAllQ.isFetching
-    ) {
-      statsAuxFlowCompletedRef.current = true;
-      statsAuxPendingRunKeyRef.current = null;
-      addDevMetricEvent({
-        kind: 'flow',
-        status: 'info',
-        name: 'statistics:auxiliary-load',
-        message: 'Auxiliary statistics data was served from cache without a new fetch cycle.',
-        meta: {
-          scopeKey,
-          query: 'timeseries-all',
-          cacheHit: true,
-        },
-      });
-      return;
-    }
-
-    const flowId = statsAuxFlowIdRef.current;
-    if (!flowId || statsAuxFlowCompletedRef.current) return;
-
-    if (timeseriesAllQ.isFetching) {
-      statsAuxFetchSeenRef.current = true;
-    }
-
-    if (timeseriesAllQ.status === 'success' && !timeseriesAllQ.isFetching && !statsAuxFlowMarksRef.current.timeseriesAll) {
-      statsAuxFlowMarksRef.current.timeseriesAll = true;
-      markDevFlow(flowId, 'timeseries-all-ready', {
-        rows: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
-        fetched: statsAuxFetchSeenRef.current,
-      });
-      statsAuxFlowCompletedRef.current = true;
-      statsAuxPendingRunKeyRef.current = null;
-      finishDevFlow(flowId, 'success', {
-        scopeKey,
-        rows: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
-      });
-      return;
-    }
-
-    if (timeseriesAllQ.isError) {
-      statsAuxFlowCompletedRef.current = true;
-      statsAuxPendingRunKeyRef.current = null;
-      finishDevFlow(flowId, 'error', { failedQueries: ['timeseriesAll'] });
-    }
-  }, [scopeKey, statsAuxRunKey, timeseriesAll, timeseriesAllQ.isError, timeseriesAllQ.isFetching, timeseriesAllQ.status]);
 
   // If the selected project disappears (e.g. archived/deleted), reset to "all"
   useEffect(() => {

@@ -22,6 +22,8 @@ describe('StatsController org scoping', () => {
       participantsTimeseries: [],
       byCategory: [],
       byCohort: [],
+      topTags: [],
+      topProjects: [],
       availableYears: [],
     })),
     getSummary: jest.fn(async () => ({

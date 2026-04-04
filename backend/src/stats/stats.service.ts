@@ -17,6 +17,18 @@ type ActivityCohortRow = {
   cohorts: string | Array<{ cohortId: string; m?: number; w?: number; d?: number }> | null;
 };
 
+type StatsTagRow = {
+  id: string;
+  name: string;
+  count: string;
+};
+
+type StatsProjectRow = {
+  id: string;
+  name: string;
+  count: string;
+};
+
 @Injectable()
 export class StatsService {
   constructor(
@@ -104,13 +116,15 @@ export class StatsService {
 
   async getOverview(scope: StatsScope) {
     const { from, to, orgId, orgIds, projectId } = scope;
-    const [summary, byType, gender, participantsTimeseries, byCategory, byCohort, availableYears] = await Promise.all([
+    const [summary, byType, gender, participantsTimeseries, byCategory, byCohort, topTags, topProjects, availableYears] = await Promise.all([
       this.getSummary(from, to, orgId, orgIds, projectId),
       this.getByType(from, to, orgId, orgIds, projectId),
       this.getGender(from, to, orgId, orgIds, projectId),
       this.getParticipantsTimeseries(from, to, orgId, orgIds, projectId),
       this.getByCategory(from, to, orgId, orgIds, projectId),
       this.getByCohort(from, to, orgId, orgIds, projectId),
+      this.getTopTags(from, to, orgId, orgIds, projectId),
+      projectId ? Promise.resolve([]) : this.getTopProjects(from, to, orgId, orgIds),
       this.getAvailableYears(orgId, orgIds),
     ]);
 
@@ -121,6 +135,8 @@ export class StatsService {
       participantsTimeseries,
       byCategory,
       byCohort,
+      topTags,
+      topProjects,
       availableYears,
     };
   }
@@ -165,11 +181,16 @@ export class StatsService {
     const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
       .select('activity.type', 'type')
       .addSelect('COUNT(*)', 'count')
+      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
       .groupBy('activity.type')
       .orderBy('COUNT(*)', 'DESC')
-      .getRawMany<{ type: string; count: string }>();
+      .getRawMany<{ type: string; count: string; totalParticipants: string }>();
 
-    return rows.map((row) => ({ type: row.type, count: this.toNumber(row.count) }));
+    return rows.map((row) => ({
+      type: row.type,
+      count: this.toNumber(row.count),
+      totalParticipants: this.toNumber(row.totalParticipants),
+    }));
   }
 
   async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
@@ -189,13 +210,15 @@ export class StatsService {
     const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
       .select('activity.date', 'date')
       .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
+      .addSelect('COUNT(*)', 'activityCount')
       .groupBy('activity.date')
       .orderBy('activity.date', 'ASC')
-      .getRawMany<{ date: string | Date; totalParticipants: string }>();
+      .getRawMany<{ date: string | Date; totalParticipants: string; activityCount: string }>();
 
     return rows.map((row) => ({
       date: row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date),
       totalParticipants: this.toNumber(row.totalParticipants),
+      activityCount: this.toNumber(row.activityCount),
     }));
   }
 
@@ -217,7 +240,45 @@ export class StatsService {
       id: row.id,
       name: row.name,
       count: this.toNumber(row.count),
-    })).sort((a, b) => b.count - a.count).slice(0, 10);
+    })).sort((a, b) => b.count - a.count);
+  }
+
+  async getTopTags(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+      .innerJoin('activity.tags', 'tag')
+      .select('tag.id', 'id')
+      .addSelect('tag.name', 'name')
+      .addSelect('COUNT(DISTINCT activity.id)', 'count')
+      .groupBy('tag.id')
+      .addGroupBy('tag.name')
+      .orderBy('COUNT(DISTINCT activity.id)', 'DESC')
+      .limit(10)
+      .getRawMany<StatsTagRow>();
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      count: this.toNumber(row.count),
+    }));
+  }
+
+  async getTopProjects(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, undefined)
+      .innerJoin('activity.project', 'project')
+      .select('project.id', 'id')
+      .addSelect('project.title', 'name')
+      .addSelect('COUNT(activity.id)', 'count')
+      .groupBy('project.id')
+      .addGroupBy('project.title')
+      .orderBy('COUNT(activity.id)', 'DESC')
+      .limit(10)
+      .getRawMany<StatsProjectRow>();
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      count: this.toNumber(row.count),
+    }));
   }
 
   async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {

@@ -18,7 +18,7 @@ import {
   LabelList,
 } from 'recharts';
 import { useAuth } from '@/lib/auth';
-import { useActivities, type Activity } from '@/lib/activities';
+import { useActivitiesPaged, type Activity } from '@/lib/activities';
 import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useOrgScopeKey } from '@/lib/orgScope';
@@ -50,9 +50,9 @@ type StatsOverviewResponse = {
     totalHours: number;
     averageParticipants: number;
   };
-  byType: Array<{ type: string; count: number }>;
+  byType: Array<{ type: string; count: number; totalParticipants: number }>;
   gender: { male: number; female: number; diverse: number };
-  participantsTimeseries: Array<{ date: string; totalParticipants: number }>;
+  participantsTimeseries: Array<{ date: string; totalParticipants: number; activityCount: number }>;
   byCohort: Array<{
     cohortId: string;
     name: string;
@@ -62,6 +62,8 @@ type StatsOverviewResponse = {
     diverse: number;
   }>;
   byCategory: Array<{ id: string; name: string; count: number }>;
+  topTags: Array<{ id: string; name: string; count: number }>;
+  topProjects: Array<{ id: string; name: string; count: number }>;
   availableYears: string[];
 };
 
@@ -130,8 +132,12 @@ export default function Statistics() {
   const timeseries = overview?.participantsTimeseries;
   const byCohort = overview?.byCohort;
   const byCategory = overview?.byCategory;
+  const topTags = overview?.topTags ?? [];
+  const topProjects = overview?.topProjects ?? [];
   const activityYears = overview?.availableYears ?? [];
-  const { data: activities = [] } = useActivities(activitiesParams);
+  const activitiesPageQ = useActivitiesPaged(activitiesParams, activitiesPage, ACTIVITIES_PER_PAGE);
+  const pagedActivities = activitiesPageQ.data?.data ?? [];
+  const totalActivities = activitiesPageQ.data?.total ?? summary?.totalActivities ?? 0;
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
 
@@ -287,11 +293,10 @@ export default function Statistics() {
         from: statsParams.from ?? null,
         to: statsParams.to ?? null,
         projectId: statsParams.projectId ?? null,
-        totalActivities: activities.length,
+        totalActivities: summary?.totalActivities ?? totalActivities,
       });
     }
   }, [
-    activities.length,
     byCategory,
     byCohort,
     byType,
@@ -305,6 +310,7 @@ export default function Statistics() {
     statsParams.projectId,
     statsParams.to,
     summary,
+    totalActivities,
     timeseries,
   ]);
 
@@ -458,19 +464,10 @@ export default function Statistics() {
       return dateStr.slice(0, 7); // YYYY-MM
     };
 
-    // Count activities per date to calculate averages
-    const activityCountByDate = new Map<string, number>();
-    for (const a of activities as Array<{ date?: string }>) {
-      const dateKey = String(a.date || '').slice(0, 10);
-      if (dateKey) {
-        activityCountByDate.set(dateKey, (activityCountByDate.get(dateKey) || 0) + 1);
-      }
-    }
-    
     if (timeAggregation === 'day') {
       if (showAverage) {
         return timeseries.map(item => {
-          const count = activityCountByDate.get(item.date) || 1;
+          const count = item.activityCount || 1;
           return {
             date: item.date,
             totalParticipants: Math.round((item.totalParticipants / count) * 10) / 10
@@ -488,7 +485,7 @@ export default function Statistics() {
         : getMonthKey(item.date);
       const current = grouped.get(key) || { total: 0, activityCount: 0 };
       current.total += item.totalParticipants;
-      current.activityCount += activityCountByDate.get(item.date) || 1;
+      current.activityCount += item.activityCount || 0;
       grouped.set(key, current);
     }
     
@@ -497,21 +494,13 @@ export default function Statistics() {
       .map(([date, data]) => ({
         date,
         totalParticipants: showAverage 
-          ? Math.round((data.total / data.activityCount) * 10) / 10
+          ? (data.activityCount > 0 ? Math.round((data.total / data.activityCount) * 10) / 10 : 0)
           : data.total
       }));
-  }, [timeseries, timeAggregation, showAverage, activities]);
+  }, [timeseries, timeAggregation, showAverage]);
 
   // Pagination für Aktivitäten
-  const paginatedActivities = useMemo(() => {
-    const sorted = [...(activities as Activity[])].sort((a, b) => 
-      String(b.date).localeCompare(String(a.date))
-    );
-    const startIndex = (activitiesPage - 1) * ACTIVITIES_PER_PAGE;
-    return sorted.slice(startIndex, startIndex + ACTIVITIES_PER_PAGE);
-  }, [activities, activitiesPage]);
-  
-  const totalActivityPages = Math.ceil((activities as Activity[]).length / ACTIVITIES_PER_PAGE);
+  const totalActivityPages = Math.max(1, Math.ceil(totalActivities / ACTIVITIES_PER_PAGE));
   
   // Reset page when filters change
   useEffect(() => {
@@ -536,42 +525,6 @@ export default function Statistics() {
     const d2 = String(d).padStart(2, '0');
     return `${y2} ${mon} ${d2}`;
   };
-
-  // Top Tags (by activities that include the tag)
-  type ActivityLite = {
-    tags?: Array<{ id: string; name: string }>;
-    project?: { id?: string; title?: string };
-  };
-  const topTags = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; count: number }>();
-    for (const a of activities as ActivityLite[]) {
-      if (!Array.isArray(a.tags)) continue;
-      for (const t of a.tags) {
-        const cur = map.get(t.id) || { id: t.id, name: t.name, count: 0 };
-        cur.count += 1;
-        map.set(t.id, cur);
-      }
-    }
-    return Array.from(map.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }, [activities]);
-
-  // Top Projekte (by activities that are linked to a project)
-  const topProjects = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; count: number }>();
-    for (const a of activities as ActivityLite[]) {
-      const pid: string | undefined = a.project?.id;
-      const ptitle: string | undefined = a.project?.title;
-      if (!pid || !ptitle) continue; // nur konkrete Projekte
-      const cur = map.get(pid) || { id: pid, name: ptitle, count: 0 };
-      cur.count += 1;
-      map.set(pid, cur);
-    }
-    return Array.from(map.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }, [activities]);
 
   const topDays = useMemo(() => {
     const list = Array.isArray(timeseries) ? timeseries : [];
@@ -620,6 +573,7 @@ export default function Statistics() {
     '#0ea5e9',
     '#a855f7',
   ];
+  const topCategoryChartData = useMemo(() => (byCategory || []).slice(0, 10), [byCategory]);
 
   // Generic label renderer for bar charts (positions label above the bar)
   type LabelProps = { x?: number; y?: number; width?: number; value?: number | string };
@@ -939,7 +893,10 @@ export default function Statistics() {
                 qc.invalidateQueries({
                   predicate: (q) => {
                     const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
-                    return typeof key0 === 'string' && key0.startsWith('stats:');
+                    return (
+                      (typeof key0 === 'string' && key0.startsWith('stats:')) ||
+                      key0 === 'activities'
+                    );
                   },
                   refetchType: 'active',
                 });
@@ -1382,7 +1339,7 @@ export default function Statistics() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={byCategory || []}
+                  data={topCategoryChartData}
                   margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
@@ -1397,7 +1354,7 @@ export default function Statistics() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
                   <Bar dataKey="count" name="Aktivitäten">
-                    {(byCategory || []).map((_, i) => (
+                    {topCategoryChartData.map((_, i) => (
                       <Cell
                         key={`bc-${i}`}
                         fill={fallbackBarColors[i % fallbackBarColors.length]}
@@ -1511,7 +1468,7 @@ export default function Statistics() {
             <h3 className="text-lg font-semibold text-viridian">
               Alle Aktivitäten (gefiltert)
               <span className="ml-2 text-sm font-normal text-gray-500">
-                {(activities as Activity[]).length} Einträge
+                {totalActivities} Einträge
               </span>
             </h3>
             {totalActivityPages > 1 && (
@@ -1538,7 +1495,7 @@ export default function Statistics() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {paginatedActivities.map((a) => {
+                {pagedActivities.map((a: Activity) => {
                   const s = String(a.date || '').slice(0, 10);
                   const [y, m, d] = s.split('-');
                   const dateDE = `${d}.${m}.${y}`;
@@ -1581,7 +1538,14 @@ export default function Statistics() {
                     </tr>
                   );
                 })}
-                {paginatedActivities.length === 0 && (
+                {activitiesPageQ.isLoading && pagedActivities.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
+                      Aktivitäten werden geladen.
+                    </td>
+                  </tr>
+                )}
+                {!activitiesPageQ.isLoading && pagedActivities.length === 0 && (
                   <tr>
                     <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
                       Keine Aktivitäten im Zeitraum.
@@ -1596,7 +1560,7 @@ export default function Statistics() {
           {totalActivityPages > 1 && (
             <div className="mt-4 border-t border-gray-100 pt-4">
               <div className="mb-3 text-xs text-gray-500 sm:mb-0">
-                Zeige {((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, (activities as Activity[]).length)} von {(activities as Activity[]).length}
+                Zeige {((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, totalActivities)} von {totalActivities}
               </div>
               <div className={`flex gap-1 ${isMobile ? 'flex-wrap items-center justify-start' : 'items-center justify-end'}`}>
                 <button
@@ -1695,16 +1659,8 @@ export default function Statistics() {
                 <tbody className="divide-y divide-gray-100">
                   {(() => {
                     const map = new Map<string, { c: number; p: number }>();
-                    (activities as Activity[]).forEach((a) => {
-                      const key = a.type || 'unknown';
-                      const v = map.get(key) || { c: 0, p: 0 };
-                      v.c += 1;
-                      const total =
-                        (a.countTotal ??
-                          (a.countMale || 0) + (a.countFemale || 0) + (a.countDiverse || 0)) ||
-                        0;
-                      v.p += total;
-                      map.set(key, v);
+                    (byType || []).forEach((entry) => {
+                      map.set(entry.type || 'unknown', { c: entry.count, p: entry.totalParticipants });
                     });
                     const typeLabel: Record<string, string> = {
                       open_door: 'Offene Tür',
@@ -1735,20 +1691,12 @@ export default function Statistics() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {(() => {
-                    const map = new Map<string, number>();
-                    (activities as Activity[]).forEach((a) => {
-                      (a.categories || []).forEach((c: { id: string; name: string }) => {
-                        map.set(c.name, (map.get(c.name) || 0) + 1);
-                      });
-                    });
-                    return Array.from(map.entries()).map(([name, count]) => (
-                      <tr key={name}>
+                  {(byCategory || []).map(({ id, name, count }) => (
+                      <tr key={id}>
                         <td className="px-3 py-1.5">{name}</td>
                         <td className="px-3 py-1.5 text-right">{fmtNumber(count)}</td>
                       </tr>
-                    ));
-                  })()}
+                    ))}
                 </tbody>
               </table>
             </div>

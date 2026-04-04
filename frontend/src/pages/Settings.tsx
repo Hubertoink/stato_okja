@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate, Clock, Database } from 'lucide-react';
+import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate, Clock } from 'lucide-react';
 import SettingsTeam from './SettingsTeam';
 import SettingsCategories from './SettingsCategories';
 import SettingsTags from './SettingsTags';
@@ -8,17 +8,15 @@ import SettingsLocations from './SettingsLocations';
 import SettingsHolidays from './SettingsHolidays';
 import SettingsProjectTemplates from './SettingsProjectTemplates';
 import SettingsOpeningHours from './SettingsOpeningHours';
-import SettingsTestData from './SettingsTestData';
 import { useAuth } from '@/lib/auth';
 
-type Tab = 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays' | 'openingHours' | 'testData';
+type Tab = 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays' | 'openingHours';
 
 export default function Settings() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('categories');
 
   const canManageTemplates = user?.role === 'superadmin' || user?.role === 'org_admin';
-  const canUseTestData = user?.role === 'superadmin' || user?.role === 'org_admin';
 
   const tabs = [
     { id: 'categories' as Tab, label: 'Kategorien', icon: Folder },
@@ -29,7 +27,6 @@ export default function Settings() {
     { id: 'locations' as Tab, label: 'Einrichtungen', icon: MapPin },
     { id: 'holidays' as Tab, label: 'Feiertage', icon: Sun },
     { id: 'openingHours' as Tab, label: 'Öffnungszeiten', icon: Clock },
-    ...(canUseTestData ? [{ id: 'testData' as Tab, label: 'Dev Tools', icon: Database }] : []),
   ];
 
   return (
@@ -82,7 +79,6 @@ export default function Settings() {
       {activeTab === 'locations' && <SettingsLocations />}
       {activeTab === 'holidays' && <SettingsHolidays />}
       {activeTab === 'openingHours' && <SettingsOpeningHours />}
-      {activeTab === 'testData' && <SettingsTestData />}
     </div>
   );
 }

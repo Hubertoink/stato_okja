@@ -18,6 +18,7 @@ import { OrgScopeProvider } from './lib/orgScope';
 import AdminOrgSetup from './pages/AdminOrgSetup';
 import OrgUserManagement from './pages/OrgUserManagement';
 import SuperAdminAudit from './pages/SuperAdminAudit';
+import SettingsTestData from './pages/SettingsTestData';
 import AcceptInvite from './pages/AcceptInvite';
 import ResetRequest from './pages/ResetRequest';
 import ResetPassword from './pages/ResetPassword';
@@ -83,6 +84,7 @@ function AuthedRoutes() {
           {(user.role === 'org_admin' || user.role === 'superadmin') && (
             <Route path="admin/orgs" element={<AdminOrgSetup />} />
           )}
+          {user.role === 'superadmin' && <Route path="admin/dev-tools" element={<SettingsTestData />} />}
           {user.role === 'superadmin' && <Route path="admin/audit" element={<SuperAdminAudit />} />}
           {(user.role === 'org_admin' || user.role === 'superadmin') && (
             <Route path="admin/users" element={<OrgUserManagement />} />

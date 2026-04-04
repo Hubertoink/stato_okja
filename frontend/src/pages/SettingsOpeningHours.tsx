@@ -100,9 +100,9 @@ export default function SettingsOpeningHours() {
           {DAYS.map(({ key, labelDe }) => {
             const day = hours[key];
             return (
-              <div key={key} className="flex flex-wrap items-center gap-3 py-3 border-b last:border-0">
+              <div key={key} className="flex flex-col gap-3 py-3 border-b last:border-0 sm:flex-row sm:items-center">
                 {/* Day name and toggle */}
-                <label className="flex items-center gap-3 min-w-[140px]">
+                <label className="flex items-center gap-3 sm:min-w-[140px]">
                   <input
                     type="checkbox"
                     className="w-5 h-5 text-viridian rounded focus:ring-viridian"
@@ -114,22 +114,22 @@ export default function SettingsOpeningHours() {
 
                 {/* Time inputs */}
                 {day.open ? (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1">
+                  <div className="flex w-full items-center gap-2 sm:w-auto sm:flex-wrap">
+                    <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-initial">
                       <label className="text-sm text-gray-600">Von:</label>
                       <input
                         type="time"
-                        className="border rounded px-2 py-1 text-sm"
+                        className="min-w-0 flex-1 border rounded px-2 py-1 text-sm sm:w-auto sm:flex-none"
                         value={day.from || '08:00'}
                         onChange={(e) => updateDay(key, { from: e.target.value })}
                       />
                     </div>
-                    <span className="text-gray-400">–</span>
-                    <div className="flex items-center gap-1">
+                    <span className="shrink-0 text-gray-400">–</span>
+                    <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-initial">
                       <label className="text-sm text-gray-600">Bis:</label>
                       <input
                         type="time"
-                        className="border rounded px-2 py-1 text-sm"
+                        className="min-w-0 flex-1 border rounded px-2 py-1 text-sm sm:w-auto sm:flex-none"
                         value={day.to || '17:00'}
                         onChange={(e) => updateDay(key, { to: e.target.value })}
                       />

@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { AdminResetActionMode } from './publicConfig';
 
 export async function requestPasswordReset(email: string) {
   const res = await api.post('/auth/request-password-reset', { email });
@@ -10,7 +11,11 @@ export async function resetPassword(token: string, password: string) {
   return res.data as { ok: boolean };
 }
 
-export async function adminResetPassword(userId: string) {
-  const res = await api.post('/auth/admin-reset-password', { userId });
-  return res.data as { ok: boolean };
+export async function adminResetPassword(payload: {
+  userId: string;
+  mode?: AdminResetActionMode;
+  temporaryPassword?: string;
+}) {
+  const res = await api.post('/auth/admin-reset-password', payload);
+  return res.data as { ok: boolean; mode?: AdminResetActionMode; mustChangePassword?: boolean };
 }

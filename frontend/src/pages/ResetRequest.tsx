@@ -1,10 +1,27 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
+import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
 import { requestPasswordReset } from '@/lib/password';
 
 export default function ResetRequest() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [config, setConfig] = useState(DEFAULT_PUBLIC_CONFIG);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const nextConfig = await fetchPublicConfig();
+        if (!cancelled) setConfig(nextConfig);
+      } catch {
+        /* keep defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -21,7 +38,17 @@ export default function ResetRequest() {
     <div className="min-h-screen bg-mint-cream flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <h2 className="text-2xl font-bold text-viridian mb-4">Passwort zurücksetzen</h2>
-        {sent ? (
+        {!config.forgotPasswordEnabled ? (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700">
+              Der Passwort-Reset per E-Mail ist in dieser Instanz deaktiviert.
+            </p>
+            <p className="text-sm text-gray-700">
+              Bitte wende dich an den Superadmin, damit ein temporäres Passwort gesetzt werden kann.
+            </p>
+            <p className="text-xs text-gray-600">Zurück zum <a href="/" className="text-viridian hover:underline">Login</a></p>
+          </div>
+        ) : sent ? (
           <div className="space-y-4">
             <p className="text-sm text-gray-700">Wenn die E-Mail existiert, haben wir dir einen Link zum Zurücksetzen geschickt.</p>
             <p className="text-xs text-gray-600">Zurück zum <a href="/" className="text-viridian hover:underline">Login</a></p>

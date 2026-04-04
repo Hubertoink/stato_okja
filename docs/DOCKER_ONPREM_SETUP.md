@@ -100,6 +100,7 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 
 - `JWT_SECRET`: lang, zufällig, stabil, nicht bei jedem Deploy ändern
 - `JWT_ACCESS_EXPIRATION`: optional, Standard z. B. `12h`
+- `PASSWORD_RESET_MODE`: `email`, `admin_temp_password` oder `hybrid`
 
 ### Initialer Superadmin
 
@@ -326,6 +327,28 @@ SMTP_FROM=no-reply@example.org
 ```
 
 Wenn `SMTP_HOST` nicht gesetzt ist, werden Mail-Links typischerweise nur geloggt und nicht versendet.
+
+## Passwort-Reset ohne Mailversand
+
+Für klassische On-Prem-Installationen ohne SMTP empfiehlt sich:
+
+```env
+PASSWORD_RESET_MODE=admin_temp_password
+```
+
+Dann gilt:
+
+- der Link „Passwort vergessen?“ wird im Frontend deaktiviert
+- der Superadmin kann in der Benutzerverwaltung ein temporäres Passwort setzen
+- der betroffene Benutzer muss dieses nach dem Login sofort ändern
+
+Alternativ ist auch möglich:
+
+```env
+PASSWORD_RESET_MODE=hybrid
+```
+
+Dann kann der Superadmin je nach Situation zwischen Reset-Link und temporärem Passwort wählen.
 
 ## Dev Tools auf On-Prem
 

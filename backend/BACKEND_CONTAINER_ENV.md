@@ -117,6 +117,33 @@ Diese Variablen sind **optional** und werden vom Backend über `GET /auth/public
 - `RESET_TOKEN_EXPIRATION` (optional)
   - Default: `1h`
 
+## Passwort-Reset-Modus (On-Prem relevant)
+
+- `PASSWORD_RESET_MODE` (optional)
+  - Werte: `email`, `admin_temp_password`, `hybrid`
+  - Default: `email`
+
+Bedeutung:
+
+- `email`
+  - Standardverhalten wie bisher
+  - Benutzer können „Passwort vergessen?“ nutzen
+  - Superadmin stößt Reset-Link per E-Mail an
+
+- `admin_temp_password`
+  - Kein Self-Service-Reset per E-Mail
+  - Login-Seite blendet „Passwort vergessen?“ aus
+  - Superadmin setzt in der Benutzerverwaltung ein temporäres Passwort
+  - Der Benutzer wird nach Login auf die Passwortänderung geführt
+
+- `hybrid`
+  - Beide Wege sind verfügbar
+  - Superadmin kann zwischen Reset-Link und temporärem Passwort wählen
+
+Empfehlung für On-Prem ohne Mailversand:
+
+- `PASSWORD_RESET_MODE=admin_temp_password`
+
 Hinweis: In [backend/.env.example](../backend/.env.example) existiert auch `JWT_REFRESH_EXPIRATION` – aktuell wird im Backend-Code aber kein Refresh-Token-Flow genutzt.
 
 ## Seed Superadmin (Startup)
@@ -164,6 +191,11 @@ Weitere Details stehen in [backend/src/dev-tools/README.md](../backend/src/dev-t
 
 - `SMTP_FROM` (optional)
   - Default: `no-reply@stato.local`
+
+Hinweis:
+
+- Wenn `PASSWORD_RESET_MODE=admin_temp_password` gesetzt ist, ist SMTP für Passwort-Resets nicht erforderlich.
+- SMTP kann dann weiterhin für Einladungen oder andere Mailfunktionen genutzt werden.
 
 ## Docker Compose – Beispielwerte
 

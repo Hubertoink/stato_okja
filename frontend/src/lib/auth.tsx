@@ -4,7 +4,7 @@ import { api, setAuthToken } from './api';
 import { clearStoredAuthToken, getStoredAuthToken, storeAuthToken } from './authStorage';
 
 export type Role = 'superadmin' | 'org_admin' | 'user';
-export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string }
+export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean }
 
 type LoginResult = { ok: true } | { ok: false; error: string };
 

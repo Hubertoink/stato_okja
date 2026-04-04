@@ -64,6 +64,18 @@ function AuthedRoutes() {
 
   if (!user) return <Login />;
 
+  if (user.mustChangePassword) {
+    return (
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/me" replace />} />
+          <Route path="me" element={<MyProfile />} />
+          <Route path="*" element={<Navigate to="/me" replace />} />
+        </Route>
+      </Routes>
+    );
+  }
+
   return (
     <PostLoginPrefetch>
       <Routes>

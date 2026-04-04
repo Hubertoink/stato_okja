@@ -10,8 +10,12 @@ import { EmailService } from '../email/email.service';
 import type { UserRole } from '../users/entities/user.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
-import { getJwtSecret } from '../config/security.config';
 import { normalizeUploadPath } from '../common/upload-paths';
+
+export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
+export type AdminResetActionMode = 'email' | 'temporary_password';
+
+const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
 
 @Injectable()
 export class AuthService {
@@ -28,10 +32,62 @@ export class AuthService {
   ) {}
 
   private isPasswordStrong(pw: string) {
-    // Mindestens 6 Zeichen, mindestens eine Ziffer und ein Sonderzeichen
-    // Sonderzeichen: alles außer a-zA-Z0-9
     const re = /^(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
     return re.test(pw || '');
+  }
+
+  private getPasswordResetMode(): PasswordResetMode {
+    const raw = String(process.env.PASSWORD_RESET_MODE || 'email').trim().toLowerCase();
+    if (raw === 'admin_temp_password' || raw === 'hybrid' || raw === 'email') return raw;
+    return 'email';
+  }
+
+  getPublicPasswordResetConfig() {
+    const passwordResetMode = this.getPasswordResetMode();
+    return {
+      passwordResetMode,
+      forgotPasswordEnabled: passwordResetMode !== 'admin_temp_password',
+      adminTemporaryPasswordEnabled: passwordResetMode !== 'email',
+    };
+  }
+
+  private async savePassword(
+    user: User,
+    password: string,
+    options?: { mustChangePassword?: boolean; bumpResetVersion?: boolean },
+  ) {
+    if (!this.isPasswordStrong(password)) {
+      throw new BadRequestException(
+        'Passwort muss mind. 6 Zeichen, eine Zahl und ein Sonderzeichen enthalten',
+      );
+    }
+    user.passwordHash = await bcrypt.hash(password, 10);
+    if (options?.bumpResetVersion !== false) {
+      user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
+    }
+    user.mustChangePassword = options?.mustChangePassword === true;
+    await this.users.save(user);
+  }
+
+  private async issueResetToken(user: User) {
+    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
+    await this.users.save(user);
+    return this.jwt.signAsync(
+      { sub: user.id, purpose: 'reset', version: user.passwordResetTokenVersion },
+      { expiresIn: process.env.RESET_TOKEN_EXPIRATION || '1h' },
+    );
+  }
+
+  private async sendResetLink(user: User) {
+    const token = await this.issueResetToken(user);
+    const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
+    const link = `${origin}/reset-password?token=${token}`;
+    try {
+      await this.email.sendPasswordResetEmail(user.email, user.name || user.email, link);
+    } catch {
+      /* ignore email errors */
+    }
+    return { ok: true as const, mode: 'email' as const };
   }
 
   async ensureSeed() {
@@ -41,43 +97,42 @@ export class AuthService {
     const forcePassword = (process.env.SUPERADMIN_PASSWORD_FORCE || '').toLowerCase() === 'true';
     const existing = await this.users.findOne({ where: { role: 'superadmin' } });
     if (!existing) {
-      const u = this.users.create({
+      const user = this.users.create({
         email: seedEmail,
         name: 'Super Admin',
         role: 'superadmin',
         passwordHash: await bcrypt.hash(forcedPassword || 'admin', 10),
+        mustChangePassword: false,
       });
-      await this.users.save(u);
-    } else {
-      let changed = false;
-      if (forceEmail && existing.email.toLowerCase() !== seedEmail) {
-        // Optional: overwrite email so you can receive reset mails during testing/ops.
-        existing.email = seedEmail;
-        changed = true;
-      }
-
-      if (forcePassword && typeof forcedPassword === 'string' && forcedPassword.length >= 6) {
-        // IMPORTANT: only overwrite password when explicitly forced.
-        // Otherwise users changing the password in the UI would have it reverted on container restarts.
-        existing.passwordHash = await bcrypt.hash(forcedPassword, 10);
-        changed = true;
-      } else if (!existing.passwordHash) {
-        // If somehow no password is set (e.g., legacy/invited user), ensure a default.
-        existing.passwordHash = await bcrypt.hash(forcedPassword || 'admin', 10);
-        changed = true;
-      }
-      if (changed) await this.users.save(existing);
+      await this.users.save(user);
+      return;
     }
+
+    let changed = false;
+    if (forceEmail && existing.email.toLowerCase() !== seedEmail) {
+      existing.email = seedEmail;
+      changed = true;
+    }
+    if (forcePassword && typeof forcedPassword === 'string' && forcedPassword.length >= 6) {
+      existing.passwordHash = await bcrypt.hash(forcedPassword, 10);
+      existing.mustChangePassword = false;
+      changed = true;
+    } else if (!existing.passwordHash) {
+      existing.passwordHash = await bcrypt.hash(forcedPassword || 'admin', 10);
+      existing.mustChangePassword = false;
+      changed = true;
+    }
+    if (changed) await this.users.save(existing);
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
-    const u = await this.users
+    const user = await this.users
       .createQueryBuilder('u')
       .where('LOWER(u.email) = LOWER(:email)', { email })
       .getOne();
-    if (!u) return null;
-    const ok = await bcrypt.compare(password, u.passwordHash || '');
-    return ok ? u : null;
+    if (!user) return null;
+    const ok = await bcrypt.compare(password, user.passwordHash || '');
+    return ok ? user : null;
   }
 
   async loginWithPassword(email: string, password: string) {
@@ -91,7 +146,6 @@ export class AuthService {
 
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    // Clear lockout if expired
     if (user.lockoutUntil && user.lockoutUntil.getTime() <= now.getTime()) {
       user.lockoutUntil = null;
       user.failedLoginAttempts = 0;
@@ -108,8 +162,10 @@ export class AuthService {
       );
     }
 
-    // Reset attempt window if last failure is long ago
-    if (user.lastFailedLoginAt && now.getTime() - user.lastFailedLoginAt.getTime() > this.LOGIN_LOCKOUT_MS) {
+    if (
+      user.lastFailedLoginAt &&
+      now.getTime() - user.lastFailedLoginAt.getTime() > this.LOGIN_LOCKOUT_MS
+    ) {
       user.failedLoginAttempts = 0;
       user.lastFailedLoginAt = null;
       await this.users.save(user);
@@ -126,7 +182,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Successful login resets counters
     if (user.failedLoginAttempts || user.lockoutUntil || user.lastFailedLoginAt) {
       user.failedLoginAttempts = 0;
       user.lockoutUntil = null;
@@ -143,12 +198,14 @@ export class AuthService {
     const orgName = user.orgId
       ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
       : null;
-    const avatarUrl = normalizeUploadPath((user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null);
+    const avatarUrl = normalizeUploadPath(
+      (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
+    );
     const rawTheme = (user as unknown as { theme?: string }).theme;
-    // Normalize missing/legacy theme values to the new default so first-visit users see the proper theme
     const theme =
-      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel' ? 'Default Theme' : rawTheme;
-    // Audit successful login (for superadmin metrics)
+      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
+        ? 'Default Theme'
+        : rawTheme;
     try {
       await this.audit.log({
         action: AuditAction.LOGIN,
@@ -159,7 +216,7 @@ export class AuthService {
         orgId: user.orgId ?? null,
       });
     } catch {
-      // Do not block login on audit failure
+      /* ignore audit errors */
     }
 
     return {
@@ -173,6 +230,7 @@ export class AuthService {
         orgName,
         avatarUrl,
         theme,
+        mustChangePassword: user.mustChangePassword === true,
       },
     };
   }
@@ -186,20 +244,25 @@ export class AuthService {
   }) {
     const email = payload.email.toLowerCase();
     let user = await this.users.findOne({ where: { email } });
-    // If no orgId but orgName provided by superadmin, create organization automatically
     let resolvedOrgId: string | null | undefined = payload.orgId;
+
     if (!resolvedOrgId && payload.orgName) {
       const existingOrg = await this.orgs.findOne({ where: { name: payload.orgName } });
-      if (existingOrg) resolvedOrgId = existingOrg.id;
-      else {
+      if (existingOrg) {
+        resolvedOrgId = existingOrg.id;
+      } else {
         const newOrg = this.orgs.create({ name: payload.orgName });
-        const saved = await this.orgs.save(newOrg);
-        // Default Location for org
-        const loc = this.locations.create({ name: payload.orgName, active: true, orgId: saved.id });
-        await this.locations.save(loc);
-        resolvedOrgId = saved.id;
+        const savedOrg = await this.orgs.save(newOrg);
+        const location = this.locations.create({
+          name: payload.orgName,
+          active: true,
+          orgId: savedOrg.id,
+        });
+        await this.locations.save(location);
+        resolvedOrgId = savedOrg.id;
       }
     }
+
     if (!user) {
       const role: UserRole = (payload.role ?? 'user') as UserRole;
       user = this.users.create({
@@ -208,14 +271,16 @@ export class AuthService {
         role,
         orgId: (typeof resolvedOrgId !== 'undefined' ? resolvedOrgId : payload.orgId) ?? null,
         passwordHash: null,
+        mustChangePassword: false,
       });
     } else {
-      // reset password and update role/org if provided
       user.name = payload.name || user.name;
       if (payload.role) user.role = payload.role as UserRole;
       if (typeof resolvedOrgId !== 'undefined') user.orgId = resolvedOrgId ?? null;
-      user.passwordHash = null; // mark as invited
+      user.passwordHash = null;
+      user.mustChangePassword = false;
     }
+
     await this.users.save(user);
     const token = await this.jwt.signAsync(
       { sub: user.id, purpose: 'invite' },
@@ -225,12 +290,18 @@ export class AuthService {
     const link = `${origin}/accept-invite?token=${token}`;
     try {
       await this.email.sendInviteEmail(user.email, user.name || user.email, link);
-    } catch (e) {
+    } catch {
       /* ignore email errors */
     }
     return {
       token,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role, orgId: user.orgId },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        orgId: user.orgId,
+      },
     };
   }
 
@@ -242,13 +313,7 @@ export class AuthService {
     const user = await this.users.findOne({ where: { id: decoded.sub } });
     if (!user) throw new Error('User not found');
     if (user.passwordHash) throw new Error('Invite already accepted');
-    if (!this.isPasswordStrong(password)) {
-      throw new BadRequestException(
-        'Passwort muss mind. 6 Zeichen, eine Zahl und ein Sonderzeichen enthalten',
-      );
-    }
-    user.passwordHash = await bcrypt.hash(password, 10);
-    await this.users.save(user);
+    await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
     return this.login(user);
   }
 
@@ -258,11 +323,14 @@ export class AuthService {
     const orgName = user.orgId
       ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
       : null;
-    const avatarUrl = normalizeUploadPath((user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null);
+    const avatarUrl = normalizeUploadPath(
+      (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
+    );
     const rawTheme = (user as unknown as { theme?: string }).theme;
-    // Normalize missing/legacy theme values to the new default so first-visit users see the proper theme
     const theme =
-      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel' ? 'Default Theme' : rawTheme;
+      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
+        ? 'Default Theme'
+        : rawTheme;
     return {
       id: user.id,
       email: user.email,
@@ -272,6 +340,7 @@ export class AuthService {
       orgName,
       avatarUrl,
       theme,
+      mustChangePassword: user.mustChangePassword === true,
     };
   }
 
@@ -282,10 +351,14 @@ export class AuthService {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
     if (typeof patch.name === 'string') user.name = patch.name;
-    if (typeof patch.avatarUrl !== 'undefined')
-      (user as unknown as { avatarUrl?: string | null }).avatarUrl = normalizeUploadPath(patch.avatarUrl);
-    if (typeof patch.theme === 'string')
+    if (typeof patch.avatarUrl !== 'undefined') {
+      (user as unknown as { avatarUrl?: string | null }).avatarUrl = normalizeUploadPath(
+        patch.avatarUrl,
+      );
+    }
+    if (typeof patch.theme === 'string') {
       (user as unknown as { theme?: string }).theme = patch.theme;
+    }
     await this.users.save(user);
     return this.getProfile(user.id);
   }
@@ -297,36 +370,19 @@ export class AuthService {
     }
     const ok = await bcrypt.compare(currentPassword || '', user.passwordHash || '');
     if (!ok) throw new Error('Aktuelles Passwort ist falsch');
-    if (!this.isPasswordStrong(newPassword)) {
-      throw new BadRequestException(
-        'Passwort muss mind. 6 Zeichen, eine Zahl und ein Sonderzeichen enthalten',
-      );
-    }
-    user.passwordHash = await bcrypt.hash(newPassword, 10);
-    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
-    await this.users.save(user);
+    await this.savePassword(user, newPassword, { mustChangePassword: false, bumpResetVersion: true });
     return { ok: true };
   }
 
   async requestPasswordReset(emailRaw: string) {
+    const resetConfig = this.getPublicPasswordResetConfig();
+    if (!resetConfig.forgotPasswordEnabled) return { ok: true, disabled: true };
+
     const email = (emailRaw || '').toLowerCase().trim();
     if (!email) return { ok: true };
     const user = await this.users.findOne({ where: { email } });
-    // Do not leak existence of the account
     if (!user) return { ok: true };
-    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
-    await this.users.save(user);
-    const token = await this.jwt.signAsync(
-      { sub: user.id, purpose: 'reset', version: user.passwordResetTokenVersion },
-      { expiresIn: process.env.RESET_TOKEN_EXPIRATION || '1h' },
-    );
-    const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
-    const link = `${origin}/reset-password?token=${token}`;
-    try {
-      await this.email.sendPasswordResetEmail(user.email, user.name || user.email, link);
-    } catch {
-      /* ignore email errors */
-    }
+    await this.sendResetLink(user);
     return { ok: true };
   }
 
@@ -340,33 +396,56 @@ export class AuthService {
     if ((decoded.version ?? -1) !== (user.passwordResetTokenVersion || 0)) {
       throw new Error('Reset token bereits verbraucht oder ersetzt');
     }
-    if (!this.isPasswordStrong(password)) {
-      throw new BadRequestException(
-        'Passwort muss mind. 6 Zeichen, eine Zahl und ein Sonderzeichen enthalten',
-      );
-    }
-    user.passwordHash = await bcrypt.hash(password, 10);
-    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
-    await this.users.save(user);
+    await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: true });
     return { ok: true };
   }
 
-  async adminResetPassword(userId: string) {
+  async adminResetPassword(
+    userId: string,
+    options?: {
+      mode?: AdminResetActionMode;
+      temporaryPassword?: string;
+      actor?: { id?: string; name?: string | null; orgId?: string | null };
+    },
+  ) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
-    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
-    await this.users.save(user);
-    const token = await this.jwt.signAsync(
-      { sub: user.id, purpose: 'reset', version: user.passwordResetTokenVersion },
-      { expiresIn: process.env.RESET_TOKEN_EXPIRATION || '1h' },
-    );
-    const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
-    const link = `${origin}/reset-password?token=${token}`;
-    try {
-      await this.email.sendPasswordResetEmail(user.email, user.name || user.email, link);
-    } catch {
-      /* ignore email errors */
+
+    const resetConfig = this.getPublicPasswordResetConfig();
+    let actionMode: AdminResetActionMode;
+    if (resetConfig.passwordResetMode === 'admin_temp_password') {
+      actionMode = 'temporary_password';
+    } else if (resetConfig.passwordResetMode === 'email') {
+      actionMode = 'email';
+    } else {
+      actionMode = options?.mode === 'temporary_password' ? 'temporary_password' : 'email';
     }
-    return { ok: true };
+
+    if (actionMode === 'temporary_password') {
+      const temporaryPassword = String(options?.temporaryPassword || '');
+      if (!temporaryPassword) {
+        throw new BadRequestException('Temporäres Passwort erforderlich');
+      }
+      await this.savePassword(user, temporaryPassword, {
+        mustChangePassword: true,
+        bumpResetVersion: true,
+      });
+      try {
+        await this.audit.log({
+          action: AuditAction.UPDATE,
+          entityType: 'user-password',
+          entityId: user.id,
+          entityTitle: user.email || user.name || null,
+          user: options?.actor,
+          orgId: user.orgId ?? null,
+          details: { resetMode: 'temporary_password', mustChangePassword: true },
+        });
+      } catch {
+        /* ignore audit errors */
+      }
+      return { ok: true as const, mode: 'temporary_password' as const, mustChangePassword: true };
+    }
+
+    return this.sendResetLink(user);
   }
 }

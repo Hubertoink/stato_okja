@@ -3,14 +3,29 @@
 This document summarizes the end-to-end password reset capability in Stato.
 
 ## Overview
-Users who forget their password can request a reset email. The email contains a time-limited token (purpose = `reset`) that allows setting a new password without being logged in.
+StatO supports two operational reset patterns:
+
+- Email-based self-service reset
+- Superadmin-managed temporary password reset
+
+The active behavior depends on `PASSWORD_RESET_MODE`.
 
 ## User Journey
-1. Navigate to the login page and click "Passwort vergessen?" → routed to `/reset-request`.
+Email mode:
+
+1. Navigate to the login page and click "Passwort vergessen?".
 2. Enter email and submit.
 3. Backend sends an email with a link: `${APP_ORIGIN}/reset-password?token=<token>`.
 4. User opens link, enters new password twice, submits.
 5. On success, UI shows confirmation with a direct Login link.
+
+Admin temporary password mode:
+
+1. Superadmin opens user management.
+2. Superadmin sets a temporary password for a user.
+3. User logs in with that temporary password.
+4. UI redirects the user to the password change screen.
+5. After changing the password, normal app navigation is re-enabled.
 
 ## Backend Endpoints (AuthController)
 - `POST /auth/request-password-reset` body: `{ email: string }`
@@ -18,7 +33,9 @@ Users who forget their password can request a reset email. The email contains a 
   - Always returns 200 (ambiguous response) to avoid email enumeration.
 - `POST /auth/reset-password` body: `{ token: string, password: string }`
   - Validates token purpose + expiration, updates password, invalidates token.
-- `POST /auth/admin-reset-password` (restricted) for administrators to directly set a password.
+- `POST /auth/admin-reset-password` (restricted)
+  - can send a reset link
+  - or set a temporary password directly, depending on config and request mode
 
 ## Token Behavior
 - Stored with purpose (`invite` vs `reset`) and expiration (`RESET_TOKEN_EXPIRATION`).
@@ -37,6 +54,7 @@ Add (or confirm) the following in your `.env` / deployment secrets:
 APP_ORIGIN=https://app.example.com
 RESET_TOKEN_EXPIRATION=3600            # seconds
 INVITE_TOKEN_EXPIRATION=604800         # seconds (7 days)
+PASSWORD_RESET_MODE=email              # email | admin_temp_password | hybrid
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=your_user
@@ -55,6 +73,7 @@ SMTP_FROM=Stato <support@yourdomain.de>
 ## Security Notes
 - Ambiguous response on request avoids disclosing user existence.
 - Tokens are purpose-scoped to prevent using invite tokens to reset passwords.
+- Temporary admin-set passwords mark the account as `mustChangePassword` until the user changes it.
 - Recommend enabling rate limiting (not yet implemented) on `/auth/request-password-reset`.
 - Encourage strong passwords (client-side validation; server-side minimum length enforced by service logic).
 

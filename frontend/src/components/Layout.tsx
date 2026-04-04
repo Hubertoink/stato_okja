@@ -26,6 +26,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const restrictToPasswordChange = user?.mustChangePassword === true;
   const { scope, setScope, switching: orgSwitching } = useOrgScope();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
 
@@ -322,7 +323,7 @@ export default function Layout() {
                       Meine Daten
                     </button>
                   </li>
-                  {(user?.role === 'org_admin' || user?.role === 'superadmin') && (
+                  {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
                     <li>
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"
@@ -335,7 +336,7 @@ export default function Layout() {
                       </button>
                     </li>
                   )}
-                  {(user?.role === 'org_admin' || user?.role === 'superadmin') && (
+                  {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
                     <li>
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"
@@ -348,7 +349,7 @@ export default function Layout() {
                       </button>
                     </li>
                   )}
-                  {canAccessDevTools(user?.role) && (
+                  {!restrictToPasswordChange && canAccessDevTools(user?.role) && (
                     <li>
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"
@@ -361,7 +362,7 @@ export default function Layout() {
                       </button>
                     </li>
                   )}
-                  {user?.role === 'superadmin' && (
+                  {!restrictToPasswordChange && user?.role === 'superadmin' && (
                     <li>
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"
@@ -374,7 +375,7 @@ export default function Layout() {
                       </button>
                     </li>
                   )}
-                  {(user?.role === 'org_admin' || user?.role === 'superadmin') && (
+                  {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
                     <li>
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"
@@ -406,7 +407,7 @@ export default function Layout() {
       </header>
 
       {/* Navigation (desktop) - fixed under header */}
-      <nav className="nav-surface hidden md:block fixed top-14 md:top-20 inset-x-0 z-30">
+      {!restrictToPasswordChange && <nav className="nav-surface hidden md:block fixed top-14 md:top-20 inset-x-0 z-30">
         <div className="container mx-auto px-4">
           <ul className="flex space-x-1">
             <li>
@@ -495,10 +496,10 @@ export default function Layout() {
             </li>
           </ul>
         </div>
-      </nav>
+      </nav>}
 
       {/* Tiny spacer below fixed desktop nav for visual breathing room */}
-      <div className="hidden md:block h-[5px]" aria-hidden="true" />
+      {!restrictToPasswordChange && <div className="hidden md:block h-[5px]" aria-hidden="true" />}
 
       {/* Main Content */}
       <main
@@ -511,12 +512,12 @@ export default function Layout() {
       {quickTallyOpen && (
         <QuickTally onClose={() => setQuickTallyOpen(false)} onMinimize={minimizeQuickTally} />
       )}
-      {!!quickTallySession && !quickTallyOpen && (
+      {!restrictToPasswordChange && !!quickTallySession && !quickTallyOpen && (
         <QuickTallyMinimizedPill onRestore={openQuickTally} />
       )}
 
       {/* Bottom Navigation (mobile) */}
-      <nav
+      {!restrictToPasswordChange && <nav
         className={`fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-lg md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
       >
         <ul className="grid grid-cols-6 text-xs">
@@ -575,10 +576,10 @@ export default function Layout() {
             </Link>
           </li>
         </ul>
-      </nav>
+      </nav>}
 
       {/* Footer (hidden on full activity views or while keyboard open) */}
-      {!hideFooter && (
+      {!hideFooter && !restrictToPasswordChange && (
         <footer className="mt-12">
           <div className="w-full px-4 py-6 text-center text-sm text-gray-700 bg-white/60 backdrop-blur-md supports-[backdrop-filter]:bg-white/45 border-t border-white/50">
             <p>

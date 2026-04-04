@@ -1780,11 +1780,11 @@ export default function Statistics() {
           
           {/* Pagination Controls */}
           {totalActivityPages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-              <div className="text-xs text-gray-500">
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <div className="mb-3 text-xs text-gray-500 sm:mb-0">
                 Zeige {((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, (activities as Activity[]).length)} von {(activities as Activity[]).length}
               </div>
-              <div className="flex items-center gap-1">
+              <div className={`flex gap-1 ${isMobile ? 'flex-wrap items-center justify-start' : 'items-center justify-end'}`}>
                 <button
                   onClick={() => setActivitiesPage(1)}
                   disabled={activitiesPage === 1}

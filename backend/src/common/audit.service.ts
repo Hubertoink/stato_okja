@@ -10,7 +10,7 @@ import { Organization } from '../orgs/entities/organization.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
 import { Attachment } from '../activities/entities/attachment.entity';
-import { normalizeUploadPath } from '../uploads/upload-paths';
+import { normalizeUploadPath } from './upload-paths';
 
 @Injectable()
 export class AuditService {

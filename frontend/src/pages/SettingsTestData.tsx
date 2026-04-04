@@ -57,8 +57,14 @@ function formatTime(timestamp: number) {
 
 function formatDuration(durationMs?: number) {
   if (typeof durationMs !== 'number') return '—';
+  if (durationMs < 1) return '<1 ms';
+  if (durationMs < 10) return `${durationMs.toFixed(1)} ms`;
   if (durationMs >= 1000) return `${(durationMs / 1000).toFixed(2)} s`;
   return `${Math.round(durationMs)} ms`;
+}
+
+function isCacheHitInfoEvent(event: { kind: string; status: string; meta?: Record<string, unknown> }) {
+  return event.kind === 'flow' && event.status === 'info' && event.meta?.cacheHit === true;
 }
 
 function downloadMetricsSnapshot() {
@@ -84,6 +90,7 @@ export default function SettingsTestData() {
   const [preset, setPreset] = useState<TestDataPreset>('realistic');
   const [clearExisting, setClearExisting] = useState(true);
   const [lastResult, setLastResult] = useState<GenerateTestDataResult | null>(null);
+  const [showCacheHitEvents, setShowCacheHitEvents] = useState(false);
 
   const canUse = user?.role === 'superadmin' || user?.role === 'org_admin';
   const requiresScopedOrg = user?.role === 'superadmin';
@@ -93,7 +100,10 @@ export default function SettingsTestData() {
     [preset],
   );
   const recentFlows = useMemo(() => metrics.flows.slice(0, 6), [metrics.flows]);
-  const recentEvents = useMemo(() => metrics.events.slice(0, 40), [metrics.events]);
+  const recentEvents = useMemo(
+    () => metrics.events.filter((event) => showCacheHitEvents || !isCacheHitInfoEvent(event)).slice(0, 40),
+    [metrics.events, showCacheHitEvents],
+  );
   const errorCount = useMemo(
     () => metrics.events.filter((event) => event.status === 'error').length,
     [metrics.events],
@@ -210,7 +220,10 @@ export default function SettingsTestData() {
                   <div className="space-y-1">
                     {flow.marks.map((mark, index) => (
                       <div key={`${flow.id}-${index}`} className="text-xs text-gray-600 flex items-center justify-between gap-3">
-                        <span>{mark.label}</span>
+                        <span>
+                          {mark.label}
+                          {mark.meta?.fetched === false ? ' · cache' : ''}
+                        </span>
                         <span>{formatDuration(mark.sinceStartMs)}</span>
                       </div>
                     ))}
@@ -226,12 +239,22 @@ export default function SettingsTestData() {
             <Activity className="w-4 h-4 text-viridian" />
             Live-Datenladelog
           </div>
-          <div className="text-sm text-gray-600">
-            Enthält HTTP-Requests, Query-Ladephasen und Flow-Events aus der aktuellen Browser-Session.
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm text-gray-600">
+              Enthält HTTP-Requests, Query-Ladephasen und Flow-Events aus der aktuellen Browser-Session.
+            </div>
+            <label className="inline-flex items-center gap-2 text-xs text-gray-600">
+              <input
+                type="checkbox"
+                checked={showCacheHitEvents}
+                onChange={(e) => setShowCacheHitEvents(e.target.checked)}
+              />
+              Cache-Hits anzeigen
+            </label>
           </div>
           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
             {recentEvents.length === 0 && (
-              <div className="text-sm text-gray-500">Noch keine Events vorhanden.</div>
+              <div className="text-sm text-gray-500">Keine sichtbaren Events vorhanden.</div>
             )}
             {recentEvents.map((event) => (
               <div key={event.id} className="rounded-xl border border-gray-200 p-3">

@@ -26,7 +26,8 @@ export class ActivitiesService {
     private readonly audit: AuditService,
   ) {}
 
-  private buildListQuery(filters?: {
+  private buildListQuery(
+    filters?: {
     from?: string;
     to?: string;
     type?: string;
@@ -47,18 +48,22 @@ export class ActivitiesService {
     orgId?: string | null;
     orgIds?: string[];
     order?: 'asc' | 'desc';
-  }) {
+    },
+    options?: {
+      includeStaff?: boolean;
+    },
+  ) {
     const qb = this.activityRepository
       .createQueryBuilder('a')
       .leftJoinAndSelect('a.location', 'location')
       .leftJoinAndSelect('a.categories', 'categories')
       .leftJoinAndSelect('a.tags', 'tags')
-      .leftJoinAndSelect('a.staff', 'staff')
-      .leftJoinAndSelect('a.attachments', 'attachments')
       .leftJoinAndSelect('a.project', 'project')
-      .leftJoinAndSelect('a.createdBy', 'createdBy')
-      .leftJoinAndSelect('a.updatedBy', 'updatedBy')
       .distinct(true);
+
+    if (options?.includeStaff !== false) {
+      qb.leftJoinAndSelect('a.staff', 'staff');
+    }
 
     if (filters?.from && filters?.to) {
       qb.andWhere('a.date BETWEEN :from AND :to', { from: filters.from, to: filters.to });
@@ -158,7 +163,7 @@ export class ActivitiesService {
     orgIds?: string[];
     order?: 'asc' | 'desc';
   }): Promise<Activity[]> {
-    const qb = this.buildListQuery(filters);
+    const qb = this.buildListQuery(filters, { includeStaff: true });
     return qb.getMany();
   }
 
@@ -184,7 +189,7 @@ export class ActivitiesService {
     page: number;
     limit: number;
   }): Promise<{ data: Activity[]; total: number; page: number; pageSize: number }> {
-    const qb = this.buildListQuery(filters);
+    const qb = this.buildListQuery(filters, { includeStaff: false });
     const page = Math.max(filters.page || 1, 1);
     const limit = Math.min(Math.max(filters.limit || 50, 1), 50);
     qb.take(limit).skip((page - 1) * limit);

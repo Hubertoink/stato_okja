@@ -14,6 +14,8 @@ export default function OrgUserManagement() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { scope } = useOrgScope();
+  const isScopedOrgView = typeof scope === 'string';
+  const isSuperadminUnscoped = user?.role === 'superadmin' && !isScopedOrgView;
 
   // Create user modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -139,7 +141,7 @@ export default function OrgUserManagement() {
             Benutzer verwalten
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            {typeof scope === 'string' ? activeOrgName : 'Alle Benutzer im System'}
+            {isScopedOrgView ? activeOrgName : isSuperadminUnscoped ? 'Superadmin Bereich ohne Org-Auswahl' : 'Benutzer in Ihrer Organisation'}
           </p>
         </div>
         <button
@@ -153,6 +155,11 @@ export default function OrgUserManagement() {
 
       {/* Search & User List */}
       <div className="bg-white rounded-lg shadow">
+        {isSuperadminUnscoped && (
+          <div className="mx-4 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Im Superadmin-Bereich werden absichtlich keine Organisations-Benutzer geladen. Wählen Sie oben zuerst eine Organisation aus, dann sehen Sie wieder die Benutzer dieser Organisation und ihrer Unterorganisationen.
+          </div>
+        )}
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
@@ -189,7 +196,11 @@ export default function OrgUserManagement() {
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 mb-4">
-                {searchQuery ? 'Keine Benutzer gefunden' : `Noch keine Benutzer${typeof scope === 'string' ? ` in ${activeOrgName}` : ''}`}
+                {searchQuery
+                  ? 'Keine Benutzer gefunden'
+                  : isSuperadminUnscoped
+                    ? 'Ohne ausgewählte Organisation wird hier bewusst keine Benutzerliste angezeigt'
+                    : `Noch keine Benutzer${isScopedOrgView ? ` in ${activeOrgName}` : ''}`}
               </p>
               {!searchQuery && (
                 <button

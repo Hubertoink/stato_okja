@@ -48,11 +48,19 @@ export default function Settings() {
 
       {/* Tab Navigation */}
       {isMobile ? (
-        <div className="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div className="relative mb-6 z-20">
+          {mobileMenuOpen && (
+            <button
+              type="button"
+              aria-label="Menü schließen"
+              className="fixed inset-0 z-10 bg-transparent"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+          )}
           <button
             type="button"
             onClick={() => setMobileMenuOpen((open) => !open)}
-            className="w-full flex items-center justify-between gap-4 px-4 py-4 text-left"
+            className="relative z-20 w-full flex items-center justify-between gap-4 rounded-lg bg-white px-4 py-4 text-left shadow"
             aria-expanded={mobileMenuOpen}
             aria-controls="settings-mobile-navigation"
           >
@@ -72,7 +80,10 @@ export default function Settings() {
           </button>
 
           {mobileMenuOpen && (
-            <div id="settings-mobile-navigation" className="border-t border-gray-100 bg-gray-50/70 px-3 py-3">
+            <div
+              id="settings-mobile-navigation"
+              className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-gray-100 bg-white/95 px-3 py-3 shadow-2xl backdrop-blur"
+            >
               <div className="flex flex-col gap-2">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;

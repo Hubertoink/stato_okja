@@ -35,7 +35,7 @@ type AuditMetricsResponse = {
 
 function formatBytes(bytes: number) {
   const n = Number(bytes) || 0;
-  if (n === 0) return '–';
+  if (n === 0) return '0 B';
   if (n < 1024) return `${n} B`;
   const kb = n / 1024;
   if (kb < 1024) return `${kb.toFixed(1)} KB`;
@@ -141,7 +141,7 @@ export default function SuperAdminAudit() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
                 <h3 className="font-semibold text-gray-900">Organisationen</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Sortiert nach Speicherverbrauch (Anhänge)</p>
+                <p className="text-xs text-gray-500 mt-0.5">Sortiert nach Speicherverbrauch (Anhänge + Projektbilder)</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

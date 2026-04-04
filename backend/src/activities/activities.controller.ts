@@ -163,12 +163,6 @@ export class ActivitiesController {
     return this.activitiesService.findAll(filters);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Aktivität nach ID abrufen' })
-  findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string | null } }) {
-    return this.activitiesService.findOneScoped(id, req.user);
-  }
-
   // Acknowledgments (Daily Log "done" flag)
   @Get('acks')
   @ApiOperation({ summary: 'Ack-Status (done) für eine Liste von Aktivitäten abrufen' })
@@ -206,6 +200,12 @@ export class ActivitiesController {
       orgId = undefined;
     }
     return this.activitiesService.getAcks(ids, { orgId, orgIds });
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Aktivität nach ID abrufen' })
+  findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string | null } }) {
+    return this.activitiesService.findOneScoped(id, req.user);
   }
 
   @Patch(':id/ack')

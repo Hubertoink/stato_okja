@@ -3,8 +3,8 @@ import type { QueryClient } from '@tanstack/react-query';
 import { devToolsFeatureEnabled } from './devToolsConfig';
 
 export type DevMetricKind = 'http' | 'query' | 'flow';
-export type DevMetricStatus = 'start' | 'success' | 'error' | 'info';
-export type DevFlowStatus = 'running' | 'success' | 'error';
+export type DevMetricStatus = 'start' | 'success' | 'error' | 'info' | 'cancelled';
+export type DevFlowStatus = 'running' | 'success' | 'error' | 'cancelled';
 
 export interface DevMetricEvent {
   id: string;
@@ -182,7 +182,7 @@ export function markDevFlow(id: string | null | undefined, label: string, meta?:
 
 export function finishDevFlow(
   id: string | null | undefined,
-  status: Extract<DevFlowStatus, 'success' | 'error'>,
+  status: Extract<DevFlowStatus, 'success' | 'error' | 'cancelled'>,
   meta?: Record<string, unknown>,
 ) {
   if (!id || !devToolsFeatureEnabled || !state.enabled) return;
@@ -205,7 +205,7 @@ export function finishDevFlow(
   emit();
   addDevMetricEvent({
     kind: 'flow',
-    status,
+    status: status === 'cancelled' ? 'cancelled' : status,
     name: finishedFlow.name,
     durationMs: finishedFlow.durationMs,
     meta: finishedFlow.meta,

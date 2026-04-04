@@ -10,6 +10,7 @@ import { Organization } from '../orgs/entities/organization.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
 import { Attachment } from '../activities/entities/attachment.entity';
+import { normalizeUploadPath } from './upload-paths';
 
 @Injectable()
 export class AuditService {
@@ -166,9 +167,9 @@ export class AuditService {
     const uploadsDir = join(process.cwd(), 'uploads', 'images');
     const projectImageFsBytesByOrg = new Map<string, number>();
     for (const r of projectImagesNeedingSize) {
-      const url = String(r.imageUrl || '');
-      if (!url.startsWith(uploadsPrefix)) continue;
-      const filename = basename(url);
+      const normalizedUrl = normalizeUploadPath(r.imageUrl);
+      if (!normalizedUrl || !normalizedUrl.startsWith(uploadsPrefix)) continue;
+      const filename = basename(normalizedUrl);
       try {
         const size = statSync(join(uploadsDir, filename)).size;
         projectImageFsBytesByOrg.set(r.orgId, (projectImageFsBytesByOrg.get(r.orgId) ?? 0) + size);

@@ -211,7 +211,7 @@ export default function SettingsTestData() {
                     <div className="text-xs text-gray-500">{formatTime(flow.startedAt)}</div>
                   </div>
                   <div className="text-right">
-                    <div className={`text-xs font-medium ${flow.status === 'error' ? 'text-red-700' : flow.status === 'success' ? 'text-viridian' : 'text-amber-700'}`}>
+                    <div className={`text-xs font-medium ${flow.status === 'error' ? 'text-red-700' : flow.status === 'success' ? 'text-viridian' : flow.status === 'cancelled' ? 'text-gray-500' : 'text-amber-700'}`}>
                       {flow.status}
                     </div>
                     <div className="text-sm text-gray-700">{formatDuration(flow.durationMs)}</div>
@@ -263,7 +263,7 @@ export default function SettingsTestData() {
                   <div>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="uppercase tracking-wide text-[10px] text-gray-500">{event.kind}</span>
-                      <span className={`text-[10px] font-medium ${event.status === 'error' ? 'text-red-700' : event.status === 'success' ? 'text-viridian' : event.status === 'start' ? 'text-amber-700' : 'text-gray-500'}`}>
+                      <span className={`text-[10px] font-medium ${event.status === 'error' ? 'text-red-700' : event.status === 'success' ? 'text-viridian' : event.status === 'start' ? 'text-amber-700' : event.status === 'cancelled' ? 'text-gray-500' : 'text-gray-500'}`}>
                         {event.status}
                       </span>
                     </div>

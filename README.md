@@ -18,6 +18,7 @@ StatO kann grundsätzlich auf zwei Arten genutzt werden:
 - **Hosted (von uns betrieben):** Frontend unter `https://app.stato-okja.de` (Dev: `https://devapp.stato-okja.de`) spricht mit dem Backend unter `https://api.stato-okja.de/api` (Dev: `https://devapi.stato-okja.de/api`).
 - **On‑Prem / Local (selbst betrieben):** Betrieb im eigenen Netz/auf eigener Infrastruktur via Docker Compose.
 	- Anleitung: [docs/LOCAL_SETUP_ONPREM.md](docs/LOCAL_SETUP_ONPREM.md)
+	- Schritt-für-Schritt Docker-Anleitung: [docs/DOCKER_ONPREM_SETUP.md](docs/DOCKER_ONPREM_SETUP.md)
 	- Dateien: [docker-compose.onprem.yml](docker-compose.onprem.yml) + [.env.onprem.example](.env.onprem.example)
 
 ### Voraussetzungen

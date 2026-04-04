@@ -18,10 +18,11 @@ import {
   LabelList,
 } from 'recharts';
 import { useAuth } from '@/lib/auth';
-import { useActivities, type Activity } from '@/lib/activities';
+import { useActivitiesPaged, type Activity } from '@/lib/activities';
 import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useOrgScopeKey } from '@/lib/orgScope';
+import { useIsMobile } from '@/lib/useIsMobile';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -39,98 +40,40 @@ const TYPE_LABEL: Record<string, string> = {
 
 const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
 
-function useStatsSummary(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:summary', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/summary', { params });
-      return res.data as {
-        totalActivities: number;
-        totalParticipants: number;
-        totalMale: number;
-        totalFemale: number;
-        totalDiverse: number;
-        totalDurationMinutes: number;
-        totalHours: number;
-        averageParticipants: number;
-      };
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
+type StatsOverviewResponse = {
+  summary: {
+    totalActivities: number;
+    totalParticipants: number;
+    totalMale: number;
+    totalFemale: number;
+    totalDiverse: number;
+    totalDurationMinutes: number;
+    totalHours: number;
+    averageParticipants: number;
+  };
+  byType: Array<{ type: string; count: number; totalParticipants: number }>;
+  gender: { male: number; female: number; diverse: number };
+  participantsTimeseries: Array<{ date: string; totalParticipants: number; activityCount: number }>;
+  byCohort: Array<{
+    cohortId: string;
+    name: string;
+    total: number;
+    male: number;
+    female: number;
+    diverse: number;
+  }>;
+  byCategory: Array<{ id: string; name: string; count: number }>;
+  topTags: Array<{ id: string; name: string; count: number }>;
+  topProjects: Array<{ id: string; name: string; count: number }>;
+  availableYears: string[];
+};
 
-function useStatsByType(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
+function useStatsOverview(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:by-type', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
+    queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
     queryFn: async () => {
-      const res = await api.get('/stats/by-type', { params });
-      return res.data as Array<{ type: string; count: number }>;
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
-
-function useStatsGender(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:gender', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/gender', { params });
-      return res.data as { male: number; female: number; diverse: number };
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
-
-function useStatsParticipantsTimeseries(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:participants-timeseries', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/participants-timeseries', { params });
-      return res.data as Array<{ date: string; totalParticipants: number }>;
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
-
-function useStatsByCohort(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:by-cohort', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/by-cohort', { params });
-      return res.data as Array<{
-        cohortId: string;
-        name: string;
-        total: number;
-        male: number;
-        female: number;
-        diverse: number;
-      }>;
-    },
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    placeholderData: keepPreviousData,
-  });
-}
-
-function useStatsByCategory(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
-  return useQuery({
-    queryKey: ['stats:by-category', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
-    queryFn: async () => {
-      const res = await api.get('/stats/by-category', { params });
-      return res.data as Array<{ id: string; name: string; count: number }>;
+      const res = await api.get('/stats/overview', { params });
+      return res.data as StatsOverviewResponse;
     },
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 30,
@@ -143,6 +86,7 @@ export default function Statistics() {
   // Aktuelles Jahr als Standard
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1; // 1-12
+  const isMobile = useIsMobile(768);
   const [from, setFrom] = useState<string>(`${currentYear}-01-01`);
   const [to, setTo] = useState<string>(`${currentYear}-12-31`);
   const [projectId, setProjectId] = useState<string>('');
@@ -170,11 +114,6 @@ export default function Statistics() {
   const statsUiFlowMarksRef = useRef<Record<string, boolean>>({});
   const statsUiPendingRunKeyRef = useRef<string | null>(null);
   const statsUiFetchSeenRef = useRef<Record<string, boolean>>({});
-  const statsAuxFlowIdRef = useRef<string | null>(null);
-  const statsAuxFlowCompletedRef = useRef(false);
-  const statsAuxFlowMarksRef = useRef<Record<string, boolean>>({});
-  const statsAuxPendingRunKeyRef = useRef<string | null>(null);
-  const statsAuxFetchSeenRef = useRef(false);
   const qc = useQueryClient();
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
@@ -186,29 +125,20 @@ export default function Statistics() {
     () => ({ from: from || undefined, to: to || undefined, projectIds: projectId ? [projectId] : undefined }),
     [from, to, projectId],
   );
-  const summaryQ = useStatsSummary(statsParams, scopeKey);
-  const byTypeQ = useStatsByType(statsParams, scopeKey);
-  const genderQ = useStatsGender(statsParams, scopeKey);
-  const timeseriesQ = useStatsParticipantsTimeseries(statsParams, scopeKey);
-  const { data: summary } = summaryQ;
-  const { data: byType } = byTypeQ;
-  const { data: gender } = genderQ;
-  const { data: timeseries } = timeseriesQ;
-  // All-time series to build available years for quick picker
-  const timeseriesAllQ = useStatsParticipantsTimeseries({}, scopeKey);
-  const { data: timeseriesAll = [] } = timeseriesAllQ;
-  const activityYears = useMemo(() => {
-    const set = new Set<string>();
-    for (const d of timeseriesAll || []) {
-      if (d?.date) set.add(String(d.date).slice(0, 4));
-    }
-    return Array.from(set).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
-  }, [timeseriesAll]);
-  const byCohortQ = useStatsByCohort(statsParams, scopeKey);
-  const byCategoryQ = useStatsByCategory(statsParams, scopeKey);
-  const { data: byCohort } = byCohortQ;
-  const { data: byCategory } = byCategoryQ;
-  const { data: activities = [] } = useActivities(activitiesParams);
+  const overviewQ = useStatsOverview(statsParams, scopeKey);
+  const overview = overviewQ.data;
+  const summary = overview?.summary;
+  const byType = overview?.byType;
+  const gender = overview?.gender;
+  const timeseries = overview?.participantsTimeseries;
+  const byCohort = overview?.byCohort;
+  const byCategory = overview?.byCategory;
+  const topTags = overview?.topTags ?? [];
+  const topProjects = overview?.topProjects ?? [];
+  const activityYears = overview?.availableYears ?? [];
+  const activitiesPageQ = useActivitiesPaged(activitiesParams, activitiesPage, ACTIVITIES_PER_PAGE);
+  const pagedActivities = activitiesPageQ.data?.data ?? [];
+  const totalActivities = activitiesPageQ.data?.total ?? summary?.totalActivities ?? 0;
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
 
@@ -216,29 +146,14 @@ export default function Statistics() {
     () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '']),
     [scopeKey, statsParams.from, statsParams.to, statsParams.projectId],
   );
-  const statsAuxRunKey = useMemo(() => JSON.stringify([scopeKey]), [scopeKey]);
 
-  const initialLoading =
-    summaryQ.isLoading ||
-    byTypeQ.isLoading ||
-    genderQ.isLoading ||
-    timeseriesQ.isLoading ||
-    byCohortQ.isLoading ||
-    byCategoryQ.isLoading;
+  const initialLoading = overviewQ.isLoading;
 
-  const backgroundRefreshing =
-    !initialLoading &&
-    (summaryQ.isFetching ||
-      byTypeQ.isFetching ||
-      genderQ.isFetching ||
-      timeseriesQ.isFetching ||
-      byCohortQ.isFetching ||
-      byCategoryQ.isFetching ||
-      timeseriesAllQ.isFetching);
+  const backgroundRefreshing = !initialLoading && overviewQ.isFetching;
 
   useEffect(() => {
     if (statsUiFlowIdRef.current && !statsUiFlowCompletedRef.current) {
-      finishDevFlow(statsUiFlowIdRef.current, 'error', { reason: 'superseded' });
+      finishDevFlow(statsUiFlowIdRef.current, 'cancelled', { reason: 'superseded' });
     }
     statsUiFlowIdRef.current = null;
     statsUiFlowCompletedRef.current = false;
@@ -248,64 +163,53 @@ export default function Statistics() {
   }, [statsRunKey]);
 
   useEffect(() => {
-    if (statsAuxFlowIdRef.current && !statsAuxFlowCompletedRef.current) {
-      finishDevFlow(statsAuxFlowIdRef.current, 'error', { reason: 'superseded' });
-    }
-    statsAuxFlowIdRef.current = null;
-    statsAuxFlowCompletedRef.current = false;
-    statsAuxFlowMarksRef.current = {};
-    statsAuxPendingRunKeyRef.current = statsAuxRunKey;
-    statsAuxFetchSeenRef.current = false;
-  }, [statsAuxRunKey]);
-
-  useEffect(() => {
     const queryStates = [
       {
         key: 'summary',
         label: 'summary-ready',
-        status: summaryQ.status,
-        isError: summaryQ.isError,
-        isFetching: summaryQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: summary ? 1 : 0,
       },
       {
         key: 'byType',
         label: 'by-type-ready',
-        status: byTypeQ.status,
-        isError: byTypeQ.isError,
-        isFetching: byTypeQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: Array.isArray(byType) ? byType.length : 0,
       },
       {
         key: 'gender',
         label: 'gender-ready',
-        status: genderQ.status,
-        isError: genderQ.isError,
-        isFetching: genderQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: gender ? 1 : 0,
       },
       {
         key: 'timeseries',
         label: 'timeseries-ready',
-        status: timeseriesQ.status,
-        isError: timeseriesQ.isError,
-        isFetching: timeseriesQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: Array.isArray(timeseries) ? timeseries.length : 0,
       },
       {
         key: 'byCohort',
         label: 'by-cohort-ready',
-        status: byCohortQ.status,
-        isError: byCohortQ.isError,
-        isFetching: byCohortQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: Array.isArray(byCohort) ? byCohort.length : 0,
       },
       {
         key: 'byCategory',
         label: 'by-category-ready',
-        status: byCategoryQ.status,
-        isError: byCategoryQ.isError,
-        isFetching: byCategoryQ.isFetching,
+        status: overviewQ.status,
+        isError: overviewQ.isError,
+        isFetching: overviewQ.isFetching,
         size: Array.isArray(byCategory) ? byCategory.length : 0,
       },
     ];
@@ -390,108 +294,26 @@ export default function Statistics() {
         from: statsParams.from ?? null,
         to: statsParams.to ?? null,
         projectId: statsParams.projectId ?? null,
-        totalActivities: activities.length,
+        totalActivities: summary?.totalActivities ?? totalActivities,
       });
     }
   }, [
-    activities.length,
     byCategory,
-    byCategoryQ.isError,
-    byCategoryQ.isFetching,
-    byCategoryQ.status,
     byCohort,
-    byCohortQ.isError,
-    byCohortQ.isFetching,
-    byCohortQ.status,
     byType,
-    byTypeQ.isError,
-    byTypeQ.isFetching,
-    byTypeQ.status,
     gender,
-    genderQ.isError,
-    genderQ.isFetching,
-    genderQ.status,
+    overviewQ.isError,
+    overviewQ.isFetching,
+    overviewQ.status,
     scopeKey,
     statsRunKey,
     statsParams.from,
     statsParams.projectId,
     statsParams.to,
     summary,
-    summaryQ.isError,
-    summaryQ.isFetching,
-    summaryQ.status,
+    totalActivities,
     timeseries,
-    timeseriesQ.isError,
-    timeseriesQ.isFetching,
-    timeseriesQ.status,
   ]);
-
-  useEffect(() => {
-    const shouldStartAuxFlow =
-      !statsAuxFlowIdRef.current &&
-      !statsAuxFlowCompletedRef.current &&
-      statsAuxPendingRunKeyRef.current === statsAuxRunKey &&
-      (timeseriesAllQ.isFetching || (timeseriesAllQ.status !== 'success' && !timeseriesAllQ.isError));
-
-    if (shouldStartAuxFlow) {
-      statsAuxFlowIdRef.current = startDevFlow('statistics:auxiliary-load', {
-        scopeKey,
-        query: 'timeseries-all',
-      });
-      markDevFlow(statsAuxFlowIdRef.current, 'scope-applied', { scopeKey });
-    }
-
-    if (
-      !statsAuxFlowIdRef.current &&
-      !statsAuxFlowCompletedRef.current &&
-      statsAuxPendingRunKeyRef.current === statsAuxRunKey &&
-      timeseriesAllQ.status === 'success' &&
-      !timeseriesAllQ.isFetching
-    ) {
-      statsAuxFlowCompletedRef.current = true;
-      statsAuxPendingRunKeyRef.current = null;
-      addDevMetricEvent({
-        kind: 'flow',
-        status: 'info',
-        name: 'statistics:auxiliary-load',
-        message: 'Auxiliary statistics data was served from cache without a new fetch cycle.',
-        meta: {
-          scopeKey,
-          query: 'timeseries-all',
-          cacheHit: true,
-        },
-      });
-      return;
-    }
-
-    const flowId = statsAuxFlowIdRef.current;
-    if (!flowId || statsAuxFlowCompletedRef.current) return;
-
-    if (timeseriesAllQ.isFetching) {
-      statsAuxFetchSeenRef.current = true;
-    }
-
-    if (timeseriesAllQ.status === 'success' && !timeseriesAllQ.isFetching && !statsAuxFlowMarksRef.current.timeseriesAll) {
-      statsAuxFlowMarksRef.current.timeseriesAll = true;
-      markDevFlow(flowId, 'timeseries-all-ready', {
-        rows: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
-        fetched: statsAuxFetchSeenRef.current,
-      });
-      statsAuxFlowCompletedRef.current = true;
-      statsAuxPendingRunKeyRef.current = null;
-      finishDevFlow(flowId, 'success', {
-        scopeKey,
-        rows: Array.isArray(timeseriesAll) ? timeseriesAll.length : 0,
-      });
-      return;
-    }
-
-    if (timeseriesAllQ.isError) {
-      statsAuxFlowCompletedRef.current = true;
-      statsAuxPendingRunKeyRef.current = null;
-      finishDevFlow(flowId, 'error', { failedQueries: ['timeseriesAll'] });
-    }
-  }, [scopeKey, statsAuxRunKey, timeseriesAll, timeseriesAllQ.isError, timeseriesAllQ.isFetching, timeseriesAllQ.status]);
 
   // If the selected project disappears (e.g. archived/deleted), reset to "all"
   useEffect(() => {
@@ -643,19 +465,10 @@ export default function Statistics() {
       return dateStr.slice(0, 7); // YYYY-MM
     };
 
-    // Count activities per date to calculate averages
-    const activityCountByDate = new Map<string, number>();
-    for (const a of activities as Array<{ date?: string }>) {
-      const dateKey = String(a.date || '').slice(0, 10);
-      if (dateKey) {
-        activityCountByDate.set(dateKey, (activityCountByDate.get(dateKey) || 0) + 1);
-      }
-    }
-    
     if (timeAggregation === 'day') {
       if (showAverage) {
         return timeseries.map(item => {
-          const count = activityCountByDate.get(item.date) || 1;
+          const count = item.activityCount || 1;
           return {
             date: item.date,
             totalParticipants: Math.round((item.totalParticipants / count) * 10) / 10
@@ -673,7 +486,7 @@ export default function Statistics() {
         : getMonthKey(item.date);
       const current = grouped.get(key) || { total: 0, activityCount: 0 };
       current.total += item.totalParticipants;
-      current.activityCount += activityCountByDate.get(item.date) || 1;
+      current.activityCount += item.activityCount || 0;
       grouped.set(key, current);
     }
     
@@ -682,21 +495,13 @@ export default function Statistics() {
       .map(([date, data]) => ({
         date,
         totalParticipants: showAverage 
-          ? Math.round((data.total / data.activityCount) * 10) / 10
+          ? (data.activityCount > 0 ? Math.round((data.total / data.activityCount) * 10) / 10 : 0)
           : data.total
       }));
-  }, [timeseries, timeAggregation, showAverage, activities]);
+  }, [timeseries, timeAggregation, showAverage]);
 
   // Pagination für Aktivitäten
-  const paginatedActivities = useMemo(() => {
-    const sorted = [...(activities as Activity[])].sort((a, b) => 
-      String(b.date).localeCompare(String(a.date))
-    );
-    const startIndex = (activitiesPage - 1) * ACTIVITIES_PER_PAGE;
-    return sorted.slice(startIndex, startIndex + ACTIVITIES_PER_PAGE);
-  }, [activities, activitiesPage]);
-  
-  const totalActivityPages = Math.ceil((activities as Activity[]).length / ACTIVITIES_PER_PAGE);
+  const totalActivityPages = Math.max(1, Math.ceil(totalActivities / ACTIVITIES_PER_PAGE));
   
   // Reset page when filters change
   useEffect(() => {
@@ -721,42 +526,6 @@ export default function Statistics() {
     const d2 = String(d).padStart(2, '0');
     return `${y2} ${mon} ${d2}`;
   };
-
-  // Top Tags (by activities that include the tag)
-  type ActivityLite = {
-    tags?: Array<{ id: string; name: string }>;
-    project?: { id?: string; title?: string };
-  };
-  const topTags = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; count: number }>();
-    for (const a of activities as ActivityLite[]) {
-      if (!Array.isArray(a.tags)) continue;
-      for (const t of a.tags) {
-        const cur = map.get(t.id) || { id: t.id, name: t.name, count: 0 };
-        cur.count += 1;
-        map.set(t.id, cur);
-      }
-    }
-    return Array.from(map.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }, [activities]);
-
-  // Top Projekte (by activities that are linked to a project)
-  const topProjects = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; count: number }>();
-    for (const a of activities as ActivityLite[]) {
-      const pid: string | undefined = a.project?.id;
-      const ptitle: string | undefined = a.project?.title;
-      if (!pid || !ptitle) continue; // nur konkrete Projekte
-      const cur = map.get(pid) || { id: pid, name: ptitle, count: 0 };
-      cur.count += 1;
-      map.set(pid, cur);
-    }
-    return Array.from(map.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }, [activities]);
 
   const topDays = useMemo(() => {
     const list = Array.isArray(timeseries) ? timeseries : [];
@@ -786,6 +555,14 @@ export default function Statistics() {
       m.set(p.id, p.color || undefined);
     return m;
   }, [projectsAll]);
+  const sortedProjects = useMemo(
+    () =>
+      projectsAll
+        .slice()
+        .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'de')),
+    [projectsAll],
+  );
+  const useCompactProjectFilter = isMobile && sortedProjects.length >= 6;
   const fallbackBarColors = [
     '#2563eb',
     '#f59e0b',
@@ -797,6 +574,7 @@ export default function Statistics() {
     '#0ea5e9',
     '#a855f7',
   ];
+  const topCategoryChartData = useMemo(() => (byCategory || []).slice(0, 10), [byCategory]);
 
   // Generic label renderer for bar charts (positions label above the bar)
   type LabelProps = { x?: number; y?: number; width?: number; value?: number | string };
@@ -1116,7 +894,10 @@ export default function Statistics() {
                 qc.invalidateQueries({
                   predicate: (q) => {
                     const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
-                    return typeof key0 === 'string' && key0.startsWith('stats:');
+                    return (
+                      (typeof key0 === 'string' && key0.startsWith('stats:')) ||
+                      key0 === 'activities'
+                    );
                   },
                   refetchType: 'active',
                 });
@@ -1160,26 +941,54 @@ export default function Statistics() {
         {projectsAll.length > 0 && (
           <div className="mt-5">
             <div className="text-sm font-medium text-gray-700 mb-2">Projekte</div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setProjectId('')}
-                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                  !projectId
-                    ? 'bg-viridian text-white border-viridian'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Alle Projekte
-              </button>
-              {projectsAll
-                .slice()
-                .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'de'))
-                .map((p) => {
+            {useCompactProjectFilter ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => setProjectId('')}
+                  className={`px-3 py-2 rounded-full text-sm font-medium border transition-colors self-start ${
+                    !projectId
+                      ? 'bg-viridian text-white border-viridian'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  Alle Projekte
+                </button>
+                <label className="flex-1 min-w-0">
+                  <span className="sr-only">Projekt auswählen</span>
+                  <select
+                    value={projectId}
+                    onChange={(event) => setProjectId(event.target.value)}
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 shadow-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                    aria-label="Projekt auswählen"
+                  >
+                    <option value="">Projekt auswählen…</option>
+                    {sortedProjects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProjectId('')}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                    !projectId
+                      ? 'bg-viridian text-white border-viridian'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  Alle Projekte
+                </button>
+                {sortedProjects.map((p) => {
                   const active = projectId === p.id;
                   const color = typeof p.color === 'string' && p.color.trim() ? p.color.trim() : undefined;
                   const imageUrl = typeof p.imageUrl === 'string' && p.imageUrl.trim() ? p.imageUrl.trim() : undefined;
-                  const fallbackColor = '#0f766e'; // viridian-ish
+                  const fallbackColor = '#0f766e';
                   const overlayColor = color || fallbackColor;
                   return (
                     <button
@@ -1207,7 +1016,6 @@ export default function Statistics() {
 
                       {active ? (
                         <>
-                          {/* ensure strong contrast for text */}
                           <span aria-hidden className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/45 to-black/60" />
                           <span
                             aria-hidden
@@ -1241,7 +1049,8 @@ export default function Statistics() {
                     </button>
                   );
                 })}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1528,7 +1337,7 @@ export default function Statistics() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={byCategory || []}
+                  data={topCategoryChartData}
                   margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
@@ -1543,7 +1352,7 @@ export default function Statistics() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
                   <Bar dataKey="count" name="Aktivitäten">
-                    {(byCategory || []).map((_, i) => (
+                    {topCategoryChartData.map((_, i) => (
                       <Cell
                         key={`bc-${i}`}
                         fill={fallbackBarColors[i % fallbackBarColors.length]}
@@ -1657,7 +1466,7 @@ export default function Statistics() {
             <h3 className="text-lg font-semibold text-viridian">
               Alle Aktivitäten (gefiltert)
               <span className="ml-2 text-sm font-normal text-gray-500">
-                {(activities as Activity[]).length} Einträge
+                {totalActivities} Einträge
               </span>
             </h3>
             {totalActivityPages > 1 && (
@@ -1684,7 +1493,7 @@ export default function Statistics() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {paginatedActivities.map((a) => {
+                {pagedActivities.map((a: Activity) => {
                   const s = String(a.date || '').slice(0, 10);
                   const [y, m, d] = s.split('-');
                   const dateDE = `${d}.${m}.${y}`;
@@ -1727,7 +1536,14 @@ export default function Statistics() {
                     </tr>
                   );
                 })}
-                {paginatedActivities.length === 0 && (
+                {activitiesPageQ.isLoading && pagedActivities.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
+                      Aktivitäten werden geladen.
+                    </td>
+                  </tr>
+                )}
+                {!activitiesPageQ.isLoading && pagedActivities.length === 0 && (
                   <tr>
                     <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
                       Keine Aktivitäten im Zeitraum.
@@ -1740,11 +1556,11 @@ export default function Statistics() {
           
           {/* Pagination Controls */}
           {totalActivityPages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-              <div className="text-xs text-gray-500">
-                Zeige {((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, (activities as Activity[]).length)} von {(activities as Activity[]).length}
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <div className="mb-3 text-xs text-gray-500 sm:mb-0">
+                Zeige {((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, totalActivities)} von {totalActivities}
               </div>
-              <div className="flex items-center gap-1">
+              <div className={`flex gap-1 ${isMobile ? 'flex-wrap items-center justify-start' : 'items-center justify-end'}`}>
                 <button
                   onClick={() => setActivitiesPage(1)}
                   disabled={activitiesPage === 1}
@@ -1841,16 +1657,8 @@ export default function Statistics() {
                 <tbody className="divide-y divide-gray-100">
                   {(() => {
                     const map = new Map<string, { c: number; p: number }>();
-                    (activities as Activity[]).forEach((a) => {
-                      const key = a.type || 'unknown';
-                      const v = map.get(key) || { c: 0, p: 0 };
-                      v.c += 1;
-                      const total =
-                        (a.countTotal ??
-                          (a.countMale || 0) + (a.countFemale || 0) + (a.countDiverse || 0)) ||
-                        0;
-                      v.p += total;
-                      map.set(key, v);
+                    (byType || []).forEach((entry) => {
+                      map.set(entry.type || 'unknown', { c: entry.count, p: entry.totalParticipants });
                     });
                     const typeLabel: Record<string, string> = {
                       open_door: 'Offene Tür',
@@ -1881,20 +1689,12 @@ export default function Statistics() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {(() => {
-                    const map = new Map<string, number>();
-                    (activities as Activity[]).forEach((a) => {
-                      (a.categories || []).forEach((c: { id: string; name: string }) => {
-                        map.set(c.name, (map.get(c.name) || 0) + 1);
-                      });
-                    });
-                    return Array.from(map.entries()).map(([name, count]) => (
-                      <tr key={name}>
+                  {(byCategory || []).map(({ id, name, count }) => (
+                      <tr key={id}>
                         <td className="px-3 py-1.5">{name}</td>
                         <td className="px-3 py-1.5 text-right">{fmtNumber(count)}</td>
                       </tr>
-                    ));
-                  })()}
+                    ))}
                 </tbody>
               </table>
             </div>

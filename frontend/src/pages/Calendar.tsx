@@ -349,7 +349,7 @@ export default function Calendar() {
 
   useEffect(() => {
     if (calendarFlowIdRef.current && !calendarFlowCompletedRef.current) {
-      finishDevFlow(calendarFlowIdRef.current, 'error', { reason: 'superseded' });
+      finishDevFlow(calendarFlowIdRef.current, 'cancelled', { reason: 'superseded' });
     }
     calendarFlowIdRef.current = null;
     calendarFlowCompletedRef.current = false;

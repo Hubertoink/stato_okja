@@ -21,7 +21,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-production}
+      APP_ENV: ${APP_ENV:-production}
       PORT: 3000
       API_PREFIX: ${API_PREFIX:-api}
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost}
@@ -68,6 +69,7 @@ services:
       args:
         # Wichtig für On‑Prem: Proxy auf den Backend‑Service
         NGINX_MODE: proxy
+        VITE_ENABLE_DEV_TOOLS: ${VITE_ENABLE_DEV_TOOLS:-false}
         # Optional (nur wenn ihr Option B wollt):
         # VITE_API_BASE_URL: https://<eure-domain>/api
     restart: unless-stopped

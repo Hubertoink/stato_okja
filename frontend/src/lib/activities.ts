@@ -43,6 +43,7 @@ export interface Activity {
 }
 
 export type ActivitiesFilter = {
+  search?: string;
   from?: string;
   to?: string;
   type?: string; // legacy single-type (kept for compatibility)

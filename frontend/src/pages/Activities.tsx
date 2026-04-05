@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { useCohorts } from '@/lib/taxonomy';
@@ -27,6 +27,7 @@ import { getBgClass } from '@/lib/colorPalette';
 export default function Activities() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
   const isMobile = useIsMobile();
   const STORAGE_KEY = 'activities:advancedFilters:v1';
   const STORAGE_ORDER_KEY = 'activities:order:v1';
@@ -109,6 +110,27 @@ export default function Activities() {
   useEffect(() => {
     setPage(1);
   }, [searchTerm]);
+
+  useEffect(() => {
+    const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+    const dateParam = (params.get('date') || '').trim();
+    const fromParam = (params.get('from') || '').trim();
+    const toParam = (params.get('to') || '').trim();
+    const nextFrom = isIsoDate(fromParam) ? fromParam : isIsoDate(dateParam) ? dateParam : '';
+    const nextTo = isIsoDate(toParam) ? toParam : isIsoDate(dateParam) ? dateParam : '';
+    if (!nextFrom && !nextTo) return;
+
+    setAdvanced((current) => {
+      const updated = {
+        ...current,
+        from: nextFrom || current.from,
+        to: nextTo || current.to,
+      };
+      if (updated.from === current.from && updated.to === current.to) return current;
+      return updated;
+    });
+    setPage(1);
+  }, [params]);
 
   // Persist filters across navigation/tab switches (only reset when user explicitly clicks "Zurücksetzen")
   useEffect(() => {

@@ -15,6 +15,7 @@ export class OrgsController {
   @Get()
   list() { return this.service.findAll(); }
 
+  @Roles('superadmin', 'org_admin')
   @Post()
   async create(
     @Body() body: { name: string; parentId?: string | null },
@@ -25,10 +26,10 @@ export class OrgsController {
     }
     const myOrgId = req.user.orgId || null;
     if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-    const desiredParent = (typeof body?.parentId === 'undefined' || body?.parentId === null) ? myOrgId : body.parentId;
-    const subtree = await this.service.getSubtreeOrgIds(myOrgId);
-    if (!subtree.includes(desiredParent)) throw new ForbiddenException('Nur innerhalb der eigenen Organisation erlaubt');
-    return this.service.create(body?.name, desiredParent);
+    if (typeof body?.parentId !== 'undefined' && body.parentId !== null && body.parentId !== myOrgId) {
+      throw new ForbiddenException('Org-Admins können nur direkte Unterorganisationen ihrer eigenen Organisation anlegen');
+    }
+    return this.service.create(body?.name, myOrgId);
   }
 
   @Roles('superadmin')

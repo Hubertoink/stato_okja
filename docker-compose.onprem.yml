@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -23,7 +21,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-production}
+      APP_ENV: ${APP_ENV:-production}
       PORT: 3000
       API_PREFIX: ${API_PREFIX:-api}
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost}
@@ -35,11 +34,15 @@ services:
       DB_USERNAME: ${POSTGRES_USER:-stato_user}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       DB_DATABASE: ${POSTGRES_DB:-stato_prod}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
       DB_MIGRATIONS_RUN: ${DB_MIGRATIONS_RUN:-true}
 
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-12h}
       PASSWORD_RESET_MODE: ${PASSWORD_RESET_MODE:-email}
+      PUBLIC_APP_NAME: ${PUBLIC_APP_NAME:-StatO}
+      PUBLIC_ORG_NAME: ${PUBLIC_ORG_NAME:-}
+      PUBLIC_LOGIN_SUBTITLE: ${PUBLIC_LOGIN_SUBTITLE:-OKJA Statistik & Dokumentation}
 
       SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.org}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
@@ -66,6 +69,7 @@ services:
       args:
         # Wichtig für On‑Prem: Proxy auf den Backend‑Service
         NGINX_MODE: proxy
+        VITE_ENABLE_DEV_TOOLS: ${VITE_ENABLE_DEV_TOOLS:-false}
         # Optional (nur wenn ihr Option B wollt):
         # VITE_API_BASE_URL: https://<eure-domain>/api
     restart: unless-stopped
@@ -85,8 +89,11 @@ services:
   #   networks: [stato]
 
 volumes:
-  postgres-data: {}
-  backend-uploads: {}
+  postgres-data:
+    name: stato-onprem-postgres-data
+  backend-uploads:
+    name: stato-onprem-backend-uploads
 
 networks:
-  stato: {}
+  stato:
+    name: stato-onprem

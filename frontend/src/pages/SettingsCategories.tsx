@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FIXED_PALETTE, getBgClass, isInFixedPalette } from '@/lib/colorPalette';
 import { DEFAULT_CATEGORIES } from '@/lib/defaultCategories';
 import Toggle from '@/components/Toggle';
@@ -163,6 +163,7 @@ export default function SettingsCategories() {
     busy?: boolean;
     created?: number;
   }>({ open: false });
+  const [selectedDefaultNames, setSelectedDefaultNames] = useState<string[]>([]);
 
   const categories = data || [];
   const allExisting = useMemo(
@@ -178,6 +179,19 @@ export default function SettingsCategories() {
     () => DEFAULT_CATEGORIES.filter((c) => !existingNames.has(c.name.trim().toLowerCase())),
     [existingNames],
   );
+  const selectedDefaultsMissing = useMemo(
+    () => defaultsMissing.filter((c) => selectedDefaultNames.includes(c.name)),
+    [defaultsMissing, selectedDefaultNames],
+  );
+
+  useEffect(() => {
+    if (!seedConfirm.open) return;
+    setSelectedDefaultNames((current) => {
+      const availableNames = new Set(defaultsMissing.map((c) => c.name));
+      const filtered = current.filter((name) => availableNames.has(name));
+      return filtered.length > 0 ? filtered : defaultsMissing.map((c) => c.name);
+    });
+  }, [seedConfirm.open, defaultsMissing]);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -188,7 +202,10 @@ export default function SettingsCategories() {
             <button
               type="button"
               className="text-viridian hover:underline disabled:text-gray-400"
-              onClick={() => setSeedConfirm({ open: true })}
+              onClick={() => {
+                setSelectedDefaultNames(defaultsMissing.map((c) => c.name));
+                setSeedConfirm({ open: true });
+              }}
               disabled={defaultsMissing.length === 0}
               title={
                 defaultsMissing.length === 0
@@ -383,15 +400,62 @@ export default function SettingsCategories() {
             {defaultsMissing.length > 0 ? (
               <>
                 <p>
-                  Es werden folgende Kategorien angelegt (bereits vorhandene werden übersprungen):
+                  Wähle aus, welche Standard-Kategorien angelegt werden sollen. Bereits
+                  vorhandene Kategorien werden weiterhin übersprungen.
                 </p>
-                <ul className="list-disc pl-5 space-y-0.5">
-                  {defaultsMissing.slice(0, 8).map((c) => (
-                    <li key={c.name}>{c.name}</li>
-                  ))}
-                </ul>
-                {defaultsMissing.length > 8 && (
-                  <p className="text-gray-500">… und {defaultsMissing.length - 8} weitere</p>
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-gray-500">
+                    {selectedDefaultsMissing.length} von {defaultsMissing.length} ausgewählt
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      className="text-viridian hover:underline disabled:text-gray-400"
+                      onClick={() => setSelectedDefaultNames(defaultsMissing.map((c) => c.name))}
+                      disabled={selectedDefaultsMissing.length === defaultsMissing.length}
+                    >
+                      Alle
+                    </button>
+                    <button
+                      type="button"
+                      className="text-gray-600 hover:underline disabled:text-gray-400"
+                      onClick={() => setSelectedDefaultNames([])}
+                      disabled={selectedDefaultsMissing.length === 0}
+                    >
+                      Keine
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+                  {defaultsMissing.map((c) => {
+                    const checked = selectedDefaultNames.includes(c.name);
+                    return (
+                      <label
+                        key={c.name}
+                        className="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                          checked={checked}
+                          onChange={(e) => {
+                            setSelectedDefaultNames((current) =>
+                              e.target.checked
+                                ? [...current, c.name]
+                                : current.filter((name) => name !== c.name),
+                            );
+                          }}
+                        />
+                        <span
+                          className={`mt-1 inline-block h-3.5 w-3.5 rounded ${getBgClass(c.color, 'bg-slate-400')}`}
+                        />
+                        <span className="min-w-0 flex-1 text-gray-800">{c.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {selectedDefaultsMissing.length === 0 && (
+                  <p className="text-xs text-red-600">Bitte mindestens eine Kategorie auswählen.</p>
                 )}
               </>
             ) : (
@@ -399,18 +463,22 @@ export default function SettingsCategories() {
             )}
           </div>
         }
-        confirmLabel={seedConfirm.busy ? 'Erstelle…' : 'Erstellen'}
+        confirmLabel={seedConfirm.busy ? 'Erstelle…' : `Erstellen${selectedDefaultsMissing.length > 0 ? ` (${selectedDefaultsMissing.length})` : ''}`}
         onConfirm={async () => {
-          if (seedConfirm.busy || defaultsMissing.length === 0) {
+          if (seedConfirm.busy) {
+            return;
+          }
+          if (defaultsMissing.length === 0) {
             setSeedConfirm({ open: false });
             return;
           }
+          if (selectedDefaultsMissing.length === 0) return;
           setSeedConfirm({ open: true, busy: true });
           try {
-            for (const def of defaultsMissing) {
+            for (const def of selectedDefaultsMissing) {
               await create.mutateAsync({ name: def.name, color: def.color, active: true });
             }
-            setSeedConfirm({ open: false, busy: false, created: defaultsMissing.length });
+            setSeedConfirm({ open: false, busy: false, created: selectedDefaultsMissing.length });
           } catch {
             setSeedConfirm({ open: false, busy: false });
           }

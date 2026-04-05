@@ -17,6 +17,16 @@ const OrgScopeCtx = createContext<OrgScopeState | undefined>(undefined);
 const LEGACY_KEY = 'x_org_scope';
 const storageKeyFor = (userId?: string | null) => userId ? `x_org_scope:${userId}` : LEGACY_KEY;
 
+function applyOrgScopeHeader(nextScope: OrgScopeValue) {
+  if (typeof nextScope === 'undefined') {
+    delete api.defaults.headers.common['X-Org-Scope'];
+  } else if (nextScope === null) {
+    api.defaults.headers.common['X-Org-Scope'] = 'null';
+  } else {
+    api.defaults.headers.common['X-Org-Scope'] = nextScope;
+  }
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = (token || '').split('.');
@@ -63,13 +73,7 @@ const initialStoredScope: OrgScopeValue = (() => {
 
 // Apply initial header immediately so first requests (before provider effects run) use the stored scope
 try {
-  if (typeof initialStoredScope === 'undefined') {
-    delete (api.defaults.headers.common as Record<string, unknown>)['X-Org-Scope'];
-  } else if (initialStoredScope === null) {
-    api.defaults.headers.common['X-Org-Scope'] = 'null';
-  } else {
-    api.defaults.headers.common['X-Org-Scope'] = initialStoredScope;
-  }
+  applyOrgScopeHeader(initialStoredScope);
 } catch { /* ignore */ }
 
 export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
@@ -128,14 +132,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
 
   // Apply header to axios
   useEffect(() => {
-    if (typeof scope === 'undefined') {
-      // Legacy/initial state. Backends treat missing header as null for superadmin.
-      delete api.defaults.headers.common['X-Org-Scope'];
-    } else if (scope === null) {
-      api.defaults.headers.common['X-Org-Scope'] = 'null';
-    } else {
-      api.defaults.headers.common['X-Org-Scope'] = scope;
-    }
+    applyOrgScopeHeader(scope);
 
     // Only reinitialize data when the user explicitly changes the org scope.
     // On initial load we must NOT clear/remove queries, otherwise PostLoginPrefetch can hang.
@@ -177,6 +174,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     scopeChangeSourceRef.current = 'user';
     // Make UI react immediately on confirm (e.g. show initializer overlay).
     setSwitching(true);
+    applyOrgScopeHeader(v);
     setScopeState(v);
     try {
       const key = storageKeyFor(user?.id);

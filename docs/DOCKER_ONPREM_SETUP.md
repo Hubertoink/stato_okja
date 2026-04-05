@@ -102,6 +102,11 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 - `JWT_ACCESS_EXPIRATION`: optional, Standard z. B. `12h`
 - `PASSWORD_RESET_MODE`: `email`, `admin_temp_password` oder `hybrid`
 
+### Frischer Erststart / Schema-Bootstrap
+
+- `DB_SYNCHRONIZE`: für eine leere On-Prem-Datenbank aktuell auf `true` setzen
+- `DB_MIGRATIONS_RUN`: kann gesetzt bleiben; bei `DB_SYNCHRONIZE=true` werden Migrationen im Backend automatisch übersprungen
+
 ### Initialer Superadmin
 
 - `SUPERADMIN_EMAIL`: Login des ersten Superadmins
@@ -140,6 +145,7 @@ API_PREFIX=api
 
 JWT_SECRET=CHANGE_ME_SUPER_LONG_RANDOM_STRING
 JWT_ACCESS_EXPIRATION=12h
+DB_SYNCHRONIZE=true
 DB_MIGRATIONS_RUN=true
 PASSWORD_RESET_MODE=admin_temp_password
 
@@ -225,7 +231,7 @@ Wenn auf dem Server kein Node lokal installiert werden soll:
 
 ```bash
 docker run --rm -it \
-  --network stato \
+  --network stato-onprem \
   -v "$PWD/backend:/app" \
   -w /app \
   node:20-alpine sh -lc "npm ci && npm run migration:run"
@@ -233,7 +239,7 @@ docker run --rm -it \
 
 Hinweise:
 
-- Das Netzwerk `stato` wird von [docker-compose.onprem.yml](../docker-compose.onprem.yml) angelegt.
+- Das Netzwerk `stato-onprem` wird von [docker-compose.onprem.yml](../docker-compose.onprem.yml) angelegt.
 - Postgres muss dafür bereits laufen.
 
 ## Schritt 7: Login testen
@@ -252,9 +258,13 @@ Im Compose wird Postgres als Service `postgres` gestartet.
 
 Wichtige Punkte:
 
-- Daten liegen persistent im Volume `postgres-data`
+- Daten liegen persistent im dedizierten Volume `stato-onprem-postgres-data`
 - Hostname innerhalb des Docker-Netzes ist `postgres`
 - das Backend nutzt genau diesen Service-Namen als `DB_HOST`
+
+Hinweis:
+
+- Das On-Prem-Compose nutzt eigene Docker-Ressourcen, damit es nicht mit einem zuvor gestarteten Dev-Setup im selben Checkout kollidiert.
 
 ### Backend
 
@@ -275,7 +285,7 @@ Der Backend-Container nutzt unter anderem diese Werte:
 
 Uploads werden persistent gespeichert im Volume:
 
-- `backend-uploads`
+- `stato-onprem-backend-uploads`
 
 ### Frontend
 
@@ -390,8 +400,8 @@ Mindestens zwei Dinge sichern:
 
 Betroffene Volumes im On-Prem-Setup:
 
-- `postgres-data`
-- `backend-uploads`
+- `stato-onprem-postgres-data`
+- `stato-onprem-backend-uploads`
 
 Beispiel für DB-Export:
 
@@ -427,8 +437,18 @@ Prüfen:
 
 Prüfen:
 
-- ist das Volume `backend-uploads` persistent?
+- ist das Volume `stato-onprem-backend-uploads` persistent?
 - wurde der Container nicht versehentlich ohne Volume neu erzeugt?
+
+### Frontend liefert 502, Backend kommt nicht hoch
+
+Prüfen:
+
+- zeigen die Backend-Logs `password authentication failed for user`?
+- zeigen die Postgres-Logs `database "stato_prod" does not exist`?
+- lief vorher bereits das Dev-Compose im selben Checkout?
+
+Wenn ja, wurde meist ein alter Dev-Postgres-Volume wiederverwendet. Das On-Prem-Compose nutzt dafür jetzt eigene Docker-Ressourcen; den Stack danach einmal mit `docker compose -f docker-compose.onprem.yml --env-file .env.onprem down` und anschließend wieder mit `up -d --build` neu starten.
 
 ### Nach Neustart sind Logins ungültig
 

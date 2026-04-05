@@ -28,6 +28,7 @@ export class ActivitiesService {
 
   private buildListQuery(
     filters?: {
+    search?: string;
     from?: string;
     to?: string;
     type?: string;
@@ -67,6 +68,15 @@ export class ActivitiesService {
 
     if (filters?.from && filters?.to) {
       qb.andWhere('a.date BETWEEN :from AND :to', { from: filters.from, to: filters.to });
+    }
+    if (filters?.search) {
+      const search = `%${filters.search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        new Brackets((b) => {
+          b.where("LOWER(COALESCE(a.title, '')) LIKE :search", { search });
+          b.orWhere("LOWER(COALESCE(project.title, '')) LIKE :search", { search });
+        }),
+      );
     }
     if (Array.isArray(filters?.orgIds) && filters!.orgIds!.length) {
       qb.andWhere('a.orgId IN (:...orgIds)', { orgIds: filters!.orgIds! });
@@ -144,6 +154,7 @@ export class ActivitiesService {
   }
 
   async findAll(filters?: {
+    search?: string;
     from?: string;
     to?: string;
     type?: string;
@@ -168,6 +179,7 @@ export class ActivitiesService {
   }
 
   async findAllPaged(filters: {
+    search?: string;
     from?: string;
     to?: string;
     type?: string;

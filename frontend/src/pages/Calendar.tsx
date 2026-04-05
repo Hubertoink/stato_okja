@@ -253,6 +253,16 @@ export default function Calendar() {
     const E = fmtTime(e);
     return S && E ? `${S} – ${E}` : S || E || '';
   };
+  const openActivitiesForDate = (iso: string) => {
+    const qp = new URLSearchParams({ date: iso });
+    navigate(`/activities?${qp.toString()}`);
+  };
+  const handleDayAddKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, iso: string) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
+    else setPicker({ date: iso });
+  };
 
   // Build month grid (6 weeks)
   const monthWeeks = useMemo(() => {
@@ -810,7 +820,7 @@ export default function Calendar() {
               const hasHoliday = !!holidaysByDate.get(iso)?.length;
               const hasSchoolHoliday = showSchool && schoolLabelFor(iso);
               return (
-                <button
+                <div
                   key={idx}
                   className={`relative h-24 md:h-32 border p-1 text-left focus:outline-none focus:ring-2 focus:ring-viridian transition-colors ${
                     isOtherMonth
@@ -819,17 +829,29 @@ export default function Calendar() {
                         ? 'bg-mint-green/40 ring-2 ring-mint-green border-mint-green'
                         : 'bg-white hover:bg-gray-50/50'
                   }`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
                     else setPicker({ date: iso });
                   }}
+                  onKeyDown={(e) => handleDayAddKeyDown(e, iso)}
                   title={`Aktivität am ${day.toLocaleDateString('de-DE')} hinzufügen`}
                 >
                   {/* Top row: Day number + Holiday badge inline */}
                   <div className="flex items-start gap-1 mb-0.5">
-                    <span className={`text-xs md:text-sm font-medium shrink-0 ${isOtherMonth ? 'text-gray-400' : ''}`}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openActivitiesForDate(iso);
+                      }}
+                      className={`text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? 'text-gray-400' : 'text-gray-800'}`}
+                      title={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
+                      aria-label={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
+                    >
                       {day.getDate()}
-                    </span>
+                    </button>
                     {hasHoliday && (
                       <div
                         className="px-1 py-[1px] rounded text-[9px] md:text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 truncate max-w-[calc(100%-1.5rem)]"
@@ -852,7 +874,7 @@ export default function Calendar() {
                     </div>
                   )}
                   {showEntriesForDay ? renderEntries(iso, hasSchoolHoliday ? 2 : 3) : null}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -885,15 +907,32 @@ export default function Calendar() {
               const iso = fmtLocalISO(d);
               const isToday = iso === todayISO;
               return (
-                <button
+                <div
                   key={iso}
                   className={`min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left focus:outline-none transition-colors ${isToday ? 'bg-mint-green/40 ring-1 ring-mint-green/60 border-mint-green/60' : ''}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
                     else setPicker({ date: iso });
                   }}
+                  onKeyDown={(e) => handleDayAddKeyDown(e, iso)}
                   title={`Aktivität am ${d.toLocaleDateString('de-DE')} hinzufügen`}
                 >
+                  <div className="mb-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openActivitiesForDate(iso);
+                      }}
+                      className="rounded px-1 -mx-1 text-xs font-medium text-gray-700 hover:bg-black/5 hover:text-viridian hover:underline underline-offset-2"
+                      title={`Aktivitäten am ${d.toLocaleDateString('de-DE')} anzeigen`}
+                      aria-label={`Aktivitäten am ${d.toLocaleDateString('de-DE')} anzeigen`}
+                    >
+                      {d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                    </button>
+                  </div>
                   {!!holidaysByDate.get(iso)?.length && (
                     <div
                       className="inline-block mb-1 px-1.5 py-0.5 rounded text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 truncate max-w-full"
@@ -914,7 +953,7 @@ export default function Calendar() {
                     </div>
                   )}
                   {renderEntriesWeek(iso)}
-                </button>
+                </div>
               );
             })}
           </div>

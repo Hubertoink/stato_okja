@@ -115,7 +115,7 @@ export default function Settings() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow mb-6 overflow-x-auto overflow-y-hidden md:overflow-x-visible md:overflow-y-visible">
-          <div className="flex border-b">
+          <div className="flex">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -123,16 +123,16 @@ export default function Settings() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   title={tab.label}
-                  className={`group relative inline-flex items-center justify-center lg:justify-start gap-2 px-4 py-3 font-medium transition-colors whitespace-nowrap w-12 sm:w-14 md:w-16 lg:w-auto ${
+                  className={`group relative inline-flex items-center justify-center xl:justify-start gap-2 px-3 xl:px-4 py-3 font-medium transition-colors whitespace-nowrap w-12 sm:w-14 md:w-16 xl:w-auto ${
                     activeTab === tab.id
                       ? 'text-viridian border-b-2 border-viridian'
                       : 'text-gray-600 hover:text-viridian'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
-                  <span className="hidden lg:inline">{tab.label}</span>
+                  <span className="hidden xl:inline">{tab.label}</span>
                   <span
-                    className="settings-tab-tooltip lg:hidden pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 whitespace-nowrap rounded-md bg-gray-900/95 text-white text-xs px-2 py-1 shadow-lg opacity-0 translate-y-1 transition-all duration-150"
+                    className="settings-tab-tooltip xl:hidden pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 whitespace-nowrap rounded-md bg-gray-900/95 text-white text-xs px-2 py-1 shadow-lg opacity-0 translate-y-1 transition-all duration-150"
                     role="tooltip"
                   >
                     {tab.label}

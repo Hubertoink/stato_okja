@@ -17,7 +17,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { canAccessDevTools } from '@/lib/devToolsConfig';
-import { useOrgScope } from '@/lib/orgScope';
+import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
@@ -28,6 +28,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const restrictToPasswordChange = user?.mustChangePassword === true;
   const { scope, setScope, switching: orgSwitching } = useOrgScope();
+  const scopeKey = useOrgScopeKey();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
 
   const notifySession = useCallback(
@@ -97,6 +98,7 @@ export default function Layout() {
 
   // Org scope switcher
   const [scopeModalOpen, setScopeModalOpen] = useState(false);
+  const [imprintModalOpen, setImprintModalOpen] = useState(false);
   const [orgList, setOrgList] = useState<OrgDto[]>([]);
   const [pendingScope, setPendingScope] = useState<string | null | undefined>(undefined);
   const [activeOrgName, setActiveOrgName] = useState<string | null>(null);
@@ -104,6 +106,8 @@ export default function Layout() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const [parentForNewOrg, setParentForNewOrg] = useState<string | 'root' | ''>('');
+  const isSuperadmin = user?.role === 'superadmin';
+  const fixedParentOrgName = orgList.find((o) => o.id === user?.orgId)?.name || user?.orgName || 'Eigene Organisation';
   const keyboardOpen = useKeyboardOpen();
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
@@ -223,7 +227,7 @@ export default function Layout() {
   }, [createModalOpen]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="fixed top-0 inset-x-0 z-40 header-surface text-gray-900">
         <div className="container mx-auto px-2 sm:px-3 md:px-4 py-3 md:py-4 flex items-center justify-between gap-3">
@@ -503,9 +507,9 @@ export default function Layout() {
 
       {/* Main Content */}
       <main
-        className={`container mx-auto px-2 sm:px-3 md:px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-[5.5rem]'} md:pb-8`}
+        className={`container mx-auto w-full flex-1 px-2 sm:px-3 md:px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-[5.5rem]'} md:pb-8`}
       >
-        <Outlet context={{ openQuickTally }} />
+        <Outlet key={scopeKey} context={{ openQuickTally }} />
       </main>
 
       {/* QuickTally overlay (global) */}
@@ -582,23 +586,74 @@ export default function Layout() {
       {!hideFooter && !restrictToPasswordChange && (
         <footer className="mt-12">
           <div className="w-full px-4 py-6 text-center text-sm text-gray-700 bg-white/60 backdrop-blur-md supports-[backdrop-filter]:bg-white/45 border-t border-white/50">
-            <p>
-              © {new Date().getFullYear()} StatO · Version{' '}
-              {import.meta.env.VITE_APP_VERSION || '0.8'}
-              {import.meta.env.VITE_COMMIT_SHA
-                ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0, 7)})`
-                : ''}{' '}
-              ·{' '}
-              <a
-                href="mailto:hubertoink@outlook.com"
-                className="underline hover:text-viridian"
+            <div className="flex items-center justify-center gap-1 flex-wrap">
+              <p>
+                © {new Date().getFullYear()} StatO · Version{' '}
+                {import.meta.env.VITE_APP_VERSION || '0.8'}
+                {import.meta.env.VITE_COMMIT_SHA
+                  ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0, 7)})`
+                  : ''}{' '}
+                ·{' '}
+                <a
+                  href="mailto:hubertoink@outlook.com"
+                  className="underline hover:text-viridian"
+                >
+                  Nikolas Häfner
+                </a>
+              </p>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => setImprintModalOpen(true)}
+                className="text-sm font-medium underline underline-offset-2 hover:text-viridian"
               >
-                Nikolas Häfner
-              </a>
-            </p>
+                Impressum
+              </button>
+            </div>
           </div>
         </footer>
       )}
+      <Modal
+        open={imprintModalOpen}
+        onClose={() => setImprintModalOpen(false)}
+        title="Impressum"
+        maxWidth="md"
+      >
+        <div className="space-y-4 text-sm text-gray-700">
+          <section className="space-y-1">
+            <h3 className="text-base font-semibold text-gray-900">Angaben gemäß § 5 TMG</h3>
+            <p>StatO</p>
+            <p>Entwickler: Nikolas Häfner</p>
+            <p>Paul-Gerhardt-Str. 5</p>
+            <p>68169 Mannheim</p>
+          </section>
+          <section className="space-y-1">
+            <h3 className="text-base font-semibold text-gray-900">Kontakt</h3>
+            <p>
+              E-Mail:{' '}
+              <a href="mailto:hubertoink@outlook.com" className="underline hover:text-viridian">
+                hubertoink@outlook.com
+              </a>
+            </p>
+          </section>
+          <section className="space-y-1">
+            <h3 className="text-base font-semibold text-gray-900">Verantwortlich für den Inhalt</h3>
+            <p>Nikolas Häfner</p>
+            <p>Paul-Gerhardt-Str. 5</p>
+            <p>68169 Mannheim</p>
+          </section>
+          <section className="space-y-1">
+            <h3 className="text-base font-semibold text-gray-900">Projektangaben</h3>
+            <p>Software: StatO</p>
+            <p>
+              Version: {import.meta.env.VITE_APP_VERSION || '0.8'}
+              {import.meta.env.VITE_COMMIT_SHA
+                ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0, 7)})`
+                : ''}
+            </p>
+          </section>
+        </div>
+      </Modal>
       {/* Quick Create Organisation Modal (org_admin) */}
       <Modal
         open={createModalOpen}
@@ -623,26 +678,35 @@ export default function Layout() {
             <label htmlFor="parent-org-select" className="block text-sm font-medium mb-1">
               Übergeordnete Organisation
             </label>
-            <select
-              id="parent-org-select"
-              value={parentForNewOrg}
-              onChange={(e) =>
-                setParentForNewOrg(
-                  (e.target.value || (user?.role === 'superadmin' ? 'root' : '')) as
-                    | 'root'
-                    | string
-                    | '',
-                )
-              }
-              className="border rounded px-3 py-2 w-full"
-            >
-              {user?.role === 'superadmin' && <option value="root">(Keine, oberste Ebene)</option>}
-              {orgList.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
+            {isSuperadmin ? (
+              <select
+                id="parent-org-select"
+                value={parentForNewOrg}
+                onChange={(e) =>
+                  setParentForNewOrg(
+                    (e.target.value || 'root') as 'root' | string | '',
+                  )
+                }
+                className="border rounded px-3 py-2 w-full"
+              >
+                <option value="root">(Keine, oberste Ebene)</option>
+                {orgList.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input
+                  id="parent-org-select"
+                  value={fixedParentOrgName}
+                  disabled
+                  className="border rounded px-3 py-2 w-full bg-gray-50 text-gray-600 cursor-not-allowed"
+                />
+                <p className="mt-1 text-xs text-gray-500">Org-Admins können neue Organisationen nur direkt unter ihrer eigenen Organisation anlegen.</p>
+              </>
+            )}
           </div>
           <div className="mt-3 flex items-center justify-end gap-2">
             <button
@@ -656,15 +720,15 @@ export default function Layout() {
             </button>
             <button
               className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
-              disabled={!newOrgName.trim() || (user?.role !== 'superadmin' && !parentForNewOrg)}
+              disabled={!newOrgName.trim() || (!isSuperadmin && !user?.orgId)}
               onClick={async () => {
                 try {
                   const parentId =
-                    user?.role === 'superadmin'
+                    isSuperadmin
                       ? parentForNewOrg === 'root'
                         ? null
                         : parentForNewOrg || null
-                      : parentForNewOrg || (user?.orgId as string | undefined) || null;
+                      : (user?.orgId as string | undefined) || null;
                   const created = await createOrgApi(
                     newOrgName.trim(),
                     parentId as string | null | undefined,

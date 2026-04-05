@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { useCohorts } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
-import { Download, Filter as FilterIcon, Plus } from 'lucide-react';
+import { Download, Filter as FilterIcon, Plus, Search } from 'lucide-react';
 // switched to xlsx-js-style inside the export handler to support cell styling
 import { api } from '@/lib/api';
 // basic location quick filter removed
@@ -28,6 +28,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 export default function Activities() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
   const isMobile = useIsMobile();
   const STORAGE_KEY = 'activities:advancedFilters:v1';
   const STORAGE_ORDER_KEY = 'activities:order:v1';
@@ -44,6 +45,8 @@ export default function Activities() {
   });
   const [picker, setPicker] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [order, setOrder] = useState<'asc' | 'desc'>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_ORDER_KEY);
@@ -64,9 +67,14 @@ export default function Activities() {
       const parsed = JSON.parse(raw) as {
         advanced?: ActivitiesFilter;
         order?: 'asc' | 'desc';
+        search?: string;
       };
       if (parsed?.advanced && typeof parsed.advanced === 'object') setAdvanced(parsed.advanced);
       if (parsed?.order === 'asc' || parsed?.order === 'desc') setOrder(parsed.order);
+      if (typeof parsed?.search === 'string') {
+        setSearchTerm(parsed.search);
+        setSearchOpen(false);
+      }
     } catch {
       /* ignore */
     }
@@ -76,12 +84,13 @@ export default function Activities() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('activitiesFilters_v1', JSON.stringify({ advanced, order }));
+      localStorage.setItem('activitiesFilters_v1', JSON.stringify({ advanced, order, search: searchTerm }));
     } catch {
       /* ignore */
     }
-  }, [advanced, order]);
+  }, [advanced, order, searchTerm]);
   const filters = {
+    search: searchTerm.trim() || undefined,
     from: advanced.from,
     to: advanced.to,
     types: advanced.types,
@@ -98,6 +107,31 @@ export default function Activities() {
     durationMax: advanced.durationMax,
     order,
   } as ActivitiesFilter;
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+    const dateParam = (params.get('date') || '').trim();
+    const fromParam = (params.get('from') || '').trim();
+    const toParam = (params.get('to') || '').trim();
+    const nextFrom = isIsoDate(fromParam) ? fromParam : isIsoDate(dateParam) ? dateParam : '';
+    const nextTo = isIsoDate(toParam) ? toParam : isIsoDate(dateParam) ? dateParam : '';
+    if (!nextFrom && !nextTo) return;
+
+    setAdvanced((current) => {
+      const updated = {
+        ...current,
+        from: nextFrom || current.from,
+        to: nextTo || current.to,
+      };
+      if (updated.from === current.from && updated.to === current.to) return current;
+      return updated;
+    });
+    setPage(1);
+  }, [params]);
 
   // Persist filters across navigation/tab switches (only reset when user explicitly clicks "Zurücksetzen")
   useEffect(() => {
@@ -121,12 +155,54 @@ export default function Activities() {
     const part = words.slice(0, n).join(' ');
     return words.length > n ? part + '…' : part;
   };
+  const clearSearch = () => {
+    setSearchTerm('');
+    setSearchOpen(false);
+    setPage(1);
+  };
   return (
     <div>
-      <div className="flex justify-between items-center mb-6 mt-1">
+      <div className="mb-6 mt-1 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <h2 className="text-3xl font-bold text-viridian">Aktivitäten</h2>
-        <div className="flex gap-2 mt-1">
-          <button
+        <div className="flex justify-end mt-1">
+          <div className="flex gap-2 flex-wrap justify-end">
+            <div className="relative">
+              {searchOpen && (
+                <div className="absolute right-0 top-full mt-2 z-20 w-[18rem] max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-md">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Titel / Projekt suchen"
+                      className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-10 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/30"
+                      autoFocus
+                    />
+                    {searchTerm.trim() && (
+                      <button
+                        type="button"
+                        onClick={clearSearch}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                        aria-label="Suche löschen"
+                        title="Suche löschen"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              <button
+                className="inline-flex items-center justify-center rounded-lg bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10"
+                title={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
+                aria-label={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
+                onClick={() => setSearchOpen((open) => !open)}
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            </div>
+            <button
             className="inline-flex items-center justify-center rounded-lg bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10"
             title="Excel-Export (gefiltert)"
             aria-label="Excel-Export (gefiltert)"
@@ -347,12 +423,27 @@ export default function Activities() {
           >
             + Neue Aktivität
           </button>
+          </div>
         </div>
       </div>
 
       {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex flex-wrap gap-2 text-xs">
+          {searchTerm.trim() ? (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-azure-web text-viridian">
+              <span>Suche: {searchTerm.trim()}</span>
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="rounded-full text-viridian/80 hover:text-viridian"
+                aria-label="Suche entfernen"
+                title="Suche entfernen"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          ) : null}
           {advanced.from || advanced.to ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Zeitraum</span>
           ) : null}
@@ -432,6 +523,7 @@ export default function Activities() {
               onClick={() => {
                 setAdvanced({});
                 setOrder('desc');
+                clearSearch();
                 setPage(1);
                 try {
                   localStorage.removeItem(STORAGE_KEY);

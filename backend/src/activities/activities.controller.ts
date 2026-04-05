@@ -28,6 +28,7 @@ export class ActivitiesController {
 
   @Get()
   @ApiOperation({ summary: 'Alle Aktivitäten abrufen (mit Filtern)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Textsuche in Aktivitätstitel und Projektname' })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'type', required: false })
@@ -62,6 +63,7 @@ export class ActivitiesController {
       user: { role: string; orgId?: string | null };
       effectiveOrgId?: string | null | undefined;
     },
+    @Query('search') search?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('type') type?: string,
@@ -130,6 +132,7 @@ export class ActivitiesController {
     const limit = Math.min(Math.max(limitParsed, 1), 50);
 
     const filters = {
+      search: search?.trim() ? search.trim() : undefined,
       from,
       to,
       type,

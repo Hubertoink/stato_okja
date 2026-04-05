@@ -17,6 +17,8 @@ function yearBounds(year: number) {
   return { from, to };
 }
 
+const OPEN_HOLIDAYS_ENDPOINT = '/external/openholidaysapi/SchoolHolidays';
+
 type OpenHolidaysName = { language?: string; text?: string };
 type OpenHolidaysItem = {
   startDate?: string;
@@ -61,7 +63,7 @@ async function fetchYear(
   }
 
   const { from, to } = yearBounds(year);
-  const url = new URL('https://openholidaysapi.org/SchoolHolidays');
+  const url = new URL(OPEN_HOLIDAYS_ENDPOINT, window.location.origin);
   url.searchParams.set('countryIsoCode', 'DE');
   url.searchParams.set('subdivisionCode', subdiv);
   url.searchParams.set('languageIsoCode', 'DE');

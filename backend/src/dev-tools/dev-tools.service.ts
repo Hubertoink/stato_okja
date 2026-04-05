@@ -241,7 +241,7 @@ export class DevToolsService {
   private assertEnabled() {
     const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
     const appEnv = (process.env.APP_ENV || '').toLowerCase();
-    const isProd = nodeEnv === 'production' || appEnv === 'production';
+    const isProd = nodeEnv === 'production' && appEnv !== 'development';
     if (isProd) {
       throw new ForbiddenException('Testdaten-Tools sind in Produktion deaktiviert.');
     }

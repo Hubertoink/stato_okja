@@ -61,7 +61,7 @@ describe('StatsController org scoping', () => {
 
   it('summary: superadmin without scope uses null orgId', async () => {
     await controller.getSummary({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: undefined }, undefined, undefined, undefined);
-    expect(service.getSummary).toHaveBeenCalledWith(undefined, undefined, null, undefined);
+    expect(service.getSummary).toHaveBeenCalledWith(undefined, undefined, null, undefined, undefined);
   });
 
   it('by-type: superadmin scoped string expands to subtree', async () => {

@@ -160,7 +160,11 @@ copy .env.onprem.example .env.onprem
 cp .env.onprem.example .env.onprem
 ```
 
-Dann `APP_ORIGIN`, `CORS_ORIGINS`, `JWT_SECRET`, `SUPERADMIN_*` und DB‑Credentials in `.env.onprem` setzen.
+Dann mindestens `APP_ORIGIN`, `CORS_ORIGINS`, `JWT_SECRET`, `SUPERADMIN_*` und die DB‑Credentials in `.env.onprem` setzen.
+
+Zusätzlich unterstützt das On-Prem-Compose inzwischen auch optionale Variablen wie `TZ`, `APP_ENV`, `NODE_ENV`, `DB_LOGGING`, `DB_REQUIRE_SSL`, `DB_SSL`, `DB_SSL_REJECT_UNAUTHORIZED` und `VITE_ENABLE_DEV_TOOLS`.
+
+Die vollständige Beschreibung steht in [docs/DOCKER_ONPREM_SETUP.md](../docs/DOCKER_ONPREM_SETUP.md).
 
 ---
 

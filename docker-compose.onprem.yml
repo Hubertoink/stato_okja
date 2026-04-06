@@ -6,6 +6,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-stato_prod}
       POSTGRES_USER: ${POSTGRES_USER:-stato_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: ${TZ:-Europe/Berlin}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -24,6 +25,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       APP_ENV: ${APP_ENV:-production}
       PORT: 3000
+      TZ: ${TZ:-Europe/Berlin}
       API_PREFIX: ${API_PREFIX:-api}
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
@@ -36,22 +38,28 @@ services:
       DB_DATABASE: ${POSTGRES_DB:-stato_prod}
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
       DB_MIGRATIONS_RUN: ${DB_MIGRATIONS_RUN:-true}
+      DB_LOGGING: ${DB_LOGGING:-false}
+      DB_REQUIRE_SSL: ${DB_REQUIRE_SSL:-false}
+      DB_SSL: ${DB_SSL:-false}
+      DB_SSL_REJECT_UNAUTHORIZED: ${DB_SSL_REJECT_UNAUTHORIZED:-false}
 
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-12h}
       PASSWORD_RESET_MODE: ${PASSWORD_RESET_MODE:-email}
       PUBLIC_APP_NAME: ${PUBLIC_APP_NAME:-StatO}
-      PUBLIC_ORG_NAME: ${PUBLIC_ORG_NAME:-}
+      PUBLIC_ORG_NAME: "${PUBLIC_ORG_NAME:-}"
       PUBLIC_LOGIN_SUBTITLE: ${PUBLIC_LOGIN_SUBTITLE:-OKJA Statistik & Dokumentation}
 
       SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.org}
-      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
+      SUPERADMIN_PASSWORD: "${SUPERADMIN_PASSWORD:-}"
+      SUPERADMIN_EMAIL_FORCE: ${SUPERADMIN_EMAIL_FORCE:-false}
+      SUPERADMIN_PASSWORD_FORCE: ${SUPERADMIN_PASSWORD_FORCE:-false}
 
       # SMTP (optional)
-      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_HOST: "${SMTP_HOST:-}"
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASS: "${SMTP_PASS:-}"
       SMTP_FROM: ${SMTP_FROM:-no-reply@stato.local}
 
     depends_on:
@@ -73,6 +81,8 @@ services:
         # Optional (nur wenn ihr Option B wollt):
         # VITE_API_BASE_URL: https://<eure-domain>/api
     restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
     depends_on:
       - backend
     ports:

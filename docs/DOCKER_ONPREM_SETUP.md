@@ -106,11 +106,22 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 
 - `DB_SYNCHRONIZE`: für eine leere On-Prem-Datenbank aktuell auf `true` setzen
 - `DB_MIGRATIONS_RUN`: kann gesetzt bleiben; bei `DB_SYNCHRONIZE=true` werden Migrationen im Backend automatisch übersprungen
+- `DB_LOGGING`: optional, für produktionsnahe On-Prem-Instanzen meist `false`
+
+### Optional: externe Postgres-Datenbank mit TLS
+
+- `DB_REQUIRE_SSL`: nur relevant bei externer Datenbank
+- `DB_SSL`: aktiviert TLS für die DB-Verbindung
+- `DB_SSL_REJECT_UNAUTHORIZED`: Zertifikatsprüfung für TLS-Verbindungen
+
+Für den mitgelieferten lokalen `postgres`-Service sollten diese Werte normalerweise `false` bleiben.
 
 ### Initialer Superadmin
 
 - `SUPERADMIN_EMAIL`: Login des ersten Superadmins
 - `SUPERADMIN_PASSWORD`: starkes Passwort
+- `SUPERADMIN_EMAIL_FORCE`: optional, setzt die Superadmin-E-Mail beim Start bewusst erneut
+- `SUPERADMIN_PASSWORD_FORCE`: optional, setzt das Superadmin-Passwort beim Start bewusst erneut
 
 ### Optional: Branding
 
@@ -125,6 +136,14 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 - `SMTP_USER`
 - `SMTP_PASS`
 - `SMTP_FROM`
+
+Hinweis: Feinsteuerung wie `RESET_TOKEN_EXPIRATION` oder `INVITE_TOKEN_EXPIRATION` ist im On-Prem-Standard bewusst nicht Teil der Basisvorlage. Für die meisten On-Prem-Setups reicht `PASSWORD_RESET_MODE` als Schalter; Token-Laufzeiten sind erst bei gezielt konfiguriertem Mail-Flow relevant.
+
+### Optional: Laufzeitumgebung
+
+- `TZ`: Container-Zeitzone, z. B. `Europe/Berlin`
+- `APP_ENV`: steuert u. a. die Backend-Dev-Tools
+- `NODE_ENV`: steuert Runtime-Verhalten des Backends
 
 ### Optional: Dev Tools
 
@@ -147,10 +166,16 @@ JWT_SECRET=CHANGE_ME_SUPER_LONG_RANDOM_STRING
 JWT_ACCESS_EXPIRATION=12h
 DB_SYNCHRONIZE=true
 DB_MIGRATIONS_RUN=true
+DB_LOGGING=false
+DB_REQUIRE_SSL=false
+DB_SSL=false
+DB_SSL_REJECT_UNAUTHORIZED=false
 PASSWORD_RESET_MODE=admin_temp_password
 
 SUPERADMIN_EMAIL=admin@kommune.local
 SUPERADMIN_PASSWORD=CHANGE_ME_STRONG
+SUPERADMIN_EMAIL_FORCE=false
+SUPERADMIN_PASSWORD_FORCE=false
 
 PUBLIC_APP_NAME=StatO
 PUBLIC_ORG_NAME=Stadt Musterstadt
@@ -163,7 +188,11 @@ PUBLIC_LOGIN_SUBTITLE=OKJA Statistik und Dokumentation
 # SMTP_PASS=CHANGE_ME
 # SMTP_FROM=no-reply@kommune.local
 
+TZ=Europe/Berlin
+
 VITE_ENABLE_DEV_TOOLS=false
+APP_ENV=production
+NODE_ENV=production
 ```
 
 ## Schritt 4: Container starten

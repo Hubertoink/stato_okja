@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useActivity } from '@/lib/activities';
 import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
+import Modal from '@/components/Modal';
 import { colorForActivityType } from '@/lib/colors';
 import { getBgClass } from '@/lib/colorPalette';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -59,6 +60,7 @@ export default function Activities() {
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const { data: cohorts = [] } = useCohorts({ active: true });
   const [exporting, setExporting] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   // Persist filters across route/tab changes; reset only via the explicit reset button.
   useEffect(() => {
     try {
@@ -155,6 +157,192 @@ export default function Activities() {
     const part = words.slice(0, n).join(' ');
     return words.length > n ? part + '…' : part;
   };
+  const formatFilterDate = (iso?: string) => {
+    if (!iso) return '';
+    const [year, month, day] = iso.split('-');
+    if (!year || !month || !day) return iso;
+    return `${day}.${month}.${year}`;
+  };
+  const rangeBadgeLabel = (() => {
+    const from = formatFilterDate(advanced.from);
+    const to = formatFilterDate(advanced.to);
+    if (from && to) return from === to ? `Zeitraum: ${from}` : `Zeitraum: ${from} – ${to}`;
+    if (from) return `Zeitraum: ab ${from}`;
+    if (to) return `Zeitraum: bis ${to}`;
+    return 'Zeitraum';
+  })();
+  const exportCount = total;
+  const exportCountLabel = new Intl.NumberFormat('de-DE').format(exportCount);
+  const exportItemLabel = exportCount === 1 ? 'Aktivität' : 'Aktivitäten';
+  const handleExportConfirm = async () => {
+    try {
+      setExportModalOpen(false);
+      setExporting(true);
+      const qp: Record<string, unknown> = { ...filters };
+      const arrayKeys: (keyof ActivitiesFilter)[] = [
+        'types',
+        'locationIds',
+        'projectIds',
+        'categoryIds',
+        'tagIds',
+        'cohortIds',
+      ];
+      for (const k of arrayKeys) {
+        const v = (filters as ActivitiesFilter)[k];
+        if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
+        else if (Array.isArray(v)) delete qp[k as string];
+      }
+      const res = await api.get('/activities', { params: qp });
+      type ExportRow = {
+        id: string;
+        date: string;
+        type: string;
+        title?: string | null;
+        project?: { title?: string | null; type?: string | null } | null;
+        countTotal?: number | null;
+        countMale?: number | null;
+        countFemale?: number | null;
+        countDiverse?: number | null;
+        durationMinutes?: number | null;
+        startTime?: string | null;
+        endTime?: string | null;
+        tags?: Array<{ name: string; color?: string | null }>;
+        categories?: Array<{ name: string; color?: string | null }>;
+        notes?: string | null;
+        cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
+      };
+      const list: Array<ExportRow> = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+          ? res.data
+          : [];
+
+      const cohortOrder = (cohorts as Cohort[])
+        .slice()
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      const cohortIds = cohortOrder.map((c) => c.id);
+      const cohortHeaders = cohortOrder.map((c) => c.name);
+
+      const header = [
+        'Datum',
+        'Typ',
+        'Titel',
+        'Projekt',
+        'Teilnehmende',
+        'm',
+        'w',
+        'd',
+        ...cohortHeaders,
+        'Dauer (min)',
+        'Kategorien',
+        'Tags',
+        'Notizen',
+      ];
+      const rows = [header as (string | number)[]];
+      const typeLabel: Record<string, string> = {
+        open_door: 'Offene Tür',
+        project_open: 'Projekt (offen)',
+        project_closed: 'Projekt (geschlossen)',
+        event: 'Veranstaltung',
+        outreach: 'Aufsuchend',
+      };
+      const durFrom = (a: ExportRow) => {
+        if (typeof a.durationMinutes === 'number' && a.durationMinutes >= 0) return a.durationMinutes;
+        const toMinutes = (t?: string | null) => {
+          if (!t) return undefined;
+          const [hh, mm] = t.split(':').map((v) => parseInt(v, 10));
+          if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
+          return hh * 60 + mm;
+        };
+        const s = toMinutes(a.startTime);
+        const e = toMinutes(a.endTime);
+        return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
+      };
+      for (const a of list) {
+        const s = (a.date || '').slice(0, 10);
+        const [y, m, d] = s.split('-');
+        const dateDE = `${d}.${m}.${y}`;
+        const tlabel = typeLabel[a.type] || a.type;
+        const total =
+          (a.countTotal ?? (a.countMale || 0) + (a.countFemale || 0) + (a.countDiverse || 0)) || 0;
+        const mcount = a.countMale || 0;
+        const wcount = a.countFemale || 0;
+        const dcount = a.countDiverse || 0;
+        const perCoh: Record<string, number> = Object.fromEntries(
+          cohortIds.map((id) => [id, 0] as const),
+        );
+        (a.cohorts || []).forEach((c) => {
+          perCoh[c.cohortId] = (perCoh[c.cohortId] || 0) + (c.m || 0) + (c.w || 0) + (c.d || 0);
+        });
+        const duration = durFrom(a) ?? '';
+        const catsText =
+          a.project?.title && a.project?.type === 'open_door'
+            ? ''
+            : (a.categories || []).map((c) => c.name).join(', ');
+        const tagsText = (a.tags || []).map((t) => t.name).join(', ');
+        const row = [
+          dateDE,
+          tlabel,
+          a.title || '',
+          a.project?.title || '',
+          total,
+          mcount,
+          wcount,
+          dcount,
+          ...cohortIds.map((id) => perCoh[id] || 0),
+          duration,
+          catsText,
+          tagsText,
+          a.notes || '',
+        ];
+        rows.push(row);
+      }
+      const xlsx = await import('xlsx-js-style');
+      const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
+      type CellStyle = { font?: { bold?: boolean; color?: { rgb: string } } };
+      const ws = utils.aoa_to_sheet(rows);
+      (ws as unknown as { ['!autofilter']?: { ref: string } })['!autofilter'] = {
+        ref: `A1:${utils.encode_col((rows[0]?.length || 1) - 1)}1`,
+      };
+      ws['!cols'] = (rows[0] || []).map((h, i) => ({
+        wch: i <= 3 ? 18 : Math.max(10, String(h).length + 2),
+      }));
+      for (let c = 0; c < (rows[0]?.length || 0); c++) {
+        const addr = utils.encode_cell({ r: 0, c });
+        const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
+        if (cell) cell.s = { ...(cell.s || {}), font: { ...(cell.s?.font || {}), bold: true } };
+      }
+      const typeCol = 1;
+      const labelToCode: Record<string, string> = {
+        'Offene Tür': 'open_door',
+        'Projekt (offen)': 'project_open',
+        'Projekt (geschlossen)': 'project_closed',
+        Veranstaltung: 'event',
+        Aufsuchend: 'outreach',
+      };
+      for (let r = 1; r < rows.length; r++) {
+        const typeText = String(rows[r][typeCol] ?? '');
+        const code = labelToCode[typeText];
+        if (!code) continue;
+        const hex = colorForActivityType(code);
+        const rgb = 'FF' + hex.replace('#', '').toUpperCase();
+        const addr = utils.encode_cell({ r, c: typeCol });
+        const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
+        if (cell) {
+          cell.s = {
+            ...(cell.s || {}),
+            font: { ...(cell.s?.font || {}), color: { rgb } },
+          };
+        }
+      }
+      const wb = utils.book_new();
+      utils.book_append_sheet(wb, ws, 'Aktivitäten');
+      const fname = `Aktivitäten_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      writeFile(wb, fname);
+    } finally {
+      setExporting(false);
+    }
+  };
   const clearSearch = () => {
     setSearchTerm('');
     setSearchOpen(false);
@@ -203,190 +391,22 @@ export default function Activities() {
               </button>
             </div>
             <button
-            className="inline-flex items-center justify-center rounded-lg bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10"
-            title="Excel-Export (gefiltert)"
-            aria-label="Excel-Export (gefiltert)"
-            disabled={exporting}
-            onClick={async () => {
-              try {
-                setExporting(true);
-                // Build query like in useActivities/useActivitiesPaged but without paging to fetch all filtered items
-                const qp: Record<string, unknown> = { ...filters };
-                const arrayKeys: (keyof ActivitiesFilter)[] = [
-                  'types',
-                  'locationIds',
-                  'projectIds',
-                  'categoryIds',
-                  'tagIds',
-                  'cohortIds',
-                ];
-                for (const k of arrayKeys) {
-                  const v = (filters as ActivitiesFilter)[k];
-                  if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
-                  else if (Array.isArray(v)) delete qp[k as string];
-                }
-                const res = await api.get('/activities', { params: qp });
-                type ExportRow = {
-                  id: string;
-                  date: string;
-                  type: string;
-                  title?: string | null;
-                  project?: { title?: string | null; type?: string | null } | null;
-                  countTotal?: number | null;
-                  countMale?: number | null;
-                  countFemale?: number | null;
-                  countDiverse?: number | null;
-                  durationMinutes?: number | null;
-                  startTime?: string | null;
-                  endTime?: string | null;
-                  tags?: Array<{ name: string; color?: string | null }>;
-                  categories?: Array<{ name: string; color?: string | null }>;
-                  notes?: string | null;
-                  cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
-                };
-                const list: Array<ExportRow> = Array.isArray(res.data?.data)
-                  ? res.data.data
-                  : Array.isArray(res.data)
-                    ? res.data
-                    : [];
-
-                const cohortOrder = (cohorts as Cohort[])
-                  .slice()
-                  .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-                const cohortIds = cohortOrder.map((c) => c.id);
-                const cohortHeaders = cohortOrder.map((c) => c.name);
-
-                // Build rows
-                const header = [
-                  'Datum',
-                  'Typ',
-                  'Titel',
-                  'Projekt',
-                  'Teilnehmende',
-                  'm',
-                  'w',
-                  'd',
-                  ...cohortHeaders,
-                  'Dauer (min)',
-                  'Kategorien',
-                  'Tags',
-                  'Notizen',
-                ];
-                const rows = [header as (string | number)[]];
-                const typeLabel: Record<string, string> = {
-                  open_door: 'Offene Tür',
-                  project_open: 'Projekt (offen)',
-                  project_closed: 'Projekt (geschlossen)',
-                  event: 'Veranstaltung',
-                  outreach: 'Aufsuchend',
-                };
-                const durFrom = (a: ExportRow) => {
-                  if (typeof a.durationMinutes === 'number' && a.durationMinutes >= 0)
-                    return a.durationMinutes;
-                  const toMinutes = (t?: string | null) => {
-                    if (!t) return undefined;
-                    const [hh, mm] = t.split(':').map((v) => parseInt(v, 10));
-                    if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
-                    return hh * 60 + mm;
-                  };
-                  const s = toMinutes(a.startTime);
-                  const e = toMinutes(a.endTime);
-                  return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
-                };
-                for (const a of list) {
-                  const s = (a.date || '').slice(0, 10);
-                  const [y, m, d] = s.split('-');
-                  const dateDE = `${d}.${m}.${y}`;
-                  const tlabel = typeLabel[a.type] || a.type;
-                  const total =
-                    (a.countTotal ??
-                      (a.countMale || 0) + (a.countFemale || 0) + (a.countDiverse || 0)) ||
-                    0;
-                  const mcount = a.countMale || 0;
-                  const wcount = a.countFemale || 0;
-                  const dcount = a.countDiverse || 0;
-                  const perCoh: Record<string, number> = Object.fromEntries(
-                    cohortIds.map((id) => [id, 0] as const),
-                  );
-                  (a.cohorts || []).forEach((c) => {
-                    perCoh[c.cohortId] =
-                      (perCoh[c.cohortId] || 0) + (c.m || 0) + (c.w || 0) + (c.d || 0);
-                  });
-                  const duration = durFrom(a) ?? '';
-                  const catsText =
-                    a.project?.title && a.project?.type === 'open_door'
-                      ? ''
-                      : (a.categories || []).map((c) => c.name).join(', ');
-                  const tagsText = (a.tags || []).map((t) => t.name).join(', ');
-                  const row = [
-                    dateDE,
-                    tlabel,
-                    a.title || '',
-                    a.project?.title || '',
-                    total,
-                    mcount,
-                    wcount,
-                    dcount,
-                    ...cohortIds.map((id) => perCoh[id] || 0),
-                    duration,
-                    catsText,
-                    tagsText,
-                    a.notes || '',
-                  ];
-                  rows.push(row);
-                }
-                const xlsx = await import('xlsx-js-style');
-                const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
-                type CellStyle = { font?: { bold?: boolean; color?: { rgb: string } } };
-                const ws = utils.aoa_to_sheet(rows);
-                // Autofilter on header row
-                (ws as unknown as { ['!autofilter']?: { ref: string } })['!autofilter'] = {
-                  ref: `A1:${utils.encode_col((rows[0]?.length || 1) - 1)}1`,
-                };
-                // Column widths
-                ws['!cols'] = (rows[0] || []).map((h, i) => ({
-                  wch: i <= 3 ? 18 : Math.max(10, String(h).length + 2),
-                }));
-                // Bold header
-                for (let c = 0; c < (rows[0]?.length || 0); c++) {
-                  const addr = utils.encode_cell({ r: 0, c });
-                  const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
-                  if (cell)
-                    cell.s = { ...(cell.s || {}), font: { ...(cell.s?.font || {}), bold: true } };
-                }
-                // Colorize Typ column font by activity type color
-                const typeCol = 1; // 'Typ' column index in our header
-                const labelToCode: Record<string, string> = {
-                  'Offene Tür': 'open_door',
-                  'Projekt (offen)': 'project_open',
-                  'Projekt (geschlossen)': 'project_closed',
-                  Veranstaltung: 'event',
-                  Aufsuchend: 'outreach',
-                };
-                for (let r = 1; r < rows.length; r++) {
-                  const typeText = String(rows[r][typeCol] ?? '');
-                  const code = labelToCode[typeText];
-                  if (!code) continue;
-                  const hex = colorForActivityType(code);
-                  const rgb = 'FF' + hex.replace('#', '').toUpperCase();
-                  const addr = utils.encode_cell({ r, c: typeCol });
-                  const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
-                  if (cell)
-                    cell.s = {
-                      ...(cell.s || {}),
-                      font: { ...(cell.s?.font || {}), color: { rgb } },
-                    };
-                }
-                const wb = utils.book_new();
-                utils.book_append_sheet(wb, ws, 'Aktivitäten');
-                const fname = `Aktivitäten_${new Date().toISOString().slice(0, 10)}.xlsx`;
-                writeFile(wb, fname);
-              } finally {
-                setExporting(false);
-              }
-            }}
+            className="relative inline-flex md:hidden items-center justify-center rounded-lg bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Excel-Export"
+            aria-label="Excel-Export"
+            disabled={exporting || exportCount === 0}
+            onClick={() => setExportModalOpen(true)}
           >
             <Download className="w-5 h-5" />
+          </button>
+          <button
+            className="hidden md:inline-flex items-center gap-2 rounded-lg bg-azure-web px-4 py-2 text-viridian hover:bg-mint-green transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            title="Excel-Export"
+            aria-label="Excel-Export"
+            disabled={exporting || exportCount === 0}
+            onClick={() => setExportModalOpen(true)}
+          >
+            <Download className="h-5 w-5" />
           </button>
           {/* Mobile icon-only: Filter */}
           <button
@@ -445,7 +465,7 @@ export default function Activities() {
             </span>
           ) : null}
           {advanced.from || advanced.to ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">Zeitraum</span>
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{rangeBadgeLabel}</span>
           ) : null}
           {advanced.types?.length ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
@@ -940,6 +960,44 @@ export default function Activities() {
           activity={editing}
         />
       )}
+      <Modal
+        open={exportModalOpen}
+        onClose={() => {
+          if (!exporting) setExportModalOpen(false);
+        }}
+        title="Excel-Export"
+        maxWidth="md"
+      >
+        <div className="space-y-4 text-sm text-gray-700">
+          <p>
+            Es werden <span className="font-semibold text-viridian">{exportCountLabel}</span>{' '}
+            {exportItemLabel} mit den aktuell gesetzten Filtern exportiert.
+          </p>
+          <p className="text-gray-600">
+            Der Export erstellt eine Excel-Datei mit allen passenden Einträgen inklusive
+            Teilnehmenden, Kategorien, Tags und Notizen.
+          </p>
+          <p className="font-medium text-gray-900">Soll der Export jetzt gestartet werden?</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              className="rounded-lg border border-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => setExportModalOpen(false)}
+              disabled={exporting}
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-viridian px-4 py-2 text-white hover:bg-cambridge-blue disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={handleExportConfirm}
+              disabled={exporting || exportCount === 0}
+            >
+              {exporting ? 'Exportiere…' : 'OK'}
+            </button>
+          </div>
+        </div>
+      </Modal>
       <ActivitiesFilterDrawer
         open={filterDrawer}
         initial={advanced}

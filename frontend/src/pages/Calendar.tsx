@@ -574,11 +574,29 @@ export default function Calendar() {
   // State for "+x more" tooltip
   const [moreTooltip, setMoreTooltip] = useState<{ activities: Activity[]; position: { x: number; y: number } } | null>(null);
   const moreTooltipTimeoutRef = useRef<number | null>(null);
-  
-  const handleMoreMouseEnter = (e: React.MouseEvent, hiddenActivities: Activity[]) => {
+  const moreTooltipAnchorRef = useRef<HTMLDivElement | null>(null);
+  const moreTooltipPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const clearMoreTooltipClose = () => {
     if (moreTooltipTimeoutRef.current) {
       clearTimeout(moreTooltipTimeoutRef.current);
+      moreTooltipTimeoutRef.current = null;
     }
+  };
+  const scheduleMoreTooltipClose = () => {
+    clearMoreTooltipClose();
+    moreTooltipTimeoutRef.current = window.setTimeout(() => {
+      setMoreTooltip(null);
+      moreTooltipTimeoutRef.current = null;
+    }, 180);
+  };
+  const isWithinElement = (target: EventTarget | null, element: HTMLElement | null) => {
+    return target instanceof Node && !!element && element.contains(target);
+  };
+  
+  const handleMoreMouseEnter = (e: React.MouseEvent, hiddenActivities: Activity[]) => {
+    clearMoreTooltipClose();
+    moreTooltipAnchorRef.current = e.currentTarget as HTMLDivElement;
     const rect = e.currentTarget.getBoundingClientRect();
     setMoreTooltip({
       activities: hiddenActivities,
@@ -588,11 +606,16 @@ export default function Calendar() {
       }
     });
   };
-  
-  const handleMoreMouseLeave = () => {
-    moreTooltipTimeoutRef.current = window.setTimeout(() => {
-      setMoreTooltip(null);
-    }, 150);
+  const handleMoreMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isWithinElement(e.relatedTarget, moreTooltipPanelRef.current)) return;
+    scheduleMoreTooltipClose();
+  };
+  const handleMoreTooltipMouseEnter = () => {
+    clearMoreTooltipClose();
+  };
+  const handleMoreTooltipMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isWithinElement(e.relatedTarget, moreTooltipAnchorRef.current)) return;
+    scheduleMoreTooltipClose();
   };
   
   const renderEntries = (iso: string, maxRows = 3) => {
@@ -1037,17 +1060,26 @@ export default function Calendar() {
 
           return (
             <div
-              className="fixed z-[9999] pointer-events-none animate-tooltip-fade-in"
+              className="fixed z-[9999] pointer-events-auto animate-tooltip-fade-in"
               style={{ left: layout.left, top: layout.top, transform: layout.transform }}
+              onMouseEnter={handleMoreTooltipMouseEnter}
+              onMouseLeave={handleMoreTooltipMouseLeave}
             >
               <div
-                ref={ref}
+                ref={(node) => {
+                  ref.current = node;
+                  moreTooltipPanelRef.current = node;
+                }}
                 className="relative bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] backdrop-blur-sm"
               >
                 <div className="font-semibold mb-1.5 text-mint-green border-b border-gray-700 pb-1">
                   +{moreTooltip.activities.length} weitere Aktivitäten
                 </div>
-                <div className="space-y-1 max-h-48 overflow-y-auto">
+                <div
+                  className="space-y-1 max-h-48 overflow-y-auto"
+                  style={{ overscrollBehavior: 'contain' }}
+                  onWheel={(e) => e.stopPropagation()}
+                >
                   {moreTooltip.activities.map((a, i) => {
                     const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
                     const time = fmtTimeRange(a.startTime, a.endTime);

@@ -20,6 +20,7 @@ StatO kann grundsätzlich auf zwei Arten genutzt werden:
 	- Anleitung: [docs/LOCAL_SETUP_ONPREM.md](docs/LOCAL_SETUP_ONPREM.md)
 	- Schritt-für-Schritt Docker-Anleitung: [docs/DOCKER_ONPREM_SETUP.md](docs/DOCKER_ONPREM_SETUP.md)
 	- Dateien: [docker-compose.onprem.yml](docker-compose.onprem.yml) + [.env.onprem.example](.env.onprem.example)
+	- Vollständige Beschreibung der unterstützten On-Prem-Umgebungsvariablen: [docs/DOCKER_ONPREM_SETUP.md](docs/DOCKER_ONPREM_SETUP.md)
 
 ### Voraussetzungen
 - Node.js 20+

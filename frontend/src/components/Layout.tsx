@@ -25,6 +25,8 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const appVersion = String(import.meta.env.VITE_APP_VERSION || '1.0.0');
+  const appVersionDisplay = appVersion.replace(/\.0$/, '');
   const restrictToPasswordChange = user?.mustChangePassword === true;
   const { scope, setScope, switching: orgSwitching } = useOrgScope();
   const scopeKey = useOrgScopeKey();
@@ -588,7 +590,7 @@ export default function Layout() {
             <div className="flex items-center justify-center gap-1 flex-wrap">
               <p>
                 © {new Date().getFullYear()} StatO · Version{' '}
-                {import.meta.env.VITE_APP_VERSION || '1.0.0'}
+                {appVersionDisplay}
                 {import.meta.env.VITE_COMMIT_SHA
                   ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0, 7)})`
                   : ''}{' '}
@@ -645,7 +647,7 @@ export default function Layout() {
             <h3 className="text-base font-semibold text-gray-900">Projektangaben</h3>
             <p>Software: StatO</p>
             <p>
-              Version: {import.meta.env.VITE_APP_VERSION || '1.0.0'}
+              Version: {appVersionDisplay}
               {import.meta.env.VITE_COMMIT_SHA
                 ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0, 7)})`
                 : ''}

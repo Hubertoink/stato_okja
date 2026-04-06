@@ -120,8 +120,21 @@ Für den mitgelieferten lokalen `postgres`-Service sollten diese Werte normalerw
 
 - `SUPERADMIN_EMAIL`: Login des ersten Superadmins
 - `SUPERADMIN_PASSWORD`: starkes Passwort
-- `SUPERADMIN_EMAIL_FORCE`: optional, setzt die Superadmin-E-Mail beim Start bewusst erneut
-- `SUPERADMIN_PASSWORD_FORCE`: optional, setzt das Superadmin-Passwort beim Start bewusst erneut
+- `SUPERADMIN_EMAIL_FORCE`: optional, Default `false`
+- `SUPERADMIN_PASSWORD_FORCE`: optional, Default `false`
+
+Präzises Verhalten:
+
+- Beim allerersten Start, wenn noch kein `superadmin` existiert, werden `SUPERADMIN_EMAIL` und `SUPERADMIN_PASSWORD` für die initiale Anlage verwendet.
+- Solange `SUPERADMIN_EMAIL_FORCE=false` und `SUPERADMIN_PASSWORD_FORCE=false` bleiben, wird ein bereits existierender Superadmin bei weiteren Container-Starts **nicht** automatisch überschrieben.
+- Wenn `SUPERADMIN_EMAIL_FORCE=true` gesetzt ist, schreibt das Backend beim Start die E-Mail des vorhandenen Superadmins auf den Wert aus `SUPERADMIN_EMAIL` um.
+- Wenn `SUPERADMIN_PASSWORD_FORCE=true` gesetzt ist, schreibt das Backend beim Start den Passwort-Hash des vorhandenen Superadmins neu, also effektiv das Passwort auf den Wert aus `SUPERADMIN_PASSWORD` zurück.
+- Die Änderung passiert nur beim Start des Backend-Containers. Ein bloßes Ändern der `.env.onprem` ohne Container-Neustart löst noch nichts aus.
+
+Empfehlung:
+
+- Für normalen Betrieb beide Flags auf `false` lassen.
+- Nur für einen bewussten Admin-Reset kurzzeitig auf `true` setzen, Backend neu starten und danach wieder auf `false` zurückstellen.
 
 ### Optional: Branding
 

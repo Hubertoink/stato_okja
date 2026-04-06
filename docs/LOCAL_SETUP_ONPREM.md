@@ -48,7 +48,9 @@ Siehe auch: `backend/BACKEND_CONTAINER_ENV.md` und `backend/.env.example`.
 - `DB_DATABASE=...`
 - `JWT_SECRET=<langer-random-string>`
 - `SUPERADMIN_EMAIL=admin@<kommune>.de`
-- `SUPERADMIN_PASSWORD=<starkes-passwort>` (empfohlen)
+- `SUPERADMIN_PASSWORD=<starkes-passwort>` (empfohlen; initiales Start-Passwort)
+  - Standard: `SUPERADMIN_PASSWORD_FORCE=false`, dann bleibt ein später geändertes Passwort bei Neustarts erhalten.
+  - Nur für Ops-Fälle: `SUPERADMIN_PASSWORD_FORCE=true` setzt das Superadmin-Passwort beim Backend-Start neu auf den Wert aus `SUPERADMIN_PASSWORD`.
 
 **SMTP (optional, produktiv empfohlen)**
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`

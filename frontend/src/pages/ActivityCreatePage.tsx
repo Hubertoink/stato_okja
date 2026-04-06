@@ -12,6 +12,7 @@ import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getBgClass } from '@/lib/colorPalette';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -243,6 +244,23 @@ export default function ActivityCreatePage() {
     if (fromPicker) navigate(-2);
     else navigate(-1);
   };
+
+  const handleShortcutClose = () => {
+    if (picker) {
+      setPicker(false);
+      return;
+    }
+    if (errorOpen) {
+      setErrorOpen(null);
+      return;
+    }
+    handleCancel();
+  };
+
+  useEditorShortcuts({
+    onClose: handleShortcutClose,
+    onSave: create.isPending || picker || Boolean(errorOpen) ? undefined : handleSave,
+  });
 
   // Vereinfachte Strategie: Keine sticky Action-Bar mehr auf Mobil/Route-Seiten.
   // So kann die Tastatur ohne Layout-Konflikte aufgehen. Wir behalten nur die echte Safe-Area unten.

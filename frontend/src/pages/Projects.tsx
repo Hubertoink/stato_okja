@@ -33,6 +33,7 @@ import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
+import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 function ArchiveRestoreControls({
   id,
@@ -189,6 +190,7 @@ function ProjectForm({
   onCancel: () => void;
 }) {
   useBodyScrollLock(true);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState<Partial<Project>>(() => {
     const base: Partial<Project> = {
       title: '',
@@ -219,6 +221,7 @@ function ProjectForm({
   const [imageIssue, setImageIssue] = useState<{ open: boolean; title: string; message: string }>(
     { open: false, title: '', message: '' },
   );
+  const [showTitleValidation, setShowTitleValidation] = useState(false);
   const { data: categories } = useCategories({ active: true });
   const { data: allCategories } = useCategories();
   const { data: allTags } = useTags();
@@ -496,6 +499,96 @@ function ProjectForm({
 
   const update = <K extends keyof Project>(k: K, v: Project[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+  const isTitleMissing = String(form.title || '').trim().length === 0;
+
+  const handleClose = useCallback(() => {
+    if (imageIssue.open) {
+      setImageIssue((state) => ({ ...state, open: false }));
+      return;
+    }
+    onCancel();
+  }, [imageIssue.open, onCancel]);
+
+  const handleSave = useCallback(() => {
+    if (isTitleMissing) {
+      setShowTitleValidation(true);
+      titleInputRef.current?.focus();
+      return;
+    }
+
+    const allowed: (keyof Project)[] = [
+      'title',
+      'type',
+      'categoryId',
+      'targetGroup',
+      'imageUrl',
+      'imageSize',
+      'color',
+      'dateFrom',
+      'dateTo',
+      'defaultStartTime',
+      'defaultEndTime',
+      'defaultStaff',
+      'defaultVolunteers',
+      'tag',
+      'activityField',
+      'description',
+      'archived',
+    ];
+    const clearable = new Set<keyof Project>([
+      'categoryId',
+      'targetGroup',
+      'imageUrl',
+      'imageSize',
+      'color',
+      'dateFrom',
+      'dateTo',
+      'defaultStartTime',
+      'defaultEndTime',
+      'defaultStaff',
+      'defaultVolunteers',
+      'tag',
+      'activityField',
+      'description',
+    ]);
+    const cleaned = allowed.reduce((acc, k) => {
+      const v = form[k as keyof Project] as unknown;
+      if (v === '') {
+        if (clearable.has(k)) (acc as Record<string, unknown>)[k as string] = null;
+      } else if (v !== undefined) {
+        if (k === 'imageUrl' && typeof v === 'string') {
+          (acc as Record<string, unknown>)[k as string] = normalizeUploadPath(v) ?? null;
+        } else if (k === 'imageSize' && typeof v === 'string' && v.trim() !== '') {
+          const n = Number(v);
+          if (Number.isFinite(n)) (acc as Record<string, unknown>)[k as string] = n;
+        } else {
+          (acc as Record<string, unknown>)[k as string] = v as unknown;
+        }
+      }
+      return acc;
+    }, {} as Partial<Project>);
+    const imgSize = (cleaned as Partial<Project> & { imageSize?: unknown }).imageSize;
+    const bytes =
+      typeof imgSize === 'number'
+        ? imgSize
+        : typeof imgSize === 'string'
+          ? Number(imgSize)
+          : undefined;
+    if (typeof bytes === 'number' && Number.isFinite(bytes) && bytes > MAX_IMAGE_BYTES) {
+      setImageIssue({
+        open: true,
+        title: 'Bild zu groß',
+        message: `Das Projektbild ist größer als ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB. Bitte ein kleineres Bild hochladen (wird automatisch auf 600px reduziert).`,
+      });
+      return;
+    }
+    onSubmit(cleaned);
+  }, [form, isTitleMissing, onSubmit]);
+
+  useEditorShortcuts({
+    onClose: handleClose,
+    onSave: applyingTemplate || archiving || deleting || imageIssue.open ? undefined : handleSave,
+  });
 
   return (
     <div className="fixed inset-0 bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
@@ -510,7 +603,7 @@ function ProjectForm({
           </h3>
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleClose}
             className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
             title="Schließen"
             aria-label="Schließen"
@@ -641,11 +734,25 @@ function ProjectForm({
               <div>
                 <label className="block text-sm font-medium mb-1">Titel *</label>
                 <input
+                  ref={titleInputRef}
                   value={form.title || ''}
-                  onChange={(e) => update('title', e.target.value)}
+                  onChange={(e) => {
+                    update('title', e.target.value);
+                    if (showTitleValidation && e.target.value.trim()) setShowTitleValidation(false);
+                  }}
+                  onBlur={() => {
+                    if (String(form.title || '').trim().length === 0) setShowTitleValidation(true);
+                  }}
                   required
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${
+                    showTitleValidation && isTitleMissing
+                      ? 'border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-200'
+                      : ''
+                  }`}
                 />
+                {showTitleValidation && isTitleMissing ? (
+                  <p className="mt-1 text-xs text-red-600">Bitte einen Projekttitel eingeben.</p>
+                ) : null}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Typ *</label>
@@ -925,7 +1032,7 @@ function ProjectForm({
             <span className="tooltip-wrapper">
               <button
                 type="button"
-                onClick={onCancel}
+                onClick={handleClose}
                 className="inline-flex md:hidden items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
                 title="Abbrechen"
                 aria-label="Abbrechen"
@@ -937,74 +1044,9 @@ function ProjectForm({
             <span className="tooltip-wrapper">
               <button
                 type="button"
-                onClick={() => {
-                  // Only send DTO-allowed keys. For clearable fields, map empty string to null so backend clears the value.
-                  const allowed: (keyof Project)[] = [
-                    'title',
-                    'type',
-                    'categoryId',
-                    'targetGroup',
-                    'imageUrl',
-                    'imageSize',
-                    'color',
-                    'dateFrom',
-                    'dateTo',
-                    'defaultStartTime',
-                    'defaultEndTime',
-                    'defaultStaff',
-                    'defaultVolunteers',
-                    'tag',
-                    'activityField',
-                    'description',
-                    'archived',
-                  ];
-                  const clearable = new Set<keyof Project>([
-                    'categoryId',
-                    'targetGroup',
-                    'imageUrl',
-                    'imageSize',
-                    'color',
-                    'dateFrom',
-                    'dateTo',
-                    'defaultStartTime',
-                    'defaultEndTime',
-                    'defaultStaff',
-                    'defaultVolunteers',
-                    'tag',
-                    'activityField',
-                    'description',
-                  ]);
-                  const cleaned = allowed.reduce((acc, k) => {
-                    const v = form[k as keyof Project] as unknown;
-                    if (v === '') {
-                      if (clearable.has(k)) (acc as Record<string, unknown>)[k as string] = null;
-                    } else if (v !== undefined) {
-                      if (k === 'imageUrl' && typeof v === 'string') {
-                        (acc as Record<string, unknown>)[k as string] = normalizeUploadPath(v) ?? null;
-                      } else
-                      // Coerce imageSize to number if it came from Postgres as string
-                      if (k === 'imageSize' && typeof v === 'string' && v.trim() !== '') {
-                        const n = Number(v);
-                        if (Number.isFinite(n)) (acc as Record<string, unknown>)[k as string] = n;
-                      } else {
-                        (acc as Record<string, unknown>)[k as string] = v as unknown;
-                      }
-                    }
-                    return acc;
-                  }, {} as Partial<Project>);
-                  const imgSize = (cleaned as Partial<Project> & { imageSize?: unknown }).imageSize;
-                  const bytes = typeof imgSize === 'number' ? imgSize : typeof imgSize === 'string' ? Number(imgSize) : undefined;
-                  if (typeof bytes === 'number' && Number.isFinite(bytes) && bytes > MAX_IMAGE_BYTES) {
-                    setImageIssue({
-                      open: true,
-                      title: 'Bild zu groß',
-                      message: `Das Projektbild ist größer als ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB. Bitte ein kleineres Bild hochladen (wird automatisch auf 600px reduziert).`,
-                    });
-                    return;
-                  }
-                  onSubmit(cleaned);
-                }}
-                className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+                onClick={handleSave}
+                disabled={isTitleMissing}
+                className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
                 title="Speichern"
                 aria-label="Speichern"
               >

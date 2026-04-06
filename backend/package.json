@@ -1,7 +1,7 @@
 {
   "name": "stato-backend",
-  "version": "2.0.0",
-  "description": "Stato 2.0 Backend API",
+  "version": "1.0.0",
+  "description": "Stato 1.0 Backend API",
   "author": "OKJA Team",
   "private": true,
   "license": "UNLICENSED",

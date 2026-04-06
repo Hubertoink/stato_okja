@@ -11,6 +11,7 @@ import ProjectPickerModal from './ProjectPickerModal';
 import { useToast } from '@/components/Toast';
 import { getBgClass } from '@/lib/colorPalette';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -133,6 +134,69 @@ export default function ActivityEditPage() {
   // Reduziere Container-Spacing bei Tastatur
   const contentSpacing = keyboardOpen ? 'space-y-2' : 'space-y-3';
 
+  const handleClose = () => {
+    if (picker) {
+      setPicker(false);
+      return;
+    }
+    if (deleteOpen) {
+      setDeleteOpen(false);
+      return;
+    }
+    navigate(-1);
+  };
+
+  const handleSave = () => {
+    if (!form.projectId) return;
+    const cohortSumsLocal: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
+    Object.values(form.cohortCounts || {}).forEach((e) => {
+      cohortSumsLocal.m += e.m || 0;
+      cohortSumsLocal.w += e.w || 0;
+      cohortSumsLocal.d += e.d || 0;
+    });
+    const counts = cohortSumsLocal;
+    const payload: Record<string, unknown> = {
+      date: activity.date,
+      startTime: form.start || null,
+      endTime: form.end || null,
+      type: activity.type,
+      projectId: form.projectId,
+      ...(form.locationId ? { locationId: form.locationId } : {}),
+      title: form.title || null,
+      notes: form.notes || null,
+      tagIds: form.tagIds || [],
+      staffIds: form.staffIds || [],
+      durationMinutes: activity.durationMinutes,
+      countMale: counts.m,
+      countFemale: counts.w,
+      countDiverse: counts.d,
+      countTotal: counts.m + counts.w + counts.d,
+      cohorts: Object.entries(form.cohortCounts || {}).flatMap(([cohortId, gcounts]) => {
+        const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> = [];
+        (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
+          const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
+          if (v > 0) arr.push({ cohortId, count: v, gender: g });
+        });
+        return arr;
+      }),
+      categoryIds: isOpenDoor ? [] : form.categoryIds || [],
+    };
+    update.mutate(
+      { id: activity.id, data: payload as Partial<Activity> & Record<string, unknown> },
+      {
+        onSuccess: () => {
+          showToast('Aktivität aktualisiert');
+          navigate(-1);
+        },
+      },
+    );
+  };
+
+  useEditorShortcuts({
+    onClose: handleClose,
+    onSave: update.isPending || picker || deleteOpen ? undefined : handleSave,
+  });
+
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4 mt-1">
@@ -140,7 +204,7 @@ export default function ActivityEditPage() {
         <button
           type="button"
           className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-          onClick={() => navigate(-1)}
+          onClick={handleClose}
           title="Abbrechen"
           aria-label="Abbrechen"
         >
@@ -563,53 +627,7 @@ export default function ActivityEditPage() {
             <button
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-              onClick={() => {
-                if (!form.projectId) return;
-                const cohortSumsLocal: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
-                Object.values(form.cohortCounts || {}).forEach((e) => {
-                  cohortSumsLocal.m += e.m || 0;
-                  cohortSumsLocal.w += e.w || 0;
-                  cohortSumsLocal.d += e.d || 0;
-                });
-                const counts = cohortSumsLocal;
-                const payload: Record<string, unknown> = {
-                  date: activity.date,
-                  startTime: form.start || null,
-                  endTime: form.end || null,
-                  type: activity.type,
-                  projectId: form.projectId,
-                  ...(form.locationId ? { locationId: form.locationId } : {}),
-                  title: form.title || null,
-                  notes: form.notes || null,
-                  tagIds: form.tagIds || [],
-                  staffIds: form.staffIds || [],
-                  durationMinutes: activity.durationMinutes,
-                  countMale: counts.m,
-                  countFemale: counts.w,
-                  countDiverse: counts.d,
-                  countTotal: counts.m + counts.w + counts.d,
-                  cohorts: Object.entries(form.cohortCounts || {}).flatMap(
-                    ([cohortId, gcounts]) => {
-                      const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> = [];
-                      (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
-                        const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
-                        if (v > 0) arr.push({ cohortId, count: v, gender: g });
-                      });
-                      return arr;
-                    },
-                  ),
-                  categoryIds: isOpenDoor ? [] : form.categoryIds || [],
-                };
-                update.mutate(
-                  { id: activity.id, data: payload as Partial<Activity> & Record<string, unknown> },
-                  {
-                    onSuccess: () => {
-                      showToast('Aktivität aktualisiert');
-                      navigate(-1);
-                    },
-                  },
-                );
-              }}
+              onClick={handleSave}
               title="Speichern"
               aria-label="Speichern"
             >

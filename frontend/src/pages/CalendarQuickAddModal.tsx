@@ -13,6 +13,7 @@ import { useToast } from '@/components/Toast';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { createPortal } from 'react-dom';
 import { getBgClass } from '@/lib/colorPalette';
+import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -192,6 +193,114 @@ export default function ActivityQuickAdd({
   const update = useUpdateActivity();
   const remove = useRemoveActivity();
 
+  const handleClose = () => {
+    if (picker) {
+      setPicker(false);
+      return;
+    }
+    if (errorOpen) {
+      setErrorOpen(null);
+      return;
+    }
+    if (deleteOpen) {
+      setDeleteOpen(false);
+      return;
+    }
+    onClose();
+  };
+
+  const handleSave = () => {
+    if (!form.date) {
+      setErrorOpen('Bitte ein Datum wählen.');
+      return;
+    }
+    if (!form.projectId) {
+      setErrorOpen('Bitte ein Projekt wählen.');
+      return;
+    }
+    // Standort optional – keine Validierung nötig
+    const cohortSums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
+    Object.values(form.cohortCounts || {}).forEach((entry) => {
+      cohortSums.m += entry.m || 0;
+      cohortSums.w += entry.w || 0;
+      cohortSums.d += entry.d || 0;
+    });
+    const totalsByGender: Record<GenderKey, number> = { ...cohortSums };
+    const toMinutes = (hhmm?: string | null) => {
+      if (!hhmm) return undefined;
+      const [hh, mm] = hhmm.split(':').map((value) => parseInt(value, 10));
+      if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
+      return hh * 60 + mm;
+    };
+    const startM = toMinutes(form.start || selectedProject?.defaultStartTime || null);
+    const endM = toMinutes(form.end || selectedProject?.defaultEndTime || null);
+    const durationMinutes =
+      startM !== undefined && endM !== undefined && endM >= startM ? endM - startM : undefined;
+    const payloadBase = {
+      date: (form.date || activity?.date || dateISO).slice(0, 10),
+      startTime: form.start || null,
+      endTime: form.end || null,
+      type: selectedProject?.type || activity?.type || 'project_open',
+      projectId: form.projectId,
+      ...(form.locationId ? { locationId: form.locationId } : {}),
+      title: form.title || null,
+      notes: form.notes || null,
+      categoryIds: isOpenDoor ? [] : form.categoryIds || [],
+      tagIds: form.tagIds || [],
+      staffIds: form.staffIds || [],
+      durationMinutes,
+    } as Record<string, unknown>;
+
+    payloadBase.countMale = totalsByGender.m;
+    payloadBase.countFemale = totalsByGender.w;
+    payloadBase.countDiverse = totalsByGender.d;
+    payloadBase.countTotal = totalsByGender.m + totalsByGender.w + totalsByGender.d;
+    payloadBase.cohorts = Object.entries(form.cohortCounts || {}).map(([cohortId, gcounts]) => ({
+      cohortId,
+      m: (gcounts as { m: number; w: number; d: number }).m || 0,
+      w: (gcounts as { m: number; w: number; d: number }).w || 0,
+      d: (gcounts as { m: number; w: number; d: number }).d || 0,
+    }));
+
+    const doCreate = () =>
+      create.mutate(payloadBase, {
+        onSuccess: () => {
+          showToast('Aktivität gespeichert');
+          onClose();
+        },
+        onError: (error: unknown) => {
+          console.error(error);
+          setErrorOpen('Speichern fehlgeschlagen.');
+        },
+      });
+
+    const doUpdate = () =>
+      update.mutate(
+        { id: activity!.id, data: payloadBase },
+        {
+          onSuccess: () => {
+            showToast('Aktivität aktualisiert');
+            onClose();
+          },
+          onError: (error: unknown) => {
+            console.error(error);
+            setErrorOpen('Speichern fehlgeschlagen.');
+          },
+        },
+      );
+
+    if (activity) doUpdate();
+    else doCreate();
+  };
+
+  useEditorShortcuts({
+    onClose: handleClose,
+    onSave:
+      create.isPending || update.isPending || picker || Boolean(errorOpen) || deleteOpen
+        ? undefined
+        : handleSave,
+  });
+
   const content = (
     <div
       className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
@@ -209,7 +318,7 @@ export default function ActivityQuickAdd({
           </h3>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
             title="Schließen"
             aria-label="Schließen"
@@ -634,7 +743,7 @@ export default function ActivityQuickAdd({
             <button
               type="button"
               className="inline-flex md:hidden items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-              onClick={onClose}
+              onClick={handleClose}
               title="Abbrechen"
               aria-label="Abbrechen"
             >
@@ -660,94 +769,7 @@ export default function ActivityQuickAdd({
             <button
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-              onClick={() => {
-                // Validation: require project, and per-gender sums must match
-                if (!form.date) {
-                  setErrorOpen('Bitte ein Datum wählen.');
-                  return;
-                }
-                if (!form.projectId) {
-                  setErrorOpen('Bitte ein Projekt wählen.');
-                  return;
-                }
-                // Standort optional – keine Validierung nötig
-                const cohortSums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
-                Object.values(form.cohortCounts || {}).forEach((e) => {
-                  cohortSums.m += e.m || 0;
-                  cohortSums.w += e.w || 0;
-                  cohortSums.d += e.d || 0;
-                });
-                const totalsByGender: Record<GenderKey, number> = { ...cohortSums };
-                // Build payload for POST
-                const toMinutes = (hhmm?: string | null) => {
-                  if (!hhmm) return undefined;
-                  const [hh, mm] = hhmm.split(':').map((v) => parseInt(v, 10));
-                  if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
-                  return hh * 60 + mm;
-                };
-                const startM = toMinutes(form.start || selectedProject?.defaultStartTime || null);
-                const endM = toMinutes(form.end || selectedProject?.defaultEndTime || null);
-                const durationMinutes =
-                  startM !== undefined && endM !== undefined && endM >= startM
-                    ? endM - startM
-                    : undefined;
-                const payloadBase = {
-                  date: (form.date || activity?.date || dateISO).slice(0, 10),
-                  startTime: form.start || null,
-                  endTime: form.end || null,
-                  // Always derive activity type from selected project (matches data model)
-                  type: selectedProject?.type || activity?.type || 'project_open',
-                  projectId: form.projectId,
-                  ...(form.locationId ? { locationId: form.locationId } : {}),
-                  title: form.title || null,
-                  notes: form.notes || null,
-                  categoryIds: isOpenDoor ? [] : form.categoryIds || [],
-                  tagIds: form.tagIds || [],
-                  staffIds: form.staffIds || [],
-                  durationMinutes,
-                } as Record<string, unknown>;
-                // Always send per-gender cohort breakdown
-                payloadBase.countMale = totalsByGender.m;
-                payloadBase.countFemale = totalsByGender.w;
-                payloadBase.countDiverse = totalsByGender.d;
-                payloadBase.countTotal = totalsByGender.m + totalsByGender.w + totalsByGender.d;
-                payloadBase.cohorts = Object.entries(form.cohortCounts || {}).map(
-                  ([cohortId, gcounts]) => ({
-                    cohortId,
-                    m: (gcounts as { m: number; w: number; d: number }).m || 0,
-                    w: (gcounts as { m: number; w: number; d: number }).w || 0,
-                    d: (gcounts as { m: number; w: number; d: number }).d || 0,
-                  }),
-                );
-                // POST/PATCH and close (error handling basic for now)
-                const doCreate = () =>
-                  create.mutate(payloadBase, {
-                    onSuccess: () => {
-                      showToast('Aktivität gespeichert');
-                      onClose();
-                    },
-                    onError: (e: unknown) => {
-                      console.error(e);
-                      setErrorOpen('Speichern fehlgeschlagen.');
-                    },
-                  });
-                const doUpdate = () =>
-                  update.mutate(
-                    { id: activity!.id, data: payloadBase },
-                    {
-                      onSuccess: () => {
-                        showToast('Aktivität aktualisiert');
-                        onClose();
-                      },
-                      onError: (e: unknown) => {
-                        console.error(e);
-                        setErrorOpen('Speichern fehlgeschlagen.');
-                      },
-                    },
-                  );
-                if (activity) doUpdate();
-                else doCreate();
-              }}
+              onClick={handleSave}
               title="Speichern"
               aria-label="Speichern"
             >

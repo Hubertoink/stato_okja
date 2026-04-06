@@ -13,6 +13,7 @@ import { Boxes } from 'lucide-react';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useToast } from '@/components/Toast';
 import { getBgClass } from '@/lib/colorPalette';
+import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -138,6 +139,86 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
     const t = form.topCounts || { m: 0, w: 0, d: 0, total: 0 };
     return { ...t, total: (t.m || 0) + (t.w || 0) + (t.d || 0) };
   }, [hasCohortData, cohortSums, cohortTotal, form.topCounts]);
+
+  const handleClose = () => {
+    if (picker) {
+      setPicker(false);
+      return;
+    }
+    if (confirmMismatchOpen) {
+      setConfirmMismatchOpen(false);
+      setPendingPost(null);
+      return;
+    }
+    if (deleteOpen) {
+      setDeleteOpen(false);
+      return;
+    }
+    onClose();
+  };
+
+  const handleSave = () => {
+    if (!form.projectId) return;
+    if (!form.locationId) {
+      /* locationId is now optional */
+    }
+    const cohortSumsLocal: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
+    Object.values(form.cohortCounts || {}).forEach((e) => {
+      cohortSumsLocal.m += e.m || 0;
+      cohortSumsLocal.w += e.w || 0;
+      cohortSumsLocal.d += e.d || 0;
+    });
+    const useCoh = cohortSumsLocal.m + cohortSumsLocal.w + cohortSumsLocal.d > 0;
+    const counts = useCoh
+      ? cohortSumsLocal
+      : {
+          m: form.topCounts?.m || 0,
+          w: form.topCounts?.w || 0,
+          d: form.topCounts?.d || 0,
+        };
+    const payload: Record<string, unknown> = {
+      date: activity.date,
+      startTime: form.start || null,
+      endTime: form.end || null,
+      type: activity.type,
+      projectId: form.projectId,
+      ...(form.locationId ? { locationId: form.locationId } : {}),
+      title: form.title || null,
+      notes: form.notes || null,
+      tagIds: form.tagIds || [],
+      staffIds: form.staffIds || [],
+      durationMinutes: activity.durationMinutes,
+      countMale: counts.m,
+      countFemale: counts.w,
+      countDiverse: counts.d,
+      countTotal: counts.m + counts.w + counts.d,
+      cohorts: useCoh
+        ? Object.entries(form.cohortCounts || {}).flatMap(([cohortId, gcounts]) => {
+            const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> = [];
+            (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
+              const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
+              if (v > 0) arr.push({ cohortId, count: v, gender: g });
+            });
+            return arr;
+          })
+        : [],
+      categoryIds: isOpenDoor ? [] : form.categoryIds || [],
+    };
+    update.mutate(
+      { id, data: payload as Partial<Activity> & Record<string, unknown> },
+      {
+        onSuccess: () => {
+          showToast('Aktivität aktualisiert');
+          onClose();
+        },
+      },
+    );
+  };
+
+  useEditorShortcuts({
+    onClose: handleClose,
+    onSave: update.isPending || picker || confirmMismatchOpen || deleteOpen ? undefined : handleSave,
+  });
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
@@ -564,7 +645,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             <button
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-              onClick={onClose}
+              onClick={handleClose}
               title="Abbrechen"
               aria-label="Abbrechen"
             >
@@ -586,64 +667,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             <button
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-              onClick={() => {
-                if (!form.projectId) return;
-                if (!form.locationId) {
-                  /* locationId is now optional */
-                }
-                const cohortSumsLocal: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
-                Object.values(form.cohortCounts || {}).forEach((e) => {
-                  cohortSumsLocal.m += e.m || 0;
-                  cohortSumsLocal.w += e.w || 0;
-                  cohortSumsLocal.d += e.d || 0;
-                });
-                const useCoh = cohortSumsLocal.m + cohortSumsLocal.w + cohortSumsLocal.d > 0;
-                const counts = useCoh
-                  ? cohortSumsLocal
-                  : {
-                      m: form.topCounts?.m || 0,
-                      w: form.topCounts?.w || 0,
-                      d: form.topCounts?.d || 0,
-                    };
-                const payload: Record<string, unknown> = {
-                  date: activity.date,
-                  startTime: form.start || null,
-                  endTime: form.end || null,
-                  type: activity.type,
-                  projectId: form.projectId,
-                  ...(form.locationId ? { locationId: form.locationId } : {}),
-                  title: form.title || null,
-                  notes: form.notes || null,
-                  tagIds: form.tagIds || [],
-                  staffIds: form.staffIds || [],
-                  durationMinutes: activity.durationMinutes,
-                  countMale: counts.m,
-                  countFemale: counts.w,
-                  countDiverse: counts.d,
-                  countTotal: counts.m + counts.w + counts.d,
-                  cohorts: useCoh
-                    ? Object.entries(form.cohortCounts || {}).flatMap(([cohortId, gcounts]) => {
-                        const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> =
-                          [];
-                        (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
-                          const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
-                          if (v > 0) arr.push({ cohortId, count: v, gender: g });
-                        });
-                        return arr;
-                      })
-                    : [],
-                  categoryIds: isOpenDoor ? [] : form.categoryIds || [],
-                };
-                update.mutate(
-                  { id, data: payload as Partial<Activity> & Record<string, unknown> },
-                  {
-                    onSuccess: () => {
-                      showToast('Aktivität aktualisiert');
-                      onClose();
-                    },
-                  },
-                );
-              }}
+              onClick={handleSave}
               title="Speichern"
               aria-label="Speichern"
             >

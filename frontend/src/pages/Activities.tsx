@@ -143,7 +143,13 @@ export default function Activities() {
       /* ignore */
     }
   }, [advanced, order]);
-  const { data: paged } = useActivitiesPaged(filters, page, pageSize);
+  const {
+    data: paged,
+    isLoading: activitiesLoading,
+    isFetching: activitiesFetching,
+    isError: activitiesIsError,
+    refetch: refetchActivities,
+  } = useActivitiesPaged(filters, page, pageSize);
   // no quick location filter
   const activities = useMemo(() => paged?.data || [], [paged]);
   const total = paged?.total || 0;
@@ -780,6 +786,29 @@ export default function Activities() {
           </button>
         </div>
       </div>
+
+      {(activitiesLoading || activitiesFetching) && (
+        <div className="mt-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
+          Aktivitäten werden geladen…
+        </div>
+      )}
+
+      {activitiesIsError && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+          <span>
+            Aktivitäten konnten nicht geladen werden. Bitte erneut versuchen.
+          </span>
+          <button
+            type="button"
+            className="shrink-0 rounded-md border border-red-300 bg-white px-3 py-1.5 text-red-700 hover:bg-red-100"
+            onClick={() => {
+              void refetchActivities();
+            }}
+          >
+            Erneut laden
+          </button>
+        </div>
+      )}
 
       {/* Mobile Cards */}
       <div className="space-y-3 md:hidden">

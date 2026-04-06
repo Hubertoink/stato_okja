@@ -1,6 +1,6 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import { useOrgScopeKey } from './orgScope';
+import { useOrgScope, useOrgScopeKey } from './orgScope';
 import type { Location } from './locations';
 import type { Project } from './projects';
 
@@ -16,6 +16,16 @@ function invalidateStatsQueries(qc: QueryClient, scopeKey: string) {
       );
     },
   });
+}
+
+function applyOrgScopeParam(qp: Record<string, unknown>, scope: string | null | undefined) {
+  if (typeof scope === 'string') {
+    qp.orgId = scope;
+    return;
+  }
+  if (scope === null) {
+    qp.orgId = '';
+  }
 }
 
 export interface Activity {
@@ -64,12 +74,14 @@ export type ActivitiesFilter = {
 };
 
 export function useActivities(params?: ActivitiesFilter) {
+  const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   return useQuery({
     queryKey: ['activities', scopeKey, params],
     queryFn: async () => {
       // Encode arrays as comma-separated strings for simple query parsing
       const qp: Record<string, unknown> = { ...params };
+      applyOrgScopeParam(qp, scope);
       const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','cohortIds'];
       for (const k of arrayKeys) {
         const v = params?.[k];
@@ -80,6 +92,9 @@ export function useActivities(params?: ActivitiesFilter) {
       const res = await api.get('/activities', { params: qp });
       return res.data as Activity[];
     },
+    enabled: typeof scope !== 'undefined',
+    refetchOnMount: 'always',
+    refetchOnReconnect: true,
   });
 }
 
@@ -91,11 +106,13 @@ export interface PagedActivitiesResult {
 }
 
 export function useActivitiesPaged(params: ActivitiesFilter | undefined, page: number, limit: number = 50) {
+  const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   return useQuery({
     queryKey: ['activities', scopeKey, 'paged', params, page, limit],
     queryFn: async () => {
       const qp: Record<string, unknown> = { ...params };
+      applyOrgScopeParam(qp, scope);
       const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','cohortIds'];
       for (const k of arrayKeys) {
         const v = params?.[k];
@@ -108,11 +125,15 @@ export function useActivitiesPaged(params: ActivitiesFilter | undefined, page: n
       const res = await api.get('/activities', { params: qp });
       return res.data as PagedActivitiesResult;
     },
+    enabled: typeof scope !== 'undefined',
+    refetchOnMount: 'always',
+    refetchOnReconnect: true,
     placeholderData: (prev) => prev,
   });
 }
 
 export function useActivity(id?: string) {
+  const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   return useQuery({
     queryKey: ['activity', scopeKey, id],
@@ -121,7 +142,7 @@ export function useActivity(id?: string) {
       const res = await api.get(`/activities/${id}`);
       return res.data as Activity;
     },
-    enabled: !!id,
+    enabled: !!id && typeof scope !== 'undefined',
   });
 }
 

@@ -2,15 +2,21 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import packageJson from './package.json';
+
+const appVersion = process.env.VITE_APP_VERSION || packageJson.version;
 
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Stato 2.0 - OKJA Statistik',
+        name: 'Stato 1.0 - OKJA Statistik',
         short_name: 'Stato',
         description: 'Statistik- und Dokumentationssystem für offene Kinder- und Jugendarbeit',
         theme_color: '#5B6CFF',

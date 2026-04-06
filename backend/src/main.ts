@@ -2,10 +2,21 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { types as pgTypes } from 'pg';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
+
+const PG_TIMESTAMP_OID = 1114;
+
+// Postgres `timestamp without time zone` values are timezone-naive.
+// We store and interpret them as UTC so JSON serialization stays stable
+// even when the Node process runs with a local TZ like Europe/Berlin.
+pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
+  if (!value) return null;
+  return new Date(`${value}Z`);
+});
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -31,9 +42,9 @@ async function bootstrap() {
 
   // Swagger API Documentation
   const config = new DocumentBuilder()
-    .setTitle('Stato 2.0 API')
+    .setTitle('Stato 1.0 API')
     .setDescription('OKJA Statistik- und Dokumentationssystem API')
-    .setVersion('2.0.0')
+    .setVersion('1.0.0')
     .addBearerAuth()
     .addTag('auth', 'Authentifizierung')
     .addTag('activities', 'Tätigkeiten & Aktivitäten')
@@ -63,7 +74,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`\n🚀 Stato 2.0 Backend running on: http://localhost:${port}`);
+  console.log(`\n🚀 Stato 1.0 Backend running on: http://localhost:${port}`);
   console.log(`📚 API Documentation: http://localhost:${port}/api/docs\n`);
 }
 

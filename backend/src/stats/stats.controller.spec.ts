@@ -71,8 +71,27 @@ describe('StatsController org scoping', () => {
   });
 
   it('overview: superadmin scoped string expands to subtree', async () => {
-    await controller.getOverview({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined, undefined);
+    await controller.getOverview({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined, undefined, undefined);
     expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: undefined, orgIds: ['org-1', 'child-1'], projectId: undefined });
+    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: undefined, orgIds: ['org-1', 'child-1'], projectId: undefined, type: undefined });
+  });
+
+  it('overview: forwards explicit type filter', async () => {
+    await controller.getOverview(
+      { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
+      '2026-01-01',
+      '2026-12-31',
+      undefined,
+      'project_open',
+      undefined,
+    );
+    expect(service.getOverview).toHaveBeenCalledWith({
+      from: '2026-01-01',
+      to: '2026-12-31',
+      orgId: undefined,
+      orgIds: ['org-1', 'child-1'],
+      projectId: undefined,
+      type: 'project_open',
+    });
   });
 });

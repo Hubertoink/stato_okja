@@ -10,6 +10,7 @@ type StatsScope = {
   orgId?: string | null;
   orgIds?: string[];
   projectId?: string;
+  type?: string;
 };
 
 type ActivityCohortRow = {
@@ -44,6 +45,7 @@ export class StatsService {
     orgId?: string | null,
     orgIds?: string[],
     projectId?: string,
+    type?: string,
   ) {
     const qb = this.activityRepository.createQueryBuilder('activity');
 
@@ -59,6 +61,10 @@ export class StatsService {
 
     if (projectId) {
       qb.andWhere('activity.projectId = :projectId', { projectId });
+    }
+
+    if (type) {
+      qb.andWhere('activity.type = :type', { type });
     }
 
     return qb;
@@ -115,16 +121,16 @@ export class StatsService {
   }
 
   async getOverview(scope: StatsScope) {
-    const { from, to, orgId, orgIds, projectId } = scope;
+    const { from, to, orgId, orgIds, projectId, type } = scope;
     const [summary, byType, gender, participantsTimeseries, byCategory, byCohort, topTags, topProjects, availableYears] = await Promise.all([
-      this.getSummary(from, to, orgId, orgIds, projectId),
-      this.getByType(from, to, orgId, orgIds, projectId),
-      this.getGender(from, to, orgId, orgIds, projectId),
-      this.getParticipantsTimeseries(from, to, orgId, orgIds, projectId),
-      this.getByCategory(from, to, orgId, orgIds, projectId),
-      this.getByCohort(from, to, orgId, orgIds, projectId),
-      this.getTopTags(from, to, orgId, orgIds, projectId),
-      projectId ? Promise.resolve([]) : this.getTopProjects(from, to, orgId, orgIds),
+      this.getSummary(from, to, orgId, orgIds, projectId, type),
+      this.getByType(from, to, orgId, orgIds, projectId, type),
+      this.getGender(from, to, orgId, orgIds, projectId, type),
+      this.getParticipantsTimeseries(from, to, orgId, orgIds, projectId, type),
+      this.getByCategory(from, to, orgId, orgIds, projectId, type),
+      this.getByCohort(from, to, orgId, orgIds, projectId, type),
+      this.getTopTags(from, to, orgId, orgIds, projectId, type),
+      projectId ? Promise.resolve([]) : this.getTopProjects(from, to, orgId, orgIds, type),
       this.getAvailableYears(orgId, orgIds),
     ]);
 
@@ -141,8 +147,8 @@ export class StatsService {
     };
   }
 
-  async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const raw = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+  async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string) {
+    const raw = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type)
       .select('COUNT(*)', 'totalActivities')
       .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
       .addSelect('COALESCE(SUM(activity.countMale), 0)', 'totalMale')
@@ -177,8 +183,8 @@ export class StatsService {
     };
   }
 
-  async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+  async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string) {
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type)
       .select('activity.type', 'type')
       .addSelect('COUNT(*)', 'count')
       .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
@@ -193,8 +199,8 @@ export class StatsService {
     }));
   }
 
-  async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const raw = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+  async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string) {
+    const raw = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type)
       .select('COALESCE(SUM(activity.countMale), 0)', 'male')
       .addSelect('COALESCE(SUM(activity.countFemale), 0)', 'female')
       .addSelect('COALESCE(SUM(activity.countDiverse), 0)', 'diverse')
@@ -206,8 +212,8 @@ export class StatsService {
     return { male, female, diverse };
   }
 
-  async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+  async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string) {
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type)
       .select('activity.date', 'date')
       .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
       .addSelect('COUNT(*)', 'activityCount')
@@ -222,11 +228,11 @@ export class StatsService {
     }));
   }
 
-  async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
+  async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string) {
     const categoryIdExpr = "CASE WHEN category.id IS NULL THEN '__uncategorized__' ELSE CAST(category.id AS text) END";
     const categoryNameExpr = "CASE WHEN category.name IS NULL OR category.name = '' THEN 'Unkategorisiert' ELSE category.name END";
 
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type)
       .leftJoin('activity.categories', 'category')
       .select(categoryIdExpr, 'id')
       .addSelect(categoryNameExpr, 'name')
@@ -243,8 +249,8 @@ export class StatsService {
     })).sort((a, b) => b.count - a.count);
   }
 
-  async getTopTags(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+  async getTopTags(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string) {
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type)
       .innerJoin('activity.tags', 'tag')
       .select('tag.id', 'id')
       .addSelect('tag.name', 'name')
@@ -262,8 +268,8 @@ export class StatsService {
     }));
   }
 
-  async getTopProjects(from?: string, to?: string, orgId?: string|null, orgIds?: string[]) {
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, undefined)
+  async getTopProjects(from?: string, to?: string, orgId?: string|null, orgIds?: string[], type?: string) {
+    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, undefined, type)
       .innerJoin('activity.project', 'project')
       .select('project.id', 'id')
       .addSelect('project.title', 'name')
@@ -281,8 +287,8 @@ export class StatsService {
     }));
   }
 
-  async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string) {
-    const activities = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId)
+  async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string) {
+    const activities = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type)
       .select('activity.id', 'id')
       .addSelect('activity.cohorts', 'cohorts')
       .getRawMany<ActivityCohortRow>();

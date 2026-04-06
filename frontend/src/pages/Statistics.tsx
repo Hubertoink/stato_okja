@@ -38,55 +38,15 @@ const TYPE_LABEL: Record<string, string> = {
   outreach: 'Aufsuchend',
 };
 
+const STATISTICS_TYPE_OPTIONS: Activity['type'][] = [
+  'open_door',
+  'project_open',
+  'project_closed',
+  'event',
+  'outreach',
+];
+
 const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
-
-const RADIAN = Math.PI / 180;
-
-type PiePercentLabelProps = {
-  cx?: number;
-  cy?: number;
-  midAngle?: number;
-  outerRadius?: number;
-  percent?: number;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-};
-
-function renderPiePercentLabel({
-  cx = 0,
-  cy = 0,
-  midAngle = 0,
-  outerRadius = 0,
-  percent = 0,
-  width = 0,
-  height = 0,
-}: PiePercentLabelProps) {
-  if (percent <= 0) return null;
-
-  const labelRadius = outerRadius + 22;
-  const rawX = cx + labelRadius * Math.cos(-midAngle * RADIAN);
-  const rawY = cy + labelRadius * Math.sin(-midAngle * RADIAN);
-  const padding = 18;
-  const x = Math.min(Math.max(rawX, padding), Math.max(width - padding, padding));
-  const y = Math.min(Math.max(rawY, padding), Math.max(height - padding, padding));
-  const textAnchor = rawX >= cx ? 'start' : 'end';
-
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="#374151"
-      fontSize={12}
-      fontWeight={600}
-      textAnchor={textAnchor}
-      dominantBaseline="central"
-    >
-      {`${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`}
-    </text>
-  );
-}
 
 type StatsOverviewResponse = {
   summary: {
@@ -116,9 +76,9 @@ type StatsOverviewResponse = {
   availableYears: string[];
 };
 
-function useStatsOverview(params: { from?: string; to?: string; projectId?: string }, scopeKey: string) {
+function useStatsOverview(params: { from?: string; to?: string; projectId?: string; type?: string }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? ''],
+    queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? '', params.type ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/overview', { params });
       return res.data as StatsOverviewResponse;
@@ -138,6 +98,7 @@ export default function Statistics() {
   const [from, setFrom] = useState<string>(`${currentYear}-01-01`);
   const [to, setTo] = useState<string>(`${currentYear}-12-31`);
   const [projectId, setProjectId] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<Activity['type'] | ''>('');
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null); // null = ganzes Jahr
   const [filterMode, setFilterMode] = useState<'year' | 'month'>('year');
@@ -166,12 +127,17 @@ export default function Statistics() {
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
   const statsParams = useMemo(
-    () => ({ from: from || undefined, to: to || undefined, projectId: projectId || undefined }),
-    [from, to, projectId],
+    () => ({ from: from || undefined, to: to || undefined, projectId: projectId || undefined, type: selectedType || undefined }),
+    [from, to, projectId, selectedType],
   );
   const activitiesParams = useMemo(
-    () => ({ from: from || undefined, to: to || undefined, projectIds: projectId ? [projectId] : undefined }),
-    [from, to, projectId],
+    () => ({
+      from: from || undefined,
+      to: to || undefined,
+      projectIds: projectId ? [projectId] : undefined,
+      type: selectedType || undefined,
+    }),
+    [from, to, projectId, selectedType],
   );
   const overviewQ = useStatsOverview(statsParams, scopeKey);
   const overview = overviewQ.data;
@@ -191,8 +157,8 @@ export default function Statistics() {
   const { data: projectsAll = [] } = useProjects();
 
   const statsRunKey = useMemo(
-    () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '']),
-    [scopeKey, statsParams.from, statsParams.to, statsParams.projectId],
+    () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '', statsParams.type ?? '']),
+    [scopeKey, statsParams.from, statsParams.to, statsParams.projectId, statsParams.type],
   );
 
   const initialLoading = overviewQ.isLoading;
@@ -279,11 +245,13 @@ export default function Statistics() {
         from: statsParams.from ?? null,
         to: statsParams.to ?? null,
         projectId: statsParams.projectId ?? null,
+        type: statsParams.type ?? null,
       });
       markDevFlow(statsUiFlowIdRef.current, 'filters-applied', {
         from: statsParams.from ?? null,
         to: statsParams.to ?? null,
         projectId: statsParams.projectId ?? null,
+        type: statsParams.type ?? null,
       });
     }
 
@@ -305,6 +273,7 @@ export default function Statistics() {
           from: statsParams.from ?? null,
           to: statsParams.to ?? null,
           projectId: statsParams.projectId ?? null,
+          type: statsParams.type ?? null,
           cacheHit: true,
         },
       });
@@ -342,6 +311,7 @@ export default function Statistics() {
         from: statsParams.from ?? null,
         to: statsParams.to ?? null,
         projectId: statsParams.projectId ?? null,
+        type: statsParams.type ?? null,
         totalActivities: summary?.totalActivities ?? totalActivities,
       });
     }
@@ -357,17 +327,23 @@ export default function Statistics() {
     statsRunKey,
     statsParams.from,
     statsParams.projectId,
+    statsParams.type,
     statsParams.to,
     summary,
     totalActivities,
     timeseries,
   ]);
 
-  // If the selected project disappears (e.g. archived/deleted), reset to "all"
+  const filteredProjects = useMemo(
+    () => (selectedType ? projectsAll.filter((project) => project.type === selectedType) : projectsAll),
+    [projectsAll, selectedType],
+  );
+
+  // If the selected project disappears (e.g. archived/deleted) or no longer matches the type filter, reset to "all"
   useEffect(() => {
     if (!projectId) return;
-    if (!projectsAll.some((p) => p.id === projectId)) setProjectId('');
-  }, [projectId, projectsAll]);
+    if (!filteredProjects.some((project) => project.id === projectId)) setProjectId('');
+  }, [filteredProjects, projectId]);
 
   // Monatsnamen für die Anzeige
   const MONTH_NAMES = [
@@ -486,6 +462,16 @@ export default function Statistics() {
     value: d.count,
     color: COLORS[i % COLORS.length],
   }));
+  const pieLegendWrapperStyle = {
+    fontSize: '13px',
+    lineHeight: '20px',
+    paddingTop: '10px',
+  } as const;
+  const byTypePieCenterY = isMobile ? '41%' : '45%';
+  const byTypeOuterRadius = isMobile ? 68 : 88;
+  const genderPieCenterY = isMobile ? '42%' : '46%';
+  const genderInnerRadius = isMobile ? 44 : 54;
+  const genderOuterRadius = isMobile ? 72 : 88;
 
   const genderData = gender
     ? [
@@ -554,7 +540,7 @@ export default function Statistics() {
   // Reset page when filters change
   useEffect(() => {
     setActivitiesPage(1);
-  }, [from, to, projectId]);
+    }, [from, to, projectId, selectedType]);
 
   const fmtNumber = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
 
@@ -605,12 +591,13 @@ export default function Statistics() {
   }, [projectsAll]);
   const sortedProjects = useMemo(
     () =>
-      projectsAll
+      filteredProjects
         .slice()
         .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'de')),
-    [projectsAll],
+    [filteredProjects],
   );
   const useCompactProjectFilter = isMobile && sortedProjects.length >= 6;
+  const useCompactTypeFilter = isMobile;
   const fallbackBarColors = [
     '#2563eb',
     '#f59e0b',
@@ -985,11 +972,82 @@ export default function Statistics() {
           </div>
         )}
 
+        {/* Type quick filter tiles */}
+        <div className="mt-5">
+          <div className="text-sm font-medium text-gray-700 mb-2">Typen</div>
+          {useCompactTypeFilter ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => setSelectedType('')}
+                className={`px-3 py-2 rounded-full text-sm font-medium border transition-colors self-start ${
+                  !selectedType
+                    ? 'bg-viridian text-white border-viridian'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Alle Typen
+              </button>
+              <label className="flex-1 min-w-0">
+                <span className="sr-only">Typ auswählen</span>
+                <select
+                  value={selectedType}
+                  onChange={(event) => setSelectedType(event.target.value as Activity['type'] | '')}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 shadow-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                  aria-label="Typ auswählen"
+                >
+                  <option value="">Typ auswählen…</option>
+                  {STATISTICS_TYPE_OPTIONS.map((type) => (
+                    <option key={type} value={type}>
+                      {TYPE_LABEL[type]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedType('')}
+                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                  !selectedType
+                    ? 'bg-viridian text-white border-viridian'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Alle Typen
+              </button>
+              {STATISTICS_TYPE_OPTIONS.map((type) => {
+                const active = selectedType === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setSelectedType(type)}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                      active
+                        ? 'bg-viridian text-white border-viridian'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {TYPE_LABEL[type]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Project quick filter tiles */}
         {projectsAll.length > 0 && (
           <div className="mt-5">
             <div className="text-sm font-medium text-gray-700 mb-2">Projekte</div>
-            {useCompactProjectFilter ? (
+            {sortedProjects.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                Für den gewählten Typ sind keine Projekte verfügbar.
+              </div>
+            ) : useCompactProjectFilter ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <button
                   type="button"
@@ -1177,18 +1235,19 @@ export default function Statistics() {
               <h3 className="text-lg font-semibold text-viridian">Verteilung nach Tätigkeitstyp</h3>
               {/* Toggle entfernt (Prozent/Anzahl). Labels zeigen Prozent, Tooltip absolute Werte. */}
             </div>
-            <div className="h-64">
+            <div className="h-80 md:h-[23rem]">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
                   <Pie
                     dataKey="value"
                     data={byTypeData}
                     nameKey="name"
                     cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    labelLine={false}
-                    label={renderPiePercentLabel}
+                    cy={byTypePieCenterY}
+                    outerRadius={byTypeOuterRadius}
+                    label={({ percent }) =>
+                      `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
+                    }
                   >
                     {byTypeData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -1203,7 +1262,7 @@ export default function Statistics() {
                       entry?: { payload?: { name?: string } },
                     ) => [fmtNumber(value), entry?.payload?.name || '']}
                   />
-                  <Legend />
+                  <Legend verticalAlign="bottom" align="center" iconSize={11} wrapperStyle={pieLegendWrapperStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -1211,17 +1270,17 @@ export default function Statistics() {
 
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-4 text-viridian">Geschlechterverteilung</h3>
-            <div className="h-64">
+            <div className="h-80 md:h-[23rem]">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
                   <Pie
                     dataKey="value"
                     data={genderData}
                     nameKey="name"
                     cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    cy={genderPieCenterY}
+                    innerRadius={genderInnerRadius}
+                    outerRadius={genderOuterRadius}
                     label={({ percent }) =>
                       `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
                     }
@@ -1238,7 +1297,7 @@ export default function Statistics() {
                       entry?: { payload?: { name?: string } },
                     ) => [fmtNumber(value), entry?.payload?.name || '']}
                   />
-                  <Legend />
+                  <Legend verticalAlign="bottom" align="center" iconSize={11} wrapperStyle={pieLegendWrapperStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

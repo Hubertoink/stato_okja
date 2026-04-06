@@ -38,8 +38,15 @@ async function fetchProjects(params?: { search?: string; archived?: boolean }) {
   return res.data as Project[];
 }
 
-async function fetchActivitiesPaged(params: ActivitiesFilter | undefined, page: number, limit: number) {
+async function fetchActivitiesPaged(
+  params: ActivitiesFilter | undefined,
+  page: number,
+  limit: number,
+  scope: string | null | undefined,
+) {
   const qp: Record<string, unknown> = { ...params };
+  if (typeof scope === 'string') qp.orgId = scope;
+  else if (scope === null) qp.orgId = '';
   const arrayKeys: (keyof ActivitiesFilter)[] = [
     'types',
     'locationIds',
@@ -211,7 +218,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
               label: 'activities:paged:first-page',
               promise: qc.prefetchQuery({
                 queryKey: activitiesFirstPageKey,
-                queryFn: () => fetchActivitiesPaged(activitiesParams, activitiesPage, activitiesLimit),
+                queryFn: () => fetchActivitiesPaged(activitiesParams, activitiesPage, activitiesLimit, scope),
               }),
             });
           }

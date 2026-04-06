@@ -40,6 +40,54 @@ const TYPE_LABEL: Record<string, string> = {
 
 const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
 
+const RADIAN = Math.PI / 180;
+
+type PiePercentLabelProps = {
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  outerRadius?: number;
+  percent?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+};
+
+function renderPiePercentLabel({
+  cx = 0,
+  cy = 0,
+  midAngle = 0,
+  outerRadius = 0,
+  percent = 0,
+  width = 0,
+  height = 0,
+}: PiePercentLabelProps) {
+  if (percent <= 0) return null;
+
+  const labelRadius = outerRadius + 22;
+  const rawX = cx + labelRadius * Math.cos(-midAngle * RADIAN);
+  const rawY = cy + labelRadius * Math.sin(-midAngle * RADIAN);
+  const padding = 18;
+  const x = Math.min(Math.max(rawX, padding), Math.max(width - padding, padding));
+  const y = Math.min(Math.max(rawY, padding), Math.max(height - padding, padding));
+  const textAnchor = rawX >= cx ? 'start' : 'end';
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#374151"
+      fontSize={12}
+      fontWeight={600}
+      textAnchor={textAnchor}
+      dominantBaseline="central"
+    >
+      {`${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`}
+    </text>
+  );
+}
+
 type StatsOverviewResponse = {
   summary: {
     totalActivities: number;
@@ -1131,7 +1179,7 @@ export default function Statistics() {
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
                   <Pie
                     dataKey="value"
                     data={byTypeData}
@@ -1139,11 +1187,8 @@ export default function Statistics() {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label={(entry: { value?: number; percent?: number }) =>
-                      `${((entry.percent || 0) * 100).toLocaleString('de-DE', {
-                        maximumFractionDigits: 1,
-                      })} %`
-                    }
+                    labelLine={false}
+                    label={renderPiePercentLabel}
                   >
                     {byTypeData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />

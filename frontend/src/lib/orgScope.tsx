@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuth } from './auth';
@@ -130,10 +130,12 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem(key, next === null ? 'null' : String(next)); } catch { /* ignore */ }
   }, [user?.id, user?.role, user?.orgId, loading]);
 
-  // Apply header to axios
-  useEffect(() => {
+  // Apply the org scope header before regular query effects run.
+  useLayoutEffect(() => {
     applyOrgScopeHeader(scope);
+  }, [scope]);
 
+  useEffect(() => {
     // Only reinitialize data when the user explicitly changes the org scope.
     // On initial load we must NOT clear/remove queries, otherwise PostLoginPrefetch can hang.
     if (scopeChangeSourceRef.current !== 'user') return;

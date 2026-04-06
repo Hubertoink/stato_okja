@@ -52,10 +52,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             const k0 = query.queryKey[0];
             // Avoid persisting potentially large lists, except the first paged Activities page.
             if (k0 === 'activities') {
-              const k1 = query.queryKey[1];
-              if (k1 !== 'paged') return false;
-              const page = query.queryKey[3];
-              const limit = query.queryKey[4];
+              const k2 = query.queryKey[2];
+              if (k2 !== 'paged') return false;
+              const page = query.queryKey[4];
+              const limit = query.queryKey[5];
               if (page !== 1) return false;
               if (typeof limit !== 'number') return false;
               if (limit > 50) return false;

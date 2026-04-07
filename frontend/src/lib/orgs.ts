@@ -145,13 +145,13 @@ export interface OpeningHours {
 }
 
 export const DEFAULT_OPENING_HOURS: OpeningHours = {
-  monday:    { open: true,  from: '08:00', to: '17:00' },
-  tuesday:   { open: true,  from: '08:00', to: '17:00' },
-  wednesday: { open: true,  from: '08:00', to: '17:00' },
-  thursday:  { open: true,  from: '08:00', to: '17:00' },
-  friday:    { open: true,  from: '08:00', to: '17:00' },
-  saturday:  { open: false },
-  sunday:    { open: false },
+  monday:    { open: false, from: '08:00', to: '17:00' },
+  tuesday:   { open: false, from: '08:00', to: '17:00' },
+  wednesday: { open: false, from: '08:00', to: '17:00' },
+  thursday:  { open: false, from: '08:00', to: '17:00' },
+  friday:    { open: false, from: '08:00', to: '17:00' },
+  saturday:  { open: false, from: '08:00', to: '17:00' },
+  sunday:    { open: false, from: '08:00', to: '17:00' },
 };
 
 export async function getOpeningHours(orgId: string): Promise<OpeningHours | null> {

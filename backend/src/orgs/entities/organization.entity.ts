@@ -18,6 +18,19 @@ export interface OpeningHours {
   sunday: DayOpeningHours;
 }
 
+export type OrganizationTaxonomyType = 'categories' | 'tags' | 'cohorts';
+
+export interface OrganizationTaxonomyTypeSetting {
+  allowOwn?: boolean;
+  inheritedIds?: string[];
+}
+
+export interface OrganizationTaxonomySettings {
+  categories?: OrganizationTaxonomyTypeSetting;
+  tags?: OrganizationTaxonomyTypeSetting;
+  cohorts?: OrganizationTaxonomyTypeSetting;
+}
+
 @Entity('organizations')
 export class Organization {
   @PrimaryGeneratedColumn('uuid')
@@ -48,4 +61,8 @@ export class Organization {
   // Öffnungszeiten als JSON
   @Column({ type: 'simple-json', nullable: true })
   openingHours!: OpeningHours | null;
+
+  // Kind-spezifische Regeln für geerbte Statistik-Taxonomien
+  @Column({ type: 'simple-json', nullable: true })
+  taxonomySettings!: OrganizationTaxonomySettings | null;
 }

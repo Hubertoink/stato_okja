@@ -4,7 +4,11 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from '../users/users.service';
-import type { OpeningHours } from './entities/organization.entity';
+import type { OpeningHours, OrganizationTaxonomySettings } from './entities/organization.entity';
+
+function orgMoveFeatureEnabled() {
+  return ['1', 'true', 'yes', 'on'].includes(String(process.env.ENABLE_ORG_MOVE || '').toLowerCase());
+}
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('orgs')
@@ -33,8 +37,37 @@ export class OrgsController {
   }
 
   @Roles('superadmin')
+  @Post(':id/move-preview')
+  previewMove(@Param('id') id: string, @Body() body: { parentId?: string | null }) {
+    if (!orgMoveFeatureEnabled()) throw new ForbiddenException('Organisationsverschiebung ist deaktiviert');
+    return this.service.previewMoveOrg(id, body?.parentId ?? null);
+  }
+
+  @Roles('superadmin')
   @Patch(':id/move')
-  move(@Param('id') id: string, @Body() body: { parentId?: string | null }) { return this.service.moveOrg(id, body?.parentId ?? null); }
+  move(@Param('id') id: string, @Body() body: { parentId?: string | null; force?: boolean }) {
+    if (!orgMoveFeatureEnabled()) throw new ForbiddenException('Organisationsverschiebung ist deaktiviert');
+    return this.service.moveOrg(id, body?.parentId ?? null, !!body?.force);
+  }
+
+  @Roles('superadmin', 'org_admin')
+  @Get(':id/taxonomy-settings')
+  taxonomySettings(
+    @Param('id') id: string,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    return this.service.getChildTaxonomySettingsScoped(id, req.user);
+  }
+
+  @Roles('superadmin', 'org_admin')
+  @Patch(':id/taxonomy-settings')
+  updateTaxonomySettings(
+    @Param('id') id: string,
+    @Body() body: OrganizationTaxonomySettings,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    return this.service.updateChildTaxonomySettingsScoped(id, body || {}, req.user);
+  }
 
   @Roles('superadmin')
   @Delete(':id')

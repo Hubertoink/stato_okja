@@ -6,7 +6,7 @@ import { Tag } from './entities/tag.entity';
 import { Cohort } from './entities/cohort.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
-import { OrgsService } from '../orgs/orgs.service';
+import { OrgsService, VisibleTaxonomyMeta } from '../orgs/orgs.service';
 
 @Injectable()
 export class TaxonomyService {
@@ -21,8 +21,20 @@ export class TaxonomyService {
     private readonly orgsService: OrgsService,
   ) {}
 
+  private getScopedOrgId(user: { role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
+    if (user.role === 'superadmin') {
+      return typeof user.effectiveOrgId === 'undefined' ? null : user.effectiveOrgId;
+    }
+    return typeof user.effectiveOrgId === 'undefined' ? (user.orgId || null) : user.effectiveOrgId;
+  }
+
   // Categories
-  findAllCategories(active?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Category[]> {
+  async findAllCategories(active?: boolean, orgId?: string | null, orgIds?: string[]): Promise<Array<Category & VisibleTaxonomyMeta>> {
+    if (typeof orgId !== 'undefined') {
+      const visible = await this.orgsService.listVisibleCategoriesForOrg(orgId);
+      return visible.filter((category) => (typeof active === 'boolean' ? !!category.active === active : true));
+    }
+
     const where: FindOptionsWhere<Category> = {};
     if (active !== undefined) Object.assign(where, { active });
     if (Array.isArray(orgIds) && orgIds.length) {
@@ -30,7 +42,14 @@ export class TaxonomyService {
     } else if (typeof orgId !== 'undefined') {
       Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
     }
-    return this.categoryRepository.find({ where, order: { name: 'ASC' } });
+    const raw = await this.categoryRepository.find({ where, order: { name: 'ASC' } });
+    return raw.map((category) => ({
+      ...category,
+      sourceOrgId: category.orgId ?? null,
+      sourceOrgName: null,
+      isInherited: false,
+      canManage: true,
+    }));
   }
 
   findOneCategory(id: string): Promise<Category | null> {
@@ -55,7 +74,16 @@ export class TaxonomyService {
   }
 
   // Tags
-  findAllTags(active?: boolean, search?: string, orgId?: string|null, orgIds?: string[]): Promise<Tag[]> {
+  async findAllTags(active?: boolean, search?: string, orgId?: string | null, orgIds?: string[]): Promise<Array<Tag & VisibleTaxonomyMeta>> {
+    if (typeof orgId !== 'undefined') {
+      const visible = await this.orgsService.listVisibleTagsForOrg(orgId);
+      return visible.filter((tag) => {
+        if (typeof active === 'boolean' && !!tag.active !== active) return false;
+        if (search && !(tag.name || '').toLowerCase().includes(search.toLowerCase())) return false;
+        return true;
+      });
+    }
+
     const where: FindOptionsWhere<Tag> = {};
     if (active !== undefined) where.active = active;
     if (search) where.name = Like(`%${search}%`);
@@ -64,7 +92,14 @@ export class TaxonomyService {
     } else if (typeof orgId !== 'undefined') {
       Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
     }
-    return this.tagRepository.find({ where, order: { name: 'ASC' } });
+    const raw = await this.tagRepository.find({ where, order: { name: 'ASC' } });
+    return raw.map((tag) => ({
+      ...tag,
+      sourceOrgId: tag.orgId ?? null,
+      sourceOrgName: null,
+      isInherited: false,
+      canManage: true,
+    }));
   }
 
   findOneTag(id: string): Promise<Tag | null> {
@@ -89,61 +124,27 @@ export class TaxonomyService {
   }
 
   // Cohorts
-  async findAllCohorts(active?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Cohort[]> {
+  async findAllCohorts(active?: boolean, orgId?: string | null, orgIds?: string[]): Promise<Array<Cohort & VisibleTaxonomyMeta>> {
+    if (typeof orgId !== 'undefined') {
+      const visible = await this.orgsService.listVisibleCohortsForOrg(orgId);
+      return visible.filter((cohort) => (typeof active === 'boolean' ? !!cohort.active === active : true));
+    }
+
     const where: FindOptionsWhere<Cohort> = {};
     if (active !== undefined) Object.assign(where, { active });
-    
-    // Build list of org IDs to include
-    let targetOrgIds: string[] | undefined;
-    
     if (Array.isArray(orgIds) && orgIds.length) {
-      targetOrgIds = orgIds;
-    } else if (typeof orgId === 'string') {
-      targetOrgIds = [orgId];
+      Object.assign(where, { orgId: In(orgIds) });
     } else if (orgId === null) {
-      // Global scope - only show cohorts with orgId = null
       Object.assign(where, { orgId: IsNull() });
-      return this.cohortRepository.find({ where, order: { sortOrder: 'ASC', minAge: 'ASC' } });
     }
-    
-    // If we have target org IDs, also include inherited cohorts from ancestor orgs
-    if (targetOrgIds && targetOrgIds.length) {
-      // Get ancestor org IDs for inheritance
-      const ancestorIds = new Set<string>();
-      for (const tid of targetOrgIds) {
-        const ancestors = await this.orgsService.getAncestorOrgIds(tid);
-        for (const aid of ancestors) {
-          if (!targetOrgIds.includes(aid)) {
-            ancestorIds.add(aid);
-          }
-        }
-      }
-      
-      // Query: own cohorts OR inherited cohorts from ancestors
-      const ownCohorts = await this.cohortRepository.find({
-        where: { ...where, orgId: In(targetOrgIds) },
-        order: { sortOrder: 'ASC', minAge: 'ASC' },
-      });
-      
-      let inheritedCohorts: Cohort[] = [];
-      if (ancestorIds.size > 0) {
-        inheritedCohorts = await this.cohortRepository.find({
-          where: { ...where, orgId: In([...ancestorIds]), inheritToChildren: true },
-          order: { sortOrder: 'ASC', minAge: 'ASC' },
-        });
-      }
-      
-      // Merge and sort
-      const all = [...ownCohorts, ...inheritedCohorts];
-      all.sort((a, b) => {
-        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
-        return a.minAge - b.minAge;
-      });
-      return all;
-    }
-    
-    // No org filter - return all
-    return this.cohortRepository.find({ where, order: { sortOrder: 'ASC', minAge: 'ASC' } });
+    const raw = await this.cohortRepository.find({ where, order: { sortOrder: 'ASC', minAge: 'ASC' } });
+    return raw.map((cohort) => ({
+      ...cohort,
+      sourceOrgId: cohort.orgId ?? null,
+      sourceOrgName: null,
+      isInherited: false,
+      canManage: true,
+    }));
   }
 
   findOneCohort(id: string): Promise<Cohort | null> {
@@ -168,17 +169,23 @@ export class TaxonomyService {
   }
 
   // Scoped helpers to enforce org boundaries
-  async findOneCategoryScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async findOneCategoryScoped(id: string, user: { role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
     const c = await this.findOneCategory(id);
     if (!c) return null;
-    if (user.role !== 'superadmin' && (c.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    if (user.role !== 'superadmin') {
+      const scopeOrgId = this.getScopedOrgId(user);
+      if (scopeOrgId === null) throw new ForbiddenException('Not allowed');
+      const visibleIds = await this.orgsService.getVisibleTaxonomyIdsForOrg(scopeOrgId, 'categories');
+      if (!visibleIds.includes(c.id)) throw new ForbiddenException('Not allowed');
+    }
     return c;
   }
 
-  async updateCategoryScoped(id: string, data: Partial<Category>, user: { id?: string; role: string; orgId?: string|null }) {
+  async updateCategoryScoped(id: string, data: Partial<Category>, user: { id?: string; role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
     const existing = await this.categoryRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    const scopeOrgId = this.getScopedOrgId(user);
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
     if (user.role !== 'superadmin') {
       const d = data as Partial<Category> & { orgId?: string | null };
       if ('orgId' in d) delete d.orgId;
@@ -197,25 +204,32 @@ export class TaxonomyService {
     return c;
   }
 
-  async removeCategoryScoped(id: string, user: { id?: string; role: string; orgId?: string|null }) {
+  async removeCategoryScoped(id: string, user: { id?: string; role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
     const existing = await this.categoryRepository.findOne({ where: { id } });
     if (!existing) return;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    const scopeOrgId = this.getScopedOrgId(user);
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
     await this.removeCategory(id);
-    await this.audit.log({ action: AuditAction.DELETE, entityType: 'category', entityId: id, entityTitle: existing.name || null, orgId: user.orgId ?? null, user });
+    await this.audit.log({ action: AuditAction.DELETE, entityType: 'category', entityId: id, entityTitle: existing.name || null, orgId: scopeOrgId ?? null, user });
   }
 
-  async findOneTagScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async findOneTagScoped(id: string, user: { role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
     const t = await this.findOneTag(id);
     if (!t) return null;
-    if (user.role !== 'superadmin' && (t.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    if (user.role !== 'superadmin') {
+      const scopeOrgId = this.getScopedOrgId(user);
+      if (scopeOrgId === null) throw new ForbiddenException('Not allowed');
+      const visibleIds = await this.orgsService.getVisibleTaxonomyIdsForOrg(scopeOrgId, 'tags');
+      if (!visibleIds.includes(t.id)) throw new ForbiddenException('Not allowed');
+    }
     return t;
   }
 
-  async updateTagScoped(id: string, data: Partial<Tag>, user: { id?: string; role: string; orgId?: string|null }) {
+  async updateTagScoped(id: string, data: Partial<Tag>, user: { id?: string; role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
     const existing = await this.tagRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    const scopeOrgId = this.getScopedOrgId(user);
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
     if (user.role !== 'superadmin') {
       const d = data as Partial<Tag> & { orgId?: string | null };
       if ('orgId' in d) delete d.orgId;
@@ -237,25 +251,32 @@ export class TaxonomyService {
     return t;
   }
 
-  async removeTagScoped(id: string, user: { id?: string; role: string; orgId?: string|null }) {
+  async removeTagScoped(id: string, user: { id?: string; role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
     const existing = await this.tagRepository.findOne({ where: { id } });
     if (!existing) return;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    const scopeOrgId = this.getScopedOrgId(user);
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
     await this.removeTag(id);
-    await this.audit.log({ action: AuditAction.DELETE, entityType: 'tag', entityId: id, entityTitle: existing.name || null, orgId: user.orgId ?? null, user });
+    await this.audit.log({ action: AuditAction.DELETE, entityType: 'tag', entityId: id, entityTitle: existing.name || null, orgId: scopeOrgId ?? null, user });
   }
 
-  async findOneCohortScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async findOneCohortScoped(id: string, user: { role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
     const c = await this.findOneCohort(id);
     if (!c) return null;
-    if (user.role !== 'superadmin' && (c.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    if (user.role !== 'superadmin') {
+      const scopeOrgId = this.getScopedOrgId(user);
+      if (scopeOrgId === null) throw new ForbiddenException('Not allowed');
+      const visibleIds = await this.orgsService.getVisibleTaxonomyIdsForOrg(scopeOrgId, 'cohorts');
+      if (!visibleIds.includes(c.id)) throw new ForbiddenException('Not allowed');
+    }
     return c;
   }
 
-  async updateCohortScoped(id: string, data: Partial<Cohort>, user: { id?: string; role: string; orgId?: string|null }) {
+  async updateCohortScoped(id: string, data: Partial<Cohort>, user: { id?: string; role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
     const existing = await this.cohortRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    const scopeOrgId = this.getScopedOrgId(user);
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
     if (user.role !== 'superadmin') {
       const d = data as Partial<Cohort> & { orgId?: string | null };
       if ('orgId' in d) delete d.orgId;
@@ -274,11 +295,12 @@ export class TaxonomyService {
     return c;
   }
 
-  async removeCohortScoped(id: string, user: { id?: string; role: string; orgId?: string|null }) {
+  async removeCohortScoped(id: string, user: { id?: string; role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
     const existing = await this.cohortRepository.findOne({ where: { id } });
     if (!existing) return;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    const scopeOrgId = this.getScopedOrgId(user);
+    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
     await this.removeCohort(id);
-    await this.audit.log({ action: AuditAction.DELETE, entityType: 'cohort', entityId: id, entityTitle: existing.name || null, orgId: user.orgId ?? null, user });
+    await this.audit.log({ action: AuditAction.DELETE, entityType: 'cohort', entityId: id, entityTitle: existing.name || null, orgId: scopeOrgId ?? null, user });
   }
 }

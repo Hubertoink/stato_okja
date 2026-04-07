@@ -31,6 +31,7 @@ services:
       DB_DATABASE: ${POSTGRES_DB:-stato_prod}
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
       DB_LOGGING: ${DB_LOGGING:-false}
+      ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
       # Superadmin credentials (set on startup)
       SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.org}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
@@ -50,6 +51,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
     depends_on:
       - backend
     ports:

@@ -163,7 +163,13 @@ cp .env.onprem.example .env.onprem
 
 Dann mindestens `APP_ORIGIN`, `CORS_ORIGINS`, `JWT_SECRET`, `SUPERADMIN_*` und die DB‑Credentials in `.env.onprem` setzen.
 
-Zusätzlich unterstützt das On-Prem-Compose inzwischen auch optionale Variablen wie `TZ`, `APP_ENV`, `NODE_ENV`, `DB_LOGGING`, `DB_REQUIRE_SSL`, `DB_SSL`, `DB_SSL_REJECT_UNAUTHORIZED` und `VITE_ENABLE_DEV_TOOLS`.
+Zusätzlich unterstützt das On-Prem-Compose inzwischen auch optionale Variablen wie `TZ`, `APP_ENV`, `NODE_ENV`, `DB_LOGGING`, `DB_REQUIRE_SSL`, `DB_SSL`, `DB_SSL_REJECT_UNAUTHORIZED`, `VITE_ENABLE_DEV_TOOLS` und `ENABLE_ORG_MOVE`.
+
+Für `ENABLE_ORG_MOVE` gilt bewusst:
+
+- Standard `false`
+- erst bei `true` wird Organisationsverschiebung im Backend und im Frontend freigeschaltet
+- nach Änderung des Werts den Frontend-Container neu bauen
 
 Die vollständige Beschreibung steht in [docs/DOCKER_ONPREM_SETUP.md](../docs/DOCKER_ONPREM_SETUP.md).
 
@@ -185,6 +191,16 @@ docker compose -f docker-compose.onprem.yml --env-file .env.onprem down
 ---
 
 ## Datenbank-Migrationen (wichtig!)
+
+Für die automatische Laufzeit-Migration ist die relevante Variable:
+
+- `DB_MIGRATIONS_RUN=true`
+
+Zusätzlich muss gelten:
+
+- `DB_SYNCHRONIZE=false`
+
+Wenn `DB_SYNCHRONIZE=true` gesetzt ist, werden Migrationen absichtlich übersprungen. Das ist nur für frische Bootstrap-Setups sinnvoll.
 
 Aktuell werden Migrationen in der Entwicklung per TypeORM + TS ausgeführt (siehe `backend/package.json` Scripts). Der Production‑Backend‑Container installiert **nur Produktions‑Dependencies** – je nach Setup kann das bedeuten, dass `npm run migration:run` **im Container nicht** verfügbar ist.
 

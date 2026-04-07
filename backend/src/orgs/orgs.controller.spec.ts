@@ -11,6 +11,7 @@ describe('OrgsController create permissions', () => {
   };
 
   beforeEach(async () => {
+    delete process.env.ENABLE_ORG_MOVE;
     const module: TestingModule = await Test.createTestingModule({
       controllers: [OrgsController],
       providers: [
@@ -49,5 +50,9 @@ describe('OrgsController create permissions', () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(service.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks move preview when org move feature is disabled', async () => {
+    expect(() => controller.previewMove('org-1', { parentId: 'other-org' })).toThrow(ForbiddenException);
   });
 });

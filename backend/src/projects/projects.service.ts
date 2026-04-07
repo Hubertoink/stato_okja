@@ -5,6 +5,8 @@ import { Project } from './entities/project.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
+import { normalizeUploadPath } from '../common/upload-paths';
+import { OrgsService } from '../orgs/orgs.service';
 
 @Injectable()
 export class ProjectsService {
@@ -13,6 +15,7 @@ export class ProjectsService {
     private projectRepository: Repository<Project>,
     @InjectRepository(Category)
     private categoryRepository: Repository<Category>,
+    private readonly orgs: OrgsService,
     private readonly audit: AuditService,
   ) {}
 
@@ -45,6 +48,7 @@ export class ProjectsService {
       singleCategoryId = categoryIds[0];
     }
     if (singleCategoryId) {
+      await this.orgs.assertTaxonomyIdsVisibleForOrg((project.orgId ?? null) as string | null, 'categories', [singleCategoryId]);
       const cat = await this.categoryRepository.findOne({ where: { id: singleCategoryId } });
       if (cat) {
         project.categories = [cat];
@@ -74,6 +78,7 @@ export class ProjectsService {
           desiredId = categoryIds[0] || null;
         }
         if (typeof desiredId === 'string' && desiredId) {
+          await this.orgs.assertTaxonomyIdsVisibleForOrg((proj.orgId ?? null) as string | null, 'categories', [desiredId]);
           const cat = await this.categoryRepository.findOne({ where: { id: desiredId } });
           if (cat) {
             proj.categories = [cat];

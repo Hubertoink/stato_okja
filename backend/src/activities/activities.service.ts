@@ -9,6 +9,7 @@ import { Tag } from '../taxonomy/entities/tag.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { Staff } from '../staff/entities/staff.entity';
 import { Project } from '../projects/entities/project.entity';
+import { OrgsService } from '../orgs/orgs.service';
 
 @Injectable()
 export class ActivitiesService {
@@ -23,6 +24,7 @@ export class ActivitiesService {
     private readonly staffRepository: Repository<Staff>,
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
+    private readonly orgs: OrgsService,
     private readonly audit: AuditService,
   ) {}
 
@@ -257,6 +259,7 @@ export class ActivitiesService {
     // locationId is optional; if omitted, activity can still be created
 
     const activity = this.activityRepository.create(rest);
+  const activityOrgId = (rest.orgId ?? null) as string | null;
 
     // If a project is linked, enforce the activity type to match the project's type
     const restWithProject = rest as Partial<Activity> & { projectId?: string | null };
@@ -271,6 +274,7 @@ export class ActivitiesService {
 
     // Relations
     if (Array.isArray(tagIds) && tagIds.length) {
+      await this.orgs.assertTaxonomyIdsVisibleForOrg(activityOrgId, 'tags', tagIds);
       const tags = await this.tagRepository.findBy({ id: In(tagIds) });
       activity.tags = tags;
     }
@@ -279,12 +283,20 @@ export class ActivitiesService {
       activity.staff = staff;
     }
     if (Array.isArray(categoryIds) && categoryIds.length) {
+      await this.orgs.assertTaxonomyIdsVisibleForOrg(activityOrgId, 'categories', categoryIds);
       const categories = await this.categoryRepository.findBy({ id: In(categoryIds) });
       activity.categories = categories;
     }
 
     // Cohorts: allow two input shapes; normalize to per-gender {cohortId,m,w,d}
     if (Array.isArray(cohorts)) {
+      await this.orgs.assertTaxonomyIdsVisibleForOrg(
+        activityOrgId,
+        'cohorts',
+        cohorts
+          .map((entry) => ('cohortId' in entry ? entry.cohortId : null))
+          .filter((value): value is string => typeof value === 'string' && value.length > 0),
+      );
       const byId = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
       for (const c of cohorts as Array<
         | { cohortId: string; m?: number; w?: number; d?: number }
@@ -356,6 +368,7 @@ export class ActivitiesService {
       relations: ['tags', 'staff', 'categories'],
     });
     if (!existing) return null;
+    const activityOrgId = existing.orgId ?? null;
 
     const { tagIds, staffIds, categoryIds, cohorts, ...rest } = data as Partial<Activity> & {
       tagIds?: string[];
@@ -381,6 +394,7 @@ export class ActivitiesService {
 
     // Relations: set arrays (also allow clearing when empty array provided)
     if (Array.isArray(tagIds)) {
+      await this.orgs.assertTaxonomyIdsVisibleForOrg(activityOrgId, 'tags', tagIds);
       existing.tags = tagIds.length ? await this.tagRepository.findBy({ id: In(tagIds) }) : [];
     }
     if (Array.isArray(staffIds)) {
@@ -389,6 +403,7 @@ export class ActivitiesService {
         : [];
     }
     if (Array.isArray(categoryIds)) {
+      await this.orgs.assertTaxonomyIdsVisibleForOrg(activityOrgId, 'categories', categoryIds);
       existing.categories = categoryIds.length
         ? await this.categoryRepository.findBy({ id: In(categoryIds) })
         : [];
@@ -396,6 +411,13 @@ export class ActivitiesService {
 
     // Cohorts: normalize to per-gender and recompute totals
     if (Array.isArray(cohorts)) {
+      await this.orgs.assertTaxonomyIdsVisibleForOrg(
+        activityOrgId,
+        'cohorts',
+        cohorts
+          .map((entry) => ('cohortId' in entry ? entry.cohortId : null))
+          .filter((value): value is string => typeof value === 'string' && value.length > 0),
+      );
       const byId = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
       for (const c of cohorts as Array<
         | { cohortId: string; m?: number; w?: number; d?: number }

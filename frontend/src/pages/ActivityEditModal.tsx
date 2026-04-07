@@ -222,8 +222,9 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
-      <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
-        <h3 className="text-xl font-semibold text-viridian mb-2">Aktivität bearbeiten</h3>
+      <div className="modal-panel-roomy bg-white w-full md:max-w-md rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-hidden">
+        <h3 className="shrink-0 text-xl font-semibold text-viridian mb-2">Aktivität bearbeiten</h3>
+        <div className="min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6">
         <div className="space-y-3">
           {/* Participants summary (editable if no cohort data) */}
           <div>
@@ -639,8 +640,9 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             />
           </div>
         </div>
+        </div>
 
-        <div className="mt-4 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 flex items-center justify-between gap-3">
+        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center justify-between gap-3">
           <div className="flex-1 flex items-center">
             <button
               type="button"

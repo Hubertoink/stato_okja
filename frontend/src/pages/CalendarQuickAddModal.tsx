@@ -306,8 +306,8 @@ export default function ActivityQuickAdd({
       className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate">
-        <div className="flex items-start justify-between gap-3 mb-2">
+      <div className="modal-panel-roomy bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-hidden">
+        <div className="shrink-0 flex items-start justify-between gap-3 mb-2">
           <h3 className="text-xl font-semibold text-viridian">
             Aktivität am{' '}
             {(() => {
@@ -326,6 +326,7 @@ export default function ActivityQuickAdd({
             <XIcon className="w-5 h-5" />
           </button>
         </div>
+        <div className="min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6">
         <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 lg:items-start">
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -737,8 +738,9 @@ export default function ActivityQuickAdd({
             </div>
           </div>
         </div>
+        </div>
 
-        <div className="mt-4 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 flex items-center gap-3">
+        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center gap-3">
           <div className="flex-1 flex items-center">
             <button
               type="button"

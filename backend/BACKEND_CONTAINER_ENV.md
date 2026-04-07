@@ -91,6 +91,11 @@ Diese Variablen sind **optional** und werden vom Backend über `GET /auth/public
 - `DB_LOGGING` (optional)
   - Default: `true`
 
+- Zeitzonen-Hinweis
+  - Der Backend-Container erzwingt fuer Postgres-Verbindungen eine UTC-Session.
+  - Grund: aeltere Tabellen koennen `timestamp without time zone` verwenden; mit UTC bleiben JSON-Zeitstempel und Dashboard-Audit-Logs stabil.
+  - `TZ=Europe/Berlin` im Container aendert nur die Prozess-/OS-Zeitzone, aber nicht verlaesslich die Zeitsemantik von Postgres-`now()` auf der Datenbankseite.
+
 **SSL (nur wenn DB es erfordert):**
 
 - `DB_SSL` (optional)

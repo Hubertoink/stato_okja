@@ -9,6 +9,11 @@ import {
 import { AuditAction } from '../enums';
 import { Staff } from '../../staff/entities/staff.entity';
 
+const auditTimestampColumnType =
+  (process.env.DB_TYPE || 'postgres').toLowerCase() === 'postgres'
+    ? 'timestamptz'
+    : 'datetime';
+
 @Entity('audit_logs')
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
@@ -54,6 +59,6 @@ export class AuditLog {
   @Column({ type: 'simple-json', nullable: true })
   details: Record<string, unknown> | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: auditTimestampColumnType })
   createdAt: Date;
 }

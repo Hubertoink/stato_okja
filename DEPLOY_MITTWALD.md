@@ -48,6 +48,8 @@ Wichtig:
 - Der Backend-Container startet in Produktion nur, wenn `JWT_SECRET` gesetzt ist, kein Platzhalter ist und mindestens 32 Zeichen hat.
 - Ein sicherer Beispielwert kann lokal erzeugt werden mit `openssl rand -base64 48`.
 - Wenn Mittwald fuer den Backend-Service keine Umgebungsvariable gesetzt hat, endet der Container genau mit dem Fehler aus deinem Log.
+- `TZ=Europe/Berlin` im Backend-Container behebt keine verschobenen Audit-Log-Zeiten zuverlaessig. Entscheidend ist die Postgres-Session-Zeitzone bzw. der Spaltentyp (`timestamp without time zone` vs. `timestamptz`).
+- Das Backend erzwingt deshalb fuer Postgres jetzt UTC auf der DB-Session. Neue Audit-Logs werden damit konsistent gespeichert, auch wenn Mittwald oder die DB selbst lokal auf Europe/Berlin laufen.
 
 ## 4) Frontend-Container
 

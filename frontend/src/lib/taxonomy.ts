@@ -9,6 +9,11 @@ export interface Category {
   standardRef?: string | null;
   color?: string | null;
   active?: boolean;
+  orgId?: string | null;
+  sourceOrgId?: string | null;
+  sourceOrgName?: string | null;
+  isInherited?: boolean;
+  canManage?: boolean;
 }
 
 export interface Tag {
@@ -18,6 +23,11 @@ export interface Tag {
   color?: string | null;
   active?: boolean;
   description?: string | null;
+  orgId?: string | null;
+  sourceOrgId?: string | null;
+  sourceOrgName?: string | null;
+  isInherited?: boolean;
+  canManage?: boolean;
 }
 
 export interface Cohort {
@@ -29,6 +39,16 @@ export interface Cohort {
   active?: boolean;
   inheritToChildren?: boolean;
   orgId?: string | null;
+  sourceOrgId?: string | null;
+  sourceOrgName?: string | null;
+  isInherited?: boolean;
+  canManage?: boolean;
+}
+
+export interface TaxonomyAccess {
+  categories: { canCreateOwn: boolean };
+  tags: { canCreateOwn: boolean };
+  cohorts: { canCreateOwn: boolean };
 }
 
 // Categories
@@ -76,6 +96,17 @@ export function useDeleteCategory() {
       return true;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['categories', scopeKey] }),
+  });
+}
+
+export function useTaxonomyAccess() {
+  const scopeKey = useOrgScopeKey();
+  return useQuery({
+    queryKey: ['taxonomy-access', scopeKey],
+    queryFn: async () => {
+      const res = await api.get('/taxonomy/access');
+      return res.data as TaxonomyAccess;
+    },
   });
 }
 

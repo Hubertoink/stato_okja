@@ -16,8 +16,14 @@ describe('TaxonomyController org scoping', () => {
     createCohort: jest.fn(async () => ({} as any)),
     updateCohortScoped: jest.fn(async () => ({} as any)),
   };
-  const orgs: Pick<OrgsService, 'getSubtreeOrgIds'> = {
+  const orgs: Partial<OrgsService> = {
     getSubtreeOrgIds: jest.fn(async (id: string) => [id, 'child-1']),
+    canCreateOwnTaxonomy: jest.fn(async () => true),
+    getTaxonomyAccessForOrg: jest.fn(async () => ({
+      categories: { canCreateOwn: true },
+      tags: { canCreateOwn: true },
+      cohorts: { canCreateOwn: true },
+    })),
   };
 
   beforeEach(async () => {
@@ -35,18 +41,31 @@ describe('TaxonomyController org scoping', () => {
 
   it('categories: superadmin without scope lists only null org', async () => {
     await controller.findAllCategories({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: undefined }, undefined);
-    expect(service.findAllCategories).toHaveBeenCalledWith(undefined, null, undefined);
+    expect(service.findAllCategories).toHaveBeenCalledWith(undefined, null);
   });
 
-  it('tags: superadmin scoped to org expands to subtree', async () => {
+  it('tags: superadmin scoped to org resolves visible tags for that org scope', async () => {
     await controller.findAllTags({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined);
-    expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.findAllTags).toHaveBeenCalledWith(undefined, undefined, undefined, ['org-1', 'child-1']);
+    expect(orgs.getSubtreeOrgIds).not.toHaveBeenCalled();
+    expect(service.findAllTags).toHaveBeenCalledWith(undefined, undefined, 'org-1');
   });
 
   it('cohorts: create sets orgId from scope and ignores body orgId', async () => {
     await controller.createCohort({ name: 'x', orgId: 'malicious' }, { user: { id: 'u', role: 'superadmin', orgId: null, name: 'S' }, effectiveOrgId: undefined });
     expect(service.createCohort).toHaveBeenCalledWith(expect.objectContaining({ orgId: null }), expect.any(Object));
+  });
+
+  it('cohorts: superadmin scoped to org still respects local creation lock', async () => {
+    (orgs.canCreateOwnTaxonomy as jest.Mock).mockResolvedValueOnce(false);
+
+    await expect(
+      controller.createCohort(
+        { name: 'x' },
+        { user: { id: 'u', role: 'superadmin', orgId: null, name: 'S' }, effectiveOrgId: 'org-1' },
+      ),
+    ).rejects.toThrow('Für diese Organisation sind lokale Kohorten gesperrt');
+
+    expect(service.createCohort).not.toHaveBeenCalled();
   });
 
   it('categories: update strips orgId from payload', async () => {

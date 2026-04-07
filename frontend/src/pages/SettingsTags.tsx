@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TAG_PALETTE, isInTagPalette, getBgClass } from '@/lib/colorPalette';
 import Toggle from '@/components/Toggle';
-import { Tag, useCreateTag, useDeleteTag, useTags, useUpdateTag } from '@/lib/taxonomy';
+import { Tag, useCreateTag, useDeleteTag, useTags, useTaxonomyAccess, useUpdateTag } from '@/lib/taxonomy';
 import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
@@ -126,6 +126,7 @@ export default function SettingsTags() {
   const [showArchived, setShowArchived] = useState(false);
   const { data } = useTags(showArchived ? undefined : { active: true });
   const { data: archivedOnly } = useTags({ active: false });
+  const { data: access } = useTaxonomyAccess();
   const archivedCount = (archivedOnly || []).length;
   const create = useCreateTag();
   const update = useUpdateTag();
@@ -139,6 +140,7 @@ export default function SettingsTags() {
   }>({ open: false });
 
   const tags = data || [];
+  const canCreateOwn = access?.tags.canCreateOwn ?? true;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -146,6 +148,11 @@ export default function SettingsTags() {
         <div>
           <h3 className="text-xl font-semibold text-viridian">Tags verwalten</h3>
           <p className="text-gray-600">Freitext-Tags mit Farben für flexible Zuordnung</p>
+          {!canCreateOwn && (
+            <p className="text-xs text-amber-700 mt-1">
+              Lokale Tags sind in diesem Org-Kontext gesperrt. Sichtbar bleiben geerbte und bestehende Tags.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {archivedCount > 0 && (
@@ -161,10 +168,11 @@ export default function SettingsTags() {
           )}
           <span className="tooltip-wrapper">
             <button
-              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow"
-              onClick={() => setModal({ mode: 'create' })}
+              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => canCreateOwn && setModal({ mode: 'create' })}
               aria-label="Neues Tag"
               title="Neues Tag"
+              disabled={!canCreateOwn}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -184,21 +192,31 @@ export default function SettingsTags() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {tags.map((t) => (
-          <div key={t.id} className="p-3 rounded border flex items-center justify-between">
+        {tags.map((t) => {
+          const isInherited = !!t.isInherited;
+          const canManage = t.canManage !== false;
+          return (
+          <div key={t.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
             <div className="min-w-0 flex items-center gap-3">
               <span
                 className={`inline-block w-4 h-4 rounded ${getBgClass(t.color as string, 'bg-slate-400')}`}
               />
               <div>
-                <div className="font-medium text-viridian">{t.name}</div>
+                <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">
+                  <span>{t.name}</span>
+                  {isInherited && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">
+                      geerbt{t.sourceOrgName ? ` aus ${t.sourceOrgName}` : ''}
+                    </span>
+                  )}
+                </div>
                 {t.description && (
                   <div className="text-sm text-gray-600 line-clamp-2">{t.description}</div>
                 )}
               </div>
             </div>
             <div className="flex gap-2">
-              {showArchived && t.active === false && (
+              {showArchived && t.active === false && canManage && (
                 <button
                   className="text-viridian hover:underline"
                   onClick={() => update.mutate({ id: t.id, data: { active: true } })}
@@ -206,15 +224,15 @@ export default function SettingsTags() {
                   Wiederherstellen
                 </button>
               )}
-              <button
+              {canManage && <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
                 title="Bearbeiten"
                 aria-label={`Tag ${t.name} bearbeiten`}
                 onClick={() => setModal({ mode: 'edit', tag: t })}
               >
                 <Pencil className="w-4 h-4 text-viridian" />
-              </button>
-              <button
+              </button>}
+              {canManage && <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 p-1.5"
                 aria-label="Löschen"
                 title="Löschen"
@@ -235,11 +253,12 @@ export default function SettingsTags() {
                 }}
               >
                 <Trash2 className="w-4 h-4 text-red-600" />
-              </button>
+              </button>}
             </div>
           </div>
-        ))}
-        {tags.length === 0 && <div className="text-gray-500 py-6">Noch keine Tags.</div>}
+          );
+        })}
+        {tags.length === 0 && <div className="text-gray-500 py-6">Keine sichtbaren Tags in diesem Org-Kontext.</div>}
       </div>
       {modal && (
         <TagForm

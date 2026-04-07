@@ -2,6 +2,75 @@ import { api } from './api';
 
 export interface OrgDto { id: string; name: string; parentId?: string | null; path?: string | null }
 
+export interface OrgTaxonomyTypeSetting {
+  allowOwn: boolean;
+  inheritedIds: string[];
+}
+
+export interface VisibleTaxonomyItem {
+  id: string;
+  name: string;
+  orgId?: string | null;
+  sourceOrgId?: string | null;
+  sourceOrgName?: string | null;
+  isInherited?: boolean;
+  canManage?: boolean;
+}
+
+export interface OrgTaxonomySettingsSnapshot {
+  childId: string;
+  parentId: string | null;
+  parentName: string | null;
+  settings: {
+    categories: OrgTaxonomyTypeSetting;
+    tags: OrgTaxonomyTypeSetting;
+    cohorts: OrgTaxonomyTypeSetting;
+  };
+  access: {
+    categories: { canCreateOwn: boolean };
+    tags: { canCreateOwn: boolean };
+    cohorts: { canCreateOwn: boolean };
+  };
+  parentOptions: {
+    categories: VisibleTaxonomyItem[];
+    tags: VisibleTaxonomyItem[];
+    cohorts: Array<VisibleTaxonomyItem & { minAge?: number; maxAge?: number }>;
+  };
+}
+
+export interface OrgMoveImpactItem {
+  id: string;
+  name: string;
+  sourceOrgId: string | null;
+  sourceOrgName: string | null;
+}
+
+export interface OrgMovePreview {
+  currentParentId: string | null;
+  newParentId: string | null;
+  affectedOrgs: number;
+  requiresConfirmation: boolean;
+  resetNotice: string;
+  lost: {
+    categories: OrgMoveImpactItem[];
+    tags: OrgMoveImpactItem[];
+    cohorts: OrgMoveImpactItem[];
+  };
+  gained: {
+    categories: OrgMoveImpactItem[];
+    tags: OrgMoveImpactItem[];
+    cohorts: OrgMoveImpactItem[];
+  };
+  activityConflicts: {
+    categories: { activities: number; items: OrgMoveImpactItem[] };
+    tags: { activities: number; items: OrgMoveImpactItem[] };
+    cohorts: { activities: number; items: OrgMoveImpactItem[] };
+  };
+  projectConflicts: {
+    categories: { projects: number; items: OrgMoveImpactItem[] };
+  };
+}
+
 export async function listOrgs(): Promise<OrgDto[]> {
   const res = await api.get<OrgDto[]>('/orgs');
   return res.data;
@@ -30,6 +99,26 @@ export async function listUsersByOrg(orgId: string, includeSubtree = false) {
 export async function moveOrgApi(id: string, parentId: string | null) {
   const res = await api.patch(`/orgs/${id}/move`, { parentId });
   return res.data as OrgDto;
+}
+
+export async function previewMoveOrgApi(id: string, parentId: string | null) {
+  const res = await api.post<OrgMovePreview>(`/orgs/${id}/move-preview`, { parentId });
+  return res.data;
+}
+
+export async function moveOrgWithConfirmationApi(id: string, parentId: string | null, force: boolean) {
+  const res = await api.patch<OrgDto>(`/orgs/${id}/move`, { parentId, force });
+  return res.data;
+}
+
+export async function getOrgTaxonomySettings(orgId: string) {
+  const res = await api.get<OrgTaxonomySettingsSnapshot>(`/orgs/${orgId}/taxonomy-settings`);
+  return res.data;
+}
+
+export async function updateOrgTaxonomySettings(orgId: string, settings: OrgTaxonomySettingsSnapshot['settings']) {
+  const res = await api.patch<OrgTaxonomySettingsSnapshot>(`/orgs/${orgId}/taxonomy-settings`, settings);
+  return res.data;
 }
 
 // Delete an organization (superadmin only). Returns { ok: true } on success.

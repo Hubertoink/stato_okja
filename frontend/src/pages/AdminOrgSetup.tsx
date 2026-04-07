@@ -1,10 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
-import { createOrgApi, inviteUserApi, listOrgs, acceptInviteApi, type OrgDto, listUsersByOrg, moveOrgApi } from '@/lib/orgs';
+import {
+  createOrgApi,
+  inviteUserApi,
+  listOrgs,
+  acceptInviteApi,
+  type OrgDto,
+  type OrgMoveImpactItem,
+  type OrgMovePreview,
+  type OrgTaxonomySettingsSnapshot,
+  listUsersByOrg,
+  previewMoveOrgApi,
+  moveOrgWithConfirmationApi,
+  getOrgTaxonomySettings,
+  updateOrgTaxonomySettings,
+} from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { Link as LinkIcon, Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { canAccessOrgMove } from '@/lib/orgMoveConfig';
+import { Link as LinkIcon, Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users, Settings2, ArrowRightLeft } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
 
 /** Instant hover tooltip with optional user list */
@@ -30,12 +46,186 @@ function Tooltip({ label, names, children }: { label: string; names?: string[]; 
   );
 }
 
+function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto | null; open: boolean; onClose: () => void; onSaved: () => void }) {
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [snapshot, setSnapshot] = useState<OrgTaxonomySettingsSnapshot | null>(null);
+  const [draft, setDraft] = useState<OrgTaxonomySettingsSnapshot['settings'] | null>(null);
+
+  useEffect(() => {
+    if (!open || !org) return;
+    let mounted = true;
+    setLoading(true);
+    void getOrgTaxonomySettings(org.id)
+      .then((data) => {
+        if (!mounted) return;
+        setSnapshot(data);
+        setDraft(data.settings);
+      })
+      .catch((error: unknown) => {
+        const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Vererbungsregeln konnten nicht geladen werden.';
+        showToast(String(message), { type: 'error' });
+        if (mounted) onClose();
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [open, org, onClose, showToast]);
+
+  const updateInherited = (key: keyof OrgTaxonomySettingsSnapshot['settings'], id: string) => {
+    setDraft((current) => {
+      if (!current) return current;
+      const nextIds = new Set(current[key].inheritedIds || []);
+      if (nextIds.has(id)) nextIds.delete(id);
+      else nextIds.add(id);
+      return {
+        ...current,
+        [key]: { ...current[key], inheritedIds: Array.from(nextIds) },
+      };
+    });
+  };
+
+  const updateAllowOwn = (key: keyof OrgTaxonomySettingsSnapshot['settings'], allowOwn: boolean) => {
+    setDraft((current) => current ? { ...current, [key]: { ...current[key], allowOwn } } : current);
+  };
+
+  const sections = snapshot && draft ? [
+    {
+      key: 'categories' as const,
+      title: 'Kategorien',
+      allowLabel: 'Eigene Kategorien erlauben',
+      items: snapshot.parentOptions.categories,
+      renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['categories'][number]) => item.name,
+    },
+    {
+      key: 'tags' as const,
+      title: 'Tags',
+      allowLabel: 'Eigene Tags erlauben',
+      items: snapshot.parentOptions.tags,
+      renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['tags'][number]) => item.name,
+    },
+    {
+      key: 'cohorts' as const,
+      title: 'Kohorten',
+      allowLabel: 'Eigene Kohorten erlauben',
+      items: snapshot.parentOptions.cohorts,
+      renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['cohorts'][number]) => `${item.name}${typeof item.minAge === 'number' && typeof item.maxAge === 'number' ? ` (${item.minAge}–${item.maxAge})` : ''}`,
+    },
+  ] : [];
+
+  return (
+    <Modal open={open} onClose={onClose} title={org ? `Vererbung für „${org.name}“` : 'Vererbung'} maxWidth="lg">
+      {loading && <div className="py-8 text-center text-gray-500">Lade Vererbungsregeln…</div>}
+      {!loading && snapshot && draft && (
+        <div className="space-y-5">
+          <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
+            Quelle der geerbten Einträge: <strong>{snapshot.parentName || 'Übergeordnete Organisation'}</strong>
+          </div>
+          {sections.map((section) => (
+            <div key={section.key} className="rounded-xl border border-gray-200 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-semibold text-gray-900">{section.title}</h4>
+                  <p className="text-xs text-gray-500">Wähle, welche Einträge aus der Parent-Organisation in dieser Unterorganisation sichtbar sind.</p>
+                </div>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={draft[section.key].allowOwn}
+                    onChange={(event) => updateAllowOwn(section.key, event.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                  />
+                  {section.allowLabel}
+                </label>
+              </div>
+              {section.items.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {section.items.map((item) => {
+                    const selected = draft[section.key].inheritedIds.includes(item.id);
+                    return (
+                      <label key={item.id} className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer ${selected ? 'border-viridian bg-viridian/5' : 'border-gray-200 bg-white'}`}>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => updateInherited(section.key, item.id)}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-gray-800">{section.renderItem(item as never)}</span>
+                          {item.sourceOrgName && item.sourceOrgName !== snapshot.parentName && (
+                            <span className="block text-xs text-gray-500">Im Parent-Kontext geerbt aus {item.sourceOrgName}</span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">In der Parent-Organisation sind derzeit keine passenden Einträge sichtbar.</div>
+              )}
+            </div>
+          ))}
+          <div className="flex items-center justify-end gap-3 pt-2 border-t">
+            <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200" onClick={onClose}>Abbrechen</button>
+            <button
+              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={saving}
+              onClick={async () => {
+                if (!org || !draft) return;
+                try {
+                  setSaving(true);
+                  const saved = await updateOrgTaxonomySettings(org.id, draft);
+                  setSnapshot(saved);
+                  setDraft(saved.settings);
+                  showToast('Vererbungsregeln gespeichert.', { type: 'success' });
+                  onSaved();
+                  onClose();
+                } catch (error: unknown) {
+                  const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Speichern fehlgeschlagen.';
+                  showToast(String(message), { type: 'error' });
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              Speichern
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function MoveImpactList({ title, items }: { title: string; items: OrgMoveImpactItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <h5 className="text-sm font-medium text-gray-800 mb-1">{title}</h5>
+      <ul className="space-y-1 text-sm text-gray-700">
+        {items.slice(0, 6).map((item) => (
+          <li key={item.id}>
+            {item.name}{item.sourceOrgName ? ` (${item.sourceOrgName})` : ''}
+          </li>
+        ))}
+        {items.length > 6 && <li className="text-gray-500">… und {items.length - 6} weitere</li>}
+      </ul>
+    </div>
+  );
+}
+
 export default function AdminOrgSetup() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const qc = useQueryClient();
   const [orgs, setOrgs] = useState<OrgDto[]>([]);
   const [loading, setLoading] = useState(true);
   const isSuperadmin = user?.role === 'superadmin';
+  const [settingsOrg, setSettingsOrg] = useState<OrgDto | null>(null);
   
   // Create org modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -65,6 +255,47 @@ export default function AdminOrgSetup() {
     } finally { setLoading(false); }
   }
   useEffect(() => { reloadOrgs(); }, [user?.id, user?.role, user?.orgId]);
+
+  async function invalidateTaxonomyQueriesForOrgTree(rootOrgId: string) {
+    const rootOrg = orgs.find((candidate) => candidate.id === rootOrgId);
+    const affectedScopeKeys = new Set<string>([rootOrgId]);
+
+    if (rootOrg?.path) {
+      for (const candidate of orgs) {
+        if (candidate.id === rootOrgId) continue;
+        if ((candidate.path || '').startsWith(`${rootOrg.path}/`)) {
+          affectedScopeKeys.add(candidate.id);
+        }
+      }
+    } else {
+      const childrenByParent = new Map<string, string[]>();
+      for (const candidate of orgs) {
+        if (!candidate.parentId) continue;
+        const siblings = childrenByParent.get(candidate.parentId) || [];
+        siblings.push(candidate.id);
+        childrenByParent.set(candidate.parentId, siblings);
+      }
+      const queue = [rootOrgId];
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (!current) continue;
+        for (const childId of childrenByParent.get(current) || []) {
+          if (affectedScopeKeys.has(childId)) continue;
+          affectedScopeKeys.add(childId);
+          queue.push(childId);
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from(affectedScopeKeys).flatMap((scopeKey) => [
+        qc.invalidateQueries({ queryKey: ['categories', scopeKey] }),
+        qc.invalidateQueries({ queryKey: ['tags', scopeKey] }),
+        qc.invalidateQueries({ queryKey: ['cohorts', scopeKey] }),
+        qc.invalidateQueries({ queryKey: ['taxonomy-access', scopeKey] }),
+      ]),
+    );
+  }
 
   // Build a simple org tree and helpers for indentation
   type OrgNode = { org: OrgDto; children: OrgNode[] };
@@ -182,7 +413,7 @@ export default function AdminOrgSetup() {
           {!loading && orgs.length > 0 && (
             <ul className="space-y-1">
               {tree.map((n) => (
-                <OrgTree key={n.org.id} node={n} depth={0} allOrgs={orgs} onMoved={reloadOrgs} />
+                <OrgTree key={n.org.id} node={n} depth={0} allOrgs={orgs} onMoved={reloadOrgs} onOpenSettings={setSettingsOrg} />
               ))}
             </ul>
           )}
@@ -347,12 +578,25 @@ export default function AdminOrgSetup() {
           >Passwort speichern</button>
         </div>
       </Modal>
+
+      <OrgTaxonomySettingsModal
+        org={settingsOrg}
+        open={!!settingsOrg}
+        onClose={() => setSettingsOrg(null)}
+        onSaved={() => {
+          if (!settingsOrg) return;
+          void Promise.all([
+            reloadOrgs(),
+            invalidateTaxonomyQueriesForOrgTree(settingsOrg.id),
+          ]);
+        }}
+      />
     </div>
   );
 }
 
 type OrgTreeNode = { org: OrgDto; children: OrgTreeNode[] };
-function OrgTree({ node, depth, allOrgs, onMoved }: { node: OrgTreeNode; depth: number; allOrgs: OrgDto[]; onMoved: () => void }) {
+function OrgTree({ node, depth, allOrgs, onMoved, onOpenSettings }: { node: OrgTreeNode; depth: number; allOrgs: OrgDto[]; onMoved: () => void; onOpenSettings: (org: OrgDto) => void }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
   
@@ -363,29 +607,31 @@ function OrgTree({ node, depth, allOrgs, onMoved }: { node: OrgTreeNode; depth: 
         depth={depth} 
         allOrgs={allOrgs} 
         onMoved={onMoved} 
+        onOpenSettings={onOpenSettings}
         hasChildren={hasChildren}
         expanded={expanded}
         onToggleExpand={() => setExpanded(!expanded)}
       />
       {expanded && node.children.map((c) => (
-        <OrgTree key={c.org.id} node={c} depth={depth + 1} allOrgs={allOrgs} onMoved={onMoved} />
+        <OrgTree key={c.org.id} node={c} depth={depth + 1} allOrgs={allOrgs} onMoved={onMoved} onOpenSettings={onOpenSettings} />
       ))}
     </>
   );
 }
 
-function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleExpand }: { 
+function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, expanded, onToggleExpand }: { 
   org: OrgDto; 
   depth: number; 
   allOrgs: OrgDto[]; 
   onMoved: () => void;
+  onOpenSettings: (org: OrgDto) => void;
   hasChildren: boolean;
   expanded: boolean;
   onToggleExpand: () => void;
 }) {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const canMoveOrg = user?.role === 'superadmin';
+  const canConfigureTaxonomy = !!org.parentId && (user?.role === 'superadmin' || (user?.role === 'org_admin' && org.parentId === user?.orgId));
   const [orgUsers, setOrgUsers] = useState<{ admins: { name: string }[]; users: { name: string }[] } | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -393,6 +639,16 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
   const [inviteEmail, setInviteEmail] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [movePicker, setMovePicker] = useState<{ open: boolean; targetParentId: string | null }>({
+    open: false,
+    targetParentId: org.parentId ?? null,
+  });
+  const [moveDialog, setMoveDialog] = useState<{ open: boolean; loading: boolean; preview: OrgMovePreview | null; targetParentId: string | null }>({
+    open: false,
+    loading: false,
+    preview: null,
+    targetParentId: null,
+  });
   const byId = useMemo(() => Object.fromEntries(allOrgs.map(o => [o.id, o] as const)), [allOrgs]);
 
   // Compute valid parents (exclude self and descendants)
@@ -403,11 +659,15 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
       return candidate.id !== org.id && !candidate.path.startsWith(currentPath + '/');
     };
     const withDepth = allOrgs
+      .filter((candidate) => candidate.id !== (org.parentId ?? ''))
       .filter(isDescendant)
       .map(o => ({ o, depth: o.path ? Math.max(0, o.path.split('/').length - 1) : getDepthByChain(o, byId) }));
     withDepth.sort((a,b)=> a.depth - b.depth || a.o.name.localeCompare(b.o.name,'de'));
     return withDepth;
   }, [allOrgs, byId, org.id, org.path]);
+
+  const canMoveOrg = canAccessOrgMove(user?.role) && validParents.length > 0;
+  const defaultMoveTargetId = validParents[0]?.o.id ?? null;
 
   function getDepthByChain(o: OrgDto, map: Record<string, OrgDto>): number {
     let d = 0; let cur: OrgDto | undefined = o;
@@ -440,6 +700,31 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
       } catch { /* ignore */ }
     })();
   }, [open, inviteEmail]);
+
+  const targetParentName = moveDialog.targetParentId
+    ? allOrgs.find((candidate) => candidate.id === moveDialog.targetParentId)?.name || 'Zielorganisation'
+    : 'Obere Ebene';
+
+  const selectedMoveParentName = movePicker.targetParentId
+    ? allOrgs.find((candidate) => candidate.id === movePicker.targetParentId)?.name || 'Zielorganisation'
+    : 'Obere Ebene';
+
+  const openMovePicker = () => {
+    if (!canMoveOrg) return;
+    setMovePicker({ open: true, targetParentId: defaultMoveTargetId });
+  };
+
+  const openMovePreview = async (parentId: string | null) => {
+    try {
+      setMoveDialog({ open: true, loading: true, preview: null, targetParentId: parentId });
+      const preview = await previewMoveOrgApi(org.id, parentId);
+      setMoveDialog({ open: true, loading: false, preview, targetParentId: parentId });
+    } catch (error: unknown) {
+      setMoveDialog({ open: false, loading: false, preview: null, targetParentId: null });
+      const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Verschiebe-Vorschau konnte nicht geladen werden.';
+      showToast(String(message), { type: 'error' });
+    }
+  };
 
   return (
     <li 
@@ -476,28 +761,23 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
               <UserIcon className="w-3.5 h-3.5" /> {orgUsers?.users.length ?? '–'}
             </span>
           </Tooltip>
-          {canMoveOrg && (
-            <select
-              className="border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 cursor-pointer flex-1 min-w-0"
-              title="Verschieben unter…"
-              value=""
-              onChange={async (e)=>{
-                try {
-                  const newParent = e.target.value || 'root';
-                  await moveOrgApi(org.id, newParent === 'root' ? null : newParent);
-                  showToast('Organisation verschoben.', { type: 'success' });
-                  onMoved();
-                } catch {
-                  showToast('Verschieben fehlgeschlagen.', { type: 'error' });
-                }
-              }}
+          {canConfigureTaxonomy && (
+            <button
+              className="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-200 bg-white text-gray-600 hover:text-viridian hover:border-viridian"
+              title="Vererbungsregeln"
+              onClick={() => onOpenSettings(org)}
             >
-              <option value="">Versch…</option>
-              <option value="root">(Oben)</option>
-              {validParents.map(({ o, depth: d }) => (
-                <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
-              ))}
-            </select>
+              <Settings2 className="w-4 h-4" />
+            </button>
+          )}
+          {canMoveOrg && (
+            <button
+              className="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-200 bg-white text-gray-600 hover:text-viridian hover:border-viridian"
+              title="Organisation verschieben"
+              onClick={openMovePicker}
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+            </button>
           )}
           {user?.role === 'superadmin' && (
             <button
@@ -543,30 +823,27 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
             </span>
           </Tooltip>
         </div>
+
+        {canConfigureTaxonomy && (
+          <button
+            className="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-200 bg-white text-gray-600 hover:text-viridian hover:border-viridian"
+            title="Vererbungsregeln"
+            onClick={() => onOpenSettings(org)}
+          >
+            <Settings2 className="w-4 h-4" />
+          </button>
+        )}
         
         {/* Move Dropdown */}
         {canMoveOrg && (
-          <select
-            className="border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 cursor-pointer"
-            title="Verschieben unter…"
-            value=""
-            onChange={async (e)=>{
-              try {
-                const newParent = e.target.value || 'root';
-                await moveOrgApi(org.id, newParent === 'root' ? null : newParent);
-                showToast('Organisation verschoben.', { type: 'success' });
-                onMoved();
-              } catch {
-                showToast('Verschieben fehlgeschlagen.', { type: 'error' });
-              }
-            }}
+          <button
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:text-viridian hover:border-viridian text-xs"
+            title="Organisation verschieben"
+            onClick={openMovePicker}
           >
-            <option value="">Verschieben…</option>
-            <option value="root">(Obere Ebene)</option>
-            {validParents.map(({ o, depth: d }) => (
-              <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
-            ))}
-          </select>
+            <ArrowRightLeft className="w-4 h-4" />
+            <span>Verschieben</span>
+          </button>
         )}
         
         {/* Delete Button (nur für Superadmin) */}
@@ -647,6 +924,126 @@ function OrgRow({ org, depth, allOrgs, onMoved, hasChildren, expanded, onToggleE
           </div>
           {copyMsg && <div className="text-xs text-viridian mt-1">{copyMsg}</div>}
         </div>
+      </Modal>
+
+      <Modal
+        open={movePicker.open}
+        onClose={() => setMovePicker({ open: false, targetParentId: defaultMoveTargetId })}
+        title={`Organisation verschieben: „${org.name}“`}
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+            Wähle bewusst das neue übergeordnete Ziel. Die Auswirkungen werden im nächsten Schritt geprüft, bevor etwas gespeichert wird.
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Neue übergeordnete Organisation</label>
+            <select
+              className="w-full border rounded-lg px-3 py-2 bg-white"
+              value={movePicker.targetParentId ?? ''}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                setMovePicker({ open: true, targetParentId: nextValue || null });
+              }}
+            >
+              {validParents.map(({ o, depth: d }) => (
+                <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-2">
+              Aktuell: <strong>{org.parentId ? allOrgs.find((candidate) => candidate.id === org.parentId)?.name || 'Unbekannt' : 'Obere Ebene'}</strong>
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Neues Ziel: <strong>{selectedMoveParentName}</strong>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2 border-t">
+            <button
+              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+              onClick={() => setMovePicker({ open: false, targetParentId: defaultMoveTargetId })}
+            >
+              Abbrechen
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue"
+              disabled={!movePicker.targetParentId}
+              onClick={async () => {
+                if (!movePicker.targetParentId) return;
+                setMovePicker({ open: false, targetParentId: movePicker.targetParentId });
+                await openMovePreview(movePicker.targetParentId);
+              }}
+            >
+              Auswirkungen prüfen
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={moveDialog.open} onClose={() => setMoveDialog({ open: false, loading: false, preview: null, targetParentId: null })} title={`Organisation verschieben: „${org.name}“`} maxWidth="lg">
+        {moveDialog.loading && <div className="py-8 text-center text-gray-500">Analysiere Auswirkungen des Verschiebens…</div>}
+        {!moveDialog.loading && moveDialog.preview && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Ziel: <strong>{targetParentName}</strong>
+              <div className="mt-1 text-xs text-gray-500">Betroffene Organisationen im verschobenen Teilbaum: {moveDialog.preview.affectedOrgs}</div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <MoveImpactList title="Wegfallende Kategorien" items={moveDialog.preview.lost.categories} />
+              <MoveImpactList title="Neu hinzukommende Kategorien" items={moveDialog.preview.gained.categories} />
+              <MoveImpactList title="Wegfallende Tags" items={moveDialog.preview.lost.tags} />
+              <MoveImpactList title="Neu hinzukommende Tags" items={moveDialog.preview.gained.tags} />
+              <MoveImpactList title="Wegfallende Kohorten" items={moveDialog.preview.lost.cohorts} />
+              <MoveImpactList title="Neu hinzukommende Kohorten" items={moveDialog.preview.gained.cohorts} />
+            </div>
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {moveDialog.preview.resetNotice}
+            </div>
+
+            <div className="space-y-2 text-sm text-gray-700">
+              <div>Aktivitäten mit ungültigen Kategorien nach dem Move: <strong>{moveDialog.preview.activityConflicts.categories.activities}</strong></div>
+              <div>Aktivitäten mit ungültigen Tags nach dem Move: <strong>{moveDialog.preview.activityConflicts.tags.activities}</strong></div>
+              <div>Aktivitäten mit ungültigen Kohorten nach dem Move: <strong>{moveDialog.preview.activityConflicts.cohorts.activities}</strong></div>
+              <div>Projekte mit ungültigen Kategorien nach dem Move: <strong>{moveDialog.preview.projectConflicts.categories.projects}</strong></div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <MoveImpactList title="Konflikt-Kategorien in Aktivitäten" items={moveDialog.preview.activityConflicts.categories.items} />
+              <MoveImpactList title="Konflikt-Tags in Aktivitäten" items={moveDialog.preview.activityConflicts.tags.items} />
+              <MoveImpactList title="Konflikt-Kohorten in Aktivitäten" items={moveDialog.preview.activityConflicts.cohorts.items} />
+              <MoveImpactList title="Konflikt-Kategorien in Projekten" items={moveDialog.preview.projectConflicts.categories.items} />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                onClick={() => setMoveDialog({ open: false, loading: false, preview: null, targetParentId: null })}
+              >
+                Abbrechen
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue"
+                onClick={async () => {
+                  try {
+                    await moveOrgWithConfirmationApi(org.id, moveDialog.targetParentId, true);
+                    showToast('Organisation verschoben.', { type: 'success' });
+                    setMoveDialog({ open: false, loading: false, preview: null, targetParentId: null });
+                    onMoved();
+                  } catch (error: unknown) {
+                    const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Verschieben fehlgeschlagen.';
+                    showToast(String(message), { type: 'error' });
+                  }
+                }}
+              >
+                Trotzdem verschieben
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
       
       {user?.role === 'superadmin' && (

@@ -54,6 +54,7 @@ services:
       SUPERADMIN_PASSWORD: "${SUPERADMIN_PASSWORD:-}"
       SUPERADMIN_EMAIL_FORCE: ${SUPERADMIN_EMAIL_FORCE:-false}
       SUPERADMIN_PASSWORD_FORCE: ${SUPERADMIN_PASSWORD_FORCE:-false}
+      ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
 
       # SMTP (optional)
       SMTP_HOST: "${SMTP_HOST:-}"
@@ -78,6 +79,7 @@ services:
         # Wichtig für On‑Prem: Proxy auf den Backend‑Service
         NGINX_MODE: proxy
         VITE_ENABLE_DEV_TOOLS: ${VITE_ENABLE_DEV_TOOLS:-false}
+        VITE_ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
         # Optional (nur wenn ihr Option B wollt):
         # VITE_API_BASE_URL: https://<eure-domain>/api
     restart: unless-stopped

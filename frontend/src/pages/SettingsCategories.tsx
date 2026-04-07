@@ -7,6 +7,7 @@ import {
   useCategories,
   useCreateCategory,
   useDeleteCategory,
+  useTaxonomyAccess,
   useUpdateCategory,
 } from '@/lib/taxonomy';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -147,6 +148,7 @@ export default function SettingsCategories() {
   const [showArchived, setShowArchived] = useState(false);
   const { data } = useCategories(showArchived ? undefined : { active: true });
   const { data: archivedOnly } = useCategories({ active: false });
+  const { data: access } = useTaxonomyAccess();
   const archivedCount = (archivedOnly || []).length;
   const create = useCreateCategory();
   const update = useUpdateCategory();
@@ -166,6 +168,7 @@ export default function SettingsCategories() {
   const [selectedDefaultNames, setSelectedDefaultNames] = useState<string[]>([]);
 
   const categories = data || [];
+  const canCreateOwn = access?.categories.canCreateOwn ?? true;
   const allExisting = useMemo(
     () => [...(data || []), ...(archivedOnly || [])] as Category[],
     [data, archivedOnly],
@@ -198,6 +201,11 @@ export default function SettingsCategories() {
       <div className="flex items-center justify-between mb-4 gap-3">
         <div>
           <h3 className="text-xl font-semibold text-viridian">Kategorien verwalten</h3>
+          {!canCreateOwn && (
+            <p className="text-xs text-amber-700 mt-1">
+              Lokale Kategorien sind in diesem Org-Kontext gesperrt. Geerbte Kategorien bleiben auswählbar, neue lokale Kategorien sind hier nicht erlaubt.
+            </p>
+          )}
           <div className="text-xs text-gray-600 mt-1">
             <button
               type="button"
@@ -232,10 +240,11 @@ export default function SettingsCategories() {
           )}
           <span className="tooltip-wrapper">
             <button
-              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow"
-              onClick={() => setModal({ mode: 'create' })}
+              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => canCreateOwn && setModal({ mode: 'create' })}
               aria-label="Neue Kategorie"
               title="Neue Kategorie"
+              disabled={!canCreateOwn}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -255,21 +264,31 @@ export default function SettingsCategories() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {categories.map((c) => (
-          <div key={c.id} className="p-3 rounded border flex items-center justify-between">
+        {categories.map((c) => {
+          const isInherited = !!c.isInherited;
+          const canManage = c.canManage !== false;
+          return (
+          <div key={c.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
             <div className="min-w-0 flex items-center gap-3">
               <span
                 className={`inline-block w-4 h-4 rounded ${getBgClass(c.color as string, 'bg-slate-400')}`}
               />
               <div>
-                <div className="font-medium text-viridian">{c.name}</div>
+                <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">
+                  <span>{c.name}</span>
+                  {isInherited && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">
+                      geerbt{c.sourceOrgName ? ` aus ${c.sourceOrgName}` : ''}
+                    </span>
+                  )}
+                </div>
                 {c.description && (
                   <div className="text-sm text-gray-600 line-clamp-2">{c.description}</div>
                 )}
               </div>
             </div>
             <div className="flex gap-2">
-              {showArchived && (c as Category).active === false && (
+              {showArchived && (c as Category).active === false && canManage && (
                 <button
                   className="text-viridian hover:underline"
                   onClick={() => update.mutate({ id: c.id, data: { active: true } })}
@@ -277,15 +296,15 @@ export default function SettingsCategories() {
                   Wiederherstellen
                 </button>
               )}
-              <button
+              {canManage && <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
                 title="Bearbeiten"
                 aria-label={`Kategorie ${c.name} bearbeiten`}
                 onClick={() => setModal({ mode: 'edit', category: c })}
               >
                 <Pencil className="w-4 h-4 text-viridian" />
-              </button>
-              <button
+              </button>}
+              {canManage && <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 p-1.5"
                 aria-label="Löschen"
                 title="Löschen"
@@ -306,12 +325,13 @@ export default function SettingsCategories() {
                 }}
               >
                 <Trash2 className="w-4 h-4 text-red-600" />
-              </button>
+              </button>}
             </div>
           </div>
-        ))}
+          );
+        })}
         {categories.length === 0 && (
-          <div className="text-gray-500 py-6">Noch keine Kategorien.</div>
+          <div className="text-gray-500 py-6">Keine sichtbaren Kategorien in diesem Org-Kontext.</div>
         )}
       </div>
 

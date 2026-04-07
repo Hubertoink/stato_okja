@@ -192,6 +192,19 @@ docker-compose -f docker-compose.prod.yml up -d
 npm run migration:run
 ```
 
+Wichtige Betriebsvariablen:
+
+- `ENABLE_ORG_MOVE=false`
+	- Standardwert: Organisationsverschiebung ist komplett deaktiviert.
+	- Nur wenn der Wert bewusst auf `true` gesetzt wird, werden die Move-Endpunkte im Backend freigeschaltet und der Verschieben-Button im Frontend-Build angezeigt.
+	- Für Docker/On-Prem muss der Frontend-Container nach einer Änderung neu gebaut werden, da das Frontend den Schalter als Build-Variable nutzt.
+
+Hinweis zu Migrationen:
+
+- Für automatische Migrationen beim Backend-Start gilt: `DB_MIGRATIONS_RUN=true`
+- Gleichzeitig muss `DB_SYNCHRONIZE=false` gesetzt sein, sonst werden Migrationen absichtlich übersprungen.
+- Bei einer frischen leeren Test-/Bootstrap-Datenbank kann weiterhin `DB_SYNCHRONIZE=true` genutzt werden; dann ist keine automatische Migration aktiv.
+
 Weitere Hinweise für Hosting bei Mittwald (inkl. Subdomains, Registry und ENV):
 - DEPLOY_MITTWALD.md
 

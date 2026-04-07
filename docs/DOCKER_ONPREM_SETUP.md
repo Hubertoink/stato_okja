@@ -161,8 +161,15 @@ Hinweis: Feinsteuerung wie `RESET_TOKEN_EXPIRATION` oder `INVITE_TOKEN_EXPIRATIO
 ### Optional: Dev Tools
 
 - `VITE_ENABLE_DEV_TOOLS=false`
+- `ENABLE_ORG_MOVE=false`
 
 Für einen echten On-Prem-Produktivbetrieb sollte das normalerweise `false` bleiben.
+
+Zusätzlich bei `ENABLE_ORG_MOVE`:
+
+- Standard ist bewusst `false`, damit Organisationsverschiebungen nicht versehentlich im Betrieb genutzt werden.
+- Erst bei `ENABLE_ORG_MOVE=true` werden die Move-Endpunkte im Backend aktiviert und der Verschieben-Button in den Frontend-Build aufgenommen.
+- Nach einer Änderung des Werts muss der Frontend-Container neu gebaut werden.
 
 ## Vollständiges Beispiel für `.env.onprem`
 
@@ -183,6 +190,7 @@ DB_LOGGING=false
 DB_REQUIRE_SSL=false
 DB_SSL=false
 DB_SSL_REJECT_UNAUTHORIZED=false
+ENABLE_ORG_MOVE=false
 PASSWORD_RESET_MODE=admin_temp_password
 
 SUPERADMIN_EMAIL=admin@kommune.local
@@ -251,7 +259,11 @@ Beispiel:
 
 Für einen funktionierenden Produktionsstart müssen die Migrationen gegen die neue Datenbank gelaufen sein.
 
-Wichtig: Wenn der Backend-Container mit `NODE_ENV=development` läuft, werden Migrationen im aktuellen Backend standardmäßig **nicht** automatisch ausgeführt. Setze in diesem Fall `DB_MIGRATIONS_RUN=true`, sonst fehlen neue Spalten trotz korrekt gebautem Container.
+Wichtig:
+
+- Wenn der Backend-Container mit `NODE_ENV=development` läuft, werden Migrationen standardmäßig **nicht** automatisch ausgeführt. Setze in diesem Fall `DB_MIGRATIONS_RUN=true`.
+- Wenn `DB_SYNCHRONIZE=true` gesetzt ist, werden Migrationen im aktuellen Backend absichtlich **übersprungen**.
+- Für den produktiven Migrationspfad muss also gelten: `DB_MIGRATIONS_RUN=true` und `DB_SYNCHRONIZE=false`.
 
 Es gibt dafür zwei praktikable Wege.
 
@@ -415,6 +427,18 @@ Für einen normalen On-Prem-Produktivbetrieb gilt:
 - `VITE_ENABLE_DEV_TOOLS=false`
 
 Wenn die Dev-Tools bewusst in einer Testinstanz genutzt werden sollen, braucht es zusätzlich eine nicht-produktive Backend-Konfiguration und einen Frontend-Build mit `VITE_ENABLE_DEV_TOOLS=true`.
+
+## Organisationsverschiebung auf On-Prem
+
+Die Organisationsverschiebung ist ebenfalls feature-flagged:
+
+- `ENABLE_ORG_MOVE=false`: Standard, keine Verschiebung im Backend und keine Verschieben-Aktion im Frontend
+- `ENABLE_ORG_MOVE=true`: Verschiebung bewusst freigegeben
+
+Wichtig:
+
+- Das Backend liest `ENABLE_ORG_MOVE` zur Laufzeit.
+- Das Frontend bekommt denselben Wert als Build-Argument. Nach einer Änderung ist deshalb ein `docker compose ... up -d --build` nötig.
 
 ## Updates einspielen
 

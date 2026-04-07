@@ -593,11 +593,11 @@ function ProjectForm({
   return (
     <div className="fixed inset-0 bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
       <div
-        className="bg-white w-full md:max-w-4xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate"
+        className="modal-panel-roomy bg-white w-full md:max-w-4xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-hidden"
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
       >
-        <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="shrink-0 flex items-start justify-between gap-3 mb-4">
           <h3 className="text-xl font-semibold text-viridian">
             {initial?.id ? 'Projekt bearbeiten' : 'Neues Projekt'}
           </h3>
@@ -611,6 +611,8 @@ function ProjectForm({
             <XIcon className="w-5 h-5" />
           </button>
         </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6">
 
         {!initial?.id && (
           <div className="mb-4">
@@ -1027,7 +1029,9 @@ function ProjectForm({
             </div>
           </div>
         </div>
-        <div className="mt-6 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
+        </div>
+
+        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
           <div className="flex items-center justify-between gap-3">
             <span className="tooltip-wrapper">
               <button

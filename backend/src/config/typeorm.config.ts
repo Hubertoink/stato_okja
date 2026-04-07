@@ -4,6 +4,8 @@ import path from 'path';
 
 dotenvConfig();
 
+const postgresSessionOptions = '-c timezone=UTC';
+
 function buildTypeOrmConfig(): DataSourceOptions {
   const dbType = (process.env.DB_TYPE || 'postgres').toLowerCase();
   const migrationsRunEnv = (process.env.DB_MIGRATIONS_RUN ?? '').toLowerCase();
@@ -56,6 +58,9 @@ function buildTypeOrmConfig(): DataSourceOptions {
     migrationsRun: base.migrationsRun,
     synchronize: base.synchronize,
     logging: base.logging,
+    // Keep Postgres sessions in UTC so legacy `timestamp without time zone`
+    // columns stay aligned with the runtime parser in main.ts.
+    extra: { options: postgresSessionOptions },
     ...(useSsl ? { ssl: { rejectUnauthorized } } : {}),
   };
   return cfg;

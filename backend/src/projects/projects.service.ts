@@ -118,7 +118,10 @@ export class ProjectsService {
     return updated ? this.normalizeProjectImage(updated) : null;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(
+    id: string,
+    user?: { id?: string; name?: string | null; orgId?: string | null },
+  ): Promise<void> {
     const existing = await this.projectRepository.findOne({ where: { id } });
     await this.projectRepository.delete(id);
     await this.audit.log({
@@ -126,6 +129,7 @@ export class ProjectsService {
       entityType: 'project',
       entityId: id,
       entityTitle: existing?.title || null,
+      user,
       orgId: existing?.orgId ?? null,
     });
   }
@@ -162,7 +166,7 @@ export class ProjectsService {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
-    await this.remove(id);
+    await this.remove(id, user);
   }
 
   async archiveScoped(id: string, archived: boolean, user: { id?: string; role: string; orgId?: string|null }) {

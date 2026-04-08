@@ -119,8 +119,15 @@ export class ProjectsService {
   }
 
   async remove(id: string): Promise<void> {
+    const existing = await this.projectRepository.findOne({ where: { id } });
     await this.projectRepository.delete(id);
-    await this.audit.log({ action: AuditAction.DELETE, entityType: 'project', entityId: id, entityTitle: null, orgId: null });
+    await this.audit.log({
+      action: AuditAction.DELETE,
+      entityType: 'project',
+      entityId: id,
+      entityTitle: existing?.title || null,
+      orgId: existing?.orgId ?? null,
+    });
   }
 
   async archive(id: string, archived: boolean = true): Promise<Project | null> {
@@ -156,7 +163,6 @@ export class ProjectsService {
     if (!existing) return;
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
     await this.remove(id);
-    await this.audit.log({ action: AuditAction.DELETE, entityType: 'project', entityId: id, entityTitle: null, orgId: user.orgId ?? null, user });
   }
 
   async archiveScoped(id: string, archived: boolean, user: { id?: string; role: string; orgId?: string|null }) {

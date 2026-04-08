@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuth } from './auth';
+import { getStoredAuthToken } from './authStorage';
 
 type OrgScopeValue = string | null | undefined;
 interface OrgScopeState {
@@ -42,7 +43,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 function userIdFromStoredToken(): string | null {
   try {
-    const token = localStorage.getItem('auth_token') || '';
+    const token = getStoredAuthToken();
     if (!token) return null;
     const payload = decodeJwtPayload(token);
     const sub = payload?.sub;

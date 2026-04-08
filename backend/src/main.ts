@@ -7,6 +7,17 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import { assertSecureRuntimeConfig } from './config/security.config';
+
+const PG_TIMESTAMP_OID = 1114;
+
+// Postgres `timestamp without time zone` values are timezone-naive.
+// We store and interpret them as UTC so JSON serialization stays stable
+// even when the Node process runs with a local TZ like Europe/Berlin.
+pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
+  if (!value) return null;
+  return new Date(`${value}Z`);
+});
 
 const PG_TIMESTAMP_OID = 1114;
 
@@ -19,6 +30,7 @@ pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
 });
 
 async function bootstrap() {
+  assertSecureRuntimeConfig();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Global prefix
@@ -65,11 +77,6 @@ async function bootstrap() {
   } catch (e) {
     console.warn('Could not ensure uploads directory exists:', e);
   }
-
-  // Serve static files for uploads
-  app.useStaticAssets(uploadsBase, {
-    prefix: '/uploads/',
-  });
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

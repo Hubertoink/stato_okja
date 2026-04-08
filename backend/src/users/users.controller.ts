@@ -6,12 +6,20 @@ import { RolesGuard } from '../auth/roles.guard';
 import { OrgsService } from '../orgs/orgs.service';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 
+type ManageableUserRole = 'superadmin' | 'org_admin' | 'user';
+
 @UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
 @Controller('users')
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
   constructor(private readonly service: UsersService, private readonly orgs: OrgsService) {}
+
+  private parseRole(role: unknown, fallback: ManageableUserRole = 'user'): ManageableUserRole {
+    if (role === 'superadmin' || role === 'org_admin' || role === 'user') return role;
+    if (typeof role === 'undefined' || role === null || role === '') return fallback;
+    throw new BadRequestException('Ungültige Rolle');
+  }
 
   private isUserDiagnosticsEnabled() {
     const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
@@ -120,7 +128,8 @@ export class UsersController {
 
   @Roles('org_admin','superadmin')
   @Post()
-  create(@Body() body: { email: string; name: string; role?: 'superadmin'|'org_admin'|'user'; orgId?: string|null }, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  async create(@Body() body: { email: string; name: string; role?: 'superadmin'|'org_admin'|'user'; orgId?: string|null }, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    const requestedRole = this.parseRole(body?.role);
     // Require an organization for all users
     const requestedOrgId = typeof body.orgId === 'undefined' ? (req.user.orgId || null) : (body.orgId ?? null);
     if (!requestedOrgId) {
@@ -129,34 +138,36 @@ export class UsersController {
     // Admins can only create users in their own org subtree
     if (req.user.role !== 'superadmin') {
       const myOrgId = req.user.orgId || null;
-      // Only allow if requestedOrgId is in subtree of myOrgId
-      return (async () => {
-        if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-        const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-        if (!(requestedOrgId && subtree.includes(requestedOrgId))) throw new ForbiddenException('Nicht erlaubt');
-        return this.service.create({ ...body, orgId: requestedOrgId });
-      })();
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+      if (requestedRole === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
+      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
+      if (!(requestedOrgId && subtree.includes(requestedOrgId))) throw new ForbiddenException('Nicht erlaubt');
+      return this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId });
     }
-    return this.service.create({ ...body, orgId: requestedOrgId });
+    return this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId });
   }
 
   @Roles('org_admin','superadmin')
   @Patch(':id')
   async update(@Param('id') id: string, @Body() patch: { role?: 'org_admin'|'user'; orgId?: string | null }, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    const target = await this.service.findById(id);
+    if (!target) throw new BadRequestException('User not found');
+    const requestedRole = typeof patch.role === 'undefined' ? undefined : this.parseRole(patch.role, target.role as ManageableUserRole);
+
     // Admins can only change role within subtree and cannot move users outside subtree
     if (req.user.role !== 'superadmin') {
       const myOrgId = req.user.orgId || null;
-      const targetOrgId = typeof patch.orgId === 'undefined' ? undefined : (patch.orgId ?? null);
-      if (typeof targetOrgId !== 'undefined') {
-        if (myOrgId === null) {
-          if (targetOrgId !== null) throw new ForbiddenException('Nicht erlaubt');
-        } else {
-          const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-          if (!(targetOrgId && subtree.includes(targetOrgId))) throw new ForbiddenException('Nicht erlaubt');
-        }
-      }
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
+      const currentOrgId = target.orgId ?? null;
+      const nextOrgId = typeof patch.orgId === 'undefined' ? currentOrgId : (patch.orgId ?? null);
+
+      if (!currentOrgId || !subtree.includes(currentOrgId)) throw new ForbiddenException('Nicht erlaubt');
+      if (!nextOrgId || !subtree.includes(nextOrgId)) throw new ForbiddenException('Nicht erlaubt');
+      if (requestedRole === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
+      if (target.role === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
     }
-    await this.service.update(id, patch);
+    await this.service.update(id, { ...patch, role: requestedRole });
     return { ok: true };
   }
 
@@ -166,6 +177,15 @@ export class UsersController {
     if (req.user.id === id) throw new BadRequestException('Cannot remove yourself');
     const target = await this.service.findById(id);
     if (!target) throw new BadRequestException('User not found');
+
+    if (req.user.role !== 'superadmin') {
+      const myOrgId = req.user.orgId || null;
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+      if (target.role === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
+      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
+      if (!target.orgId || !subtree.includes(target.orgId)) throw new ForbiddenException('Nicht erlaubt');
+    }
+
     // Prevent deleting last superadmin globally
     if (target.role === 'superadmin') {
       const superadmins = await this.service.countSuperadmins();

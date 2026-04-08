@@ -4,12 +4,18 @@ import { IsNull, Repository } from 'typeorm';
 import { ProjectTemplate } from './entities/project-template.entity';
 import { CreateProjectTemplateDto } from './dto/create-project-template.dto';
 import { UpdateProjectTemplateDto } from './dto/update-project-template.dto';
+import { normalizeUploadPath } from '../common/upload-paths';
 
 @Injectable()
 export class ProjectTemplatesService {
   constructor(
     @InjectRepository(ProjectTemplate) private readonly repo: Repository<ProjectTemplate>,
   ) {}
+
+  private normalizeTemplateImage<T extends Pick<ProjectTemplate, 'imageUrl'>>(template: T): T {
+    template.imageUrl = normalizeUploadPath(template.imageUrl);
+    return template;
+  }
 
   async listAvailable(orgId: string | null, ancestorOrgIds?: string[]) {
     const qb = this.repo.createQueryBuilder('t');
@@ -26,7 +32,7 @@ export class ProjectTemplatesService {
     }
 
     qb.addOrderBy('t.updatedAt', 'DESC');
-    return qb.getMany();
+    return qb.getMany().then((templates) => templates.map((template) => this.normalizeTemplateImage(template)));
   }
 
   async listOwned(orgId: string | null) {
@@ -34,24 +40,30 @@ export class ProjectTemplatesService {
     return this.repo.find({
       where,
       order: { updatedAt: 'DESC' },
-    });
+    }).then((templates) => templates.map((template) => this.normalizeTemplateImage(template)));
   }
 
   async createScoped(dto: CreateProjectTemplateDto, orgId: string | null) {
     const entity = this.repo.create({
       ...dto,
+      imageUrl: normalizeUploadPath(dto.imageUrl),
       orgId,
       archived: !!dto.archived,
     });
-    return this.repo.save(entity);
+    return this.repo.save(entity).then((template) => this.normalizeTemplateImage(template));
   }
 
   async updateScoped(id: string, dto: UpdateProjectTemplateDto, orgId: string | null) {
     const where = orgId === null ? ({ id, orgId: IsNull() } as const) : ({ id, orgId } as const);
     const existing = await this.repo.findOne({ where });
     if (!existing) return null;
-    Object.assign(existing, dto);
-    return this.repo.save(existing);
+    Object.assign(existing, {
+      ...dto,
+      ...(Object.prototype.hasOwnProperty.call(dto, 'imageUrl')
+        ? { imageUrl: normalizeUploadPath(dto.imageUrl) }
+        : {}),
+    });
+    return this.repo.save(existing).then((template) => this.normalizeTemplateImage(template));
   }
 
   async removeScoped(id: string, orgId: string | null) {

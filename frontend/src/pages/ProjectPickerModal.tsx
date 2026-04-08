@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { X as XIcon } from 'lucide-react';
 import { Star } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
+import ProtectedImage from '@/components/ProtectedImage';
 
 // Map project to one of a stable set of Tailwind classes (avoid inline styles)
 function bgClassForProject(p: Project) {
@@ -124,7 +125,7 @@ export default function ProjectPickerModal({
               >
                 <div className="relative h-24">
                   {p.imageUrl ? (
-                    <img
+                    <ProtectedImage
                       src={p.imageUrl}
                       alt={p.title}
                       className="absolute inset-0 w-full h-full object-cover"
@@ -184,7 +185,7 @@ export default function ProjectPickerModal({
                 >
                   <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex-shrink-0">
                     {p.imageUrl ? (
-                      <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
+                      <ProtectedImage src={p.imageUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className={`${bgClassForProject(p)} w-full h-full`} />
                     )}

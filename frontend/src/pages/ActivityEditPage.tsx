@@ -11,6 +11,7 @@ import ProjectPickerModal from './ProjectPickerModal';
 import { useToast } from '@/components/Toast';
 import { getBgClass } from '@/lib/colorPalette';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+import ProtectedImage from '@/components/ProtectedImage';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 type GenderKey = 'm' | 'w' | 'd';
@@ -252,7 +253,7 @@ export default function ActivityEditPage() {
             >
               <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
                 {selectedProject.imageUrl ? (
-                  <img
+                  <ProtectedImage
                     src={selectedProject.imageUrl}
                     alt={selectedProject.title}
                     className="w-full h-full object-cover"

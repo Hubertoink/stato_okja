@@ -19,6 +19,11 @@ export class ProjectsService {
     private readonly audit: AuditService,
   ) {}
 
+  private normalizeProjectImage<T extends Pick<Project, 'imageUrl'>>(project: T): T {
+    project.imageUrl = normalizeUploadPath(project.imageUrl);
+    return project;
+  }
+
   findAll(search?: string, archived?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Project[]> {
     const where: FindOptionsWhere<Project> = {};
     if (typeof archived === 'boolean') where.archived = archived;
@@ -29,11 +34,15 @@ export class ProjectsService {
     } else if (typeof orgId !== 'undefined') {
       Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
     }
-    return this.projectRepository.find({ where, order: { title: 'ASC' } });
+    return this.projectRepository.find({ where, order: { title: 'ASC' } }).then((projects) =>
+      projects.map((project) => this.normalizeProjectImage(project)),
+    );
   }
 
   findOne(id: string): Promise<Project | null> {
-    return this.projectRepository.findOne({ where: { id } });
+    return this.projectRepository.findOne({ where: { id } }).then((project) =>
+      project ? this.normalizeProjectImage(project) : null,
+    );
   }
 
   async create(
@@ -41,7 +50,10 @@ export class ProjectsService {
     user?: { id?: string; name?: string | null; orgId?: string | null },
   ): Promise<Project> {
     const { categoryIds, ...rest } = data;
-    const project = this.projectRepository.create(rest);
+    const project = this.projectRepository.create({
+      ...rest,
+      imageUrl: normalizeUploadPath(rest.imageUrl),
+    });
     // Enforce single category: prefer explicit categoryId, else take the first from categoryIds for backward compatibility
     let singleCategoryId: string | undefined | null = (rest as Partial<Project> & { categoryId?: string | null }).categoryId ?? undefined;
     if (!singleCategoryId && Array.isArray(categoryIds) && categoryIds.length) {
@@ -60,14 +72,20 @@ export class ProjectsService {
       project.categories = [];
       (project as Partial<Project> & { categoryId?: string | null }).categoryId = null;
     }
-    const saved = await this.projectRepository.save(project);
+    const saved = this.normalizeProjectImage(await this.projectRepository.save(project));
     await this.audit.log({ action: AuditAction.CREATE, entityType: 'project', entityId: saved.id, entityTitle: saved.title || null, orgId: saved.orgId ?? null, user });
     return saved;
   }
 
   async update(id: string, data: Partial<Project> & { categoryIds?: string[] }): Promise<Project | null> {
     const { categoryIds, ...rest } = data as Partial<Project> & { categoryIds?: string[] };
-    await this.projectRepository.update(id, rest);
+    const normalizedRest = {
+      ...rest,
+      ...(Object.prototype.hasOwnProperty.call(rest, 'imageUrl')
+        ? { imageUrl: normalizeUploadPath(rest.imageUrl) }
+        : {}),
+    };
+    await this.projectRepository.update(id, normalizedRest);
     // Handle category mapping when either categoryId or legacy categoryIds are present
     if (Object.prototype.hasOwnProperty.call(data, 'categoryId') || Array.isArray(categoryIds)) {
       const proj = await this.projectRepository.findOne({ where: { id } });
@@ -97,7 +115,7 @@ export class ProjectsService {
     }
     const updated = await this.findOne(id);
     if (updated) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: updated.id, entityTitle: updated.title || null, orgId: updated.orgId ?? null });
-    return updated;
+    return updated ? this.normalizeProjectImage(updated) : null;
   }
 
   async remove(id: string): Promise<void> {
@@ -109,7 +127,7 @@ export class ProjectsService {
     await this.projectRepository.update(id, { archived });
     const p = await this.findOne(id);
     if (p) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: p.id, entityTitle: p.title || null, orgId: p.orgId ?? null, details: { archived } });
-    return p;
+    return p ? this.normalizeProjectImage(p) : null;
   }
 
   async findOneScoped(id: string, user: { role: string; orgId?: string|null }) {

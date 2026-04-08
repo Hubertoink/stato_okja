@@ -215,7 +215,8 @@ In `docker-compose.prod.yml` unter `services.backend.environment`:
 - `APP_ORIGIN`: z. B. `https://stato.deinedomain.de`
 - `CORS_ORIGINS`: z. B. `https://stato.deinedomain.de`
 - `JWT_SECRET`: langer, geheimer Wert
-- `SUPERADMIN_EMAIL`: E-Mail für den Superadmin (optional; wird beim Start erzwungen)
+- `SUPERADMIN_EMAIL`: E-Mail für den Superadmin (optional; initiales Seed-Konto)
+  - Optional erzwingen: `SUPERADMIN_EMAIL_FORCE=true`
 
 Hinweis: Bei Port `465` wird SSL verwendet, bei `587` STARTTLS. Der Code wählt das automatisch basierend auf dem Port.
 

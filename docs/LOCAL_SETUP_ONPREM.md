@@ -243,7 +243,8 @@ docker exec -t <postgres-container> pg_dump -U <user> <db> > stato_backup.sql
 ## Produktions-Hinweise / Hardening
 
 - Setze zwingend ein starkes `JWT_SECRET` (stabil, nicht wechselnd).
-- Setze `SUPERADMIN_PASSWORD` und ändere es nach Übergabe.
+- Setze `SUPERADMIN_PASSWORD` als initiales Start-Passwort und ändere es nach Übergabe.
+  - Wenn du das Passwort später per ENV „zurücksetzen“ willst: `SUPERADMIN_PASSWORD_FORCE=true`.
 - Exponiere Postgres nicht nach außen (nur internes Docker‑Netz).
 - Nutze TLS (Reverse Proxy) und sichere Admin‑Zugänge.
 - Logging/Monitoring: je nach Kommune z. B. Promtail/Loki, ELK, oder Docker‑Logdriver.

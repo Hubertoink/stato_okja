@@ -10,14 +10,17 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { EmailService } from '../email/email.service';
 import { AuditModule } from '../common/audit.module';
+import { getJwtSecret } from '../config/security.config';
+import { OrgsModule } from '../orgs/orgs.module';
 
 @Module({
 	imports: [
 	TypeOrmModule.forFeature([User, Organization, Location]),
 		PassportModule,
 		AuditModule,
+		OrgsModule,
 		JwtModule.register({
-			secret: process.env.JWT_SECRET || 'dev_secret_change_me',
+			secret: getJwtSecret(),
 			signOptions: { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '12h' },
 		}),
 	],

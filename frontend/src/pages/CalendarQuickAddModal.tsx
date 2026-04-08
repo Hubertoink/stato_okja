@@ -8,6 +8,7 @@ import { useTags, useCohorts, useCategories } from '@/lib/taxonomy';
 import type { Activity } from '@/lib/activities';
 import { useCreateActivity, useUpdateActivity, useRemoveActivity } from '@/lib/activities';
 import ConfirmModal from '@/components/ConfirmModal';
+import ProtectedImage from '@/components/ProtectedImage';
 import { useLocations } from '@/lib/locations';
 import { useToast } from '@/components/Toast';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
@@ -389,7 +390,7 @@ export default function ActivityQuickAdd({
                 >
                   <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
                     {selectedProject.imageUrl ? (
-                      <img
+                      <ProtectedImage
                         src={selectedProject.imageUrl}
                         alt={selectedProject.title}
                         className="w-full h-full object-cover"

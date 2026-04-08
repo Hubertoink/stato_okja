@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { acceptInviteApi } from '@/lib/orgs';
 import { setAuthToken } from '@/lib/api';
+import { storeAuthToken } from '@/lib/authStorage';
 
 export default function AcceptInvite() {
   const [params] = useSearchParams();
@@ -61,7 +62,7 @@ export default function AcceptInvite() {
                 }
                 const res = await acceptInviteApi(token, password);
                 if (res?.access_token) {
-                  localStorage.setItem('auth_token', res.access_token);
+                  storeAuthToken(res.access_token);
                   setAuthToken(res.access_token);
                 }
                 navigate('/');

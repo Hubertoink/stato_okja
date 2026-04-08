@@ -16,8 +16,8 @@ import { applyStoredBackground } from './lib/background';
 import { attachQueryClientMetrics } from './lib/devMetrics';
 
 const persister = createSyncStoragePersister({
-  storage: window.localStorage,
-  key: 'stato_rq_cache_v1',
+  storage: window.sessionStorage,
+  key: 'stato_rq_cache_session_v1',
   throttleTime: 1000,
 });
 

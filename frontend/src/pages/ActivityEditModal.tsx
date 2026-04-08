@@ -11,6 +11,7 @@ import { useStaff } from '@/lib/staff';
 import ConfirmModal from '@/components/ConfirmModal';
 import { Boxes } from 'lucide-react';
 import ProjectPickerModal from './ProjectPickerModal';
+import ProtectedImage from '@/components/ProtectedImage';
 import { useToast } from '@/components/Toast';
 import { getBgClass } from '@/lib/colorPalette';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
@@ -322,7 +323,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
               >
                 <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
                   {selectedProject.imageUrl ? (
-                    <img
+                    <ProtectedImage
                       src={selectedProject.imageUrl}
                       alt={selectedProject.title}
                       className="w-full h-full object-cover"

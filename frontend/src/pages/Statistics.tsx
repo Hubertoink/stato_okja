@@ -27,6 +27,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
+import ProtectedImage from '@/components/ProtectedImage';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -1130,14 +1131,11 @@ export default function Statistics() {
                       title={p.title}
                     >
                       {active && imageUrl ? (
-                        <span
+                        <ProtectedImage
+                          src={imageUrl}
+                          alt=""
                           aria-hidden
                           className="absolute inset-0"
-                          style={{
-                            backgroundImage: `url(${imageUrl})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                          }}
                         />
                       ) : null}
 
@@ -1159,7 +1157,7 @@ export default function Statistics() {
                               active ? 'border-white/40 bg-white/15' : 'border-gray-300 bg-gray-100'
                             }`}
                           >
-                            <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+                            <ProtectedImage src={imageUrl} alt="" className="w-full h-full object-cover" />
                           </span>
                         ) : (
                           <span

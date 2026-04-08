@@ -208,6 +208,9 @@ Hinweis zu Migrationen:
 Weitere Hinweise für Hosting bei Mittwald (inkl. Subdomains, Registry und ENV):
 - DEPLOY_MITTWALD.md
 
+Produktive ENV-Beispielwerte:
+- env.production.example
+
 ## 🗓️ Roadmap
 
 - [x] Projektsetup & Architektur

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, setAuthToken } from './api';
+import { clearStoredAuthToken, getStoredAuthToken, storeAuthToken } from './authStorage';
 
 export type Role = 'superadmin' | 'org_admin' | 'user';
 export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean }
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Rehydrate session from stored token and fetch /auth/me
-    const token = localStorage.getItem('auth_token') || '';
+    const token = getStoredAuthToken();
     if (token) {
       setAuthToken(token);
   api.get<AuthUser>('/auth/me').then(res => {
@@ -34,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }).catch(() => {
         setAuthToken(undefined);
-        localStorage.removeItem('auth_token');
+        clearStoredAuthToken();
         setUser(null);
   try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* noop */ }
         qc.clear();
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const res = await api.post<{ access_token: string; user: AuthUser }>('/auth/login', { email, password });
         const token = res.data.access_token;
-        localStorage.setItem('auth_token', token);
+        storeAuthToken(token);
         setAuthToken(token);
         // Clear any cached data from a previous session so next queries refetch for this user/org
         qc.clear();
@@ -69,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     logout() {
-      localStorage.removeItem('auth_token');
+      clearStoredAuthToken();
       setAuthToken(undefined);
       setUser(null);
   try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* noop */ }

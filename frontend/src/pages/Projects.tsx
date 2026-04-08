@@ -30,6 +30,7 @@ import { PROJECT_TEMPLATES, type ProjectTemplate } from '@/lib/projectTemplates'
 import { defaultCategoryByName } from '@/lib/defaultCategories';
 import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTemplatesApi';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
+import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
@@ -741,7 +742,7 @@ function ProjectForm({
                     title={t.title}
                   >
                     {t.imageUrl ? (
-                      <img
+                      <ProtectedImage
                         src={t.imageUrl}
                         alt={t.title}
                         className="absolute inset-0 w-full h-full object-cover"
@@ -835,7 +836,7 @@ function ProjectForm({
               />
               {form.imageUrl ? (
                 <div className="space-y-2">
-                  <img
+                  <ProtectedImage
                     src={form.imageUrl}
                     alt="Projektbild"
                     className="w-full h-40 object-cover rounded border"
@@ -1161,6 +1162,10 @@ function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<P
   for (const key of allowed) {
     if (!Object.prototype.hasOwnProperty.call(v, key)) continue;
     const val = v[key];
+    if (key === 'imageUrl') {
+      out[key] = typeof val === 'string' ? normalizeUploadPath(val) ?? '' : val;
+      continue;
+    }
     if (key === 'imageSize') {
       if (typeof val === 'number' && Number.isFinite(val)) out[key] = val;
       else if (typeof val === 'string' && val.trim() !== '') {
@@ -1352,7 +1357,7 @@ export default function Projects() {
                 <div className="absolute inset-0 rounded-2xl overflow-hidden z-0 pointer-events-none">
                   {p.imageUrl ? (
                     <>
-                      <img
+                      <ProtectedImage
                         src={p.imageUrl}
                         alt={p.title}
                         className="absolute inset-0 w-full h-full object-cover transform scale-105 blur-[2px]"

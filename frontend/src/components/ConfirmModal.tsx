@@ -48,11 +48,11 @@ export default function ConfirmModal({
         <div className="text-gray-700 text-sm">
           {typeof message === 'string' ? <p>{message}</p> : message}
         </div>
-        <div className="mt-4 flex items-center justify-end gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
+        <div className="mt-4 flex flex-col-reverse gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
           {showCancel && (
             <button
               type="button"
-              className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
+              className="w-full shrink-0 whitespace-nowrap rounded bg-gray-200 px-4 py-2 text-center text-gray-700 sm:w-auto"
               onClick={onCancel}
             >
               {cancelLabel}
@@ -61,7 +61,7 @@ export default function ConfirmModal({
           {secondaryLabel && onSecondaryConfirm && (
             <button
               type="button"
-              className="px-3 py-1.5 rounded bg-white border border-gray-300 text-gray-800 hover:bg-gray-50"
+              className="w-full shrink-0 whitespace-nowrap rounded border border-gray-300 bg-white px-4 py-2 text-center text-gray-800 hover:bg-gray-50 sm:w-auto"
               onClick={onSecondaryConfirm}
             >
               {secondaryLabel}
@@ -69,7 +69,7 @@ export default function ConfirmModal({
           )}
           <button
             type="button"
-            className="px-3 py-1.5 rounded bg-viridian text-white"
+            className="w-full shrink-0 whitespace-nowrap rounded bg-viridian px-4 py-2 text-center text-white sm:w-auto"
             onClick={onConfirm}
           >
             {confirmLabel}

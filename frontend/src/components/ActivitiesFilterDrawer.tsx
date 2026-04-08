@@ -1,11 +1,19 @@
 import Modal from './Modal';
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X as XIcon } from 'lucide-react';
 import type { ActivitiesFilter } from '@/lib/activities';
+import { useOrgScopeKey } from '@/lib/orgScope';
 import { useTags, useCategories, useCohorts } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import { api } from '@/lib/api';
+
+type ActivitiesTaxonomyAvailability = {
+  categoryIds: string[];
+  tagIds: string[];
+  hasUncategorized: boolean;
+};
 
 export default function ActivitiesFilterDrawer({
   open,
@@ -18,6 +26,7 @@ export default function ActivitiesFilterDrawer({
   onClose: () => void;
   onApply: (f: ActivitiesFilter) => void;
 }) {
+  const scopeKey = useOrgScopeKey();
   const [f, setF] = useState<ActivitiesFilter>(initial);
   useEffect(() => {
     if (!open) return;
@@ -29,97 +38,57 @@ export default function ActivitiesFilterDrawer({
   const { data: cohorts = [] } = useCohorts({ active: true });
   const { data: projects = [] } = useProjects();
   const { data: locations = [] } = useLocations({ active: true });
+  const availabilityQuery = useQuery({
+    queryKey: ['activities-filter-taxonomy-availability', scopeKey],
+    queryFn: async () => {
+      const res = await api.get('/activities');
+      const list: Array<{
+        tags?: Array<{ id: string }>;
+        categories?: Array<{ id: string }>;
+      }> = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+          ? res.data
+          : [];
 
-  // Compute availability of categories/tags among activities matching the current modal filter
-  // (excluding categoryIds/tagIds so the user can see what would be available to select)
-  // Availability is expressed via counts; sets removed to avoid unused-state warnings
-  const [catCounts, setCatCounts] = useState<Map<string, number>>(new Map());
-  const [tagCounts, setTagCounts] = useState<Map<string, number>>(new Map());
-  const [uncategorizedCount, setUncategorizedCount] = useState<number>(0);
+      const categoryIds = new Set<string>();
+      const tagIds = new Set<string>();
+      let hasUncategorized = false;
 
-  // Debounce inputs to avoid spamming the API while typing
-  const depsKey = useMemo(
-    () =>
-      JSON.stringify({
-        from: f.from,
-        to: f.to,
-        types: f.types,
-        locationIds: f.locationIds,
-        projectIds: f.projectIds,
-        cohortIds: f.cohortIds,
-        hasNotes: f.hasNotes,
-        participantsMin: f.participantsMin,
-        participantsMax: f.participantsMax,
-        durationMin: f.durationMin,
-        durationMax: f.durationMax,
-      }),
-    [f],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      try {
-        // Build query params like useActivities/useActivitiesPaged but without categoryIds/tagIds
-        const base: ActivitiesFilter = JSON.parse(depsKey);
-        const qp: Record<string, unknown> = { ...base };
-        const arrayKeys: (keyof ActivitiesFilter)[] = [
-          'types',
-          'locationIds',
-          'projectIds',
-          'cohortIds',
-        ];
-        for (const k of arrayKeys) {
-          const v = (base as Record<string, unknown>)[k as string];
-          if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
-          else if (Array.isArray(v)) delete qp[k as string];
+      for (const activity of list) {
+        if (!Array.isArray(activity.categories) || activity.categories.length === 0) {
+          hasUncategorized = true;
         }
-        const res = await api.get('/activities', { params: qp });
-        const list: Array<{
-          tags?: Array<{ id: string }>;
-          categories?: Array<{ id: string }>;
-          project?: { type?: string | null };
-        }> = Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-            ? res.data
-            : [];
-        const cset = new Set<string>();
-        const tset = new Set<string>();
-        const ccount = new Map<string, number>();
-        const tcount = new Map<string, number>();
-        let uncat = 0;
-        for (const a of list) {
-          if (!Array.isArray(a.categories) || a.categories.length === 0) uncat += 1;
-          for (const c of a.categories || [])
-            if (c?.id) {
-              cset.add(c.id);
-              ccount.set(c.id, (ccount.get(c.id) || 0) + 1);
-            }
-          for (const t of a.tags || [])
-            if (t?.id) {
-              tset.add(t.id);
-              tcount.set(t.id, (tcount.get(t.id) || 0) + 1);
-            }
+        for (const category of activity.categories || []) {
+          if (category?.id) categoryIds.add(category.id);
         }
-        if (!cancelled) {
-          setCatCounts(ccount);
-          setTagCounts(tcount);
-          setUncategorizedCount(uncat);
-        }
-      } catch {
-        if (!cancelled) {
-          setCatCounts(new Map());
-          setTagCounts(new Map());
-          setUncategorizedCount(0);
+        for (const tag of activity.tags || []) {
+          if (tag?.id) tagIds.add(tag.id);
         }
       }
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [depsKey]);
+
+      return {
+        categoryIds: Array.from(categoryIds),
+        tagIds: Array.from(tagIds),
+        hasUncategorized,
+      } satisfies ActivitiesTaxonomyAvailability;
+    },
+    enabled: open,
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+  const availableCategoryIds = useMemo(
+    () => new Set(availabilityQuery.data?.categoryIds ?? []),
+    [availabilityQuery.data?.categoryIds],
+  );
+  const availableTagIds = useMemo(
+    () => new Set(availabilityQuery.data?.tagIds ?? []),
+    [availabilityQuery.data?.tagIds],
+  );
+  const availabilityLoaded = availabilityQuery.isSuccess;
+  const hasUncategorized = availabilityLoaded ? availabilityQuery.data.hasUncategorized : true;
 
   const isDirty = useMemo(() => {
     const obj = f as Record<string, unknown>;
@@ -163,7 +132,7 @@ export default function ActivitiesFilterDrawer({
   const apply = () => onApply(f);
 
   return (
-    <Modal open={open} onClose={onClose} title="Filter" maxWidth="xl">
+    <Modal open={open} onClose={onClose} title="Filter" maxWidth="4xl">
       <div className="space-y-4">
         {/* Zeitraum */}
         <section>
@@ -254,7 +223,7 @@ export default function ActivitiesFilterDrawer({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div>
               <div className="text-xs text-gray-600 mb-1">Einrichtungen</div>
-              <div className="max-h-40 overflow-auto border rounded p-2 space-y-1">
+              <div className="max-h-48 md:max-h-64 overflow-auto border rounded p-2 space-y-1">
                 {locations.map((l) => (
                   <label key={l.id} className="flex items-center gap-2">
                     <input
@@ -269,7 +238,7 @@ export default function ActivitiesFilterDrawer({
             </div>
             <div>
               <div className="text-xs text-gray-600 mb-1">Projekte</div>
-              <div className="max-h-40 overflow-auto border rounded p-2 space-y-1">
+              <div className="max-h-48 md:max-h-64 overflow-auto border rounded p-2 space-y-1">
                 {projects.map((p) => (
                   <label key={p.id} className="flex items-center gap-2">
                     <input
@@ -294,7 +263,7 @@ export default function ActivitiesFilterDrawer({
               <div className="flex flex-wrap gap-2">
                 {(() => {
                   const active = !!f.uncategorized;
-                  const present = uncategorizedCount > 0;
+                  const present = hasUncategorized;
                   const base = present
                     ? 'bg-azure-web text-viridian'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed';
@@ -308,7 +277,7 @@ export default function ActivitiesFilterDrawer({
                       disabled={disabled}
                       title={
                         disabled
-                          ? 'Keine unkategorisierten Aktivitäten mit aktuellen Filtern'
+                          ? 'Keine unkategorisierten Aktivitäten vorhanden'
                           : undefined
                       }
                       className={`text-xs px-2 py-1 rounded-full border ${
@@ -317,32 +286,32 @@ export default function ActivitiesFilterDrawer({
                           : `${base} border-transparent`
                       } ${present ? '' : 'opacity-80'}`}
                     >
-                      Unkategorisiert ({uncategorizedCount})
+                      Unkategorisiert
                     </button>
                   );
                 })()}
                 {categories.map((c) => {
                   const active = !!f.categoryIds?.includes(c.id);
-                  const count = catCounts.get(c.id) ?? 0;
-                  const present = count > 0;
+                  const present = availabilityLoaded ? availableCategoryIds.has(c.id) : true;
                   const base = present
                     ? 'bg-azure-web text-viridian'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed';
+                  const disabled = !present && !active;
                   return (
                     <button
                       key={c.id}
                       onClick={() => {
-                        if (present) toggleIn('categoryIds', c.id);
+                        if (!disabled) toggleIn('categoryIds', c.id);
                       }}
-                      disabled={!present}
-                      title={present ? undefined : 'Keine Ergebnisse mit aktuellen Filtern'}
+                      disabled={disabled}
+                      title={disabled ? 'Keine Aktivitäten mit dieser Kategorie vorhanden' : undefined}
                       className={`text-xs px-2 py-1 rounded-full border ${
                         active
                           ? 'bg-viridian text-white border-viridian'
                           : `${base} border-transparent`
                       } ${present ? '' : 'opacity-80'}`}
                     >
-                      {c.name} ({count})
+                      {c.name}
                     </button>
                   );
                 })}
@@ -353,26 +322,26 @@ export default function ActivitiesFilterDrawer({
               <div className="flex flex-wrap gap-2">
                 {tags.map((t) => {
                   const active = !!f.tagIds?.includes(t.id);
-                  const count = tagCounts.get(t.id) ?? 0;
-                  const present = count > 0;
+                  const present = availabilityLoaded ? availableTagIds.has(t.id) : true;
                   const base = present
                     ? 'bg-azure-web text-viridian'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed';
+                  const disabled = !present && !active;
                   return (
                     <button
                       key={t.id}
                       onClick={() => {
-                        if (present) toggleIn('tagIds', t.id);
+                        if (!disabled) toggleIn('tagIds', t.id);
                       }}
-                      disabled={!present}
-                      title={present ? undefined : 'Keine Ergebnisse mit aktuellen Filtern'}
+                      disabled={disabled}
+                      title={disabled ? 'Keine Aktivitäten mit diesem Tag vorhanden' : undefined}
                       className={`text-xs px-2 py-1 rounded-full border ${
                         active
                           ? 'bg-viridian text-white border-viridian'
                           : `${base} border-transparent`
                       } ${present ? '' : 'opacity-80'}`}
                     >
-                      {t.name} ({count})
+                      {t.name}
                     </button>
                   );
                 })}
@@ -383,7 +352,7 @@ export default function ActivitiesFilterDrawer({
 
         {/* Weitere Filter */}
         <section>
-          <h4 className="font-semibold text-viridian mb-2">Weitere</h4>
+          <h4 className="font-semibold text-viridian mb-2">Weitere Filter</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <label className="inline-flex items-center gap-2">
               <input

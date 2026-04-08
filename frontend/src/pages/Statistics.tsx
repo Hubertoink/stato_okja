@@ -25,7 +25,7 @@ import { useOrgScopeKey } from '@/lib/orgScope';
 import { useIsMobile } from '@/lib/useIsMobile';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 
@@ -46,6 +46,8 @@ const STATISTICS_TYPE_OPTIONS: Activity['type'][] = [
 ];
 
 const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
+const DESKTOP_PROJECT_CHIP_COLLAPSE_THRESHOLD = 12;
+const DESKTOP_PROJECT_CHIP_VISIBLE_COUNT = 10;
 
 type StatsOverviewResponse = {
   summary: {
@@ -104,6 +106,7 @@ export default function Statistics() {
   const [customFilterOpen, setCustomFilterOpen] = useState(false);
   const [tempFrom, setTempFrom] = useState<string>(from);
   const [tempTo, setTempTo] = useState<string>(to);
+  const [desktopProjectFilterExpanded, setDesktopProjectFilterExpanded] = useState(false);
   
   // Toggle für absolute vs. relative (Durchschnitt) Zahlen in KPIs
   const [showAverage, setShowAverage] = useState<boolean>(false);
@@ -596,7 +599,23 @@ export default function Statistics() {
     [filteredProjects],
   );
   const useCompactProjectFilter = isMobile && sortedProjects.length >= 6;
+  const useDesktopProjectCollapse = !isMobile && sortedProjects.length > DESKTOP_PROJECT_CHIP_COLLAPSE_THRESHOLD;
+  const visibleDesktopProjects = useMemo(() => {
+    if (!useDesktopProjectCollapse || desktopProjectFilterExpanded) return sortedProjects;
+
+    const initialProjects = sortedProjects.slice(0, DESKTOP_PROJECT_CHIP_VISIBLE_COUNT);
+    if (!projectId || initialProjects.some((project) => project.id === projectId)) return initialProjects;
+
+    const selectedProject = sortedProjects.find((project) => project.id === projectId);
+    return selectedProject ? [...initialProjects, selectedProject] : initialProjects;
+  }, [desktopProjectFilterExpanded, projectId, sortedProjects, useDesktopProjectCollapse]);
+  const hiddenDesktopProjectCount = Math.max(sortedProjects.length - visibleDesktopProjects.length, 0);
   const useCompactTypeFilter = isMobile;
+  useEffect(() => {
+    if (!useDesktopProjectCollapse && desktopProjectFilterExpanded) {
+      setDesktopProjectFilterExpanded(false);
+    }
+  }, [desktopProjectFilterExpanded, useDesktopProjectCollapse]);
   const fallbackBarColors = [
     '#2563eb',
     '#f59e0b',
@@ -1089,7 +1108,7 @@ export default function Statistics() {
                 >
                   Alle Projekte
                 </button>
-                {sortedProjects.map((p) => {
+                {(useDesktopProjectCollapse ? visibleDesktopProjects : sortedProjects).map((p) => {
                   const active = projectId === p.id;
                   const color = typeof p.color === 'string' && p.color.trim() ? p.color.trim() : undefined;
                   const imageUrl = typeof p.imageUrl === 'string' && p.imageUrl.trim() ? p.imageUrl.trim() : undefined;
@@ -1157,6 +1176,28 @@ export default function Statistics() {
                     </button>
                   );
                 })}
+                {useDesktopProjectCollapse && (
+                  <button
+                    type="button"
+                    onClick={() => setDesktopProjectFilterExpanded((current) => !current)}
+                    className="px-3 py-1.5 rounded-full text-sm border border-dashed border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors inline-flex items-center gap-2"
+                    aria-expanded={desktopProjectFilterExpanded}
+                  >
+                    {desktopProjectFilterExpanded ? (
+                      <>
+                        <ChevronUp className="h-4 w-4" />
+                        Weniger anzeigen
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4" />
+                        {hiddenDesktopProjectCount > 0
+                          ? `${hiddenDesktopProjectCount} weitere Projekte anzeigen`
+                          : 'Weitere Projekte anzeigen'}
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </div>

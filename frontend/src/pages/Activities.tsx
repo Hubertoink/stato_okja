@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
-import { useCohorts } from '@/lib/taxonomy';
+import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
 import { Download, Filter as FilterIcon, Plus, Search } from 'lucide-react';
 // switched to xlsx-js-style inside the export handler to support cell styling
@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 // basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
-import type { Project } from '@/lib/projects';
+import { useProjects, type Project } from '@/lib/projects';
 import {
   Pencil,
   XCircle,
@@ -24,6 +24,79 @@ import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
 import Modal from '@/components/Modal';
 import { colorForActivityType } from '@/lib/colors';
 import { getBgClass } from '@/lib/colorPalette';
+import ProtectedImage from '@/components/ProtectedImage';
+import { useLocations } from '@/lib/locations';
+
+const ACTIVITY_TYPE_LABELS: Record<string, string> = {
+  open_door: 'Offene Tür',
+  project_open: 'Projekt (offen)',
+  project_closed: 'Projekt (geschlossen)',
+  event: 'Veranstaltung',
+  outreach: 'Aufsuchend',
+};
+
+function formatSelectedFilterBadge(
+  label: string,
+  selectedIds: string[] | undefined,
+  nameById: Map<string, string>,
+  maxVisible: number = 2,
+) {
+  if (!selectedIds?.length) return null;
+
+  const names = Array.from(
+    new Set(
+      selectedIds
+        .map((id) => nameById.get(id)?.trim())
+        .filter((name): name is string => Boolean(name)),
+    ),
+  );
+
+  if (!names.length) return `${label}: ${selectedIds.length}`;
+
+  const visibleNames = names.slice(0, maxVisible);
+  const remainingCount = names.length - visibleNames.length;
+  return `${label}: ${visibleNames.join(', ')}${remainingCount > 0 ? ` +${remainingCount}` : ''}`;
+}
+
+function ActivitiesPaginationControls({
+  page,
+  pageCount,
+  onPrevious,
+  onNext,
+  compact = false,
+}: {
+  page: number;
+  pageCount: number;
+  onPrevious: () => void;
+  onNext: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`flex items-center ${compact ? 'gap-1.5' : 'gap-2'}`}>
+      <button
+        className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={onPrevious}
+        disabled={page <= 1}
+        title="Vorherige Seite"
+        aria-label="Vorherige Seite"
+      >
+        «
+      </button>
+      <span className={`${compact ? 'text-xs' : 'text-sm'} text-gray-700`}>
+        {page} / {pageCount}
+      </span>
+      <button
+        className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={onNext}
+        disabled={page >= pageCount}
+        title="Nächste Seite"
+        aria-label="Nächste Seite"
+      >
+        »
+      </button>
+    </div>
+  );
+}
 
 export default function Activities() {
   const navigate = useNavigate();
@@ -58,6 +131,10 @@ export default function Activities() {
   const pageSize = 50;
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const { data: cohorts = [] } = useCohorts({ active: true });
+  const { data: categories = [] } = useCategories({ active: true });
+  const { data: tags = [] } = useTags({ active: true });
+  const { data: projects = [] } = useProjects();
+  const { data: locations = [] } = useLocations({ active: true });
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   // Persist filters across route/tab changes; reset only via the explicit reset button.
@@ -179,6 +256,57 @@ export default function Activities() {
   const exportCount = total;
   const exportCountLabel = new Intl.NumberFormat('de-DE').format(exportCount);
   const exportItemLabel = exportCount === 1 ? 'Aktivität' : 'Aktivitäten';
+  const typeNameById = useMemo(() => new Map(Object.entries(ACTIVITY_TYPE_LABELS)), []);
+  const locationNameById = useMemo(
+    () => new Map(locations.map((location) => [location.id, location.name] as const)),
+    [locations],
+  );
+  const projectNameById = useMemo(
+    () => new Map(projects.map((project) => [project.id, project.title] as const)),
+    [projects],
+  );
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((category) => [category.id, category.name] as const)),
+    [categories],
+  );
+  const tagNameById = useMemo(
+    () => new Map(tags.map((tag) => [tag.id, tag.name] as const)),
+    [tags],
+  );
+  const cohortNameById = useMemo(
+    () => new Map(cohorts.map((cohort) => [cohort.id, cohort.name] as const)),
+    [cohorts],
+  );
+  const typesBadgeLabel = useMemo(
+    () => formatSelectedFilterBadge('Typen', advanced.types, typeNameById),
+    [advanced.types, typeNameById],
+  );
+  const locationsBadgeLabel = useMemo(
+    () => formatSelectedFilterBadge('Einrichtungen', advanced.locationIds, locationNameById),
+    [advanced.locationIds, locationNameById],
+  );
+  const projectsBadgeLabel = useMemo(
+    () => formatSelectedFilterBadge('Projekte', advanced.projectIds, projectNameById),
+    [advanced.projectIds, projectNameById],
+  );
+  const categoriesBadgeLabel = useMemo(
+    () => formatSelectedFilterBadge('Kategorien', advanced.categoryIds, categoryNameById),
+    [advanced.categoryIds, categoryNameById],
+  );
+  const tagsBadgeLabel = useMemo(
+    () => formatSelectedFilterBadge('Tags', advanced.tagIds, tagNameById),
+    [advanced.tagIds, tagNameById],
+  );
+  const cohortsBadgeLabel = useMemo(
+    () => formatSelectedFilterBadge('Kohorten', advanced.cohortIds, cohortNameById),
+    [advanced.cohortIds, cohortNameById],
+  );
+  const hasAdvancedFilters = useMemo(
+    () => Object.values(advanced).some((value) => (Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '')),
+    [advanced],
+  );
+  const goToPreviousPage = () => setPage((currentPage) => Math.max(currentPage - 1, 1));
+  const goToNextPage = () => setPage((currentPage) => Math.min(currentPage + 1, pageCount));
   const handleExportConfirm = async () => {
     try {
       setExportModalOpen(false);
@@ -453,8 +581,11 @@ export default function Activities() {
       </div>
 
       {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex flex-wrap gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-700">
+            {activitiesLoading ? 'Treffer werden geladen…' : `Treffer: ${exportCountLabel}`}
+          </span>
           {searchTerm.trim() ? (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-azure-web text-viridian">
               <span>Suche: {searchTerm.trim()}</span>
@@ -472,41 +603,17 @@ export default function Activities() {
           {advanced.from || advanced.to ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{rangeBadgeLabel}</span>
           ) : null}
-          {advanced.types?.length ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Typen: {advanced.types.length}
-            </span>
-          ) : null}
-          {advanced.locationIds?.length ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Einrichtungen: {advanced.locationIds.length}
-            </span>
-          ) : null}
-          {advanced.projectIds?.length ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Projekte: {advanced.projectIds.length}
-            </span>
-          ) : null}
-          {advanced.categoryIds?.length ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Kategorien: {advanced.categoryIds.length}
-            </span>
-          ) : null}
+          {typesBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{typesBadgeLabel}</span> : null}
+          {locationsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{locationsBadgeLabel}</span> : null}
+          {projectsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{projectsBadgeLabel}</span> : null}
+          {categoriesBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{categoriesBadgeLabel}</span> : null}
           {advanced.uncategorized ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
               Unkategorisiert
             </span>
           ) : null}
-          {advanced.tagIds?.length ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Tags: {advanced.tagIds.length}
-            </span>
-          ) : null}
-          {advanced.cohortIds?.length ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Kohorten: {advanced.cohortIds.length}
-            </span>
-          ) : null}
+          {tagsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{tagsBadgeLabel}</span> : null}
+          {cohortsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{cohortsBadgeLabel}</span> : null}
           {advanced.hasNotes ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
               Nur mit Notizen
@@ -536,10 +643,8 @@ export default function Activities() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {Object.values(advanced).some((v) =>
-            Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== '',
-          ) && (
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          {hasAdvancedFilters && (
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-cambridge-blue/20 transition-colors px-3 py-1.5"
@@ -561,6 +666,14 @@ export default function Activities() {
               <XCircle className="w-4 h-4 mr-1" /> Zurücksetzen
             </button>
           )}
+          <div className="hidden md:block">
+            <ActivitiesPaginationControls
+              page={page}
+              pageCount={pageCount}
+              onPrevious={goToPreviousPage}
+              onNext={goToNextPage}
+            />
+          </div>
         </div>
       </div>
 
@@ -758,33 +871,17 @@ export default function Activities() {
         </table>
       </div>
       {/* Pagination Controls */}
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 mb-4 md:mb-0 flex items-center justify-between gap-3">
         <div className="text-sm text-gray-600">
           {total > 0 ? `Seite ${page} von ${pageCount} · ${total} Einträge` : 'Keine Einträge'}
         </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page <= 1}
-            title="Vorherige Seite"
-            aria-label="Vorherige Seite"
-          >
-            «
-          </button>
-          <span className="text-sm">
-            {page} / {pageCount}
-          </span>
-          <button
-            className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => setPage((p) => Math.min(p + 1, pageCount))}
-            disabled={page >= pageCount}
-            title="Nächste Seite"
-            aria-label="Nächste Seite"
-          >
-            »
-          </button>
-        </div>
+        <ActivitiesPaginationControls
+          page={page}
+          pageCount={pageCount}
+          onPrevious={goToPreviousPage}
+          onNext={goToNextPage}
+          compact={isMobile}
+        />
       </div>
 
       {(activitiesLoading || activitiesFetching) && (
@@ -811,7 +908,7 @@ export default function Activities() {
       )}
 
       {/* Mobile Cards */}
-      <div className="space-y-3 md:hidden">
+      <div className="space-y-3 pt-2 md:hidden">
         {activities.map((a) => (
           <div
             key={a.id}
@@ -960,6 +1057,18 @@ export default function Activities() {
         {activities.length === 0 && (
           <div className="text-gray-500 py-6 text-center">Keine Aktivitäten im Zeitraum.</div>
         )}
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3 md:hidden">
+        <div className="text-sm text-gray-600">
+          {total > 0 ? `Seite ${page} von ${pageCount} · ${total} Einträge` : 'Keine Einträge'}
+        </div>
+        <ActivitiesPaginationControls
+          page={page}
+          pageCount={pageCount}
+          onPrevious={goToPreviousPage}
+          onNext={goToNextPage}
+          compact
+        />
       </div>
       {picker && (
         <ProjectPickerModal

@@ -13,12 +13,12 @@ export default function Modal({
   title?: string;
   children: React.ReactNode;
   onClose: () => void;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
 }) {
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
   if (!open) return null;
-  const maxW = { sm: 'md:max-w-sm', md: 'md:max-w-md', lg: 'md:max-w-lg', xl: 'md:max-w-xl' }[
+  const maxW = { sm: 'md:max-w-sm', md: 'md:max-w-md', lg: 'md:max-w-lg', xl: 'md:max-w-xl', '2xl': 'md:max-w-2xl', '3xl': 'md:max-w-3xl', '4xl': 'md:max-w-4xl' }[
     maxWidth
   ];
   return (

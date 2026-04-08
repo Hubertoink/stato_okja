@@ -825,7 +825,7 @@ export default function Activities() {
                 <td className="px-3 lg:px-6 py-4 text-sm relative overflow-hidden">
                   {a.project?.imageUrl ? (
                     <>
-                      <img
+                      <ProtectedImage
                         src={a.project.imageUrl || undefined}
                         alt=""
                         aria-hidden
@@ -936,7 +936,7 @@ export default function Activities() {
           >
             {a.project?.imageUrl ? (
               <>
-                <img
+                <ProtectedImage
                   src={a.project.imageUrl || undefined}
                   alt=""
                   aria-hidden

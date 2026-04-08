@@ -28,6 +28,27 @@ export class ActivitiesService {
     private readonly audit: AuditService,
   ) {}
 
+  private usesPostgresCohortQuery(): boolean {
+    const dbType = String(process.env.DB_TYPE || 'postgres').toLowerCase();
+    return dbType === 'postgres' || dbType === 'postgresql';
+  }
+
+  private matchesSelectedCohorts(
+    activity: Pick<Activity, 'cohorts'>,
+    cohortIds?: string[],
+  ): boolean {
+    if (!Array.isArray(cohortIds) || cohortIds.length === 0) return true;
+    if (!Array.isArray(activity.cohorts) || activity.cohorts.length === 0) return false;
+
+    return cohortIds.some((cohortId) =>
+      activity.cohorts.some((entry) => {
+        if (!entry || entry.cohortId !== cohortId) return false;
+        const total = Number(entry.m || 0) + Number(entry.w || 0) + Number(entry.d || 0);
+        return total > 0;
+      }),
+    );
+  }
+
   private buildListQuery(
     filters?: {
     search?: string;
@@ -120,16 +141,24 @@ export class ActivitiesService {
     if (filters?.staffIds && filters.staffIds.length) {
       qb.andWhere('staff.id IN (:...staffIds)', { staffIds: filters.staffIds });
     }
-    if (filters?.cohortIds && filters.cohortIds.length) {
+    if (filters?.cohortIds && filters.cohortIds.length && this.usesPostgresCohortQuery()) {
       qb.andWhere(
-        new Brackets((b) => {
-          filters.cohortIds!.forEach((id, i) => {
-            const param = `cid${i}`;
-            (i === 0 ? b.where : b.orWhere)(`a.cohorts LIKE :${param}`, {
-              [param]: `%"cohortId":"${id}"%`,
-            });
-          });
-        }),
+        `EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(
+            CASE
+              WHEN a.cohorts IS NULL OR CAST(a.cohorts AS text) = '' THEN '[]'::jsonb
+              ELSE CAST(a.cohorts AS jsonb)
+            END
+          ) AS cohort_entry
+          WHERE cohort_entry->>'cohortId' IN (:...cohortIds)
+            AND (
+              COALESCE((cohort_entry->>'m')::int, 0) +
+              COALESCE((cohort_entry->>'w')::int, 0) +
+              COALESCE((cohort_entry->>'d')::int, 0)
+            ) > 0
+        )`,
+        { cohortIds: filters.cohortIds },
       );
     }
     if (typeof filters?.hasNotes !== 'undefined') {
@@ -177,7 +206,11 @@ export class ActivitiesService {
     order?: 'asc' | 'desc';
   }): Promise<Activity[]> {
     const qb = this.buildListQuery(filters, { includeStaff: true });
-    return qb.getMany();
+    const rows = await qb.getMany();
+    if (filters?.cohortIds?.length && !this.usesPostgresCohortQuery()) {
+      return rows.filter((row) => this.matchesSelectedCohorts(row, filters.cohortIds));
+    }
+    return rows;
   }
 
   async findAllPaged(filters: {
@@ -206,6 +239,19 @@ export class ActivitiesService {
     const qb = this.buildListQuery(filters, { includeStaff: false });
     const page = Math.max(filters.page || 1, 1);
     const limit = Math.min(Math.max(filters.limit || 50, 1), 50);
+
+    if (filters?.cohortIds?.length && !this.usesPostgresCohortQuery()) {
+      const rows = await qb.getMany();
+      const filteredRows = rows.filter((row) => this.matchesSelectedCohorts(row, filters.cohortIds));
+      const start = (page - 1) * limit;
+      return {
+        data: filteredRows.slice(start, start + limit),
+        total: filteredRows.length,
+        page,
+        pageSize: limit,
+      };
+    }
+
     qb.take(limit).skip((page - 1) * limit);
     const [rows, total] = await qb.getManyAndCount();
     return { data: rows, total, page, pageSize: limit };

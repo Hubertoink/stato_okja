@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects, type Project } from '@/lib/projects';
 import { Star, ArrowLeft } from 'lucide-react';
@@ -79,15 +79,6 @@ export default function ProjectPickerPage() {
     qp.set('projectId', p.id);
     navigate(`/activities/new?${qp.toString()}`, { state: { fromProjectPicker: true } });
   };
-
-  useEffect(() => {
-    // Always start scrolled to top when opening the picker route
-    try {
-      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-    } catch {
-      window.scrollTo(0, 0);
-    }
-  }, []);
 
   return (
     <div className="min-h-[100dvh] bg-white">

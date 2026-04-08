@@ -58,6 +58,24 @@ function ArchiveRestoreControls({
   const [confirm, setConfirm] = useState<{ open: boolean; loading?: boolean; count?: number }>({
     open: false,
   });
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+
+  const toggleArchivedState = useCallback(
+    (nextArchived: boolean) => {
+      onArchivingChange(true);
+      archive.mutate(
+        { id, archived: nextArchived },
+        {
+          onSettled: () => onArchivingChange(false),
+          onSuccess: () => {
+            if (onArchivedToggle) onArchivedToggle();
+          },
+        },
+      );
+    },
+    [archive, id, onArchivedToggle, onArchivingChange],
+  );
+
   return (
     <div className="flex gap-2 items-center">
       <span className="tooltip-wrapper">
@@ -68,16 +86,11 @@ function ArchiveRestoreControls({
           aria-label={archived ? 'Wiederherstellen' : 'Archivieren'}
           disabled={archiving || archive.isPending}
           onClick={() => {
-            onArchivingChange(true);
-            archive.mutate(
-              { id, archived: !archived },
-              {
-                onSettled: () => onArchivingChange(false),
-                onSuccess: () => {
-                  if (onArchivedToggle) onArchivedToggle();
-                },
-              },
-            );
+            if (archived) {
+              toggleArchivedState(false);
+              return;
+            }
+            setArchiveConfirmOpen(true);
           }}
         >
           {archived ? (
@@ -174,6 +187,31 @@ function ArchiveRestoreControls({
           });
         }}
         onCancel={() => setConfirm({ open: false })}
+      />
+      <ConfirmModal
+        open={archiveConfirmOpen}
+        title="Projekt archivieren?"
+        message={
+          <div className="space-y-2">
+            <p>
+              Archivierte Projekte erscheinen nicht mehr in der aktiven Projektliste und können
+              neuen Aktivitäten nicht mehr zugeordnet werden.
+            </p>
+            <p>
+              Bestehende Aktivitäten, Historien und Auswertungen bleiben erhalten.
+            </p>
+            <p className="text-sm text-gray-600">
+              Das Projekt kann später jederzeit wiederhergestellt werden.
+            </p>
+          </div>
+        }
+        cancelLabel="Abbrechen"
+        confirmLabel="Archivieren"
+        onConfirm={() => {
+          setArchiveConfirmOpen(false);
+          toggleArchivedState(true);
+        }}
+        onCancel={() => setArchiveConfirmOpen(false)}
       />
     </div>
   );
@@ -1044,6 +1082,18 @@ function ProjectForm({
               </button>
               <span className="tooltip-bubble">Abbrechen</span>
             </span>
+            {initial?.id && (
+              <ArchiveRestoreControls
+                id={initial.id as string}
+                archived={Boolean(initial.archived)}
+                archiving={archiving}
+                deleting={deleting}
+                onArchivingChange={setArchiving}
+                onDeletingChange={setDeleting}
+                onDeleted={onCancel}
+                onArchivedToggle={onCancel}
+              />
+            )}
             <span className="tooltip-wrapper">
               <button
                 type="button"
@@ -1057,18 +1107,6 @@ function ProjectForm({
               </button>
               <span className="tooltip-bubble">Speichern</span>
             </span>
-            {initial?.id && (
-              <ArchiveRestoreControls
-                id={initial.id as string}
-                archived={Boolean(initial.archived)}
-                archiving={archiving}
-                deleting={deleting}
-                onArchivingChange={setArchiving}
-                onDeletingChange={setDeleting}
-                onDeleted={onCancel}
-                onArchivedToggle={onCancel}
-              />
-            )}
           </div>
         </div>
       </div>

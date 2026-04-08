@@ -19,16 +19,6 @@ pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
   return new Date(`${value}Z`);
 });
 
-const PG_TIMESTAMP_OID = 1114;
-
-// Postgres `timestamp without time zone` values are timezone-naive.
-// We store and interpret them as UTC so JSON serialization stays stable
-// even when the Node process runs with a local TZ like Europe/Berlin.
-pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
-  if (!value) return null;
-  return new Date(`${value}Z`);
-});
-
 async function bootstrap() {
   assertSecureRuntimeConfig();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

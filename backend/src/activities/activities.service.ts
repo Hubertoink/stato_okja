@@ -47,6 +47,7 @@ export class ActivitiesService {
         return total > 0;
       }),
     );
+  }
 
   private getWeekdayExpression(column: string) {
     const dbType = this.activityRepository.manager.connection.options.type;

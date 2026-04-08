@@ -50,6 +50,21 @@ const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'
 const DESKTOP_PROJECT_CHIP_COLLAPSE_THRESHOLD = 12;
 const DESKTOP_PROJECT_CHIP_VISIBLE_COUNT = 10;
 
+const WEEKDAY_OPTIONS = [
+  { value: 1, shortLabel: 'Mo', label: 'Montag' },
+  { value: 2, shortLabel: 'Di', label: 'Dienstag' },
+  { value: 3, shortLabel: 'Mi', label: 'Mittwoch' },
+  { value: 4, shortLabel: 'Do', label: 'Donnerstag' },
+  { value: 5, shortLabel: 'Fr', label: 'Freitag' },
+  { value: 6, shortLabel: 'Sa', label: 'Samstag' },
+] as const;
+
+function normalizeWeekdays(weekdays: number[]) {
+  return Array.from(
+    new Set(weekdays.filter((weekday) => Number.isInteger(weekday) && weekday >= 0 && weekday <= 6)),
+  ).sort((left, right) => left - right);
+}
+
 type StatsOverviewResponse = {
   summary: {
     totalActivities: number;
@@ -78,9 +93,9 @@ type StatsOverviewResponse = {
   availableYears: string[];
 };
 
-function useStatsOverview(params: { from?: string; to?: string; projectId?: string; type?: string }, scopeKey: string) {
+function useStatsOverview(params: { from?: string; to?: string; projectId?: string; type?: string; weekdays?: number[] }, scopeKey: string) {
   return useQuery({
-    queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? '', params.type ?? ''],
+    queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? '', params.type ?? '', params.weekdays?.join(',') ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/overview', { params });
       return res.data as StatsOverviewResponse;
@@ -108,6 +123,8 @@ export default function Statistics() {
   const [tempFrom, setTempFrom] = useState<string>(from);
   const [tempTo, setTempTo] = useState<string>(to);
   const [desktopProjectFilterExpanded, setDesktopProjectFilterExpanded] = useState(false);
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
+  const [tempSelectedWeekdays, setTempSelectedWeekdays] = useState<number[]>([]);
   
   // Toggle für absolute vs. relative (Durchschnitt) Zahlen in KPIs
   const [showAverage, setShowAverage] = useState<boolean>(false);
@@ -130,17 +147,24 @@ export default function Statistics() {
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
   const statsParams = useMemo(
-    () => ({ from: from || undefined, to: to || undefined, projectId: projectId || undefined, type: selectedType || undefined }),
-    [from, to, projectId, selectedType],
+    () => ({
+      from: from || undefined,
+      to: to || undefined,
+      projectId: projectId || undefined,
+      type: selectedType || undefined,
+      weekdays: selectedWeekdays.length > 0 ? selectedWeekdays : undefined,
+    }),
+    [from, to, projectId, selectedType, selectedWeekdays],
   );
   const activitiesParams = useMemo(
     () => ({
       from: from || undefined,
       to: to || undefined,
+      weekdays: selectedWeekdays.length > 0 ? selectedWeekdays : undefined,
       projectIds: projectId ? [projectId] : undefined,
       type: selectedType || undefined,
     }),
-    [from, to, projectId, selectedType],
+    [from, to, projectId, selectedType, selectedWeekdays],
   );
   const overviewQ = useStatsOverview(statsParams, scopeKey);
   const overview = overviewQ.data;
@@ -160,8 +184,8 @@ export default function Statistics() {
   const { data: projectsAll = [] } = useProjects();
 
   const statsRunKey = useMemo(
-    () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '', statsParams.type ?? '']),
-    [scopeKey, statsParams.from, statsParams.to, statsParams.projectId, statsParams.type],
+    () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '', statsParams.type ?? '', statsParams.weekdays?.join(',') ?? '']),
+    [scopeKey, statsParams.from, statsParams.to, statsParams.projectId, statsParams.type, statsParams.weekdays],
   );
 
   const initialLoading = overviewQ.isLoading;
@@ -249,12 +273,14 @@ export default function Statistics() {
         to: statsParams.to ?? null,
         projectId: statsParams.projectId ?? null,
         type: statsParams.type ?? null,
+        weekdays: statsParams.weekdays?.join(',') ?? null,
       });
       markDevFlow(statsUiFlowIdRef.current, 'filters-applied', {
         from: statsParams.from ?? null,
         to: statsParams.to ?? null,
         projectId: statsParams.projectId ?? null,
         type: statsParams.type ?? null,
+        weekdays: statsParams.weekdays?.join(',') ?? null,
       });
     }
 
@@ -277,6 +303,7 @@ export default function Statistics() {
           to: statsParams.to ?? null,
           projectId: statsParams.projectId ?? null,
           type: statsParams.type ?? null,
+          weekdays: statsParams.weekdays?.join(',') ?? null,
           cacheHit: true,
         },
       });
@@ -315,6 +342,7 @@ export default function Statistics() {
         to: statsParams.to ?? null,
         projectId: statsParams.projectId ?? null,
         type: statsParams.type ?? null,
+        weekdays: statsParams.weekdays?.join(',') ?? null,
         totalActivities: summary?.totalActivities ?? totalActivities,
       });
     }
@@ -332,6 +360,7 @@ export default function Statistics() {
     statsParams.projectId,
     statsParams.type,
     statsParams.to,
+    statsParams.weekdays,
     summary,
     totalActivities,
     timeseries,
@@ -354,6 +383,11 @@ export default function Statistics() {
     'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
   ];
   const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+
+  const formatWeekdayDisplay = (weekdays: number[]) =>
+    normalizeWeekdays(weekdays)
+      .map((weekday) => WEEKDAY_OPTIONS.find((option) => option.value === weekday)?.shortLabel ?? `#${weekday}`)
+      .join(', ');
 
   // Helper: Update date range based on year and month selection
   const updateDateRange = (year: string, month: number | null) => {
@@ -418,12 +452,26 @@ export default function Statistics() {
 
   // Apply custom date range from modal
   const applyCustomRange = () => {
-    setFrom(tempFrom);
-    setTo(tempTo);
+    const weekdays = normalizeWeekdays(tempSelectedWeekdays);
+    const nextFrom = tempFrom?.trim() || '';
+    const nextTo = tempTo?.trim() || '';
+    const normalizedRange = nextFrom && nextTo && nextFrom > nextTo ? { from: nextTo, to: nextFrom } : { from: nextFrom, to: nextTo };
+
+    setFrom(normalizedRange.from);
+    setTo(normalizedRange.to);
+    setSelectedWeekdays(weekdays);
     setSelectedYear('');
     setSelectedMonth(null);
     setFilterMode('year');
     setCustomFilterOpen(false);
+  };
+
+  const resetAdvancedFilters = () => {
+    setSelectedWeekdays([]);
+    setTempSelectedWeekdays([]);
+    if (isCustomRange) {
+      selectYear(String(currentYear));
+    }
   };
 
   // Check if custom range is active (not matching year or month pattern)
@@ -443,6 +491,9 @@ export default function Statistics() {
     return true;
   }, [from, to]);
 
+  const hasWeekdayFilter = selectedWeekdays.length > 0;
+  const hasAdvancedFilter = isCustomRange || hasWeekdayFilter;
+
   // Format the current range for display
   const formatRangeDisplay = () => {
     if (isCustomRange) {
@@ -458,6 +509,14 @@ export default function Statistics() {
       return `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
     }
     return selectedYear;
+  };
+
+  const formatAdvancedFilterDisplay = () => {
+    const parts = [
+      isCustomRange ? formatRangeDisplay() : '',
+      hasWeekdayFilter ? formatWeekdayDisplay(selectedWeekdays) : '',
+    ].filter(Boolean);
+    return parts.join(' · ');
   };
 
   const byTypeData = (byType || []).map((d, i) => ({
@@ -896,14 +955,14 @@ export default function Statistics() {
 
           {/* Custom Range Button & Badge */}
           <div className="flex items-center gap-2 sm:ml-auto">
-            {isCustomRange && (
+            {hasAdvancedFilter && (
               <div className="flex items-center gap-2 bg-viridian/10 text-viridian px-3 py-1.5 rounded-lg text-sm">
                 <Calendar className="h-4 w-4" />
-                <span className="font-medium">{formatRangeDisplay()}</span>
+                <span className="font-medium">{formatAdvancedFilterDisplay()}</span>
                 <button
                   type="button"
                   className="p-0.5 hover:bg-viridian/20 rounded"
-                  onClick={() => selectYear(String(currentYear))}
+                  onClick={resetAdvancedFilters}
                   title="Zurücksetzen"
                 >
                   <XIcon className="h-3.5 w-3.5" />
@@ -913,16 +972,17 @@ export default function Statistics() {
             <button
               type="button"
               className={`p-2 rounded-lg border transition-colors touch-manipulation ${
-                isCustomRange
+                hasAdvancedFilter
                   ? 'border-viridian text-viridian bg-viridian/5'
                   : 'border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               onClick={() => {
                 setTempFrom(from);
                 setTempTo(to);
+                setTempSelectedWeekdays(selectedWeekdays);
                 setCustomFilterOpen(true);
               }}
-              title="Erweiterter Zeitfilter"
+              title="Erweiterter Filter"
             >
               <SlidersHorizontal className="h-4 w-4" />
             </button>
@@ -1851,12 +1911,12 @@ export default function Statistics() {
       <Modal
         open={customFilterOpen}
         onClose={() => setCustomFilterOpen(false)}
-        title="Erweiterter Zeitfilter"
+        title="Erweiterter Filter"
         maxWidth="sm"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Wähle einen individuellen Zeitraum für die Statistik-Auswertung.
+            Wähle Zeitraum und Wochentage für die Statistik-Auswertung.
           </p>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1878,6 +1938,48 @@ export default function Statistics() {
                 onChange={(e) => setTempTo(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="pt-2 border-t">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="text-xs font-medium text-gray-500">Wochentage</div>
+              <button
+                type="button"
+                className="text-xs font-medium text-viridian hover:text-cambridge-blue transition-colors"
+                onClick={() => setTempSelectedWeekdays([])}
+              >
+                Alle Tage
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {WEEKDAY_OPTIONS.map((weekday) => {
+                const active = tempSelectedWeekdays.includes(weekday.value);
+                return (
+                  <button
+                    key={weekday.value}
+                    type="button"
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      active
+                        ? 'border-viridian bg-viridian text-white'
+                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
+                    onClick={() => {
+                      setTempSelectedWeekdays((current) => {
+                        const next = current.includes(weekday.value)
+                          ? current.filter((entry) => entry !== weekday.value)
+                          : [...current, weekday.value];
+                        return normalizeWeekdays(next);
+                      });
+                    }}
+                    aria-pressed={active}
+                    title={weekday.label}
+                  >
+                    {weekday.shortLabel}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-gray-500">Keine Auswahl = alle Tage.</p>
           </div>
 
           {/* Quick presets */}

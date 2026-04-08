@@ -61,19 +61,19 @@ describe('StatsController org scoping', () => {
 
   it('summary: superadmin without scope uses null orgId', async () => {
     await controller.getSummary({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: undefined }, undefined, undefined, undefined);
-    expect(service.getSummary).toHaveBeenCalledWith(undefined, undefined, null, undefined, undefined);
+    expect(service.getSummary).toHaveBeenCalledWith(undefined, undefined, null, undefined, undefined, undefined, undefined);
   });
 
   it('by-type: superadmin scoped string expands to subtree', async () => {
     await controller.getByType({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined, undefined);
     expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.getByType).toHaveBeenCalledWith(undefined, undefined, undefined, ['org-1', 'child-1'], undefined);
+    expect(service.getByType).toHaveBeenCalledWith(undefined, undefined, undefined, ['org-1', 'child-1'], undefined, undefined, undefined);
   });
 
   it('overview: superadmin scoped string expands to subtree', async () => {
     await controller.getOverview({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined, undefined, undefined);
     expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: undefined, orgIds: ['org-1', 'child-1'], projectId: undefined, type: undefined });
+    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: undefined, orgIds: ['org-1', 'child-1'], projectId: undefined, type: undefined, weekdays: undefined });
   });
 
   it('overview: forwards explicit type filter', async () => {
@@ -92,6 +92,28 @@ describe('StatsController org scoping', () => {
       orgIds: ['org-1', 'child-1'],
       projectId: undefined,
       type: 'project_open',
+      weekdays: undefined,
+    });
+  });
+
+  it('overview: forwards explicit weekday filters', async () => {
+    await controller.getOverview(
+      { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
+      '2026-01-01',
+      '2026-12-31',
+      undefined,
+      undefined,
+      undefined,
+      '1,3,6',
+    );
+    expect(service.getOverview).toHaveBeenCalledWith({
+      from: '2026-01-01',
+      to: '2026-12-31',
+      orgId: undefined,
+      orgIds: ['org-1', 'child-1'],
+      projectId: undefined,
+      type: undefined,
+      weekdays: [1, 3, 6],
     });
   });
 });

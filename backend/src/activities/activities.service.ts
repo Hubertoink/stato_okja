@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Brackets } from 'typeorm';
+import { Repository, In, Brackets, SelectQueryBuilder } from 'typeorm';
 import { Activity } from './entities/activity.entity';
 import { ActivityType } from '../common/enums';
 import { AuditService } from '../common/audit.service';
@@ -47,6 +47,18 @@ export class ActivitiesService {
         return total > 0;
       }),
     );
+
+  private getWeekdayExpression(column: string) {
+    const dbType = this.activityRepository.manager.connection.options.type;
+    if (dbType === 'postgres') {
+      return `CAST(EXTRACT(DOW FROM ${column}) AS integer)`;
+    }
+    return `CAST(strftime('%w', ${column}) AS integer)`;
+  }
+
+  private applyWeekdayFilter(qb: SelectQueryBuilder<Activity>, weekdays?: number[]) {
+    if (!Array.isArray(weekdays) || weekdays.length === 0) return;
+    qb.andWhere(`${this.getWeekdayExpression('a.date')} IN (:...weekdays)`, { weekdays });
   }
 
   private buildListQuery(
@@ -64,6 +76,7 @@ export class ActivitiesService {
     tagIds?: string[];
     staffIds?: string[];
     cohortIds?: string[];
+    weekdays?: number[];
     hasNotes?: boolean;
     participantsMin?: number;
     participantsMax?: number;
@@ -161,6 +174,7 @@ export class ActivitiesService {
         { cohortIds: filters.cohortIds },
       );
     }
+    this.applyWeekdayFilter(qb, filters?.weekdays);
     if (typeof filters?.hasNotes !== 'undefined') {
       // Treat whitespace-only as empty; TRIM works in Postgres/SQLite
       if (filters.hasNotes) qb.andWhere("a.notes IS NOT NULL AND TRIM(a.notes) <> ''");
@@ -196,6 +210,7 @@ export class ActivitiesService {
     categoryIds?: string[];
     tagIds?: string[];
     cohortIds?: string[];
+    weekdays?: number[];
     hasNotes?: boolean;
     uncategorized?: boolean;
     participantsMax?: number;
@@ -225,6 +240,7 @@ export class ActivitiesService {
     categoryIds?: string[];
     tagIds?: string[];
     cohortIds?: string[];
+    weekdays?: number[];
     hasNotes?: boolean;
     participantsMin?: number;
     uncategorized?: boolean;

@@ -56,6 +56,7 @@ export type ActivitiesFilter = {
   search?: string;
   from?: string;
   to?: string;
+  weekdays?: number[];
   type?: string; // legacy single-type (kept for compatibility)
   types?: string[];
   locationId?: string; // legacy single-location
@@ -88,6 +89,8 @@ export function useActivities(params?: ActivitiesFilter) {
         if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
         else if (Array.isArray(v)) delete qp[k as string];
       }
+      if (Array.isArray(params?.weekdays) && params.weekdays.length) qp.weekdays = params.weekdays.join(',');
+      else if (Array.isArray(params?.weekdays)) delete qp.weekdays;
       // Legacy fields stay as-is
       const res = await api.get('/activities', { params: qp });
       return res.data as Activity[];
@@ -119,6 +122,8 @@ export function useActivitiesPaged(params: ActivitiesFilter | undefined, page: n
         if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
         else if (Array.isArray(v)) delete qp[k as string];
       }
+      if (Array.isArray(params?.weekdays) && params.weekdays.length) qp.weekdays = params.weekdays.join(',');
+      else if (Array.isArray(params?.weekdays)) delete qp.weekdays;
       // order is a simple string param if provided
       qp.page = page;
       qp.limit = Math.min(Math.max(limit, 1), 50);

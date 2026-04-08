@@ -17,6 +17,19 @@ import { Activity } from './entities/activity.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 
+function csvToWeekdays(value?: string): number[] | undefined {
+  if (!value) return undefined;
+  const weekdays = Array.from(
+    new Set(
+      value
+        .split(',')
+        .map((entry) => Number.parseInt(entry.trim(), 10))
+        .filter((entry) => Number.isInteger(entry) && entry >= 0 && entry <= 6),
+    ),
+  ).sort((left, right) => left - right);
+  return weekdays.length > 0 ? weekdays : undefined;
+}
+
 @ApiTags('activities')
 @Controller('activities')
 @UseGuards(JwtAuthGuard, OrgScopeGuard)
@@ -41,6 +54,7 @@ export class ActivitiesController {
   @ApiQuery({ name: 'tagIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'staffIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'cohortIds', required: false, description: 'CSV Liste' })
+  @ApiQuery({ name: 'weekdays', required: false, description: 'CSV Liste von Wochentagen (0=So bis 6=Sa)' })
   @ApiQuery({ name: 'hasNotes', required: false })
   @ApiQuery({ name: 'participantsMin', required: false })
   @ApiQuery({ name: 'participantsMax', required: false })
@@ -75,6 +89,7 @@ export class ActivitiesController {
     @Query('uncategorized') uncategorized?: string, // Added support for filtering uncategorized activities
     @Query('tagIds') tagIdsCsv?: string,
     @Query('cohortIds') cohortIdsCsv?: string,
+    @Query('weekdays') weekdaysCsv?: string,
     @Query('staffIds') staffIdsCsv?: string,
     @Query('hasNotes') hasNotes?: string,
     @Query('participantsMin') participantsMin?: string,
@@ -145,6 +160,7 @@ export class ActivitiesController {
       tagIds: csvToArray(tagIdsCsv),
       staffIds: csvToArray(staffIdsCsv),
       cohortIds: csvToArray(cohortIdsCsv),
+      weekdays: csvToWeekdays(weekdaysCsv),
       hasNotes:
         typeof hasNotes !== 'undefined' ? hasNotes === 'true' || hasNotes === '1' : undefined,
       participantsMin: participantsMin ? parseInt(participantsMin, 10) : undefined,

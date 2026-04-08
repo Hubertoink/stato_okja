@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useLayoutEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom';
 import Layout from './components/Layout';
 import { ToastProvider } from './components/Toast';
 import Dashboard from './pages/Dashboard';
@@ -31,6 +32,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTopOnPathChange />
       <ToastProvider>
         <Routes>
           {/* Public route for invite acceptance */}
@@ -56,6 +58,23 @@ function App() {
 }
 
 export default App;
+
+function ScrollToTopOnPathChange() {
+  const { pathname, hash } = useLocation();
+  const navigationType = useNavigationType();
+
+  useLayoutEffect(() => {
+    if (hash || navigationType === 'POP') return;
+
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname, hash, navigationType]);
+
+  return null;
+}
 
 function AuthedRoutes() {
   const { user, loading } = useAuth();

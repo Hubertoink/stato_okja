@@ -87,7 +87,7 @@ export default function ProjectPickerModal({
       className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] md:max-h-[90vh] overflow-y-auto bottom-sheet-animate">
+      <div className="bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] md:max-h-[90vh] md:flex md:flex-col md:overflow-hidden bottom-sheet-animate">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xl font-semibold text-viridian">Projekt wählen</h3>
           <button
@@ -115,99 +115,99 @@ export default function ProjectPickerModal({
           </label>
         </div>
 
-        {!compact && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {projects.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => onPick(p)}
-                className="rounded-xl overflow-hidden shadow focus:outline-none focus:ring-2 focus:ring-viridian text-left"
-              >
-                <div className="relative h-24">
-                  {p.imageUrl ? (
-                    <ProtectedImage
-                      src={p.imageUrl}
-                      alt={p.title}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className={`absolute inset-0 ${bgClassForProject(p)}`} />
-                  )}
-                  {/* Type badge overlay */}
-                  <div className="absolute top-1 left-1 z-10">
-                    <span
-                      className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${
-                        p.imageUrl
-                          ? 'bg-black/45 text-white'
-                          : 'bg-white/80 text-gray-800 border border-white/60'
-                      }`}
-                    >
-                      {typeLabel[p.type] || p.type}
-                    </span>
-                  </div>
-                  {/* Star badge if highlighted */}
-                  {getStarredProjectIds().includes(p.id) && (
-                    <div className="absolute top-1 right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400 shadow">
-                      <Star className="w-3.5 h-3.5 text-gray-900" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-2">
-                  <div className="font-medium text-viridian truncate">{p.title}</div>
-                </div>
-              </button>
-            ))}
-            {projects.length === 0 && (
-              <div className="col-span-full text-center py-6">
-                <div className="text-gray-500">Keine Projekte gefunden.</div>
-                <div className="mt-2 text-xs text-gray-600">
-                  Erstelle dein erstes Projekt –
-                  <Link
-                    to="/projects"
-                    className="text-viridian hover:underline ml-1"
-                    onClick={onClose}
-                  >
-                    zur Projekte-Seite
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {compact && (
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-3 divide-y md:divide-y-0 border rounded">
-            {projects.map((p) => (
-              <li key={p.id} className="md:border-b md:last:border-b-0 md:odd:border-r">
+        <div className="md:min-h-0 md:flex-1 md:overflow-y-auto md:pb-4">
+          {!compact && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {projects.map((p) => (
                 <button
+                  key={p.id}
                   onClick={() => onPick(p)}
-                  className="w-full text-left flex items-center gap-3 px-3 py-2 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-viridian"
+                  className="rounded-xl overflow-hidden shadow focus:outline-none focus:ring-2 focus:ring-viridian text-left"
                 >
-                  <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+                  <div className="relative h-24">
                     {p.imageUrl ? (
-                      <ProtectedImage src={p.imageUrl} alt="" className="w-full h-full object-cover" />
+                      <ProtectedImage
+                        src={p.imageUrl}
+                        alt={p.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
                     ) : (
-                      <div className={`${bgClassForProject(p)} w-full h-full`} />
+                      <div className={`absolute inset-0 ${bgClassForProject(p)}`} />
+                    )}
+                    <div className="absolute top-1 left-1 z-10">
+                      <span
+                        className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${
+                          p.imageUrl
+                            ? 'bg-black/45 text-white'
+                            : 'bg-white/80 text-gray-800 border border-white/60'
+                        }`}
+                      >
+                        {typeLabel[p.type] || p.type}
+                      </span>
+                    </div>
+                    {getStarredProjectIds().includes(p.id) && (
+                      <div className="absolute top-1 right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400 shadow">
+                        <Star className="w-3.5 h-3.5 text-gray-900" />
+                      </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="p-2">
                     <div className="font-medium text-viridian truncate">{p.title}</div>
-                    <div className="text-[11px] text-gray-600">{typeLabel[p.type] || p.type}</div>
                   </div>
-                  {getStarredProjectIds().includes(p.id) && (
-                    <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                  )}
                 </button>
-              </li>
-            ))}
-            {projects.length === 0 && (
-              <li className="col-span-full px-3 py-6 text-center text-gray-500">
-                Keine Projekte gefunden.
-              </li>
-            )}
-          </ul>
-        )}
-        <div className="mt-4 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6">
+              ))}
+              {projects.length === 0 && (
+                <div className="col-span-full py-10 md:py-14 text-center">
+                  <div className="text-gray-500">Keine Projekte gefunden.</div>
+                  <div className="mt-2 text-xs text-gray-600">
+                    Erstelle dein erstes Projekt –
+                    <Link
+                      to="/projects"
+                      className="text-viridian hover:underline ml-1"
+                      onClick={onClose}
+                    >
+                      zur Projekte-Seite
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {compact && (
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-3 divide-y md:divide-y-0 border rounded">
+              {projects.map((p) => (
+                <li key={p.id} className="md:border-b md:last:border-b-0 md:odd:border-r">
+                  <button
+                    onClick={() => onPick(p)}
+                    className="w-full text-left flex items-center gap-3 px-3 py-2 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-viridian"
+                  >
+                    <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+                      {p.imageUrl ? (
+                        <ProtectedImage src={p.imageUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className={`${bgClassForProject(p)} w-full h-full`} />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-viridian truncate">{p.title}</div>
+                      <div className="text-[11px] text-gray-600">{typeLabel[p.type] || p.type}</div>
+                    </div>
+                    {getStarredProjectIds().includes(p.id) && (
+                      <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                    )}
+                  </button>
+                </li>
+              ))}
+              {projects.length === 0 && (
+                <li className="col-span-full px-3 py-10 md:py-14 text-center text-gray-500">
+                  Keine Projekte gefunden.
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+        <div className="mt-4 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 md:border-t md:border-gray-100">
           <div className="text-xs text-gray-600">
             Tipp: Tippe zum Auswählen. Suche nach Titel oder Zielgruppe.
           </div>

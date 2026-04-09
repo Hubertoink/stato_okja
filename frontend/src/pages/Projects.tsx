@@ -538,6 +538,12 @@ function ProjectForm({
   const update = <K extends keyof Project>(k: K, v: Project[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
   const isTitleMissing = String(form.title || '').trim().length === 0;
+  const selectedTags = new Set(
+    (form.tag || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
 
   const handleClose = useCallback(() => {
     if (imageIssue.open) {
@@ -627,6 +633,74 @@ function ProjectForm({
     onClose: handleClose,
     onSave: applyingTemplate || archiving || deleting || imageIssue.open ? undefined : handleSave,
   });
+
+  const renderTagSelector = () => (
+    <div>
+      <label className="block text-sm font-medium mb-1">Tags (mehrfach)</label>
+      <div className="flex flex-wrap gap-2">
+        {(tags || []).map((t) => {
+          const active = selectedTags.has(t.name);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => {
+                const next = new Set(selectedTags);
+                if (active) next.delete(t.name);
+                else next.add(t.name);
+                update('tag', Array.from(next).join(', '));
+              }}
+              className="px-2 py-1 rounded-full text-xs border"
+              style={
+                active
+                  ? {
+                      backgroundColor: t.color || '#7aa39a',
+                      color: '#fff',
+                      borderColor: t.color || '#7aa39a',
+                    }
+                  : {
+                      backgroundColor: '#fff',
+                      color: '#374151',
+                      borderColor: t.color || '#7aa39a',
+                    }
+              }
+            >
+              {t.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderCategorySelector = () => (
+    <div>
+      <label className="block text-sm font-medium mb-1">Kategorie</label>
+      <div className="flex flex-wrap gap-2">
+        {(categories || []).map((c) => {
+          const active = String(form.categoryId || '') === c.id;
+          const color = c.color || '#7aa39a';
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => update('categoryId', active ? null : c.id)}
+              className="px-2 py-1 rounded-full text-xs border"
+              style={
+                active
+                  ? { backgroundColor: color, color: '#fff', borderColor: color }
+                  : { backgroundColor: '#fff', color: '#374151', borderColor: color }
+              }
+              title={c.name}
+              aria-pressed={active}
+            >
+              {c.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
@@ -886,6 +960,7 @@ function ProjectForm({
                   className="w-20 h-10 p-1 border rounded bg-white"
                 />
               </div>
+              <div className="hidden lg:block">{renderTagSelector()}</div>
             </div>
           </div>
           <div className="space-y-4">
@@ -909,77 +984,8 @@ function ProjectForm({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Tags (mehrfach)</label>
-                <div className="flex flex-wrap gap-2">
-                  {(tags || []).map((t) => {
-                    const set = new Set(
-                      (form.tag || '')
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter(Boolean),
-                    );
-                    const active = set.has(t.name);
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          if (active) set.delete(t.name);
-                          else set.add(t.name);
-                          update('tag', Array.from(set).join(', '));
-                        }}
-                        className="px-2 py-1 rounded-full text-xs border"
-                        style={
-                          active
-                            ? {
-                                backgroundColor: t.color || '#7aa39a',
-                                color: '#fff',
-                                borderColor: t.color || '#7aa39a',
-                              }
-                            : {
-                                backgroundColor: '#fff',
-                                color: '#374151',
-                                borderColor: t.color || '#7aa39a',
-                              }
-                        }
-                      >
-                        {t.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              {form.type !== 'open_door' && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">Kategorie</label>
-                  <div className="flex flex-wrap gap-2">
-                    {(categories || []).map((c) => {
-                      const active = String(form.categoryId || '') === c.id;
-                      const color = c.color || '#7aa39a';
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => update('categoryId', active ? null : (c.id as any))}
-                          className="px-2 py-1 rounded-full text-xs border"
-                          style={
-                            active
-                              ? { backgroundColor: color, color: '#fff', borderColor: color }
-                              : { backgroundColor: '#fff', color: '#374151', borderColor: color }
-                          }
-                          title={c.name}
-                          aria-pressed={active}
-                        >
-                          {c.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+            <div className="lg:hidden">{renderTagSelector()}</div>
+            {form.type !== 'open_door' && renderCategorySelector()}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Mitarbeitende (mehrfach, Standard)

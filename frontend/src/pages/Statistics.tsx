@@ -97,7 +97,16 @@ function useStatsOverview(params: { from?: string; to?: string; projectId?: stri
   return useQuery({
     queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? '', params.type ?? '', params.weekdays?.join(',') ?? ''],
     queryFn: async () => {
-      const res = await api.get('/stats/overview', { params });
+      const queryParams: Record<string, string> = {};
+      if (params.from) queryParams.from = params.from;
+      if (params.to) queryParams.to = params.to;
+      if (params.projectId) queryParams.projectId = params.projectId;
+      if (params.type) queryParams.type = params.type;
+      if (Array.isArray(params.weekdays) && params.weekdays.length > 0) {
+        queryParams.weekdays = params.weekdays.join(',');
+      }
+
+      const res = await api.get('/stats/overview', { params: queryParams });
       return res.data as StatsOverviewResponse;
     },
     staleTime: 1000 * 60 * 10,

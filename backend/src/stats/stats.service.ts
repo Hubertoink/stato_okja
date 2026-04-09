@@ -95,6 +95,26 @@ export class StatsService {
     return 0;
   }
 
+  private toCalendarDateString(value: string | Date | null | undefined): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value.slice(0, 10);
+    if (!(value instanceof Date) || Number.isNaN(value.getTime())) return '';
+
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: process.env.TZ || 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const parts = formatter.formatToParts(value);
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+
+    if (!year || !month || !day) return '';
+    return `${year}-${month}-${day}`;
+  }
+
   private parseCohorts(value: ActivityCohortRow['cohorts']) {
     if (!value) return [] as Array<{ cohortId: string; m: number; w: number; d: number }>;
     if (Array.isArray(value)) {
@@ -131,7 +151,7 @@ export class StatsService {
 
     const years = new Set<string>();
     for (const row of rows) {
-      const value = row?.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row?.date || '');
+      const value = this.toCalendarDateString(row?.date);
       const year = value.slice(0, 4);
       if (year) years.add(year);
     }
@@ -241,7 +261,7 @@ export class StatsService {
       .getRawMany<{ date: string | Date; totalParticipants: string; activityCount: string }>();
 
     return rows.map((row) => ({
-      date: row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date),
+      date: this.toCalendarDateString(row.date),
       totalParticipants: this.toNumber(row.totalParticipants),
       activityCount: this.toNumber(row.activityCount),
     }));

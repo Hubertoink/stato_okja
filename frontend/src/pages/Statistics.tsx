@@ -65,6 +65,13 @@ function normalizeWeekdays(weekdays: number[]) {
   ).sort((left, right) => left - right);
 }
 
+function formatLocalDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 type StatsOverviewResponse = {
   summary: {
     totalActivities: number;
@@ -464,11 +471,27 @@ export default function Statistics() {
     const weekdays = normalizeWeekdays(tempSelectedWeekdays);
     const nextFrom = tempFrom?.trim() || '';
     const nextTo = tempTo?.trim() || '';
-    const normalizedRange = nextFrom && nextTo && nextFrom > nextTo ? { from: nextTo, to: nextFrom } : { from: nextFrom, to: nextTo };
+    setSelectedWeekdays(weekdays);
+
+    if (!nextFrom && !nextTo) {
+      if (isCustomRange) {
+        setFrom('');
+        setTo('');
+        setSelectedYear('');
+        setSelectedMonth(null);
+        setFilterMode('year');
+      }
+      setCustomFilterOpen(false);
+      return;
+    }
+
+    const normalizedRange =
+      nextFrom && nextTo && nextFrom > nextTo
+        ? { from: nextTo, to: nextFrom }
+        : { from: nextFrom, to: nextTo };
 
     setFrom(normalizedRange.from);
     setTo(normalizedRange.to);
-    setSelectedWeekdays(weekdays);
     setSelectedYear('');
     setSelectedMonth(null);
     setFilterMode('year');
@@ -986,8 +1009,8 @@ export default function Statistics() {
                   : 'border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               onClick={() => {
-                setTempFrom(from);
-                setTempTo(to);
+                setTempFrom(isCustomRange ? from : '');
+                setTempTo(isCustomRange ? to : '');
                 setTempSelectedWeekdays(selectedWeekdays);
                 setCustomFilterOpen(true);
               }}
@@ -1949,6 +1972,10 @@ export default function Statistics() {
             </div>
           </div>
 
+          <p className="text-xs text-gray-500">
+            Leer lassen = aktuelle Auswahl oben links beibehalten. Ein eigener Zeitraum wird nur angewendet, wenn hier ein Datum gesetzt ist.
+          </p>
+
           <div className="pt-2 border-t">
             <div className="flex items-center justify-between gap-3 mb-2">
               <div className="text-xs font-medium text-gray-500">Wochentage</div>
@@ -2001,8 +2028,8 @@ export default function Statistics() {
                 onClick={() => {
                   const today = new Date();
                   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-                  setTempFrom(firstDay.toISOString().slice(0, 10));
-                  setTempTo(today.toISOString().slice(0, 10));
+                  setTempFrom(formatLocalDateInputValue(firstDay));
+                  setTempTo(formatLocalDateInputValue(today));
                 }}
               >
                 Diesen Monat
@@ -2014,8 +2041,8 @@ export default function Statistics() {
                   const today = new Date();
                   const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
                   const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
-                  setTempFrom(lastMonth.toISOString().slice(0, 10));
-                  setTempTo(lastDay.toISOString().slice(0, 10));
+                  setTempFrom(formatLocalDateInputValue(lastMonth));
+                  setTempTo(formatLocalDateInputValue(lastDay));
                 }}
               >
                 Letzten Monat
@@ -2026,8 +2053,8 @@ export default function Statistics() {
                 onClick={() => {
                   const today = new Date();
                   const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
-                  setTempFrom(threeMonthsAgo.toISOString().slice(0, 10));
-                  setTempTo(today.toISOString().slice(0, 10));
+                  setTempFrom(formatLocalDateInputValue(threeMonthsAgo));
+                  setTempTo(formatLocalDateInputValue(today));
                 }}
               >
                 Letzte 3 Monate
@@ -2038,8 +2065,8 @@ export default function Statistics() {
                 onClick={() => {
                   const today = new Date();
                   const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
-                  setTempFrom(sixMonthsAgo.toISOString().slice(0, 10));
-                  setTempTo(today.toISOString().slice(0, 10));
+                  setTempFrom(formatLocalDateInputValue(sixMonthsAgo));
+                  setTempTo(formatLocalDateInputValue(today));
                 }}
               >
                 Letzte 6 Monate
@@ -2050,8 +2077,8 @@ export default function Statistics() {
                 onClick={() => {
                   const today = new Date();
                   const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
-                  setTempFrom(yearAgo.toISOString().slice(0, 10));
-                  setTempTo(today.toISOString().slice(0, 10));
+                  setTempFrom(formatLocalDateInputValue(yearAgo));
+                  setTempTo(formatLocalDateInputValue(today));
                 }}
               >
                 Letztes Jahr

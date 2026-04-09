@@ -63,6 +63,15 @@ export default function ActivityQuickAdd({
     () => (projects || []).find((p: Project) => p.id === form.projectId) || initialProject,
     [projects, form.projectId, initialProject],
   );
+  const selectedDateWeekday = useMemo(() => {
+    const isoDate = (form.date || '').slice(0, 10);
+    if (!isoDate) return '';
+    const [year, month, day] = isoDate.split('-').map((value) => Number(value));
+    if (!year || !month || !day) return '';
+    const date = new Date(year, month - 1, day);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
+  }, [form.date]);
   const isOpenDoor = (selectedProject || initialProject)?.type === 'open_door';
 
   useEffect(() => {
@@ -332,9 +341,16 @@ export default function ActivityQuickAdd({
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium mb-1" htmlFor="activity-date">
-                  Datum *
-                </label>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label className="block text-sm font-medium" htmlFor="activity-date">
+                    Datum *
+                  </label>
+                  {selectedDateWeekday && (
+                    <span className="pl-2 text-xs font-medium text-gray-500 whitespace-nowrap">
+                      {selectedDateWeekday}
+                    </span>
+                  )}
+                </div>
                 <input
                   id="activity-date"
                   type="date"

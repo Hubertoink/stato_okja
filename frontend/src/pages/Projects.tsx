@@ -960,7 +960,7 @@ function ProjectForm({
                   className="w-20 h-10 p-1 border rounded bg-white"
                 />
               </div>
-              <div className="hidden lg:block">{renderTagSelector()}</div>
+              <div className="hidden lg:block lg:pt-2">{renderTagSelector()}</div>
             </div>
           </div>
           <div className="space-y-4">

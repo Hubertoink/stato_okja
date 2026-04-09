@@ -24,13 +24,13 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: '/assets/Stato_Logo.png',
-            sizes: '192x192',
+            src: '/apple-touch-icon.png',
+            sizes: '180x180',
             type: 'image/png',
           },
           {
-            src: '/assets/Stato_Logo.png',
-            sizes: '512x512',
+            src: '/apple-touch-icon.png',
+            sizes: '180x180',
             type: 'image/png',
           },
         ],

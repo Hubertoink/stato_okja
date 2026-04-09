@@ -207,7 +207,7 @@ export default function ProjectPickerModal({
             </ul>
           )}
         </div>
-        <div className="mt-4 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 md:border-t md:border-gray-100">
+        <div className="mt-4 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 md:border-t md:border-gray-100">
           <div className="text-xs text-gray-600">
             Tipp: Tippe zum Auswählen. Suche nach Titel oder Zielgruppe.
           </div>

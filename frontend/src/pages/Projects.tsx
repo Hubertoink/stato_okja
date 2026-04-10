@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Toggle from '@/components/Toggle';
 import {
   Project,
@@ -16,6 +16,8 @@ import {
   Archive as ArchiveIcon,
   ArchiveRestore as ArchiveRestoreIcon,
   Trash2,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { Star, StarOff } from 'lucide-react';
 import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
@@ -34,6 +36,96 @@ import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
+
+const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
+
+const PROJECT_TYPE_LABELS: Record<string, string> = {
+  open_door: 'Offene Tür',
+  project_open: 'Projekt (offen)',
+  project_closed: 'Projekt (geschlossen)',
+  event: 'Veranstaltung',
+  outreach: 'Aufsuchend',
+};
+
+const PROJECT_CARD_PALETTE = [
+  '#2563eb',
+  '#ef4444',
+  '#f59e0b',
+  '#10b981',
+  '#8b5cf6',
+  '#ec4899',
+  '#f97316',
+  '#14b8a6',
+  '#22c55e',
+  '#eab308',
+  '#0ea5e9',
+  '#a855f7',
+];
+
+type ProjectsDesktopView = 'grid' | 'list';
+
+type ProjectBadgeCategory = {
+  id: string;
+  name: string;
+  color?: string | null;
+};
+
+type ProjectBadgeTag = {
+  id: string;
+  name: string;
+  color?: string | null;
+};
+
+const pickBg = (title?: string) => {
+  if (!title) return PROJECT_CARD_PALETTE[0];
+  let h = 0;
+  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
+  return PROJECT_CARD_PALETTE[h % PROJECT_CARD_PALETTE.length];
+};
+
+const textColorFor = (bg?: string | null) => {
+  const hex = (bg || '').toString().trim();
+  if (!hex || !hex.startsWith('#')) return '#ffffff';
+  const clean = hex.length === 4 ? '#' + [...hex.slice(1)].map((ch) => ch + ch).join('') : hex;
+  const r = parseInt(clean.slice(1, 3), 16);
+  const g = parseInt(clean.slice(3, 5), 16);
+  const b = parseInt(clean.slice(5, 7), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 140 ? '#111111' : '#ffffff';
+};
+
+const truncateWords = (text?: string | null, words = 20) => {
+  if (!text) return '';
+  const parts = text.trim().split(/\s+/);
+  if (parts.length <= words) return text;
+  return parts.slice(0, words).join(' ') + '…';
+};
+
+const pickStaffNames = (project: Project): string[] => {
+  const names1 = (project.defaultStaff || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const names2 = (project.defaultVolunteers || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const picked = new Set<string>();
+  for (const name of names1) {
+    if (picked.size < 2) picked.add(name);
+  }
+  for (const name of names2) {
+    if (picked.size < 2) picked.add(name);
+  }
+  return Array.from(picked).slice(0, 2);
+};
+
+const initialsOf = (name: string): string => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 function ArchiveRestoreControls({
   id,
@@ -214,6 +306,320 @@ function ArchiveRestoreControls({
         }}
         onCancel={() => setArchiveConfirmOpen(false)}
       />
+    </div>
+  );
+}
+
+function ProjectGridCard({
+  project,
+  category,
+  staffNames,
+  tagList,
+  extraTags,
+  starred,
+  onToggleStar,
+  onEdit,
+}: {
+  project: Project;
+  category?: ProjectBadgeCategory;
+  staffNames: string[];
+  tagList: ProjectBadgeTag[];
+  extraTags: number;
+  starred: boolean;
+  onToggleStar: () => void;
+  onEdit: () => void;
+}) {
+  const prettyType = PROJECT_TYPE_LABELS[project.type] || project.type;
+
+  return (
+    <div
+      className="relative rounded-2xl shadow group min-h-[160px]"
+      style={{ backgroundColor: project.imageUrl ? undefined : project.color || pickBg(project.title) }}
+    >
+      <div className="absolute inset-0 rounded-2xl overflow-hidden z-0 pointer-events-none">
+        {project.imageUrl ? (
+          <>
+            <ProtectedImage
+              src={project.imageUrl}
+              alt={project.title}
+              className="absolute inset-0 w-full h-full object-cover transform scale-105 blur-[2px]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60" />
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-black/20" />
+            <div className="absolute inset-0 flex items-center justify-center text-white/90 text-3xl font-bold drop-shadow">
+              {project.title?.charAt(0)}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="relative z-10 p-4 flex flex-col gap-2 text-white">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-xl font-semibold drop-shadow-sm">{project.title}</div>
+            <div className="text-sm opacity-90">{prettyType}</div>
+            {(category || staffNames.length > 0) && (
+              <div className="mt-1 flex items-center flex-wrap gap-2">
+                {category && (
+                  <div
+                    className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: category.color || '#6b7280',
+                      color: textColorFor(category.color || '#6b7280'),
+                      border: `1px solid ${category.color || '#6b7280'}`,
+                    }}
+                  >
+                    <Layers className="w-3 h-3" />
+                    <span>{category.name}</span>
+                  </div>
+                )}
+                {staffNames.map((name) => (
+                  <span
+                    key={name}
+                    className="inline-flex items-center gap-2 pl-1 pr-2 py-0.5 rounded-full bg-white/90 text-gray-900 border border-white/40 shadow-sm"
+                    title={name}
+                    aria-label={`Mitarbeitende:r ${name}`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-gray-200 text-[10px] font-semibold flex items-center justify-center">
+                      {initialsOf(name)}
+                    </span>
+                    <span className="text-xs font-medium">{name}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3 text-sm items-start z-[2] relative">
+            <span className="tooltip-wrapper">
+              <button
+                onClick={onToggleStar}
+                title={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
+                className={`opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full p-1.5 ${
+                  starred ? 'bg-yellow-400/90' : 'bg-white/20 hover:bg-white/30'
+                }`}
+                aria-label={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
+              >
+                {starred ? (
+                  <Star className="w-4 h-4 text-gray-900" />
+                ) : (
+                  <StarOff className="w-4 h-4 text-white" />
+                )}
+              </button>
+              <span className="tooltip-bubble">{starred ? 'Unstarren' : 'Highlight'}</span>
+            </span>
+            <span className="tooltip-wrapper">
+              <button
+                onClick={onEdit}
+                title="Bearbeiten"
+                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 p-1.5"
+                aria-label={`Projekt ${project.title} bearbeiten`}
+              >
+                <Pencil className="w-4 h-4 text-white" />
+              </button>
+              <span className="tooltip-bubble">Bearbeiten</span>
+            </span>
+          </div>
+        </div>
+
+        {project.description && (
+          <div className="text-sm opacity-95">{truncateWords(project.description, 20)}</div>
+        )}
+
+        {tagList.length > 0 && (
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {tagList.slice(0, 3).map((tag) => (
+              <span
+                key={tag.id}
+                className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: tag.color || '#6b7280',
+                  color: textColorFor(tag.color || '#6b7280'),
+                  border: `1px solid ${tag.color || '#6b7280'}`,
+                }}
+                title={tag.name}
+              >
+                <span>{tag.name}</span>
+              </span>
+            ))}
+            {extraTags > 0 && (
+              <span
+                className="inline-flex items-center justify-center px-2 h-5 rounded-full text-[10px] font-semibold"
+                style={{
+                  backgroundColor: '#ffffff',
+                  color: '#111111',
+                  border: '1px solid #e5e7eb',
+                }}
+                title={`Weitere Tags: ${tagList
+                  .slice(3)
+                  .map((tag) => tag.name)
+                  .join(', ')}`}
+                aria-label={`Weitere Tags: +${extraTags}`}
+              >
+                +{extraTags}
+              </span>
+            )}
+          </div>
+        )}
+
+        {project.archived && (
+          <div className="mt-1 text-xs inline-block px-2 py-0.5 rounded-full bg-white/25 backdrop-blur-sm">
+            Archiviert
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProjectListRow({
+  project,
+  category,
+  staffNames,
+  tagList,
+  extraTags,
+  starred,
+  onToggleStar,
+  onEdit,
+}: {
+  project: Project;
+  category?: ProjectBadgeCategory;
+  staffNames: string[];
+  tagList: ProjectBadgeTag[];
+  extraTags: number;
+  starred: boolean;
+  onToggleStar: () => void;
+  onEdit: () => void;
+}) {
+  const prettyType = PROJECT_TYPE_LABELS[project.type] || project.type;
+  const surfaceColor = project.color || pickBg(project.title);
+
+  return (
+    <div className="hidden md:grid md:grid-cols-[176px,minmax(0,1fr)] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div
+        className="relative min-h-[156px]"
+        style={{ backgroundColor: project.imageUrl ? undefined : surfaceColor }}
+      >
+        {project.imageUrl ? (
+          <ProtectedImage
+            src={project.imageUrl}
+            alt={project.title}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0" style={{ backgroundColor: surfaceColor }} />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-black/0 to-black/40" />
+        <div className="absolute left-3 top-3 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm shadow-sm">
+          {prettyType}
+        </div>
+        {project.archived && (
+          <div className="absolute left-3 bottom-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-800 shadow-sm">
+            Archiviert
+          </div>
+        )}
+      </div>
+
+      <div className="min-w-0 p-4 lg:p-5 flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-lg lg:text-xl font-semibold text-gray-950 break-words leading-snug">
+              {project.title}
+            </div>
+            {project.targetGroup && (
+              <div className="mt-1 text-sm font-medium text-gray-700">
+                Zielgruppe: <span className="font-normal text-gray-800">{project.targetGroup}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-start gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onToggleStar}
+              title={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
+              aria-label={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
+              className={`inline-flex items-center justify-center rounded-full border p-2 transition-colors ${
+                starred
+                  ? 'border-yellow-400 bg-yellow-100 text-yellow-800'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:text-yellow-700'
+              }`}
+            >
+              {starred ? <Star className="w-4 h-4" /> : <StarOff className="w-4 h-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              title="Bearbeiten"
+              aria-label={`Projekt ${project.title} bearbeiten`}
+              className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:border-viridian hover:text-viridian"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {(category || staffNames.length > 0) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {category && (
+              <div
+                className="text-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-full shadow-sm"
+                style={{
+                  backgroundColor: category.color || '#6b7280',
+                  color: textColorFor(category.color || '#6b7280'),
+                  border: `1px solid ${category.color || '#6b7280'}`,
+                }}
+              >
+                <Layers className="w-3 h-3" />
+                <span>{category.name}</span>
+              </div>
+            )}
+            {staffNames.map((name) => (
+              <span
+                key={name}
+                className="inline-flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-gray-100 text-gray-900 border border-gray-200"
+                title={name}
+                aria-label={`Mitarbeitende:r ${name}`}
+              >
+                <span className="w-5 h-5 rounded-full bg-white text-[10px] font-semibold flex items-center justify-center border border-gray-200">
+                  {initialsOf(name)}
+                </span>
+                <span className="text-xs font-medium">{name}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {tagList.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {tagList.slice(0, 4).map((tag) => (
+              <span
+                key={tag.id}
+                className="text-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-full shadow-sm"
+                style={{
+                  backgroundColor: tag.color || '#6b7280',
+                  color: textColorFor(tag.color || '#6b7280'),
+                  border: `1px solid ${tag.color || '#6b7280'}`,
+                }}
+                title={tag.name}
+              >
+                <span>{tag.name}</span>
+              </span>
+            ))}
+            {extraTags > 0 && (
+              <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                +{extraTags} weitere
+              </span>
+            )}
+          </div>
+        )}
+
+        {project.description && (
+          <p className="text-sm leading-5 text-gray-700">{truncateWords(project.description, 24)}</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -1196,6 +1602,20 @@ export default function Projects() {
     return () => clearTimeout(t);
   }, [search]);
   const [showArchived, setShowArchived] = useState(false);
+  const [desktopView, setDesktopView] = useState<ProjectsDesktopView>(() => {
+    try {
+      return localStorage.getItem(PROJECTS_DESKTOP_VIEW_STORAGE_KEY) === 'list' ? 'list' : 'grid';
+    } catch {
+      return 'grid';
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROJECTS_DESKTOP_VIEW_STORAGE_KEY, desktopView);
+    } catch {
+      /* ignore */
+    }
+  }, [desktopView]);
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; project?: Project } | null>(null);
   const { showToast } = useToast();
   // Archivierte Projekte nur anzeigen, wenn Checkbox aktiv ist.
@@ -1211,6 +1631,7 @@ export default function Projects() {
   const update = useUpdateProject();
 
   const projects = data || [];
+  const isDesktopListView = desktopView === 'list';
   const [starred, setStarred] = useState<string[]>(() => getStarredProjectIds());
   const { data: categoriesList } = useCategories({ active: true });
   const { data: tagsList } = useTags({ active: true });
@@ -1224,74 +1645,6 @@ export default function Projects() {
     (tagsList || []).forEach((t) => m.set(t.name, { id: t.id, name: t.name, color: t.color }));
     return m;
   }, [tagsList]);
-  // Fallback Farbpalette wenn kein Bild vorhanden ist (deterministisch aus Titel)
-  // 12-farbiges Spektrum (blau, rot, gelb, lila, orange, teal, grün, pink, etc.)
-  const palette = [
-    '#2563eb', // blue-600
-    '#ef4444', // red-500
-    '#f59e0b', // amber-500
-    '#10b981', // emerald-500
-    '#8b5cf6', // violet-500
-    '#ec4899', // pink-500
-    '#f97316', // orange-500
-    '#14b8a6', // teal-500
-    '#22c55e', // green-500
-    '#eab308', // yellow-500
-    '#0ea5e9', // sky-500
-    '#a855f7', // purple-500
-  ];
-  const pickBg = (title?: string) => {
-    if (!title) return palette[0];
-    let h = 0;
-    for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
-    return palette[h % palette.length];
-  };
-
-  // Choose readable text color (black/white) based on background brightness
-  const textColorFor = (bg?: string | null) => {
-    const hex = (bg || '').toString().trim();
-    if (!hex || !hex.startsWith('#')) return '#ffffff';
-    const clean = hex.length === 4 ? '#' + [...hex.slice(1)].map((ch) => ch + ch).join('') : hex;
-    const r = parseInt(clean.slice(1, 3), 16);
-    const g = parseInt(clean.slice(3, 5), 16);
-    const b = parseInt(clean.slice(5, 7), 16);
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness > 140 ? '#111111' : '#ffffff';
-  };
-
-  const truncateWords = (text?: string | null, words = 20) => {
-    if (!text) return '';
-    const parts = text.trim().split(/\s+/);
-    if (parts.length <= words) return text;
-    return parts.slice(0, words).join(' ') + '…';
-  };
-
-  // Helpers: pick up to 2 staff names and build initials
-  const pickStaffNames = (p: Project): string[] => {
-    const names1 = (p.defaultStaff || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const names2 = (p.defaultVolunteers || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const set = new Set<string>();
-    for (const n of names1) {
-      if (set.size < 2) set.add(n);
-    }
-    for (const n of names2) {
-      if (set.size < 2) set.add(n);
-    }
-    return Array.from(set).slice(0, 2);
-  };
-
-  const initialsOf = (name: string): string => {
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return '';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
 
   return (
     <div>
@@ -1305,41 +1658,70 @@ export default function Projects() {
         </button>
       </div>
 
-      <div className="mb-4 flex gap-3 flex-col sm:flex-row">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Suchen…"
-          className="w-full md:w-80 border border-gray-300 rounded px-3 py-2"
-        />
-        {archivedCount > 0 && (
-          <Toggle
-            checked={showArchived}
-            onChange={setShowArchived}
-            label={
-              <span>
-                Archiv <span className="text-xs text-gray-500">({archivedCount})</span>
-              </span>
-            }
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex gap-3 flex-col sm:flex-row sm:items-center">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Suchen…"
+            className="w-full md:w-80 border border-gray-300 rounded px-3 py-2"
           />
-        )}
+          {archivedCount > 0 && (
+            <Toggle
+              checked={showArchived}
+              onChange={setShowArchived}
+              label={
+                <span>
+                  Archiv <span className="text-xs text-gray-500">({archivedCount})</span>
+                </span>
+              }
+            />
+          )}
+        </div>
+
+        <div className="hidden md:flex items-center gap-3 self-start md:self-auto">
+          <span className="text-sm font-medium text-gray-700">Ansicht</span>
+          <div className="inline-flex items-center rounded-xl border border-gray-300 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setDesktopView('grid')}
+              aria-pressed={desktopView === 'grid'}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                desktopView === 'grid'
+                  ? 'bg-viridian text-white shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Karten
+            </button>
+            <button
+              type="button"
+              onClick={() => setDesktopView('list')}
+              aria-pressed={desktopView === 'list'}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                desktopView === 'list'
+                  ? 'bg-viridian text-white shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              Liste
+            </button>
+          </div>
+        </div>
       </div>
 
       {isLoading && !data ? (
         <div className="text-gray-500">Lade…</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${
+            isDesktopListView ? 'md:grid-cols-1' : 'lg:grid-cols-3'
+          }`}
+        >
           {projects.map((p) => {
-            const typeLabel: Record<string, string> = {
-              open_door: 'Offene Tür',
-              project_open: 'Projekt (offen)',
-              project_closed: 'Projekt (geschlossen)',
-              event: 'Veranstaltung',
-              outreach: 'Aufsuchend',
-            };
-            const prettyType = typeLabel[p.type] || p.type;
             let cat = p.categoryId ? categoryMap.get(p.categoryId) : undefined;
-            // Fallback for legacy items without categoryId
             if (!cat && Array.isArray(p.categories) && p.categories.length) {
               const first = p.categories[0];
               cat = categoryMap.get(first.id);
@@ -1350,156 +1732,50 @@ export default function Projects() {
               .map((s) => s.trim())
               .filter(Boolean)
               .map((name) => tagMap.get(name))
-              .filter(Boolean) as Array<{ id: string; name: string; color?: string | null }>;
+              .filter(Boolean) as ProjectBadgeTag[];
             const extraTags = Math.max(0, tagList.length - 3);
             const starredNow = starred.includes(p.id);
-            return (
-              <div
-                key={p.id}
-                className="relative rounded-2xl shadow group min-h-[160px]"
-                style={{ backgroundColor: p.imageUrl ? undefined : p.color || pickBg(p.title) }}
-              >
-                {/* Media/background layer (clipped to rounded corners) */}
-                <div className="absolute inset-0 rounded-2xl overflow-hidden z-0 pointer-events-none">
-                  {p.imageUrl ? (
-                    <>
-                      <ProtectedImage
-                        src={p.imageUrl}
-                        alt={p.title}
-                        className="absolute inset-0 w-full h-full object-cover transform scale-105 blur-[2px]"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60" />
-                    </>
-                  ) : (
-                    <>
-                      {/* subtle overlay for contrast even without image */}
-                      <div className="absolute inset-0 bg-black/20" />
-                      <div className="absolute inset-0 flex items-center justify-center text-white/90 text-3xl font-bold drop-shadow">
-                        {p.title?.charAt(0)}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="relative z-10 p-4 flex flex-col gap-2 text-white">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-xl font-semibold drop-shadow-sm">{p.title}</div>
-                      <div className="text-sm opacity-90">{prettyType}</div>
-                      {(cat || staffNames.length > 0) && (
-                        <div className="mt-1 flex items-center flex-wrap gap-2">
-                          {cat && (
-                            <div
-                              className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                              style={{
-                                backgroundColor: cat.color || '#6b7280',
-                                color: textColorFor(cat.color || '#6b7280'),
-                                border: `1px solid ${cat.color || '#6b7280'}`,
-                              }}
-                            >
-                              <Layers className="w-3 h-3" />
-                              <span>{cat.name}</span>
-                            </div>
-                          )}
-                          {staffNames.map((n) => (
-                            <span
-                              key={n}
-                              className="inline-flex items-center gap-2 pl-1 pr-2 py-0.5 rounded-full bg-white/90 text-gray-900 border border-white/40 shadow-sm"
-                              title={n}
-                              aria-label={`Mitarbeitende:r ${n}`}
-                            >
-                              <span className="w-4 h-4 rounded-full bg-gray-200 text-[10px] font-semibold flex items-center justify-center">
-                                {initialsOf(n)}
-                              </span>
-                              <span className="text-xs font-medium">{n}</span>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex gap-3 text-sm items-start z-[2] relative">
-                      <span className="tooltip-wrapper">
-                        <button
-                          onClick={() => setStarred(toggleStarredProject(p.id))}
-                          title={starredNow ? 'Highlight entfernen' : 'Projekt highlighten'}
-                          className={`opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full p-1.5 ${
-                            starredNow ? 'bg-yellow-400/90' : 'bg-white/20 hover:bg-white/30'
-                          }`}
-                          aria-label={starredNow ? 'Highlight entfernen' : 'Projekt highlighten'}
-                        >
-                          {starredNow ? (
-                            <Star className="w-4 h-4 text-gray-900" />
-                          ) : (
-                            <StarOff className="w-4 h-4 text-white" />
-                          )}
-                        </button>
-                        <span className="tooltip-bubble">
-                          {starredNow ? 'Unstarren' : 'Highlight'}
-                        </span>
-                      </span>
-                      <span className="tooltip-wrapper">
-                        <button
-                          onClick={() => setModal({ mode: 'edit', project: p })}
-                          title="Bearbeiten"
-                          className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 p-1.5"
-                          aria-label={`Projekt ${p.title} bearbeiten`}
-                        >
-                          <Pencil className="w-4 h-4 text-white" />
-                        </button>
-                        <span className="tooltip-bubble">Bearbeiten</span>
-                      </span>
-                    </div>
+            if (isDesktopListView) {
+              return (
+                <Fragment key={p.id}>
+                  <div className="md:hidden">
+                    <ProjectGridCard
+                      project={p}
+                      category={cat}
+                      staffNames={staffNames}
+                      tagList={tagList}
+                      extraTags={extraTags}
+                      starred={starredNow}
+                      onToggleStar={() => setStarred(toggleStarredProject(p.id))}
+                      onEdit={() => setModal({ mode: 'edit', project: p })}
+                    />
                   </div>
+                  <ProjectListRow
+                    project={p}
+                    category={cat}
+                    staffNames={staffNames}
+                    tagList={tagList}
+                    extraTags={Math.max(0, tagList.length - 4)}
+                    starred={starredNow}
+                    onToggleStar={() => setStarred(toggleStarredProject(p.id))}
+                    onEdit={() => setModal({ mode: 'edit', project: p })}
+                  />
+                </Fragment>
+              );
+            }
 
-                  {p.description && (
-                    <div className="text-sm opacity-95">{truncateWords(p.description, 20)}</div>
-                  )}
-
-                  {/* Tags: zeige max. 3, Rest als +x */}
-                  {tagList.length > 0 && (
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {tagList.slice(0, 3).map((t) => (
-                        <span
-                          key={t.id}
-                          className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                          style={{
-                            backgroundColor: t.color || '#6b7280',
-                            color: textColorFor(t.color || '#6b7280'),
-                            border: `1px solid ${t.color || '#6b7280'}`,
-                          }}
-                          title={t.name}
-                        >
-                          <span>{t.name}</span>
-                        </span>
-                      ))}
-                      {extraTags > 0 && (
-                        <span
-                          className="inline-flex items-center justify-center px-2 h-5 rounded-full text-[10px] font-semibold"
-                          style={{
-                            backgroundColor: '#ffffff',
-                            color: '#111111',
-                            border: '1px solid #e5e7eb',
-                          }}
-                          title={`Weitere Tags: ${tagList
-                            .slice(3)
-                            .map((t) => t.name)
-                            .join(', ')}`}
-                          aria-label={`Weitere Tags: +${extraTags}`}
-                        >
-                          +{extraTags}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {p.archived && (
-                    <div className="mt-1 text-xs inline-block px-2 py-0.5 rounded-full bg-white/25 backdrop-blur-sm">
-                      Archiviert
-                    </div>
-                  )}
-                </div>
-              </div>
+            return (
+              <ProjectGridCard
+                key={p.id}
+                project={p}
+                category={cat}
+                staffNames={staffNames}
+                tagList={tagList}
+                extraTags={extraTags}
+                starred={starredNow}
+                onToggleStar={() => setStarred(toggleStarredProject(p.id))}
+                onEdit={() => setModal({ mode: 'edit', project: p })}
+              />
             );
           })}
           {projects.length === 0 && <div className="text-gray-500">Keine Projekte gefunden.</div>}

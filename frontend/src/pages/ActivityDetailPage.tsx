@@ -33,10 +33,18 @@ export default function ActivityDetailPage() {
 
   if (!activity) return null;
 
-  const dateStr = (() => {
+  const dateLabel = (() => {
     const s = (activity.date || '').slice(0, 10);
     const [y, m, d] = s.split('-');
-    return `${d}.${m}.${y}`;
+    const year = Number(y);
+    const month = Number(m);
+    const day = Number(d);
+    const baseDate = `${d}.${m}.${y}`;
+    if (!year || !month || !day) return baseDate;
+    const date = new Date(year, month - 1, day);
+    if (Number.isNaN(date.getTime())) return baseDate;
+    const weekday = new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
+    return weekday ? `${baseDate} (${weekday})` : baseDate;
   })();
   const fmtHHMM = (t?: string | null) => {
     if (!t) return '';
@@ -105,7 +113,7 @@ export default function ActivityDetailPage() {
 
       <div className="bg-white rounded-lg shadow p-4 md:p-6 space-y-3">
         <div className="flex items-center gap-2 text-sm text-gray-700">
-          <CalendarIcon className="w-4 h-4" /> {dateStr}
+          <CalendarIcon className="w-4 h-4" /> {dateLabel}
         </div>
         {!!timeStr && (
           <div className="flex items-center gap-2 text-sm text-gray-700">

@@ -40,6 +40,7 @@ export default function ActivityEditPage() {
   })();
 
   const [form, setForm] = useState<{
+    date?: string;
     projectId?: string;
     locationId?: string;
     start?: string;
@@ -66,6 +67,7 @@ export default function ActivityEditPage() {
       }
     }
     setForm({
+      date: (activity.date || '').slice(0, 10) || undefined,
       projectId: activity.projectId || activity.project?.id || undefined,
       locationId: activity.locationId || activity.location?.id || undefined,
       start: activity.startTime || undefined,
@@ -83,6 +85,15 @@ export default function ActivityEditPage() {
     () => (projects || []).find((p) => p.id === form.projectId),
     [projects, form.projectId],
   );
+  const selectedDateWeekday = useMemo(() => {
+    const isoDate = (form.date || '').slice(0, 10);
+    if (!isoDate) return '';
+    const [year, month, day] = isoDate.split('-').map((value) => Number(value));
+    if (!year || !month || !day) return '';
+    const date = new Date(year, month - 1, day);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
+  }, [form.date]);
   const isOpenDoor = selectedProject?.type === 'open_door';
 
   // Prefill tags from project's default tag names if none chosen yet
@@ -157,7 +168,7 @@ export default function ActivityEditPage() {
     });
     const counts = cohortSumsLocal;
     const payload: Record<string, unknown> = {
-      date: activity.date,
+      date: (form.date || activity.date || '').slice(0, 10),
       startTime: form.start || null,
       endTime: form.end || null,
       type: activity.type,
@@ -214,6 +225,26 @@ export default function ActivityEditPage() {
       </div>
 
       <div className={`bg-white rounded-lg shadow p-4 md:p-6 ${contentSpacing}`}>
+        <div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="block text-sm font-medium" htmlFor="activity-date-edit-page">
+              Datum *
+            </label>
+            {selectedDateWeekday && (
+              <span className="pl-2 text-xs font-medium text-gray-500 whitespace-nowrap">
+                {selectedDateWeekday}
+              </span>
+            )}
+          </div>
+          <input
+            id="activity-date-edit-page"
+            type="date"
+            value={(form.date || '').slice(0, 10)}
+            onChange={(e) => setForm({ ...form, date: e.target.value })}
+            className="w-full border rounded px-3 py-2"
+          />
+        </div>
+
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="location-select-edit">
             Standort *

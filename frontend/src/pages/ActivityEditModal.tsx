@@ -37,6 +37,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [form, setForm] = useState<{
+    date?: string;
     projectId?: string;
     locationId?: string;
     start?: string;
@@ -68,6 +69,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
     const w = activity.countFemale || 0;
     const d = activity.countDiverse || 0;
     setForm({
+      date: (activity.date || '').slice(0, 10) || undefined,
       projectId: activity.projectId || activity.project?.id || undefined,
       locationId: activity.locationId || activity.location?.id || undefined,
       start: activity.startTime || undefined,
@@ -86,6 +88,15 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
     () => (projects || []).find((p) => p.id === form.projectId),
     [projects, form.projectId],
   );
+  const selectedDateWeekday = useMemo(() => {
+    const isoDate = (form.date || '').slice(0, 10);
+    if (!isoDate) return '';
+    const [year, month, day] = isoDate.split('-').map((value) => Number(value));
+    if (!year || !month || !day) return '';
+    const date = new Date(year, month - 1, day);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
+  }, [form.date]);
   const isOpenDoor = selectedProject?.type === 'open_door';
 
   // Prefill tags from the selected project's default tags if none chosen yet
@@ -178,7 +189,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
           d: form.topCounts?.d || 0,
         };
     const payload: Record<string, unknown> = {
-      date: activity.date,
+      date: (form.date || activity.date || '').slice(0, 10),
       startTime: form.start || null,
       endTime: form.end || null,
       type: activity.type,
@@ -227,6 +238,25 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
         <h3 className="shrink-0 text-xl font-semibold text-viridian mb-2">Aktivität bearbeiten</h3>
         <div className="min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6">
         <div className="space-y-3">
+          <div>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="block text-sm font-medium" htmlFor="activity-date-edit">
+                Datum *
+              </label>
+              {selectedDateWeekday && (
+                <span className="pl-2 text-xs font-medium text-gray-500 whitespace-nowrap">
+                  {selectedDateWeekday}
+                </span>
+              )}
+            </div>
+            <input
+              id="activity-date-edit"
+              type="date"
+              value={(form.date || '').slice(0, 10)}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              className="w-full border rounded px-3 py-2"
+            />
+          </div>
           {/* Participants summary (editable if no cohort data) */}
           <div>
             <h3 className="text-lg font-semibold mb-2 text-viridian">Teilnehmende</h3>

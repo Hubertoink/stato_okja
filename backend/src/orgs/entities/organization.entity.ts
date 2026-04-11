@@ -23,6 +23,7 @@ export type OrganizationTaxonomyType = 'categories' | 'tags' | 'cohorts';
 export interface OrganizationTaxonomyTypeSetting {
   allowOwn?: boolean;
   inheritedIds?: string[];
+  inheritAll?: boolean;
 }
 
 export interface OrganizationTaxonomySettings {

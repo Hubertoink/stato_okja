@@ -489,7 +489,7 @@ export default function Activities() {
           <div className="flex gap-2 flex-wrap justify-end">
             <div className="relative">
               {searchOpen && (
-                <div className="absolute right-0 top-full mt-2 z-20 w-[18rem] max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-md">
+                <div className="absolute right-0 top-full mt-2 z-20 w-[min(18rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)] rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-md">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
@@ -884,12 +884,6 @@ export default function Activities() {
         />
       </div>
 
-      {(activitiesLoading || activitiesFetching) && (
-        <div className="mt-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
-          Aktivitäten werden geladen…
-        </div>
-      )}
-
       {activitiesIsError && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
           <span>
@@ -908,154 +902,164 @@ export default function Activities() {
       )}
 
       {/* Mobile Cards */}
-      <div className="space-y-3 pt-2 md:hidden">
-        {activities.map((a) => (
-          <div
-            key={a.id}
-            className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-azure-web/50 focus:outline-none focus:ring-2 focus:ring-viridian/40 relative overflow-hidden"
-            role="button"
-            tabIndex={0}
-            aria-label="Aktivität öffnen"
-            onClick={() => {
-              if (isMobile)
-                navigate(`/activities/${a.id}`, {
-                  state: { from: `${location.pathname}${location.search}` },
-                });
-              else setEditId(a.id);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
+      <div className="relative min-h-[12rem] pt-2 md:hidden">
+        <div className="space-y-3">
+          {activities.map((a) => (
+            <div
+              key={a.id}
+              className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-azure-web/50 focus:outline-none focus:ring-2 focus:ring-viridian/40 relative overflow-hidden"
+              role="button"
+              tabIndex={0}
+              aria-label="Aktivität öffnen"
+              onClick={() => {
                 if (isMobile)
                   navigate(`/activities/${a.id}`, {
                     state: { from: `${location.pathname}${location.search}` },
                   });
                 else setEditId(a.id);
-              }
-            }}
-          >
-            {a.project?.imageUrl ? (
-              <>
-                <ProtectedImage
-                  src={a.project.imageUrl || undefined}
-                  alt=""
-                  aria-hidden
-                  className="absolute inset-y-0 right-0 w-28 h-full object-cover opacity-70"
-                />
-                <div
-                  className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-transparent via-white/60 to-white"
-                  aria-hidden
-                />
-              </>
-            ) : a.project?.color ? (
-              <>
-                <div
-                  className="absolute inset-y-0 right-0 w-28 opacity-40"
-                  style={{ backgroundColor: a.project.color || undefined }}
-                  aria-hidden
-                />
-                <div
-                  className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-transparent via-white/70 to-white"
-                  aria-hidden
-                />
-              </>
-            ) : null}
-            <div className="relative z-10 flex justify-between items-start mb-2">
-              <div>
-                <div className="text-sm text-gray-500">
-                  {(() => {
-                    const s = (a.date || '').slice(0, 10);
-                    const [y, m, d] = s.split('-');
-                    return `${d}.${m}.${y}`;
-                  })()}
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (isMobile)
+                    navigate(`/activities/${a.id}`, {
+                      state: { from: `${location.pathname}${location.search}` },
+                    });
+                  else setEditId(a.id);
+                }
+              }}
+            >
+              {a.project?.imageUrl ? (
+                <>
+                  <ProtectedImage
+                    src={a.project.imageUrl || undefined}
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-y-0 right-0 w-28 h-full object-cover opacity-70"
+                  />
+                  <div
+                    className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-transparent via-white/60 to-white"
+                    aria-hidden
+                  />
+                </>
+              ) : a.project?.color ? (
+                <>
+                  <div
+                    className="absolute inset-y-0 right-0 w-28 opacity-40"
+                    style={{ backgroundColor: a.project.color || undefined }}
+                    aria-hidden
+                  />
+                  <div
+                    className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-transparent via-white/70 to-white"
+                    aria-hidden
+                  />
+                </>
+              ) : null}
+              <div className="relative z-10 flex justify-between items-start mb-2">
+                <div>
+                  <div className="text-sm text-gray-500">
+                    {(() => {
+                      const s = (a.date || '').slice(0, 10);
+                      const [y, m, d] = s.split('-');
+                      return `${d}.${m}.${y}`;
+                    })()}
+                  </div>
+                  <div className="font-semibold text-viridian">
+                    {(
+                      {
+                        open_door: 'Offene Tür',
+                        project_open: 'Projekt (offen)',
+                        project_closed: 'Projekt (geschlossen)',
+                        event: 'Veranstaltung',
+                        outreach: 'Aufsuchend',
+                      } as Record<string, string>
+                    )[a.type] || a.type}
+                  </div>
                 </div>
-                <div className="font-semibold text-viridian">
-                  {(
-                    {
-                      open_door: 'Offene Tür',
-                      project_open: 'Projekt (offen)',
-                      project_closed: 'Projekt (geschlossen)',
-                      event: 'Veranstaltung',
-                      outreach: 'Aufsuchend',
-                    } as Record<string, string>
-                  )[a.type] || a.type}
-                </div>
+                {(() => {
+                  const duration =
+                    a.durationMinutes ??
+                    (() => {
+                      const parse = (t?: string | null) => {
+                        if (!t) return undefined;
+                        const [h, m] = t.split(':').map((v) => parseInt(v, 10));
+                        if (Number.isNaN(h) || Number.isNaN(m)) return undefined;
+                        return h * 60 + m;
+                      };
+                      const s = parse(a.startTime);
+                      const e = parse(a.endTime);
+                      return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
+                    })();
+                  return duration ? (
+                    <span className="text-xs px-2 py-1 bg-viridian text-white rounded">
+                      {duration} min
+                    </span>
+                  ) : null;
+                })()}
               </div>
-              {(() => {
-                const duration =
-                  a.durationMinutes ??
-                  (() => {
-                    const parse = (t?: string | null) => {
-                      if (!t) return undefined;
-                      const [h, m] = t.split(':').map((v) => parseInt(v, 10));
-                      if (Number.isNaN(h) || Number.isNaN(m)) return undefined;
-                      return h * 60 + m;
-                    };
-                    const s = parse(a.startTime);
-                    const e = parse(a.endTime);
-                    return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
-                  })();
-                return duration ? (
-                  <span className="text-xs px-2 py-1 bg-viridian text-white rounded">
-                    {duration} min
+              <div className="relative z-10 text-sm text-gray-600 mb-1">{a.title || '-'}</div>
+              <div className="relative z-10 text-xs text-gray-500 mb-3">
+                {a.project?.title || '-'}
+              </div>
+              <div className="relative z-10 text-xs text-gray-600 mb-2">
+                {(() => {
+                  const m = a.countMale || 0;
+                  const w = a.countFemale || 0;
+                  const d = a.countDiverse || 0;
+                  const total = (a.countTotal ?? m + w + d) || 0;
+                  return (
+                    <>
+                      Teilnehmende: {total} (m:{m}, w:{w}, d:{d})
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="relative z-10 flex flex-wrap gap-1.5 mb-2">
+                {(a.categories || []).map((c) => (
+                  <span
+                    key={c.id}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white ${getBgClass(
+                      c.color as string,
+                      'bg-slate-400',
+                    )}`}
+                    title={c.name}
+                  >
+                    {c.name}
                   </span>
-                ) : null;
-              })()}
-            </div>
-            <div className="relative z-10 text-sm text-gray-600 mb-1">{a.title || '-'}</div>
-            <div className="relative z-10 text-xs text-gray-500 mb-3">
-              {a.project?.title || '-'}
-            </div>
-            <div className="relative z-10 text-xs text-gray-600 mb-2">
-              {(() => {
-                const m = a.countMale || 0;
-                const w = a.countFemale || 0;
-                const d = a.countDiverse || 0;
-                const total = (a.countTotal ?? m + w + d) || 0;
-                return (
-                  <>
-                    Teilnehmende: {total} (m:{m}, w:{w}, d:{d})
-                  </>
-                );
-              })()}
-            </div>
-            <div className="relative z-10 flex flex-wrap gap-1.5 mb-2">
-              {(a.categories || []).map((c) => (
-                <span
-                  key={c.id}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white ${getBgClass(
-                    c.color as string,
-                    'bg-slate-400',
-                  )}`}
-                  title={c.name}
-                >
-                  {c.name}
-                </span>
-              ))}
-              {(a.tags || []).map((t) => (
-                <span
-                  key={t.id}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white ${getBgClass(
-                    t.color as string,
-                    'bg-slate-500',
-                  )}`}
-                  title={t.name}
-                >
-                  <TagIcon className="w-3 h-3" /> {t.name}
-                </span>
-              ))}
-            </div>
-            {a.notes && (
-              <div className="relative z-10 text-[12px] text-gray-600 flex items-start gap-1 mb-2">
-                <StickyNote className="w-3.5 h-3.5 mt-[2px] text-gray-500" />
-                <span>{firstWords(a.notes, 20)}</span>
+                ))}
+                {(a.tags || []).map((t) => (
+                  <span
+                    key={t.id}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white ${getBgClass(
+                      t.color as string,
+                      'bg-slate-500',
+                    )}`}
+                    title={t.name}
+                  >
+                    <TagIcon className="w-3 h-3" /> {t.name}
+                  </span>
+                ))}
               </div>
-            )}
-            {/* Mobile actions intentionally hidden; tap card to edit */}
+              {a.notes && (
+                <div className="relative z-10 text-[12px] text-gray-600 flex items-start gap-1 mb-2">
+                  <StickyNote className="w-3.5 h-3.5 mt-[2px] text-gray-500" />
+                  <span>{firstWords(a.notes, 20)}</span>
+                </div>
+              )}
+              {/* Mobile actions intentionally hidden; tap card to edit */}
+            </div>
+          ))}
+          {activities.length === 0 && !activitiesLoading && !activitiesFetching && (
+            <div className="text-gray-500 py-6 text-center">Keine Aktivitäten im Zeitraum.</div>
+          )}
+        </div>
+        {(activitiesLoading || activitiesFetching) && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center rounded-xl bg-white/45 pt-8">
+            <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-3 py-2 shadow-sm">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-viridian/25 border-t-viridian" aria-hidden />
+              <span className="text-sm text-gray-600">Lädt…</span>
+            </div>
           </div>
-        ))}
-        {activities.length === 0 && (
-          <div className="text-gray-500 py-6 text-center">Keine Aktivitäten im Zeitraum.</div>
         )}
       </div>
       <div className="mt-4 flex items-center justify-between gap-3 md:hidden">

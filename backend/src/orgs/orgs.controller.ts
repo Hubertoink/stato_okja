@@ -4,7 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from '../users/users.service';
-import type { OpeningHours, OrganizationTaxonomySettings } from './entities/organization.entity';
+import type { OpeningHours, OrganizationTaxonomySettingsUpdatePayload } from './entities/organization.entity';
 
 function orgMoveFeatureEnabled() {
   return ['1', 'true', 'yes', 'on'].includes(String(process.env.ENABLE_ORG_MOVE || '').toLowerCase());
@@ -63,10 +63,10 @@ export class OrgsController {
   @Patch(':id/taxonomy-settings')
   updateTaxonomySettings(
     @Param('id') id: string,
-    @Body() body: OrganizationTaxonomySettings,
+    @Body() body: OrganizationTaxonomySettingsUpdatePayload,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
-    return this.service.updateChildTaxonomySettingsScoped(id, body || {}, req.user);
+    return this.service.updateOrgTaxonomySettingsScoped(id, body || {}, req.user);
   }
 
   @Roles('superadmin')

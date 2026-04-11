@@ -51,7 +51,11 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [snapshot, setSnapshot] = useState<OrgTaxonomySettingsSnapshot | null>(null);
-  const [draft, setDraft] = useState<OrgTaxonomySettingsSnapshot['settings'] | null>(null);
+  const [settingsDraft, setSettingsDraft] = useState<OrgTaxonomySettingsSnapshot['settings'] | null>(null);
+  const [childDefaultsDraft, setChildDefaultsDraft] = useState<OrgTaxonomySettingsSnapshot['childDefaults'] | null>(null);
+  const [activePanel, setActivePanel] = useState<'self' | 'children'>('self');
+  const [clearOwnSettings, setClearOwnSettings] = useState(false);
+  const [clearChildDefaults, setClearChildDefaults] = useState(false);
 
   useEffect(() => {
     if (!open || !org) return;
@@ -61,7 +65,11 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
       .then((data) => {
         if (!mounted) return;
         setSnapshot(data);
-        setDraft(data.settings);
+        setSettingsDraft(data.settings);
+        setChildDefaultsDraft(data.childDefaults);
+        setActivePanel(data.parentId ? 'self' : 'children');
+        setClearOwnSettings(false);
+        setClearChildDefaults(false);
       })
       .catch((error: unknown) => {
         const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Vererbungsregeln konnten nicht geladen werden.';
@@ -76,7 +84,14 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     };
   }, [open, org, onClose, showToast]);
 
-  const updateInherited = (key: keyof OrgTaxonomySettingsSnapshot['settings'], id: string) => {
+  const updateInherited = (
+    target: 'self' | 'children',
+    key: keyof OrgTaxonomySettingsSnapshot['settings'],
+    id: string,
+  ) => {
+    const setDraft = target === 'self' ? setSettingsDraft : setChildDefaultsDraft;
+    if (target === 'self') setClearOwnSettings(false);
+    else setClearChildDefaults(false);
     setDraft((current) => {
       if (!current) return current;
       const nextIds = new Set(current[key].inheritedIds || []);
@@ -89,21 +104,34 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     });
   };
 
-  const updateAllowOwn = (key: keyof OrgTaxonomySettingsSnapshot['settings'], allowOwn: boolean) => {
+  const updateAllowOwn = (
+    target: 'self' | 'children',
+    key: keyof OrgTaxonomySettingsSnapshot['settings'],
+    allowOwn: boolean,
+  ) => {
+    const setDraft = target === 'self' ? setSettingsDraft : setChildDefaultsDraft;
+    if (target === 'self') setClearOwnSettings(false);
+    else setClearChildDefaults(false);
     setDraft((current) => current ? { ...current, [key]: { ...current[key], allowOwn } } : current);
   };
 
-  const updateInheritAll = (key: keyof OrgTaxonomySettingsSnapshot['settings'], inheritAll: boolean) => {
+  const updateInheritAll = (
+    target: 'self' | 'children',
+    key: keyof OrgTaxonomySettingsSnapshot['settings'],
+    inheritAll: boolean,
+  ) => {
+    const setDraft = target === 'self' ? setSettingsDraft : setChildDefaultsDraft;
+    if (target === 'self') setClearOwnSettings(false);
+    else setClearChildDefaults(false);
     setDraft((current) => current ? { ...current, [key]: { ...current[key], inheritAll } } : current);
   };
 
-  const sections = snapshot && draft ? [
+  const sections = [
     {
       key: 'categories' as const,
       title: 'Kategorien',
       inheritAllLabel: 'Alle aktuellen und zukünftigen Kategorien vererben',
       allowLabel: 'Eigene Kategorien erlauben',
-      items: snapshot.parentOptions.categories,
       renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['categories'][number]) => item.name,
     },
     {
@@ -111,7 +139,6 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
       title: 'Tags',
       inheritAllLabel: 'Alle aktuellen und zukünftigen Tags vererben',
       allowLabel: 'Eigene Tags erlauben',
-      items: snapshot.parentOptions.tags,
       renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['tags'][number]) => item.name,
     },
     {
@@ -119,108 +146,297 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
       title: 'Kohorten',
       inheritAllLabel: 'Alle aktuellen und zukünftigen Kohorten vererben',
       allowLabel: 'Eigene Kohorten erlauben',
-      items: snapshot.parentOptions.cohorts,
       renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['cohorts'][number]) => `${item.name}${typeof item.minAge === 'number' && typeof item.maxAge === 'number' ? ` (${item.minAge}–${item.maxAge})` : ''}`,
     },
-  ] : [];
+  ];
 
-  return (
-    <Modal open={open} onClose={onClose} title={org ? `Vererbung für „${org.name}“` : 'Vererbung'} maxWidth="5xl">
-      {loading && <div className="py-8 text-center text-gray-500">Lade Vererbungsregeln…</div>}
-      {!loading && snapshot && draft && (
-        <div className="space-y-5">
-          <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
-            Quelle der geerbten Einträge: <strong>{snapshot.parentName || 'Übergeordnete Organisation'}</strong>
-          </div>
-          {sections.map((section) => (
-            <div key={section.key} className="rounded-xl border border-gray-200 p-4 space-y-3">
-              <div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">{section.title}</h4>
-                  <p className="text-xs text-gray-500">Wähle, welche Einträge aus der Parent-Organisation in dieser Unterorganisation sichtbar sind.</p>
-                </div>
+  const settingsEqual = (
+    left: OrgTaxonomySettingsSnapshot['settings'],
+    right: OrgTaxonomySettingsSnapshot['settings'],
+  ) => sections.every((section) => {
+    const leftEntry = left[section.key];
+    const rightEntry = right[section.key];
+    if (leftEntry.allowOwn !== rightEntry.allowOwn || leftEntry.inheritAll !== rightEntry.inheritAll) return false;
+    if (leftEntry.inheritedIds.length !== rightEntry.inheritedIds.length) return false;
+    return leftEntry.inheritedIds.every((id, index) => id === rightEntry.inheritedIds[index]);
+  });
+
+  const isSectionItemSelected = (
+    settings: OrgTaxonomySettingsSnapshot['settings'],
+    key: keyof OrgTaxonomySettingsSnapshot['settings'],
+    id: string,
+  ) => settings[key].inheritAll || settings[key].inheritedIds.includes(id);
+
+  const renderSettingsEditor = ({
+    draft,
+    target,
+    options,
+    baseline,
+    intro,
+    reset,
+  }: {
+    draft: OrgTaxonomySettingsSnapshot['settings'];
+    target: 'self' | 'children';
+    options: OrgTaxonomySettingsSnapshot['parentOptions'] | OrgTaxonomySettingsSnapshot['childDefaultOptions'];
+    baseline?: OrgTaxonomySettingsSnapshot['settings'];
+    intro: React.ReactNode;
+    reset?: React.ReactNode;
+  }) => (
+    <div className="space-y-5">
+      {intro}
+      {reset}
+      {target === 'self' && baseline ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          Gelb markierte Felder weichen von der aktuell geerbten Standardregel der übergeordneten Organisation ab.
+        </div>
+      ) : null}
+      {sections.map((section) => {
+        const sectionOptions = options[section.key];
+        const source = target === 'self' ? snapshot?.settingsSource[section.key] : null;
+        const baselineEntry = baseline?.[section.key];
+        const hasAllowOwnDiff = !!baselineEntry && draft[section.key].allowOwn !== baselineEntry.allowOwn;
+        const hasInheritAllDiff = !!baselineEntry && draft[section.key].inheritAll !== baselineEntry.inheritAll;
+        const changedItemCount = baselineEntry
+          ? sectionOptions.filter((item) => isSectionItemSelected(draft, section.key, item.id) !== isSectionItemSelected(baseline, section.key, item.id)).length
+          : 0;
+        const hasSectionDiff = hasAllowOwnDiff || hasInheritAllDiff || changedItemCount > 0;
+        return (
+          <div key={`${target}-${section.key}`} className={`rounded-xl border p-4 space-y-3 ${hasSectionDiff ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}>
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="font-semibold text-gray-900">{section.title}</h4>
+                {hasSectionDiff ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">Override aktiv</span> : null}
               </div>
-              <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/80 p-3">
-                <label className="flex items-start gap-3 rounded-lg bg-white px-3 py-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={draft[section.key].inheritAll}
-                    onChange={(event) => updateInheritAll(section.key, event.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
-                  />
-                  <span className="min-w-0">
-                    <span className="block font-medium text-gray-800">{section.inheritAllLabel}</span>
-                    <span className="block text-xs text-gray-500">
-                      Bestehende und künftig sichtbare Parent-Einträge werden automatisch übernommen.
-                    </span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-3 rounded-lg bg-white px-3 py-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={draft[section.key].allowOwn}
-                    onChange={(event) => updateAllowOwn(section.key, event.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
-                  />
-                  <span className="min-w-0">
-                    <span className="block font-medium text-gray-800">{section.allowLabel}</span>
-                    <span className="block text-xs text-gray-500">
-                      Lokale Einträge können zusätzlich in dieser Organisation angelegt werden.
-                    </span>
-                  </span>
-                </label>
+              <p className="text-xs text-gray-500">
+                {target === 'self'
+                  ? 'Wähle, welche Einträge aus der Parent-Organisation in dieser Unterorganisation sichtbar sind.'
+                  : 'Lege fest, welche Einträge Unterorganisationen standardmäßig von dieser Organisation sehen.'}
+              </p>
+            </div>
+            {target === 'self' && source && source.mode !== 'explicit' ? (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                Derzeit greift {source.mode === 'default' ? `der Standard von ${source.sourceOrgName || 'einer übergeordneten Organisation'}` : 'das bisherige Standardsystem ohne expliziten Override'}.
               </div>
-              {section.items.length > 0 ? (
-                <>
-                  {draft[section.key].inheritAll && (
-                    <div className="rounded-lg border border-viridian/20 bg-viridian/5 px-3 py-2 text-xs text-viridian">
-                      Alle aktuell sichtbaren Parent-Einträge sind aktiv und neue Einträge werden künftig automatisch mit vererbt.
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {section.items.map((item) => {
+            ) : null}
+            <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/80 p-3">
+              <label className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 ${hasInheritAllDiff ? 'border border-amber-300 bg-amber-50' : 'bg-white'}`}>
+                <input
+                  type="checkbox"
+                  checked={draft[section.key].inheritAll}
+                  onChange={(event) => updateInheritAll(target, section.key, event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                />
+                <span className="min-w-0">
+                  <span className="block font-medium text-gray-800">{section.inheritAllLabel}</span>
+                  <span className="block text-xs text-gray-500">
+                    {target === 'self'
+                      ? 'Bestehende und künftig sichtbare Parent-Einträge werden automatisch übernommen.'
+                      : 'Direkte und weitere Unterorganisationen übernehmen bestehende und künftig sichtbare Einträge automatisch, solange dort kein eigener Override gesetzt ist.'}
+                  </span>
+                </span>
+              </label>
+              <label className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 ${hasAllowOwnDiff ? 'border border-amber-300 bg-amber-50' : 'bg-white'}`}>
+                <input
+                  type="checkbox"
+                  checked={draft[section.key].allowOwn}
+                  onChange={(event) => updateAllowOwn(target, section.key, event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                />
+                <span className="min-w-0">
+                  <span className="block font-medium text-gray-800">{section.allowLabel}</span>
+                  <span className="block text-xs text-gray-500">
+                    {target === 'self'
+                      ? 'Lokale Einträge können zusätzlich in dieser Organisation angelegt werden.'
+                      : 'Unterorganisationen dürfen zusätzlich eigene lokale Einträge anlegen, sofern sie keinen eigenen Override setzen.'}
+                  </span>
+                </span>
+              </label>
+            </div>
+            {sectionOptions.length > 0 ? (
+              <>
+                {draft[section.key].inheritAll && (
+                  <div className="rounded-lg border border-viridian/20 bg-viridian/5 px-3 py-2 text-xs text-viridian">
+                    {target === 'self'
+                      ? 'Alle aktuell sichtbaren Parent-Einträge sind aktiv und neue Einträge werden künftig automatisch mit vererbt.'
+                      : 'Unterorganisationen erhalten alle aktuell sichtbaren Einträge dieser Organisation und künftig sichtbare Einträge automatisch.'}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {sectionOptions.map((item) => {
                     const selected = draft[section.key].inheritAll || draft[section.key].inheritedIds.includes(item.id);
+                    const differsFromBaseline = baselineEntry
+                      ? isSectionItemSelected(draft, section.key, item.id) !== isSectionItemSelected(baseline, section.key, item.id)
+                      : false;
                     return (
-                      <label key={item.id} className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${draft[section.key].inheritAll ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${selected ? 'border-viridian bg-viridian/5' : 'border-gray-200 bg-white'}`}>
+                      <label key={`${target}-${section.key}-${item.id}`} className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${draft[section.key].inheritAll ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${differsFromBaseline ? 'border-amber-300 bg-amber-50' : selected ? 'border-viridian bg-viridian/5' : 'border-gray-200 bg-white'}`}>
                         <input
                           type="checkbox"
                           checked={selected}
-                          onChange={() => updateInherited(section.key, item.id)}
+                          onChange={() => updateInherited(target, section.key, item.id)}
                           disabled={draft[section.key].inheritAll}
                           className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
                         />
                         <span className="min-w-0">
                           <span className="block text-sm font-medium text-gray-800">{section.renderItem(item as never)}</span>
-                          {item.sourceOrgName && item.sourceOrgName !== snapshot.parentName && (
+                          {item.sourceOrgName && target === 'self' && item.sourceOrgName !== snapshot?.parentName && (
                             <span className="block text-xs text-gray-500">Im Parent-Kontext geerbt aus {item.sourceOrgName}</span>
                           )}
                         </span>
                       </label>
                     );
                   })}
-                  </div>
-                </>
-              ) : (
-                <div className="text-sm text-gray-500">
-                  {draft[section.key].inheritAll
-                    ? 'Derzeit sind noch keine passenden Parent-Einträge sichtbar. Neue Einträge werden nach dem Anlegen automatisch vererbt.'
-                    : 'In der Parent-Organisation sind derzeit keine passenden Einträge sichtbar.'}
                 </div>
-              )}
-            </div>
-          ))}
+              </>
+            ) : (
+              <div className="text-sm text-gray-500">
+                {draft[section.key].inheritAll
+                  ? 'Derzeit sind noch keine passenden Einträge sichtbar. Neue Einträge werden nach dem Anlegen automatisch berücksichtigt.'
+                  : target === 'self'
+                    ? 'In der Parent-Organisation sind derzeit keine passenden Einträge sichtbar.'
+                    : 'In dieser Organisation sind derzeit keine passenden Einträge sichtbar.'}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <Modal open={open} onClose={onClose} title={org ? `Vererbung für „${org.name}“` : 'Vererbung'} maxWidth="5xl">
+      {loading && <div className="py-8 text-center text-gray-500">Lade Vererbungsregeln…</div>}
+      {!loading && snapshot && settingsDraft && childDefaultsDraft && (
+        <div className="space-y-5">
+          <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
+            {snapshot.parentName ? (
+              <>
+                Quelle der geerbten Einträge: <strong>{snapshot.parentName}</strong>
+              </>
+            ) : (
+              <>
+                Oberste Organisation: Hier kannst du Standardregeln für Unterorganisationen definieren.
+              </>
+            )}
+          </div>
+          <div className="inline-flex items-center rounded-xl border border-gray-300 bg-white p-1 shadow-sm">
+            {snapshot.parentId ? (
+              <button
+                type="button"
+                onClick={() => setActivePanel('self')}
+                aria-pressed={activePanel === 'self'}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'self' ? 'bg-viridian text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                Diese Organisation
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setActivePanel('children')}
+              aria-pressed={activePanel === 'children'}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'children' ? 'bg-viridian text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100'}`}
+            >
+              Unterorganisationen
+            </button>
+          </div>
+          {activePanel === 'self' && snapshot.parentId ? renderSettingsEditor({
+            draft: settingsDraft,
+            target: 'self',
+            options: snapshot.parentOptions,
+            baseline: snapshot.fallbackSettings,
+            intro: (
+              <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+                Diese Regeln gelten nur für <strong>{snapshot.orgName}</strong>. Wenn kein eigener Override gesetzt ist, werden Standards aus der Hierarchie verwendet.
+                {snapshot.hasExplicitSettings ? (
+                  <div className="mt-1 text-xs text-gray-500">
+                    Vergleichsbasis: {snapshot.fallbackSource.categories.sourceOrgName || snapshot.fallbackSource.tags.sourceOrgName || snapshot.fallbackSource.cohorts.sourceOrgName || 'übergeordnete Standardvererbung'}
+                  </div>
+                ) : null}
+              </div>
+            ),
+            reset: snapshot.hasExplicitSettings || clearOwnSettings ? (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    if (clearOwnSettings) {
+                      setClearOwnSettings(false);
+                      setSettingsDraft(snapshot.settings);
+                      return;
+                    }
+                    setClearOwnSettings(true);
+                    setSettingsDraft(snapshot.fallbackSettings);
+                  }}
+                >
+                  {clearOwnSettings ? 'Override wiederherstellen' : 'Eigenen Override entfernen'}
+                </button>
+              </div>
+            ) : clearOwnSettings ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Beim Speichern wird der eigene Override entfernt. Danach gelten wieder die Standards der übergeordneten Organisation.
+              </div>
+            ) : null,
+          }) : renderSettingsEditor({
+            draft: childDefaultsDraft,
+            target: 'children',
+            options: snapshot.childDefaultOptions,
+            intro: (
+              <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+                Diese Standardregeln gelten für direkte und weitere Unterorganisationen von <strong>{snapshot.orgName}</strong>, solange dort kein eigener Override gesetzt ist.
+                <div className="mt-1 text-xs text-gray-500">Direkte Unterorganisationen aktuell: {snapshot.childCount}</div>
+              </div>
+            ),
+            reset: snapshot.hasChildDefaults ? (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    setClearChildDefaults(true);
+                    setChildDefaultsDraft(snapshot.childDefaults);
+                  }}
+                >
+                  Standardregeln entfernen
+                </button>
+              </div>
+            ) : clearChildDefaults ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Beim Speichern werden keine Standardregeln mehr vorgegeben. Unterorganisationen verwenden dann den nächsthöheren Standard oder ihre eigenen Overrides.
+              </div>
+            ) : null,
+          })}
           <div className="flex items-center justify-end gap-3 pt-2 border-t">
             <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200" onClick={onClose}>Abbrechen</button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={saving}
               onClick={async () => {
-                if (!org || !draft) return;
+                if (!org || !settingsDraft || !childDefaultsDraft) return;
                 try {
                   setSaving(true);
-                  const saved = await updateOrgTaxonomySettings(org.id, draft);
+                  const payload = {
+                    settings: snapshot.parentId
+                      ? clearOwnSettings
+                        ? null
+                        : settingsEqual(settingsDraft, snapshot.settings)
+                          ? undefined
+                          : settingsDraft
+                      : undefined,
+                    childDefaults: clearChildDefaults
+                      ? null
+                      : settingsEqual(childDefaultsDraft, snapshot.childDefaults)
+                        ? undefined
+                        : childDefaultsDraft,
+                  };
+                  const saved = await updateOrgTaxonomySettings(org.id, {
+                    settings: payload.settings,
+                    childDefaults: payload.childDefaults,
+                  });
                   setSnapshot(saved);
-                  setDraft(saved.settings);
+                  setSettingsDraft(saved.settings);
+                  setChildDefaultsDraft(saved.childDefaults);
+                  setClearOwnSettings(false);
+                  setClearChildDefaults(false);
                   showToast('Vererbungsregeln gespeichert.', { type: 'success' });
                   onSaved();
                   onClose();
@@ -671,7 +887,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, exp
 }) {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const canConfigureTaxonomy = !!org.parentId && (user?.role === 'superadmin' || (user?.role === 'org_admin' && org.parentId === user?.orgId));
+  const canConfigureTaxonomy = !!user && (user.role === 'superadmin' || (user.role === 'org_admin' && (org.id === user.orgId || org.parentId === user.orgId)));
   const [orgUsers, setOrgUsers] = useState<{ admins: { name: string }[]; users: { name: string }[] } | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
   const [open, setOpen] = useState(false);

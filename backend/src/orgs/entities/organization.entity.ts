@@ -32,6 +32,11 @@ export interface OrganizationTaxonomySettings {
   cohorts?: OrganizationTaxonomyTypeSetting;
 }
 
+export interface OrganizationTaxonomySettingsUpdatePayload {
+  settings?: OrganizationTaxonomySettings | null;
+  childDefaults?: OrganizationTaxonomySettings | null;
+}
+
 @Entity('organizations')
 export class Organization {
   @PrimaryGeneratedColumn('uuid')
@@ -66,4 +71,8 @@ export class Organization {
   // Kind-spezifische Regeln für geerbte Statistik-Taxonomien
   @Column({ type: 'simple-json', nullable: true })
   taxonomySettings!: OrganizationTaxonomySettings | null;
+
+  // Standardregeln, die Unterorganisationen ohne eigenen Override übernehmen
+  @Column({ type: 'simple-json', nullable: true })
+  childTaxonomyDefaults!: OrganizationTaxonomySettings | null;
 }

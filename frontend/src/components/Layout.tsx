@@ -21,6 +21,7 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
+import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
 
 export default function Layout() {
   const location = useLocation();
@@ -104,6 +105,7 @@ export default function Layout() {
   const [orgList, setOrgList] = useState<OrgDto[]>([]);
   const [pendingScope, setPendingScope] = useState<string | null | undefined>(undefined);
   const [activeOrgName, setActiveOrgName] = useState<string | null>(null);
+  const [branding, setBranding] = useState(DEFAULT_PUBLIC_CONFIG);
   // Quick-create org modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
@@ -228,6 +230,21 @@ export default function Layout() {
     })();
   }, [createModalOpen]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const config = await fetchPublicConfig();
+        if (!cancelled) setBranding(config);
+      } catch {
+        /* keep defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -240,7 +257,14 @@ export default function Layout() {
               className="w-9 h-9 md:w-11 md:h-11 object-contain select-none drop-shadow-lg"
             />
             <div className="leading-tight min-w-0">
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight truncate">StatO</h1>
+              <div className="flex min-w-0 items-baseline gap-2">
+                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight truncate">StatO</h1>
+                {branding.orgName ? (
+                  <span className="min-w-0 truncate text-xs md:text-sm font-medium text-gray-600">
+                    {branding.orgName}
+                  </span>
+                ) : null}
+              </div>
               <p className="text-[11px] md:text-sm text-gray-600 truncate">
                 OKJA Statistik & Dokumentation
               </p>

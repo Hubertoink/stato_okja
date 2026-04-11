@@ -533,11 +533,21 @@ export default function Dashboard() {
             const what = labelMap[e.entityType] || e.entityType;
             const title = e.entityTitle ? ` „${e.entityTitle}“` : '';
             const when = new Date(e.createdAt).toLocaleString('de-DE');
+            const ackDone =
+              e.entityType === 'activity' &&
+              e.action === 'update' &&
+              typeof (e.details as { ackDone?: unknown } | null | undefined)?.ackDone === 'boolean'
+                ? Boolean((e.details as { ackDone?: boolean }).ackDone)
+                : null;
             const verb =
               e.action === 'login'
                 ? 'angemeldet'
                 : e.action === 'create'
                 ? 'angelegt'
+                : ackDone !== null
+                  ? ackDone
+                    ? 'als besprochen markiert'
+                    : 'als unbesprochen markiert'
                 : e.action === 'update'
                   ? 'bearbeitet'
                   : 'gelöscht';

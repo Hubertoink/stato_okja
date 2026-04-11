@@ -40,6 +40,7 @@ import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
+const PROJECTS_STARRED_FIRST_STORAGE_KEY = 'projects:starred-first';
 
 const PROJECT_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -1620,6 +1621,13 @@ export default function Projects() {
   }, [desktopView]);
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; project?: Project } | null>(null);
   const { showToast } = useToast();
+  const [starredFirst, setStarredFirst] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(PROJECTS_STARRED_FIRST_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   // Archivierte Projekte nur anzeigen, wenn Checkbox aktiv ist.
   // Wenn nicht aktiv, filtern wir auf archived=false. Wenn aktiv, keinen Filter (zeigt alle an).
   const { data, isLoading } = useProjects({
@@ -1635,6 +1643,13 @@ export default function Projects() {
   const projects = data || [];
   const isDesktopListView = desktopView === 'list';
   const [starred, setStarred] = useState<string[]>(() => getStarredProjectIds());
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROJECTS_STARRED_FIRST_STORAGE_KEY, starredFirst ? 'true' : 'false');
+    } catch {
+      /* ignore */
+    }
+  }, [starredFirst]);
   const { data: categoriesList } = useCategories({ active: true });
   const { data: tagsList } = useTags({ active: true });
   const categoryMap = useMemo(() => {
@@ -1647,6 +1662,16 @@ export default function Projects() {
     (tagsList || []).forEach((t) => m.set(t.name, { id: t.id, name: t.name, color: t.color }));
     return m;
   }, [tagsList]);
+  const sortedProjects = useMemo(() => {
+    if (!starredFirst || projects.length < 2 || starred.length === 0) return projects;
+    const starredIds = new Set(starred);
+    return [...projects].sort((left, right) => {
+      const leftStarred = starredIds.has(left.id);
+      const rightStarred = starredIds.has(right.id);
+      if (leftStarred === rightStarred) return 0;
+      return leftStarred ? -1 : 1;
+    });
+  }, [projects, starred, starredFirst]);
 
   return (
     <div>
@@ -1682,6 +1707,20 @@ export default function Projects() {
               </button>
             )}
           </div>
+          <button
+            type="button"
+            onClick={() => setStarredFirst((current) => !current)}
+            aria-pressed={starredFirst}
+            aria-label={starredFirst ? 'Highlights zuerst deaktivieren' : 'Highlights zuerst aktivieren'}
+            title={starredFirst ? 'Highlights zuerst deaktivieren' : 'Highlights zuerst aktivieren'}
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${
+              starredFirst
+                ? 'border-yellow-300 bg-yellow-100 text-yellow-700 shadow-sm'
+                : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+            }`}
+          >
+            {starredFirst ? <Star className="h-4 w-4" /> : <StarOff className="h-4 w-4" />}
+          </button>
           {archivedCount > 0 && (
             <Toggle
               checked={showArchived}
@@ -1736,7 +1775,7 @@ export default function Projects() {
             isDesktopListView ? 'md:grid-cols-1' : 'lg:grid-cols-3'
           }`}
         >
-          {projects.map((p) => {
+          {sortedProjects.map((p) => {
             let cat = p.categoryId ? categoryMap.get(p.categoryId) : undefined;
             if (!cat && Array.isArray(p.categories) && p.categories.length) {
               const first = p.categories[0];
@@ -1794,7 +1833,7 @@ export default function Projects() {
               />
             );
           })}
-          {projects.length === 0 && <div className="text-gray-500">Keine Projekte gefunden.</div>}
+          {sortedProjects.length === 0 && <div className="text-gray-500">Keine Projekte gefunden.</div>}
         </div>
       )}
 

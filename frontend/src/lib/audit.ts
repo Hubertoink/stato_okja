@@ -13,6 +13,7 @@ export interface AuditLog {
   orgName?: string | null;
   entityTitle?: string | null;
   diff?: Record<string, { from: unknown; to: unknown }> | null;
+  details?: Record<string, unknown> | null;
   createdAt: string;
 }
 

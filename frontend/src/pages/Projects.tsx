@@ -11,8 +11,10 @@ import {
 import {
   Layers,
   Pencil,
+  Search,
   Save as SaveIcon,
   X as XIcon,
+  XCircle,
   Archive as ArchiveIcon,
   ArchiveRestore as ArchiveRestoreIcon,
   Trash2,
@@ -1660,12 +1662,26 @@ export default function Projects() {
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex gap-3 flex-col sm:flex-row sm:items-center">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Suchen…"
-            className="w-full md:w-80 border border-gray-300 rounded px-3 py-2"
-          />
+          <div className="relative w-full md:w-80">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Suchen…"
+              className="w-full rounded border border-gray-300 py-2 pl-9 pr-10"
+            />
+            {search.trim() && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                aria-label="Suche löschen"
+                title="Suche löschen"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           {archivedCount > 0 && (
             <Toggle
               checked={showArchived}

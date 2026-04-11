@@ -5,6 +5,7 @@ export interface OrgDto { id: string; name: string; parentId?: string | null; pa
 export interface OrgTaxonomyTypeSetting {
   allowOwn: boolean;
   inheritedIds: string[];
+  inheritAll: boolean;
 }
 
 export interface VisibleTaxonomyItem {

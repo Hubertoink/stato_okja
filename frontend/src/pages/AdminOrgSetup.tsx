@@ -93,10 +93,15 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     setDraft((current) => current ? { ...current, [key]: { ...current[key], allowOwn } } : current);
   };
 
+  const updateInheritAll = (key: keyof OrgTaxonomySettingsSnapshot['settings'], inheritAll: boolean) => {
+    setDraft((current) => current ? { ...current, [key]: { ...current[key], inheritAll } } : current);
+  };
+
   const sections = snapshot && draft ? [
     {
       key: 'categories' as const,
       title: 'Kategorien',
+      inheritAllLabel: 'Alle aktuellen und zukünftigen Kategorien vererben',
       allowLabel: 'Eigene Kategorien erlauben',
       items: snapshot.parentOptions.categories,
       renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['categories'][number]) => item.name,
@@ -104,6 +109,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     {
       key: 'tags' as const,
       title: 'Tags',
+      inheritAllLabel: 'Alle aktuellen und zukünftigen Tags vererben',
       allowLabel: 'Eigene Tags erlauben',
       items: snapshot.parentOptions.tags,
       renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['tags'][number]) => item.name,
@@ -111,6 +117,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     {
       key: 'cohorts' as const,
       title: 'Kohorten',
+      inheritAllLabel: 'Alle aktuellen und zukünftigen Kohorten vererben',
       allowLabel: 'Eigene Kohorten erlauben',
       items: snapshot.parentOptions.cohorts,
       renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['cohorts'][number]) => `${item.name}${typeof item.minAge === 'number' && typeof item.maxAge === 'number' ? ` (${item.minAge}–${item.maxAge})` : ''}`,
@@ -118,7 +125,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
   ] : [];
 
   return (
-    <Modal open={open} onClose={onClose} title={org ? `Vererbung für „${org.name}“` : 'Vererbung'} maxWidth="lg">
+    <Modal open={open} onClose={onClose} title={org ? `Vererbung für „${org.name}“` : 'Vererbung'} maxWidth="5xl">
       {loading && <div className="py-8 text-center text-gray-500">Lade Vererbungsregeln…</div>}
       {!loading && snapshot && draft && (
         <div className="space-y-5">
@@ -127,31 +134,59 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
           </div>
           {sections.map((section) => (
             <div key={section.key} className="rounded-xl border border-gray-200 p-4 space-y-3">
-              <div className="flex items-center justify-between gap-3">
+              <div>
                 <div>
                   <h4 className="font-semibold text-gray-900">{section.title}</h4>
                   <p className="text-xs text-gray-500">Wähle, welche Einträge aus der Parent-Organisation in dieser Unterorganisation sichtbar sind.</p>
                 </div>
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              </div>
+              <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/80 p-3">
+                <label className="flex items-start gap-3 rounded-lg bg-white px-3 py-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={draft[section.key].inheritAll}
+                    onChange={(event) => updateInheritAll(section.key, event.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                  />
+                  <span className="min-w-0">
+                    <span className="block font-medium text-gray-800">{section.inheritAllLabel}</span>
+                    <span className="block text-xs text-gray-500">
+                      Bestehende und künftig sichtbare Parent-Einträge werden automatisch übernommen.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 rounded-lg bg-white px-3 py-2 text-sm text-gray-700">
                   <input
                     type="checkbox"
                     checked={draft[section.key].allowOwn}
                     onChange={(event) => updateAllowOwn(section.key, event.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
                   />
-                  {section.allowLabel}
+                  <span className="min-w-0">
+                    <span className="block font-medium text-gray-800">{section.allowLabel}</span>
+                    <span className="block text-xs text-gray-500">
+                      Lokale Einträge können zusätzlich in dieser Organisation angelegt werden.
+                    </span>
+                  </span>
                 </label>
               </div>
               {section.items.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <>
+                  {draft[section.key].inheritAll && (
+                    <div className="rounded-lg border border-viridian/20 bg-viridian/5 px-3 py-2 text-xs text-viridian">
+                      Alle aktuell sichtbaren Parent-Einträge sind aktiv und neue Einträge werden künftig automatisch mit vererbt.
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {section.items.map((item) => {
-                    const selected = draft[section.key].inheritedIds.includes(item.id);
+                    const selected = draft[section.key].inheritAll || draft[section.key].inheritedIds.includes(item.id);
                     return (
-                      <label key={item.id} className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer ${selected ? 'border-viridian bg-viridian/5' : 'border-gray-200 bg-white'}`}>
+                      <label key={item.id} className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${draft[section.key].inheritAll ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${selected ? 'border-viridian bg-viridian/5' : 'border-gray-200 bg-white'}`}>
                         <input
                           type="checkbox"
                           checked={selected}
                           onChange={() => updateInherited(section.key, item.id)}
+                          disabled={draft[section.key].inheritAll}
                           className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
                         />
                         <span className="min-w-0">
@@ -163,9 +198,14 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                       </label>
                     );
                   })}
-                </div>
+                  </div>
+                </>
               ) : (
-                <div className="text-sm text-gray-500">In der Parent-Organisation sind derzeit keine passenden Einträge sichtbar.</div>
+                <div className="text-sm text-gray-500">
+                  {draft[section.key].inheritAll
+                    ? 'Derzeit sind noch keine passenden Parent-Einträge sichtbar. Neue Einträge werden nach dem Anlegen automatisch vererbt.'
+                    : 'In der Parent-Organisation sind derzeit keine passenden Einträge sichtbar.'}
+                </div>
               )}
             </div>
           ))}

@@ -18,7 +18,7 @@ import { Project } from '../projects/entities/project.entity';
 const SUBTREE_CACHE_TTL_MS = 10_000;
 type SubtreeCacheEntry = { expiresAt: number; ids: string[] };
 type TaxonomyRecord = Category | Tag | Cohort;
-type NormalizedTaxonomySetting = { allowOwn: boolean; inheritedIds: string[] };
+type NormalizedTaxonomySetting = { allowOwn: boolean; inheritedIds: string[]; inheritAll: boolean };
 
 export interface VisibleTaxonomyMeta {
   sourceOrgId: string | null;
@@ -109,6 +109,7 @@ export class OrgsService {
     return {
       allowOwn: typeof setting?.allowOwn === 'boolean' ? setting.allowOwn : true,
       inheritedIds: this.dedupeIds(setting?.inheritedIds),
+      inheritAll: setting?.inheritAll === true,
     };
   }
 
@@ -184,11 +185,16 @@ export class OrgsService {
 
     const parentVisible = this.resolveVisibleTaxonomiesFromData(kind, org.parentId, orgMap, grouped, cache);
     const rawSetting = org.taxonomySettings?.[kind];
-    const selectedIds = Array.isArray(rawSetting?.inheritedIds)
-      ? new Set(this.dedupeIds(rawSetting.inheritedIds))
-      : new Set(this.getLegacyInheritedIds(kind, parentVisible));
+    const inheritAll = rawSetting?.inheritAll === true;
+    const selectedIds = inheritAll
+      ? null
+      : Array.isArray(rawSetting?.inheritedIds)
+        ? new Set(this.dedupeIds(rawSetting.inheritedIds))
+        : new Set(this.getLegacyInheritedIds(kind, parentVisible));
 
-    const inherited = parentVisible.filter((item) => selectedIds.has(item.id));
+    const inherited = inheritAll
+      ? parentVisible
+      : parentVisible.filter((item) => selectedIds?.has(item.id));
     const visible = new Map<string, T>();
     for (const item of inherited) visible.set(item.id, item);
     for (const item of own) visible.set(item.id, item);
@@ -430,14 +436,20 @@ export class OrgsService {
       cohorts: new Set((await this.listVisibleCohortsForOrg(child.parentId)).map((item) => item.id)),
     };
 
-    for (const id of normalized.categories.inheritedIds) {
-      if (!parentVisible.categories.has(id)) throw new BadRequestException('Ungültige Kategorien-Vererbung');
+    if (!normalized.categories.inheritAll) {
+      for (const id of normalized.categories.inheritedIds) {
+        if (!parentVisible.categories.has(id)) throw new BadRequestException('Ungültige Kategorien-Vererbung');
+      }
     }
-    for (const id of normalized.tags.inheritedIds) {
-      if (!parentVisible.tags.has(id)) throw new BadRequestException('Ungültige Tags-Vererbung');
+    if (!normalized.tags.inheritAll) {
+      for (const id of normalized.tags.inheritedIds) {
+        if (!parentVisible.tags.has(id)) throw new BadRequestException('Ungültige Tags-Vererbung');
+      }
     }
-    for (const id of normalized.cohorts.inheritedIds) {
-      if (!parentVisible.cohorts.has(id)) throw new BadRequestException('Ungültige Kohorten-Vererbung');
+    if (!normalized.cohorts.inheritAll) {
+      for (const id of normalized.cohorts.inheritedIds) {
+        if (!parentVisible.cohorts.has(id)) throw new BadRequestException('Ungültige Kohorten-Vererbung');
+      }
     }
 
     child.taxonomySettings = normalized;

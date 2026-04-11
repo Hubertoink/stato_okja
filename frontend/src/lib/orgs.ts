@@ -19,10 +19,34 @@ export interface VisibleTaxonomyItem {
 }
 
 export interface OrgTaxonomySettingsSnapshot {
-  childId: string;
+  orgId: string;
+  orgName: string;
   parentId: string | null;
   parentName: string | null;
+  hasExplicitSettings: boolean;
+  hasChildDefaults: boolean;
+  childCount: number;
   settings: {
+    categories: OrgTaxonomyTypeSetting;
+    tags: OrgTaxonomyTypeSetting;
+    cohorts: OrgTaxonomyTypeSetting;
+  };
+  settingsSource: {
+    categories: { mode: 'explicit' | 'default' | 'legacy'; sourceOrgId: string | null; sourceOrgName: string | null };
+    tags: { mode: 'explicit' | 'default' | 'legacy'; sourceOrgId: string | null; sourceOrgName: string | null };
+    cohorts: { mode: 'explicit' | 'default' | 'legacy'; sourceOrgId: string | null; sourceOrgName: string | null };
+  };
+  fallbackSettings: {
+    categories: OrgTaxonomyTypeSetting;
+    tags: OrgTaxonomyTypeSetting;
+    cohorts: OrgTaxonomyTypeSetting;
+  };
+  fallbackSource: {
+    categories: { mode: 'default' | 'legacy'; sourceOrgId: string | null; sourceOrgName: string | null };
+    tags: { mode: 'default' | 'legacy'; sourceOrgId: string | null; sourceOrgName: string | null };
+    cohorts: { mode: 'default' | 'legacy'; sourceOrgId: string | null; sourceOrgName: string | null };
+  };
+  childDefaults: {
     categories: OrgTaxonomyTypeSetting;
     tags: OrgTaxonomyTypeSetting;
     cohorts: OrgTaxonomyTypeSetting;
@@ -37,6 +61,16 @@ export interface OrgTaxonomySettingsSnapshot {
     tags: VisibleTaxonomyItem[];
     cohorts: Array<VisibleTaxonomyItem & { minAge?: number; maxAge?: number }>;
   };
+  childDefaultOptions: {
+    categories: VisibleTaxonomyItem[];
+    tags: VisibleTaxonomyItem[];
+    cohorts: Array<VisibleTaxonomyItem & { minAge?: number; maxAge?: number }>;
+  };
+}
+
+export interface OrgTaxonomySettingsUpdatePayload {
+  settings?: OrgTaxonomySettingsSnapshot['settings'] | null;
+  childDefaults?: OrgTaxonomySettingsSnapshot['childDefaults'] | null;
 }
 
 export interface OrgMoveImpactItem {
@@ -117,8 +151,8 @@ export async function getOrgTaxonomySettings(orgId: string) {
   return res.data;
 }
 
-export async function updateOrgTaxonomySettings(orgId: string, settings: OrgTaxonomySettingsSnapshot['settings']) {
-  const res = await api.patch<OrgTaxonomySettingsSnapshot>(`/orgs/${orgId}/taxonomy-settings`, settings);
+export async function updateOrgTaxonomySettings(orgId: string, payload: OrgTaxonomySettingsUpdatePayload) {
+  const res = await api.patch<OrgTaxonomySettingsSnapshot>(`/orgs/${orgId}/taxonomy-settings`, payload);
   return res.data;
 }
 

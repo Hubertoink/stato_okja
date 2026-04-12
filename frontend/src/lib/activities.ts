@@ -65,6 +65,7 @@ export type ActivitiesFilter = {
   categoryIds?: string[];
   uncategorized?: boolean;
   tagIds?: string[];
+  staffIds?: string[];
   cohortIds?: string[];
   hasNotes?: boolean;
   participantsMin?: number;
@@ -88,7 +89,7 @@ export function useActivities(params?: ActivitiesFilter, options?: ActivitiesQue
       // Encode arrays as comma-separated strings for simple query parsing
       const qp: Record<string, unknown> = { ...params };
       applyOrgScopeParam(qp, scope);
-      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','cohortIds'];
+      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','staffIds','cohortIds'];
       for (const k of arrayKeys) {
         const v = params?.[k];
         if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
@@ -131,7 +132,7 @@ export function useActivitiesPaged(
     queryFn: async () => {
       const qp: Record<string, unknown> = { ...params };
       applyOrgScopeParam(qp, scope);
-      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','cohortIds'];
+      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','staffIds','cohortIds'];
       for (const k of arrayKeys) {
         const v = params?.[k];
         if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');

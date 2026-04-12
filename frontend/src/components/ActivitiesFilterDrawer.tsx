@@ -1,12 +1,12 @@
 import Modal from './Modal';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X as XIcon } from 'lucide-react';
 import type { ActivitiesFilter } from '@/lib/activities';
 import { useOrgScopeKey } from '@/lib/orgScope';
 import { useTags, useCategories, useCohorts } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
+import { useStaff } from '@/lib/staff';
 import { api } from '@/lib/api';
 
 type ActivitiesTaxonomyAvailability = {
@@ -38,6 +38,7 @@ export default function ActivitiesFilterDrawer({
   const { data: cohorts = [] } = useCohorts({ active: true });
   const { data: projects = [] } = useProjects();
   const { data: locations = [] } = useLocations({ active: true });
+  const { data: staff = [] } = useStaff({ active: true });
   const availabilityQuery = useQuery({
     queryKey: ['activities-filter-taxonomy-availability', scopeKey],
     queryFn: async () => {
@@ -90,15 +91,6 @@ export default function ActivitiesFilterDrawer({
   const availabilityLoaded = availabilityQuery.isSuccess;
   const hasUncategorized = availabilityLoaded ? availabilityQuery.data.hasUncategorized : true;
 
-  const isDirty = useMemo(() => {
-    const obj = f as Record<string, unknown>;
-    return Object.entries(obj).some(([k, v]) => {
-      if (k === undefined) return false;
-      if (Array.isArray(v)) return v.length > 0;
-      return v !== undefined && v !== null && v !== '';
-    });
-  }, [f]);
-
   const toggleIn = (key: keyof ActivitiesFilter, id: string) => {
     setF((prev) => {
       const cur = new Set<string>((prev[key] as string[] | undefined) || []);
@@ -127,9 +119,11 @@ export default function ActivitiesFilterDrawer({
     });
   };
 
-  const reset = () => setF({});
-
   const apply = () => onApply(f);
+  const sortedStaff = useMemo(
+    () => [...staff].sort((left, right) => left.name.localeCompare(right.name, 'de')),
+    [staff],
+  );
 
   return (
     <Modal open={open} onClose={onClose} title="Filter" maxWidth="4xl">
@@ -251,6 +245,26 @@ export default function ActivitiesFilterDrawer({
                 ))}
               </div>
             </div>
+          </div>
+        </section>
+
+        <section>
+          <h4 className="font-semibold text-viridian mb-2">Mitarbeitende</h4>
+          <div className="max-h-48 md:max-h-64 overflow-auto border rounded p-2 space-y-1 text-sm">
+            {sortedStaff.length > 0 ? (
+              sortedStaff.map((member) => (
+                <label key={member.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!!f.staffIds?.includes(member.id)}
+                    onChange={() => toggleIn('staffIds', member.id)}
+                  />
+                  <span>{member.name}</span>
+                </label>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500 px-1 py-2">Keine Mitarbeitenden verfügbar.</div>
+            )}
           </div>
         </section>
 
@@ -443,28 +457,24 @@ export default function ActivitiesFilterDrawer({
           </div>
         </section>
 
-        <div className="sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 flex items-center justify-between gap-3 border-t">
-          <button
-            aria-label="Schließen"
-            title="Schließen"
-            className="inline-flex items-center justify-center w-8 h-8 rounded-full border bg-white text-gray-700"
-            onClick={onClose}
-          >
-            <XIcon className="w-4 h-4" />
-          </button>
-          {isDirty ? (
-            <button className="text-viridian underline" onClick={reset}>
-              Zurücksetzen
+        <div className="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-between">
+          <div />
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              onClick={onClose}
+            >
+              Schließen
             </button>
-          ) : (
-            <span />
-          )}
-          <button
-            className="bg-viridian text-white px-4 py-2 rounded hover:bg-cambridge-blue"
-            onClick={apply}
-          >
-            Anwenden
-          </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
+              onClick={apply}
+            >
+              Übernehmen
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

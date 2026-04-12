@@ -255,6 +255,8 @@ export class ActivitiesService {
 
     if (options?.includeStaff !== false) {
       qb.leftJoinAndSelect('a.staff', 'staff');
+    } else if (filters?.staffIds && filters.staffIds.length) {
+      qb.leftJoin('a.staff', 'staff');
     }
 
     if (filters?.from && filters?.to) {
@@ -364,6 +366,7 @@ export class ActivitiesService {
     projectIds?: string[];
     categoryIds?: string[];
     tagIds?: string[];
+    staffIds?: string[];
     cohortIds?: string[];
     weekdays?: number[];
     hasNotes?: boolean;
@@ -394,6 +397,7 @@ export class ActivitiesService {
     projectIds?: string[];
     categoryIds?: string[];
     tagIds?: string[];
+    staffIds?: string[];
     cohortIds?: string[];
     weekdays?: number[];
     hasNotes?: boolean;

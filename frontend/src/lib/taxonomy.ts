@@ -2,6 +2,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useOrgScopeKey } from './orgScope';
 
+function stripTaxonomyMutationMeta<T extends object>(data: Partial<T>): Partial<T> {
+  const sanitized = { ...data } as Record<string, unknown>;
+  delete sanitized.id;
+  delete sanitized.orgId;
+  delete sanitized.sourceOrgId;
+  delete sanitized.sourceOrgName;
+  delete sanitized.isInherited;
+  delete sanitized.canManage;
+  delete sanitized.org;
+  delete sanitized.createdAt;
+  delete sanitized.updatedAt;
+  return sanitized as Partial<T>;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -68,7 +82,7 @@ export function useCreateCategory() {
   const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async (data: Partial<Category>) => {
-      const res = await api.post('/taxonomy/categories', data);
+      const res = await api.post('/taxonomy/categories', stripTaxonomyMutationMeta(data));
       return res.data as Category;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['categories', scopeKey] }),
@@ -80,7 +94,7 @@ export function useUpdateCategory() {
   const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Category> }) => {
-      const res = await api.patch(`/taxonomy/categories/${id}`, data);
+      const res = await api.patch(`/taxonomy/categories/${id}`, stripTaxonomyMutationMeta(data));
       return res.data as Category;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['categories', scopeKey] }),
@@ -127,7 +141,7 @@ export function useCreateTag() {
   const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async (data: Partial<Tag>) => {
-      const res = await api.post('/taxonomy/tags', data);
+      const res = await api.post('/taxonomy/tags', stripTaxonomyMutationMeta(data));
       return res.data as Tag;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tags', scopeKey] }),
@@ -139,7 +153,7 @@ export function useUpdateTag() {
   const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Tag> }) => {
-      const res = await api.patch(`/taxonomy/tags/${id}`, data);
+      const res = await api.patch(`/taxonomy/tags/${id}`, stripTaxonomyMutationMeta(data));
       return res.data as Tag;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tags', scopeKey] }),
@@ -175,7 +189,7 @@ export function useCreateCohort() {
   const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async (data: Partial<Cohort>) => {
-      const res = await api.post('/taxonomy/cohorts', data);
+      const res = await api.post('/taxonomy/cohorts', stripTaxonomyMutationMeta(data));
       return res.data as Cohort;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cohorts', scopeKey] }),
@@ -187,7 +201,7 @@ export function useUpdateCohort() {
   const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Cohort> }) => {
-      const res = await api.patch(`/taxonomy/cohorts/${id}`, data);
+      const res = await api.patch(`/taxonomy/cohorts/${id}`, stripTaxonomyMutationMeta(data));
       return res.data as Cohort;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cohorts', scopeKey] }),

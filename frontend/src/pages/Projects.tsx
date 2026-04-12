@@ -1686,8 +1686,8 @@ export default function Projects() {
       </div>
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex gap-3 flex-col sm:flex-row sm:items-center">
-          <div className="relative w-full md:w-80">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-0 flex-1 md:w-80 md:flex-none">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               value={search}

@@ -1268,30 +1268,11 @@ export default function Statistics() {
                           : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
                       }`}
                       style={{
+                        backgroundColor: active ? overlayColor : undefined,
                         borderColor: active ? overlayColor : color || undefined,
                       }}
                       title={p.title}
                     >
-                      {active && imageUrl ? (
-                        <ProtectedImage
-                          src={imageUrl}
-                          alt=""
-                          aria-hidden
-                          className="absolute inset-0"
-                        />
-                      ) : null}
-
-                      {active ? (
-                        <>
-                          <span aria-hidden className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/45 to-black/60" />
-                          <span
-                            aria-hidden
-                            className="absolute inset-0"
-                            style={{ backgroundColor: overlayColor, opacity: 0.25 }}
-                          />
-                        </>
-                      ) : null}
-
                       <span className="relative flex items-center gap-2 min-w-0">
                         {imageUrl ? (
                           <span

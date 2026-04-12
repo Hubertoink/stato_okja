@@ -4,7 +4,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
-import { Download, Filter as FilterIcon, Plus, Search } from 'lucide-react';
+import { Download, Plus, Search, SlidersHorizontal } from 'lucide-react';
 // switched to xlsx-js-style inside the export handler to support cell styling
 import { api } from '@/lib/api';
 // basic location quick filter removed
@@ -28,6 +28,7 @@ import { getBgClass } from '@/lib/colorPalette';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useLocations } from '@/lib/locations';
 import { usePublicConfig } from '@/lib/publicConfig';
+import { useStaff } from '@/lib/staff';
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -76,7 +77,7 @@ function ActivitiesPaginationControls({
   return (
     <div className={`flex items-center ${compact ? 'gap-1.5' : 'gap-2'}`}>
       <button
-        className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
         onClick={onPrevious}
         disabled={page <= 1}
         title="Vorherige Seite"
@@ -88,7 +89,7 @@ function ActivitiesPaginationControls({
         {page} / {pageCount}
       </span>
       <button
-        className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
         onClick={onNext}
         disabled={page >= pageCount}
         title="Nächste Seite"
@@ -137,6 +138,7 @@ export default function Activities() {
   const { data: tags = [] } = useTags({ active: true });
   const { data: projects = [] } = useProjects();
   const { data: locations = [] } = useLocations({ active: true });
+  const { data: staff = [] } = useStaff({ active: true });
   const { data: publicConfig } = usePublicConfig();
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -180,6 +182,7 @@ export default function Activities() {
     categoryIds: advanced.categoryIds,
     uncategorized: advanced.uncategorized,
     tagIds: advanced.tagIds,
+    staffIds: advanced.staffIds,
     cohortIds: advanced.cohortIds,
     hasNotes: advanced.hasNotes,
     participantsMin: advanced.participantsMin,
@@ -279,6 +282,10 @@ export default function Activities() {
     () => new Map(tags.map((tag) => [tag.id, tag.name] as const)),
     [tags],
   );
+  const staffNameById = useMemo(
+    () => new Map(staff.map((member) => [member.id, member.name] as const)),
+    [staff],
+  );
   const cohortNameById = useMemo(
     () => new Map(cohorts.map((cohort) => [cohort.id, cohort.name] as const)),
     [cohorts],
@@ -303,6 +310,10 @@ export default function Activities() {
     () => formatSelectedFilterBadge('Tags', advanced.tagIds, tagNameById),
     [advanced.tagIds, tagNameById],
   );
+  const staffBadgeLabel = useMemo(
+    () => formatSelectedFilterBadge('Mitarbeitende', advanced.staffIds, staffNameById),
+    [advanced.staffIds, staffNameById],
+  );
   const cohortsBadgeLabel = useMemo(
     () => formatSelectedFilterBadge('Kohorten', advanced.cohortIds, cohortNameById),
     [advanced.cohortIds, cohortNameById],
@@ -324,6 +335,7 @@ export default function Activities() {
         'projectIds',
         'categoryIds',
         'tagIds',
+        'staffIds',
         'cohortIds',
       ];
       for (const k of arrayKeys) {
@@ -532,7 +544,7 @@ export default function Activities() {
                 </div>
               )}
               <button
-                className="inline-flex items-center justify-center rounded-lg bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10"
+                className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white text-viridian hover:bg-gray-50 hover:border-gray-300 transition-colors w-10 h-10"
                 title={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
                 aria-label={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
                 onClick={() => setSearchOpen((open) => !open)}
@@ -541,7 +553,7 @@ export default function Activities() {
               </button>
             </div>
             <button
-            className="relative inline-flex md:hidden items-center justify-center rounded-lg bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10 disabled:cursor-not-allowed disabled:opacity-60"
+            className="relative inline-flex md:hidden items-center justify-center rounded-lg border border-gray-200 bg-white text-viridian hover:bg-gray-50 hover:border-gray-300 transition-colors w-10 h-10 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white"
             title="Excel-Export"
             aria-label="Excel-Export"
             disabled={exporting || exportCount === 0}
@@ -550,7 +562,7 @@ export default function Activities() {
             <Download className="w-5 h-5" />
           </button>
           <button
-            className="hidden md:inline-flex items-center gap-2 rounded-lg bg-azure-web px-4 py-2 text-viridian hover:bg-mint-green transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            className="hidden md:inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-viridian hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white"
             title="Excel-Export"
             aria-label="Excel-Export"
             disabled={exporting || exportCount === 0}
@@ -558,21 +570,18 @@ export default function Activities() {
           >
             <Download className="h-5 w-5" />
           </button>
-          {/* Mobile icon-only: Filter */}
           <button
-            className="md:hidden inline-flex items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-mint-green transition-colors w-10 h-10"
+            type="button"
+            className={`inline-flex items-center justify-center rounded-lg border transition-colors touch-manipulation w-10 h-10 ${
+              hasAdvancedFilters
+                ? 'border-viridian/40 bg-white text-viridian ring-1 ring-viridian/20 hover:bg-gray-50'
+                : 'border-gray-200 bg-white text-viridian hover:bg-gray-50 hover:border-gray-300'
+            }`}
             onClick={() => setFilterDrawer(true)}
-            title="Filter"
-            aria-label="Filter"
+            title="Erweiterter Filter"
+            aria-label="Erweiterter Filter"
           >
-            <FilterIcon className="w-5 h-5" />
-          </button>
-          {/* Desktop: Filter text button */}
-          <button
-            className="hidden md:inline-flex items-center bg-azure-web text-viridian px-4 py-2 rounded-lg hover:bg-mint-green transition-colors"
-            onClick={() => setFilterDrawer(true)}
-          >
-            Filter
+            <SlidersHorizontal className="h-4 w-4" />
           </button>
           {/* Mobile icon-only: New activity */}
           <button
@@ -630,6 +639,7 @@ export default function Activities() {
             </span>
           ) : null}
           {tagsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{tagsBadgeLabel}</span> : null}
+          {staffBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{staffBadgeLabel}</span> : null}
           {cohortsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{cohortsBadgeLabel}</span> : null}
           {advanced.hasNotes ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">

@@ -2,6 +2,42 @@ import { ActivitiesService } from './activities.service';
 import { ActivityType, AuditAction } from '../common/enums';
 
 describe('ActivitiesService audit diff', () => {
+  it('joins staff for paged staff filters without selecting the relation', () => {
+    const queryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      distinct: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+    };
+    const activityRepository = {
+      createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+    };
+
+    const service = new ActivitiesService(
+      activityRepository as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    (service as any).buildListQuery(
+      { staffIds: ['staff-1'] },
+      { includeStaff: false },
+    );
+
+    expect(queryBuilder.leftJoin).toHaveBeenCalledWith('a.staff', 'staff');
+    expect(queryBuilder.leftJoinAndSelect).not.toHaveBeenCalledWith('a.staff', 'staff');
+    expect(queryBuilder.andWhere).toHaveBeenCalledWith('staff.id IN (:...staffIds)', {
+      staffIds: ['staff-1'],
+    });
+  });
+
   it('logs a curated diff for activity updates', async () => {
     const existingActivity = {
       id: 'activity-1',

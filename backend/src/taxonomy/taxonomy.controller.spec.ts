@@ -69,8 +69,32 @@ describe('TaxonomyController org scoping', () => {
   });
 
   it('categories: update strips orgId from payload', async () => {
-    await controller.updateCategory('id-1', { name: 'y', orgId: 'malicious' }, { user: { role: 'admin', orgId: 'own' } });
+    await controller.updateCategory(
+      'id-1',
+      { name: 'y', orgId: 'malicious', sourceOrgName: 'Parent', isInherited: true, canManage: false } as any,
+      { user: { role: 'admin', orgId: 'own' } },
+    );
     const [, passedData] = (service.updateCategoryScoped as jest.Mock).mock.calls[0];
-    expect(passedData).not.toHaveProperty('orgId');
+    expect(passedData).toEqual({ name: 'y' });
+  });
+
+  it('tags: update keeps only allowed tag fields', async () => {
+    await controller.updateTag(
+      'id-2',
+      { name: 'ferien', color: '#fff', orgId: 'malicious', sourceOrgId: 'parent', sourceOrgName: 'Parent', isInherited: true } as any,
+      { user: { role: 'admin', orgId: 'own' } },
+    );
+    const [, passedData] = (service.updateTagScoped as jest.Mock).mock.calls[0];
+    expect(passedData).toEqual({ name: 'ferien', color: '#fff' });
+  });
+
+  it('cohorts: update keeps only allowed cohort fields', async () => {
+    await controller.updateCohort(
+      'id-3',
+      { name: '12-14', minAge: 12, maxAge: 14, orgId: 'malicious', canManage: false, sourceOrgName: 'Parent' } as any,
+      { user: { role: 'admin', orgId: 'own' } },
+    );
+    const [, passedData] = (service.updateCohortScoped as jest.Mock).mock.calls[0];
+    expect(passedData).toEqual({ name: '12-14', minAge: 12, maxAge: 14 });
   });
 });

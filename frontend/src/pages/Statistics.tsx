@@ -159,6 +159,7 @@ export default function Statistics() {
   
   // Toggle für absolute vs. relative (Durchschnitt) Zahlen in KPIs
   const [showAverage, setShowAverage] = useState<boolean>(false);
+  const [cohortChartMode, setCohortChartMode] = useState<'bar' | 'pie'>('bar');
 
   // Zeitverlauf Aggregation: 'day' | 'week' | 'month'
   const [timeAggregation, setTimeAggregation] = useState<'day' | 'week' | 'month'>('day');
@@ -588,6 +589,8 @@ export default function Statistics() {
   const genderPieCenterY = isMobile ? '42%' : '46%';
   const genderInnerRadius = isMobile ? 44 : 54;
   const genderOuterRadius = isMobile ? 72 : 88;
+  const cohortPieCenterY = isMobile ? '41%' : '45%';
+  const cohortPieOuterRadius = isMobile ? 68 : 84;
 
   const genderData = gender
     ? [
@@ -742,12 +745,37 @@ export default function Statistics() {
     '#a855f7',
   ];
   const topCategoryChartData = useMemo(() => (byCategory || []).slice(0, 10), [byCategory]);
+  const cohortChartData = useMemo(() => {
+    const cohorts = Array.isArray(byCohort) ? byCohort : [];
+    if (!showAverage) return cohorts;
+
+    const activityCount = summary?.totalActivities ?? 0;
+    return cohorts.map((entry) => ({
+      ...entry,
+      chartValue:
+        activityCount > 0 ? Math.round((entry.total / activityCount) * 10) / 10 : 0,
+    }));
+  }, [byCohort, showAverage, summary?.totalActivities]);
+  const cohortPieData = useMemo(
+    () =>
+      cohortChartData
+        .filter((entry) => (entry.total ?? 0) > 0)
+        .map((entry, index) => ({
+          name: entry.name,
+          value: entry.total,
+          color: fallbackBarColors[index % fallbackBarColors.length],
+        })),
+    [cohortChartData, fallbackBarColors],
+  );
 
   // Generic label renderer for bar charts (positions label above the bar)
   type LabelProps = { x?: number; y?: number; width?: number; value?: number | string };
   const ValueLabel = (props: LabelProps) => {
     const { x, y, width, value } = props;
-    const txt = typeof value === 'number' ? value.toLocaleString('de-DE') : String(value ?? '');
+    const txt =
+      typeof value === 'number'
+        ? value.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+        : String(value ?? '');
     const cx = (x ?? 0) + (width ?? 0) / 2;
     const cy = (y ?? 0) - 4;
     return (
@@ -1358,6 +1386,20 @@ export default function Statistics() {
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-4xl font-bold text-cambridge-blue">
+              {showAverage
+                ? ((summary?.totalDurationMinutes ?? 0) > 0
+                    ? (((summary?.totalParticipants ?? 0) / ((summary?.totalDurationMinutes ?? 0) / 60))).toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                    : '0')
+                : ((summary?.totalDurationMinutes ?? 0) > 0
+                    ? (((summary?.totalParticipants ?? 0) / ((summary?.totalDurationMinutes ?? 0) / 60))).toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                    : '0')}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              {showAverage ? 'Ø Teilnehmende / Stunde' : 'Teilnehmende / Stunde'}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
               {showAverage
                 ? (summary?.totalActivities && summary?.totalActivities > 0
@@ -1367,18 +1409,6 @@ export default function Statistics() {
             </p>
             <p className="text-sm text-gray-600 mt-2">
               {showAverage ? 'Ø Stunden' : 'Gesamt-Stunden'}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-4xl font-bold text-cambridge-blue">
-              {showAverage
-                ? (summary?.totalActivities && summary?.totalActivities > 0
-                    ? (((summary?.totalMale ?? 0) + (summary?.totalFemale ?? 0) + (summary?.totalDiverse ?? 0)) / summary.totalActivities).toLocaleString('de-DE', { maximumFractionDigits: 1 })
-                    : '0')
-                : fmtNumber((summary?.totalMale ?? 0) + (summary?.totalFemale ?? 0) + (summary?.totalDiverse ?? 0))}
-            </p>
-            <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? 'Ø pro Aktivität' : 'Gesamt-Personen'}
             </p>
           </div>
         </div>
@@ -1568,25 +1598,90 @@ export default function Statistics() {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4 text-viridian">Alterskohorten</h3>
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <h3 className="text-lg font-semibold text-viridian">Alterskohorten</h3>
+              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setCohortChartMode('bar')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    cohortChartMode === 'bar'
+                      ? 'bg-white text-viridian shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Balken
+                </button>
+                <button
+                  onClick={() => setCohortChartMode('pie')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    cohortChartMode === 'pie'
+                      ? 'bg-white text-viridian shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Kreis
+                </button>
+              </div>
+            </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byCohort || []} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 12 }}
-                    interval={0}
-                    angle={-15}
-                    textAnchor="end"
-                    height={50}
-                  />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
-                  <Bar dataKey="total" name="Teilnehmende" fill="#2563eb">
-                    <LabelList dataKey="total" content={<ValueLabel />} />
-                  </Bar>
-                </BarChart>
+                {cohortChartMode === 'pie' ? (
+                  <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
+                    <Pie
+                      dataKey="value"
+                      data={cohortPieData}
+                      nameKey="name"
+                      cx="50%"
+                      cy={cohortPieCenterY}
+                      outerRadius={cohortPieOuterRadius}
+                      label={({ percent }) =>
+                        `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
+                      }
+                    >
+                      {cohortPieData.map((entry, index) => (
+                        <Cell key={`cohort-cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(
+                        value: number,
+                        _name: string,
+                        entry?: { payload?: { name?: string } },
+                      ) => [fmtNumber(value), entry?.payload?.name || '']}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      align="center"
+                      iconSize={11}
+                      wrapperStyle={pieLegendWrapperStyle}
+                    />
+                  </PieChart>
+                ) : (
+                  <BarChart data={cohortChartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      angle={-15}
+                      textAnchor="end"
+                      height={50}
+                    />
+                    <YAxis allowDecimals={showAverage} tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      formatter={(value: number) =>
+                        value.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                      }
+                    />
+                    <Bar
+                      dataKey={showAverage ? 'chartValue' : 'total'}
+                      name={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
+                      fill="#2563eb"
+                    >
+                      <LabelList dataKey={showAverage ? 'chartValue' : 'total'} content={<ValueLabel />} />
+                    </Bar>
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             </div>
           </div>

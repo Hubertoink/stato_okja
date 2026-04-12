@@ -29,6 +29,7 @@ import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLe
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
+import { usePublicConfig } from '@/lib/publicConfig';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -100,7 +101,16 @@ type StatsOverviewResponse = {
   availableYears: string[];
 };
 
-function useStatsOverview(params: { from?: string; to?: string; projectId?: string; type?: string; weekdays?: number[] }, scopeKey: string) {
+type StatisticsRealtimeOptions = {
+  refetchOnWindowFocus?: boolean | 'always';
+  refetchIntervalMs?: number;
+};
+
+function useStatsOverview(
+  params: { from?: string; to?: string; projectId?: string; type?: string; weekdays?: number[] },
+  scopeKey: string,
+  options?: StatisticsRealtimeOptions,
+) {
   return useQuery({
     queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? '', params.type ?? '', params.weekdays?.join(',') ?? ''],
     queryFn: async () => {
@@ -118,7 +128,12 @@ function useStatsOverview(params: { from?: string; to?: string; projectId?: stri
     },
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
+    refetchInterval:
+      typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
+        ? options.refetchIntervalMs
+        : false,
     placeholderData: keepPreviousData,
   });
 }
@@ -162,6 +177,7 @@ export default function Statistics() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
+  const { data: publicConfig } = usePublicConfig();
   const statsParams = useMemo(
     () => ({
       from: from || undefined,
@@ -182,7 +198,10 @@ export default function Statistics() {
     }),
     [from, to, projectId, selectedType, selectedWeekdays],
   );
-  const overviewQ = useStatsOverview(statsParams, scopeKey);
+  const overviewQ = useStatsOverview(statsParams, scopeKey, {
+    refetchOnWindowFocus: 'always',
+    refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+  });
   const overview = overviewQ.data;
   const summary = overview?.summary;
   const byType = overview?.byType;
@@ -193,7 +212,10 @@ export default function Statistics() {
   const topTags = overview?.topTags ?? [];
   const topProjects = overview?.topProjects ?? [];
   const activityYears = overview?.availableYears ?? [];
-  const activitiesPageQ = useActivitiesPaged(activitiesParams, activitiesPage, ACTIVITIES_PER_PAGE);
+  const activitiesPageQ = useActivitiesPaged(activitiesParams, activitiesPage, ACTIVITIES_PER_PAGE, {
+    refetchOnWindowFocus: 'always',
+    refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+  });
   const pagedActivities = activitiesPageQ.data?.data ?? [];
   const totalActivities = activitiesPageQ.data?.total ?? summary?.totalActivities ?? 0;
   const { data: tagsAll = [] } = useTags({ active: true });

@@ -37,8 +37,19 @@ import { useAuth } from '@/lib/auth';
 import { listOrgs, type OrgDto, getOpeningHours, OpeningHours } from '@/lib/orgs';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
+import { usePublicConfig } from '@/lib/publicConfig';
 
-function useMonthSummary(year: number, month: number, scopeKey: string) {
+type DashboardRealtimeOptions = {
+  refetchOnWindowFocus?: boolean | 'always';
+  refetchIntervalMs?: number;
+};
+
+function useMonthSummary(
+  year: number,
+  month: number,
+  scopeKey: string,
+  options?: DashboardRealtimeOptions,
+) {
   // month is 1-12
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to = new Date(year, month, 0); // last day of month
@@ -65,6 +76,11 @@ function useMonthSummary(year: number, month: number, scopeKey: string) {
         averageParticipants: number;
       };
     },
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
+    refetchInterval:
+      typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
+        ? options.refetchIntervalMs
+        : false,
   });
 }
 
@@ -76,11 +92,67 @@ function readTutorialDismissed(storageKey: string) {
   }
 }
 
+const ACTIVITY_AUDIT_FIELD_LABELS: Record<string, string> = {
+  title: 'Titel',
+  date: 'Datum',
+  startTime: 'Beginn',
+  endTime: 'Ende',
+  durationMinutes: 'Dauer (Min.)',
+  type: 'Typ',
+  project: 'Projekt',
+  location: 'Standort',
+  countMale: 'Teilnehmende m',
+  countFemale: 'Teilnehmende w',
+  countDiverse: 'Teilnehmende d',
+  countTotal: 'Teilnehmende gesamt',
+  notes: 'Notizen',
+  goals: 'Ziele',
+  categories: 'Kategorien',
+  tags: 'Tags',
+  staff: 'Mitarbeitende',
+  cohorts: 'Kohorten',
+};
+
+const ACTIVITY_AUDIT_TYPE_LABELS: Record<string, string> = {
+  open_door: 'Offene Tür',
+  project_open: 'Projekt (offen)',
+  project_closed: 'Projekt (geschlossen)',
+  event: 'Veranstaltung',
+  outreach: 'Aufsuchend',
+};
+
+function formatAuditDiffLabel(entityType: string, key: string) {
+  if (entityType === 'activity') return ACTIVITY_AUDIT_FIELD_LABELS[key] || key;
+  return key;
+}
+
+function formatAuditDiffValue(entityType: string, key: string, value: unknown): string {
+  if (Array.isArray(value)) {
+    const items = value
+      .map((entry) => formatAuditDiffValue(entityType, key, entry))
+      .filter((entry) => entry !== '—');
+    return items.length > 0 ? items.join(', ') : '—';
+  }
+  if (value === null || typeof value === 'undefined' || value === '') return '—';
+  if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
+  if (typeof value === 'number') return Number.isFinite(value) ? value.toLocaleString('de-DE') : '—';
+  if (entityType === 'activity' && key === 'type' && typeof value === 'string') {
+    return ACTIVITY_AUDIT_TYPE_LABELS[value] || value;
+  }
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 export default function Dashboard() {
   const { openQuickTally } = useOutletContext<{ openQuickTally: () => void }>();
   const scopeKey = useOrgScopeKey();
   const { scope } = useOrgScope();
   const { user } = useAuth();
+  const { data: publicConfig } = usePublicConfig();
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1; // 1-12
@@ -88,12 +160,18 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const [picker, setPicker] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
-  const { data: summary } = useMonthSummary(year, month, scopeKey);
+  const { data: summary } = useMonthSummary(year, month, scopeKey, {
+    refetchOnWindowFocus: 'always',
+    refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+  });
   const { data: projects = [], isLoading: projectsLoading } = useProjects({ archived: false });
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
   useActivities({ from, to });
-  const { data: audit } = useAuditLogs(50);
+  const { data: audit } = useAuditLogs(50, {
+    refetchOnWindowFocus: 'always',
+    refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+  });
   const [exportOpen, setExportOpen] = useState(false);
   const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
@@ -209,7 +287,21 @@ export default function Dashboard() {
   const fourteenDaysAgo = new Date(nowISO.getTime() - 14 * 24 * 60 * 60 * 1000);
   const from14 = `${fourteenDaysAgo.getFullYear()}-${String(fourteenDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(fourteenDaysAgo.getDate()).padStart(2, '0')}`;
   const toToday = `${nowISO.getFullYear()}-${String(nowISO.getMonth() + 1).padStart(2, '0')}-${String(nowISO.getDate()).padStart(2, '0')}`;
-  const { data: activitiesMonth = [] } = useActivities({ from: from14, to: toToday });
+  const { data: activitiesMonth = [], refetch: refetchDailyLogActivities } = useActivities(
+    { from: from14, to: toToday },
+    {
+      refetchOnWindowFocus: 'always',
+      refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+    },
+  );
+  const activityAuditRefreshKey = useMemo(
+    () =>
+      (audit || [])
+        .filter((entry) => entry.entityType === 'activity')
+        .map((entry) => `${entry.id}:${entry.createdAt}:${entry.action}`)
+        .join('|'),
+    [audit],
+  );
   // Persist a simple "done" flag per activity id for the Daily Log
   const [doneMap, setDoneMap] = useState<Record<string, boolean>>(() => {
     try {
@@ -254,6 +346,11 @@ export default function Dashboard() {
       createdAt: createById.get(a.id)?.at || `${a.date || ''} ${a.startTime || ''}`,
     }));
   }, [activitiesMonth, audit]);
+
+  useEffect(() => {
+    if (!activityAuditRefreshKey) return;
+    void refetchDailyLogActivities();
+  }, [activityAuditRefreshKey, refetchDailyLogActivities]);
 
   // Sync server-side ack state for the visible Daily Log items
   useEffect(() => {
@@ -582,8 +679,9 @@ export default function Dashboard() {
                             e.diff as Record<string, { from: unknown; to: unknown }>,
                           ).map(([k, v]) => (
                             <li key={k}>
-                              <span className="font-medium">{k}:</span> {String(v.from ?? '—')} →{' '}
-                              {String(v.to ?? '—')}
+                              <span className="font-medium">{formatAuditDiffLabel(e.entityType, k)}:</span>{' '}
+                              {formatAuditDiffValue(e.entityType, k, v.from)} →{' '}
+                              {formatAuditDiffValue(e.entityType, k, v.to)}
                             </li>
                           ))}
                         </ul>

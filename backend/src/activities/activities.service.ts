@@ -7,9 +7,31 @@ import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { Tag } from '../taxonomy/entities/tag.entity';
 import { Category } from '../taxonomy/entities/category.entity';
+import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Staff } from '../staff/entities/staff.entity';
 import { Project } from '../projects/entities/project.entity';
 import { OrgsService } from '../orgs/orgs.service';
+
+type ActivityAuditSnapshot = {
+  title: string | null;
+  date: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  durationMinutes: number | null;
+  type: string | null;
+  project: string | null;
+  location: string | null;
+  countMale: number | null;
+  countFemale: number | null;
+  countDiverse: number | null;
+  countTotal: number | null;
+  notes: string | null;
+  goals: string | null;
+  categories: string[];
+  tags: string[];
+  staff: string[];
+  cohorts: string[];
+};
 
 @Injectable()
 export class ActivitiesService {
@@ -20,6 +42,8 @@ export class ActivitiesService {
     private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(Cohort)
+    private readonly cohortRepository: Repository<Cohort>,
     @InjectRepository(Staff)
     private readonly staffRepository: Repository<Staff>,
     @InjectRepository(Project)
@@ -60,6 +84,136 @@ export class ActivitiesService {
   private applyWeekdayFilter(qb: SelectQueryBuilder<Activity>, weekdays?: number[]) {
     if (!Array.isArray(weekdays) || weekdays.length === 0) return;
     qb.andWhere(`${this.getWeekdayExpression('a.date')} IN (:...weekdays)`, { weekdays });
+  }
+
+  private normalizeAuditText(value?: string | null): string | null {
+    if (typeof value !== 'string') return value ?? null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private normalizeAuditNumber(value?: number | null): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  }
+
+  private formatAuditDate(value?: string | Date | null): string | null {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+      const parsed = new Date(trimmed);
+      if (Number.isNaN(parsed.getTime())) return trimmed;
+      return parsed.toISOString().slice(0, 10);
+    }
+    if (Number.isNaN(value.getTime())) return null;
+    return value.toISOString().slice(0, 10);
+  }
+
+  private mapRelationNames(
+    items?: Array<{ id?: string | null; name?: string | null }> | null,
+  ): string[] {
+    if (!Array.isArray(items) || items.length === 0) return [];
+    return items
+      .map((item) => this.normalizeAuditText(item?.name) ?? this.normalizeAuditText(item?.id) ?? null)
+      .filter((item): item is string => typeof item === 'string' && item.length > 0)
+      .sort((left, right) => left.localeCompare(right, 'de'));
+  }
+
+  private mapCohortEntries(
+    cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }> | null,
+    cohortNamesById?: Map<string, string>,
+  ): string[] {
+    if (!Array.isArray(cohorts) || cohorts.length === 0) return [];
+    return cohorts
+      .filter((entry) => entry && typeof entry.cohortId === 'string' && entry.cohortId.length > 0)
+      .map((entry) => {
+        const cohortLabel = cohortNamesById?.get(entry.cohortId) ?? entry.cohortId;
+        return `${cohortLabel} (m:${entry.m || 0}, w:${entry.w || 0}, d:${entry.d || 0})`;
+      })
+      .sort((left, right) => left.localeCompare(right, 'de'));
+  }
+
+  private toActivityAuditSnapshot(
+    activity: Partial<Activity> | null | undefined,
+    cohortNamesById?: Map<string, string>,
+  ): ActivityAuditSnapshot {
+    return {
+      title: this.normalizeAuditText(activity?.title ?? null),
+      date: this.formatAuditDate(activity?.date ?? null),
+      startTime: this.normalizeAuditText(activity?.startTime ?? null),
+      endTime: this.normalizeAuditText(activity?.endTime ?? null),
+      durationMinutes: this.normalizeAuditNumber(activity?.durationMinutes ?? null),
+      type: this.normalizeAuditText(activity?.type ?? null),
+      project:
+        this.normalizeAuditText(activity?.project?.title ?? null) ??
+        this.normalizeAuditText(activity?.projectId ?? null),
+      location:
+        this.normalizeAuditText(activity?.location?.name ?? null) ??
+        this.normalizeAuditText(activity?.locationId ?? null),
+      countMale: this.normalizeAuditNumber(activity?.countMale ?? null),
+      countFemale: this.normalizeAuditNumber(activity?.countFemale ?? null),
+      countDiverse: this.normalizeAuditNumber(activity?.countDiverse ?? null),
+      countTotal: this.normalizeAuditNumber(activity?.countTotal ?? null),
+      notes: this.normalizeAuditText(activity?.notes ?? null),
+      goals: this.normalizeAuditText(activity?.goals ?? null),
+      categories: this.mapRelationNames(activity?.categories),
+      tags: this.mapRelationNames(activity?.tags),
+      staff: this.mapRelationNames(activity?.staff),
+      cohorts: this.mapCohortEntries(activity?.cohorts, cohortNamesById),
+    };
+  }
+
+  private async loadCohortNames(
+    cohorts: Array<Array<{ cohortId: string; m: number; w: number; d: number }> | null | undefined>,
+  ): Promise<Map<string, string>> {
+    const cohortIds = Array.from(
+      new Set(
+        cohorts
+          .flatMap((entries) => entries ?? [])
+          .map((entry) => entry?.cohortId)
+          .filter((value): value is string => typeof value === 'string' && value.length > 0),
+      ),
+    );
+
+    if (cohortIds.length === 0) return new Map<string, string>();
+
+    const rows = await this.cohortRepository.findBy({ id: In(cohortIds) });
+    return new Map(rows.map((row) => [row.id, row.name]));
+  }
+
+  private buildActivityAuditDiff(before: ActivityAuditSnapshot, after: ActivityAuditSnapshot) {
+    const diff: Record<string, { from: unknown; to: unknown }> = {};
+
+    const keys: Array<keyof ActivityAuditSnapshot> = [
+      'title',
+      'date',
+      'startTime',
+      'endTime',
+      'durationMinutes',
+      'type',
+      'project',
+      'location',
+      'countMale',
+      'countFemale',
+      'countDiverse',
+      'countTotal',
+      'notes',
+      'goals',
+      'categories',
+      'tags',
+      'staff',
+      'cohorts',
+    ];
+
+    for (const key of keys) {
+      const beforeValue = before[key];
+      const afterValue = after[key];
+      if (JSON.stringify(beforeValue) === JSON.stringify(afterValue)) continue;
+      diff[key] = { from: beforeValue, to: afterValue };
+    }
+
+    return diff;
   }
 
   private buildListQuery(
@@ -428,9 +582,20 @@ export class ActivitiesService {
   ): Promise<Activity | null> {
     const existing = await this.activityRepository.findOne({
       where: { id },
-      relations: ['tags', 'staff', 'categories'],
+      relations: ['tags', 'staff', 'categories', 'project', 'location'],
     });
     if (!existing) return null;
+    const beforeActivityForAudit: Partial<Activity> = {
+      ...existing,
+      categories: Array.isArray(existing.categories) ? [...existing.categories] : [],
+      tags: Array.isArray(existing.tags) ? [...existing.tags] : [],
+      staff: Array.isArray(existing.staff) ? [...existing.staff] : [],
+      cohorts: Array.isArray(existing.cohorts)
+        ? existing.cohorts.map((entry) => ({ ...entry }))
+        : existing.cohorts,
+      project: existing.project ? { ...existing.project } : existing.project,
+      location: existing.location ? { ...existing.location } : existing.location,
+    };
     const activityOrgId = existing.orgId ?? null;
 
     const { tagIds, staffIds, categoryIds, cohorts, ...rest } = data as Partial<Activity> & {
@@ -523,12 +688,21 @@ export class ActivitiesService {
     await this.activityRepository.save(existing);
     const updated = await this.findOne(id);
     if (updated) {
+      const cohortNamesById = await this.loadCohortNames([
+        beforeActivityForAudit.cohorts,
+        updated.cohorts,
+      ]);
+      const diff = this.buildActivityAuditDiff(
+        this.toActivityAuditSnapshot(beforeActivityForAudit, cohortNamesById),
+        this.toActivityAuditSnapshot(updated, cohortNamesById),
+      );
       await this.audit.log({
         action: AuditAction.UPDATE,
         entityType: 'activity',
         entityId: updated.id,
         entityTitle: updated.title || updated.project?.title || updated.location?.name || null,
         orgId: updated.orgId ?? null,
+        diff: Object.keys(diff).length > 0 ? diff : null,
         details: { date: updated.date, type: updated.type },
         user,
       });

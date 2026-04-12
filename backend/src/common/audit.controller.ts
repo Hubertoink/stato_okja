@@ -2,23 +2,53 @@ import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AuditService } from './audit.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { OrgsService } from '../orgs/orgs.service';
+
+type AuditListRequest = {
+  user: { role: string; orgId?: string | null; id: string };
+  effectiveOrgId?: string | null | undefined;
+};
 
 @ApiTags('audit')
 @Controller('audit')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
 export class AuditController {
-  constructor(private readonly audit: AuditService) {}
+  constructor(
+    private readonly audit: AuditService,
+    private readonly orgs: OrgsService,
+  ) {}
+
+  private async resolveAuditFilter(req: AuditListRequest) {
+    const superAdminScoped = typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId;
+    const orgIdRaw =
+      req.user.role === 'superadmin'
+        ? superAdminScoped
+        : typeof req.effectiveOrgId === 'undefined'
+          ? req.user.orgId || null
+          : req.effectiveOrgId;
+
+    let orgId: string | null | undefined = orgIdRaw;
+    let orgIds: string[] | undefined;
+
+    if (typeof orgIdRaw === 'string') {
+      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
+      orgId = undefined;
+    }
+
+    return { orgId, orgIds };
+  }
 
   @Get()
   @ApiOperation({ summary: 'Letzte Aktionen (Audit-Logs) auflisten' })
   @ApiQuery({ name: 'limit', required: false })
-  @Roles('superadmin')
-  list(@Req() req: { user: { role: string; orgId?: string | null; id: string } }, @Query('limit') limit?: string) {
+  @Roles('superadmin', 'org_admin', 'user')
+  async list(@Req() req: AuditListRequest, @Query('limit') limit?: string) {
     const l = limit ? Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100) : 50;
-    // Superadmin only (UI & API). If later desired, we can add scoped view.
-    return this.audit.list({ orgId: undefined, limit: l });
+    const { orgId, orgIds } = await this.resolveAuditFilter(req);
+    return this.audit.list({ orgId, orgIds, limit: l });
   }
 
   @Get('metrics')

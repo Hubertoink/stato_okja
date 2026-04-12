@@ -26,6 +26,7 @@ import { colorForActivityType } from '@/lib/colors';
 import { getBgClass } from '@/lib/colorPalette';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useLocations } from '@/lib/locations';
+import { usePublicConfig } from '@/lib/publicConfig';
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -135,6 +136,7 @@ export default function Activities() {
   const { data: tags = [] } = useTags({ active: true });
   const { data: projects = [] } = useProjects();
   const { data: locations = [] } = useLocations({ active: true });
+  const { data: publicConfig } = usePublicConfig();
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   // Persist filters across route/tab changes; reset only via the explicit reset button.
@@ -226,7 +228,10 @@ export default function Activities() {
     isFetching: activitiesFetching,
     isError: activitiesIsError,
     refetch: refetchActivities,
-  } = useActivitiesPaged(filters, page, pageSize);
+  } = useActivitiesPaged(filters, page, pageSize, {
+    refetchOnWindowFocus: 'always',
+    refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+  });
   // no quick location filter
   const activities = useMemo(() => paged?.data || [], [paged]);
   const total = paged?.total || 0;

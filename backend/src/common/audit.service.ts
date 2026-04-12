@@ -48,18 +48,26 @@ export class AuditService {
     return e;
   }
 
-  async list(params: { orgId?: string | null; limit?: number }) {
-    const where: Record<string, unknown> = {};
-    if (typeof params.orgId !== 'undefined') Object.assign(where, { orgId: params.orgId });
+  async list(params: { orgId?: string | null; orgIds?: string[]; limit?: number }) {
     // Join organizations to fetch org name for UI without extra calls
     const qb = this.repo.createQueryBuilder('a')
       .leftJoin('organizations', 'o', 'o.id = a.orgId')
       .leftJoin('users', 'u', 'u.id = a.userId')
       .addSelect('o.name', 'orgName')
       .addSelect('u.name', 'userNameJoin')
-      .where(where)
       .orderBy('a.createdAt', 'DESC')
       .take(Math.min(Math.max(params.limit || 50, 1), 100));
+
+    if (Array.isArray(params.orgIds) && params.orgIds.length > 0) {
+      qb.where('a.orgId IN (:...orgIds)', { orgIds: params.orgIds });
+    } else if (typeof params.orgId !== 'undefined') {
+      if (params.orgId === null) {
+        qb.where('a.orgId IS NULL');
+      } else {
+        qb.where('a.orgId = :orgId', { orgId: params.orgId });
+      }
+    }
+
     const rows = await qb.getRawAndEntities();
     // Merge orgName into entities as extra property (not persisted)
     return rows.entities.map((e, idx) => ({

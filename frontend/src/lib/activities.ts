@@ -74,7 +74,12 @@ export type ActivitiesFilter = {
   order?: 'asc'|'desc'; // sort by date/startTime
 };
 
-export function useActivities(params?: ActivitiesFilter) {
+type ActivitiesQueryOptions = {
+  refetchOnWindowFocus?: boolean | 'always';
+  refetchIntervalMs?: number;
+};
+
+export function useActivities(params?: ActivitiesFilter, options?: ActivitiesQueryOptions) {
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   return useQuery({
@@ -97,7 +102,12 @@ export function useActivities(params?: ActivitiesFilter) {
     },
     enabled: typeof scope !== 'undefined',
     refetchOnMount: 'always',
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: true,
+    refetchInterval:
+      typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
+        ? options.refetchIntervalMs
+        : false,
   });
 }
 
@@ -108,7 +118,12 @@ export interface PagedActivitiesResult {
   pageSize: number; // limit
 }
 
-export function useActivitiesPaged(params: ActivitiesFilter | undefined, page: number, limit: number = 50) {
+export function useActivitiesPaged(
+  params: ActivitiesFilter | undefined,
+  page: number,
+  limit: number = 50,
+  options?: ActivitiesQueryOptions,
+) {
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   return useQuery({
@@ -132,7 +147,12 @@ export function useActivitiesPaged(params: ActivitiesFilter | undefined, page: n
     },
     enabled: typeof scope !== 'undefined',
     refetchOnMount: 'always',
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: true,
+    refetchInterval:
+      typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
+        ? options.refetchIntervalMs
+        : false,
     placeholderData: (prev) => prev,
   });
 }

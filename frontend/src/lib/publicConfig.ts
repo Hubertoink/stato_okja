@@ -1,4 +1,5 @@
 import { api } from './api';
+import { useQuery } from '@tanstack/react-query';
 
 export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
 export type AdminResetActionMode = 'email' | 'temporary_password';
@@ -8,6 +9,7 @@ export interface PublicConfig {
   orgName: string | null;
   loginTitle: string;
   loginSubtitle: string;
+  liveRefreshIntervalMs: number;
   passwordResetMode: PasswordResetMode;
   forgotPasswordEnabled: boolean;
   adminTemporaryPasswordEnabled: boolean;
@@ -18,10 +20,22 @@ export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   orgName: null,
   loginTitle: 'StatO',
   loginSubtitle: 'OKJA Statistik & Dokumentation',
+  liveRefreshIntervalMs: 15000,
   passwordResetMode: 'email',
   forgotPasswordEnabled: true,
   adminTemporaryPasswordEnabled: false,
 };
+
+function parseLiveRefreshIntervalMs(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+    return Math.trunc(value);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number.parseInt(value.trim(), 10);
+    if (!Number.isNaN(parsed) && parsed >= 0) return parsed;
+  }
+  return DEFAULT_PUBLIC_CONFIG.liveRefreshIntervalMs;
+}
 
 export async function fetchPublicConfig(): Promise<PublicConfig> {
   const res = await api.get<Partial<PublicConfig>>('/auth/public-config');
@@ -38,6 +52,7 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
     orgName: typeof data.orgName === 'string' && data.orgName.trim() ? data.orgName.trim() : null,
     loginTitle: String(data.loginTitle || DEFAULT_PUBLIC_CONFIG.loginTitle),
     loginSubtitle: String(data.loginSubtitle || DEFAULT_PUBLIC_CONFIG.loginSubtitle),
+    liveRefreshIntervalMs: parseLiveRefreshIntervalMs(data.liveRefreshIntervalMs),
     passwordResetMode: mode,
     forgotPasswordEnabled:
       typeof data.forgotPasswordEnabled === 'boolean'
@@ -48,4 +63,13 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
         ? data.adminTemporaryPasswordEnabled
         : mode !== 'email',
   };
+}
+
+export function usePublicConfig() {
+  return useQuery({
+    queryKey: ['public-config'],
+    queryFn: fetchPublicConfig,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 60,
+  });
 }

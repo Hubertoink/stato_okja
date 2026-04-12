@@ -6,6 +6,7 @@ import { ActivitiesService } from './activities.service';
 import { ActivitiesController } from './activities.controller';
 import { Tag } from '../taxonomy/entities/tag.entity';
 import { Category } from '../taxonomy/entities/category.entity';
+import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Staff } from '../staff/entities/staff.entity';
 import { Project } from '../projects/entities/project.entity';
 import { AuditModule } from '../common/audit.module';
@@ -15,7 +16,7 @@ import { ActivityAck } from './entities/activity-ack.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Activity, Attachment, Tag, Category, Staff, Project, ActivityAck]),
+    TypeOrmModule.forFeature([Activity, Attachment, Tag, Category, Cohort, Staff, Project, ActivityAck]),
     AuditModule,
     OrgsModule,
   ],

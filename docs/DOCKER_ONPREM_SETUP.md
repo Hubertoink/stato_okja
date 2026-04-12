@@ -141,6 +141,10 @@ Empfehlung:
 - `PUBLIC_APP_NAME`
 - `PUBLIC_ORG_NAME`
 - `PUBLIC_LOGIN_SUBTITLE`
+- `PUBLIC_LIVE_REFRESH_INTERVAL_MS`
+  - Default: `15000`
+  - Polling fuer Dashboard, Aktivitaeten und Statistik in Millisekunden.
+  - `0` deaktiviert Polling; Fokus-Refetch bleibt aktiv.
 
 ### Optional: SMTP
 
@@ -201,6 +205,7 @@ SUPERADMIN_PASSWORD_FORCE=false
 PUBLIC_APP_NAME=StatO
 PUBLIC_ORG_NAME=Stadt Musterstadt
 PUBLIC_LOGIN_SUBTITLE=OKJA Statistik und Dokumentation
+PUBLIC_LIVE_REFRESH_INTERVAL_MS=15000
 
 # Optional SMTP
 # SMTP_HOST=mail.kommune.local

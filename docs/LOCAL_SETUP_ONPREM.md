@@ -59,6 +59,7 @@ Siehe auch: `backend/BACKEND_CONTAINER_ENV.md` und `backend/.env.example`.
 - `PUBLIC_APP_NAME=StatO`
 - `PUBLIC_ORG_NAME=Stadt Mannheim` (führt zu Login-Titel `StatO - Stadt Mannheim`)
 - `PUBLIC_LOGIN_SUBTITLE=OKJA Statistik & Dokumentation`
+- `PUBLIC_LIVE_REFRESH_INTERVAL_MS=15000` (Polling fuer Dashboard, Aktivitaeten und Statistik; `0` deaktiviert Polling, Fokus-Refetch bleibt aktiv)
 
 ---
 

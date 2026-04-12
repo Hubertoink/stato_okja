@@ -55,6 +55,11 @@ Diese Variablen sind **optional** und werden vom Backend über `GET /auth/public
   - Default: `OKJA Statistik & Dokumentation`
   - Untertitel auf der Login-Seite.
 
+- `PUBLIC_LIVE_REFRESH_INTERVAL_MS` (optional)
+  - Default: `15000`
+  - Polling-Intervall fuer Dashboard, Aktivitaeten und Statistik in Millisekunden.
+  - `0` deaktiviert Polling; Fokus-Refetch bleibt aktiv.
+
 ## Datenbank (TypeORM)
 
 - `DB_TYPE` (optional)

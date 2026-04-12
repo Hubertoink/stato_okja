@@ -8,10 +8,15 @@ import { Organization } from '../orgs/entities/organization.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
 import { Attachment } from '../activities/entities/attachment.entity';
+import { OrgsModule } from '../orgs/orgs.module';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([AuditLog, User, Organization, Activity, Project, Attachment])],
-  providers: [AuditService],
+  imports: [
+    TypeOrmModule.forFeature([AuditLog, User, Organization, Activity, Project, Attachment]),
+    OrgsModule,
+  ],
+  providers: [AuditService, OrgScopeGuard],
   controllers: [AuditController],
   exports: [AuditService],
 })

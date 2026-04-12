@@ -8,6 +8,15 @@ import type { AdminResetActionMode } from './auth.service';
 
 type InviteRole = 'superadmin' | 'org_admin' | 'user';
 
+function parseNonNegativeIntEnv(raw: string | undefined, fallback: number): number {
+  if (typeof raw === 'undefined') return fallback;
+  const trimmed = raw.trim();
+  if (!trimmed) return fallback;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(parsed) || parsed < 0) return fallback;
+  return parsed;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -28,11 +37,16 @@ export class AuthController {
     const orgName = typeof orgNameRaw === 'string' && orgNameRaw.trim() ? orgNameRaw.trim() : null;
     const loginSubtitle = String(process.env.PUBLIC_LOGIN_SUBTITLE || 'OKJA Statistik & Dokumentation');
     const loginTitle = orgName ? `${appName} - ${orgName}` : appName;
+    const liveRefreshIntervalMs = parseNonNegativeIntEnv(
+      process.env.PUBLIC_LIVE_REFRESH_INTERVAL_MS,
+      15000,
+    );
     return {
       appName,
       orgName,
       loginTitle,
       loginSubtitle,
+      liveRefreshIntervalMs,
       ...this.auth.getPublicPasswordResetConfig(),
     };
   }

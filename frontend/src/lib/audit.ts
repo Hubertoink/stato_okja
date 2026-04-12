@@ -17,7 +17,12 @@ export interface AuditLog {
   createdAt: string;
 }
 
-export function useAuditLogs(limit = 10) {
+type AuditQueryOptions = {
+  refetchOnWindowFocus?: boolean | 'always';
+  refetchIntervalMs?: number;
+};
+
+export function useAuditLogs(limit = 10, options?: AuditQueryOptions) {
   const scopeKey = useOrgScopeKey();
   return useQuery<AuditLog[]>({
     queryKey: ['audit', scopeKey, { limit }],
@@ -26,5 +31,10 @@ export function useAuditLogs(limit = 10) {
       return res.data as AuditLog[];
     },
     staleTime: 5000,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
+    refetchInterval:
+      typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
+        ? options.refetchIntervalMs
+        : false,
   });
 }

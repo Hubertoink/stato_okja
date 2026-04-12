@@ -13,6 +13,7 @@ import ActivityQuickAdd from './CalendarQuickAddModal';
 import { useProjects, type Project } from '@/lib/projects';
 import {
   Pencil,
+  X,
   XCircle,
   Tag as TagIcon,
   StickyNote,
@@ -359,7 +360,11 @@ export default function Activities() {
         .slice()
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       const cohortIds = cohortOrder.map((c) => c.id);
-      const cohortHeaders = cohortOrder.map((c) => c.name);
+      const cohortHeaders = cohortOrder.flatMap((c) => [
+        `${c.name} (m)`,
+        `${c.name} (w)`,
+        `${c.name} (d)`,
+      ]);
 
       const header = [
         'Datum',
@@ -406,11 +411,15 @@ export default function Activities() {
         const mcount = a.countMale || 0;
         const wcount = a.countFemale || 0;
         const dcount = a.countDiverse || 0;
-        const perCoh: Record<string, number> = Object.fromEntries(
-          cohortIds.map((id) => [id, 0] as const),
+        const perCoh: Record<string, { m: number; w: number; d: number }> = Object.fromEntries(
+          cohortIds.map((id) => [id, { m: 0, w: 0, d: 0 }] as const),
         );
         (a.cohorts || []).forEach((c) => {
-          perCoh[c.cohortId] = (perCoh[c.cohortId] || 0) + (c.m || 0) + (c.w || 0) + (c.d || 0);
+          perCoh[c.cohortId] = {
+            m: (perCoh[c.cohortId]?.m || 0) + (c.m || 0),
+            w: (perCoh[c.cohortId]?.w || 0) + (c.w || 0),
+            d: (perCoh[c.cohortId]?.d || 0) + (c.d || 0),
+          };
         });
         const duration = durFrom(a) ?? '';
         const catsText =
@@ -427,7 +436,10 @@ export default function Activities() {
           mcount,
           wcount,
           dcount,
-          ...cohortIds.map((id) => perCoh[id] || 0),
+          ...cohortIds.flatMap((id) => {
+            const entry = perCoh[id] || { m: 0, w: 0, d: 0 };
+            return [entry.m, entry.w, entry.d];
+          }),
           duration,
           catsText,
           tagsText,
@@ -647,12 +659,10 @@ export default function Activities() {
                   : `≤ ${advanced.durationMax} Min.`}
             </span>
           )}
-        </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
           {hasAdvancedFilters && (
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-cambridge-blue/20 transition-colors px-3 py-1.5"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-cambridge-blue/20 transition-colors"
               title="Filter zurücksetzen"
               aria-label="Filter zurücksetzen"
               onClick={() => {
@@ -668,9 +678,11 @@ export default function Activities() {
                 }
               }}
             >
-              <XCircle className="w-4 h-4 mr-1" /> Zurücksetzen
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
+        </div>
+        <div className="flex flex-col items-end gap-2 shrink-0">
           <div className="hidden md:block">
             <ActivitiesPaginationControls
               page={page}

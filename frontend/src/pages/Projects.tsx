@@ -79,6 +79,14 @@ type ProjectBadgeTag = {
   color?: string | null;
 };
 
+function createClientRequestId() {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `project-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 const pickBg = (title?: string) => {
   if (!title) return PROJECT_CARD_PALETTE[0];
   let h = 0;
@@ -345,9 +353,9 @@ function ProjectGridCard({
             <ProtectedImage
               src={project.imageUrl}
               alt={project.title}
-              className="absolute inset-0 w-full h-full object-cover transform scale-105 blur-[2px]"
+              className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-black/70" />
           </>
         ) : (
           <>
@@ -631,13 +639,16 @@ function ProjectForm({
   initial,
   onSubmit,
   onCancel,
+  saving = false,
 }: {
   initial?: Partial<Project>;
   onSubmit: (data: Partial<Project>) => void;
   onCancel: () => void;
+  saving?: boolean;
 }) {
   useBodyScrollLock(true);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const submitLockedRef = useRef(false);
   const [form, setForm] = useState<Partial<Project>>(() => {
     const base: Partial<Project> = {
       title: '',
@@ -963,6 +974,8 @@ function ProjectForm({
   }, [imageIssue.open, onCancel]);
 
   const handleSave = useCallback(() => {
+    if (saving || submitLockedRef.current) return;
+
     if (isTitleMissing) {
       setShowTitleValidation(true);
       titleInputRef.current?.focus();
@@ -1035,12 +1048,19 @@ function ProjectForm({
       });
       return;
     }
+
+    submitLockedRef.current = true;
     onSubmit(cleaned);
-  }, [form, isTitleMissing, onSubmit]);
+  }, [form, isTitleMissing, onSubmit, saving]);
+
+  useEffect(() => {
+    if (!saving) submitLockedRef.current = false;
+  }, [saving]);
 
   useEditorShortcuts({
     onClose: handleClose,
-    onSave: applyingTemplate || archiving || deleting || imageIssue.open ? undefined : handleSave,
+    onSave:
+      applyingTemplate || archiving || deleting || imageIssue.open || saving ? undefined : handleSave,
   });
 
   const renderTagSelector = () => (
@@ -1514,7 +1534,7 @@ function ProjectForm({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isTitleMissing}
+                disabled={isTitleMissing || saving || applyingTemplate || archiving || deleting}
                 className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
                 title="Speichern"
                 aria-label="Speichern"
@@ -1619,7 +1639,11 @@ export default function Projects() {
       /* ignore */
     }
   }, [desktopView]);
-  const [modal, setModal] = useState<{ mode: 'create' | 'edit'; project?: Project } | null>(null);
+  const [modal, setModal] = useState<{
+    mode: 'create' | 'edit';
+    project?: Project;
+    requestId?: string;
+  } | null>(null);
   const { showToast } = useToast();
   const [starredFirst, setStarredFirst] = useState<boolean>(() => {
     try {
@@ -1678,7 +1702,7 @@ export default function Projects() {
       <div className="flex items-center justify-between mb-6 mt-1">
         <h2 className="text-3xl font-bold text-viridian">Angebote & Projekte</h2>
         <button
-          onClick={() => setModal({ mode: 'create' })}
+          onClick={() => setModal({ mode: 'create', requestId: createClientRequestId() })}
           className="bg-viridian text-white px-4 py-2 rounded hover:bg-cambridge-blue"
         >
           Neues Projekt
@@ -1840,9 +1864,15 @@ export default function Projects() {
       {modal && (
         <ProjectForm
           initial={modal.mode === 'edit' ? modal.project : undefined}
+          saving={create.isPending || update.isPending}
           onSubmit={(values) => {
             if (modal.mode === 'create') {
-              create.mutate(toProjectUpsertPayload(values), {
+              create.mutate(
+                {
+                  ...toProjectUpsertPayload(values),
+                  clientRequestId: modal.requestId || createClientRequestId(),
+                },
+                {
                 onSuccess: () => {
                   setModal(null);
                   showToast('Projekt erstellt');

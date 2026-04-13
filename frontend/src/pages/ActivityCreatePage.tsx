@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { X as XIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
 import { useCreateActivity, type Activity } from '@/lib/activities';
@@ -77,6 +77,7 @@ export default function ActivityCreatePage() {
   const create = useCreateActivity();
   const { showToast } = useToast();
   const keyboardOpen = useKeyboardOpen();
+  const submitLockedRef = useRef(false);
 
   const [picker, setPicker] = useState(false);
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
@@ -185,6 +186,8 @@ export default function ActivityCreatePage() {
   };
 
   const handleSave = () => {
+    if (create.isPending || submitLockedRef.current) return;
+
     if (!form.date) {
       setErrorOpen('Bitte ein Datum wählen.');
       return;
@@ -227,6 +230,7 @@ export default function ActivityCreatePage() {
         d: (gcounts as { m: number; w: number; d: number }).d || 0,
       })),
     };
+    submitLockedRef.current = true;
     create.mutate(payload, {
       onSuccess: () => {
         showToast('Aktivität gespeichert');
@@ -235,6 +239,10 @@ export default function ActivityCreatePage() {
       onError: () => setErrorOpen('Speichern fehlgeschlagen.'),
     });
   };
+
+  useEffect(() => {
+    if (!create.isPending) submitLockedRef.current = false;
+  }, [create.isPending]);
 
   const handleCancel = () => {
     // If we navigated here from the project picker route, go back two steps
@@ -724,10 +732,11 @@ export default function ActivityCreatePage() {
           <div className="flex-1 flex items-center justify-end">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleSave}
               title="Aktivität speichern"
               aria-label="Aktivität speichern"
+              disabled={create.isPending || picker || Boolean(errorOpen)}
             >
               <PlusIcon className="w-5 h-5" />
             </button>

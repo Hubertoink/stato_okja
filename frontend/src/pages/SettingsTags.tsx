@@ -5,6 +5,7 @@ import { Tag, useCreateTag, useDeleteTag, useTags, useTaxonomyAccess, useUpdateT
 import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
+import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 function TagForm({
   initial,
@@ -20,6 +21,18 @@ function TagForm({
   const [form, setForm] = useState<Partial<Tag>>({ active: true, ...initial });
   const update = <K extends keyof Tag>(k: K, v: Tag[K]) => setForm((f) => ({ ...f, [k]: v }));
   const swatches = TAG_PALETTE;
+  const handleSave = () => {
+    const cleaned = Object.fromEntries(
+      Object.entries(form).filter(([, v]) => v !== '' && v !== null && v !== undefined),
+    ) as Partial<Tag>;
+    onSubmit(cleaned);
+  };
+
+  useEditorShortcuts({
+    onClose: onCancel,
+    onSave: handleSave,
+  });
+
   return (
     <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
       <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
@@ -89,12 +102,7 @@ function TagForm({
             <button
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-              onClick={() => {
-                const cleaned = Object.fromEntries(
-                  Object.entries(form).filter(([, v]) => v !== '' && v !== null && v !== undefined),
-                ) as Partial<Tag>;
-                onSubmit(cleaned);
-              }}
+              onClick={handleSave}
               title="Speichern"
               aria-label="Speichern"
             >

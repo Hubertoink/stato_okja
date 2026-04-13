@@ -50,8 +50,19 @@ export class ProjectsService {
     user?: { id?: string; name?: string | null; orgId?: string | null },
   ): Promise<Project> {
     const { categoryIds, ...rest } = data;
+    const clientRequestId =
+      typeof rest.clientRequestId === 'string' && rest.clientRequestId.trim().length > 0
+        ? rest.clientRequestId.trim()
+        : null;
+
+    if (clientRequestId) {
+      const existing = await this.projectRepository.findOne({ where: { clientRequestId } });
+      if (existing) return this.normalizeProjectImage(existing);
+    }
+
     const project = this.projectRepository.create({
       ...rest,
+      clientRequestId,
       imageUrl: normalizeUploadPath(rest.imageUrl),
     });
     // Enforce single category: prefer explicit categoryId, else take the first from categoryIds for backward compatibility
@@ -72,7 +83,26 @@ export class ProjectsService {
       project.categories = [];
       (project as Partial<Project> & { categoryId?: string | null }).categoryId = null;
     }
-    const saved = this.normalizeProjectImage(await this.projectRepository.save(project));
+    let saved: Project;
+    try {
+      saved = await this.projectRepository.save(project);
+    } catch (error) {
+      const isClientRequestDuplicate =
+        clientRequestId &&
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: string }).code === '23505';
+
+      if (isClientRequestDuplicate) {
+        const existing = await this.projectRepository.findOne({ where: { clientRequestId } });
+        if (existing) return this.normalizeProjectImage(existing);
+      }
+
+      throw error;
+    }
+
+    saved = this.normalizeProjectImage(saved);
     await this.audit.log({ action: AuditAction.CREATE, entityType: 'project', entityId: saved.id, entityTitle: saved.title || null, orgId: saved.orgId ?? null, user });
     return saved;
   }

@@ -1,7 +1,7 @@
 import { Project, useProjects } from '@/lib/projects';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import { Save as SaveIcon, X as XIcon, Boxes, Trash2 as TrashIcon } from 'lucide-react';
+import { Save as SaveIcon, X as XIcon, Boxes, Plus as PlusIcon, Trash2 as TrashIcon } from 'lucide-react';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useStaff } from '@/lib/staff';
 import { useTags, useCohorts, useCategories } from '@/lib/taxonomy';
@@ -15,6 +15,7 @@ import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { createPortal } from 'react-dom';
 import { getBgClass } from '@/lib/colorPalette';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
+import { Link } from 'react-router-dom';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -32,6 +33,38 @@ type FormState = {
   cohortCounts?: Record<string, { m: number; w: number; d: number }>;
 };
 
+function FieldInfoHint({ label, settingsTab }: { label: string; settingsTab: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-normal leading-none text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors"
+        aria-label="Info"
+      >
+        i
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[80]" onClick={() => setOpen(false)} />
+          <div className="absolute left-1/2 top-full z-[81] mt-2 w-56 -translate-x-1/2 rounded-xl border border-gray-200 bg-white p-3 text-xs text-gray-600 shadow-lg space-y-2">
+            <p>{label} können Sie in den Einstellungen anlegen und verwalten.</p>
+            <Link
+              to={`/settings?tab=${settingsTab}`}
+              className="inline-flex items-center gap-1 text-viridian font-medium hover:underline"
+              onClick={() => setOpen(false)}
+            >
+              Zu Einstellungen →
+            </Link>
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
 export default function ActivityQuickAdd({
   dateISO,
   onClose,
@@ -45,6 +78,7 @@ export default function ActivityQuickAdd({
 }) {
   // This modal mounts only while open – lock body scroll while mounted
   useBodyScrollLock(true);
+  const submitLockedRef = useRef(false);
   const { data: projects } = useProjects({ archived: false });
   const { data: staff } = useStaff({ active: true });
   const { data: tags } = useTags({ active: true });
@@ -220,6 +254,8 @@ export default function ActivityQuickAdd({
   };
 
   const handleSave = () => {
+    if (create.isPending || update.isPending || submitLockedRef.current) return;
+
     if (!form.date) {
       setErrorOpen('Bitte ein Datum wählen.');
       return;
@@ -272,6 +308,8 @@ export default function ActivityQuickAdd({
       d: (gcounts as { m: number; w: number; d: number }).d || 0,
     }));
 
+    submitLockedRef.current = true;
+
     const doCreate = () =>
       create.mutate(payloadBase, {
         onSuccess: () => {
@@ -302,6 +340,10 @@ export default function ActivityQuickAdd({
     if (activity) doUpdate();
     else doCreate();
   };
+
+  useEffect(() => {
+    if (!create.isPending && !update.isPending) submitLockedRef.current = false;
+  }, [create.isPending, update.isPending]);
 
   useEditorShortcuts({
     onClose: handleClose,
@@ -604,7 +646,10 @@ export default function ActivityQuickAdd({
           <div className="space-y-3">
             {(!selectedProject || selectedProject.type !== 'open_door') && (
               <div>
-                <label className="block text-sm font-medium mb-1">Kategorien</label>
+                <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <label className="block text-sm font-medium">Kategorien</label>
+                  <FieldInfoHint label="Kategorien" settingsTab="categories" />
+                </div>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {(categories || []).map((c) => {
                     const active = (form.categoryIds || []).includes(c.id);
@@ -631,7 +676,10 @@ export default function ActivityQuickAdd({
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium mb-1">Tags</label>
+              <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <label className="block text-sm font-medium">Tags</label>
+                <FieldInfoHint label="Tags" settingsTab="tags" />
+              </div>
               <div className="flex flex-wrap gap-2">
                 {(tags || []).map((t) => {
                   const active = form.tagIds?.includes(t.id);
@@ -654,7 +702,10 @@ export default function ActivityQuickAdd({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Mitarbeitende</label>
+              <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <label className="block text-sm font-medium">Mitarbeitende</label>
+                <FieldInfoHint label="Teammitglieder" settingsTab="team" />
+              </div>
               <div className="flex flex-wrap gap-2">
                 {(staff || [])
                   .filter((s) =>
@@ -685,7 +736,10 @@ export default function ActivityQuickAdd({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Ehrenamtliche</label>
+              <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <label className="block text-sm font-medium">Ehrenamtliche</label>
+                <FieldInfoHint label="Teammitglieder" settingsTab="team" />
+              </div>
               <div className="flex flex-wrap gap-2">
                 {(staff || [])
                   .filter((s) =>
@@ -787,12 +841,13 @@ export default function ActivityQuickAdd({
           <div className="flex-1 flex items-center justify-end">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleSave}
               title="Speichern"
               aria-label="Speichern"
+              disabled={create.isPending || update.isPending || picker || deleteOpen || Boolean(errorOpen)}
             >
-              <SaveIcon className="w-5 h-5" />
+              {activity ? <SaveIcon className="w-5 h-5" /> : <PlusIcon className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -812,6 +867,8 @@ export default function ActivityQuickAdd({
                 ...prev,
                 projectId: p.id,
                 tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
+                start: prev.start || p.defaultStartTime || '15:00',
+                end: prev.end || p.defaultEndTime || '17:00',
                 // Prefill categories from project's categories plus primary categoryId if set
                 categoryIds:
                   p.type === 'open_door'

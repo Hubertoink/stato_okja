@@ -106,6 +106,100 @@ type StatisticsRealtimeOptions = {
   refetchIntervalMs?: number;
 };
 
+type PdfSlice = {
+  startPx: number;
+  endPx: number;
+};
+
+const PDF_RENDER_SCALE = 2;
+const PDF_MARGIN_MM = 10;
+const PDF_HEADER_HEIGHT_MM = 40;
+const PDF_MIN_PAGE_FILL_RATIO = 0.58;
+
+function addPdfPageHeader(pdf: jsPDF, orgTitle: string, dateRange: string) {
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(16);
+  pdf.text(`Bericht: ${orgTitle}`, 14, 18);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(12);
+  pdf.text(dateRange ? `Zeitraum: ${dateRange}` : 'Gesamter Zeitraum', 14, 26);
+}
+
+function collectPdfBreakpoints(root: HTMLDivElement, canvas: HTMLCanvasElement) {
+  const rootRect = root.getBoundingClientRect();
+  const rootHeight = Math.max(rootRect.height, 1);
+  const scaleY = canvas.height / rootHeight;
+  const breakpoints = new Set<number>([0, canvas.height]);
+
+  root.querySelectorAll<HTMLElement>('[data-pdf-section], [data-pdf-row]').forEach((node) => {
+    const rect = node.getBoundingClientRect();
+    const top = Math.round((rect.top - rootRect.top) * scaleY);
+
+    if (top > 0 && top < canvas.height) {
+      breakpoints.add(top);
+    }
+  });
+
+  return Array.from(breakpoints).sort((left, right) => left - right);
+}
+
+function buildPdfSlices(totalHeightPx: number, pageHeightPx: number, breakpoints: number[]): PdfSlice[] {
+  const slices: PdfSlice[] = [];
+  const minFillPx = Math.floor(pageHeightPx * PDF_MIN_PAGE_FILL_RATIO);
+  let startPx = 0;
+
+  while (startPx < totalHeightPx) {
+    const remainingPx = totalHeightPx - startPx;
+    if (remainingPx <= pageHeightPx) {
+      slices.push({ startPx, endPx: totalHeightPx });
+      break;
+    }
+
+    const targetEndPx = Math.min(startPx + pageHeightPx, totalHeightPx);
+    const candidateBreaks = breakpoints.filter(
+      (point) => point > startPx + minFillPx && point < targetEndPx,
+    );
+    const endPx = candidateBreaks[candidateBreaks.length - 1] ?? targetEndPx;
+
+    if (endPx <= startPx) {
+      slices.push({ startPx, endPx: targetEndPx });
+      startPx = targetEndPx;
+      continue;
+    }
+
+    slices.push({ startPx, endPx });
+    startPx = endPx;
+  }
+
+  return slices;
+}
+
+function createCanvasSlice(sourceCanvas: HTMLCanvasElement, startPx: number, endPx: number) {
+  const sliceHeight = Math.max(endPx - startPx, 1);
+  const sliceCanvas = document.createElement('canvas');
+  const context = sliceCanvas.getContext('2d');
+
+  if (!context) return null;
+
+  sliceCanvas.width = sourceCanvas.width;
+  sliceCanvas.height = sliceHeight;
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+  context.drawImage(
+    sourceCanvas,
+    0,
+    startPx,
+    sourceCanvas.width,
+    sliceHeight,
+    0,
+    0,
+    sourceCanvas.width,
+    sliceHeight,
+  );
+
+  return sliceCanvas;
+}
+
 function useStatsOverview(
   params: { from?: string; to?: string; projectId?: string; type?: string; weekdays?: number[] },
   scopeKey: string,
@@ -583,6 +677,8 @@ export default function Statistics() {
     fontSize: '13px',
     lineHeight: '20px',
     paddingTop: '10px',
+    paddingLeft: isMobile ? '12px' : '0px',
+    paddingRight: isMobile ? '12px' : '0px',
   } as const;
   const byTypePieCenterY = isMobile ? '41%' : '45%';
   const byTypeOuterRadius = isMobile ? 68 : 88;
@@ -590,7 +686,7 @@ export default function Statistics() {
   const genderInnerRadius = isMobile ? 44 : 54;
   const genderOuterRadius = isMobile ? 72 : 88;
   const cohortPieCenterY = isMobile ? '41%' : '45%';
-  const cohortPieOuterRadius = isMobile ? 68 : 84;
+  const cohortPieOuterRadius = isMobile ? 60 : 76;
 
   const genderData = gender
     ? [
@@ -759,13 +855,24 @@ export default function Statistics() {
   const cohortPieData = useMemo(
     () =>
       cohortChartData
-        .filter((entry) => (entry.total ?? 0) > 0)
+        .map((entry) => {
+          const metricValue =
+            showAverage && 'chartValue' in entry && typeof entry.chartValue === 'number'
+              ? entry.chartValue
+              : entry.total;
+
+          return {
+            ...entry,
+            metricValue,
+          };
+        })
+        .filter((entry) => (entry.metricValue ?? 0) > 0)
         .map((entry, index) => ({
           name: entry.name,
-          value: entry.total,
+          value: entry.metricValue,
           color: fallbackBarColors[index % fallbackBarColors.length],
         })),
-    [cohortChartData, fallbackBarColors],
+    [cohortChartData, fallbackBarColors, showAverage],
   );
 
   // Generic label renderer for bar charts (positions label above the bar)
@@ -788,134 +895,56 @@ export default function Statistics() {
   async function exportPdf() {
     // Render the report container to images and assemble into a PDF (A4 portrait)
     if (!reportRef.current) return;
-    // Force export layout (e.g., 2-column grid, hide interactive bits)
     setPdfMode(true);
-    await new Promise(requestAnimationFrame);
-    const el = reportRef.current;
-    // Ensure charts are fully rendered
-    await new Promise(requestAnimationFrame);
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff' });
-    const imgData = canvas.toDataURL('image/png');
 
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
-    const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
+    try {
+      await new Promise(requestAnimationFrame);
+      const el = reportRef.current;
+      if (!el) return;
 
-    // Title header
-    const orgTitle = user?.orgName || 'Organisation';
-    const dateRange = [from, to].filter(Boolean).join(' bis ');
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(16);
-    pdf.text(`Bericht: ${orgTitle}`, 14, 18);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(12);
-    pdf.text(dateRange ? `Zeitraum: ${dateRange}` : 'Gesamter Zeitraum', 14, 26);
+      await new Promise(requestAnimationFrame);
+      const canvas = await html2canvas(el, {
+        scale: PDF_RENDER_SCALE,
+        backgroundColor: '#ffffff',
+      });
 
-    // Compute image dimensions keeping aspect ratio; fit width and paginate vertically if necessary
-    const margin = 10; // mm
-    const headerHeight = 40; // mm
-    const availableWidth = pageWidth - margin * 2;
-    const availableHeight = pageHeight - headerHeight - margin;
-    const ratioW = availableWidth / canvas.width; // mm per px when fitting width
-    const imgHeightAtWidth = canvas.height * ratioW; // mm
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const orgTitle = user?.orgName || 'Organisation';
+      const dateRange = [from, to].filter(Boolean).join(' bis ');
+      const availableWidth = pageWidth - PDF_MARGIN_MM * 2;
+      const availableHeight = pageHeight - PDF_HEADER_HEIGHT_MM - PDF_MARGIN_MM;
+      const mmPerPx = availableWidth / canvas.width;
+      const pageHeightPx = Math.floor(availableHeight / mmPerPx);
+      const breakpoints = collectPdfBreakpoints(el, canvas);
+      const slices = buildPdfSlices(canvas.height, pageHeightPx, breakpoints);
 
-    if (imgHeightAtWidth <= availableHeight) {
-      // Single-page case
-      pdf.addImage(
-        imgData,
-        'PNG',
-        margin,
-        headerHeight,
-        availableWidth,
-        imgHeightAtWidth,
-        undefined,
-        'FAST',
-      );
-    } else {
-      // Multi-page: slice vertically into page-sized chunks
-      const pageCanvas = document.createElement('canvas');
-      const ctx = pageCanvas.getContext('2d');
-      if (ctx) {
-        const pagePxHeight = Math.floor(availableHeight / ratioW); // pixels corresponding to availableHeight mm at current scale
-        let offset = 0;
-        // First page
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = Math.min(pagePxHeight, canvas.height);
-        ctx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(
-          canvas,
-          0,
-          offset,
-          pageCanvas.width,
-          pageCanvas.height,
-          0,
-          0,
-          pageCanvas.width,
-          pageCanvas.height,
-        );
-        pdf.addImage(
-          pageCanvas.toDataURL('image/png'),
-          'PNG',
-          margin,
-          headerHeight,
-          availableWidth,
-          availableHeight,
-          undefined,
-          'FAST',
-        );
-        offset += pagePxHeight;
+      slices.forEach((slice, index) => {
+        const sliceCanvas = createCanvasSlice(canvas, slice.startPx, slice.endPx);
+        if (!sliceCanvas) return;
 
-        while (offset < canvas.height) {
+        if (index > 0) {
           pdf.addPage('a4', 'portrait');
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(16);
-          pdf.text(`Bericht: ${orgTitle}`, 14, 18);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(12);
-          pdf.text(dateRange ? `Zeitraum: ${dateRange}` : 'Gesamter Zeitraum', 14, 26);
-          pageCanvas.width = canvas.width;
-          pageCanvas.height = Math.min(pagePxHeight, canvas.height - offset);
-          ctx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0,
-            offset,
-            pageCanvas.width,
-            pageCanvas.height,
-            0,
-            0,
-            pageCanvas.width,
-            pageCanvas.height,
-          );
-          pdf.addImage(
-            pageCanvas.toDataURL('image/png'),
-            'PNG',
-            margin,
-            headerHeight,
-            availableWidth,
-            Math.min(availableHeight, pageCanvas.height * ratioW),
-            undefined,
-            'FAST',
-          );
-          offset += pagePxHeight;
         }
-      } else {
-        // Fallback: single shrunken page if 2D context missing for some reason
+
+        addPdfPageHeader(pdf, orgTitle, dateRange);
         pdf.addImage(
-          imgData,
+          sliceCanvas.toDataURL('image/png'),
           'PNG',
-          margin,
-          headerHeight,
+          PDF_MARGIN_MM,
+          PDF_HEADER_HEIGHT_MM,
           availableWidth,
-          availableHeight,
+          (slice.endPx - slice.startPx) * mmPerPx,
           undefined,
           'FAST',
         );
-      }
-    }
+      });
 
-    pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
-    setPdfMode(false);
+      pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
+    } finally {
+      setPdfMode(false);
+    }
   }
 
   return (
@@ -1327,7 +1356,7 @@ export default function Statistics() {
 
       <div ref={reportRef} className="">
         {/* KPI Summary with Toggle */}
-        <div className="flex items-center justify-end mb-4">
+        <div className="flex items-center justify-end mb-4" data-pdf-section>
           <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
             <button
               type="button"
@@ -1349,7 +1378,7 @@ export default function Statistics() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" data-pdf-section>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
               {fmtNumber(summary?.totalActivities)}
@@ -1396,7 +1425,7 @@ export default function Statistics() {
 
         {/* Charts */}
         <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-viridian">Verteilung nach Tätigkeitstyp</h3>
               {/* Toggle entfernt (Prozent/Anzahl). Labels zeigen Prozent, Tooltip absolute Werte. */}
@@ -1434,7 +1463,7 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
             <h3 className="text-lg font-semibold mb-4 text-viridian">Geschlechterverteilung</h3>
             <div className="h-80 md:h-[23rem]">
               <ResponsiveContainer width="100%" height="100%">
@@ -1470,7 +1499,7 @@ export default function Statistics() {
           </div>
 
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
-          <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
+          <div className="bg-white rounded-lg shadow p-6 lg:col-span-2" data-pdf-section>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-viridian">
                 {showAverage ? 'Zeitverlauf Ø Teilnehmende' : 'Zeitverlauf Teilnehmende'}
@@ -1578,9 +1607,11 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
             <div className="flex items-center justify-between mb-4 gap-3">
-              <h3 className="text-lg font-semibold text-viridian">Alterskohorten</h3>
+              <h3 className="text-lg font-semibold text-viridian">
+                {showAverage ? 'Ø Alterskohorten' : 'Alterskohorten'}
+              </h3>
               <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setCohortChartMode('bar')}
@@ -1604,7 +1635,17 @@ export default function Statistics() {
                 </button>
               </div>
             </div>
-            <div className="h-64">
+            <div
+              className={
+                cohortChartMode === 'pie'
+                  ? pdfMode
+                    ? 'h-72'
+                    : 'h-80 md:h-[23rem]'
+                  : pdfMode
+                    ? 'h-64'
+                    : 'h-72'
+              }
+            >
               <ResponsiveContainer width="100%" height="100%">
                 {cohortChartMode === 'pie' ? (
                   <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
@@ -1615,6 +1656,7 @@ export default function Statistics() {
                       cx="50%"
                       cy={cohortPieCenterY}
                       outerRadius={cohortPieOuterRadius}
+                      isAnimationActive={false}
                       label={({ percent }) =>
                         `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
                       }
@@ -1667,13 +1709,13 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
             <h3 className="text-lg font-semibold mb-4 text-viridian">Top Kategorien</h3>
-            <div className="h-64">
+            <div className={pdfMode ? 'h-64' : 'h-80 md:h-[23rem]'}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={topCategoryChartData}
-                  margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
+                  margin={{ top: 20, right: 20, left: 0, bottom: 8 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
@@ -1682,7 +1724,7 @@ export default function Statistics() {
                     interval={0}
                     angle={-15}
                     textAnchor="end"
-                    height={50}
+                    height={64}
                   />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
@@ -1700,7 +1742,7 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
             <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tags</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -1730,7 +1772,7 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
             {projectId ? (
               <>
                 <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tage</h3>
@@ -1796,7 +1838,7 @@ export default function Statistics() {
         </div>
 
         {/* Aktivitäten-Tabelle (nach Diagrammen) */}
-        <div className="bg-white rounded-lg shadow p-6 mt-8">
+        <div className="bg-white rounded-lg shadow p-6 mt-8" data-pdf-section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-viridian">
               Alle Aktivitäten (gefiltert)
@@ -1858,7 +1900,7 @@ export default function Statistics() {
                     return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
                   })();
                   return (
-                    <tr key={a.id}>
+                    <tr key={a.id} data-pdf-row>
                       <td className="px-3 py-1.5">{dateDE}</td>
                       <td className="px-3 py-1.5">{typeLabel[a.type] || a.type}</td>
                       <td className="px-3 py-1.5">{a.title || ''}</td>
@@ -1976,10 +2018,10 @@ export default function Statistics() {
         </div>
 
         {/* Konsolidiert (kompakt) */}
-        <div className="bg-white rounded-lg shadow p-6 mt-6">
+        <div className="bg-white rounded-lg shadow p-6 mt-6" data-pdf-section>
           <h3 className="text-lg font-semibold mb-4 text-viridian">Konsolidiert</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
+            <div data-pdf-section>
               <h4 className="font-medium text-gray-700 mb-2">Nach Tätigkeitstyp</h4>
               <table className="w-full text-xs">
                 <thead>
@@ -2014,7 +2056,7 @@ export default function Statistics() {
                 </tbody>
               </table>
             </div>
-            <div>
+            <div data-pdf-section>
               <h4 className="font-medium text-gray-700 mb-2">Nach Kategorie</h4>
               <table className="w-full text-xs">
                 <thead>

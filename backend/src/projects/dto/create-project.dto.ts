@@ -87,6 +87,12 @@ export class CreateProjectDto {
   description?: string | null;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== null)
+  @IsString()
+  @MaxLength(64)
+  clientRequestId?: string | null;
+
+  @IsOptional()
   @IsBoolean()
   archived?: boolean;
 }

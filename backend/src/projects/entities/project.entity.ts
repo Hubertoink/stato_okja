@@ -70,6 +70,9 @@ export class Project {
   @Column({ type: 'text', nullable: true })
   description?: string | null;
 
+  @Column({ type: 'varchar', length: 64, nullable: true, unique: true })
+  clientRequestId?: string | null;
+
   @Column({ default: false })
   archived: boolean;
 

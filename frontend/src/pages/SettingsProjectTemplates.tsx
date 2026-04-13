@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { useCategories, useTags, useCreateCategory, useCreateTag } from '@/lib/taxonomy';
 import ProtectedImage from '@/components/ProtectedImage';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
+import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import {
   ProjectTemplateDto,
   useCreateProjectTemplate,
@@ -101,6 +102,121 @@ export default function SettingsProjectTemplates() {
   useEffect(() => {
     setForm(initialForm);
   }, [initialForm]);
+
+  const closeImageIssue = useCallback(() => {
+    setImageIssue((state) => ({ ...state, open: false }));
+  }, []);
+
+  const handleTemplateSave = useCallback(async () => {
+    try {
+      const payload: Partial<ProjectTemplateDto> = {
+        title: String(form.title || '').trim(),
+        type: (form.type as ProjectTemplateDto['type']) || 'project_open',
+        targetGroup: String(form.targetGroup || ''),
+        description: String(form.description || ''),
+        categoryName: (form.type as string) === 'open_door' ? '' : String(form.categoryName || ''),
+        categoryColor: (form.type as string) === 'open_door' ? '' : String(form.categoryColor || ''),
+        tags: serializeTagsString(form.selectedTags || []),
+        imageUrl: normalizeUploadPath(String(form.imageUrl || '')) || '',
+        color: String(form.color || ''),
+        archived: !!form.archived,
+      };
+      if (editing) {
+        await update.mutateAsync({ id: editing.id, data: payload });
+        showToast('Vorlage gespeichert.', { type: 'success' });
+      } else {
+        await create.mutateAsync(payload);
+        showToast('Vorlage angelegt.', { type: 'success' });
+      }
+      setModalOpen(false);
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
+        'Speichern fehlgeschlagen';
+      showToast(String(msg), { type: 'error', durationMs: 3500 });
+    }
+  }, [create, editing, form, showToast, update]);
+
+  const handleNewCategorySave = useCallback(async () => {
+    if (!newCatName.trim() || createCategory.isPending) return;
+    try {
+      const created = await createCategory.mutateAsync({
+        name: newCatName.trim(),
+        color: newCatColor,
+        active: true,
+      });
+      setForm((f) => ({
+        ...f,
+        categoryId: created.id,
+        categoryName: created.name,
+        categoryColor: created.color || newCatColor,
+      }));
+      setNewCatModal(false);
+      showToast('Kategorie angelegt.', { type: 'success' });
+    } catch {
+      showToast('Anlegen fehlgeschlagen', { type: 'error' });
+    }
+  }, [createCategory, newCatColor, newCatName, showToast]);
+
+  const handleNewTagSave = useCallback(async () => {
+    if (!newTagName.trim() || createTag.isPending) return;
+    try {
+      const created = await createTag.mutateAsync({
+        name: newTagName.trim(),
+        color: newTagColor,
+        active: true,
+      });
+      setForm((f) => ({
+        ...f,
+        selectedTags: [
+          ...(f.selectedTags || []),
+          { name: created.name, color: created.color || newTagColor },
+        ],
+      }));
+      setNewTagModal(false);
+      showToast('Tag angelegt.', { type: 'success' });
+    } catch {
+      showToast('Anlegen fehlgeschlagen', { type: 'error' });
+    }
+  }, [createTag, newTagColor, newTagName, showToast]);
+
+  useEditorShortcuts({
+    enabled: modalOpen && !newCatModal && !newTagModal && !imageIssue.open,
+    onClose: () => setModalOpen(false),
+    onSave:
+      !String(form.title || '').trim() || create.isPending || update.isPending
+        ? undefined
+        : () => {
+            void handleTemplateSave();
+          },
+  });
+
+  useEditorShortcuts({
+    enabled: newCatModal,
+    onClose: () => setNewCatModal(false),
+    onSave:
+      !newCatName.trim() || createCategory.isPending
+        ? undefined
+        : () => {
+            void handleNewCategorySave();
+          },
+  });
+
+  useEditorShortcuts({
+    enabled: newTagModal,
+    onClose: () => setNewTagModal(false),
+    onSave:
+      !newTagName.trim() || createTag.isPending
+        ? undefined
+        : () => {
+            void handleNewTagSave();
+          },
+  });
+
+  useEditorShortcuts({
+    enabled: imageIssue.open,
+    onClose: closeImageIssue,
+  });
 
   const uploadImage = async (file: File) => {
     try {
@@ -373,7 +489,7 @@ export default function SettingsProjectTemplates() {
                       <button
                         type="button"
                         className="px-3 py-2 rounded bg-viridian text-white"
-                        onClick={() => setImageIssue((s) => ({ ...s, open: false }))}
+                        onClick={closeImageIssue}
                       >
                         Ok
                       </button>
@@ -534,34 +650,8 @@ export default function SettingsProjectTemplates() {
               <button
                 className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
                 disabled={!String(form.title || '').trim() || create.isPending || update.isPending}
-                onClick={async () => {
-                  try {
-                    const payload: Partial<ProjectTemplateDto> = {
-                      title: String(form.title || '').trim(),
-                      type: (form.type as ProjectTemplateDto['type']) || 'project_open',
-                      targetGroup: String(form.targetGroup || ''),
-                      description: String(form.description || ''),
-                      categoryName: (form.type as string) === 'open_door' ? '' : String(form.categoryName || ''),
-                      categoryColor: (form.type as string) === 'open_door' ? '' : String(form.categoryColor || ''),
-                      tags: serializeTagsString(form.selectedTags || []),
-                      imageUrl: normalizeUploadPath(String(form.imageUrl || '')) || '',
-                      color: String(form.color || ''),
-                      archived: !!form.archived,
-                    };
-                    if (editing) {
-                      await update.mutateAsync({ id: editing.id, data: payload });
-                      showToast('Vorlage gespeichert.', { type: 'success' });
-                    } else {
-                      await create.mutateAsync(payload);
-                      showToast('Vorlage angelegt.', { type: 'success' });
-                    }
-                    setModalOpen(false);
-                  } catch (e: unknown) {
-                    const msg =
-                      (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
-                      'Speichern fehlgeschlagen';
-                    showToast(String(msg), { type: 'error', durationMs: 3500 });
-                  }
+                onClick={() => {
+                  void handleTemplateSave();
                 }}
               >
                 Speichern
@@ -606,24 +696,8 @@ export default function SettingsProjectTemplates() {
               <button
                 className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
                 disabled={!newCatName.trim() || createCategory.isPending}
-                onClick={async () => {
-                  try {
-                    const created = await createCategory.mutateAsync({
-                      name: newCatName.trim(),
-                      color: newCatColor,
-                      active: true,
-                    });
-                    setForm((f) => ({
-                      ...f,
-                      categoryId: created.id,
-                      categoryName: created.name,
-                      categoryColor: created.color || newCatColor,
-                    }));
-                    setNewCatModal(false);
-                    showToast('Kategorie angelegt.', { type: 'success' });
-                  } catch {
-                    showToast('Anlegen fehlgeschlagen', { type: 'error' });
-                  }
+                onClick={() => {
+                  void handleNewCategorySave();
                 }}
               >
                 Anlegen
@@ -668,26 +742,8 @@ export default function SettingsProjectTemplates() {
               <button
                 className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
                 disabled={!newTagName.trim() || createTag.isPending}
-                onClick={async () => {
-                  try {
-                    const created = await createTag.mutateAsync({
-                      name: newTagName.trim(),
-                      color: newTagColor,
-                      active: true,
-                    });
-                    // Add to selection
-                    setForm((f) => ({
-                      ...f,
-                      selectedTags: [
-                        ...(f.selectedTags || []),
-                        { name: created.name, color: created.color || newTagColor },
-                      ],
-                    }));
-                    setNewTagModal(false);
-                    showToast('Tag angelegt.', { type: 'success' });
-                  } catch {
-                    showToast('Anlegen fehlgeschlagen', { type: 'error' });
-                  }
+                onClick={() => {
+                  void handleNewTagSave();
                 }}
               >
                 Anlegen

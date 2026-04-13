@@ -21,6 +21,7 @@ export interface Project {
   tag?: string | null;
   activityField?: string | null;
   description?: string | null;
+  clientRequestId?: string | null;
   archived?: boolean;
 }
 

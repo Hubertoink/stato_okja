@@ -676,6 +676,28 @@ export default function Statistics() {
   const isDarkTheme = user?.theme === 'Midnight';
   const chartSeparatorColor = isDarkTheme ? 'rgba(148, 163, 184, 0.2)' : 'rgba(255, 255, 255, 0.92)';
   const chartLegendTextColor = isDarkTheme ? '#c9d5eb' : '#4b5563';
+  const chartGridColor = isDarkTheme ? 'rgba(148, 163, 184, 0.28)' : 'rgba(107, 114, 128, 0.35)';
+  const chartAxisTick = { fontSize: 12, fill: chartLegendTextColor } as const;
+  const chartTooltipContentStyle = {
+    backgroundColor: isDarkTheme ? 'rgba(17, 26, 43, 0.96)' : 'rgba(255, 255, 255, 0.96)',
+    borderColor: isDarkTheme ? 'rgba(148, 163, 184, 0.22)' : 'rgba(15, 23, 42, 0.1)',
+    borderRadius: '12px',
+    boxShadow: isDarkTheme ? '0 16px 36px rgba(0, 0, 0, 0.42)' : '0 10px 24px rgba(15, 23, 42, 0.14)',
+    color: isDarkTheme ? '#ecf3ff' : '#111827',
+  } as const;
+  const chartTooltipLabelStyle = {
+    color: isDarkTheme ? '#c9d5eb' : '#475569',
+    fontWeight: 600,
+  } as const;
+  const chartTooltipItemStyle = {
+    color: isDarkTheme ? '#ecf3ff' : '#111827',
+  } as const;
+  const lineChartCursor = isDarkTheme
+    ? { stroke: 'rgba(203, 213, 225, 0.75)', strokeWidth: 1, strokeDasharray: '4 4' }
+    : { stroke: 'rgba(71, 85, 105, 0.48)', strokeWidth: 1, strokeDasharray: '4 4' };
+  const barChartCursor = isDarkTheme
+    ? { fill: 'rgba(110, 168, 255, 0.14)' }
+    : { fill: 'rgba(91, 108, 255, 0.08)' };
   const pieLegendWrapperStyle = {
     color: chartLegendTextColor,
     fontSize: '13px',
@@ -1361,11 +1383,11 @@ export default function Statistics() {
       <div ref={reportRef} className="">
         {/* KPI Summary with Toggle */}
         <div className="flex items-center justify-end mb-4" data-pdf-section>
-          <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+          <div className="segmented-control flex items-center gap-2 rounded-lg p-1">
             <button
               type="button"
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                !showAverage ? 'bg-white shadow text-viridian font-medium' : 'text-gray-600 hover:text-gray-800'
+                !showAverage ? 'segmented-control-button-active font-medium' : 'segmented-control-button'
               }`}
               onClick={() => setShowAverage(false)}
             >
@@ -1374,7 +1396,7 @@ export default function Statistics() {
             <button
               type="button"
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                showAverage ? 'bg-white shadow text-viridian font-medium' : 'text-gray-600 hover:text-gray-800'
+                showAverage ? 'segmented-control-button-active font-medium' : 'segmented-control-button'
               }`}
               onClick={() => setShowAverage(true)}
             >
@@ -1512,13 +1534,13 @@ export default function Statistics() {
               <h3 className="text-lg font-semibold text-viridian">
                 {showAverage ? 'Zeitverlauf Ø Teilnehmende' : 'Zeitverlauf Teilnehmende'}
               </h3>
-              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              <div className="segmented-control flex gap-1 rounded-lg p-1">
                 <button
                   onClick={() => setTimeAggregation('day')}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                     timeAggregation === 'day'
-                      ? 'bg-white text-viridian shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
+                      ? 'segmented-control-button-active'
+                      : 'segmented-control-button'
                   }`}
                 >
                   Tag
@@ -1527,8 +1549,8 @@ export default function Statistics() {
                   onClick={() => setTimeAggregation('week')}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                     timeAggregation === 'week'
-                      ? 'bg-white text-viridian shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
+                      ? 'segmented-control-button-active'
+                      : 'segmented-control-button'
                   }`}
                 >
                   Woche
@@ -1537,8 +1559,8 @@ export default function Statistics() {
                   onClick={() => setTimeAggregation('month')}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                     timeAggregation === 'month'
-                      ? 'bg-white text-viridian shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
+                      ? 'segmented-control-button-active'
+                      : 'segmented-control-button'
                   }`}
                 >
                   Monat
@@ -1551,10 +1573,10 @@ export default function Statistics() {
                   data={aggregatedTimeseries}
                   margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 12 }}
+                    tick={chartAxisTick}
                     tickFormatter={(v) => {
                       const s = String(v);
                       if (timeAggregation === 'week') {
@@ -1572,8 +1594,12 @@ export default function Statistics() {
                       return fmtDateCompact(s);
                     }}
                   />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} tick={chartAxisTick} />
                   <Tooltip
+                    contentStyle={chartTooltipContentStyle}
+                    labelStyle={chartTooltipLabelStyle}
+                    itemStyle={chartTooltipItemStyle}
+                    cursor={lineChartCursor}
                     formatter={(value: number) => [
                       value.toLocaleString('de-DE', { maximumFractionDigits: 1 }),
                       showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'
@@ -1608,6 +1634,7 @@ export default function Statistics() {
                     name={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
                     stroke="#10b981"
                     strokeWidth={2}
+                    activeDot={{ r: 6, fill: '#10b981', stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
                     dot={timeAggregation !== 'day'}
                   />
                 </LineChart>
@@ -1620,13 +1647,13 @@ export default function Statistics() {
               <h3 className="text-lg font-semibold text-viridian">
                 {showAverage ? 'Ø Alterskohorten' : 'Alterskohorten'}
               </h3>
-              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              <div className="segmented-control flex gap-1 rounded-lg p-1">
                 <button
                   onClick={() => setCohortChartMode('bar')}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                     cohortChartMode === 'bar'
-                      ? 'bg-white text-viridian shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
+                      ? 'segmented-control-button-active'
+                      : 'segmented-control-button'
                   }`}
                 >
                   Balken
@@ -1635,8 +1662,8 @@ export default function Statistics() {
                   onClick={() => setCohortChartMode('pie')}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                     cohortChartMode === 'pie'
-                      ? 'bg-white text-viridian shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
+                      ? 'segmented-control-button-active'
+                      : 'segmented-control-button'
                   }`}
                 >
                   Kreis
@@ -1676,6 +1703,9 @@ export default function Statistics() {
                       ))}
                     </Pie>
                     <Tooltip
+                      contentStyle={chartTooltipContentStyle}
+                      labelStyle={chartTooltipLabelStyle}
+                      itemStyle={chartTooltipItemStyle}
                       formatter={(
                         value: number,
                         _name: string,
@@ -1691,17 +1721,21 @@ export default function Statistics() {
                   </PieChart>
                 ) : (
                   <BarChart data={cohortChartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                     <XAxis
                       dataKey="name"
-                      tick={{ fontSize: 12 }}
+                      tick={chartAxisTick}
                       interval={0}
                       angle={-15}
                       textAnchor="end"
                       height={50}
                     />
-                    <YAxis allowDecimals={showAverage} tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={showAverage} tick={chartAxisTick} />
                     <Tooltip
+                      contentStyle={chartTooltipContentStyle}
+                      labelStyle={chartTooltipLabelStyle}
+                      itemStyle={chartTooltipItemStyle}
+                      cursor={barChartCursor}
                       formatter={(value: number) =>
                         value.toLocaleString('de-DE', { maximumFractionDigits: 1 })
                       }
@@ -1727,17 +1761,17 @@ export default function Statistics() {
                   data={topCategoryChartData}
                   margin={{ top: 20, right: 20, left: 0, bottom: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 12 }}
+                    tick={chartAxisTick}
                     interval={0}
                     angle={-15}
                     textAnchor="end"
                     height={64}
                   />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
+                  <YAxis allowDecimals={false} tick={chartAxisTick} />
+                  <Tooltip contentStyle={chartTooltipContentStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} cursor={barChartCursor} formatter={(value: number) => value.toLocaleString('de-DE')} />
                   <Bar dataKey="count" name="Aktivitäten">
                     {topCategoryChartData.map((_, i) => (
                       <Cell
@@ -1757,17 +1791,17 @@ export default function Statistics() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topTags} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 12 }}
+                    tick={chartAxisTick}
                     interval={0}
                     angle={-15}
                     textAnchor="end"
                     height={50}
                   />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
+                  <YAxis allowDecimals={false} tick={chartAxisTick} />
+                  <Tooltip contentStyle={chartTooltipContentStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} cursor={barChartCursor} formatter={(value: number) => value.toLocaleString('de-DE')} />
                   <Bar dataKey="count" name="Aktivitäten">
                     {topTags.map((t, i) => (
                       <Cell
@@ -1789,17 +1823,21 @@ export default function Statistics() {
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topDays} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                       <XAxis
                         dataKey="name"
-                        tick={{ fontSize: 12 }}
+                        tick={chartAxisTick}
                         interval={0}
                         angle={-15}
                         textAnchor="end"
                         height={50}
                       />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <YAxis allowDecimals={false} tick={chartAxisTick} />
                       <Tooltip
+                        contentStyle={chartTooltipContentStyle}
+                        labelStyle={chartTooltipLabelStyle}
+                        itemStyle={chartTooltipItemStyle}
+                        cursor={barChartCursor}
                         formatter={(value: number) => value.toLocaleString('de-DE')}
                         labelFormatter={(l) => `Datum: ${l}`}
                       />
@@ -1816,17 +1854,17 @@ export default function Statistics() {
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topProjects} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                       <XAxis
                         dataKey="name"
-                        tick={{ fontSize: 12 }}
+                        tick={chartAxisTick}
                         interval={0}
                         angle={-15}
                         textAnchor="end"
                         height={50}
                       />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                      <Tooltip formatter={(value: number) => value.toLocaleString('de-DE')} />
+                      <YAxis allowDecimals={false} tick={chartAxisTick} />
+                      <Tooltip contentStyle={chartTooltipContentStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} cursor={barChartCursor} formatter={(value: number) => value.toLocaleString('de-DE')} />
                       <Bar dataKey="count" name="Aktivitäten">
                         {topProjects.map((p, i) => (
                           <Cell

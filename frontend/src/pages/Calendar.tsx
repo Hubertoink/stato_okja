@@ -817,7 +817,7 @@ export default function Calendar() {
               Heute
             </button>
             <button
-              className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm"
+              className="calendar-control px-2 py-1.5 rounded text-sm"
               onClick={() =>
                 setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), -7) : addMonths(c, -1)))
               }
@@ -825,7 +825,7 @@ export default function Calendar() {
               «
             </button>
             <button
-              className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm"
+              className="calendar-control px-2 py-1.5 rounded text-sm"
               onClick={() =>
                 setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), 7) : addMonths(c, 1)))
               }
@@ -840,7 +840,7 @@ export default function Calendar() {
             Heute
           </button>
           <button
-            className="bg-white border text-gray-700 px-3 py-2 rounded"
+            className="calendar-control px-3 py-2 rounded"
             onClick={() =>
               setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), -7) : addMonths(c, -1)))
             }
@@ -848,7 +848,7 @@ export default function Calendar() {
             «
           </button>
           <button
-            className="bg-white border text-gray-700 px-3 py-2 rounded"
+            className="calendar-control px-3 py-2 rounded"
             onClick={() =>
               setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), 7) : addMonths(c, 1)))
             }
@@ -859,13 +859,13 @@ export default function Calendar() {
             value={view}
             title="Ansicht wählen"
             onChange={(e) => setView(e.target.value as View)}
-            className="border rounded px-2 py-2"
+            className="calendar-control rounded px-2 py-2"
           >
             <option value="month">Monat</option>
             <option value="week">Woche</option>
           </select>
           {view === 'month' && (
-            <label className="flex items-center gap-2 bg-white border text-gray-700 px-3 py-2 rounded select-none" title="Aktivitäten aus dem Vor- und Folgemonat in der Monatsansicht anzeigen">
+            <label className="calendar-control-toggle flex items-center gap-2 px-3 py-2 rounded select-none" title="Aktivitäten aus dem Vor- und Folgemonat in der Monatsansicht anzeigen">
               <input
                 type="checkbox"
                 className="accent-viridian"

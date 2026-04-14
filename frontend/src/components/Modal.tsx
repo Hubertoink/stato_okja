@@ -35,7 +35,7 @@ export default function Modal({
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className={`bg-white/95 backdrop-blur-xl w-full ${maxW} rounded-t-3xl md:rounded-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto bottom-sheet-animate shadow-2xl border border-white/50`}
+        className={`backdrop-blur-xl w-full ${maxW} rounded-t-3xl md:rounded-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto bottom-sheet-animate shadow-2xl modal-panel-roomy`}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold gradient-text">{title}</h3>

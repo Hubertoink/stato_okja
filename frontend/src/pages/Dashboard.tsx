@@ -20,7 +20,6 @@ import {
   FolderPlus,
   Image as ImageIcon,
   Sparkles,
-  BookOpen,
   ArrowLeft,
   ArrowRight,
   Settings2,
@@ -272,10 +271,6 @@ export default function Dashboard() {
     setTutorialOpen(false);
   };
 
-  const openTutorial = () => {
-    setTutorialOpen(true);
-  };
-
   const navigateFromTutorial = (path: string, dismiss = false) => {
     if (dismiss) dismissTutorial();
     setTutorialOpen(false);
@@ -375,14 +370,6 @@ export default function Dashboard() {
     <div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
         <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
-        <button
-          type="button"
-          onClick={openTutorial}
-          className="inline-flex items-center justify-center gap-2 self-start md:self-auto rounded-2xl border border-white/80 bg-white/80 px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-white transition"
-        >
-          <BookOpen className="w-4 h-4 text-viridian" />
-          Tutorial ansehen
-        </button>
       </div>
 
       {/* Today's Opening Hours */}

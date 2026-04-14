@@ -1118,7 +1118,11 @@ function ProjectForm({
               style={
                 active
                   ? { backgroundColor: color, color: '#fff', borderColor: color }
-                  : { backgroundColor: '#fff', color: '#374151', borderColor: color }
+                  : {
+                      backgroundColor: 'var(--surface-1)',
+                      color: 'var(--text-primary)',
+                      borderColor: color,
+                    }
               }
               title={c.name}
               aria-pressed={active}

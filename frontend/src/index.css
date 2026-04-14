@@ -264,7 +264,7 @@ code {
 }
 
 .mobile-bottom-nav {
-  bottom: max(env(safe-area-inset-bottom, 0px), 0.5rem);
+  bottom: 0;
 }
 
 .activity-cohort-column-icon {

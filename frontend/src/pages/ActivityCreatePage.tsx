@@ -14,7 +14,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 import { useToast } from '@/components/Toast';
 import Toggle from '@/components/Toggle';
 import ConfirmModal from '@/components/ConfirmModal';
-import { getBgClass } from '@/lib/colorPalette';
+import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
@@ -634,11 +634,8 @@ export default function ActivityCreatePage() {
                       else set.add(c.id);
                       setForm({ ...form, categoryIds: Array.from(set) });
                     }}
-                    className={`px-2 py-1 rounded-full text-xs border ${
-                      active
-                        ? `${getBgClass(c.color as string, 'bg-slate-400')} text-white border-transparent`
-                        : 'bg-white text-gray-700 border-gray-300'
-                    }`}
+                    className="px-2 py-1 rounded-full text-xs border"
+                    style={getSelectableTaxonomyChipStyle(active, c.color)}
                   >
                     {c.name}
                   </button>
@@ -669,11 +666,8 @@ export default function ActivityCreatePage() {
                     else set.add(t.id);
                     setForm({ ...form, tagIds: Array.from(set) });
                   }}
-                  className={`px-2 py-1 rounded-full text-xs border ${
-                    active
-                      ? `${getBgClass(t.color as string, 'bg-slate-500')} text-white border-transparent`
-                      : 'bg-white text-gray-700 border-gray-300'
-                  }`}
+                  className="px-2 py-1 rounded-full text-xs border"
+                  style={getSelectableTaxonomyChipStyle(active, t.color)}
                 >
                   {t.name}
                 </button>

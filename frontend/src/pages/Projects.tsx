@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Toggle from '@/components/Toggle';
 import {
   Project,
@@ -18,6 +19,7 @@ import {
   Archive as ArchiveIcon,
   ArchiveRestore as ArchiveRestoreIcon,
   Trash2,
+  CalendarRange,
   LayoutGrid,
   List,
 } from 'lucide-react';
@@ -329,6 +331,7 @@ function ProjectGridCard({
   tagList,
   extraTags,
   starred,
+  onOpenActivities,
   onToggleStar,
   onEdit,
 }: {
@@ -338,6 +341,7 @@ function ProjectGridCard({
   tagList: ProjectBadgeTag[];
   extraTags: number;
   starred: boolean;
+  onOpenActivities: () => void;
   onToggleStar: () => void;
   onEdit: () => void;
 }) {
@@ -407,8 +411,19 @@ function ProjectGridCard({
           <div className="flex gap-3 text-sm items-start z-[2] relative">
             <span className="tooltip-wrapper">
               <button
+                type="button"
+                onClick={onOpenActivities}
+                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 p-1.5"
+                aria-label={`Aktivitäten für ${project.title} anzeigen`}
+              >
+                <CalendarRange className="w-4 h-4 text-white" />
+              </button>
+              <span className="tooltip-bubble">Aktivitäten anzeigen</span>
+            </span>
+            <span className="tooltip-wrapper">
+              <button
+                type="button"
                 onClick={onToggleStar}
-                title={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
                 className={`opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full p-1.5 ${
                   starred ? 'bg-yellow-400/90' : 'bg-white/20 hover:bg-white/30'
                 }`}
@@ -424,8 +439,8 @@ function ProjectGridCard({
             </span>
             <span className="tooltip-wrapper">
               <button
+                type="button"
                 onClick={onEdit}
-                title="Bearbeiten"
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 p-1.5"
                 aria-label={`Projekt ${project.title} bearbeiten`}
               >
@@ -493,6 +508,7 @@ function ProjectListRow({
   tagList,
   extraTags,
   starred,
+  onOpenActivities,
   onToggleStar,
   onEdit,
 }: {
@@ -502,6 +518,7 @@ function ProjectListRow({
   tagList: ProjectBadgeTag[];
   extraTags: number;
   starred: boolean;
+  onOpenActivities: () => void;
   onToggleStar: () => void;
   onEdit: () => void;
 }) {
@@ -509,9 +526,9 @@ function ProjectListRow({
   const surfaceColor = project.color || pickBg(project.title);
 
   return (
-    <div className="hidden md:grid md:grid-cols-[176px,minmax(0,1fr)] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="hidden md:grid md:grid-cols-[176px,minmax(0,1fr)] overflow-visible rounded-2xl border border-gray-200 bg-white shadow-sm relative">
       <div
-        className="relative min-h-[156px]"
+        className="relative min-h-[156px] overflow-hidden rounded-l-2xl"
         style={{ backgroundColor: project.imageUrl ? undefined : surfaceColor }}
       >
         {project.imageUrl ? (
@@ -537,9 +554,15 @@ function ProjectListRow({
       <div className="min-w-0 p-4 lg:p-5 flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-lg lg:text-xl font-semibold break-words leading-snug text-[color:var(--text-primary)]">
+            <button
+              type="button"
+              onClick={onOpenActivities}
+              className="text-left text-lg lg:text-xl font-semibold break-words leading-snug text-[color:var(--text-primary)] hover:text-viridian transition-colors"
+              title="Aktivitäten dieses Projekts anzeigen"
+              aria-label={`Aktivitäten für ${project.title} anzeigen`}
+            >
               {project.title}
-            </div>
+            </button>
             {project.targetGroup && (
               <div className="mt-1 text-sm font-medium text-gray-700">
                 Zielgruppe: <span className="font-normal text-gray-800">{project.targetGroup}</span>
@@ -548,28 +571,43 @@ function ProjectListRow({
           </div>
 
           <div className="flex items-start gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onToggleStar}
-              title={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
-              aria-label={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
-              className={`inline-flex items-center justify-center rounded-full border p-2 transition-colors ${
-                starred
-                  ? 'border-yellow-400 bg-yellow-100 text-yellow-800'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:text-yellow-700'
-              }`}
-            >
-              {starred ? <Star className="w-4 h-4" /> : <StarOff className="w-4 h-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={onEdit}
-              title="Bearbeiten"
-              aria-label={`Projekt ${project.title} bearbeiten`}
-              className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:border-viridian hover:text-viridian"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
+            <span className="tooltip-wrapper">
+              <button
+                type="button"
+                onClick={onOpenActivities}
+                aria-label={`Aktivitäten für ${project.title} anzeigen`}
+                className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:border-viridian hover:text-viridian"
+              >
+                <CalendarRange className="w-4 h-4" />
+              </button>
+              <span className="tooltip-bubble">Aktivitäten anzeigen</span>
+            </span>
+            <span className="tooltip-wrapper">
+              <button
+                type="button"
+                onClick={onToggleStar}
+                aria-label={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
+                className={`inline-flex items-center justify-center rounded-full border p-2 transition-colors ${
+                  starred
+                    ? 'border-yellow-400 bg-yellow-100 text-yellow-800'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:text-yellow-700'
+                }`}
+              >
+                {starred ? <Star className="w-4 h-4" /> : <StarOff className="w-4 h-4" />}
+              </button>
+              <span className="tooltip-bubble">{starred ? 'Highlight entfernen' : 'Highlight setzen'}</span>
+            </span>
+            <span className="tooltip-wrapper">
+              <button
+                type="button"
+                onClick={onEdit}
+                aria-label={`Projekt ${project.title} bearbeiten`}
+                className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:border-viridian hover:text-viridian"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <span className="tooltip-bubble">Bearbeiten</span>
+            </span>
           </div>
         </div>
 
@@ -1610,6 +1648,7 @@ function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<P
 }
 
 export default function Projects() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   // Debounce the search to prevent firing a request for every keystroke on first usage
   const [debounced, setDebounced] = useState('');
@@ -1689,6 +1728,13 @@ export default function Projects() {
       return leftStarred ? -1 : 1;
     });
   }, [projects, starred, starredFirst]);
+
+  const openProjectActivities = useCallback(
+    (projectId: string) => {
+      navigate(`/activities?projectId=${encodeURIComponent(projectId)}`);
+    },
+    [navigate],
+  );
 
   return (
     <div>
@@ -1818,6 +1864,7 @@ export default function Projects() {
                       tagList={tagList}
                       extraTags={extraTags}
                       starred={starredNow}
+                      onOpenActivities={() => openProjectActivities(p.id)}
                       onToggleStar={() => setStarred(toggleStarredProject(p.id))}
                       onEdit={() => setModal({ mode: 'edit', project: p })}
                     />
@@ -1829,6 +1876,7 @@ export default function Projects() {
                     tagList={tagList}
                     extraTags={Math.max(0, tagList.length - 4)}
                     starred={starredNow}
+                    onOpenActivities={() => openProjectActivities(p.id)}
                     onToggleStar={() => setStarred(toggleStarredProject(p.id))}
                     onEdit={() => setModal({ mode: 'edit', project: p })}
                   />
@@ -1845,6 +1893,7 @@ export default function Projects() {
                 tagList={tagList}
                 extraTags={extraTags}
                 starred={starredNow}
+                onOpenActivities={() => openProjectActivities(p.id)}
                 onToggleStar={() => setStarred(toggleStarredProject(p.id))}
                 onEdit={() => setModal({ mode: 'edit', project: p })}
               />

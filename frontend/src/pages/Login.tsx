@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
+import { CookieNoticeModal, ImprintModal } from '@/components/LegalModals';
 import { useNavigate } from 'react-router-dom';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 
@@ -11,6 +12,8 @@ export default function Login() {
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [branding, setBranding] = useState(DEFAULT_PUBLIC_CONFIG);
+  const [imprintModalOpen, setImprintModalOpen] = useState(false);
+  const [cookieModalOpen, setCookieModalOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -94,10 +97,31 @@ export default function Login() {
           {error && <div className="chip chip-danger mt-2 w-full justify-center">{error}</div>}
         </form>
 
-        <p className="text-center text-sm text-gray-400 mt-6">
-          © 2026 StatO - <a href="mailto:Hubertoink@outlook.com" className="hover:text-viridian transition-colors">OKJA Team</a>
+        <div className="mt-6 flex items-center justify-center gap-3 flex-wrap text-sm text-gray-500">
+          <button
+            type="button"
+            onClick={() => setImprintModalOpen(true)}
+            className="font-medium underline underline-offset-2 hover:text-viridian transition-colors"
+          >
+            Impressum
+          </button>
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            onClick={() => setCookieModalOpen(true)}
+            className="font-medium underline underline-offset-2 hover:text-viridian transition-colors"
+          >
+            Cookies
+          </button>
+        </div>
+
+        <p className="text-center text-sm text-gray-400 mt-4">
+          © {new Date().getFullYear()} StatO - <a href="mailto:hubertoink@outlook.com" className="hover:text-viridian transition-colors">OKJA Team</a>
         </p>
       </div>
+
+      <ImprintModal open={imprintModalOpen} onClose={() => setImprintModalOpen(false)} />
+      <CookieNoticeModal open={cookieModalOpen} onClose={() => setCookieModalOpen(false)} />
     </div>
   );
 }

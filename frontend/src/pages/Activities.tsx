@@ -217,6 +217,38 @@ export default function Activities() {
     setPage(1);
   }, [params]);
 
+  useEffect(() => {
+    const projectParam = (params.get('projectId') || '').trim();
+    if (!projectParam) return;
+
+    setAdvanced((current) => {
+      const unchanged =
+        Array.isArray(current.projectIds) &&
+        current.projectIds.length === 1 &&
+        current.projectIds[0] === projectParam &&
+        !current.from &&
+        !current.to &&
+        !current.types?.length &&
+        !current.locationIds?.length &&
+        !current.categoryIds?.length &&
+        !current.uncategorized &&
+        !current.tagIds?.length &&
+        !current.staffIds?.length &&
+        !current.cohortIds?.length &&
+        !current.hasNotes &&
+        !current.participantsMin &&
+        !current.participantsMax &&
+        !current.durationMin &&
+        !current.durationMax;
+
+      if (unchanged) return current;
+      return { projectIds: [projectParam] };
+    });
+    setSearchTerm('');
+    setSearchOpen(false);
+    setPage(1);
+  }, [params]);
+
   // Persist filters across navigation/tab switches (only reset when user explicitly clicks "Zurücksetzen")
   useEffect(() => {
     try {

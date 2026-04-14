@@ -291,14 +291,16 @@ export default function SettingsProjectTemplates() {
           </p>
         </div>
         <button
-          className="inline-flex items-center gap-2 px-3 py-2 rounded bg-viridian text-white"
+          type="button"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-viridian text-white transition-colors hover:bg-viridian/90"
           onClick={() => {
             setEditing(null);
             setModalOpen(true);
           }}
+          aria-label="Neue Vorlage"
+          title="Neue Vorlage"
         >
-          <Plus className="w-4 h-4" />
-          Neue Vorlage
+          <Plus className="h-5 w-5" />
         </button>
       </div>
 

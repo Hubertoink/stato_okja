@@ -19,6 +19,7 @@ import { api } from '@/lib/api';
 import { canAccessDevTools } from '@/lib/devToolsConfig';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
+import { ImprintModal } from '@/components/LegalModals';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
@@ -639,47 +640,7 @@ export default function Layout() {
           </div>
         </footer>
       )}
-      <Modal
-        open={imprintModalOpen}
-        onClose={() => setImprintModalOpen(false)}
-        title="Impressum"
-        maxWidth="md"
-      >
-        <div className="space-y-4 text-sm text-gray-700">
-          <section className="space-y-1">
-            <h3 className="text-base font-semibold text-gray-900">Angaben gemäß § 5 TMG</h3>
-            <p>StatO</p>
-            <p>Entwickler: Nikolas Häfner</p>
-            <p>Paul-Gerhardt-Str. 5</p>
-            <p>68169 Mannheim</p>
-          </section>
-          <section className="space-y-1">
-            <h3 className="text-base font-semibold text-gray-900">Kontakt</h3>
-            <p>
-              E-Mail:{' '}
-              <a href="mailto:hubertoink@outlook.com" className="underline hover:text-viridian">
-                hubertoink@outlook.com
-              </a>
-            </p>
-          </section>
-          <section className="space-y-1">
-            <h3 className="text-base font-semibold text-gray-900">Verantwortlich für den Inhalt</h3>
-            <p>Nikolas Häfner</p>
-            <p>Paul-Gerhardt-Str. 5</p>
-            <p>68169 Mannheim</p>
-          </section>
-          <section className="space-y-1">
-            <h3 className="text-base font-semibold text-gray-900">Projektangaben</h3>
-            <p>Software: StatO</p>
-            <p>
-              Version: {appVersionDisplay}
-              {import.meta.env.VITE_COMMIT_SHA
-                ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0, 7)})`
-                : ''}
-            </p>
-          </section>
-        </div>
-      </Modal>
+      <ImprintModal open={imprintModalOpen} onClose={() => setImprintModalOpen(false)} />
       {/* Quick Create Organisation Modal (org_admin) */}
       <Modal
         open={createModalOpen}

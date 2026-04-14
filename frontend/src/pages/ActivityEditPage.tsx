@@ -101,6 +101,31 @@ export default function ActivityEditPage() {
     return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
   }, [form.date]);
   const isOpenDoor = selectedProject?.type === 'open_door';
+  const employeeStaff = useMemo(
+    () =>
+      (staff || []).filter((member) =>
+        Array.isArray(member.roles)
+          ? member.roles.includes('lead') || member.roles.includes('employee')
+          : member.role === 'lead' || member.role === 'employee',
+      ),
+    [staff],
+  );
+  const volunteerStaff = useMemo(
+    () =>
+      (staff || []).filter((member) =>
+        Array.isArray(member.roles)
+          ? member.roles.includes('volunteer')
+          : member.role === 'volunteer',
+      ),
+    [staff],
+  );
+  const helperStaff = useMemo(
+    () =>
+      (staff || []).filter((member) =>
+        Array.isArray(member.roles) ? member.roles.includes('helper') : member.role === 'helper',
+      ),
+    [staff],
+  );
 
   // Prefill tags from project's default tag names if none chosen yet
   useEffect(() => {
@@ -555,16 +580,11 @@ export default function ActivityEditPage() {
         </div>
 
         {/* Staff */}
+        {employeeStaff.length > 0 && (
         <div>
           <label className="block text-sm font-medium mb-1">Mitarbeitende</label>
           <div className="flex flex-wrap gap-2">
-            {(staff || [])
-              .filter((s) =>
-                Array.isArray(s.roles)
-                  ? s.roles.includes('lead') || s.roles.includes('employee')
-                  : s.role === 'lead' || s.role === 'employee',
-              )
-              .map((s) => {
+            {employeeStaff.map((s) => {
                 const active = form.staffIds?.includes(s.id);
                 return (
                   <button
@@ -586,14 +606,12 @@ export default function ActivityEditPage() {
               })}
           </div>
         </div>
+        )}
+        {volunteerStaff.length > 0 && (
         <div>
           <label className="block text-sm font-medium mb-1">Ehrenamtliche</label>
           <div className="flex flex-wrap gap-2">
-            {(staff || [])
-              .filter((s) =>
-                Array.isArray(s.roles) ? s.roles.includes('volunteer') : s.role === 'volunteer',
-              )
-              .map((s) => {
+            {volunteerStaff.map((s) => {
                 const active = form.staffIds?.includes(s.id);
                 return (
                   <button
@@ -615,14 +633,12 @@ export default function ActivityEditPage() {
               })}
           </div>
         </div>
+        )}
+        {helperStaff.length > 0 && (
         <div>
           <label className="block text-sm font-medium mb-1">Helfer</label>
           <div className="flex flex-wrap gap-2">
-            {(staff || [])
-              .filter((s) =>
-                Array.isArray(s.roles) ? s.roles.includes('helper') : s.role === 'helper',
-              )
-              .map((s) => {
+            {helperStaff.map((s) => {
                 const active = form.staffIds?.includes(s.id);
                 return (
                   <button
@@ -644,6 +660,7 @@ export default function ActivityEditPage() {
               })}
           </div>
         </div>
+        )}
 
         {/* Notes */}
         <div>
@@ -676,7 +693,7 @@ export default function ActivityEditPage() {
           <div className="flex-1 flex items-center justify-center">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-red-100 text-red-700"
+              className="danger-icon-button p-2"
               onClick={() => setDeleteOpen(true)}
               title="Löschen"
               aria-label="Löschen"

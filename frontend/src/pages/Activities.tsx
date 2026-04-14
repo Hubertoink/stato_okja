@@ -859,7 +859,7 @@ export default function Activities() {
                         className="absolute inset-0 w-full h-full object-cover object-right opacity-70"
                       />
                       <div
-                        className="absolute inset-0 bg-gradient-to-l from-transparent via-white/60 to-white"
+                        className="activity-image-fade absolute inset-0"
                         aria-hidden
                       />
                     </>
@@ -871,7 +871,7 @@ export default function Activities() {
                         aria-hidden
                       />
                       <div
-                        className="absolute inset-0 bg-gradient-to-l from-transparent via-white/70 to-white"
+                        className="activity-image-fade absolute inset-0"
                         aria-hidden
                       />
                     </>
@@ -965,7 +965,7 @@ export default function Activities() {
                     className="absolute inset-y-0 right-0 w-28 h-full object-cover opacity-70"
                   />
                   <div
-                    className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-transparent via-white/60 to-white"
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-28"
                     aria-hidden
                   />
                 </>
@@ -977,7 +977,7 @@ export default function Activities() {
                     aria-hidden
                   />
                   <div
-                    className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-transparent via-white/70 to-white"
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-28"
                     aria-hidden
                   />
                 </>

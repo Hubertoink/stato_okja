@@ -123,6 +123,33 @@ export default function ActivityQuickAdd({
   }, [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
   const isOpenDoor = (selectedProject || initialProject)?.type === 'open_door';
+  const employeeStaff = useMemo(
+    () =>
+      (staff || []).filter((member) =>
+        Array.isArray(member.roles)
+          ? member.roles.includes('lead') || member.roles.includes('employee')
+          : member.role === 'lead' || member.role === 'employee',
+      ),
+    [staff],
+  );
+  const volunteerStaff = useMemo(
+    () =>
+      (staff || []).filter((member) =>
+        Array.isArray(member.roles)
+          ? member.roles.includes('volunteer')
+          : member.role === 'volunteer',
+      ),
+    [staff],
+  );
+  const helperStaff = useMemo(
+    () =>
+      (staff || []).filter((member) =>
+        Array.isArray(member.roles)
+          ? member.roles.includes('helper')
+          : member.role === 'helper',
+      ),
+    [staff],
+  );
 
   useEffect(() => {
     // Default times; if project provided, prefill from defaults
@@ -738,19 +765,14 @@ export default function ActivityQuickAdd({
                 })}
               </div>
             </div>
+            {employeeStaff.length > 0 && (
             <div>
               <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <label className="block text-sm font-medium">Mitarbeitende</label>
                 <FieldInfoHint label="Teammitglieder" settingsTab="team" />
               </div>
               <div className="flex flex-wrap gap-2">
-                {(staff || [])
-                  .filter((s) =>
-                    Array.isArray(s.roles)
-                      ? s.roles.includes('lead') || s.roles.includes('employee')
-                      : s.role === 'lead' || s.role === 'employee',
-                  )
-                  .map((s) => {
+                {employeeStaff.map((s) => {
                     const active = form.staffIds?.includes(s.id);
                     return (
                       <button
@@ -772,17 +794,15 @@ export default function ActivityQuickAdd({
                   })}
               </div>
             </div>
+            )}
+            {volunteerStaff.length > 0 && (
             <div>
               <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <label className="block text-sm font-medium">Ehrenamtliche</label>
                 <FieldInfoHint label="Teammitglieder" settingsTab="team" />
               </div>
               <div className="flex flex-wrap gap-2">
-                {(staff || [])
-                  .filter((s) =>
-                    Array.isArray(s.roles) ? s.roles.includes('volunteer') : s.role === 'volunteer',
-                  )
-                  .map((s) => {
+                {volunteerStaff.map((s) => {
                     const active = form.staffIds?.includes(s.id);
                     return (
                       <button
@@ -804,14 +824,12 @@ export default function ActivityQuickAdd({
                   })}
               </div>
             </div>
+            )}
+            {helperStaff.length > 0 && (
             <div>
               <label className="block text-sm font-medium mb-1">Helfer</label>
               <div className="flex flex-wrap gap-2">
-                {(staff || [])
-                  .filter((s) =>
-                    Array.isArray(s.roles) ? s.roles.includes('helper') : s.role === 'helper',
-                  )
-                  .map((s) => {
+                {helperStaff.map((s) => {
                     const active = form.staffIds?.includes(s.id);
                     return (
                       <button
@@ -833,6 +851,7 @@ export default function ActivityQuickAdd({
                   })}
               </div>
             </div>
+            )}
             <div>
               <label className="block text-sm font-medium mb-1">Notizen</label>
               <textarea
@@ -864,7 +883,7 @@ export default function ActivityQuickAdd({
             {activity ? (
               <button
                 type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full bg-red-100 text-red-700"
+                className="danger-icon-button p-2"
                 onClick={() => setDeleteOpen(true)}
                 title="Löschen"
                 aria-label="Löschen"

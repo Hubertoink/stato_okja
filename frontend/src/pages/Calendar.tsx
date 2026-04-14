@@ -817,7 +817,7 @@ export default function Calendar() {
               Heute
             </button>
             <button
-              className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm"
+              className="calendar-control px-2 py-1.5 rounded text-sm"
               onClick={() =>
                 setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), -7) : addMonths(c, -1)))
               }
@@ -825,7 +825,7 @@ export default function Calendar() {
               «
             </button>
             <button
-              className="bg-white border text-gray-700 px-2 py-1.5 rounded text-sm"
+              className="calendar-control px-2 py-1.5 rounded text-sm"
               onClick={() =>
                 setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), 7) : addMonths(c, 1)))
               }
@@ -840,7 +840,7 @@ export default function Calendar() {
             Heute
           </button>
           <button
-            className="bg-white border text-gray-700 px-3 py-2 rounded"
+            className="calendar-control px-3 py-2 rounded"
             onClick={() =>
               setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), -7) : addMonths(c, -1)))
             }
@@ -848,7 +848,7 @@ export default function Calendar() {
             «
           </button>
           <button
-            className="bg-white border text-gray-700 px-3 py-2 rounded"
+            className="calendar-control px-3 py-2 rounded"
             onClick={() =>
               setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), 7) : addMonths(c, 1)))
             }
@@ -859,13 +859,13 @@ export default function Calendar() {
             value={view}
             title="Ansicht wählen"
             onChange={(e) => setView(e.target.value as View)}
-            className="border rounded px-2 py-2"
+            className="calendar-control rounded px-2 py-2"
           >
             <option value="month">Monat</option>
             <option value="week">Woche</option>
           </select>
           {view === 'month' && (
-            <label className="flex items-center gap-2 bg-white border text-gray-700 px-3 py-2 rounded select-none" title="Aktivitäten aus dem Vor- und Folgemonat in der Monatsansicht anzeigen">
+            <label className="calendar-control-toggle flex items-center gap-2 px-3 py-2 rounded select-none" title="Aktivitäten aus dem Vor- und Folgemonat in der Monatsansicht anzeigen">
               <input
                 type="checkbox"
                 className="accent-viridian"
@@ -880,8 +880,8 @@ export default function Calendar() {
 
       {/* Month grid */}
       {view === 'month' && (
-        <div className="bg-white rounded-lg shadow">
-          <div className="grid grid-cols-7 text-xs md:text-sm font-medium text-gray-600 border-b">
+        <div className="calendar-surface rounded-lg shadow overflow-hidden">
+          <div className="calendar-header-row grid grid-cols-7 text-xs md:text-sm font-medium">
             {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d, idx) => (
               <div key={d} className="px-2 py-2 text-center">
                 <div>{d}</div>
@@ -904,12 +904,12 @@ export default function Calendar() {
               return (
                 <div
                   key={idx}
-                  className={`relative h-24 md:h-32 border p-1 text-left focus:outline-none focus:ring-2 focus:ring-viridian transition-colors ${
+                  className={`calendar-day-cell relative h-24 md:h-32 border p-1 text-left focus:outline-none focus:ring-2 focus:ring-viridian transition-colors ${
                     isOtherMonth
-                      ? 'bg-gray-100/80 text-gray-400 border-gray-200'
+                      ? 'calendar-day-cell-other'
                       : isToday
-                        ? 'bg-mint-green/40 ring-2 ring-mint-green border-mint-green'
-                        : 'bg-white hover:bg-gray-50/50'
+                        ? 'calendar-day-cell-today bg-mint-green/40 ring-2 ring-mint-green'
+                        : ''
                   }`}
                   role="button"
                   tabIndex={0}
@@ -928,7 +928,7 @@ export default function Calendar() {
                         e.stopPropagation();
                         openActivitiesForDate(iso);
                       }}
-                      className={`text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? 'text-gray-400' : 'text-gray-800'}`}
+                      className={`calendar-day-number text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? 'calendar-day-number-other' : ''}`}
                       title={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
                       aria-label={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
                     >
@@ -936,7 +936,7 @@ export default function Calendar() {
                     </button>
                     {hasHoliday && (
                       <div
-                        className="px-1 py-[1px] rounded text-[9px] md:text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 truncate max-w-[calc(100%-1.5rem)]"
+                        className="calendar-holiday-badge px-1 py-[1px] rounded text-[9px] md:text-[10px] font-semibold border truncate max-w-[calc(100%-1.5rem)]"
                         title={holidaysByDate
                           .get(iso)!
                           .map((h) => h.name)
@@ -949,7 +949,7 @@ export default function Calendar() {
                   {/* School holiday band */}
                   {hasSchoolHoliday && (
                     <div
-                      className="w-full h-3.5 rounded-sm bg-amber-100 border border-amber-200 text-[9px] md:text-[10px] text-amber-800 overflow-hidden px-1 mb-0.5"
+                      className="calendar-school-badge w-full h-3.5 rounded-sm border text-[9px] md:text-[10px] overflow-hidden px-1 mb-0.5"
                       title={schoolLabelFor(iso) || undefined}
                     >
                       <span className="truncate inline-block align-top leading-[14px]">{schoolLabelFor(iso)}</span>
@@ -965,8 +965,8 @@ export default function Calendar() {
 
       {/* Week view */}
       {view === 'week' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="grid grid-cols-7 bg-azure-web text-xs md:text-sm font-medium text-gray-600 border-b">
+        <div className="calendar-surface rounded-lg shadow overflow-hidden">
+          <div className="calendar-header-row grid grid-cols-7 text-xs md:text-sm font-medium">
             {weekDays.map((d, idx) => (
               <div key={d.toISOString()} className="px-2 py-2 text-center">
                 <div>
@@ -991,7 +991,7 @@ export default function Calendar() {
               return (
                 <div
                   key={iso}
-                  className={`min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left focus:outline-none transition-colors ${isToday ? 'bg-mint-green/40 ring-1 ring-mint-green/60 border-mint-green/60' : ''}`}
+                  className={`calendar-day-cell min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left focus:outline-none transition-colors ${isToday ? 'calendar-day-cell-today bg-mint-green/40 ring-1 ring-mint-green/60' : ''}`}
                   role="button"
                   tabIndex={0}
                   onClick={() => {
@@ -1017,7 +1017,7 @@ export default function Calendar() {
                   </div>
                   {!!holidaysByDate.get(iso)?.length && (
                     <div
-                      className="inline-block mb-1 px-1.5 py-0.5 rounded text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 truncate max-w-full"
+                      className="calendar-holiday-badge inline-block mb-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border truncate max-w-full"
                       title={holidaysByDate
                         .get(iso)!
                         .map((h) => h.name)
@@ -1028,7 +1028,7 @@ export default function Calendar() {
                   )}
                   {showSchool && schoolLabelFor(iso) && (
                     <div
-                      className="mb-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-amber-800 bg-amber-100 border border-amber-200 truncate max-w-full"
+                      className="calendar-school-badge mb-1 px-1.5 py-0.5 rounded text-[10px] font-medium border truncate max-w-full"
                       title={schoolLabelFor(iso) || undefined}
                     >
                       {schoolLabelFor(iso)}

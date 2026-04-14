@@ -1699,7 +1699,6 @@ export default function Statistics() {
                       outerRadius={cohortPieOuterRadius}
                       stroke={chartSeparatorColor}
                       strokeWidth={1.25}
-                      isAnimationActive={false}
                       label={({ percent }) =>
                         `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
                       }

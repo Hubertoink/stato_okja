@@ -38,6 +38,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
+import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
 const PROJECTS_STARRED_FIRST_STORAGE_KEY = 'projects:starred-first';
@@ -1080,19 +1081,7 @@ function ProjectForm({
                 update('tag', Array.from(next).join(', '));
               }}
               className="px-2 py-1 rounded-full text-xs border"
-              style={
-                active
-                  ? {
-                      backgroundColor: t.color || '#7aa39a',
-                      color: '#fff',
-                      borderColor: t.color || '#7aa39a',
-                    }
-                  : {
-                      backgroundColor: '#fff',
-                      color: '#374151',
-                      borderColor: t.color || '#7aa39a',
-                    }
-              }
+              style={getSelectableTaxonomyChipStyle(active, t.color)}
             >
               {t.name}
             </button>

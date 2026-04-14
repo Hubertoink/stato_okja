@@ -28,8 +28,8 @@ export default function ActivityCohortCountField({
         value={value}
         onChange={onChange}
         label={ariaLabel}
-        className="w-full min-w-0 min-h-[2.5rem] border border-gray-300 px-2 py-1 text-gray-900 hover:border-gray-400 hover:bg-gray-50 active:border-viridian"
-        valueClassName="text-xl"
+        className="h-12 w-full min-w-0 min-h-[3rem] rounded-md border border-gray-300 px-1.5 py-1 text-gray-900 hover:border-gray-400 hover:bg-gray-50 active:border-viridian md:h-14 md:min-h-[3.5rem] md:rounded-lg md:px-2"
+        valueClassName="text-lg md:text-xl"
       />
     );
   }
@@ -47,7 +47,7 @@ export default function ActivityCohortCountField({
       data-cohort-id={cohortId}
       data-gender={gender}
       enterKeyHint="next"
-      className="w-full border rounded px-2 py-1 text-center"
+      className="h-12 w-full rounded-md border px-1.5 py-1 text-center text-base tabular-nums md:h-14 md:rounded-lg md:px-2 md:text-lg"
       placeholder={placeholder}
       aria-label={ariaLabel}
     />

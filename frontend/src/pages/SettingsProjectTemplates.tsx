@@ -338,7 +338,7 @@ export default function SettingsProjectTemplates() {
                     </button>
                     <button
                       type="button"
-                      className="p-2 rounded border border-red-200 text-red-700 hover:bg-red-50"
+                      className="danger-icon-button p-2"
                       title="Löschen"
                       onClick={() => setConfirm({ open: true, id: t.id, title: t.title })}
                     >

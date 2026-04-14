@@ -83,7 +83,7 @@ export default function SettingsLocations() {
             </div>
             <div className="flex gap-2">
               <button className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5" onClick={()=> setModal({ mode: 'edit', loc: l })} aria-label="Bearbeiten"><Pencil className="w-4 h-4 text-viridian"/></button>
-              <button className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 p-1.5" onClick={async ()=> { if (!confirm('Einrichtung löschen?')) return; await api.delete(`/locations/${l.id}`); await refetch(); }} aria-label="Löschen"><Trash2 className="w-4 h-4 text-red-600"/></button>
+              <button className="danger-icon-button p-1.5" onClick={async ()=> { if (!confirm('Einrichtung löschen?')) return; await api.delete(`/locations/${l.id}`); await refetch(); }} aria-label="Löschen"><Trash2 className="w-4 h-4"/></button>
             </div>
           </div>
         ))}

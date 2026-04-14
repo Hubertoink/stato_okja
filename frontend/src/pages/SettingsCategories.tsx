@@ -313,7 +313,7 @@ export default function SettingsCategories() {
                 <Pencil className="w-4 h-4 text-viridian" />
               </button>}
               {canManage && <button
-                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 p-1.5"
+                className="danger-icon-button p-1.5"
                 aria-label="Löschen"
                 title="Löschen"
                 onClick={async () => {
@@ -332,7 +332,7 @@ export default function SettingsCategories() {
                   }
                 }}
               >
-                <Trash2 className="w-4 h-4 text-red-600" />
+                <Trash2 className="w-4 h-4" />
               </button>}
             </div>
           </div>

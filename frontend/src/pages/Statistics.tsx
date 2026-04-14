@@ -1477,6 +1477,9 @@ export default function Statistics() {
                     ))}
                   </Pie>
                   <Tooltip
+                    contentStyle={chartTooltipContentStyle}
+                    labelStyle={chartTooltipLabelStyle}
+                    itemStyle={chartTooltipItemStyle}
                     // Hover zeigt jeweils die "gegenteilige" Darstellung
                     // (wenn Labels absolute zeigen, Tooltip prozentual und umgekehrt)
                     formatter={(
@@ -1515,6 +1518,9 @@ export default function Statistics() {
                     ))}
                   </Pie>
                   <Tooltip
+                    contentStyle={chartTooltipContentStyle}
+                    labelStyle={chartTooltipLabelStyle}
+                    itemStyle={chartTooltipItemStyle}
                     // Labels sind relativ (Prozent), daher im Tooltip die absoluten Werte anzeigen
                     formatter={(
                       value: number,

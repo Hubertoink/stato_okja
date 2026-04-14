@@ -113,12 +113,21 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
       ),
     [staff],
   );
-  const volunteerOrHelperStaff = useMemo(
+  const volunteerStaff = useMemo(
     () =>
       (staff || []).filter((member) =>
         Array.isArray(member.roles)
-          ? member.roles.includes('volunteer') || member.roles.includes('helper')
-          : member.role === 'volunteer' || member.role === 'helper',
+          ? member.roles.includes('volunteer')
+          : member.role === 'volunteer',
+      ),
+    [staff],
+  );
+  const helperStaff = useMemo(
+    () =>
+      (staff || []).filter((member) =>
+        Array.isArray(member.roles)
+          ? member.roles.includes('helper')
+          : member.role === 'helper',
       ),
     [staff],
   );
@@ -667,11 +676,11 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             </div>
           </div>
           )}
-          {volunteerOrHelperStaff.length > 0 && (
+          {volunteerStaff.length > 0 && (
           <div>
             <label className="block text-sm font-medium mb-1">Ehrenamtliche</label>
             <div className="flex flex-wrap gap-2">
-              {volunteerOrHelperStaff.map((s) => {
+              {volunteerStaff.map((s) => {
                   const active = form.staffIds?.includes(s.id);
                   return (
                     <button
@@ -685,6 +694,33 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                       }}
                       className={`px-2 py-1 rounded-full text-xs border ${
                         active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+          )}
+          {helperStaff.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Helfer</label>
+            <div className="flex flex-wrap gap-2">
+              {helperStaff.map((s) => {
+                  const active = form.staffIds?.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        const set = new Set(form.staffIds || []);
+                        if (set.has(s.id)) set.delete(s.id);
+                        else set.add(s.id);
+                        setForm({ ...form, staffIds: Array.from(set) });
+                      }}
+                      className={`px-2 py-1 rounded-full text-xs border ${
+                        active ? 'bg-amber-400 text-white' : 'bg-white text-gray-700'
                       }`}
                     >
                       {s.name}
@@ -727,7 +763,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
           <div className="flex-1 flex items-center justify-center">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-red-100 text-red-700"
+              className="danger-icon-button p-2"
               onClick={() => setDeleteOpen(true)}
               title="Löschen"
               aria-label="Löschen"

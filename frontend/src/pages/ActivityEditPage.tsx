@@ -693,7 +693,7 @@ export default function ActivityEditPage() {
           <div className="flex-1 flex items-center justify-center">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-red-100 text-red-700"
+              className="danger-icon-button p-2"
               onClick={() => setDeleteOpen(true)}
               title="Löschen"
               aria-label="Löschen"

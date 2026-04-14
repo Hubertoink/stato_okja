@@ -248,9 +248,9 @@ export default function QuickTallyReviewModal({
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <span title="Männlich">♂ {counts.m}</span>
-                      <span title="Weiblich">♀ {counts.w}</span>
-                      <span title="Divers">⚧ {counts.d}</span>
+                      <span title="Männlich">m {counts.m}</span>
+                      <span title="Weiblich">w {counts.w}</span>
+                      <span title="Divers">d {counts.d}</span>
                       <span className="font-bold text-viridian">= {total}</span>
                     </div>
                   </div>

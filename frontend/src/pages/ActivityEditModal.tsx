@@ -449,21 +449,21 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                   title="Männlich"
                   aria-label="Männlich"
                 >
-                  ♂
+                  m
                 </span>
                 <span
                   className="activity-cohort-column-icon"
                   title="Weiblich"
                   aria-label="Weiblich"
                 >
-                  ♀
+                  w
                 </span>
                 <span
                   className="activity-cohort-column-icon"
                   title="Divers"
                   aria-label="Divers"
                 >
-                  ⚧
+                  d
                 </span>
                 <span className="text-xs text-gray-600 font-medium text-center" title="Summe" aria-label="Summe">
                   Σ
@@ -548,7 +548,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                         onKeyDown={tapModeEnabled ? undefined : (e) => handleKeyDown(e, rowIndex, g)}
                         cohortId={c.id}
                         gender={g}
-                        placeholder={g.toUpperCase()}
+                        placeholder={g}
                         ariaLabel={`${c.name} ${g.toUpperCase()}`}
                       />
                     ))}

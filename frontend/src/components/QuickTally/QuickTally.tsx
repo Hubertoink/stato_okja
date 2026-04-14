@@ -272,13 +272,13 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                   Kohorte
                 </th>
                 <th className="py-3 px-1 text-center" title="Männlich">
-                  <span className="text-2xl">♂</span>
+                  <span className="text-xl font-semibold lowercase">m</span>
                 </th>
                 <th className="py-3 px-1 text-center" title="Weiblich">
-                  <span className="text-2xl">♀</span>
+                  <span className="text-xl font-semibold lowercase">w</span>
                 </th>
                 <th className="py-3 px-1 text-center" title="Divers">
-                  <span className="text-2xl">⚧</span>
+                  <span className="text-xl font-semibold lowercase">d</span>
                 </th>
                 <th className="py-3 pl-2 text-right text-sm font-semibold text-gray-700">
                   Σ

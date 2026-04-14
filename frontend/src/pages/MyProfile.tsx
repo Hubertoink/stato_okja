@@ -231,6 +231,7 @@ function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)
     { name: 'Earthy Tones', colors: ['#6d6875','#b5838d','#e5989b','#ffb4a2','#f5f2f1'] },
     { name: 'Peachy Delight', colors: ['#d8e2dc','#ffe5d9','#ffcad4','#f4acb7','#9d8189'] },
     { name: 'Ocean Pearl', colors: ['#006d77','#83c5be','#edf6f9','#ffddd2','#f3f4f6'] },
+    { name: 'Midnight', colors: ['#08101d','#6ea8ff','#66d9d1','#1a2333','#ecf3ff'] },
   ];
   return (
     <div className="space-y-2">

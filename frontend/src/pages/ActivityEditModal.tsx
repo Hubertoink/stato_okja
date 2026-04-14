@@ -104,6 +104,24 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
     return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
   }, [form.date]);
   const isOpenDoor = selectedProject?.type === 'open_door';
+  const employeeStaff = useMemo(
+    () =>
+      (staff || []).filter((member) =>
+        Array.isArray(member.roles)
+          ? member.roles.includes('lead') || member.roles.includes('employee')
+          : member.role === 'lead' || member.role === 'employee',
+      ),
+    [staff],
+  );
+  const volunteerOrHelperStaff = useMemo(
+    () =>
+      (staff || []).filter((member) =>
+        Array.isArray(member.roles)
+          ? member.roles.includes('volunteer') || member.roles.includes('helper')
+          : member.role === 'volunteer' || member.role === 'helper',
+      ),
+    [staff],
+  );
 
   // Prefill tags from the selected project's default tags if none chosen yet
   useEffect(() => {
@@ -622,16 +640,11 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
             </div>
           </div>
           {/* Staff */}
+          {employeeStaff.length > 0 && (
           <div>
             <label className="block text-sm font-medium mb-1">Mitarbeitende</label>
             <div className="flex flex-wrap gap-2">
-              {(staff || [])
-                .filter((s) =>
-                  Array.isArray(s.roles)
-                    ? s.roles.includes('lead') || s.roles.includes('employee')
-                    : s.role === 'lead' || s.role === 'employee',
-                )
-                .map((s) => {
+              {employeeStaff.map((s) => {
                   const active = form.staffIds?.includes(s.id);
                   return (
                     <button
@@ -653,16 +666,12 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                 })}
             </div>
           </div>
+          )}
+          {volunteerOrHelperStaff.length > 0 && (
           <div>
             <label className="block text-sm font-medium mb-1">Ehrenamtliche</label>
             <div className="flex flex-wrap gap-2">
-              {(staff || [])
-                .filter((s) =>
-                  Array.isArray(s.roles)
-                    ? s.roles.includes('volunteer') || s.roles.includes('helper')
-                    : s.role === 'volunteer' || s.role === 'helper',
-                )
-                .map((s) => {
+              {volunteerOrHelperStaff.map((s) => {
                   const active = form.staffIds?.includes(s.id);
                   return (
                     <button
@@ -684,6 +693,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                 })}
             </div>
           </div>
+          )}
           {/* Notes */}
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="activity-notes-edit">

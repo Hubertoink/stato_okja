@@ -107,7 +107,10 @@
   --mint-cream: #0c1220;
   --app-bg: #08101d;
   --app-bg-overlay:
-    linear-gradient(135deg, rgba(3, 7, 18, 0.88) 0%, rgba(8, 16, 29, 0.74) 45%, rgba(11, 18, 32, 0.92) 100%);
+    radial-gradient(circle at 12% 18%, rgba(110, 168, 255, 0.22) 0%, rgba(110, 168, 255, 0) 28%),
+    radial-gradient(circle at 82% 78%, rgba(102, 217, 209, 0.16) 0%, rgba(102, 217, 209, 0) 24%),
+    radial-gradient(circle at 50% 100%, rgba(88, 103, 255, 0.12) 0%, rgba(88, 103, 255, 0) 34%),
+    linear-gradient(145deg, rgba(4, 9, 20, 0.96) 0%, rgba(9, 17, 31, 0.88) 36%, rgba(12, 21, 39, 0.82) 62%, rgba(6, 12, 24, 0.96) 100%);
   --surface-1: rgba(13, 20, 34, 0.9);
   --surface-2: #111a2b;
   --surface-3: #19243a;
@@ -717,6 +720,32 @@ code {
     rgba(15, 23, 42, 0.46) 60%,
     rgba(15, 23, 42, 0) 100%
   );
+}
+
+.summary-metric-card {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.75rem;
+}
+
+.summary-metric-card-total {
+  background: rgba(91, 108, 255, 0.12);
+  border: 1px solid rgba(91, 108, 255, 0.18);
+  border-radius: 0.75rem;
+}
+
+.summary-metric-label {
+  color: var(--text-muted);
+}
+
+:root[data-theme='Midnight'] .summary-metric-card {
+  background: rgba(17, 26, 43, 0.9);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+:root[data-theme='Midnight'] .summary-metric-card-total {
+  background: rgba(110, 168, 255, 0.16);
+  border-color: rgba(110, 168, 255, 0.24);
 }
 
 .note-card {

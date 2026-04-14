@@ -334,20 +334,20 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
         <div className="max-w-2xl mx-auto p-4">
           {/* Totals */}
           <div className="grid grid-cols-4 gap-2 text-center mb-4">
-            <div className="bg-white/60 rounded-lg py-2">
-              <div className="text-xs text-gray-600">♂ Männlich</div>
+            <div className="summary-metric-card py-2">
+              <div className="summary-metric-label text-xs">♂ Männlich</div>
               <div className="text-2xl font-bold text-viridian">{totals.m}</div>
             </div>
-            <div className="bg-white/60 rounded-lg py-2">
-              <div className="text-xs text-gray-600">♀ Weiblich</div>
+            <div className="summary-metric-card py-2">
+              <div className="summary-metric-label text-xs">♀ Weiblich</div>
               <div className="text-2xl font-bold text-viridian">{totals.w}</div>
             </div>
-            <div className="bg-white/60 rounded-lg py-2">
-              <div className="text-xs text-gray-600">⚧ Divers</div>
+            <div className="summary-metric-card py-2">
+              <div className="summary-metric-label text-xs">⚧ Divers</div>
               <div className="text-2xl font-bold text-viridian">{totals.d}</div>
             </div>
-            <div className="bg-viridian/10 rounded-lg py-2">
-              <div className="text-xs text-gray-600">Gesamt</div>
+            <div className="summary-metric-card-total py-2">
+              <div className="summary-metric-label text-xs">Gesamt</div>
               <div className="text-3xl font-bold text-viridian">{totals.total}</div>
             </div>
           </div>

@@ -212,20 +212,20 @@ export default function QuickTallyReviewModal({
           <div className="bg-mint-green rounded-lg p-4">
             <h4 className="font-semibold text-viridian mb-3">Zusammenfassung</h4>
             <div className="grid grid-cols-4 gap-2 text-center">
-              <div>
-                <div className="text-xs text-gray-600">♂ Männlich</div>
+              <div className="summary-metric-card py-2">
+                <div className="summary-metric-label text-xs">♂ Männlich</div>
                 <div className="text-xl font-bold text-viridian">{totals.m}</div>
               </div>
-              <div>
-                <div className="text-xs text-gray-600">♀ Weiblich</div>
+              <div className="summary-metric-card py-2">
+                <div className="summary-metric-label text-xs">♀ Weiblich</div>
                 <div className="text-xl font-bold text-viridian">{totals.w}</div>
               </div>
-              <div>
-                <div className="text-xs text-gray-600">⚧ Divers</div>
+              <div className="summary-metric-card py-2">
+                <div className="summary-metric-label text-xs">⚧ Divers</div>
                 <div className="text-xl font-bold text-viridian">{totals.d}</div>
               </div>
-              <div>
-                <div className="text-xs text-gray-600">Gesamt</div>
+              <div className="summary-metric-card-total py-2">
+                <div className="summary-metric-label text-xs">Gesamt</div>
                 <div className="text-2xl font-bold text-viridian">{totals.total}</div>
               </div>
             </div>

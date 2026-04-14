@@ -536,7 +536,7 @@ function ProjectListRow({
       <div className="min-w-0 p-4 lg:p-5 flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-lg lg:text-xl font-semibold text-gray-950 break-words leading-snug">
+            <div className="text-lg lg:text-xl font-semibold break-words leading-snug text-[color:var(--text-primary)]">
               {project.title}
             </div>
             {project.targetGroup && (

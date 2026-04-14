@@ -554,7 +554,11 @@ export default function SettingsProjectTemplates() {
                         style={
                           selected
                             ? { backgroundColor: t.color || '#7aa39a', color: '#fff', borderColor: t.color || '#7aa39a' }
-                            : { backgroundColor: '#fff', color: '#374151', borderColor: t.color || '#7aa39a' }
+                            : {
+                                backgroundColor: 'var(--surface-1)',
+                                color: 'var(--text-primary)',
+                                borderColor: t.color || '#7aa39a',
+                              }
                         }
                       >
                         {t.name}
@@ -605,7 +609,11 @@ export default function SettingsProjectTemplates() {
                           style={
                             active
                               ? { backgroundColor: color, color: '#fff', borderColor: color }
-                              : { backgroundColor: '#fff', color: '#374151', borderColor: color }
+                              : {
+                                  backgroundColor: 'var(--surface-1)',
+                                  color: 'var(--text-primary)',
+                                  borderColor: color,
+                                }
                           }
                           title={c.name}
                         >

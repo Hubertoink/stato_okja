@@ -165,11 +165,15 @@ export default function QuickTallyButton({
         font-bold text-xl
         transition-all duration-150
         ${disabled
-          ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-          : 'bg-white border-cambridge-blue text-viridian hover:bg-mint-green active:scale-95 active:bg-cambridge-blue active:text-white cursor-pointer'
+            ? 'cursor-not-allowed'
+            : 'active:scale-95 cursor-pointer'
         }
         ${className || ''}
       `}
+        style={disabled
+          ? { backgroundColor: 'var(--input-disabled-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-faint)' }
+          : { backgroundColor: 'var(--surface-1)', borderColor: 'var(--cambridge-blue)', color: 'var(--viridian)' }
+        }
       aria-label={label ? `${label}: ${value}` : `Zähler: ${value}`}
     >
       <span className={`text-2xl tabular-nums ${valueClassName || ''}`}>{value}</span>

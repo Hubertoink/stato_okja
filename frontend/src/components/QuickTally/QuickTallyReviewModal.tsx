@@ -5,6 +5,7 @@ import { useCohorts, useTags, useCategories } from '@/lib/taxonomy';
 import { useLocations } from '@/lib/locations';
 import { useStaff } from '@/lib/staff';
 import { useCreateActivity } from '@/lib/activities';
+import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useToast } from '@/components/Toast';
 import type { TallySession } from './useQuickTallySession';
 
@@ -173,42 +174,41 @@ export default function QuickTallyReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/50 flex items-end md:items-center justify-center p-0 md:p-6">
-      <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-4 md:px-6 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-6" style={{ backgroundColor: 'var(--overlay-backdrop)' }}>
+      <div
+        className="w-full md:max-w-lg rounded-t-2xl md:rounded-lg max-h-[90vh] overflow-y-auto border"
+        style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+      >
+        <div className="sticky top-0 border-b px-4 md:px-6 py-4 flex items-center justify-between" style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)' }}>
           <h3 className="text-xl font-bold text-viridian">Erfassung abschließen</h3>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full"
+            className="p-2 rounded-full"
+            style={{ color: 'var(--text-secondary)' }}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-4 md:p-6 space-y-6">
-          {/* Summary Info */}
-          <div className="bg-azure-web rounded-lg p-4 space-y-2">
-            <div className="flex items-center gap-2 text-gray-700">
+          <div className="rounded-lg p-4 space-y-2 border" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-subtle)' }}>
+            <div className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
               <Clock className="w-4 h-4" />
               <span className="font-medium">{formatDate(session.date)}</span>
-              <span className="text-gray-500">
+              <span style={{ color: 'var(--text-muted)' }}>
                 {session.startTime} – {endTime}
               </span>
             </div>
-            {project && (
-              <div className="font-semibold text-viridian">{project.title}</div>
-            )}
+            {project && <div className="font-semibold text-viridian">{project.title}</div>}
             {location && (
-              <div className="flex items-center gap-2 text-gray-600 text-sm">
+              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                 <MapPin className="w-4 h-4" />
                 {location.name}
               </div>
             )}
           </div>
 
-          {/* Totals Summary */}
           <div className="bg-mint-green rounded-lg p-4">
             <h4 className="font-semibold text-viridian mb-3">Zusammenfassung</h4>
             <div className="grid grid-cols-4 gap-2 text-center">
@@ -231,7 +231,6 @@ export default function QuickTallyReviewModal({
             </div>
           </div>
 
-          {/* Cohort Breakdown */}
           {cohortBreakdown.length > 0 && (
             <div>
               <h4 className="font-semibold text-viridian mb-2">Nach Alterskohorte</h4>
@@ -240,10 +239,11 @@ export default function QuickTallyReviewModal({
                   <div
                     key={cohort.id}
                     className="flex items-center justify-between py-2 border-b last:border-0"
+                    style={{ borderColor: 'var(--border-subtle)' }}
                   >
                     <div>
                       <span className="font-medium">{cohort.name}</span>
-                      <span className="text-xs text-gray-500 ml-2">
+                      <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
                         ({cohort.minAge}–{cohort.maxAge} J.)
                       </span>
                     </div>
@@ -259,7 +259,6 @@ export default function QuickTallyReviewModal({
             </div>
           )}
 
-          {/* End Time */}
           <div>
             <label className="block text-sm font-medium mb-1">Endzeit</label>
             <input
@@ -267,10 +266,10 @@ export default function QuickTallyReviewModal({
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               className="w-full border rounded-lg px-4 py-3"
+              style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
             />
           </div>
 
-          {/* Title (optional) */}
           <div>
             <label className="block text-sm font-medium mb-1">Titel (optional)</label>
             <input
@@ -279,10 +278,10 @@ export default function QuickTallyReviewModal({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="z. B. Werkraum, Offene Tür"
               className="w-full border rounded-lg px-4 py-3"
+              style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
             />
           </div>
 
-          {/* Categories (hidden for open_door) */}
           {!isOpenDoor && (categories || []).length > 0 && (
             <div>
               <label className="block text-sm font-medium mb-2">Kategorien</label>
@@ -301,11 +300,7 @@ export default function QuickTallyReviewModal({
                         setSelectedCategoryIds(Array.from(set));
                       }}
                       className="px-3 py-1.5 rounded-full text-sm border transition-colors"
-                      style={
-                        active
-                          ? { backgroundColor: bg, color: '#fff', borderColor: bg }
-                          : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
-                      }
+                      style={getSelectableTaxonomyChipStyle(active, bg)}
                     >
                       {c.name}
                     </button>
@@ -315,7 +310,6 @@ export default function QuickTallyReviewModal({
             </div>
           )}
 
-          {/* Tags */}
           {(tags || []).length > 0 && (
             <div>
               <label className="block text-sm font-medium mb-2">Tags</label>
@@ -334,11 +328,7 @@ export default function QuickTallyReviewModal({
                         setSelectedTagIds(Array.from(set));
                       }}
                       className="px-3 py-1.5 rounded-full text-sm border transition-colors"
-                      style={
-                        active
-                          ? { backgroundColor: bg, color: '#fff', borderColor: bg }
-                          : { backgroundColor: '#fff', color: '#374151', borderColor: bg }
-                      }
+                      style={getSelectableTaxonomyChipStyle(active, bg)}
                     >
                       {t.name}
                     </button>
@@ -348,7 +338,6 @@ export default function QuickTallyReviewModal({
             </div>
           )}
 
-          {/* Staff (employees/leads) */}
           {(staff || []).filter((s) =>
             Array.isArray(s.roles)
               ? s.roles.includes('lead') || s.roles.includes('employee')
@@ -375,11 +364,10 @@ export default function QuickTallyReviewModal({
                           else set.add(s.id);
                           setSelectedStaffIds(Array.from(set));
                         }}
-                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                          active 
-                            ? 'bg-cambridge-blue text-white border-cambridge-blue' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-cambridge-blue'
-                        }`}
+                        className="px-3 py-1.5 rounded-full text-sm border transition-colors"
+                        style={active
+                          ? { backgroundColor: 'var(--cambridge-blue)', color: '#fff', borderColor: 'var(--cambridge-blue)' }
+                          : { backgroundColor: 'var(--surface-1)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
                       >
                         {s.name}
                       </button>
@@ -389,7 +377,6 @@ export default function QuickTallyReviewModal({
             </div>
           )}
 
-          {/* Volunteers */}
           {(staff || []).filter((s) =>
             Array.isArray(s.roles)
               ? s.roles.includes('volunteer') || s.roles.includes('helper')
@@ -416,11 +403,10 @@ export default function QuickTallyReviewModal({
                           else set.add(s.id);
                           setSelectedStaffIds(Array.from(set));
                         }}
-                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                          active 
-                            ? 'bg-mint-green text-viridian border-mint-green' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-mint-green'
-                        }`}
+                        className="px-3 py-1.5 rounded-full text-sm border transition-colors"
+                        style={active
+                          ? { backgroundColor: 'var(--mint-green)', color: 'var(--text-primary)', borderColor: 'var(--mint-green)' }
+                          : { backgroundColor: 'var(--surface-1)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
                       >
                         {s.name}
                       </button>
@@ -430,7 +416,6 @@ export default function QuickTallyReviewModal({
             </div>
           )}
 
-          {/* Notes */}
           <div>
             <label className="block text-sm font-medium mb-1">
               Notizen / Besondere Vorkommnisse
@@ -441,12 +426,12 @@ export default function QuickTallyReviewModal({
               rows={3}
               placeholder="z.B. Konflikt zwischen Besuchern, besonderes Ereignis, Feedback..."
               className="w-full border rounded-lg px-4 py-3 resize-none"
+              style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
             />
           </div>
 
-          {/* Warning if no participants */}
           {totals.total === 0 && (
-            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-amber-600 rounded-lg p-3" style={{ backgroundColor: 'rgba(245, 158, 11, 0.12)' }}>
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <span className="text-sm">
                 Keine Teilnehmenden erfasst. Bitte prüfen.
@@ -454,12 +439,12 @@ export default function QuickTallyReviewModal({
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 border px-6 py-3 rounded-lg font-medium transition-colors"
+              style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-1)' }}
             >
               Zurück
             </button>

@@ -96,8 +96,11 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
   // Setup view - no active session (full modal)
   if (!session) {
     const setupContent = (
-      <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'var(--overlay-backdrop)' }}>
+        <div
+          className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border"
+          style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+        >
           {/* Header with gradient */}
           <div className="bg-gradient-to-r from-viridian to-cambridge-blue p-6 text-white">
             <div className="flex items-center justify-between">
@@ -126,11 +129,12 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
           <div className="p-6 space-y-5">
             {/* Project Selection Button */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Projekt *</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Projekt *</label>
               <button
                 type="button"
                 onClick={() => setProjectPickerOpen(true)}
-                className="w-full border-2 border-dashed border-gray-300 rounded-xl p-4 text-left hover:border-viridian hover:bg-mint-green/10 transition-all group"
+                className="w-full border-2 border-dashed rounded-xl p-4 text-left transition-all group"
+                style={{ borderColor: 'var(--border-strong)', backgroundColor: 'var(--surface-1)' }}
               >
                 {selectedProject ? (
                   <div className="flex items-center gap-4">
@@ -147,17 +151,17 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-viridian text-lg truncate">{selectedProject.title}</div>
-                      <div className="text-sm text-gray-500">Tippen zum Ändern</div>
+                      <div className="text-sm" style={{ color: 'var(--text-muted)' }}>Tippen zum Ändern</div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-viridian transition-colors" />
                   </div>
                 ) : (
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center">
-                      <Users className="w-8 h-8 text-gray-400" />
+                    <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--surface-2)' }}>
+                      <Users className="w-8 h-8" style={{ color: 'var(--text-faint)' }} />
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-gray-600">Projekt wählen</div>
+                      <div className="font-medium" style={{ color: 'var(--text-secondary)' }}>Projekt wählen</div>
                       <div className="text-sm text-gray-400">Tippen zur Auswahl</div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-viridian transition-colors" />
@@ -226,7 +230,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
 
   // Active session - full screen counting view
   const countingContent = (
-    <div className="fixed inset-0 z-[60] bg-white flex flex-col">
+    <div className="fixed inset-0 z-[60] flex flex-col" style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-primary)' }}>
       {/* Header */}
       <div className="bg-gradient-to-r from-viridian to-cambridge-blue text-white px-4 py-3 shadow-md">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
@@ -263,12 +267,12 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
       </div>
 
       {/* Counter Grid - Scrollable */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-4" style={{ backgroundColor: 'var(--surface-2)' }}>
         <div className="max-w-2xl mx-auto">
           <table className="w-full">
-            <thead className="sticky top-0 bg-white">
-              <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-3 pr-2 text-sm font-semibold text-gray-700">
+            <thead className="sticky top-0" style={{ backgroundColor: 'var(--surface-2)' }}>
+              <tr className="border-b-2" style={{ borderColor: 'var(--border-strong)' }}>
+                <th className="text-left py-3 pr-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
                   Kohorte
                 </th>
                 <th className="py-3 px-1 text-center" title="Männlich">
@@ -280,7 +284,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                 <th className="py-3 px-1 text-center" title="Divers">
                   <span className="text-xl font-semibold lowercase">d</span>
                 </th>
-                <th className="py-3 pl-2 text-right text-sm font-semibold text-gray-700">
+                <th className="py-3 pl-2 text-right text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
                   Σ
                 </th>
               </tr>
@@ -290,10 +294,10 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                 const counts = session.counts[cohort.id] || { m: 0, w: 0, d: 0 };
                 const cohortTotal = getCohortTotal(cohort.id);
                 return (
-                  <tr key={cohort.id} className="border-b last:border-b-0">
+                  <tr key={cohort.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--border-subtle)' }}>
                     <td className="py-4 pr-2">
                       <div className="font-semibold">{cohort.name}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {cohort.minAge}–{cohort.maxAge} Jahre
                       </div>
                     </td>
@@ -330,7 +334,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
       </div>
 
       {/* Footer - Totals and Actions */}
-      <div className="bg-mint-green border-t border-cambridge-blue/20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+      <div className="border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]" style={{ background: 'var(--footer-surface-bg)', borderColor: 'var(--border-subtle)' }}>
         <div className="max-w-2xl mx-auto p-4">
           {/* Totals */}
           <div className="grid grid-cols-4 gap-2 text-center mb-4">
@@ -364,7 +368,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
           </button>
 
           {/* Help hint */}
-          <p className="mt-2 text-xs text-gray-500 text-center">
+          <p className="mt-2 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
             Tippen = +1 • Lange drücken oder Wischen ↓ = -1 • Rechtsklick = -1
           </p>
         </div>

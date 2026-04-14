@@ -29,10 +29,24 @@
   --border-strong: rgba(15, 23, 42, 0.18);
   --header-surface-bg: rgba(255, 255, 255, 0.35);
   --nav-surface-bg: rgba(255, 255, 255, 0.3);
+  --footer-surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.58) 0%, rgba(242, 246, 255, 0.72) 100%);
   --overlay-backdrop: rgba(0, 0, 0, 0.3);
   --input-bg: rgba(255, 255, 255, 0.94);
   --input-disabled-bg: #f3f4f6;
   --focus-ring: rgba(91, 108, 255, 0.28);
+  --calendar-surface-bg: rgba(255, 255, 255, 0.92);
+  --calendar-header-bg: rgba(245, 247, 255, 0.88);
+  --calendar-grid-border: rgba(15, 23, 42, 0.12);
+  --calendar-cell-bg: rgba(255, 255, 255, 0.94);
+  --calendar-cell-hover: rgba(248, 250, 252, 0.98);
+  --calendar-cell-other-bg: rgba(243, 244, 246, 0.82);
+  --calendar-cell-other-text: #9ca3af;
+  --calendar-holiday-bg: rgba(254, 242, 242, 0.96);
+  --calendar-holiday-border: rgba(252, 165, 165, 0.7);
+  --calendar-holiday-text: #b91c1c;
+  --calendar-school-bg: rgba(255, 247, 237, 0.96);
+  --calendar-school-border: rgba(253, 186, 116, 0.78);
+  --calendar-school-text: #9a3412;
   /* Modern accent colors */
   --accent-orange: #f59e0b; /* warning / highlight (amber) */
   --accent-green: #16a34a;  /* success */
@@ -106,10 +120,24 @@
   --border-strong: rgba(148, 163, 184, 0.3);
   --header-surface-bg: rgba(8, 14, 26, 0.72);
   --nav-surface-bg: rgba(10, 18, 31, 0.82);
+  --footer-surface-bg: linear-gradient(180deg, rgba(20, 30, 47, 0.82) 0%, rgba(13, 20, 34, 0.72) 100%);
   --overlay-backdrop: rgba(2, 6, 23, 0.62);
   --input-bg: rgba(17, 26, 43, 0.92);
   --input-disabled-bg: #0f1728;
   --focus-ring: rgba(110, 168, 255, 0.28);
+  --calendar-surface-bg: rgba(12, 18, 32, 0.9);
+  --calendar-header-bg: rgba(17, 26, 43, 0.94);
+  --calendar-grid-border: rgba(148, 163, 184, 0.2);
+  --calendar-cell-bg: rgba(15, 23, 42, 0.9);
+  --calendar-cell-hover: rgba(19, 31, 52, 0.96);
+  --calendar-cell-other-bg: rgba(30, 41, 59, 0.5);
+  --calendar-cell-other-text: #7f8ba3;
+  --calendar-holiday-bg: rgba(69, 10, 10, 0.55);
+  --calendar-holiday-border: rgba(248, 113, 113, 0.36);
+  --calendar-holiday-text: #fecaca;
+  --calendar-school-bg: rgba(120, 53, 15, 0.42);
+  --calendar-school-border: rgba(251, 191, 36, 0.34);
+  --calendar-school-text: #fde68a;
   --accent-orange: #f6ad55;
   --accent-green: #48bb78;
   --accent-pink: #f87171;
@@ -472,6 +500,111 @@ code {
     rgba(0, 0, 0, 0.55) 0%,
     rgba(0, 0, 0, 0.33) 45%,
     rgba(0, 0, 0, 0.16) 85%
+  );
+}
+
+:root[data-theme='Midnight'] .calendar-img-overlay {
+  background: linear-gradient(
+    90deg,
+    rgba(5, 10, 20, 0.78) 0%,
+    rgba(8, 16, 29, 0.52) 42%,
+    rgba(8, 16, 29, 0.24) 84%
+  );
+}
+
+.footer-surface {
+  background: var(--footer-surface-bg);
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.calendar-surface {
+  background: var(--calendar-surface-bg);
+  border: 1px solid var(--calendar-grid-border);
+}
+
+.calendar-header-row {
+  background: var(--calendar-header-bg);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--calendar-grid-border);
+}
+
+.calendar-day-cell {
+  background: var(--calendar-cell-bg);
+  border-color: var(--calendar-grid-border) !important;
+}
+
+.calendar-day-cell:hover {
+  background: var(--calendar-cell-hover);
+}
+
+.calendar-day-cell-other {
+  background: var(--calendar-cell-other-bg);
+  color: var(--calendar-cell-other-text);
+}
+
+.calendar-day-cell-today {
+  border-color: var(--cambridge-blue) !important;
+}
+
+.calendar-day-number {
+  color: var(--text-primary);
+}
+
+.calendar-day-number-other {
+  color: var(--calendar-cell-other-text);
+}
+
+.calendar-holiday-badge {
+  background: var(--calendar-holiday-bg);
+  border-color: var(--calendar-holiday-border) !important;
+  color: var(--calendar-holiday-text);
+}
+
+.calendar-school-badge {
+  background: var(--calendar-school-bg);
+  border-color: var(--calendar-school-border) !important;
+  color: var(--calendar-school-text);
+}
+
+.activity-image-fade {
+  background: linear-gradient(
+    270deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(255, 255, 255, 0.86) 32%,
+    rgba(255, 255, 255, 0.48) 58%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.activity-image-fade-mobile {
+  background: linear-gradient(
+    270deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(255, 255, 255, 0.82) 34%,
+    rgba(255, 255, 255, 0.42) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+:root[data-theme='Midnight'] .activity-image-fade {
+  background: linear-gradient(
+    270deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(15, 23, 42, 0.88) 34%,
+    rgba(15, 23, 42, 0.52) 60%,
+    rgba(15, 23, 42, 0) 100%
+  );
+}
+
+:root[data-theme='Midnight'] .activity-image-fade-mobile {
+  background: linear-gradient(
+    270deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(15, 23, 42, 0.84) 36%,
+    rgba(15, 23, 42, 0.46) 60%,
+    rgba(15, 23, 42, 0) 100%
   );
 }
 

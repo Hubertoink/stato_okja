@@ -611,7 +611,7 @@ export default function Layout() {
       {/* Footer (hidden on full activity views or while keyboard open) */}
       {!hideFooter && !restrictToPasswordChange && (
         <footer className="mt-12">
-          <div className="w-full px-4 py-6 text-center text-sm text-gray-700 bg-white/60 backdrop-blur-md supports-[backdrop-filter]:bg-white/45 border-t border-white/50">
+          <div className="footer-surface w-full px-4 py-6 text-center text-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/45">
             <div className="flex items-center justify-center gap-1 flex-wrap">
               <p>
                 © {new Date().getFullYear()} StatO · Version{' '}

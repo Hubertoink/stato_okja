@@ -673,7 +673,11 @@ export default function Statistics() {
     value: d.count,
     color: COLORS[i % COLORS.length],
   }));
+  const isDarkTheme = user?.theme === 'Midnight';
+  const chartSeparatorColor = isDarkTheme ? 'rgba(148, 163, 184, 0.2)' : 'rgba(255, 255, 255, 0.92)';
+  const chartLegendTextColor = isDarkTheme ? '#c9d5eb' : '#4b5563';
   const pieLegendWrapperStyle = {
+    color: chartLegendTextColor,
     fontSize: '13px',
     lineHeight: '20px',
     paddingTop: '10px',
@@ -1440,6 +1444,8 @@ export default function Statistics() {
                     cx="50%"
                     cy={byTypePieCenterY}
                     outerRadius={byTypeOuterRadius}
+                    stroke={chartSeparatorColor}
+                    strokeWidth={1.25}
                     label={({ percent }) =>
                       `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
                     }
@@ -1476,6 +1482,8 @@ export default function Statistics() {
                     cy={genderPieCenterY}
                     innerRadius={genderInnerRadius}
                     outerRadius={genderOuterRadius}
+                    stroke={chartSeparatorColor}
+                    strokeWidth={1.25}
                     label={({ percent }) =>
                       `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
                     }
@@ -1656,6 +1664,8 @@ export default function Statistics() {
                       cx="50%"
                       cy={cohortPieCenterY}
                       outerRadius={cohortPieOuterRadius}
+                      stroke={chartSeparatorColor}
+                      strokeWidth={1.25}
                       isAnimationActive={false}
                       label={({ percent }) =>
                         `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`

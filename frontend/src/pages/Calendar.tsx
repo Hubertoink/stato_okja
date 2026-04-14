@@ -125,9 +125,10 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
       <div className="fixed left-[-9999px] top-[-9999px] z-[9999] pointer-events-none" aria-hidden>
         <div
           ref={ref}
-          className="bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] backdrop-blur-sm"
+          className="text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] border"
+          style={{ backgroundColor: 'var(--surface-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
         >
-          <div className="font-semibold mb-1 text-mint-green">{label}</div>
+          <div className="font-semibold mb-1 text-viridian">{label}</div>
           {time && <div className="text-gray-300"><span className="text-gray-400">Zeit:</span> {time}</div>}
           <div className="text-gray-300">
             <span className="text-gray-400">Teilnehmende:</span> {total}
@@ -147,9 +148,10 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
     >
       <div
         ref={ref}
-        className="relative bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] backdrop-blur-sm"
+        className="relative text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] border"
+        style={{ backgroundColor: 'var(--surface-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
       >
-        <div className="font-semibold mb-1 text-mint-green">{label}</div>
+        <div className="font-semibold mb-1 text-viridian">{label}</div>
         {time && <div className="text-gray-300"><span className="text-gray-400">Zeit:</span> {time}</div>}
         <div className="text-gray-300">
           <span className="text-gray-400">Teilnehmende:</span> {total}
@@ -158,8 +160,8 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
         {loc && <div className="text-gray-300"><span className="text-gray-400">Ort:</span> {loc}</div>}
         {/* Tooltip arrow */}
         <div
-          className={`absolute w-2 h-2 bg-gray-900/95 -translate-x-1/2 ${layout.arrowClass}`}
-          style={{ left: layout.arrowCenterPx }}
+          className={`absolute w-2 h-2 -translate-x-1/2 ${layout.arrowClass}`}
+          style={{ left: layout.arrowCenterPx, backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', borderRightWidth: '1px', borderBottomWidth: '1px' }}
         />
       </div>
     </div>,
@@ -1098,9 +1100,10 @@ export default function Calendar() {
               <div className="fixed left-[-9999px] top-[-9999px] z-[9999] pointer-events-none" aria-hidden>
                 <div
                   ref={ref}
-                  className="bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl w-[320px] max-w-[calc(100vw-24px)] backdrop-blur-sm"
+                  className="text-xs rounded-lg px-3 py-2 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border"
+                  style={{ backgroundColor: 'var(--surface-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
                 >
-                  <div className="font-semibold mb-1.5 text-mint-green border-b border-gray-700 pb-1">
+                  <div className="font-semibold mb-1.5 text-viridian border-b pb-1" style={{ borderColor: 'var(--border-subtle)' }}>
                     +{moreTooltip.activities.length} weitere Aktivitäten
                   </div>
                   <div className="space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(50vh - 60px)' }}>
@@ -1127,10 +1130,10 @@ export default function Calendar() {
             >
               <div
                 ref={ref}
-                className="relative flex flex-col overflow-hidden bg-gray-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-xl w-[320px] max-w-[calc(100vw-24px)] backdrop-blur-sm"
-                style={{ maxHeight: layout.maxHeight }}
+                className="relative flex flex-col overflow-hidden text-xs rounded-lg px-3 py-2 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border"
+                style={{ maxHeight: layout.maxHeight, backgroundColor: 'var(--surface-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
               >
-                <div className="font-semibold mb-1.5 text-mint-green border-b border-gray-700 pb-1 shrink-0">
+                <div className="font-semibold mb-1.5 text-viridian border-b pb-1 shrink-0" style={{ borderColor: 'var(--border-subtle)' }}>
                   +{moreTooltip.activities.length} weitere Aktivitäten
                 </div>
                 <div className="space-y-1 overflow-y-auto min-h-0 flex-1 pr-1">
@@ -1147,8 +1150,8 @@ export default function Calendar() {
                 </div>
                 {/* Tooltip arrow */}
                 <div
-                  className={`absolute w-2 h-2 bg-gray-900/95 -translate-x-1/2 ${layout.arrowClass}`}
-                  style={{ left: layout.arrowCenterPx }}
+                  className={`absolute w-2 h-2 -translate-x-1/2 ${layout.arrowClass}`}
+                  style={{ left: layout.arrowCenterPx, backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', borderRightWidth: '1px', borderBottomWidth: '1px' }}
                 />
               </div>
             </div>

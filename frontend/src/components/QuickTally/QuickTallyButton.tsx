@@ -5,6 +5,8 @@ interface QuickTallyButtonProps {
   onChange: (newValue: number) => void;
   label?: string;
   disabled?: boolean;
+  className?: string;
+  valueClassName?: string;
 }
 
 /**
@@ -18,6 +20,8 @@ export default function QuickTallyButton({
   onChange,
   label,
   disabled = false,
+  className,
+  valueClassName,
 }: QuickTallyButtonProps) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -164,10 +168,11 @@ export default function QuickTallyButton({
           ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
           : 'bg-white border-cambridge-blue text-viridian hover:bg-mint-green active:scale-95 active:bg-cambridge-blue active:text-white cursor-pointer'
         }
+        ${className || ''}
       `}
       aria-label={label ? `${label}: ${value}` : `Zähler: ${value}`}
     >
-      <span className="text-2xl tabular-nums">{value}</span>
+      <span className={`text-2xl tabular-nums ${valueClassName || ''}`}>{value}</span>
     </button>
   );
 }

@@ -6,10 +6,15 @@ import { useProjects, type Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import { useTags, useCohorts as useCohortsQuery, useCategories, type Cohort } from '@/lib/taxonomy';
 import { useStaff } from '@/lib/staff';
+import ActivityCohortCountField from '@/components/ActivityCohortCountField';
+import ActivityCohortTotalsRow from '@/components/ActivityCohortTotalsRow';
+import ActivityTapModeIcon from '@/components/ActivityTapModeIcon';
 import ConfirmModal from '@/components/ConfirmModal';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useToast } from '@/components/Toast';
+import Toggle from '@/components/Toggle';
 import { getBgClass } from '@/lib/colorPalette';
+import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
@@ -32,6 +37,7 @@ export default function ActivityEditPage() {
   const { showToast } = useToast();
   const [picker, setPicker] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
   const keyboardOpen = useKeyboardOpen();
 
   const returnTo = (() => {
@@ -138,7 +144,7 @@ export default function ActivityEditPage() {
     });
     return sums;
   }, [form.cohortCounts]);
-  // const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
+  const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
 
   // Vereinfachung: Action-Bar grundsätzlich nicht sticky, nur Safe-Area berücksichtigen.
   const actionBarClass =
@@ -342,12 +348,28 @@ export default function ActivityEditPage() {
 
         {/* Cohorts */}
         <div>
-          <label className="block text-sm font-medium mb-1">Alterskohorten</label>
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <label className="block text-sm font-medium">Alterskohorten</label>
+            {isMobile && (
+              <Toggle
+                checked={tapModeEnabled}
+                onChange={setTapModePreferred}
+                ariaLabel="Tippen statt Tastatur"
+                label={<ActivityTapModeIcon />}
+                className="shrink-0 gap-1 flex-row-reverse"
+              />
+            )}
+          </div>
           <div className="text-xs text-gray-600 mb-2">
             Summe aktuell: m:{cohortSums.m ?? 0} · w:{cohortSums.w ?? 0} · d:{cohortSums.d ?? 0}
           </div>
+          {tapModeEnabled && (
+            <div className="mb-2 text-[11px] text-gray-500">
+              Tippen +1, lang drücken oder nach unten wischen -1.
+            </div>
+          )}
           <div className="space-y-2">
-            <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2">
+            <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2">
               <span className="text-xs text-gray-500" />
               <span
                 className="text-xs text-gray-600 font-medium text-center"
@@ -370,9 +392,13 @@ export default function ActivityEditPage() {
               >
                 ⚧
               </span>
+              <span className="text-xs text-gray-600 font-medium text-center" title="Summe" aria-label="Summe">
+                Σ
+              </span>
             </div>
             {(cohorts || []).map((c: Cohort, rowIndex: number) => {
               const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
+              const rowTotal = (entry.m || 0) + (entry.w || 0) + (entry.d || 0);
               const updateC = (g: GenderKey, val: number) =>
                 setForm({
                   ...form,
@@ -432,7 +458,7 @@ export default function ActivityEditPage() {
               return (
                 <div
                   key={c.id}
-                  className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2"
+                  className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2"
                 >
                   <span className="text-sm text-gray-700 truncate">
                     <div className="truncate">{c.name}</div>
@@ -441,27 +467,30 @@ export default function ActivityEditPage() {
                     )}
                   </span>
                   {(['m', 'w', 'd'] as const).map((g) => (
-                    <input
+                    <ActivityCohortCountField
                       key={g}
-                      type="number"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      min={0}
-                      value={entry[g] ? String(entry[g]) : ''}
-                      onFocus={(e) => e.currentTarget.select()}
-                      onChange={(e) => updateC(g, Number(e.target.value || 0))}
-                      onKeyDown={(e) => handleKeyDown(e, rowIndex, g)}
-                      data-cohort-id={c.id}
-                      data-gender={g}
-                      enterKeyHint="next"
-                      className="w-full border rounded px-2 py-1 text-center"
+                      mode={tapModeEnabled ? 'tap' : 'input'}
+                      value={entry[g] || 0}
+                      onChange={(value) => updateC(g, value)}
+                      onKeyDown={tapModeEnabled ? undefined : (e) => handleKeyDown(e, rowIndex, g)}
+                      cohortId={c.id}
+                      gender={g}
                       placeholder={g === 'm' ? '♂' : g === 'w' ? '♀' : '⚧'}
-                      aria-label={`${c.name} ${g.toUpperCase()}`}
+                      ariaLabel={`${c.name} ${g.toUpperCase()}`}
                     />
                   ))}
+                  <div className="flex h-9 items-center justify-center rounded border border-gray-200 bg-gray-50 text-sm font-medium tabular-nums text-gray-600">
+                    {rowTotal}
+                  </div>
                 </div>
               );
             })}
+            <ActivityCohortTotalsRow
+              male={cohortSums.m}
+              female={cohortSums.w}
+              diverse={cohortSums.d}
+              total={cohortTotal}
+            />
           </div>
         </div>
 

@@ -533,7 +533,7 @@ export default function Layout() {
 
       {/* Main Content */}
       <main
-        className={`container mx-auto w-full flex-1 px-2 sm:px-3 md:px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-[5.5rem]'} md:pb-8`}
+        className={`container mx-auto w-full flex-1 px-2 sm:px-3 md:px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
         <Outlet key={scopeKey} context={{ openQuickTally }} />
       </main>
@@ -548,13 +548,13 @@ export default function Layout() {
 
       {/* Bottom Navigation (mobile) */}
       {!restrictToPasswordChange && <nav
-        className={`fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-lg md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
+        className={`mobile-bottom-nav fixed inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-lg md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
       >
-        <ul className="grid grid-cols-6 text-xs">
+        <ul className="grid grid-cols-6 text-xs pb-[max(env(safe-area-inset-bottom,0px),0.25rem)]">
           <li>
             <Link
               to="/dashboard"
-              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/dashboard') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/dashboard') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <Home className="w-5 h-5" />
               <span>Home</span>
@@ -563,7 +563,7 @@ export default function Layout() {
           <li>
             <Link
               to="/activities"
-              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/activities') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/activities') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <Activity className="w-5 h-5" />
               <span>Aktiv.</span>
@@ -572,7 +572,7 @@ export default function Layout() {
           <li>
             <Link
               to="/calendar"
-              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/calendar') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/calendar') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <CalendarIcon className="w-5 h-5" />
               <span>Kalender</span>
@@ -581,7 +581,7 @@ export default function Layout() {
           <li>
             <Link
               to="/projects"
-              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/projects') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/projects') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <Boxes className="w-5 h-5" />
               <span>Projekte</span>
@@ -590,7 +590,7 @@ export default function Layout() {
           <li>
             <Link
               to="/statistics"
-              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/statistics') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/statistics') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <BarChart3 className="w-5 h-5" />
               <span>Stats</span>
@@ -599,7 +599,7 @@ export default function Layout() {
           <li>
             <Link
               to="/settings"
-              className={`flex flex-col items-center py-2 transition-all duration-200 ${isActive('/settings') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/settings') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <Settings className="w-5 h-5" />
               <span>Einst.</span>

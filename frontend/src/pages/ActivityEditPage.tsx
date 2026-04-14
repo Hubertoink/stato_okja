@@ -148,7 +148,7 @@ export default function ActivityEditPage() {
 
   // Vereinfachung: Action-Bar grundsätzlich nicht sticky, nur Safe-Area berücksichtigen.
   const actionBarClass =
-    'relative z-10 bg-white border-t -mx-4 md:-mx-6 px-4 md:px-6 py-2 flex items-center justify-between gap-3';
+    'relative z-10 bg-white border-t -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 py-2 flex items-center justify-between gap-3';
   // Reduziere Container-Spacing bei Tastatur
   const contentSpacing = keyboardOpen ? 'space-y-2' : 'space-y-3';
 
@@ -216,7 +216,7 @@ export default function ActivityEditPage() {
   });
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
+    <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4 mt-1">
         <h2 className="text-2xl font-bold text-viridian">Aktivität bearbeiten</h2>
         <button
@@ -369,24 +369,24 @@ export default function ActivityEditPage() {
             </div>
           )}
           <div className="space-y-2">
-            <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2">
+            <div className="activity-cohort-grid">
               <span className="text-xs text-gray-500" />
               <span
-                className="text-xs text-gray-600 font-medium text-center"
+                className="activity-cohort-column-icon"
                 title="Männlich"
                 aria-label="Männlich"
               >
                 ♂
               </span>
               <span
-                className="text-xs text-gray-600 font-medium text-center"
+                className="activity-cohort-column-icon"
                 title="Weiblich"
                 aria-label="Weiblich"
               >
                 ♀
               </span>
               <span
-                className="text-xs text-gray-600 font-medium text-center"
+                className="activity-cohort-column-icon"
                 title="Divers"
                 aria-label="Divers"
               >
@@ -458,10 +458,10 @@ export default function ActivityEditPage() {
               return (
                 <div
                   key={c.id}
-                  className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2"
+                  className="activity-cohort-grid"
                 >
-                  <span className="text-sm text-gray-700 truncate">
-                    <div className="truncate">{c.name}</div>
+                  <span className="min-w-0 text-sm text-gray-700 leading-tight">
+                    <div className="break-words">{c.name}</div>
                     {ageLabel && (
                       <div className="text-[11px] text-gray-500 leading-tight">{ageLabel}</div>
                     )}
@@ -479,7 +479,7 @@ export default function ActivityEditPage() {
                       ariaLabel={`${c.name} ${g.toUpperCase()}`}
                     />
                   ))}
-                  <div className="flex h-9 items-center justify-center rounded border border-gray-200 bg-gray-50 text-sm font-medium tabular-nums text-gray-600">
+                  <div className="flex h-12 items-center justify-center rounded border border-gray-200 bg-gray-50 text-sm font-medium tabular-nums text-gray-600 md:h-9">
                     {rowTotal}
                   </div>
                 </div>

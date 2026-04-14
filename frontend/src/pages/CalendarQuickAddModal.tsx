@@ -374,7 +374,7 @@ export default function ActivityQuickAdd({
       className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="modal-panel-roomy bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-hidden">
+      <div className="modal-panel-roomy bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-hidden">
         <div className="shrink-0 flex items-start justify-between gap-3 mb-2">
           <h3 className="text-xl font-semibold text-viridian">
             Aktivität am{' '}
@@ -541,24 +541,24 @@ export default function ActivityQuickAdd({
                 </div>
               )}
               <div className="space-y-2">
-                <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2">
+                <div className="activity-cohort-grid">
                   <span className="text-xs text-gray-500" />
                   <span
-                    className="text-xs text-gray-600 font-medium text-center"
+                    className="activity-cohort-column-icon"
                     title="Männlich"
                     aria-label="Männlich"
                   >
                     ♂
                   </span>
                   <span
-                    className="text-xs text-gray-600 font-medium text-center"
+                    className="activity-cohort-column-icon"
                     title="Weiblich"
                     aria-label="Weiblich"
                   >
                     ♀
                   </span>
                   <span
-                    className="text-xs text-gray-600 font-medium text-center"
+                    className="activity-cohort-column-icon"
                     title="Divers"
                     aria-label="Divers"
                   >
@@ -640,10 +640,10 @@ export default function ActivityQuickAdd({
                   return (
                     <div
                       key={c.id}
-                      className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2"
+                      className="activity-cohort-grid"
                     >
-                      <span className="text-sm text-gray-700 truncate">
-                        <div className="truncate">{c.name}</div>
+                      <span className="min-w-0 text-sm text-gray-700 leading-tight">
+                        <div className="break-words">{c.name}</div>
                         {ageLabel && (
                           <div className="text-[11px] text-gray-500 leading-tight">{ageLabel}</div>
                         )}
@@ -665,7 +665,7 @@ export default function ActivityQuickAdd({
                           ariaLabel={`${c.name} ${g.toUpperCase()}`}
                         />
                       ))}
-                      <div className="flex h-9 items-center justify-center rounded border border-gray-200 bg-gray-50 text-sm font-medium tabular-nums text-gray-600">
+                      <div className="flex h-12 items-center justify-center rounded border border-gray-200 bg-gray-50 text-sm font-medium tabular-nums text-gray-600 md:h-9">
                         {rowTotal}
                       </div>
                     </div>
@@ -848,7 +848,7 @@ export default function ActivityQuickAdd({
         </div>
         </div>
 
-        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center gap-3">
+        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 flex items-center gap-3">
           <div className="flex-1 flex items-center">
             <button
               type="button"

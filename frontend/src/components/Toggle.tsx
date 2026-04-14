@@ -4,6 +4,7 @@ interface ToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label?: React.ReactNode;
+  ariaLabel?: string;
   disabled?: boolean;
   className?: string;
 }
@@ -12,7 +13,7 @@ interface ToggleProps {
  * Themed Toggle switch using CSS variables from index.css.
  * Mobile-first: big tap target and label on the right by default.
  */
-export default function Toggle({ checked, onChange, label, disabled, className }: ToggleProps) {
+export default function Toggle({ checked, onChange, label, ariaLabel, disabled, className }: ToggleProps) {
   const trackStyle: React.CSSProperties = {
     backgroundColor: checked ? 'var(--viridian)' : 'var(--french-gray-2)',
     borderColor: checked ? 'var(--viridian)' : 'var(--outer-space)',
@@ -22,7 +23,7 @@ export default function Toggle({ checked, onChange, label, disabled, className }
       type="button"
       role="switch"
       aria-checked={checked}
-  aria-label={(typeof label === 'string' ? label : 'Umschalten') as string}
+        aria-label={ariaLabel || ((typeof label === 'string' ? label : 'Umschalten') as string)}
       disabled={disabled}
       onClick={() => !disabled && onChange(!checked)}
       className={`inline-flex items-center gap-2 select-none ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-viridian rounded ${className || ''}`}

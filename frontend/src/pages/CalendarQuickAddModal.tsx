@@ -9,11 +9,16 @@ import type { Activity } from '@/lib/activities';
 import { useCreateActivity, useUpdateActivity, useRemoveActivity } from '@/lib/activities';
 import ConfirmModal from '@/components/ConfirmModal';
 import ProtectedImage from '@/components/ProtectedImage';
+import ActivityCohortCountField from '@/components/ActivityCohortCountField';
+import ActivityCohortTotalsRow from '@/components/ActivityCohortTotalsRow';
+import ActivityTapModeIcon from '@/components/ActivityTapModeIcon';
+import Toggle from '@/components/Toggle';
 import { useLocations } from '@/lib/locations';
 import { useToast } from '@/components/Toast';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { createPortal } from 'react-dom';
 import { getBgClass } from '@/lib/colorPalette';
+import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { Link } from 'react-router-dom';
 
@@ -89,6 +94,7 @@ export default function ActivityQuickAdd({
   // mismatch confirm removed; totals derive from cohort columns now
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
   const { showToast } = useToast();
+  const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
   const [form, setForm] = useState<FormState>(() => {
     return { cohortCounts: {}, date: (dateISO || '').slice(0, 10) };
   });
@@ -106,6 +112,16 @@ export default function ActivityQuickAdd({
     if (Number.isNaN(date.getTime())) return '';
     return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
   }, [form.date]);
+  const cohortSums = useMemo(() => {
+    const sums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
+    Object.values(form.cohortCounts || {}).forEach((entry) => {
+      sums.m += entry.m || 0;
+      sums.w += entry.w || 0;
+      sums.d += entry.d || 0;
+    });
+    return sums;
+  }, [form.cohortCounts]);
+  const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
   const isOpenDoor = (selectedProject || initialProject)?.type === 'open_door';
 
   useEffect(() => {
@@ -507,9 +523,25 @@ export default function ActivityQuickAdd({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Alterskohorten</label>
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <label className="block text-sm font-medium">Alterskohorten</label>
+                {isMobile && (
+                  <Toggle
+                    checked={tapModeEnabled}
+                    onChange={setTapModePreferred}
+                    ariaLabel="Tippen statt Tastatur"
+                    label={<ActivityTapModeIcon />}
+                    className="shrink-0 gap-1 flex-row-reverse"
+                  />
+                )}
+              </div>
+              {tapModeEnabled && (
+                <div className="mb-2 text-[11px] text-gray-500">
+                  Tippen +1, lang drücken oder nach unten wischen -1.
+                </div>
+              )}
               <div className="space-y-2">
-                <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2">
+                <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2">
                   <span className="text-xs text-gray-500" />
                   <span
                     className="text-xs text-gray-600 font-medium text-center"
@@ -532,9 +564,13 @@ export default function ActivityQuickAdd({
                   >
                     ⚧
                   </span>
+                  <span className="text-xs text-gray-600 font-medium text-center" title="Summe" aria-label="Summe">
+                    Σ
+                  </span>
                 </div>
                 {(cohorts || []).map((c, rowIndex: number) => {
                   const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
+                  const rowTotal = (entry.m || 0) + (entry.w || 0) + (entry.d || 0);
                   const update = (g: GenderKey, val: number) => {
                     setForm({
                       ...form,
@@ -604,7 +640,7 @@ export default function ActivityQuickAdd({
                   return (
                     <div
                       key={c.id}
-                      className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2"
+                      className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2"
                     >
                       <span className="text-sm text-gray-700 truncate">
                         <div className="truncate">{c.name}</div>
@@ -613,33 +649,34 @@ export default function ActivityQuickAdd({
                         )}
                       </span>
                       {(['m', 'w', 'd'] as const).map((g) => (
-                        <input
+                        <ActivityCohortCountField
                           key={g}
-                          type="number"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          min={0}
-                          value={entry[g] ? String(entry[g]) : ''}
-                          onFocus={(e: React.FocusEvent<HTMLInputElement>) =>
-                            e.currentTarget.select()
+                          mode={tapModeEnabled ? 'tap' : 'input'}
+                          value={entry[g] || 0}
+                          onChange={(value) => update(g, value)}
+                          onKeyDown={
+                            tapModeEnabled
+                              ? undefined
+                              : (e) => handleKeyDown(e, rowIndex, g)
                           }
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            update(g, Number(e.target.value || 0))
-                          }
-                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
-                            handleKeyDown(e, rowIndex, g)
-                          }
-                          data-cohort-id={c.id}
-                          data-gender={g}
-                          enterKeyHint="next"
-                          className="w-full border rounded px-2 py-1 text-center"
+                          cohortId={c.id}
+                          gender={g}
                           placeholder={g === 'm' ? '♂' : g === 'w' ? '♀' : '⚧'}
-                          aria-label={`${c.name} ${g.toUpperCase()}`}
+                          ariaLabel={`${c.name} ${g.toUpperCase()}`}
                         />
                       ))}
+                      <div className="flex h-9 items-center justify-center rounded border border-gray-200 bg-gray-50 text-sm font-medium tabular-nums text-gray-600">
+                        {rowTotal}
+                      </div>
                     </div>
                   );
                 })}
+                <ActivityCohortTotalsRow
+                  male={cohortSums.m}
+                  female={cohortSums.w}
+                  diverse={cohortSums.d}
+                  total={cohortTotal}
+                />
               </div>
             </div>
           </div>

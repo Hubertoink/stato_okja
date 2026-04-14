@@ -12,8 +12,13 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { Boxes } from 'lucide-react';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
+import ActivityCohortCountField from '@/components/ActivityCohortCountField';
+import ActivityCohortTotalsRow from '@/components/ActivityCohortTotalsRow';
+import ActivityTapModeIcon from '@/components/ActivityTapModeIcon';
+import Toggle from '@/components/Toggle';
 import { useToast } from '@/components/Toast';
 import { getBgClass } from '@/lib/colorPalette';
+import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 type GenderKey = 'm' | 'w' | 'd';
@@ -35,6 +40,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
   const [confirmMismatchOpen, setConfirmMismatchOpen] = useState(false);
   const [pendingPost, setPendingPost] = useState<null | (() => void)>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
 
   const [form, setForm] = useState<{
     date?: string;
@@ -414,13 +420,29 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
           </div>
           {/* Cohorts */}
           <div>
-            <label className="block text-sm font-medium mb-1">Alterskohorten</label>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="block text-sm font-medium">Alterskohorten</label>
+              {isMobile && (
+                <Toggle
+                  checked={tapModeEnabled}
+                  onChange={setTapModePreferred}
+                  ariaLabel="Tippen statt Tastatur"
+                  label={<ActivityTapModeIcon />}
+                  className="shrink-0 gap-1 flex-row-reverse"
+                />
+              )}
+            </div>
             <div className="text-xs text-gray-600 mb-2">
               Summe aktuell: m:{displayCounts.m ?? 0} · w:{displayCounts.w ?? 0} · d:
               {displayCounts.d ?? 0}
             </div>
+            {tapModeEnabled && (
+              <div className="mb-2 text-[11px] text-gray-500">
+                Tippen +1, lang drücken oder nach unten wischen -1.
+              </div>
+            )}
             <div className="space-y-2">
-              <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2">
+              <div className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2">
                 <span className="text-xs text-gray-500" />
                 <span
                   className="text-xs text-gray-600 font-medium text-center"
@@ -443,9 +465,13 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                 >
                   ⚧
                 </span>
+                <span className="text-xs text-gray-600 font-medium text-center" title="Summe" aria-label="Summe">
+                  Σ
+                </span>
               </div>
               {(cohorts || []).map((c: Cohort, rowIndex: number) => {
                 const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
+                const rowTotal = (entry.m || 0) + (entry.w || 0) + (entry.d || 0);
                 const updateC = (g: GenderKey, val: number) =>
                   setForm({
                     ...form,
@@ -505,7 +531,7 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                 return (
                   <div
                     key={c.id}
-                    className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))] items-center gap-2"
+                    className="grid grid-cols-[auto_repeat(3,minmax(3.5rem,5rem))_minmax(2.25rem,2.75rem)] items-center gap-2"
                   >
                     <span className="text-sm text-gray-700 truncate">
                       <div className="truncate">{c.name}</div>
@@ -514,27 +540,30 @@ export default function ActivityEditModal({ id, onClose }: { id: string; onClose
                       )}
                     </span>
                     {(['m', 'w', 'd'] as const).map((g) => (
-                      <input
+                      <ActivityCohortCountField
                         key={g}
-                        type="number"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        min={0}
-                        value={entry[g] ? String(entry[g]) : ''}
-                        onFocus={(e) => e.currentTarget.select()}
-                        onChange={(e) => updateC(g, Number(e.target.value || 0))}
-                        onKeyDown={(e) => handleKeyDown(e, rowIndex, g)}
-                        data-cohort-id={c.id}
-                        data-gender={g}
-                        enterKeyHint="next"
-                        className="w-full border rounded px-2 py-1 text-center"
+                        mode={tapModeEnabled ? 'tap' : 'input'}
+                        value={entry[g] || 0}
+                        onChange={(value) => updateC(g, value)}
+                        onKeyDown={tapModeEnabled ? undefined : (e) => handleKeyDown(e, rowIndex, g)}
+                        cohortId={c.id}
+                        gender={g}
                         placeholder={g.toUpperCase()}
-                        aria-label={`${c.name} ${g.toUpperCase()}`}
+                        ariaLabel={`${c.name} ${g.toUpperCase()}`}
                       />
                     ))}
+                    <div className="flex h-9 items-center justify-center rounded border border-gray-200 bg-gray-50 text-sm font-medium tabular-nums text-gray-600">
+                      {rowTotal}
+                    </div>
                   </div>
                 );
               })}
+              <ActivityCohortTotalsRow
+                male={cohortSums.m}
+                female={cohortSums.w}
+                diverse={cohortSums.d}
+                total={cohortTotal}
+              />
               {!hasCohortData && (
                 <p className="text-xs text-gray-500">
                   Noch keine Kohorten erfasst – die Gesamtsummen oben sind editierbar.

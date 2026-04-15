@@ -761,6 +761,32 @@ code {
   color: var(--calendar-school-text);
 }
 
+.calendar-more-badge {
+  background: rgba(91, 108, 255, 0.16);
+  color: #2643c4;
+  border-color: rgba(91, 108, 255, 0.24) !important;
+}
+
+.calendar-more-badge:hover {
+  background: rgba(91, 108, 255, 0.24);
+  color: #1d35a0;
+}
+
+.calendar-tooltip-panel {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+}
+
+.calendar-tooltip-body {
+  color: var(--text-secondary);
+}
+
+.calendar-tooltip-meta {
+  color: var(--text-muted);
+}
+
 .activity-image-fade {
   background: linear-gradient(
     270deg,
@@ -799,6 +825,21 @@ code {
     rgba(15, 23, 42, 0.46) 60%,
     rgba(15, 23, 42, 0) 100%
   );
+}
+
+:root[data-theme='Midnight'] .calendar-more-badge {
+  background: rgba(110, 168, 255, 0.2);
+  color: #d8e6ff;
+  border-color: rgba(110, 168, 255, 0.28) !important;
+}
+
+:root[data-theme='Midnight'] .calendar-more-badge:hover {
+  background: rgba(110, 168, 255, 0.28);
+  color: #f3f7ff;
+}
+
+:root[data-theme='Midnight'] .calendar-tooltip-panel {
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
 }
 
 .activities-loading-scrim {

@@ -7,7 +7,6 @@ import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useActivities, Activity } from '@/lib/activities';
 // colorForActivityType no longer needed after switching to class-based palette
-import ActivityDetailModal from './ActivityDetailModal';
 import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holidays';
 import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
 import { getOpeningHours, OpeningHours } from '@/lib/orgs';
@@ -16,6 +15,7 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import type React from 'react';
 import { createPortal } from 'react-dom';
+import { Pencil, Plus } from 'lucide-react';
 import ProtectedImage from '@/components/ProtectedImage';
 
 function clamp(n: number, min: number, max: number) {
@@ -117,6 +117,7 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
   const w = activity.countFemale ?? 0;
   const d = activity.countDiverse ?? 0;
   const loc = activity.location?.name;
+  const panelClass = 'calendar-tooltip-panel text-xs rounded-xl px-3.5 py-2.5 shadow-xl w-[300px] max-w-[calc(100vw-24px)] border';
   
   const { ref, layout } = useClampedTooltipLayout(position, true);
   if (!layout) {
@@ -125,16 +126,15 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
       <div className="fixed left-[-9999px] top-[-9999px] z-[9999] pointer-events-none" aria-hidden>
         <div
           ref={ref}
-          className="text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] border"
-          style={{ backgroundColor: 'var(--surface-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
+          className={panelClass}
         >
           <div className="font-semibold mb-1 text-viridian">{label}</div>
-          {time && <div className="text-gray-300"><span className="text-gray-400">Zeit:</span> {time}</div>}
-          <div className="text-gray-300">
-            <span className="text-gray-400">Teilnehmende:</span> {total}
-            <span className="text-[10px] text-gray-400 ml-1">(m:{m}, w:{w}, d:{d})</span>
+          {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Zeit:</span> {time}</div>}
+          <div className="calendar-tooltip-body">
+            <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
+            <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
           </div>
-          {loc && <div className="text-gray-300"><span className="text-gray-400">Ort:</span> {loc}</div>}
+          {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Ort:</span> {loc}</div>}
         </div>
       </div>,
       document.body,
@@ -148,20 +148,19 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
     >
       <div
         ref={ref}
-        className="relative text-xs rounded-lg px-3 py-2 shadow-xl w-[280px] max-w-[calc(100vw-24px)] border"
-        style={{ backgroundColor: 'var(--surface-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
+        className={`relative ${panelClass}`}
       >
         <div className="font-semibold mb-1 text-viridian">{label}</div>
-        {time && <div className="text-gray-300"><span className="text-gray-400">Zeit:</span> {time}</div>}
-        <div className="text-gray-300">
-          <span className="text-gray-400">Teilnehmende:</span> {total}
-          <span className="text-[10px] text-gray-400 ml-1">(m:{m}, w:{w}, d:{d})</span>
+        {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Zeit:</span> {time}</div>}
+        <div className="calendar-tooltip-body">
+          <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
+          <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
         </div>
-        {loc && <div className="text-gray-300"><span className="text-gray-400">Ort:</span> {loc}</div>}
+        {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Ort:</span> {loc}</div>}
         {/* Tooltip arrow */}
         <div
           className={`absolute w-2 h-2 -translate-x-1/2 ${layout.arrowClass}`}
-          style={{ left: layout.arrowCenterPx, backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', borderRightWidth: '1px', borderBottomWidth: '1px' }}
+          style={{ left: layout.arrowCenterPx, backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-strong)', borderRightWidth: '1px', borderBottomWidth: '1px' }}
         />
       </div>
     </div>,
@@ -220,7 +219,6 @@ export default function Calendar() {
   });
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
   const [picker, setPicker] = useState<{ date: string } | null>(null);
-  const [detail, setDetail] = useState<Activity | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
   
   // Tooltip state for activity hover
@@ -284,9 +282,7 @@ export default function Calendar() {
     const qp = new URLSearchParams({ date: iso });
     navigate(`/activities?${qp.toString()}`);
   };
-  const handleDayAddKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, iso: string) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault();
+  const openAddActivityForDate = (iso: string) => {
     if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
     else setPicker({ date: iso });
   };
@@ -697,39 +693,52 @@ export default function Calendar() {
           );
           const hasImg = Boolean(a.project?.imageUrl);
           return (
-            <button
-              key={i}
-              type="button"
-              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.stopPropagation();
-                setDetail(a);
-              }}
-              onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
-              className={`relative w-full h-4 md:h-5 rounded text-[9px] md:text-[10px] leading-4 md:leading-5 px-1 truncate text-left overflow-hidden border border-black/10 ${bgClass}`}
-              aria-label={label}
-            >
-              {hasImg && a.project && (
-                <ProtectedImage
-                  src={a.project.imageUrl || undefined}
-                  alt=""
-                  aria-hidden
-                  className="absolute inset-0 w-full h-full object-cover blur-[2px] opacity-40"
-                />
-              )}
-              {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
-              <span
-                className={`relative z-10 font-medium ${
-                  hasImg ? 'text-white drop-shadow-sm' : 'text-gray-900'
-                }`}
+            <div key={i} className="group relative">
+              <button
+                type="button"
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  setEdit(a);
+                }}
+                onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
+                className={`relative w-full h-4 rounded overflow-hidden border border-black/10 px-1 text-left text-[9px] leading-4 truncate md:h-5 md:pl-6 md:pr-1 md:text-[10px] md:leading-5 ${bgClass}`}
+                aria-label={label}
               >
-                {label}
-              </span>
-            </button>
+                {hasImg && a.project && (
+                  <ProtectedImage
+                    src={a.project.imageUrl || undefined}
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-0 w-full h-full object-cover blur-[2px] opacity-40"
+                  />
+                )}
+                {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
+                <span
+                  className={`relative z-10 font-medium ${
+                    hasImg ? 'text-white drop-shadow-sm' : 'text-gray-900'
+                  }`}
+                >
+                  {label}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="pointer-events-none absolute left-0.5 top-1/2 z-20 hidden h-4 w-4 -translate-y-1/2 items-center justify-center rounded bg-white/92 text-viridian shadow-sm opacity-0 ring-1 ring-black/10 transition-opacity md:flex md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEdit(a);
+                }}
+                aria-label={`${label} bearbeiten`}
+                title="Bearbeiten"
+              >
+                <Pencil className="h-2.5 w-2.5" />
+              </button>
+            </div>
           );
         })}
         {hidden > 0 && (
           <div 
-            className="h-4 rounded bg-cambridge-blue/35 text-[9px] md:text-[10px] leading-4 px-1 text-gray-900 font-medium border border-black/10 cursor-pointer hover:bg-cambridge-blue/50 transition-colors"
+            className="calendar-more-badge h-4 rounded border px-1 text-[9px] font-semibold leading-4 cursor-pointer transition-colors md:h-5 md:text-[10px] md:leading-5"
             onMouseEnter={(e) => handleMoreMouseEnter(e, hiddenItems)}
             onMouseLeave={handleMoreMouseLeave}
           >
@@ -760,44 +769,57 @@ export default function Calendar() {
           const d = a.countDiverse ?? 0;
           const hasImg = Boolean(a.project?.imageUrl);
           return (
-            <button
-              key={i}
-              type="button"
-              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.stopPropagation();
-                setDetail(a);
-              }}
-              onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
-              className={`relative w-full rounded px-2 py-1.5 text-left shadow-sm hover:shadow transition-shadow overflow-hidden border border-black/10 ${bgClass}`}
-            >
-              {hasImg && a.project && (
-                <ProtectedImage
-                  src={a.project.imageUrl || undefined}
-                  alt=""
-                  aria-hidden
-                  className="absolute inset-0 w-full h-full object-cover blur-[3px] opacity-35"
-                />
-              )}
-              {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
-              <div
-                className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-800'}`}
+            <div key={i} className="group relative">
+              <button
+                type="button"
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  setEdit(a);
+                }}
+                onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
+                className={`relative w-full overflow-hidden rounded border border-black/10 px-2 py-1.5 text-left shadow-sm transition-shadow hover:shadow md:pl-8 ${bgClass}`}
               >
-                {title}
-                {subtitle ? ` (${subtitle})` : ''}
-              </div>
-              {time && (
+                {hasImg && a.project && (
+                  <ProtectedImage
+                    src={a.project.imageUrl || undefined}
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-0 w-full h-full object-cover blur-[3px] opacity-35"
+                  />
+                )}
+                {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
+                <div
+                  className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-800'}`}
+                >
+                  {title}
+                  {subtitle ? ` (${subtitle})` : ''}
+                </div>
+                {time && (
+                  <div
+                    className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
+                  >
+                    {time} Uhr
+                  </div>
+                )}
                 <div
                   className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
                 >
-                  {time} Uhr
+                  {counts} (m:{m}, w:{w}, d:{d})
                 </div>
-              )}
-              <div
-                className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
+              </button>
+              <button
+                type="button"
+                className="pointer-events-none absolute left-1 top-2 z-20 hidden h-5 w-5 items-center justify-center rounded bg-white/92 text-viridian shadow-sm opacity-0 ring-1 ring-black/10 transition-opacity md:flex md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEdit(a);
+                }}
+                aria-label={`${title}${subtitle ? ` (${subtitle})` : ''} bearbeiten`}
+                title="Bearbeiten"
               >
-                {counts} (m:{m}, w:{w}, d:{d})
-              </div>
-            </button>
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
           );
         })}
       </div>
@@ -895,7 +917,7 @@ export default function Calendar() {
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 grid-rows-6">
+          <div className="grid grid-cols-7 auto-rows-auto">
             {monthWeeks.flat().map((day, idx) => {
               const iso = fmtLocalISO(day);
               const isToday = iso === todayISO;
@@ -906,47 +928,53 @@ export default function Calendar() {
               return (
                 <div
                   key={idx}
-                  className={`calendar-day-cell relative h-24 md:h-32 border p-1 text-left focus:outline-none focus:ring-2 focus:ring-viridian transition-colors ${
+                  className={`calendar-day-cell group relative min-h-[6.25rem] md:min-h-[8rem] border p-1 text-left transition-colors ${
                     isOtherMonth
                       ? 'calendar-day-cell-other'
                       : isToday
                         ? 'calendar-day-cell-today bg-mint-green/40 ring-2 ring-mint-green'
                         : ''
                   }`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
-                    else setPicker({ date: iso });
-                  }}
-                  onKeyDown={(e) => handleDayAddKeyDown(e, iso)}
-                  title={`Aktivität am ${day.toLocaleDateString('de-DE')} hinzufügen`}
                 >
                   {/* Top row: Day number + Holiday badge inline */}
-                  <div className="flex items-start gap-1 mb-0.5">
+                  <div className="mb-0.5 flex items-start justify-between gap-1">
+                    <div className="flex min-w-0 items-start gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openActivitiesForDate(iso);
+                        }}
+                        className={`calendar-day-number text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? 'calendar-day-number-other' : ''}`}
+                        title={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
+                        aria-label={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
+                      >
+                        {day.getDate()}
+                      </button>
+                      {hasHoliday && (
+                        <div
+                          className="calendar-holiday-badge px-1 py-[1px] rounded text-[9px] md:text-[10px] font-semibold border truncate max-w-[calc(100%-1.5rem)]"
+                          title={holidaysByDate
+                            .get(iso)!
+                            .map((h) => h.name)
+                            .join(', ')}
+                        >
+                          {holidaysByDate.get(iso)![0].name}
+                        </div>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        openActivitiesForDate(iso);
+                        openAddActivityForDate(iso);
                       }}
-                      className={`calendar-day-number text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? 'calendar-day-number-other' : ''}`}
-                      title={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
-                      aria-label={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
+                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
+                      aria-label={`Aktivität zu ${day.toLocaleDateString('de-DE')} hinzufügen`}
+                      title="Aktivität zu diesem Tag hinzufügen"
                     >
-                      {day.getDate()}
+                      <Plus className="h-3.5 w-3.5" />
                     </button>
-                    {hasHoliday && (
-                      <div
-                        className="calendar-holiday-badge px-1 py-[1px] rounded text-[9px] md:text-[10px] font-semibold border truncate max-w-[calc(100%-1.5rem)]"
-                        title={holidaysByDate
-                          .get(iso)!
-                          .map((h) => h.name)
-                          .join(', ')}
-                      >
-                        {holidaysByDate.get(iso)![0].name}
-                      </div>
-                    )}
                   </div>
                   {/* School holiday band */}
                   {hasSchoolHoliday && (
@@ -957,7 +985,12 @@ export default function Calendar() {
                       <span className="truncate inline-block align-top leading-[14px]">{schoolLabelFor(iso)}</span>
                     </div>
                   )}
-                  {showEntriesForDay ? renderEntries(iso, hasSchoolHoliday ? 2 : 3) : null}
+                  {showEntriesForDay
+                    ? renderEntries(
+                        iso,
+                        isMobile ? (hasSchoolHoliday ? 2 : 3) : hasSchoolHoliday ? 5 : 6,
+                      )
+                    : null}
                 </div>
               );
             })}
@@ -993,17 +1026,9 @@ export default function Calendar() {
               return (
                 <div
                   key={iso}
-                  className={`calendar-day-cell min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left focus:outline-none transition-colors ${isToday ? 'calendar-day-cell-today bg-mint-green/40 ring-1 ring-mint-green/60' : ''}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
-                    else setPicker({ date: iso });
-                  }}
-                  onKeyDown={(e) => handleDayAddKeyDown(e, iso)}
-                  title={`Aktivität am ${d.toLocaleDateString('de-DE')} hinzufügen`}
+                  className={`calendar-day-cell group min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left transition-colors ${isToday ? 'calendar-day-cell-today bg-mint-green/40 ring-1 ring-mint-green/60' : ''}`}
                 >
-                  <div className="mb-1">
+                  <div className="mb-1 flex items-start justify-between gap-2">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1015,6 +1040,18 @@ export default function Calendar() {
                       aria-label={`Aktivitäten am ${d.toLocaleDateString('de-DE')} anzeigen`}
                     >
                       {d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openAddActivityForDate(iso);
+                      }}
+                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
+                      aria-label={`Aktivität zu ${d.toLocaleDateString('de-DE')} hinzufügen`}
+                      title="Aktivität zu diesem Tag hinzufügen"
+                    >
+                      <Plus className="h-4 w-4" />
                     </button>
                   </div>
                   {!!holidaysByDate.get(iso)?.length && (
@@ -1060,16 +1097,6 @@ export default function Calendar() {
           project={modal.project}
         />
       )}
-      {detail && (
-        <ActivityDetailModal
-          activity={detail}
-          onClose={() => setDetail(null)}
-          onEdit={(a) => {
-            setDetail(null);
-            setEdit(a);
-          }}
-        />
-      )}
       {edit && (
         <ActivityQuickAdd
           dateISO={edit.date}
@@ -1100,10 +1127,9 @@ export default function Calendar() {
               <div className="fixed left-[-9999px] top-[-9999px] z-[9999] pointer-events-none" aria-hidden>
                 <div
                   ref={ref}
-                  className="text-xs rounded-lg px-3 py-2 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border"
-                  style={{ backgroundColor: 'var(--surface-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
+                  className="calendar-tooltip-panel text-xs rounded-xl px-3.5 py-2.5 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border"
                 >
-                  <div className="font-semibold mb-1.5 text-viridian border-b pb-1" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <div className="font-semibold mb-1.5 border-b pb-1 text-viridian" style={{ borderColor: 'var(--border-strong)' }}>
                     +{moreTooltip.activities.length} weitere Aktivitäten
                   </div>
                   <div className="space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(50vh - 60px)' }}>
@@ -1111,9 +1137,9 @@ export default function Calendar() {
                       const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
                       const time = fmtTimeRange(a.startTime, a.endTime);
                       return (
-                        <div key={i} className="text-gray-200">
-                          <span className="font-medium">{label}</span>
-                          {time && <span className="text-gray-400 ml-1 text-[10px]">{time}</span>}
+                        <div key={i} className="calendar-tooltip-body leading-snug">
+                          <span className="font-medium text-[color:var(--text-primary)]">{label}</span>
+                          {time && <span className="calendar-tooltip-meta ml-1 text-[10px]">{time}</span>}
                         </div>
                       );
                     })}
@@ -1130,10 +1156,10 @@ export default function Calendar() {
             >
               <div
                 ref={ref}
-                className="relative flex flex-col overflow-hidden text-xs rounded-lg px-3 py-2 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border"
-                style={{ maxHeight: layout.maxHeight, backgroundColor: 'var(--surface-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
+                className="calendar-tooltip-panel relative flex flex-col overflow-hidden text-xs rounded-xl px-3.5 py-2.5 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border"
+                style={{ maxHeight: layout.maxHeight }}
               >
-                <div className="font-semibold mb-1.5 text-viridian border-b pb-1 shrink-0" style={{ borderColor: 'var(--border-subtle)' }}>
+                <div className="font-semibold mb-1.5 shrink-0 border-b pb-1 text-viridian" style={{ borderColor: 'var(--border-strong)' }}>
                   +{moreTooltip.activities.length} weitere Aktivitäten
                 </div>
                 <div className="space-y-1 overflow-y-auto min-h-0 flex-1 pr-1">
@@ -1141,9 +1167,9 @@ export default function Calendar() {
                     const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
                     const time = fmtTimeRange(a.startTime, a.endTime);
                     return (
-                      <div key={i} className="text-gray-200">
-                        <span className="font-medium">{label}</span>
-                        {time && <span className="text-gray-400 ml-1 text-[10px]">{time}</span>}
+                      <div key={i} className="calendar-tooltip-body leading-snug">
+                        <span className="font-medium text-[color:var(--text-primary)]">{label}</span>
+                        {time && <span className="calendar-tooltip-meta ml-1 text-[10px]">{time}</span>}
                       </div>
                     );
                   })}
@@ -1151,7 +1177,7 @@ export default function Calendar() {
                 {/* Tooltip arrow */}
                 <div
                   className={`absolute w-2 h-2 -translate-x-1/2 ${layout.arrowClass}`}
-                  style={{ left: layout.arrowCenterPx, backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', borderRightWidth: '1px', borderBottomWidth: '1px' }}
+                  style={{ left: layout.arrowCenterPx, backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-strong)', borderRightWidth: '1px', borderBottomWidth: '1px' }}
                 />
               </div>
             </div>

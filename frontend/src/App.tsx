@@ -19,6 +19,7 @@ import { OrgScopeProvider } from './lib/orgScope';
 import AdminOrgSetup from './pages/AdminOrgSetup';
 import OrgUserManagement from './pages/OrgUserManagement';
 import SuperAdminAudit from './pages/SuperAdminAudit';
+import SuperAdminSystemData from './pages/SuperAdminSystemData';
 import SettingsTestData from './pages/SettingsTestData';
 import AcceptInvite from './pages/AcceptInvite';
 import ResetRequest from './pages/ResetRequest';
@@ -118,6 +119,7 @@ function AuthedRoutes() {
           )}
           {canAccessDevTools(user.role) && <Route path="admin/dev-tools" element={<SettingsTestData />} />}
           {user.role === 'superadmin' && <Route path="admin/audit" element={<SuperAdminAudit />} />}
+          {user.role === 'superadmin' && <Route path="admin/system-data" element={<SuperAdminSystemData />} />}
           {(user.role === 'org_admin' || user.role === 'superadmin') && (
             <Route path="admin/users" element={<OrgUserManagement />} />
           )}

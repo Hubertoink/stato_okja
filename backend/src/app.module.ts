@@ -15,6 +15,7 @@ import { AuditModule } from './common/audit.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { ProjectTemplatesModule } from './project-templates/project-templates.module';
 import { DevToolsModule } from './dev-tools/dev-tools.module';
+import { SystemDataModule } from './system-data/system-data.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { DevToolsModule } from './dev-tools/dev-tools.module';
     AuditModule,
     UploadsModule,
     DevToolsModule,
+    SystemDataModule,
   ],
 })
 export class AppModule {}

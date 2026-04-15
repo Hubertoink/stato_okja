@@ -406,6 +406,19 @@ export default function Layout() {
                       </button>
                     </li>
                   )}
+                  {!restrictToPasswordChange && user?.role === 'superadmin' && (
+                    <li>
+                      <button
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        onClick={() => {
+                          navigate('/admin/system-data');
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Datenverwaltung
+                      </button>
+                    </li>
+                  )}
                   {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
                     <li>
                       <button

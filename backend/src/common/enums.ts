@@ -26,4 +26,6 @@ export enum AuditAction {
   UPDATE = 'update',
   DELETE = 'delete',
   LOGIN = 'login',
+  EXPORT = 'export',
+  PURGE = 'purge',
 }

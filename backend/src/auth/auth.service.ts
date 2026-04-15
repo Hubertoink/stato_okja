@@ -374,6 +374,12 @@ export class AuthService {
     return { ok: true };
   }
 
+  async verifyPasswordForUser(userId: string, password: string) {
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user || !user.passwordHash) return false;
+    return bcrypt.compare(password || '', user.passwordHash || '');
+  }
+
   async requestPasswordReset(emailRaw: string) {
     const resetConfig = this.getPublicPasswordResetConfig();
     if (!resetConfig.forgotPasswordEnabled) return { ok: true, disabled: true };

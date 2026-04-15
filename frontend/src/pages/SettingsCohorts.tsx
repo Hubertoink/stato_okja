@@ -46,7 +46,7 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
           </div>
           {/* Kohorten werden immer aktiv angelegt; kein Toggle im UI */}
         </div>
-  <div className="mt-6 flex items-center justify-between gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
+  <div className="modal-sticky-actions md:-mx-6 md:px-6">
           <span className="tooltip-wrapper"><button type="button" className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onCancel} title="Abbrechen" aria-label="Abbrechen">
             <XIcon className="w-5 h-5" />
           </button><span className="tooltip-bubble">Abbrechen</span></span>

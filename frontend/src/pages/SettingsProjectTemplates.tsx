@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import Modal from '@/components/Modal';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
@@ -283,25 +283,39 @@ export default function SettingsProjectTemplates() {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <h3 className="text-xl font-semibold text-viridian">Projekt-Vorlagen</h3>
-          <p className="text-sm text-gray-600">
-            Vorlagen gelten für die aktuell ausgewählte Organisation (Org-Scope) und werden automatisch an Unterorganisationen vererbt.
-          </p>
+      <div className="mb-4">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="min-w-0 text-xl font-semibold text-viridian">Projekt-Vorlagen</h3>
+          <span className="tooltip-wrapper shrink-0">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow"
+              onClick={() => {
+                setEditing(null);
+                setModalOpen(true);
+              }}
+              aria-label="Neue Vorlage"
+              title="Neue Vorlage"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-6 h-6"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+            <span className="tooltip-bubble">Neue Vorlage</span>
+          </span>
         </div>
-        <button
-          type="button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-viridian text-white transition-colors hover:bg-viridian/90"
-          onClick={() => {
-            setEditing(null);
-            setModalOpen(true);
-          }}
-          aria-label="Neue Vorlage"
-          title="Neue Vorlage"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
+        <p className="mt-2 pr-1 text-sm text-gray-600">
+          Vorlagen gelten für die aktuell ausgewählte Organisation (Org-Scope) und werden automatisch an Unterorganisationen vererbt.
+        </p>
       </div>
 
       {owned.length === 0 ? (
@@ -511,7 +525,7 @@ export default function SettingsProjectTemplates() {
 
               {/* Tags Section */}
               <div className="md:col-span-2">
-                <div className="flex items-center justify-between mb-1">
+                <div className="mb-1 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <label className="block text-sm font-medium">Tags (mehrfach)</label>
                   <button
                     type="button"
@@ -578,7 +592,7 @@ export default function SettingsProjectTemplates() {
               {/* Category Section */}
               {(form.type as string) !== 'open_door' && (
                 <div className="md:col-span-2">
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="mb-1 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <label className="block text-sm font-medium">Kategorie</label>
                     <button
                       type="button"

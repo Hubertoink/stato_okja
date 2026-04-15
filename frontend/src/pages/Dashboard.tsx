@@ -591,9 +591,9 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Actions */}
-      <div className="modern-card p-6">
-        <h3 className="text-xl font-bold mb-4 text-gray-800">Letzte Aktionen</h3>
-        <div className="space-y-3">
+      <div className="modern-card p-4 sm:p-6">
+        <h3 className="mb-3 text-lg font-bold text-gray-800 sm:mb-4 sm:text-xl">Letzte Aktionen</h3>
+        <div className="space-y-2.5 sm:space-y-3">
           {(lastFive || []).map((e) => {
             const icon =
               e.action === 'login' ? (
@@ -643,20 +643,20 @@ export default function Dashboard() {
                 ? `${who} hat sich angemeldet.`
                 : `${who} hat ${what}${title} ${verb}.`;
             return (
-              <div key={e.id} className="bg-gray-50 rounded-lg px-4 py-3">
+              <div key={e.id} className="rounded-lg bg-gray-50 px-3 py-2.5 sm:px-4 sm:py-3">
                 <div className="flex justify-between items-start gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">{icon}</div>
-                    <div>
+                  <div className="flex items-start gap-2.5 sm:gap-3">
+                    <div className="rounded-lg bg-white p-1.5 shadow-sm sm:p-2">{icon}</div>
+                    <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800">{titleLine}</h4>
                       <p className="text-xs text-gray-600">{when}</p>
                       {e.action === 'login' && e.entityTitle && (
-                        <span className="inline-block mt-1 text-[11px] text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">
+                        <span className="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
                           Account: {e.entityTitle}
                         </span>
                       )}
                       {orgName && (
-                        <span className="inline-block mt-1 text-[11px] text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">
+                        <span className="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
                           Organisation: {orgName}
                         </span>
                       )}

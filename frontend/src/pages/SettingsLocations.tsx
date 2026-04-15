@@ -44,7 +44,7 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
           </div>
           {/* Locations are always active; no UI toggle */}
         </div>
-        <div className="mt-6 flex items-center justify-between gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
+        <div className="modal-sticky-actions md:-mx-6 md:px-6">
           <button type="button" className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onClose} aria-label="Abbrechen"><XIcon className="w-5 h-5"/></button>
           <button type="button" disabled={saving} className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:opacity-50" onClick={save} aria-label="Speichern"><SaveIcon className="w-5 h-5"/></button>
         </div>

@@ -122,7 +122,7 @@ function StaffForm({
           </div>
           {/* "Aktiv" wird nicht mehr umgeschaltet; Teammitglieder sind immer aktiv. */}
         </div>
-        <div className="mt-6 flex items-center justify-between gap-3 sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
+        <div className="modal-sticky-actions md:-mx-6 md:px-6">
           <span className="tooltip-wrapper">
             <button
               type="button"

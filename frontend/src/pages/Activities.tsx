@@ -1113,10 +1113,10 @@ export default function Activities() {
           )}
         </div>
         {(activitiesLoading || activitiesFetching) && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center rounded-xl bg-white/45 pt-8">
-            <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-3 py-2 shadow-sm">
+          <div className="activities-loading-scrim pointer-events-none absolute inset-0 z-10 flex items-start justify-center rounded-xl pt-6">
+            <div className="activities-loading-pill flex items-center gap-2 rounded-full px-3 py-2 shadow-sm">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-viridian/25 border-t-viridian" aria-hidden />
-              <span className="text-sm text-gray-600">Lädt…</span>
+              <span className="activities-loading-pill-text text-sm">Lädt…</span>
             </div>
           </div>
         )}

@@ -37,7 +37,7 @@ describe('SystemDataService', () => {
         if (sql.includes('FROM "activities"') && sql.includes('COUNT(*)')) return [{ count: '3' }];
         if (sql.includes('FROM "organizations"') && sql.includes('COUNT(*)')) return [{ count: '2' }];
         if (sql.includes('FROM "users"') && sql.includes(`role <> 'superadmin'`)) return [{ count: '4' }];
-        if (sql.includes('FROM "users"') && sql.includes(`role = 'superadmin' AND orgId IS NOT NULL`)) return [{ count: '1' }];
+        if (sql.includes('FROM "users"') && sql.includes(`role = 'superadmin' AND "orgId" IS NOT NULL`)) return [{ count: '1' }];
         if (sql.includes('SELECT id, email, name FROM "users" WHERE role = ')) {
           return [{ id: 'super-1', email: 'super@example.com', name: 'Super Admin' }];
         }
@@ -99,6 +99,8 @@ describe('SystemDataService', () => {
     expect(deleteActivitiesIndex).toBeGreaterThan(-1);
     expect(deleteOrganizationsIndex).toBeGreaterThan(deleteActivitiesIndex);
     expect(deleteUsersIndex).toBeGreaterThan(deleteOrganizationsIndex);
+    expect(queryLog).toContain(`SELECT COUNT(*) AS count FROM "users" WHERE role = 'superadmin' AND "orgId" IS NOT NULL`);
+    expect(queryLog).toContain(`UPDATE "users" SET "orgId" = NULL WHERE role = 'superadmin' AND "orgId" IS NOT NULL`);
     expect(result.deletedUsers).toBe(4);
     expect(result.preservedSuperadmins).toEqual([
       { id: 'super-1', email: 'super@example.com', name: 'Super Admin' },

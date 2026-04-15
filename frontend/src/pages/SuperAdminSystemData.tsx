@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, Database, Download, FileArchive, HardDrive, ShieldAlert, ShieldCheck, Trash2 } from 'lucide-react';
+import ConfirmModal from '@/components/ConfirmModal';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
@@ -55,6 +56,7 @@ export default function SuperAdminSystemData() {
 
   const [password, setPassword] = useState('');
   const [confirmationText, setConfirmationText] = useState('');
+  const [purgeConfirmOpen, setPurgeConfirmOpen] = useState(false);
   const [lastPurgeSummary, setLastPurgeSummary] = useState<null | {
     deletedUsers: number;
     deletedUploadFiles: number;
@@ -88,12 +90,10 @@ export default function SuperAdminSystemData() {
 
   const handlePurge = async () => {
     if (!summary) return;
-    if (!window.confirm('Wirklich alle Nicht-Superadmin-Daten dauerhaft löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.')) {
-      return;
-    }
 
     try {
       const result = await purgeMutation.mutateAsync({ password, confirmationText });
+      setPurgeConfirmOpen(false);
       setScope(null);
       setPassword('');
       setConfirmationText('');
@@ -262,7 +262,7 @@ export default function SuperAdminSystemData() {
                 <button
                   type="button"
                   className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full"
-                  onClick={() => void handlePurge()}
+                  onClick={() => setPurgeConfirmOpen(true)}
                   disabled={purgeMutation.isPending || !password.trim() || !isConfirmationValid}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -285,6 +285,25 @@ export default function SuperAdminSystemData() {
           </div>
         </>
       )}
+
+      <ConfirmModal
+        open={purgeConfirmOpen}
+        title="Gesamtlöschung bestätigen"
+        message={
+          <div className="space-y-3">
+            <p>Wirklich alle Nicht-Superadmin-Daten dauerhaft löschen?</p>
+            <p className="text-red-700 font-medium">Dieser Vorgang kann nicht rückgängig gemacht werden.</p>
+          </div>
+        }
+        confirmLabel={purgeMutation.isPending ? 'Löschung läuft…' : 'Endgültig löschen'}
+        cancelLabel="Abbrechen"
+        onConfirm={() => {
+          void handlePurge();
+        }}
+        onCancel={() => {
+          if (!purgeMutation.isPending) setPurgeConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

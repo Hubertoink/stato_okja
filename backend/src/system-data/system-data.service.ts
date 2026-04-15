@@ -260,11 +260,11 @@ export class SystemDataService {
       const clearedSuperadminOrgLinks = await this.countRowsWhere(
         queryRunner,
         'users',
-        `role = 'superadmin' AND orgId IS NOT NULL`,
+        `role = 'superadmin' AND "orgId" IS NOT NULL`,
       );
       if (clearedSuperadminOrgLinks > 0) {
         await queryRunner.query(
-          `UPDATE ${this.escapeTablePath('users')} SET orgId = NULL WHERE role = 'superadmin' AND orgId IS NOT NULL`,
+          `UPDATE ${this.escapeTablePath('users')} SET "orgId" = NULL WHERE role = 'superadmin' AND "orgId" IS NOT NULL`,
         );
       }
 

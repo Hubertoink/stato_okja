@@ -1383,11 +1383,11 @@ export default function Statistics() {
       <div ref={reportRef} className="">
         {/* KPI Summary with Toggle */}
         <div className="flex items-center justify-end mb-4" data-pdf-section>
-          <div className="segmented-control flex items-center gap-2 rounded-lg p-1">
+          <div className="stats-kpi-toggle flex items-center gap-2 rounded-lg p-1">
             <button
               type="button"
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                !showAverage ? 'segmented-control-button-active font-medium' : 'segmented-control-button'
+                !showAverage ? 'stats-kpi-toggle-button-active font-medium' : 'stats-kpi-toggle-button'
               }`}
               onClick={() => setShowAverage(false)}
             >
@@ -1396,7 +1396,7 @@ export default function Statistics() {
             <button
               type="button"
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                showAverage ? 'segmented-control-button-active font-medium' : 'segmented-control-button'
+                showAverage ? 'stats-kpi-toggle-button-active font-medium' : 'stats-kpi-toggle-button'
               }`}
               onClick={() => setShowAverage(true)}
             >

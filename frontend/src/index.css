@@ -643,15 +643,19 @@ code {
 }
 
 .segmented-control {
-  background: rgba(148, 163, 184, 0.08);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(255, 255, 255, 0.34);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
 }
 
 .segmented-control-button {
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid transparent;
   color: var(--text-secondary);
 }
 
 .segmented-control-button:hover {
+  background: rgba(255, 255, 255, 0.62);
   color: var(--text-primary);
 }
 
@@ -660,6 +664,30 @@ code {
   color: var(--viridian);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(110, 168, 255, 0.12);
+}
+
+.stats-kpi-toggle {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.stats-kpi-toggle-button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+}
+
+.stats-kpi-toggle-button:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.stats-kpi-toggle-button-active {
+  background: var(--viridian);
+  border: 1px solid var(--viridian);
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
 }
 
 :root[data-theme='Midnight'] .modal-panel-roomy {
@@ -707,7 +735,13 @@ code {
 }
 
 :root[data-theme='Midnight'] .segmented-control-button {
+  background: transparent;
+  border-color: transparent;
   color: #c9d5eb;
+}
+
+:root[data-theme='Midnight'] .segmented-control-button:hover {
+  background: rgba(148, 163, 184, 0.08);
 }
 
 :root[data-theme='Midnight'] .segmented-control-button-active {
@@ -715,6 +749,28 @@ code {
   color: #6ea8ff;
   border-color: rgba(110, 168, 255, 0.24);
   box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.14);
+}
+
+:root[data-theme='Midnight'] .stats-kpi-toggle {
+  background: rgba(17, 26, 43, 0.96);
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
+}
+
+:root[data-theme='Midnight'] .stats-kpi-toggle-button {
+  color: #c9d5eb;
+}
+
+:root[data-theme='Midnight'] .stats-kpi-toggle-button:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: #ecf3ff;
+}
+
+:root[data-theme='Midnight'] .stats-kpi-toggle-button-active {
+  background: var(--viridian);
+  border-color: var(--viridian);
+  color: #08111f;
+  box-shadow: 0 0 0 1px rgba(110, 168, 255, 0.2);
 }
 
 .calendar-header-row {

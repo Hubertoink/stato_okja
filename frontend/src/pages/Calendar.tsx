@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIsMobile } from '@/lib/useIsMobile';
 import type { Project } from '@/lib/projects';
@@ -203,6 +203,7 @@ function getISOWeek(d: Date) {
 }
 
 export default function Calendar() {
+  const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -281,6 +282,15 @@ export default function Calendar() {
   const openActivitiesForDate = (iso: string) => {
     const qp = new URLSearchParams({ date: iso });
     navigate(`/activities?${qp.toString()}`);
+  };
+  const openActivity = (activity: Activity) => {
+    if (isMobile && activity.id) {
+      navigate(`/activities/${activity.id}`, {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+    setEdit(activity);
   };
   const openAddActivityForDate = (iso: string) => {
     if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
@@ -698,7 +708,7 @@ export default function Calendar() {
                 type="button"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
-                  setEdit(a);
+                  openActivity(a);
                 }}
                 onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
                 className={`relative w-full h-4 rounded overflow-hidden border border-black/10 px-1 text-left text-[9px] leading-4 truncate md:h-5 md:pl-6 md:pr-1 md:text-[10px] md:leading-5 ${bgClass}`}
@@ -774,7 +784,7 @@ export default function Calendar() {
                 type="button"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
-                  setEdit(a);
+                  openActivity(a);
                 }}
                 onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
                 className={`relative w-full overflow-hidden rounded border border-black/10 px-2 py-1.5 text-left shadow-sm transition-shadow hover:shadow md:pl-8 ${bgClass}`}

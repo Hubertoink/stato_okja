@@ -61,6 +61,16 @@ function formatSelectedFilterBadge(
   return `${label}: ${visibleNames.join(', ')}${remainingCount > 0 ? ` +${remainingCount}` : ''}`;
 }
 
+function formatActivityDate(date?: string | null) {
+  const iso = (date || '').slice(0, 10);
+  const [year, month, day] = iso.split('-');
+  return `${day}.${month}.${year}`;
+}
+
+function toLocalIsoDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function ActivitiesPaginationControls({
   page,
   pageCount,
@@ -142,6 +152,7 @@ export default function Activities() {
   const { data: publicConfig } = usePublicConfig();
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const todayIso = toLocalIsoDate(new Date());
   // Persist filters across route/tab changes; reset only via the explicit reset button.
   useEffect(() => {
     try {
@@ -778,13 +789,14 @@ export default function Activities() {
             {activities.map((a) => (
               <tr key={a.id} className="bg-white hover:bg-azure-web">
                 <td className="px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
-                  <span>
-                    {(() => {
-                      const s = (a.date || '').slice(0, 10);
-                      const [y, m, d] = s.split('-');
-                      return `${d}.${m}.${y}`;
-                    })()}
-                  </span>
+                  {(() => {
+                    const isToday = (a.date || '').slice(0, 10) === todayIso;
+                    return (
+                      <span className={isToday ? 'font-semibold text-viridian' : 'text-gray-700'}>
+                        {formatActivityDate(a.date)}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-3 lg:px-6 py-4 text-sm">
                   {(() => {
@@ -1016,13 +1028,14 @@ export default function Activities() {
               ) : null}
               <div className="relative z-10 flex justify-between items-start mb-2">
                 <div>
-                  <div className="text-sm text-gray-500">
-                    {(() => {
-                      const s = (a.date || '').slice(0, 10);
-                      const [y, m, d] = s.split('-');
-                      return `${d}.${m}.${y}`;
-                    })()}
-                  </div>
+                  {(() => {
+                    const isToday = (a.date || '').slice(0, 10) === todayIso;
+                    return (
+                      <div className={`text-sm ${isToday ? 'font-semibold text-viridian' : 'text-gray-500'}`}>
+                        {formatActivityDate(a.date)}
+                      </div>
+                    );
+                  })()}
                   <div className="font-semibold text-viridian">
                     {(
                       {

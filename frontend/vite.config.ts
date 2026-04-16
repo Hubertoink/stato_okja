@@ -10,6 +10,39 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const normalizedId = id.replace(/\\/g, '/');
+
+          if (!normalizedId.includes('/node_modules/')) {
+            return undefined;
+          }
+
+          if (normalizedId.includes('/node_modules/recharts/')) {
+            return 'vendor-charts';
+          }
+
+          if (
+            normalizedId.includes('/node_modules/jspdf/') ||
+            normalizedId.includes('/node_modules/html2canvas/')
+          ) {
+            return 'vendor-pdf-export';
+          }
+
+          if (
+            normalizedId.includes('/node_modules/xlsx/') ||
+            normalizedId.includes('/node_modules/xlsx-js-style/')
+          ) {
+            return 'vendor-excel-export';
+          }
+
+          return undefined;
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

@@ -561,7 +561,13 @@ export default function Activities() {
           <div className="flex gap-2 flex-wrap justify-end">
             <div className="relative">
               {searchOpen && (
-                <div className="absolute right-0 top-full mt-2 z-20 w-[min(18rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)] rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-md">
+                <div
+                  className={`absolute top-full mt-2 z-20 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-md ${
+                    isMobile
+                      ? '-right-1 w-[min(16rem,calc(100vw-1.25rem))] max-w-[calc(100vw-1.25rem)]'
+                      : 'right-0 w-[min(18rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)]'
+                  }`}
+                >
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input

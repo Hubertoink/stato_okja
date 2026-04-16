@@ -942,7 +942,7 @@ export default function Calendar() {
                     isOtherMonth
                       ? 'calendar-day-cell-other'
                       : isToday
-                        ? 'calendar-day-cell-today bg-mint-green/40 ring-2 ring-mint-green'
+                        ? 'calendar-day-cell-today'
                         : ''
                   }`}
                 >
@@ -1036,7 +1036,7 @@ export default function Calendar() {
               return (
                 <div
                   key={iso}
-                  className={`calendar-day-cell group min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left transition-colors ${isToday ? 'calendar-day-cell-today bg-mint-green/40 ring-1 ring-mint-green/60' : ''}`}
+                  className={`calendar-day-cell group min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left transition-colors ${isToday ? 'calendar-day-cell-today' : ''}`}
                 >
                   <div className="mb-1 flex items-start justify-between gap-2">
                     <button

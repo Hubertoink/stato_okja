@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, type ReactNode } from 'react';
+import { Suspense, lazy, useMemo, useState, useEffect, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
@@ -29,7 +29,6 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { useQuickTallySession } from '@/components/QuickTally';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
-import ExportModal from '@/components/ExportModal';
 import Modal from '@/components/Modal';
 import { useProjects, type Project } from '@/lib/projects';
 import { useAuth } from '@/lib/auth';
@@ -37,6 +36,8 @@ import { listOrgs, type OrgDto, getOpeningHours, OpeningHours } from '@/lib/orgs
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 import { usePublicConfig } from '@/lib/publicConfig';
+
+const ExportModal = lazy(() => import('@/components/ExportModal'));
 
 type DashboardRealtimeOptions = {
   refetchOnWindowFocus?: boolean | 'always';
@@ -81,6 +82,10 @@ function useMonthSummary(
         ? options.refetchIntervalMs
         : false,
   });
+}
+
+function preloadExportModal() {
+  void import('@/components/ExportModal');
 }
 
 function readTutorialDismissed(storageKey: string) {
@@ -465,6 +470,8 @@ export default function Dashboard() {
           <button
             className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
             onClick={() => setExportOpen(true)}
+            onMouseEnter={preloadExportModal}
+            onFocus={preloadExportModal}
           >
             Daten exportieren
           </button>
@@ -701,12 +708,20 @@ export default function Dashboard() {
         />
       )}
       {exportOpen && (
-        <ExportModal
-          open={exportOpen}
-          onClose={() => setExportOpen(false)}
-          initialFrom={from}
-          initialTo={to}
-        />
+        <Suspense
+          fallback={
+            <Modal open={exportOpen} onClose={() => setExportOpen(false)} title="Daten exportieren" maxWidth="md">
+              <div className="py-6 text-sm text-gray-600">Exportmodul wird geladen…</div>
+            </Modal>
+          }
+        >
+          <ExportModal
+            open={exportOpen}
+            onClose={() => setExportOpen(false)}
+            initialFrom={from}
+            initialTo={to}
+          />
+        </Suspense>
       )}
       <GettingStartedTutorialModal
         open={tutorialOpen}

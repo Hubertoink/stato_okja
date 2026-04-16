@@ -31,6 +31,8 @@
   --calendar-cell-hover: rgba(248, 250, 252, 1);
   --calendar-cell-other-bg: rgba(243, 244, 246, 0.92);
   --calendar-cell-other-text: #9ca3af;
+  --calendar-today-bg: rgba(91, 108, 255, 0.1);
+  --calendar-today-ring: rgba(91, 108, 255, 0.58);
   --calendar-holiday-bg: rgba(254, 242, 242, 0.98);
   --calendar-holiday-border: rgba(252, 165, 165, 0.76);
   --calendar-holiday-text: #b91c1c;
@@ -159,6 +161,8 @@
   --calendar-cell-hover: #131f34;
   --calendar-cell-other-bg: rgba(30, 41, 59, 0.5);
   --calendar-cell-other-text: #7f8ba3;
+  --calendar-today-bg: rgba(102, 217, 209, 0.12);
+  --calendar-today-ring: rgba(102, 217, 209, 0.82);
   --calendar-holiday-bg: rgba(69, 10, 10, 0.55);
   --calendar-holiday-border: rgba(248, 113, 113, 0.36);
   --calendar-holiday-text: #fecaca;
@@ -794,7 +798,9 @@ code {
 }
 
 .calendar-day-cell-today {
-  border-color: var(--cambridge-blue) !important;
+  background: var(--calendar-today-bg);
+  border-color: var(--calendar-grid-border) !important;
+  box-shadow: inset 0 0 0 2px var(--calendar-today-ring);
 }
 
 .calendar-day-number {

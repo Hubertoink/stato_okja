@@ -23,8 +23,7 @@ import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useOrgScopeKey } from '@/lib/orgScope';
 import { useIsMobile } from '@/lib/useIsMobile';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import type jsPDF from 'jspdf';
 import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -115,6 +114,30 @@ const PDF_RENDER_SCALE = 2;
 const PDF_MARGIN_MM = 10;
 const PDF_HEADER_HEIGHT_MM = 40;
 const PDF_MIN_PAGE_FILL_RATIO = 0.58;
+
+let pdfExportDependenciesPromise:
+  | Promise<{
+      JsPDF: typeof import('jspdf').default;
+      html2canvas: typeof import('html2canvas').default;
+    }>
+  | null = null;
+
+function loadPdfExportDependencies() {
+  if (!pdfExportDependenciesPromise) {
+    pdfExportDependenciesPromise = Promise.all([import('jspdf'), import('html2canvas')]).then(
+      ([jspdfModule, html2canvasModule]) => ({
+        JsPDF: jspdfModule.default,
+        html2canvas: html2canvasModule.default,
+      }),
+    );
+  }
+
+  return pdfExportDependenciesPromise;
+}
+
+function preloadPdfExportDependencies() {
+  void loadPdfExportDependencies();
+}
 
 function addPdfPageHeader(pdf: jsPDF, orgTitle: string, dateRange: string) {
   pdf.setFont('helvetica', 'bold');
@@ -676,8 +699,19 @@ export default function Statistics() {
   const isDarkTheme = user?.theme === 'Midnight';
   const chartSeparatorColor = isDarkTheme ? 'rgba(148, 163, 184, 0.2)' : 'rgba(255, 255, 255, 0.92)';
   const chartLegendTextColor = isDarkTheme ? '#c9d5eb' : '#4b5563';
+  const chartValueLabelColor = isDarkTheme ? '#f8fbff' : '#374151';
+  const chartValueLabelStroke = isDarkTheme ? 'rgba(8, 14, 26, 0.92)' : 'rgba(255, 255, 255, 0.9)';
   const chartGridColor = isDarkTheme ? 'rgba(148, 163, 184, 0.28)' : 'rgba(107, 114, 128, 0.35)';
   const chartAxisTick = { fontSize: 12, fill: chartLegendTextColor } as const;
+  const lineChartMargin = isMobile
+    ? { top: 10, right: 6, left: -14, bottom: 0 }
+    : { top: 10, right: 20, left: 0, bottom: 0 };
+  const compactBarChartMargin = isMobile
+    ? { top: 16, right: 6, left: -14, bottom: 0 }
+    : { top: 20, right: 20, left: 0, bottom: 0 };
+  const compactBarChartMarginWithBottom = isMobile
+    ? { top: 16, right: 6, left: -14, bottom: 4 }
+    : { top: 20, right: 20, left: 0, bottom: 8 };
   const chartTooltipContentStyle = {
     backgroundColor: isDarkTheme ? 'rgba(17, 26, 43, 0.96)' : 'rgba(255, 255, 255, 0.96)',
     borderColor: isDarkTheme ? 'rgba(148, 163, 184, 0.22)' : 'rgba(15, 23, 42, 0.1)',
@@ -912,7 +946,17 @@ export default function Statistics() {
     const cx = (x ?? 0) + (width ?? 0) / 2;
     const cy = (y ?? 0) - 4;
     return (
-      <text x={cx} y={cy} textAnchor="middle" fill="#374151" fontSize={12}>
+      <text
+        x={cx}
+        y={cy}
+        textAnchor="middle"
+        fill={chartValueLabelColor}
+        stroke={chartValueLabelStroke}
+        strokeWidth={2}
+        paintOrder="stroke"
+        fontSize={12}
+        fontWeight={600}
+      >
         {txt}
       </text>
     );
@@ -924,6 +968,7 @@ export default function Statistics() {
     setPdfMode(true);
 
     try {
+      const { JsPDF, html2canvas } = await loadPdfExportDependencies();
       await new Promise(requestAnimationFrame);
       const el = reportRef.current;
       if (!el) return;
@@ -934,7 +979,7 @@ export default function Statistics() {
         backgroundColor: '#ffffff',
       });
 
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const orgTitle = user?.orgName || 'Organisation';
@@ -1131,6 +1176,8 @@ export default function Statistics() {
               type="button"
               className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation"
               onClick={exportPdf}
+              onMouseEnter={preloadPdfExportDependencies}
+              onFocus={preloadPdfExportDependencies}
               title="Exportieren (PDF)"
             >
               <FileDown className="h-4 w-4" />
@@ -1535,38 +1582,38 @@ export default function Statistics() {
           </div>
 
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
-          <div className="bg-white rounded-lg shadow p-6 lg:col-span-2" data-pdf-section>
+          <div className="bg-white rounded-lg shadow p-3 md:p-6 lg:col-span-2" data-pdf-section>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-viridian">
                 {showAverage ? 'Zeitverlauf Ø Teilnehmende' : 'Zeitverlauf Teilnehmende'}
               </h3>
-              <div className="segmented-control flex gap-1 rounded-lg p-1">
+              <div className="stats-kpi-toggle flex items-center gap-1 rounded-lg p-1">
                 <button
                   onClick={() => setTimeAggregation('day')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
                     timeAggregation === 'day'
-                      ? 'segmented-control-button-active'
-                      : 'segmented-control-button'
+                      ? 'stats-kpi-toggle-button-active font-medium'
+                      : 'stats-kpi-toggle-button'
                   }`}
                 >
                   Tag
                 </button>
                 <button
                   onClick={() => setTimeAggregation('week')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
                     timeAggregation === 'week'
-                      ? 'segmented-control-button-active'
-                      : 'segmented-control-button'
+                      ? 'stats-kpi-toggle-button-active font-medium'
+                      : 'stats-kpi-toggle-button'
                   }`}
                 >
                   Woche
                 </button>
                 <button
                   onClick={() => setTimeAggregation('month')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
                     timeAggregation === 'month'
-                      ? 'segmented-control-button-active'
-                      : 'segmented-control-button'
+                      ? 'stats-kpi-toggle-button-active font-medium'
+                      : 'stats-kpi-toggle-button'
                   }`}
                 >
                   Monat
@@ -1577,7 +1624,7 @@ export default function Statistics() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={aggregatedTimeseries}
-                  margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                  margin={lineChartMargin}
                 >
                   <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                   <XAxis
@@ -1648,28 +1695,28 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
+          <div className="bg-white rounded-lg shadow p-3 md:p-6" data-pdf-section>
             <div className="flex items-center justify-between mb-4 gap-3">
               <h3 className="text-lg font-semibold text-viridian">
                 {showAverage ? 'Ø Alterskohorten' : 'Alterskohorten'}
               </h3>
-              <div className="segmented-control flex gap-1 rounded-lg p-1">
+              <div className="stats-kpi-toggle flex items-center gap-1 rounded-lg p-1">
                 <button
                   onClick={() => setCohortChartMode('bar')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
                     cohortChartMode === 'bar'
-                      ? 'segmented-control-button-active'
-                      : 'segmented-control-button'
+                      ? 'stats-kpi-toggle-button-active font-medium'
+                      : 'stats-kpi-toggle-button'
                   }`}
                 >
                   Balken
                 </button>
                 <button
                   onClick={() => setCohortChartMode('pie')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
                     cohortChartMode === 'pie'
-                      ? 'segmented-control-button-active'
-                      : 'segmented-control-button'
+                      ? 'stats-kpi-toggle-button-active font-medium'
+                      : 'stats-kpi-toggle-button'
                   }`}
                 >
                   Kreis
@@ -1725,7 +1772,7 @@ export default function Statistics() {
                     />
                   </PieChart>
                 ) : (
-                  <BarChart data={cohortChartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                  <BarChart data={cohortChartData} margin={compactBarChartMargin}>
                     <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                     <XAxis
                       dataKey="name"
@@ -1758,13 +1805,13 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
+          <div className="bg-white rounded-lg shadow p-3 md:p-6" data-pdf-section>
             <h3 className="text-lg font-semibold mb-4 text-viridian">Top Kategorien</h3>
             <div className={pdfMode ? 'h-64' : 'h-80 md:h-[23rem]'}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={topCategoryChartData}
-                  margin={{ top: 20, right: 20, left: 0, bottom: 8 }}
+                  margin={compactBarChartMarginWithBottom}
                 >
                   <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                   <XAxis
@@ -1791,11 +1838,11 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
+          <div className="bg-white rounded-lg shadow p-3 md:p-6" data-pdf-section>
             <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tags</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topTags} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                <BarChart data={topTags} margin={compactBarChartMargin}>
                   <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="name"
@@ -1821,13 +1868,13 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
+          <div className="bg-white rounded-lg shadow p-3 md:p-6" data-pdf-section>
             {projectId ? (
               <>
                 <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tage</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topDays} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                    <BarChart data={topDays} margin={compactBarChartMargin}>
                       <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                       <XAxis
                         dataKey="name"
@@ -1858,7 +1905,7 @@ export default function Statistics() {
                 <h3 className="text-lg font-semibold mb-4 text-viridian">Top Projekte</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topProjects} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                    <BarChart data={topProjects} margin={compactBarChartMargin}>
                       <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                       <XAxis
                         dataKey="name"

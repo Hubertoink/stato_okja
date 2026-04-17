@@ -1,7 +1,9 @@
 import { StatsService } from './stats.service';
+import { ActivityType } from '../common/enums';
 
 describe('StatsService date normalization', () => {
   const createQueryBuilder = (rows: Array<{ date: string | Date; totalParticipants?: string; activityCount?: string }>) => ({
+    leftJoin: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     distinct: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
@@ -71,5 +73,53 @@ describe('StatsService date normalization', () => {
       if (typeof previousTz === 'undefined') delete process.env.TZ;
       else process.env.TZ = previousTz;
     }
+  });
+});
+
+describe('StatsService category buckets', () => {
+  it('maps uncategorized open door activities to an Offene Tür bucket', async () => {
+    const qb = {
+      leftJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        { id: '__open_door__', name: 'Offene Tür', count: '3' },
+        { id: '__uncategorized__', name: 'Unkategorisiert', count: '2' },
+      ]),
+    };
+
+    const activityRepository = {
+      createQueryBuilder: jest.fn(() => qb),
+    };
+    const dataSource = {
+      options: { type: 'postgres' },
+    };
+
+    const service = new StatsService(
+      dataSource as never,
+      activityRepository as never,
+      {} as never,
+    );
+
+    const result = await service.getByCategory();
+
+    expect(qb.leftJoin).toHaveBeenCalledWith('activity.categories', 'category');
+    expect(qb.leftJoin).toHaveBeenCalledWith('activity.project', 'project');
+    expect(qb.select).toHaveBeenCalledWith(
+      expect.stringContaining(`activity.type = '${ActivityType.OPEN_DOOR}'`),
+      'id',
+    );
+    expect(qb.addSelect).toHaveBeenCalledWith(
+      expect.stringContaining(`activity.type = '${ActivityType.OPEN_DOOR}'`),
+      'name',
+    );
+    expect(result).toEqual([
+      { id: '__open_door__', name: 'Offene Tür', count: 3 },
+      { id: '__uncategorized__', name: 'Unkategorisiert', count: 2 },
+    ]);
   });
 });

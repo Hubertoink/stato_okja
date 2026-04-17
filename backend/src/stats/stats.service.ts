@@ -3,6 +3,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
+import { ActivityType } from '../common/enums';
 
 type StatsScope = {
   from?: string;
@@ -268,11 +269,20 @@ export class StatsService {
   }
 
   async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[]) {
-    const categoryIdExpr = "CASE WHEN category.id IS NULL THEN '__uncategorized__' ELSE CAST(category.id AS text) END";
-    const categoryNameExpr = "CASE WHEN category.name IS NULL OR category.name = '' THEN 'Unkategorisiert' ELSE category.name END";
+    const categoryIdExpr = `CASE
+      WHEN category.id IS NULL AND activity.type = '${ActivityType.OPEN_DOOR}' THEN '__open_door__'
+      WHEN category.id IS NULL THEN '__uncategorized__'
+      ELSE CAST(category.id AS text)
+    END`;
+    const categoryNameExpr = `CASE
+      WHEN category.id IS NULL AND activity.type = '${ActivityType.OPEN_DOOR}' THEN 'Offene Tür'
+      WHEN category.name IS NULL OR category.name = '' THEN 'Unkategorisiert'
+      ELSE category.name
+    END`;
 
     const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, weekdays)
       .leftJoin('activity.categories', 'category')
+      .leftJoin('activity.project', 'project')
       .select(categoryIdExpr, 'id')
       .addSelect(categoryNameExpr, 'name')
       .addSelect('COUNT(DISTINCT activity.id)', 'count')

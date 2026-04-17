@@ -23,6 +23,7 @@ import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useOrgScopeKey } from '@/lib/orgScope';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { isDarkThemeName } from '../lib/theme';
 import type jsPDF from 'jspdf';
 import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
@@ -696,7 +697,7 @@ export default function Statistics() {
     value: d.count,
     color: COLORS[i % COLORS.length],
   }));
-  const isDarkTheme = user?.theme === 'Midnight';
+  const isDarkTheme = isDarkThemeName(user?.theme);
   const chartSeparatorColor = isDarkTheme ? 'rgba(148, 163, 184, 0.2)' : 'rgba(255, 255, 255, 0.92)';
   const chartLegendTextColor = isDarkTheme ? '#c9d5eb' : '#4b5563';
   const chartValueLabelColor = isDarkTheme ? '#f8fbff' : '#374151';

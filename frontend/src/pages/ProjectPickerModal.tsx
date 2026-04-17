@@ -3,8 +3,7 @@ import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { Link } from 'react-router-dom';
-import { X as XIcon } from 'lucide-react';
-import { Star } from 'lucide-react';
+import { Grid2x2, Rows3, Star, X as XIcon } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
 import ProtectedImage from '@/components/ProtectedImage';
 
@@ -81,6 +80,7 @@ export default function ProjectPickerModal({
     event: 'Veranstaltung',
     outreach: 'Aufsuchend',
   };
+  const compactToggleLabel = compact ? 'Normale Ansicht aktivieren' : 'Kompakte Ansicht aktivieren';
 
   return (
     <div
@@ -105,7 +105,16 @@ export default function ProjectPickerModal({
             placeholder="Suchen…"
             className="flex-1 border rounded px-3 py-2"
           />
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <button
+            type="button"
+            onClick={() => toggleCompact(!compact)}
+            className={`inline-flex md:hidden items-center justify-center h-10 w-10 rounded border transition-colors ${compact ? 'border-viridian bg-viridian text-white' : 'border-gray-300 bg-white text-gray-700'}`}
+            aria-label={compactToggleLabel}
+            title={compactToggleLabel}
+          >
+            {compact ? <Grid2x2 className="w-4 h-4" /> : <Rows3 className="w-4 h-4" />}
+          </button>
+          <label className="hidden md:flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
               checked={compact}

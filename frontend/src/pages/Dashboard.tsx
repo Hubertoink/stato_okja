@@ -379,7 +379,7 @@ export default function Dashboard() {
 
       {/* Today's Opening Hours */}
       {openingHours && (
-        <div className="bg-gradient-to-r from-viridian to-cambridge-blue rounded-xl p-4 mb-6 text-white flex items-center gap-3">
+        <div className="dashboard-accent-panel rounded-xl p-4 mb-6 flex items-center gap-3">
           <Clock className="w-5 h-5 flex-shrink-0" />
           <span className="font-medium">
             Heute:{' '}
@@ -422,7 +422,7 @@ export default function Dashboard() {
       {/* Quick Tally - Daily Attendance Counter */}
       {/* Show start button only when no active session */}
       {!activeQuickTallySession && (
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 mb-8 text-white">
+        <div className="dashboard-accent-panel rounded-2xl p-6 mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-white/20 rounded-xl">
@@ -435,7 +435,7 @@ export default function Dashboard() {
             </div>
             <button
               onClick={openQuickTally}
-              className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+              className="dashboard-accent-button px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
             >
               <Users className="w-5 h-5" />
               Erfassung starten
@@ -449,7 +449,7 @@ export default function Dashboard() {
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Schnellzugriff</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            className="bg-blue-500 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors"
+            className="dashboard-accent-solid-button px-6 py-3 rounded-xl font-medium"
             onClick={() => {
               const dateISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
               if (isMobile) {

@@ -32,6 +32,7 @@ export default function QuickTallyReviewModal({
   const [endTime, setEndTime] = useState<string>(
     `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`
   );
+  const [startTime, setStartTime] = useState<string>(session.startTime);
   const [notes, setNotes] = useState<string>('');
   const [title, setTitle] = useState<string>('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -50,6 +51,10 @@ export default function QuickTallyReviewModal({
   );
 
   const isOpenDoor = project?.type === 'open_door';
+
+  useEffect(() => {
+    setStartTime(session.startTime);
+  }, [session.startTime]);
 
   // Prefill tags from project defaults
   useEffect(() => {
@@ -136,7 +141,7 @@ export default function QuickTallyReviewModal({
         }));
 
       // Calculate duration in minutes
-      const [startH, startM] = session.startTime.split(':').map(Number);
+      const [startH, startM] = startTime.split(':').map(Number);
       const [endH, endM] = endTime.split(':').map(Number);
       const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
 
@@ -144,7 +149,7 @@ export default function QuickTallyReviewModal({
         date: session.date,
         projectId: session.projectId,
         locationId: session.locationId || undefined,
-        startTime: session.startTime,
+        startTime: startTime,
         endTime: endTime,
         title: title.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -197,7 +202,7 @@ export default function QuickTallyReviewModal({
               <Clock className="w-4 h-4" />
               <span className="font-medium">{formatDate(session.date)}</span>
               <span style={{ color: 'var(--text-muted)' }}>
-                {session.startTime} – {endTime}
+                {startTime} – {endTime}
               </span>
             </div>
             {project && <div className="font-semibold text-viridian">{project.title}</div>}
@@ -258,6 +263,17 @@ export default function QuickTallyReviewModal({
               </div>
             </div>
           )}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Startzeit</label>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="w-full border rounded-lg px-4 py-3"
+              style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+            />
+          </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Endzeit</label>
@@ -452,7 +468,7 @@ export default function QuickTallyReviewModal({
               type="button"
               onClick={handleSave}
               disabled={saving || totals.total === 0}
-              className="flex-1 bg-viridian text-white px-6 py-3 rounded-lg font-semibold hover:bg-cambridge-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 theme-accent-solid-button px-6 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {saving ? (
                 <>

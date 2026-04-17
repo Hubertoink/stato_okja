@@ -1191,13 +1191,15 @@ code {
   box-shadow: var(--card-shadow);
 }
 
-.dashboard-accent-panel {
+.dashboard-accent-panel,
+.theme-accent-panel {
   background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
   color: #ffffff;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
 }
 
-.dashboard-accent-button {
+.dashboard-accent-button,
+.theme-accent-button {
   background: rgba(255, 255, 255, 0.98);
   color: var(--cambridge-blue);
   transition:
@@ -1208,13 +1210,15 @@ code {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
 }
 
-.dashboard-accent-button:hover {
+.dashboard-accent-button:hover,
+.theme-accent-button:hover {
   background: var(--azure-web);
   color: var(--viridian);
   transform: translateY(-1px);
 }
 
-.dashboard-accent-solid-button {
+.dashboard-accent-solid-button,
+.theme-accent-solid-button {
   background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
   color: #ffffff;
   transition:
@@ -1224,7 +1228,8 @@ code {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
 }
 
-.dashboard-accent-solid-button:hover {
+.dashboard-accent-solid-button:hover,
+.theme-accent-solid-button:hover {
   filter: brightness(1.04);
   transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);

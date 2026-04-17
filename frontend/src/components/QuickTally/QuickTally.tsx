@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Play, Users, CheckCircle, Minimize2, ChevronRight } from 'lucide-react';
+import { Clock3, X, Play, Users, CheckCircle, Minimize2, ChevronRight } from 'lucide-react';
 import { useProjects, type Project } from '@/lib/projects';
 import { colorFromStringHash } from '@/lib/colors';
 import { useCohorts } from '@/lib/taxonomy';
@@ -19,6 +19,12 @@ interface QuickTallyProps {
   onMinimize?: () => void;
 }
 
+function getRoundedCurrentTime(): string {
+  const now = new Date();
+  const roundedMinutes = Math.floor(now.getMinutes() / 15) * 15;
+  return `${String(now.getHours()).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
+}
+
 export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
   const { data: projects } = useProjects({ archived: false });
   const { data: cohorts } = useCohorts({ active: true });
@@ -30,8 +36,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(session?.projectId || '');
   const [selectedLocationId, setSelectedLocationId] = useState<string>(session?.locationId || '');
   const [startTime, setStartTime] = useState<string>(
-    session?.startTime ||
-      `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`
+    session?.startTime || getRoundedCurrentTime()
   );
   const [reviewOpen, setReviewOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
@@ -102,7 +107,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
           style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
         >
           {/* Header with gradient */}
-          <div className="bg-gradient-to-r from-viridian to-cambridge-blue p-6 text-white">
+          <div className="theme-accent-panel p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-full">
@@ -189,9 +194,22 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
 
             {/* Start Time */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Startzeit</label>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className="block text-sm font-medium text-gray-700">Startzeit</label>
+                <button
+                  type="button"
+                  onClick={() => setStartTime(getRoundedCurrentTime())}
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors"
+                  style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+                  aria-label="Aktuelle Uhrzeit übernehmen"
+                  title="Jetzt setzen"
+                >
+                  <Clock3 className="w-4 h-4" />
+                </button>
+              </div>
               <input
                 type="time"
+                step={900}
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-lg focus:ring-2 focus:ring-viridian focus:border-viridian transition-colors"
@@ -208,7 +226,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
               type="button"
               onClick={handleStartSession}
               disabled={!selectedProjectId}
-              className="w-full bg-gradient-to-r from-viridian to-cambridge-blue text-white px-6 py-4 rounded-xl text-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2"
+              className="w-full theme-accent-solid-button px-6 py-4 rounded-xl text-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2"
             >
               <Play className="w-5 h-5" />
               Erfassung starten
@@ -232,7 +250,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
   const countingContent = (
     <div className="fixed inset-0 z-[60] flex flex-col" style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-primary)' }}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-viridian to-cambridge-blue text-white px-4 py-3 shadow-md">
+      <div className="theme-accent-panel px-4 py-3 shadow-md">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-full">
@@ -361,7 +379,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
             type="button"
             onClick={handleFinish}
             disabled={totals.total === 0}
-            className="w-full bg-gradient-to-r from-viridian to-cambridge-blue text-white px-6 py-4 rounded-xl text-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2"
+            className="w-full theme-accent-solid-button px-6 py-4 rounded-xl text-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2"
           >
             <CheckCircle className="w-5 h-5" />
             Abschließen & Speichern
@@ -410,7 +428,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
   const content = (
     <button
       onClick={onRestore}
-      className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 right-4 md:right-6 z-50 bg-gradient-to-r from-viridian to-cambridge-blue text-white pl-4 pr-5 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-3"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 right-4 md:right-6 z-50 theme-accent-solid-button pl-4 pr-5 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-3"
       style={{ animation: 'pulse 2s infinite' }}
     >
       <div className="p-1.5 bg-white/20 rounded-full">

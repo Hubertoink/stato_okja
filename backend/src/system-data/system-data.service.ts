@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import JSZip from 'jszip';
-import { mkdir, readdir, readFile, rm, stat } from 'fs/promises';
-import { join, relative } from 'path';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, unlink, writeFile } from 'fs/promises';
+import { dirname, join, relative } from 'path';
 import { DataSource, QueryRunner } from 'typeorm';
 import { AuthService } from '../auth/auth.service';
 import { AuditService } from '../common/audit.service';
@@ -26,6 +26,7 @@ type ManagedTable = {
   key: string;
   path: string;
   filename: string;
+  columnTypes: Record<string, string>;
 };
 
 type UploadFileEntry = {
@@ -34,7 +35,58 @@ type UploadFileEntry = {
   size: number;
 };
 
+type SystemDataManifest = {
+  format?: string;
+  schemaVersion?: number;
+  generatedAt?: string;
+  generatedBy?: { id?: string; name?: string | null; role?: string } | null;
+  totals?: {
+    managedTables?: number;
+    databaseRows?: number;
+    uploadFiles?: number;
+    uploadBytes?: number;
+  };
+  tables?: Array<{ tableName?: string; rowCount?: number; files?: string[] }>;
+  uploads?: {
+    files?: Array<{ path?: string; size?: number }>;
+    warnings?: string[];
+  };
+};
+
+type ImportedTableData = ManagedTable & {
+  rows: Array<Record<string, unknown>>;
+};
+
+type ImportedUploadEntry = {
+  relativePath: string;
+  size: number;
+  entry: JSZip.JSZipObject;
+};
+
+type ParsedImportArchive = {
+  originalFilename: string;
+  manifest: SystemDataManifest;
+  tables: ImportedTableData[];
+  uploads: ImportedUploadEntry[];
+  warnings: string[];
+};
+
+type StagedImportUploads = {
+  sessionRoot: string;
+  uploadsRoot: string;
+  fileCount: number;
+  totalBytes: number;
+};
+
+type AppliedImportUploads = {
+  backupRoot: string | null;
+  uploadsRoot: string;
+};
+
 const PURGE_CONFIRMATION_TEXT = 'ALLE DATEN LOESCHEN';
+const IMPORT_CONFIRMATION_TEXT = 'BACKUP IMPORTIEREN';
+const SYSTEM_DATA_EXPORT_FORMAT = 'stato-system-data-export';
+const SYSTEM_DATA_EXPORT_SCHEMA_VERSION = 2;
 
 @Injectable()
 export class SystemDataService {
@@ -69,6 +121,7 @@ export class SystemDataService {
       return {
         generatedAt: new Date().toISOString(),
         confirmationText: PURGE_CONFIRMATION_TEXT,
+        restoreConfirmationText: IMPORT_CONFIRMATION_TEXT,
         totals: {
           managedTables: managedTables.length,
           databaseRows: totalDatabaseRows,
@@ -98,7 +151,8 @@ export class SystemDataService {
       const generatedAt = new Date().toISOString();
 
       for (const table of managedTables) {
-        const rows = await queryRunner.query(`SELECT * FROM ${this.escapeTablePath(table.path)}`) as Array<Record<string, unknown>>;
+        const rawRows = await queryRunner.query(`SELECT * FROM ${this.escapeTablePath(table.path)}`) as Array<Record<string, unknown>>;
+        const rows = this.normalizeRowsForExport(table, rawRows);
         tableRowsByKey[table.key] = rows;
         totalDatabaseRows += rows.length;
 
@@ -146,6 +200,8 @@ export class SystemDataService {
       zip.file(readableWorkbookPath, readableWorkbook.buffer);
 
       const manifest = {
+        format: SYSTEM_DATA_EXPORT_FORMAT,
+        schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
         generatedAt,
         generatedBy: {
           id: actor.id,
@@ -202,6 +258,119 @@ export class SystemDataService {
       return { buffer, filename };
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  async inspectImportArchive(actor: SystemDataActor, filePath: string, originalFilename: string) {
+    this.assertSuperadmin(actor);
+
+    try {
+      const archive = await this.readImportArchive(filePath, originalFilename);
+      return this.buildImportPreview(archive);
+    } finally {
+      await this.removePath(filePath);
+    }
+  }
+
+  async importAllData(
+    actor: SystemDataActor,
+    filePath: string,
+    payload: { originalFilename: string; password: string; confirmationText: string },
+  ) {
+    this.assertSuperadmin(actor);
+    await this.assertPassword(actor.id, payload.password);
+    this.assertImportConfirmationText(payload.confirmationText);
+
+    let stagedUploads: StagedImportUploads | null = null;
+    let appliedUploads: AppliedImportUploads | null = null;
+    let archive: ParsedImportArchive | null = null;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    try {
+      archive = await this.readImportArchive(filePath, payload.originalFilename);
+      stagedUploads = await this.stageImportedUploads(archive.uploads);
+
+      await queryRunner.startTransaction();
+
+      const deleteOrder = await this.getDeleteOrder(queryRunner, new Set());
+      const deletedTables: Array<{ tableName: string; deletedRows: number }> = [];
+      for (const table of deleteOrder) {
+        const deletedRows = await this.countRows(queryRunner, table.path);
+        if (deletedRows > 0) {
+          await queryRunner.query(`DELETE FROM ${this.escapeTablePath(table.path)}`);
+        }
+        deletedTables.push({ tableName: table.filename, deletedRows });
+      }
+
+      const importOrder = await this.getInsertOrder(queryRunner, new Set());
+      const importedTableMap = new Map(archive.tables.map((table) => [table.key, table]));
+      const importedTables: Array<{ tableName: string; importedRows: number }> = [];
+      for (const table of importOrder) {
+        const importedTable = importedTableMap.get(table.key);
+        if (!importedTable) continue;
+        await this.insertRows(queryRunner, table.path, importedTable.rows);
+        importedTables.push({ tableName: table.filename, importedRows: importedTable.rows.length });
+      }
+
+      appliedUploads = await this.applyImportedUploads(stagedUploads);
+      await queryRunner.commitTransaction();
+
+      if (appliedUploads.backupRoot) {
+        await this.removePath(appliedUploads.backupRoot);
+      }
+      await this.removePath(stagedUploads.sessionRoot);
+
+      try {
+        await this.auditService.log({
+          action: AuditAction.UPDATE,
+          entityType: 'system-data',
+          entityId: 'global',
+          entityTitle: `Import ${payload.originalFilename}`,
+          user: { id: actor.id, name: actor.name ?? null, orgId: null },
+          orgId: null,
+          details: {
+            filename: payload.originalFilename,
+            importedTables,
+            importedUploadFiles: stagedUploads.fileCount,
+            importedUploadBytes: stagedUploads.totalBytes,
+            warnings: archive.warnings,
+          },
+        });
+      } catch {
+        /* ignore audit errors */
+      }
+
+      return {
+        importedAt: new Date().toISOString(),
+        filename: payload.originalFilename,
+        deletedTables,
+        importedTables,
+        importedUploadFiles: stagedUploads.fileCount,
+        importedUploadBytes: stagedUploads.totalBytes,
+        warnings: archive.warnings,
+      };
+    } catch (error) {
+      if (queryRunner.isTransactionActive) {
+        try {
+          await queryRunner.rollbackTransaction();
+        } catch {
+          /* ignore rollback errors */
+        }
+      }
+
+      if (appliedUploads) {
+        await this.restorePreviousUploads(appliedUploads);
+      }
+
+      if (stagedUploads) {
+        await this.removePath(stagedUploads.sessionRoot);
+      }
+
+      throw error;
+    } finally {
+      await queryRunner.release();
+      await this.removePath(filePath);
     }
   }
 
@@ -339,16 +508,23 @@ export class SystemDataService {
     }
   }
 
+  private assertImportConfirmationText(value: string) {
+    if (String(value || '').trim().toUpperCase() !== IMPORT_CONFIRMATION_TEXT) {
+      throw new BadRequestException(`Bitte exakt "${IMPORT_CONFIRMATION_TEXT}" eingeben.`);
+    }
+  }
+
   private getManagedTables(): ManagedTable[] {
     const map = new Map<string, ManagedTable>();
 
     for (const metadata of this.dataSource.entityMetadatas) {
-      this.registerManagedTable(map, metadata.tablePath || metadata.tableName);
+      this.registerManagedTable(map, metadata.tablePath || metadata.tableName, metadata.columns || []);
       for (const relation of metadata.relations) {
         if (relation.junctionEntityMetadata) {
           this.registerManagedTable(
             map,
             relation.junctionEntityMetadata.tablePath || relation.junctionEntityMetadata.tableName,
+            relation.junctionEntityMetadata.columns || [],
           );
         }
       }
@@ -357,10 +533,38 @@ export class SystemDataService {
     return Array.from(map.values()).sort((left, right) => left.filename.localeCompare(right.filename));
   }
 
-  private registerManagedTable(target: Map<string, ManagedTable>, tablePath: string) {
+  private registerManagedTable(
+    target: Map<string, ManagedTable>,
+    tablePath: string,
+    columns: Array<{ databaseName?: string; type?: unknown }>,
+  ) {
     const key = this.normalizeTableKey(tablePath);
     if (!key || target.has(key)) return;
-    target.set(key, { key, path: tablePath, filename: key });
+    target.set(key, {
+      key,
+      path: tablePath,
+      filename: key,
+      columnTypes: this.buildColumnTypeMap(columns),
+    });
+  }
+
+  private buildColumnTypeMap(columns: Array<{ databaseName?: string; type?: unknown }>) {
+    const columnTypes: Record<string, string> = {};
+    for (const column of columns) {
+      const columnName = String(column?.databaseName || '').trim();
+      if (!columnName) continue;
+      columnTypes[columnName] = this.normalizeColumnType(column?.type);
+    }
+    return columnTypes;
+  }
+
+  private normalizeColumnType(columnType: unknown) {
+    if (typeof columnType === 'string') return columnType.toLowerCase();
+    if (typeof columnType === 'function') return String(columnType.name || '').toLowerCase();
+    if (columnType && typeof columnType === 'object' && 'name' in (columnType as Record<string, unknown>)) {
+      return String((columnType as { name?: string }).name || '').toLowerCase();
+    }
+    return String(columnType || '').toLowerCase();
   }
 
   private normalizeTableKey(tablePath: string) {
@@ -394,6 +598,14 @@ export class SystemDataService {
   }
 
   private async getDeleteOrder(queryRunner: QueryRunner, excludedKeys: Set<string>) {
+    return (await this.getDependencyOrder(queryRunner, excludedKeys)).slice().reverse();
+  }
+
+  private async getInsertOrder(queryRunner: QueryRunner, excludedKeys: Set<string>) {
+    return this.getDependencyOrder(queryRunner, excludedKeys);
+  }
+
+  private async getDependencyOrder(queryRunner: QueryRunner, excludedKeys: Set<string>) {
     const managedTables = this.getManagedTables();
     const tableByKey = new Map(managedTables.map((table) => [table.key, table]));
     const tableMetadata = await queryRunner.getTables(managedTables.map((table) => table.path));
@@ -451,9 +663,300 @@ export class SystemDataService {
     }
 
     return order
-      .reverse()
       .map((key) => tableByKey.get(key))
       .filter((table): table is ManagedTable => Boolean(table));
+  }
+
+  private async readImportArchive(filePath: string, originalFilename: string): Promise<ParsedImportArchive> {
+    let zip: JSZip;
+    try {
+      zip = await JSZip.loadAsync(await readFile(filePath));
+    } catch {
+      throw new BadRequestException('Die ZIP-Datei konnte nicht gelesen werden.');
+    }
+
+    const manifestEntry = zip.file('manifest.json');
+    if (!manifestEntry) {
+      throw new BadRequestException('manifest.json fehlt im Archiv.');
+    }
+
+    let manifest: SystemDataManifest;
+    try {
+      manifest = JSON.parse(await manifestEntry.async('string')) as SystemDataManifest;
+    } catch {
+      throw new BadRequestException('manifest.json ist ungültig.');
+    }
+
+    const warnings: string[] = [];
+    if (manifest.format && manifest.format !== SYSTEM_DATA_EXPORT_FORMAT) {
+      warnings.push(`Unbekanntes Exportformat: ${manifest.format}`);
+    }
+    if (typeof manifest.schemaVersion === 'number' && manifest.schemaVersion > SYSTEM_DATA_EXPORT_SCHEMA_VERSION) {
+      throw new BadRequestException(`Archiv verwendet eine neuere Schema-Version (${manifest.schemaVersion}).`);
+    }
+    if (!manifest.format) {
+      warnings.push('Archiv ohne Exportformat erkannt. Es wird als Legacy-Export behandelt.');
+    }
+    if (!manifest.schemaVersion) {
+      warnings.push('Archiv ohne Schema-Version erkannt. Es wird als Legacy-Export behandelt.');
+    }
+
+    const managedTables = this.getManagedTables();
+    const manifestTableByName = new Map((manifest.tables || []).map((table) => [String(table.tableName || '').toLowerCase(), table]));
+    const importedTables: ImportedTableData[] = [];
+
+    for (const table of managedTables) {
+      const manifestTable = manifestTableByName.get(table.filename);
+      const jsonPath = manifestTable?.files?.find((file) => file.endsWith('.json')) || `database/${table.filename}.json`;
+      const jsonEntry = zip.file(jsonPath);
+      if (!jsonEntry) {
+        throw new BadRequestException(`Archiv enthält keine JSON-Daten für Tabelle ${table.filename}.`);
+      }
+
+      let rows: Array<Record<string, unknown>>;
+      try {
+        const raw = JSON.parse(await jsonEntry.async('string'));
+        if (!Array.isArray(raw)) {
+          throw new Error('not-an-array');
+        }
+        rows = raw as Array<Record<string, unknown>>;
+      } catch {
+        throw new BadRequestException(`JSON-Daten für Tabelle ${table.filename} sind ungültig.`);
+      }
+
+      if (typeof manifestTable?.rowCount === 'number' && manifestTable.rowCount !== rows.length) {
+        throw new BadRequestException(`Row-Count-Abweichung in Tabelle ${table.filename}.`);
+      }
+
+      importedTables.push({ ...table, rows: this.normalizeRowsForImport(table, rows) });
+    }
+
+    const knownTableJsonPaths = new Set(importedTables.map((table) => `database/${table.filename}.json`));
+    for (const path of Object.keys(zip.files)) {
+      if (path.startsWith('database/') && path.endsWith('.json') && !knownTableJsonPaths.has(path)) {
+        warnings.push(`Zusätzliche Archivdatei wird ignoriert: ${path}`);
+      }
+    }
+
+    const manifestUploadSizes = new Map(
+      (manifest.uploads?.files || [])
+        .filter((file): file is { path: string; size?: number } => typeof file?.path === 'string' && file.path.trim().length > 0)
+        .map((file) => [file.path, Number(file.size || 0)]),
+    );
+
+    const uploads = Object.values(zip.files)
+      .filter((entry) => !entry.dir && entry.name.startsWith('uploads/'))
+      .map((entry) => {
+        const relativePath = entry.name.slice('uploads/'.length);
+        return {
+          relativePath,
+          size: manifestUploadSizes.get(relativePath) || 0,
+          entry,
+        } satisfies ImportedUploadEntry;
+      })
+      .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+
+    if (manifest.uploads?.warnings?.length) {
+      warnings.push(...manifest.uploads.warnings.map((warning) => `Export-Hinweis: ${warning}`));
+    }
+
+    return {
+      originalFilename,
+      manifest,
+      tables: importedTables,
+      uploads,
+      warnings,
+    };
+  }
+
+  private buildImportPreview(archive: ParsedImportArchive) {
+    const databaseRows = archive.tables.reduce((sum, table) => sum + table.rows.length, 0);
+    const uploadBytes = archive.uploads.reduce((sum, file) => sum + file.size, 0);
+
+    return {
+      filename: archive.originalFilename,
+      generatedAt: archive.manifest.generatedAt || null,
+      generatedBy: archive.manifest.generatedBy || null,
+      format: archive.manifest.format || 'legacy',
+      schemaVersion: archive.manifest.schemaVersion || null,
+      confirmationText: IMPORT_CONFIRMATION_TEXT,
+      totals: {
+        managedTables: archive.tables.length,
+        databaseRows,
+        uploadFiles: archive.uploads.length,
+        uploadBytes,
+      },
+      tables: archive.tables
+        .map((table) => ({ tableName: table.filename, rowCount: table.rows.length }))
+        .sort((left, right) => right.rowCount - left.rowCount),
+      warnings: archive.warnings,
+    };
+  }
+
+  private async stageImportedUploads(uploads: ImportedUploadEntry[]): Promise<StagedImportUploads> {
+    const tempRoot = join(process.cwd(), '.tmp');
+    await mkdir(tempRoot, { recursive: true });
+    const sessionRoot = await mkdtemp(join(tempRoot, 'system-data-restore-'));
+    const uploadsRoot = join(sessionRoot, 'uploads');
+    await mkdir(join(uploadsRoot, 'images'), { recursive: true });
+
+    let totalBytes = 0;
+    for (const upload of uploads) {
+      const targetPath = join(uploadsRoot, upload.relativePath);
+      await mkdir(dirname(targetPath), { recursive: true });
+      const buffer = await upload.entry.async('nodebuffer');
+      totalBytes += buffer.length;
+      await writeFile(targetPath, buffer);
+    }
+
+    return {
+      sessionRoot,
+      uploadsRoot,
+      fileCount: uploads.length,
+      totalBytes,
+    };
+  }
+
+  private async applyImportedUploads(stagedUploads: StagedImportUploads): Promise<AppliedImportUploads> {
+    const uploadsRoot = join(process.cwd(), 'uploads');
+    const backupRoot = `${stagedUploads.sessionRoot}-uploads-backup`;
+
+    try {
+      await mkdir(uploadsRoot, { recursive: true });
+      await rm(backupRoot, { recursive: true, force: true });
+
+      if (await this.pathExists(uploadsRoot)) {
+        await mkdir(backupRoot, { recursive: true });
+        await this.copyDirectoryContents(uploadsRoot, backupRoot);
+      }
+
+      await this.clearDirectoryContents(uploadsRoot);
+      await this.copyDirectoryContents(stagedUploads.uploadsRoot, uploadsRoot);
+
+      return {
+        backupRoot: (await this.pathExists(backupRoot)) ? backupRoot : null,
+        uploadsRoot,
+      };
+    } catch (error) {
+      if (await this.pathExists(backupRoot)) {
+        await this.restorePreviousUploads({ backupRoot, uploadsRoot });
+      }
+
+      const message = error instanceof Error ? error.message : 'unbekannter Upload-Fehler';
+      throw new InternalServerErrorException(`Upload-Dateien konnten nicht wiederhergestellt werden: ${message}`);
+    }
+  }
+
+  private async restorePreviousUploads(appliedUploads: AppliedImportUploads) {
+    const { uploadsRoot, backupRoot } = appliedUploads;
+
+    await mkdir(uploadsRoot, { recursive: true });
+    await this.clearDirectoryContents(uploadsRoot);
+
+    if (backupRoot && await this.pathExists(backupRoot)) {
+      await this.copyDirectoryContents(backupRoot, uploadsRoot);
+      return;
+    }
+
+    await mkdir(join(uploadsRoot, 'images'), { recursive: true });
+  }
+
+  private async copyDirectoryContents(sourceDir: string, targetDir: string) {
+    await mkdir(targetDir, { recursive: true });
+    let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }> = [];
+    try {
+      entries = await readdir(sourceDir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const sourcePath = join(sourceDir, entry.name);
+      const targetPath = join(targetDir, entry.name);
+
+      if (entry.isDirectory()) {
+        await this.copyDirectoryContents(sourcePath, targetPath);
+        continue;
+      }
+
+      if (entry.isFile()) {
+        await mkdir(dirname(targetPath), { recursive: true });
+        await copyFile(sourcePath, targetPath);
+      }
+    }
+  }
+
+  private async clearDirectoryContents(directory: string) {
+    let entries: Array<{ name: string }> = [];
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      await rm(join(directory, entry.name), { recursive: true, force: true });
+    }
+  }
+
+  private async insertRows(queryRunner: QueryRunner, tablePath: string, rows: Array<Record<string, unknown>>) {
+    if (!rows.length) return;
+
+    const columns = Array.from(
+      rows.reduce((set, row) => {
+        Object.keys(row || {}).forEach((key) => set.add(key));
+        return set;
+      }, new Set<string>()),
+    );
+    if (!columns.length) return;
+
+    const chunkSize = 100;
+    for (let offset = 0; offset < rows.length; offset += chunkSize) {
+      const chunk = rows.slice(offset, offset + chunkSize);
+      const params: unknown[] = [];
+      const valuesSql = chunk
+        .map((row) => `(${columns.map((column) => {
+          params.push(Object.prototype.hasOwnProperty.call(row, column) ? row[column] : null);
+          return this.getParameterPlaceholder(params.length);
+        }).join(', ')})`)
+        .join(', ');
+
+      await queryRunner.query(
+        `INSERT INTO ${this.escapeTablePath(tablePath)} (${columns.map((column) => this.escapeIdentifier(column)).join(', ')}) VALUES ${valuesSql}`,
+        params,
+      );
+    }
+  }
+
+  private escapeIdentifier(value: string) {
+    return `"${String(value || '').replace(/"/g, '""')}"`;
+  }
+
+  private getParameterPlaceholder(index: number) {
+    const dataSourceType = (this.dataSource as { options?: { type?: string } }).options?.type;
+    return dataSourceType === 'postgres' ? `$${index}` : '?';
+  }
+
+  private async pathExists(path: string) {
+    try {
+      await stat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async removePath(path: string) {
+    if (!path) return;
+    try {
+      await rm(path, { recursive: true, force: true });
+    } catch {
+      try {
+        await unlink(path);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    }
   }
 
   private serializeCsvValue(value: unknown) {
@@ -461,6 +964,53 @@ export class SystemDataService {
     if (value instanceof Date) return value.toISOString();
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
+  }
+
+  private normalizeRowsForExport(table: ManagedTable, rows: Array<Record<string, unknown>>) {
+    return rows.map((row) => this.normalizeDateOnlyColumns(table, row));
+  }
+
+  private normalizeRowsForImport(table: ManagedTable, rows: Array<Record<string, unknown>>) {
+    return rows.map((row) => this.normalizeDateOnlyColumns(table, row));
+  }
+
+  private normalizeDateOnlyColumns(table: ManagedTable, row: Record<string, unknown>) {
+    const normalizedRow = { ...row };
+    for (const [column, value] of Object.entries(row || {})) {
+      if (table.columnTypes[column] !== 'date') continue;
+      normalizedRow[column] = this.normalizeDateOnlyValue(value);
+    }
+    return normalizedRow;
+  }
+
+  private normalizeDateOnlyValue(value: unknown) {
+    if (value === null || typeof value === 'undefined' || value === '') return value;
+
+    if (typeof value === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+      const parsedDate = new Date(value);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        return this.formatDateOnlyInLocalTime(parsedDate);
+      }
+
+      const prefixedDateMatch = value.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (prefixedDateMatch?.[1]) return prefixedDateMatch[1];
+      return value;
+    }
+
+    if (value instanceof Date) {
+      return this.formatDateOnlyInLocalTime(value);
+    }
+
+    return value;
+  }
+
+  private formatDateOnlyInLocalTime(value: Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private escapeCsvValue(value: string) {

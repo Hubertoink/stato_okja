@@ -18,6 +18,28 @@ Der Export erzeugt ein einzelnes ZIP-Archiv mit:
 
 Der Export ist read-only und verändert keine Daten.
 
+Das Manifest enthält zusätzlich ein Exportformat und eine Schema-Version, damit spätere Restores die ZIP vorab validieren können.
+
+## Import / Restore
+
+Der Import erwartet ein zuvor erzeugtes Systemdaten-ZIP und arbeitet bewusst nicht als Merge, sondern als Voll-Restore.
+
+Ablauf:
+
+- ZIP im Bereich `Datenverwaltung` auswählen
+- Server prüft `manifest.json` und alle `database/*.json`-Dateien vorab
+- aktuelles Passwort eingeben
+- Bestätigungstext `BACKUP IMPORTIEREN` eingeben
+- Restore im Browser bestätigen
+
+Beim Restore werden:
+
+- alle aktuell vorhandenen verwalteten Tabellen geleert
+- alle Tabellen aus dem Backup in FK-sicherer Reihenfolge neu eingespielt
+- lokale Upload-Dateien vollständig aus `uploads/...` wiederhergestellt
+
+Der Import ist damit ein vollständiger Replace-All-Restore. Bestehende Daten werden nicht zusammengeführt.
+
 ## Gesamtlöschung
 
 Die Gesamtlöschung entfernt global:

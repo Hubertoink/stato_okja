@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -6,14 +7,45 @@ import {
   Req,
   Res,
   StreamableFile,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
+import { diskStorage } from 'multer';
+import { mkdirSync } from 'fs';
+import { extname, join } from 'path';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { SystemDataService, type SystemDataActor } from './system-data.service';
+
+const systemDataImportTempDir = join(process.cwd(), '.tmp', 'system-data-imports');
+
+const systemDataImportUploadOptions = {
+  storage: diskStorage({
+    destination: (_req, _file, callback) => {
+      mkdirSync(systemDataImportTempDir, { recursive: true });
+      callback(null, systemDataImportTempDir);
+    },
+    filename: (_req, file, callback) => {
+      const suffix = `${Date.now()}-${Math.round(Math.random() * 1_000_000_000)}`;
+      const extension = extname(file.originalname || '').toLowerCase() || '.zip';
+      callback(null, `system-data-import-${suffix}${extension}`);
+    },
+  }),
+  limits: { fileSize: 1024 * 1024 * 1024 },
+  fileFilter: (_req: unknown, file: Express.Multer.File, callback: (error: Error | null, acceptFile: boolean) => void) => {
+    const extension = extname(file.originalname || '').toLowerCase();
+    if (extension && extension !== '.zip') {
+      callback(new BadRequestException('Bitte eine ZIP-Datei hochladen.') as unknown as Error, false);
+      return;
+    }
+    callback(null, true);
+  },
+};
 
 @ApiTags('system-data')
 @Controller('admin/system-data')
@@ -28,6 +60,20 @@ export class SystemDataController {
     return this.systemDataService.getSummary();
   }
 
+  @Post('import/inspect')
+  @Roles('superadmin')
+  @UseInterceptors(FileInterceptor('file', systemDataImportUploadOptions))
+  @ApiOperation({ summary: 'Prüft ein Systemdaten-Backup vor dem Restore' })
+  inspectImport(
+    @Req() req: { user: SystemDataActor },
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file?.path) {
+      throw new BadRequestException('ZIP-Datei ist erforderlich.');
+    }
+    return this.systemDataService.inspectImportArchive(req.user, file.path, file.originalname);
+  }
+
   @Get('export')
   @Roles('superadmin')
   @ApiOperation({ summary: 'Exportiert alle Anwendungsdaten als ZIP-Archiv' })
@@ -40,6 +86,25 @@ export class SystemDataController {
     res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
     res.setHeader('Content-Length', String(result.buffer.length));
     return new StreamableFile(result.buffer);
+  }
+
+  @Post('import')
+  @Roles('superadmin')
+  @UseInterceptors(FileInterceptor('file', systemDataImportUploadOptions))
+  @ApiOperation({ summary: 'Stellt alle Anwendungsdaten aus einem ZIP-Archiv vollständig wieder her' })
+  importAll(
+    @Req() req: { user: SystemDataActor },
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() body: { password?: string; confirmationText?: string },
+  ) {
+    if (!file?.path) {
+      throw new BadRequestException('ZIP-Datei ist erforderlich.');
+    }
+    return this.systemDataService.importAllData(req.user, file.path, {
+      originalFilename: file.originalname,
+      password: String(body?.password || ''),
+      confirmationText: String(body?.confirmationText || ''),
+    });
   }
 
   @Post('purge')

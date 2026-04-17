@@ -1397,6 +1397,148 @@ code {
   background-image: radial-gradient(circle at 6px 8px, rgba(255, 255, 255, 0.06) 2.5px, transparent 3px);
 }
 
+.system-data-panel {
+  background: var(--surface-elevated);
+  border-color: var(--border-subtle);
+}
+
+.system-data-panel-header {
+  background: var(--surface-2);
+  border-color: var(--border-subtle);
+}
+
+.system-data-panel-title,
+.system-data-summary-value {
+  color: var(--text-primary);
+}
+
+.system-data-panel-copy,
+.system-data-summary-label {
+  color: var(--text-secondary);
+}
+
+.system-data-banner {
+  border: 1px solid transparent;
+}
+
+.system-data-banner-info {
+  background: rgba(59, 130, 246, 0.10);
+  border-color: rgba(59, 130, 246, 0.24);
+  color: #1d4ed8;
+}
+
+.system-data-banner-warning {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.26);
+  color: #92400e;
+}
+
+.system-data-banner-danger {
+  background: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.24);
+  color: #b91c1c;
+}
+
+.system-data-banner-success {
+  background: rgba(16, 185, 129, 0.10);
+  border-color: rgba(16, 185, 129, 0.24);
+  color: #047857;
+}
+
+.system-data-collapse-header {
+  border-color: var(--border-subtle);
+}
+
+.system-data-collapse-header-import {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.10) 0%, rgba(245, 158, 11, 0.04) 100%);
+  color: #78350f;
+  border-bottom-color: rgba(245, 158, 11, 0.18);
+}
+
+.system-data-collapse-header-danger {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.10) 0%, rgba(239, 68, 68, 0.04) 100%);
+  color: #991b1b;
+  border-bottom-color: rgba(239, 68, 68, 0.18);
+}
+
+.system-data-collapse-toggle {
+  background: var(--surface-elevated);
+}
+
+.system-data-collapse-toggle-import {
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.20);
+}
+
+.system-data-collapse-toggle-danger {
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.20);
+}
+
+.system-data-danger-icon {
+  color: #dc2626;
+}
+
+.system-data-warning-copy {
+  color: #a16207;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-banner-info {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.26);
+  color: #dbeafe;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-banner-warning {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.24);
+  color: #fde68a;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-banner-danger {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.24);
+  color: #fecaca;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-banner-success {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(52, 211, 153, 0.24);
+  color: #bbf7d0;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-header-import {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.16) 0%, rgba(17, 26, 43, 0.92) 100%);
+  color: #fde68a;
+  border-bottom-color: rgba(245, 158, 11, 0.24);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-header-danger {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.16) 0%, rgba(17, 26, 43, 0.92) 100%);
+  color: #fecaca;
+  border-bottom-color: rgba(239, 68, 68, 0.24);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-toggle-import {
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(17, 26, 43, 0.78);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-toggle-danger {
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(17, 26, 43, 0.78);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-danger-icon {
+  color: #fca5a5;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-warning-copy {
+  color: #fde68a;
+}
+
 .chip-danger {
   background: rgba(234, 84, 85, 0.1);
   color: #EA5455;

@@ -22,6 +22,8 @@ import { useAuth } from '@/lib/auth';
 import { canAccessOrgMove } from '@/lib/orgMoveConfig';
 import { Link as LinkIcon, Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users, Settings2, ArrowRightLeft } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
+import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
+import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 
 /** Instant hover tooltip with optional user list */
 function Tooltip({ label, names, children }: { label: string; names?: string[]; children: React.ReactNode }) {
@@ -808,6 +810,7 @@ export default function AdminOrgSetup() {
             className="border rounded-lg px-3 py-2 w-full" 
             placeholder="Neues Passwort"
           />
+          <PasswordRequirementsHint password={invitePassword} className="mt-2" />
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">
           <button 
@@ -818,9 +821,14 @@ export default function AdminOrgSetup() {
           </button>
           <button
             className="px-3 py-1.5 rounded-lg bg-viridian text-white disabled:opacity-60"
-            disabled={!invitePassword || inviteBusy}
+            disabled={!invitePassword || inviteBusy || Boolean(getPasswordValidationMessage(invitePassword))}
             onClick={async()=>{
               if (!inviteToken) return;
+              const validationMessage = getPasswordValidationMessage(invitePassword);
+              if (validationMessage) {
+                showToast(validationMessage, { type: 'error', durationMs: 3500 });
+                return;
+              }
               try {
                 setInviteBusy(true);
                 await acceptInviteApi(inviteToken, invitePassword);

@@ -171,6 +171,16 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
 
 type View = 'month' | 'week';
 
+const CALENDAR_VIEW_STORAGE_KEY = 'calendar:view';
+
+function readStoredCalendarView(): View {
+  try {
+    return localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY) === 'week' ? 'week' : 'month';
+  } catch {
+    return 'month';
+  }
+}
+
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
@@ -209,15 +219,8 @@ export default function Calendar() {
   const { user } = useAuth();
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
-  const [view, setView] = useState<View>('month');
+  const [view, setView] = useState<View>(() => readStoredCalendarView());
   const [cursor, setCursor] = useState<Date>(new Date());
-  const [showAdjacentMonthActivities, setShowAdjacentMonthActivities] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('calendar:show-adjacent-activities') === '1';
-    } catch {
-      return false;
-    }
-  });
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
   const [picker, setPicker] = useState<{ date: string } | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
@@ -235,11 +238,11 @@ export default function Calendar() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('calendar:show-adjacent-activities', showAdjacentMonthActivities ? '1' : '0');
+      localStorage.setItem(CALENDAR_VIEW_STORAGE_KEY, view);
     } catch {
       /* ignore */
     }
-  }, [showAdjacentMonthActivities]);
+  }, [view]);
 
   // Determine effective orgId for opening hours
   const effectiveOrgId = user?.role === 'superadmin'
@@ -889,26 +892,53 @@ export default function Calendar() {
           >
             »
           </button>
-          <select
-            value={view}
-            title="Ansicht wählen"
-            onChange={(e) => setView(e.target.value as View)}
-            className="calendar-control rounded px-2 py-2"
-          >
-            <option value="month">Monat</option>
-            <option value="week">Woche</option>
-          </select>
-          {view === 'month' && (
-            <label className="calendar-control-toggle flex items-center gap-2 px-3 py-2 rounded select-none" title="Aktivitäten aus dem Vor- und Folgemonat in der Monatsansicht anzeigen">
-              <input
-                type="checkbox"
-                className="accent-viridian"
-                checked={showAdjacentMonthActivities}
-                onChange={(e) => setShowAdjacentMonthActivities(e.target.checked)}
-              />
-              <span className="text-sm whitespace-nowrap">Vormonat/Folgemonat</span>
-            </label>
-          )}
+          <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label="Kalenderansicht">
+            <button
+              type="button"
+              className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
+                view === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
+              }`}
+              onClick={() => setView('month')}
+              aria-pressed={view === 'month'}
+            >
+              Monat
+            </button>
+            <button
+              type="button"
+              className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
+                view === 'week' ? 'stats-kpi-toggle-button-active font-medium' : ''
+              }`}
+              onClick={() => setView('week')}
+              aria-pressed={view === 'week'}
+            >
+              Woche
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 md:hidden">
+          <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label="Kalenderansicht mobil">
+            <button
+              type="button"
+              className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
+                view === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
+              }`}
+              onClick={() => setView('month')}
+              aria-pressed={view === 'month'}
+            >
+              Monat
+            </button>
+            <button
+              type="button"
+              className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
+                view === 'week' ? 'stats-kpi-toggle-button-active font-medium' : ''
+              }`}
+              onClick={() => setView('week')}
+              aria-pressed={view === 'week'}
+            >
+              Woche
+            </button>
+          </div>
         </div>
       </div>
 
@@ -932,7 +962,6 @@ export default function Calendar() {
               const iso = fmtLocalISO(day);
               const isToday = iso === todayISO;
               const isOtherMonth = day.getMonth() !== cursor.getMonth();
-              const showEntriesForDay = !isOtherMonth || showAdjacentMonthActivities;
               const hasHoliday = !!holidaysByDate.get(iso)?.length;
               const hasSchoolHoliday = showSchool && schoolLabelFor(iso);
               return (
@@ -995,12 +1024,10 @@ export default function Calendar() {
                       <span className="truncate inline-block align-top leading-[14px]">{schoolLabelFor(iso)}</span>
                     </div>
                   )}
-                  {showEntriesForDay
-                    ? renderEntries(
-                        iso,
-                        isMobile ? (hasSchoolHoliday ? 2 : 3) : hasSchoolHoliday ? 5 : 6,
-                      )
-                    : null}
+                  {renderEntries(
+                    iso,
+                    isMobile ? (hasSchoolHoliday ? 2 : 3) : hasSchoolHoliday ? 5 : 6,
+                  )}
                 </div>
               );
             })}

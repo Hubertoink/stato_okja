@@ -123,6 +123,12 @@ Für den mitgelieferten lokalen `postgres`-Service sollten diese Werte normalerw
 - `SUPERADMIN_EMAIL_FORCE`: optional, Default `false`
 - `SUPERADMIN_PASSWORD_FORCE`: optional, Default `false`
 
+Mindestanforderung im produktiven/staging Bootstrap:
+
+- `SUPERADMIN_EMAIL` muss explizit gesetzt sein und darf kein Platzhalter wie `admin@example.org` sein.
+- `SUPERADMIN_PASSWORD` muss mindestens 12 Zeichen und jeweils mindestens einen Großbuchstaben, Kleinbuchstaben, eine Zahl und ein Sonderzeichen enthalten.
+- Ein 8-stelliges Passwort mit Sonderzeichen reicht für diesen produktiven Bootstrap also nicht aus.
+
 Präzises Verhalten:
 
 - Beim allerersten Start, wenn noch kein `superadmin` existiert, werden `SUPERADMIN_EMAIL` und `SUPERADMIN_PASSWORD` für die initiale Anlage verwendet.
@@ -130,6 +136,11 @@ Präzises Verhalten:
 - Wenn `SUPERADMIN_EMAIL_FORCE=true` gesetzt ist, schreibt das Backend beim Start die E-Mail des vorhandenen Superadmins auf den Wert aus `SUPERADMIN_EMAIL` um.
 - Wenn `SUPERADMIN_PASSWORD_FORCE=true` gesetzt ist, schreibt das Backend beim Start den Passwort-Hash des vorhandenen Superadmins neu, also effektiv das Passwort auf den Wert aus `SUPERADMIN_PASSWORD` zurück.
 - Die Änderung passiert nur beim Start des Backend-Containers. Ein bloßes Ändern der `.env.onprem` ohne Container-Neustart löst noch nichts aus.
+
+Wichtig zur Auswirkung auf bestehende Installationen:
+
+- Wenn bereits ein Superadmin in der Datenbank existiert und `SUPERADMIN_PASSWORD_FORCE=false` bleibt, blockiert ein kürzeres ENV-Passwort den normalen Produktivstart nicht.
+- Relevant ist die strenge Prüfung also beim ersten Seed einer leeren produktiven/staging Datenbank, bei `SUPERADMIN_PASSWORD_FORCE=true` oder wenn ein bestehender Superadmin keinen Passwort-Hash hat.
 
 Empfehlung:
 

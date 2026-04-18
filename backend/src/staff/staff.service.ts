@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, Equal, IsNull } from 'typeorm';
 import { Staff } from './entities/staff.entity';
 import * as bcrypt from 'bcryptjs';
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../auth/password-policy';
 
 @Injectable()
 export class StaffService {
@@ -29,12 +30,9 @@ export class StaffService {
 
   async create(data: Partial<Staff>): Promise<Staff> {
     if (data.password) {
-      // Enforce new password policy for newly created/updated staff passwords
-      const strong = /^(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(String(data.password));
-      if (!strong)
-        throw new BadRequestException(
-          'Passwort muss mind. 6 Zeichen, eine Zahl und ein Sonderzeichen enthalten',
-        );
+      if (!isStrongPassword(String(data.password))) {
+        throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
+      }
       data.password = await bcrypt.hash(data.password, 10);
     } else if (data.password === '') {
       data.password = null;
@@ -45,11 +43,9 @@ export class StaffService {
 
   async update(id: string, data: Partial<Staff>): Promise<Staff | null> {
     if (data.password) {
-      const strong = /^(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(String(data.password));
-      if (!strong)
-        throw new BadRequestException(
-          'Passwort muss mind. 6 Zeichen, eine Zahl und ein Sonderzeichen enthalten',
-        );
+      if (!isStrongPassword(String(data.password))) {
+        throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
+      }
       data.password = await bcrypt.hash(data.password, 10);
     }
     await this.staffRepository.update(id, data);

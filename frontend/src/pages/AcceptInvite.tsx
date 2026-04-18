@@ -3,6 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { acceptInviteApi } from '@/lib/orgs';
 import { setAuthToken } from '@/lib/api';
 import { storeAuthToken } from '@/lib/authStorage';
+import { isStrongPassword, PASSWORD_REQUIREMENTS_SHORT } from '@/lib/passwordPolicy';
+import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 
 export default function AcceptInvite() {
   const [params] = useSearchParams();
@@ -43,8 +45,9 @@ export default function AcceptInvite() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border rounded px-3 py-2"
-              placeholder="Mind. 6 Zeichen, Zahl & Sonderzeichen"
+              placeholder={PASSWORD_REQUIREMENTS_SHORT}
             />
+            <PasswordRequirementsHint password={password} className="mt-2" />
           </div>
           {error && <div className="text-red-600 text-sm">{error}</div>}
           <button
@@ -54,9 +57,8 @@ export default function AcceptInvite() {
               try {
                 setBusy(true);
                 // Clientseitiger Schnellcheck, Server validiert verbindlich
-                const strong = /^(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(password);
-                if (!strong) {
-                  setError('Mind. 6 Zeichen, eine Zahl und ein Sonderzeichen');
+                if (!isStrongPassword(password)) {
+                  setError(PASSWORD_REQUIREMENTS_SHORT);
                   setBusy(false);
                   return;
                 }

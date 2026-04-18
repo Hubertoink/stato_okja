@@ -5,12 +5,23 @@ import path from 'path';
 import packageJson from './package.json';
 
 const appVersion = process.env.VITE_APP_VERSION || packageJson.version;
+const MANUAL_CHUNK_RULES: Array<{ match: string; chunk: string }> = [
+  { match: '/node_modules/recharts/', chunk: 'vendor-charts' },
+  { match: '/node_modules/jspdf/', chunk: 'vendor-jspdf' },
+  { match: '/node_modules/html2canvas/', chunk: 'vendor-html2canvas' },
+  { match: '/node_modules/xlsx-js-style/', chunk: 'vendor-xlsx-style' },
+  { match: '/node_modules/xlsx/', chunk: 'vendor-xlsx-core' },
+  { match: '/node_modules/codepage/', chunk: 'vendor-xlsx-codepage' },
+  { match: '/node_modules/cfb/', chunk: 'vendor-xlsx-cfb' },
+  { match: '/node_modules/ssf/', chunk: 'vendor-xlsx-ssf' },
+];
 
 export default defineConfig({
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },
   build: {
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -20,22 +31,10 @@ export default defineConfig({
             return undefined;
           }
 
-          if (normalizedId.includes('/node_modules/recharts/')) {
-            return 'vendor-charts';
-          }
-
-          if (
-            normalizedId.includes('/node_modules/jspdf/') ||
-            normalizedId.includes('/node_modules/html2canvas/')
-          ) {
-            return 'vendor-pdf-export';
-          }
-
-          if (
-            normalizedId.includes('/node_modules/xlsx/') ||
-            normalizedId.includes('/node_modules/xlsx-js-style/')
-          ) {
-            return 'vendor-excel-export';
+          for (const rule of MANUAL_CHUNK_RULES) {
+            if (normalizedId.includes(rule.match)) {
+              return rule.chunk;
+            }
           }
 
           return undefined;

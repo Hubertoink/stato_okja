@@ -7,7 +7,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { assertSecureRuntimeConfig } from './config/security.config';
+import { assertSecureRuntimeConfig, shouldExposeSwaggerDocs } from './config/security.config';
 
 const PG_TIMESTAMP_OID = 1114;
 
@@ -56,8 +56,10 @@ async function bootstrap() {
     .addTag('stats', 'Statistiken & Auswertungen')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  if (shouldExposeSwaggerDocs()) {
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   // Ensure uploads directories exist (volume might start empty)
   const uploadsBase = join(process.cwd(), 'uploads');
@@ -72,7 +74,11 @@ async function bootstrap() {
   await app.listen(port);
 
   console.log(`\n🚀 Stato 1.0 Backend running on: http://localhost:${port}`);
-  console.log(`📚 API Documentation: http://localhost:${port}/api/docs\n`);
+  if (shouldExposeSwaggerDocs()) {
+    console.log(`📚 API Documentation: http://localhost:${port}/api/docs\n`);
+  } else {
+    console.log('📚 API Documentation: deaktiviert\n');
+  }
 }
 
 bootstrap();

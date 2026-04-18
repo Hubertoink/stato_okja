@@ -11,6 +11,8 @@ import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import AssignOrgModal from '@/components/AssignOrgModal';
 import { useIsMobile } from '@/lib/useIsMobile';
+import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
+import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 
 export default function OrgUserManagement() {
   const { user } = useAuth();
@@ -654,12 +656,13 @@ function UserRow({
 }
 
 function buildTemporaryPassword() {
-  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
   const digits = '23456789';
   const symbols = '!@#$%*?';
-  const all = `${letters}${digits}${symbols}`;
+  const all = `${upper}${lower}${digits}${symbols}`;
   const pick = (source: string) => source[Math.floor(Math.random() * source.length)];
-  const chars = [pick(letters), pick(letters), pick(digits), pick(symbols)];
+  const chars = [pick(upper), pick(lower), pick(digits), pick(symbols)];
   while (chars.length < 12) chars.push(pick(all));
   for (let i = chars.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -694,6 +697,7 @@ function PasswordResetButton({
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [confirmTemporaryPassword, setConfirmTemporaryPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const temporaryPasswordValidationMessage = getPasswordValidationMessage(temporaryPassword);
 
   useEffect(() => {
     setResetMode(resetConfig.passwordResetMode === 'email' ? 'email' : 'temporary_password');
@@ -748,6 +752,10 @@ function PasswordResetButton({
     }
     if (temporaryPassword !== confirmTemporaryPassword) {
       showToast('Passwörter stimmen nicht überein', { type: 'error' });
+      return;
+    }
+    if (temporaryPasswordValidationMessage) {
+      showToast(temporaryPasswordValidationMessage, { type: 'error' });
       return;
     }
     setBusy(true);
@@ -849,6 +857,7 @@ function PasswordResetButton({
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
                   placeholder="Temporäres Passwort"
                 />
+                <PasswordRequirementsHint password={temporaryPassword} className="mt-2" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bestätigung</label>
@@ -892,7 +901,7 @@ function PasswordResetButton({
             </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={busy}
+              disabled={busy || (resetMode === 'temporary_password' && Boolean(temporaryPasswordValidationMessage))}
               onClick={() => {
                 void submit();
               }}

@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import {
   PieChart,
@@ -23,9 +23,10 @@ import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useOrgScopeKey } from '@/lib/orgScope';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { colorForActivityType, translucent } from '@/lib/colors';
 import { isDarkThemeName } from '../lib/theme';
 import type jsPDF from 'jspdf';
-import { FileDown, RefreshCw, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileDown, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
@@ -50,6 +51,8 @@ const STATISTICS_TYPE_OPTIONS: Activity['type'][] = [
 const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
 const DESKTOP_PROJECT_CHIP_COLLAPSE_THRESHOLD = 12;
 const DESKTOP_PROJECT_CHIP_VISIBLE_COUNT = 10;
+const MOBILE_TYPE_CHIP_VISIBLE_COUNT = 4;
+const MOBILE_PROJECT_CHIP_VISIBLE_COUNT = 5;
 
 const WEEKDAY_OPTIONS = [
   { value: 1, shortLabel: 'Mo', label: 'Montag' },
@@ -269,9 +272,14 @@ export default function Statistics() {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null); // null = ganzes Jahr
   const [filterMode, setFilterMode] = useState<'year' | 'month'>('year');
   const [customFilterOpen, setCustomFilterOpen] = useState(false);
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [tempFrom, setTempFrom] = useState<string>(from);
   const [tempTo, setTempTo] = useState<string>(to);
   const [desktopProjectFilterExpanded, setDesktopProjectFilterExpanded] = useState(false);
+  const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false);
+  const [mobileTypeFilterExpanded, setMobileTypeFilterExpanded] = useState(false);
+  const [mobileProjectFilterExpanded, setMobileProjectFilterExpanded] = useState(false);
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
   const [tempSelectedWeekdays, setTempSelectedWeekdays] = useState<number[]>([]);
   
@@ -293,7 +301,6 @@ export default function Statistics() {
   const statsUiFlowMarksRef = useRef<Record<string, boolean>>({});
   const statsUiPendingRunKeyRef = useRef<string | null>(null);
   const statsUiFetchSeenRef = useRef<Record<string, boolean>>({});
-  const qc = useQueryClient();
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
   const { data: publicConfig } = usePublicConfig();
@@ -748,6 +755,27 @@ export default function Statistics() {
   const genderOuterRadius = isMobile ? 72 : 88;
   const cohortPieCenterY = isMobile ? '41%' : '45%';
   const cohortPieOuterRadius = isMobile ? 60 : 76;
+  const mobilePrimaryTextClass = isDarkTheme ? 'text-slate-100' : 'text-slate-900';
+  const mobileSecondaryTextClass = isDarkTheme ? 'text-slate-300' : 'text-slate-700';
+  const mobileLabelTextClass = isDarkTheme ? 'text-slate-400' : 'text-slate-600';
+  const mobileSurfaceClass = isDarkTheme
+    ? 'border-white/10 bg-white/5 text-slate-100'
+    : 'border-gray-300 bg-white text-slate-800';
+  const mobileSurfaceHoverClass = isDarkTheme ? 'hover:bg-white/10' : 'hover:bg-gray-50';
+  const mobileMutedSurfaceClass = isDarkTheme ? 'bg-white/6 text-slate-100' : 'bg-gray-100 text-slate-900';
+  const mobileSoftSurfaceClass = isDarkTheme ? 'bg-white/[0.05] text-slate-300' : 'bg-gray-50 text-slate-700';
+  const mobileSoftSurfaceHoverClass = isDarkTheme ? 'hover:bg-white/[0.10]' : 'hover:bg-gray-100';
+  const mobileDashedSurfaceClass = isDarkTheme
+    ? 'border-white/10 bg-white/[0.04] text-slate-300'
+    : 'border-gray-300 bg-gray-50 text-slate-600';
+  const mobileDividerClass = isDarkTheme ? 'border-white/10' : 'border-gray-100';
+  const mobileFilterCardStyle = {
+    background: isDarkTheme
+      ? 'radial-gradient(circle at top right, rgba(96, 165, 250, 0.18) 0%, transparent 34%), linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, var(--surface-elevated) 34%, var(--surface-2) 100%)'
+      : 'radial-gradient(circle at top right, rgba(96, 165, 250, 0.16) 0%, transparent 34%), linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, var(--surface-elevated) 40%, var(--surface-2) 100%)',
+    borderColor: 'var(--border-strong)',
+    boxShadow: isDarkTheme ? '0 24px 48px rgba(0, 0, 0, 0.34)' : '0 18px 34px rgba(15, 23, 42, 0.12)',
+  } as const;
 
   const genderData = gender
     ? [
@@ -872,7 +900,13 @@ export default function Statistics() {
         .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'de')),
     [filteredProjects],
   );
-  const useCompactProjectFilter = isMobile && sortedProjects.length >= 6;
+  const selectedProjectRecord = useMemo(
+    () =>
+      sortedProjects.find((project) => project.id === projectId) ??
+      projectsAll.find((project) => project.id === projectId) ??
+      null,
+    [projectId, projectsAll, sortedProjects],
+  );
   const useDesktopProjectCollapse = !isMobile && sortedProjects.length > DESKTOP_PROJECT_CHIP_COLLAPSE_THRESHOLD;
   const visibleDesktopProjects = useMemo(() => {
     if (!useDesktopProjectCollapse || desktopProjectFilterExpanded) return sortedProjects;
@@ -884,12 +918,40 @@ export default function Statistics() {
     return selectedProject ? [...initialProjects, selectedProject] : initialProjects;
   }, [desktopProjectFilterExpanded, projectId, sortedProjects, useDesktopProjectCollapse]);
   const hiddenDesktopProjectCount = Math.max(sortedProjects.length - visibleDesktopProjects.length, 0);
-  const useCompactTypeFilter = isMobile;
+  const useMobileTypeCollapse = isMobile && STATISTICS_TYPE_OPTIONS.length > MOBILE_TYPE_CHIP_VISIBLE_COUNT;
+  const visibleMobileTypes = useMemo(() => {
+    if (!useMobileTypeCollapse || mobileTypeFilterExpanded) return STATISTICS_TYPE_OPTIONS;
+
+    const initialTypes = STATISTICS_TYPE_OPTIONS.slice(0, MOBILE_TYPE_CHIP_VISIBLE_COUNT);
+    if (!selectedType || initialTypes.includes(selectedType)) return initialTypes;
+
+    return [...initialTypes, selectedType];
+  }, [mobileTypeFilterExpanded, selectedType, useMobileTypeCollapse]);
+  const hiddenMobileTypeCount = Math.max(
+    STATISTICS_TYPE_OPTIONS.length - new Set(visibleMobileTypes).size,
+    0,
+  );
+  const useMobileProjectCollapse = isMobile && sortedProjects.length > MOBILE_PROJECT_CHIP_VISIBLE_COUNT;
+  const visibleMobileProjects = useMemo(() => {
+    if (!useMobileProjectCollapse || mobileProjectFilterExpanded) return sortedProjects;
+
+    const initialProjects = sortedProjects.slice(0, MOBILE_PROJECT_CHIP_VISIBLE_COUNT);
+    if (!projectId || initialProjects.some((project) => project.id === projectId)) return initialProjects;
+
+    const selectedProject = sortedProjects.find((project) => project.id === projectId);
+    return selectedProject ? [...initialProjects, selectedProject] : initialProjects;
+  }, [mobileProjectFilterExpanded, projectId, sortedProjects, useMobileProjectCollapse]);
+  const hiddenMobileProjectCount = Math.max(sortedProjects.length - visibleMobileProjects.length, 0);
   useEffect(() => {
     if (!useDesktopProjectCollapse && desktopProjectFilterExpanded) {
       setDesktopProjectFilterExpanded(false);
     }
   }, [desktopProjectFilterExpanded, useDesktopProjectCollapse]);
+  useEffect(() => {
+    setMobileFiltersExpanded(!isMobile);
+    setMobileTypeFilterExpanded(false);
+    setMobileProjectFilterExpanded(false);
+  }, [isMobile]);
   const fallbackBarColors = [
     '#2563eb',
     '#f59e0b',
@@ -1037,395 +1099,757 @@ export default function Statistics() {
         </div>
       )}
 
-      {/* Time Range Selector - Redesigned */}
+      {/* Time Range Selector */}
       <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
-        {/* Main Filter Row */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
-          {/* Mode Toggle: Jahr / Monat */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1 self-start">
-            <button
-              type="button"
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                filterMode === 'year' && !isCustomRange
-                  ? 'bg-white shadow text-viridian font-medium'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-              onClick={() => {
-                setFilterMode('year');
-                setSelectedMonth(null);
-                updateDateRange(selectedYear || String(currentYear), null);
-              }}
-            >
-              Jahr
-            </button>
-            <button
-              type="button"
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                filterMode === 'month' && !isCustomRange
-                  ? 'bg-white shadow text-viridian font-medium'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-              onClick={() => {
-                setFilterMode('month');
-                const month = selectedMonth ?? currentMonth;
-                setSelectedMonth(month);
-                updateDateRange(selectedYear || String(currentYear), month);
-              }}
-            >
-              Monat
-            </button>
-          </div>
+        {(() => {
+          const openAdvancedFilters = () => {
+            setTempFrom(isCustomRange ? from : '');
+            setTempTo(isCustomRange ? to : '');
+            setTempSelectedWeekdays(selectedWeekdays);
+            setCustomFilterOpen(true);
+          };
 
-          {/* Year Selection */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {filterMode === 'month' && !isCustomRange ? (
-              /* Month Navigation */
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
-                  onClick={() => navigateMonth('prev')}
-                  title="Vorheriger Monat"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <div className="flex items-center gap-1 bg-gray-50 rounded-lg px-3 py-2 min-w-[140px] justify-center">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span className="font-medium text-gray-800">
-                    {selectedMonth !== null ? MONTH_NAMES_SHORT[selectedMonth - 1] : MONTH_NAMES_SHORT[currentMonth - 1]} {selectedYear || currentYear}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
-                  onClick={() => navigateMonth('next')}
-                  title="Nächster Monat"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              /* Year Pills */
-              <div className="flex items-center gap-1 flex-wrap">
-                <button
-                  type="button"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
-                    !selectedYear && !isCustomRange
-                      ? 'bg-viridian text-white'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                  }`}
-                  onClick={() => selectYear('')}
-                >
-                  Alle
-                </button>
-                {activityYears.map((y) => (
-                  <button
-                    key={y}
-                    type="button"
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
-                      selectedYear === y && !isCustomRange
-                        ? 'bg-viridian text-white'
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                    }`}
-                    onClick={() => selectYear(y)}
-                  >
-                    {y}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Custom Range Button & Badge */}
-          <div className="flex items-center gap-2 sm:ml-auto">
-            {hasAdvancedFilter && (
-              <div className="flex items-center gap-2 bg-viridian/10 text-viridian px-3 py-1.5 rounded-lg text-sm">
-                <Calendar className="h-4 w-4" />
-                <span className="font-medium">{formatAdvancedFilterDisplay()}</span>
-                <button
-                  type="button"
-                  className="p-0.5 hover:bg-viridian/20 rounded"
-                  onClick={resetAdvancedFilters}
-                  title="Zurücksetzen"
-                >
-                  <XIcon className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
-            <button
-              type="button"
-              className={`p-2 rounded-lg border transition-colors touch-manipulation ${
-                hasAdvancedFilter
-                  ? 'border-viridian text-viridian bg-viridian/5'
-                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-              }`}
-              onClick={() => {
-                setTempFrom(isCustomRange ? from : '');
-                setTempTo(isCustomRange ? to : '');
-                setTempSelectedWeekdays(selectedWeekdays);
-                setCustomFilterOpen(true);
-              }}
-              title="Erweiterter Filter"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 sm:ml-0">
-            <button
-              type="button"
-              className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation"
-              onClick={exportPdf}
-              onMouseEnter={preloadPdfExportDependencies}
-              onFocus={preloadPdfExportDependencies}
-              title="Exportieren (PDF)"
-            >
-              <FileDown className="h-4 w-4" />
-              <span className="hidden sm:inline">Export (PDF)</span>
-              <span className="sm:hidden">PDF</span>
-            </button>
-            <button
-              type="button"
-              title="Aktualisieren"
-              className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 touch-manipulation"
-              onClick={() => {
-                qc.invalidateQueries({
-                  predicate: (q) => {
-                    const key0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
-                    return (
-                      (typeof key0 === 'string' && key0.startsWith('stats:')) ||
-                      key0 === 'activities'
-                    );
-                  },
-                  refetchType: 'active',
-                });
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Month Picker Grid (shown in month mode) */}
-        {filterMode === 'month' && !isCustomRange && (
-          <div className="mt-4 pt-4 border-t">
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
-              {MONTH_NAMES_SHORT.map((name, idx) => {
-                const month = idx + 1;
-                const isActive = selectedMonth === month;
-                const isCurrent = month === currentMonth && selectedYear === String(currentYear);
-                return (
-                  <button
-                    key={month}
-                    type="button"
-                    className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
-                      isActive
-                        ? 'bg-viridian text-white'
-                        : isCurrent
-                          ? 'bg-viridian/10 text-viridian hover:bg-viridian/20'
-                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                    }`}
-                    onClick={() => selectMonth(month)}
-                  >
-                    {name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Type quick filter tiles */}
-        <div className="mt-5">
-          <div className="text-sm font-medium text-gray-700 mb-2">Typen</div>
-          {useCompactTypeFilter ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <button
-                type="button"
-                onClick={() => setSelectedType('')}
-                className={`px-3 py-2 rounded-full text-sm font-medium border transition-colors self-start ${
-                  !selectedType
-                    ? 'bg-viridian text-white border-viridian'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Alle Typen
-              </button>
-              <label className="flex-1 min-w-0">
-                <span className="sr-only">Typ auswählen</span>
-                <select
-                  value={selectedType}
-                  onChange={(event) => setSelectedType(event.target.value as Activity['type'] | '')}
-                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 shadow-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
-                  aria-label="Typ auswählen"
-                >
-                  <option value="">Typ auswählen…</option>
-                  {STATISTICS_TYPE_OPTIONS.map((type) => (
-                    <option key={type} value={type}>
-                      {TYPE_LABEL[type]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedType('')}
-                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                  !selectedType
-                    ? 'bg-viridian text-white border-viridian'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Alle Typen
-              </button>
-              {STATISTICS_TYPE_OPTIONS.map((type) => {
-                const active = selectedType === type;
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setSelectedType(type)}
-                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                      active
-                        ? 'bg-viridian text-white border-viridian'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {TYPE_LABEL[type]}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Project quick filter tiles */}
-        {projectsAll.length > 0 && (
-          <div className="mt-5">
-            <div className="text-sm font-medium text-gray-700 mb-2">Projekte</div>
-            {sortedProjects.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-                Für den gewählten Typ sind keine Projekte verfügbar.
-              </div>
-            ) : useCompactProjectFilter ? (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <button
-                  type="button"
-                  onClick={() => setProjectId('')}
-                  className={`px-3 py-2 rounded-full text-sm font-medium border transition-colors self-start ${
-                    !projectId
-                      ? 'bg-viridian text-white border-viridian'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  Alle Projekte
-                </button>
-                <label className="flex-1 min-w-0">
-                  <span className="sr-only">Projekt auswählen</span>
-                  <select
-                    value={projectId}
-                    onChange={(event) => setProjectId(event.target.value)}
-                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 shadow-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
-                    aria-label="Projekt auswählen"
-                  >
-                    <option value="">Projekt auswählen…</option>
-                    {sortedProjects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setProjectId('')}
-                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                    !projectId
-                      ? 'bg-viridian text-white border-viridian'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  Alle Projekte
-                </button>
-                {(useDesktopProjectCollapse ? visibleDesktopProjects : sortedProjects).map((p) => {
-                  const active = projectId === p.id;
-                  const color = typeof p.color === 'string' && p.color.trim() ? p.color.trim() : undefined;
-                  const imageUrl = typeof p.imageUrl === 'string' && p.imageUrl.trim() ? p.imageUrl.trim() : undefined;
-                  const fallbackColor = '#0f766e';
-                  const overlayColor = color || fallbackColor;
-                  return (
+          if (isMobile) {
+            return (
+              <div className="space-y-4">
+                <div className="rounded-2xl border p-4 shadow-sm" style={mobileFilterCardStyle}>
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${mobileLabelTextClass}`}>
+                        Zeitraum & Filter
+                      </div>
+                      <div className={`mt-1 text-lg font-semibold truncate ${mobilePrimaryTextClass}`}>
+                        {formatRangeDisplay()}
+                      </div>
+                      <div className={`mt-1 text-sm ${mobileSecondaryTextClass}`}>
+                        {isCustomRange
+                          ? 'Individueller Zeitraum'
+                          : filterMode === 'month'
+                            ? 'Monatsansicht'
+                            : selectedYear
+                              ? 'Jahresansicht'
+                              : 'Gesamter Zeitraum'}
+                      </div>
+                    </div>
                     <button
-                      key={p.id}
                       type="button"
-                      onClick={() => setProjectId(p.id)}
-                      className={`relative overflow-hidden px-3 py-1.5 rounded-full text-sm border flex items-center gap-2 max-w-full transition-colors ${
-                        active
-                          ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/30'
-                          : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
-                      }`}
-                      style={{
-                        backgroundColor: active ? overlayColor : undefined,
-                        borderColor: active ? overlayColor : color || undefined,
-                      }}
-                      title={p.title}
+                      className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm transition-colors ${mobileSurfaceClass} ${mobileSurfaceHoverClass}`}
+                      onClick={() => setMobileFiltersExpanded((current) => !current)}
+                      aria-expanded={mobileFiltersExpanded}
                     >
-                      <span className="relative flex items-center gap-2 min-w-0">
-                        {imageUrl ? (
-                          <span
-                            className={`w-5 h-5 rounded-full overflow-hidden border flex-shrink-0 ${
-                              active ? 'border-white/40 bg-white/15' : 'border-gray-300 bg-gray-100'
-                            }`}
-                          >
-                            <ProtectedImage src={imageUrl} alt="" className="w-full h-full object-cover" />
+                      {mobileFiltersExpanded ? 'Weniger' : 'Filter'}
+                      {mobileFiltersExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                        selectedType ? mobilePrimaryTextClass : mobileSurfaceClass
+                      }`}
+                      style={
+                        selectedType
+                          ? {
+                              backgroundColor: translucent(colorForActivityType(selectedType), '18'),
+                              borderColor: translucent(colorForActivityType(selectedType), '66'),
+                            }
+                          : undefined
+                      }
+                      onClick={() => setTypePickerOpen(true)}
+                      aria-haspopup="dialog"
+                      title="Typ auswählen"
+                    >
+                      <span
+                        aria-hidden
+                        className="h-2.5 w-2.5 rounded-full border"
+                        style={{
+                          backgroundColor: selectedType ? colorForActivityType(selectedType) : '#6b7280',
+                          borderColor: selectedType ? translucent(colorForActivityType(selectedType), 'aa') : 'rgba(0,0,0,0.08)',
+                        }}
+                      />
+                      {selectedType ? TYPE_LABEL[selectedType] : 'Alle Typen'}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                    </button>
+
+                    {selectedProjectRecord ? (
+                      <button
+                        type="button"
+                        className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium ${mobilePrimaryTextClass}`}
+                        style={{
+                          backgroundColor: selectedProjectRecord.color
+                            ? translucent(selectedProjectRecord.color, '18')
+                            : undefined,
+                          borderColor: selectedProjectRecord.color || undefined,
+                        }}
+                        onClick={() => setProjectPickerOpen(true)}
+                        aria-haspopup="dialog"
+                        title={selectedProjectRecord.title}
+                      >
+                        {selectedProjectRecord.imageUrl ? (
+                          <span className={`h-5 w-5 overflow-hidden rounded-full border ${isDarkTheme ? 'border-white/10 bg-white/10' : 'border-gray-300 bg-gray-100'}`}>
+                            <ProtectedImage src={selectedProjectRecord.imageUrl} alt="" className="h-full w-full object-cover" />
                           </span>
                         ) : (
                           <span
                             aria-hidden
-                            className="w-2.5 h-2.5 rounded-full border flex-shrink-0"
+                            className="h-2.5 w-2.5 rounded-full border"
                             style={{
-                              backgroundColor: overlayColor,
-                              borderColor: active ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.08)',
+                              backgroundColor: selectedProjectRecord.color || '#0f766e',
+                              borderColor: 'rgba(0,0,0,0.08)',
                             }}
                           />
                         )}
-                        <span className={`truncate ${active ? 'drop-shadow' : ''}`}>{p.title}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-                {useDesktopProjectCollapse && (
-                  <button
-                    type="button"
-                    onClick={() => setDesktopProjectFilterExpanded((current) => !current)}
-                    className="px-3 py-1.5 rounded-full text-sm border border-dashed border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors inline-flex items-center gap-2"
-                    aria-expanded={desktopProjectFilterExpanded}
-                  >
-                    {desktopProjectFilterExpanded ? (
-                      <>
-                        <ChevronUp className="h-4 w-4" />
-                        Weniger anzeigen
-                      </>
+                        <span className="truncate">{selectedProjectRecord.title}</span>
+                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                      </button>
                     ) : (
-                      <>
-                        <ChevronDown className="h-4 w-4" />
-                        {hiddenDesktopProjectCount > 0
-                          ? `${hiddenDesktopProjectCount} weitere Projekte anzeigen`
-                          : 'Weitere Projekte anzeigen'}
-                      </>
+                      <button
+                        type="button"
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${mobileSurfaceClass} ${mobileSurfaceHoverClass}`}
+                        onClick={() => setProjectPickerOpen(true)}
+                        aria-haspopup="dialog"
+                        title="Projekt auswählen"
+                      >
+                        <span aria-hidden className="h-2.5 w-2.5 rounded-full border border-black/10 bg-gray-400" />
+                        Alle Projekte
+                        <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                      </button>
                     )}
-                  </button>
+
+                    {hasWeekdayFilter && (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-viridian/20 bg-viridian/10 px-3 py-1.5 text-sm font-medium text-viridian">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {formatWeekdayDisplay(selectedWeekdays)}
+                      </span>
+                    )}
+
+                    {hasAdvancedFilter && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full border border-viridian/20 bg-viridian/10 px-3 py-1.5 text-sm font-medium text-viridian"
+                        onClick={resetAdvancedFilters}
+                        title="Erweiterte Filter zurücksetzen"
+                      >
+                        <XIcon className="h-3.5 w-3.5" />
+                        Zurücksetzen
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
+                        hasAdvancedFilter
+                          ? 'border-viridian bg-viridian/5 text-viridian'
+                          : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
+                      }`}
+                      onClick={openAdvancedFilters}
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
+                      Details
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian"
+                      onClick={exportPdf}
+                      onMouseEnter={preloadPdfExportDependencies}
+                      onFocus={preloadPdfExportDependencies}
+                      title="Exportieren (PDF)"
+                    >
+                      <FileDown className="h-4 w-4" />
+                      PDF
+                    </button>
+                  </div>
+                </div>
+
+                {mobileFiltersExpanded && (
+                  <div className={`space-y-5 border-t pt-4 ${mobileDividerClass}`}>
+                    <section className="space-y-3">
+                      <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${mobileLabelTextClass}`}>
+                        Zeitraum
+                      </div>
+                      <div className={`inline-flex items-center rounded-xl p-1 ${mobileMutedSurfaceClass}`}>
+                        <button
+                          type="button"
+                          className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                            filterMode === 'year' && !isCustomRange
+                              ? 'bg-white shadow text-viridian font-medium'
+                              : `${mobileSecondaryTextClass} hover:text-viridian`
+                          }`}
+                          onClick={() => {
+                            setFilterMode('year');
+                            setSelectedMonth(null);
+                            updateDateRange(selectedYear || String(currentYear), null);
+                          }}
+                        >
+                          Jahr
+                        </button>
+                        <button
+                          type="button"
+                          className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                            filterMode === 'month' && !isCustomRange
+                              ? 'bg-white shadow text-viridian font-medium'
+                              : `${mobileSecondaryTextClass} hover:text-viridian`
+                          }`}
+                          onClick={() => {
+                            setFilterMode('month');
+                            const month = selectedMonth ?? currentMonth;
+                            setSelectedMonth(month);
+                            updateDateRange(selectedYear || String(currentYear), month);
+                          }}
+                        >
+                          Monat
+                        </button>
+                      </div>
+
+                      {filterMode === 'month' && !isCustomRange ? (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border ${mobileSurfaceClass}`}
+                              onClick={() => navigateMonth('prev')}
+                              title="Vorheriger Monat"
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <div className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-medium ${mobileSoftSurfaceClass}`}>
+                              <Calendar className={`h-4 w-4 ${mobileLabelTextClass}`} />
+                              <span className="truncate">
+                                {selectedMonth !== null ? MONTH_NAMES[selectedMonth - 1] : MONTH_NAMES[currentMonth - 1]} {selectedYear || currentYear}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border ${mobileSurfaceClass}`}
+                              onClick={() => navigateMonth('next')}
+                              title="Nächster Monat"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {MONTH_NAMES_SHORT.map((name, idx) => {
+                              const month = idx + 1;
+                              const isActive = selectedMonth === month;
+                              const isCurrent = month === currentMonth && selectedYear === String(currentYear);
+                              return (
+                                <button
+                                  key={month}
+                                  type="button"
+                                  className={`rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                                    isActive
+                                      ? 'bg-viridian text-white'
+                                      : isCurrent
+                                        ? 'bg-viridian/10 text-viridian'
+                                        : mobileSoftSurfaceClass
+                                  }`}
+                                  onClick={() => selectMonth(month)}
+                                >
+                                  {name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+                              !selectedYear && !isCustomRange
+                                ? 'bg-viridian text-white'
+                                : mobileMutedSurfaceClass
+                            }`}
+                            onClick={() => selectYear('')}
+                          >
+                            Alle
+                          </button>
+                          {activityYears.map((y) => (
+                            <button
+                              key={y}
+                              type="button"
+                              className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+                                selectedYear === y && !isCustomRange
+                                  ? 'bg-viridian text-white'
+                                  : mobileMutedSurfaceClass
+                              }`}
+                              onClick={() => selectYear(y)}
+                            >
+                              {y}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    <section className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className={`text-sm font-medium ${mobilePrimaryTextClass}`}>Typen</div>
+                        {useMobileTypeCollapse && (
+                          <button
+                            type="button"
+                            onClick={() => setMobileTypeFilterExpanded((current) => !current)}
+                            className={`inline-flex items-center gap-1 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium ${mobileDashedSurfaceClass} ${mobileSoftSurfaceHoverClass}`}
+                            aria-expanded={mobileTypeFilterExpanded}
+                          >
+                            {mobileTypeFilterExpanded ? (
+                              <>
+                                <ChevronUp className="h-3.5 w-3.5" />
+                                Weniger
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-3.5 w-3.5" />
+                                {hiddenMobileTypeCount} mehr
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedType('')}
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
+                            !selectedType
+                              ? 'bg-viridian text-white border-viridian'
+                              : mobileSurfaceClass
+                          }`}
+                        >
+                          Alle Typen
+                        </button>
+                        {(useMobileTypeCollapse ? visibleMobileTypes : STATISTICS_TYPE_OPTIONS).map((type) => {
+                          const active = selectedType === type;
+                          const typeColor = colorForActivityType(type);
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setSelectedType(type)}
+                              className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
+                                active ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/20' : 'text-gray-800'
+                              }`}
+                              style={{
+                                backgroundColor: active ? typeColor : translucent(typeColor, '14'),
+                                borderColor: active ? typeColor : translucent(typeColor, '66'),
+                              }}
+                            >
+                              <span
+                                aria-hidden
+                                className="h-2.5 w-2.5 rounded-full border"
+                                style={{
+                                  backgroundColor: active ? 'rgba(255,255,255,0.9)' : typeColor,
+                                  borderColor: active ? 'rgba(255,255,255,0.35)' : translucent(typeColor, 'aa'),
+                                }}
+                              />
+                              {TYPE_LABEL[type]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    {projectsAll.length > 0 && (
+                      <section className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className={`text-sm font-medium ${mobilePrimaryTextClass}`}>Projekte</div>
+                          {useMobileProjectCollapse && sortedProjects.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setMobileProjectFilterExpanded((current) => !current)}
+                              className={`inline-flex items-center gap-1 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium ${mobileDashedSurfaceClass} ${mobileSoftSurfaceHoverClass}`}
+                              aria-expanded={mobileProjectFilterExpanded}
+                            >
+                              {mobileProjectFilterExpanded ? (
+                                <>
+                                  <ChevronUp className="h-3.5 w-3.5" />
+                                  Weniger
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                  {hiddenMobileProjectCount} mehr
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+
+                        {sortedProjects.length === 0 ? (
+                          <div className={`rounded-xl border border-dashed px-4 py-3 text-sm ${mobileDashedSurfaceClass}`}>
+                            Für den gewählten Typ sind keine Projekte verfügbar.
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setProjectId('')}
+                              className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
+                                !projectId
+                                  ? 'bg-viridian text-white border-viridian'
+                                  : mobileSurfaceClass
+                              }`}
+                            >
+                              Alle Projekte
+                            </button>
+                            {(useMobileProjectCollapse ? visibleMobileProjects : sortedProjects).map((p) => {
+                              const active = projectId === p.id;
+                              const color = typeof p.color === 'string' && p.color.trim() ? p.color.trim() : undefined;
+                              const imageUrl = typeof p.imageUrl === 'string' && p.imageUrl.trim() ? p.imageUrl.trim() : undefined;
+                              const overlayColor = color || '#0f766e';
+
+                              return (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => setProjectId(p.id)}
+                                  className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
+                                    active
+                                      ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/20'
+                                      : 'text-gray-800'
+                                  }`}
+                                  style={{
+                                    backgroundColor: active
+                                      ? overlayColor
+                                      : color
+                                        ? translucent(overlayColor, '14')
+                                        : undefined,
+                                    borderColor: active ? overlayColor : color || undefined,
+                                  }}
+                                  title={p.title}
+                                >
+                                  {imageUrl ? (
+                                    <span
+                                      className={`h-6 w-6 overflow-hidden rounded-full border ${
+                                        active ? 'border-white/35 bg-white/15' : 'border-gray-300 bg-gray-100'
+                                      }`}
+                                    >
+                                      <ProtectedImage src={imageUrl} alt="" className="h-full w-full object-cover" />
+                                    </span>
+                                  ) : (
+                                    <span
+                                      aria-hidden
+                                      className="h-2.5 w-2.5 rounded-full border"
+                                      style={{
+                                        backgroundColor: overlayColor,
+                                        borderColor: active ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.08)',
+                                      }}
+                                    />
+                                  )}
+                                  <span className="truncate">{p.title}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </section>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        )}
+            );
+          }
+
+          return (
+            <>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+                <div className="flex items-center bg-gray-100 rounded-lg p-1 self-start">
+                  <button
+                    type="button"
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      filterMode === 'year' && !isCustomRange
+                        ? 'bg-white shadow text-viridian font-medium'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                    onClick={() => {
+                      setFilterMode('year');
+                      setSelectedMonth(null);
+                      updateDateRange(selectedYear || String(currentYear), null);
+                    }}
+                  >
+                    Jahr
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      filterMode === 'month' && !isCustomRange
+                        ? 'bg-white shadow text-viridian font-medium'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                    onClick={() => {
+                      setFilterMode('month');
+                      const month = selectedMonth ?? currentMonth;
+                      setSelectedMonth(month);
+                      updateDateRange(selectedYear || String(currentYear), month);
+                    }}
+                  >
+                    Monat
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {filterMode === 'month' && !isCustomRange ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
+                        onClick={() => navigateMonth('prev')}
+                        title="Vorheriger Monat"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <div className="flex items-center gap-1 bg-gray-50 rounded-lg px-3 py-2 min-w-[140px] justify-center">
+                        <Calendar className="h-4 w-4 text-gray-500" />
+                        <span className="font-medium text-gray-800">
+                          {selectedMonth !== null ? MONTH_NAMES_SHORT[selectedMonth - 1] : MONTH_NAMES_SHORT[currentMonth - 1]} {selectedYear || currentYear}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
+                        onClick={() => navigateMonth('next')}
+                        title="Nächster Monat"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <button
+                        type="button"
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
+                          !selectedYear && !isCustomRange
+                            ? 'bg-viridian text-white'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                        }`}
+                        onClick={() => selectYear('')}
+                      >
+                        Alle
+                      </button>
+                      {activityYears.map((y) => (
+                        <button
+                          key={y}
+                          type="button"
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
+                            selectedYear === y && !isCustomRange
+                              ? 'bg-viridian text-white'
+                              : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                          }`}
+                          onClick={() => selectYear(y)}
+                        >
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 sm:ml-auto">
+                  {hasAdvancedFilter && (
+                    <div className="flex items-center gap-2 bg-viridian/10 text-viridian px-3 py-1.5 rounded-lg text-sm">
+                      <Calendar className="h-4 w-4" />
+                      <span className="font-medium">{formatAdvancedFilterDisplay()}</span>
+                      <button
+                        type="button"
+                        className="p-0.5 hover:bg-viridian/20 rounded"
+                        onClick={resetAdvancedFilters}
+                        title="Zurücksetzen"
+                      >
+                        <XIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className={`p-2 rounded-lg border transition-colors touch-manipulation ${
+                      hasAdvancedFilter
+                        ? 'border-viridian text-viridian bg-viridian/5'
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`}
+                    onClick={openAdvancedFilters}
+                    title="Erweiterter Filter"
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 sm:ml-0">
+                  <button
+                    type="button"
+                    className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation"
+                    onClick={exportPdf}
+                    onMouseEnter={preloadPdfExportDependencies}
+                    onFocus={preloadPdfExportDependencies}
+                    title="Exportieren (PDF)"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    <span className="hidden sm:inline">Export (PDF)</span>
+                    <span className="sm:hidden">PDF</span>
+                  </button>
+                </div>
+              </div>
+
+              {filterMode === 'month' && !isCustomRange && (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
+                    {MONTH_NAMES_SHORT.map((name, idx) => {
+                      const month = idx + 1;
+                      const isActive = selectedMonth === month;
+                      const isCurrent = month === currentMonth && selectedYear === String(currentYear);
+                      return (
+                        <button
+                          key={month}
+                          type="button"
+                          className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
+                            isActive
+                              ? 'bg-viridian text-white'
+                              : isCurrent
+                                ? 'bg-viridian/10 text-viridian hover:bg-viridian/20'
+                                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                          }`}
+                          onClick={() => selectMonth(month)}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-5">
+                <div className="text-sm font-medium text-gray-700 mb-2">Typen</div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedType('')}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                      !selectedType
+                        ? 'bg-viridian text-white border-viridian'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Alle Typen
+                  </button>
+                  {STATISTICS_TYPE_OPTIONS.map((type) => {
+                    const active = selectedType === type;
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setSelectedType(type)}
+                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                          active
+                            ? 'bg-viridian text-white border-viridian'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {TYPE_LABEL[type]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {projectsAll.length > 0 && (
+                <div className="mt-5">
+                  <div className="text-sm font-medium text-gray-700 mb-2">Projekte</div>
+                  {sortedProjects.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                      Für den gewählten Typ sind keine Projekte verfügbar.
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setProjectId('')}
+                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                          !projectId
+                            ? 'bg-viridian text-white border-viridian'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Alle Projekte
+                      </button>
+                      {(useDesktopProjectCollapse ? visibleDesktopProjects : sortedProjects).map((p) => {
+                        const active = projectId === p.id;
+                        const color = typeof p.color === 'string' && p.color.trim() ? p.color.trim() : undefined;
+                        const imageUrl = typeof p.imageUrl === 'string' && p.imageUrl.trim() ? p.imageUrl.trim() : undefined;
+                        const fallbackColor = '#0f766e';
+                        const overlayColor = color || fallbackColor;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setProjectId(p.id)}
+                            className={`relative overflow-hidden px-3 py-1.5 rounded-full text-sm border flex items-center gap-2 max-w-full transition-colors ${
+                              active
+                                ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/30'
+                                : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
+                            }`}
+                            style={{
+                              backgroundColor: active ? overlayColor : undefined,
+                              borderColor: active ? overlayColor : color || undefined,
+                            }}
+                            title={p.title}
+                          >
+                            <span className="relative flex items-center gap-2 min-w-0">
+                              {imageUrl ? (
+                                <span
+                                  className={`w-5 h-5 rounded-full overflow-hidden border flex-shrink-0 ${
+                                    active ? 'border-white/40 bg-white/15' : 'border-gray-300 bg-gray-100'
+                                  }`}
+                                >
+                                  <ProtectedImage src={imageUrl} alt="" className="w-full h-full object-cover" />
+                                </span>
+                              ) : (
+                                <span
+                                  aria-hidden
+                                  className="w-2.5 h-2.5 rounded-full border flex-shrink-0"
+                                  style={{
+                                    backgroundColor: overlayColor,
+                                    borderColor: active ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.08)',
+                                  }}
+                                />
+                              )}
+                              <span className={`truncate ${active ? 'drop-shadow' : ''}`}>{p.title}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {useDesktopProjectCollapse && (
+                        <button
+                          type="button"
+                          onClick={() => setDesktopProjectFilterExpanded((current) => !current)}
+                          className="px-3 py-1.5 rounded-full text-sm border border-dashed border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors inline-flex items-center gap-2"
+                          aria-expanded={desktopProjectFilterExpanded}
+                        >
+                          {desktopProjectFilterExpanded ? (
+                            <>
+                              <ChevronUp className="h-4 w-4" />
+                              Weniger anzeigen
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4" />
+                              {hiddenDesktopProjectCount > 0
+                                ? `${hiddenDesktopProjectCount} weitere Projekte anzeigen`
+                                : 'Weitere Projekte anzeigen'}
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       <div ref={reportRef} className="">
@@ -2179,6 +2603,160 @@ export default function Statistics() {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={typePickerOpen}
+        onClose={() => setTypePickerOpen(false)}
+        title="Typ auswählen"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <p className={`text-sm ${mobileSecondaryTextClass}`}>
+            Wähle den Tätigkeitstyp direkt aus der Übersicht.
+          </p>
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${
+                !selectedType ? 'border-viridian bg-viridian text-white' : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
+              }`}
+              onClick={() => {
+                setSelectedType('');
+                setTypePickerOpen(false);
+              }}
+            >
+              Alle Typen
+            </button>
+            {STATISTICS_TYPE_OPTIONS.map((type) => {
+              const active = selectedType === type;
+              const typeColor = colorForActivityType(type);
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${
+                    active ? 'text-white' : mobilePrimaryTextClass
+                  }`}
+                  style={{
+                    backgroundColor: active ? typeColor : translucent(typeColor, isDarkTheme ? '20' : '14'),
+                    borderColor: active ? typeColor : translucent(typeColor, '66'),
+                  }}
+                  onClick={() => {
+                    setSelectedType(type);
+                    setTypePickerOpen(false);
+                  }}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      aria-hidden
+                      className="h-2.5 w-2.5 rounded-full border"
+                      style={{
+                        backgroundColor: active ? 'rgba(255,255,255,0.9)' : typeColor,
+                        borderColor: active ? 'rgba(255,255,255,0.35)' : translucent(typeColor, 'aa'),
+                      }}
+                    />
+                    {TYPE_LABEL[type]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={projectPickerOpen}
+        onClose={() => setProjectPickerOpen(false)}
+        title="Projekt auswählen"
+        maxWidth="lg"
+      >
+        <div className="space-y-4">
+          <p className={`text-sm ${mobileSecondaryTextClass}`}>
+            {selectedType
+              ? `Es werden nur Projekte für ${TYPE_LABEL[selectedType]} angezeigt.`
+              : 'Wähle direkt aus allen verfügbaren Projekten.'}
+          </p>
+
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${
+                !projectId ? 'border-viridian bg-viridian text-white' : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
+              }`}
+              onClick={() => {
+                setProjectId('');
+                setProjectPickerOpen(false);
+              }}
+            >
+              Alle Projekte
+            </button>
+
+            {sortedProjects.length === 0 ? (
+              <div className={`rounded-xl border border-dashed px-4 py-4 text-sm ${mobileDashedSurfaceClass}`}>
+                Für den gewählten Typ sind aktuell keine Projekte verfügbar.
+              </div>
+            ) : (
+              sortedProjects.map((project) => {
+                const active = projectId === project.id;
+                const projectColorValue =
+                  typeof project.color === 'string' && project.color.trim() ? project.color.trim() : '#0f766e';
+                const imageUrl =
+                  typeof project.imageUrl === 'string' && project.imageUrl.trim() ? project.imageUrl.trim() : undefined;
+
+                return (
+                  <button
+                    key={project.id}
+                    type="button"
+                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                      active ? 'text-white' : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
+                    }`}
+                    style={
+                      active
+                        ? {
+                            backgroundColor: projectColorValue,
+                            borderColor: projectColorValue,
+                          }
+                        : imageUrl || project.color
+                          ? {
+                              backgroundColor: translucent(projectColorValue, isDarkTheme ? '18' : '10'),
+                              borderColor: project.color || 'var(--border-strong)',
+                            }
+                          : undefined
+                    }
+                    onClick={() => {
+                      setProjectId(project.id);
+                      setProjectPickerOpen(false);
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      {imageUrl ? (
+                        <span className={`h-10 w-10 overflow-hidden rounded-full border ${active ? 'border-white/30 bg-white/10' : isDarkTheme ? 'border-white/10 bg-white/10' : 'border-gray-300 bg-gray-100'}`}>
+                          <ProtectedImage src={imageUrl} alt="" className="h-full w-full object-cover" />
+                        </span>
+                      ) : (
+                        <span
+                          aria-hidden
+                          className="h-10 w-10 rounded-full border"
+                          style={{
+                            backgroundColor: projectColorValue,
+                            borderColor: active ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.08)',
+                          }}
+                        />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{project.title}</span>
+                        <span className={`block truncate text-xs ${active ? 'text-white/80' : mobileSecondaryTextClass}`}>
+                          {TYPE_LABEL[project.type] || project.type}
+                        </span>
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </Modal>
 
       {/* Custom Date Range Modal */}
       <Modal

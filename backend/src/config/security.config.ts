@@ -11,7 +11,7 @@ function normalize(value: string | undefined | null) {
   return String(value || '').trim();
 }
 
-function isStrictMode() {
+export function isStrictSecurityMode() {
   const nodeEnv = normalize(process.env.NODE_ENV).toLowerCase();
   const strict = normalize(process.env.STRICT_SECURITY_MODE).toLowerCase();
   return nodeEnv === 'production' || nodeEnv === 'staging' || strict === 'true';
@@ -49,15 +49,21 @@ export function getJwtSecret() {
   const configured = normalize(process.env.JWT_SECRET);
   if (configured && !isPlaceholderSecret(configured)) return configured;
 
-  if (isStrictMode()) {
+  if (isStrictSecurityMode()) {
     throw new Error('JWT_SECRET muss in dieser Umgebung gesetzt und darf kein Platzhalter sein.');
   }
 
   return 'local-dev-only-jwt-secret-change-before-production';
 }
 
+export function shouldExposeSwaggerDocs() {
+  const explicit = parseBooleanish(process.env.SWAGGER_ENABLED);
+  if (typeof explicit === 'boolean') return explicit;
+  return !isStrictSecurityMode();
+}
+
 export function assertSecureRuntimeConfig() {
-  if (!isStrictMode()) return;
+  if (!isStrictSecurityMode()) return;
 
   const jwtSecret = normalize(process.env.JWT_SECRET);
   if (!isStrongSecret(jwtSecret)) {
@@ -82,7 +88,7 @@ export function getDatabaseTlsPolicy() {
     return { useSsl: false, rejectUnauthorized: false };
   }
 
-  const requireSsl = explicitRequireSsl ?? (isStrictMode() && !isInternalDatabaseHost(host));
+  const requireSsl = explicitRequireSsl ?? (isStrictSecurityMode() && !isInternalDatabaseHost(host));
 
   if (requireSsl) {
     if (!useSsl) {

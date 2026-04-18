@@ -105,6 +105,13 @@ cp .env.onprem.example .env.onprem
 - `POSTGRES_*` (DB Name/User/Passwort)
 - `DB_SYNCHRONIZE=true` für den ersten Start mit leerer Datenbank
 
+Wichtig für produktiven/staging Erststart:
+
+- `SUPERADMIN_EMAIL` darf kein Platzhalter wie `admin@example.org` sein.
+- `SUPERADMIN_PASSWORD` muss mindestens 12 Zeichen mit Großbuchstaben, Kleinbuchstaben, Zahl und Sonderzeichen enthalten.
+- Ein 8-stelliges Passwort mit Sonderzeichen reicht für den initialen produktiven Bootstrap nicht.
+- Wenn bereits ein Superadmin existiert und `SUPERADMIN_PASSWORD_FORCE=false` bleibt, blockiert ein kürzeres ENV-Passwort den Start nicht rückwirkend.
+
 4) **Sicherstellen, dass Proxy‑Mode aktiv ist**
 - In `docker-compose.onprem.yml` ist `frontend.build.args.NGINX_MODE=proxy` bereits gesetzt.
 - `VITE_API_BASE_URL` muss dafür **nicht** gesetzt werden.

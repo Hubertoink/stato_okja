@@ -11,11 +11,19 @@ import type { UserRole } from '../users/entities/user.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
+import { isStrictSecurityMode } from '../config/security.config';
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from './password-policy';
 
 export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
 export type AdminResetActionMode = 'email' | 'temporary_password';
 
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
+const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
+  'hubertoink@outlook.com',
+  'admin@example.org',
+  'admin@example.com',
+  'admin@example.net',
+]);
 
 @Injectable()
 export class AuthService {
@@ -30,11 +38,6 @@ export class AuthService {
     private readonly email: EmailService,
     private readonly audit: AuditService,
   ) {}
-
-  private isPasswordStrong(pw: string) {
-    const re = /^(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
-    return re.test(pw || '');
-  }
 
   private getPasswordResetMode(): PasswordResetMode {
     const raw = String(process.env.PASSWORD_RESET_MODE || 'email').trim().toLowerCase();
@@ -56,10 +59,8 @@ export class AuthService {
     password: string,
     options?: { mustChangePassword?: boolean; bumpResetVersion?: boolean },
   ) {
-    if (!this.isPasswordStrong(password)) {
-      throw new BadRequestException(
-        'Passwort muss mind. 6 Zeichen, eine Zahl und ein Sonderzeichen enthalten',
-      );
+    if (!isStrongPassword(password)) {
+      throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
     }
     user.passwordHash = await bcrypt.hash(password, 10);
     if (options?.bumpResetVersion !== false) {
@@ -91,11 +92,27 @@ export class AuthService {
   }
 
   async ensureSeed() {
-    const seedEmail = (process.env.SUPERADMIN_EMAIL || 'Hubertoink@outlook.com').toLowerCase();
+    const strictMode = isStrictSecurityMode();
+    const configuredSeedEmail = String(process.env.SUPERADMIN_EMAIL || '').trim().toLowerCase();
+    const seedEmail = (configuredSeedEmail || 'Hubertoink@outlook.com').toLowerCase();
     const forcedPassword = process.env.SUPERADMIN_PASSWORD;
     const forceEmail = (process.env.SUPERADMIN_EMAIL_FORCE || '').toLowerCase() === 'true';
     const forcePassword = (process.env.SUPERADMIN_PASSWORD_FORCE || '').toLowerCase() === 'true';
     const existing = await this.users.findOne({ where: { role: 'superadmin' } });
+
+    if (!existing && strictMode) {
+      if (!configuredSeedEmail || PLACEHOLDER_SUPERADMIN_EMAILS.has(seedEmail)) {
+        throw new Error(
+          'SUPERADMIN_EMAIL muss in produktiven/staging Umgebungen explizit gesetzt sein und darf kein Platzhalter sein.',
+        );
+      }
+      if (!isStrongPassword(String(forcedPassword || ''))) {
+        throw new Error(
+          'SUPERADMIN_PASSWORD muss in produktiven/staging Umgebungen mindestens 12 Zeichen mit Groß-/Kleinbuchstaben, Zahl und Sonderzeichen enthalten.',
+        );
+      }
+    }
+
     if (!existing) {
       const user = this.users.create({
         email: seedEmail,
@@ -109,15 +126,28 @@ export class AuthService {
     }
 
     let changed = false;
+    if (forceEmail && strictMode && (!configuredSeedEmail || PLACEHOLDER_SUPERADMIN_EMAILS.has(seedEmail))) {
+      throw new Error('SUPERADMIN_EMAIL_FORCE erfordert in produktiven/staging Umgebungen eine explizite, nicht-placeholder SUPERADMIN_EMAIL.');
+    }
     if (forceEmail && existing.email.toLowerCase() !== seedEmail) {
       existing.email = seedEmail;
       changed = true;
+    }
+    if (forcePassword && strictMode && !isStrongPassword(String(forcedPassword || ''))) {
+      throw new Error(
+        'SUPERADMIN_PASSWORD_FORCE erfordert in produktiven/staging Umgebungen ein starkes SUPERADMIN_PASSWORD mit mindestens 12 Zeichen, Groß-/Kleinbuchstaben, Zahl und Sonderzeichen.',
+      );
     }
     if (forcePassword && typeof forcedPassword === 'string' && forcedPassword.length >= 6) {
       existing.passwordHash = await bcrypt.hash(forcedPassword, 10);
       existing.mustChangePassword = false;
       changed = true;
     } else if (!existing.passwordHash) {
+      if (strictMode && !isStrongPassword(String(forcedPassword || ''))) {
+        throw new Error(
+          'Bestehender Superadmin ohne Passwort-Hash erfordert in produktiven/staging Umgebungen ein starkes SUPERADMIN_PASSWORD.',
+        );
+      }
       existing.passwordHash = await bcrypt.hash(forcedPassword || 'admin', 10);
       existing.mustChangePassword = false;
       changed = true;

@@ -198,6 +198,11 @@ Wichtige Betriebsvariablen:
 	- Standardwert: Organisationsverschiebung ist komplett deaktiviert.
 	- Nur wenn der Wert bewusst auf `true` gesetzt wird, werden die Move-Endpunkte im Backend freigeschaltet und der Verschieben-Button im Frontend-Build angezeigt.
 	- Für Docker/On-Prem muss der Frontend-Container nach einer Änderung neu gebaut werden, da das Frontend den Schalter als Build-Variable nutzt.
+- `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD`
+	- Für den allerersten produktiven oder staging Erststart mit leerer Datenbank muss `SUPERADMIN_EMAIL` explizit gesetzt sein und darf kein Platzhalter wie `admin@example.org` sein.
+	- `SUPERADMIN_PASSWORD` muss für diesen Bootstrap-Fall mindestens 12 Zeichen sowie Großbuchstaben, Kleinbuchstaben, Zahl und Sonderzeichen enthalten.
+	- Ein 8-stelliges Passwort mit Sonderzeichen reicht für diesen Bootstrap-Fall also nicht mehr.
+	- Bestehende Instanzen bleiben davon unberührt, solange bereits ein Superadmin existiert und `SUPERADMIN_PASSWORD_FORCE=false` bleibt.
 
 Hinweis zu Migrationen:
 

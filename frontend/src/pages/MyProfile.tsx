@@ -3,8 +3,10 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
 import ProtectedImage from '@/components/ProtectedImage';
+import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { Eye, EyeOff } from 'lucide-react';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
+import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 
 export default function MyProfile() {
   const { user, refresh } = useAuth();
@@ -130,6 +132,7 @@ function PasswordCard({ mustChangePassword, onPasswordChanged }: { mustChangePas
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const passwordValidationMessage = getPasswordValidationMessage(newPassword);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -157,6 +160,7 @@ function PasswordCard({ mustChangePassword, onPasswordChanged }: { mustChangePas
             onToggleVisibility={() => setShowNewPassword((visible) => !visible)}
             onChange={(value) => setNewPassword(value)}
           />
+          <PasswordRequirementsHint password={newPassword} className="mt-2" />
         </div>
         <div>
           <label className="block text-sm font-medium">Neues Passwort (Bestätigung)</label>
@@ -172,7 +176,7 @@ function PasswordCard({ mustChangePassword, onPasswordChanged }: { mustChangePas
         <div>
           <button
             className="bg-viridian text-white px-4 py-2 rounded disabled:opacity-60"
-            disabled={busy || !currentPassword || !newPassword || newPassword!==confirmPassword}
+            disabled={busy || !currentPassword || !newPassword || newPassword!==confirmPassword || Boolean(passwordValidationMessage)}
             onClick={async()=>{
               setMsg(null); setErr(null); setBusy(true);
               try {

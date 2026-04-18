@@ -1,6 +1,8 @@
 import { FormEvent, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { resetPassword } from '@/lib/password';
+import { isStrongPassword, PASSWORD_REQUIREMENTS_SHORT } from '@/lib/passwordPolicy';
+import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 
 export default function ResetPassword() {
   const [sp] = useSearchParams();
@@ -18,9 +20,8 @@ export default function ResetPassword() {
       setError('Ungültiger Link');
       return;
     }
-    const strong = /^(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(password);
-    if (!strong) {
-      setError('Mind. 6 Zeichen, eine Zahl und ein Sonderzeichen');
+    if (!isStrongPassword(password)) {
+      setError(PASSWORD_REQUIREMENTS_SHORT);
       return;
     }
     if (password !== confirm) {
@@ -63,9 +64,10 @@ export default function ResetPassword() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full border border-gray-300 rounded px-4 py-2"
-                placeholder="Mind. 6 Zeichen, Zahl & Sonderzeichen"
+                placeholder={PASSWORD_REQUIREMENTS_SHORT}
                 title="Neues Passwort"
               />
+              <PasswordRequirementsHint password={password} className="mt-2" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" htmlFor="new-pass-confirm">

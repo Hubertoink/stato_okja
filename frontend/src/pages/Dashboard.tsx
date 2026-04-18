@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState, useEffect, type ReactNode } from 'react';
+import { Suspense, lazy, useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
@@ -17,14 +17,6 @@ import {
   Circle,
   CheckCircle2,
   Clock,
-  BarChart3,
-  ClipboardList,
-  FolderPlus,
-  Image as ImageIcon,
-  Sparkles,
-  ArrowLeft,
-  ArrowRight,
-  Settings2,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -32,7 +24,7 @@ import { useQuickTallySession } from '@/components/QuickTally';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import Modal from '@/components/Modal';
-import { useProjects, type Project } from '@/lib/projects';
+import { type Project } from '@/lib/projects';
 import { useAuth } from '@/lib/auth';
 import { listOrgs, type OrgDto, getOpeningHours, OpeningHours } from '@/lib/orgs';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
@@ -88,14 +80,6 @@ function useMonthSummary(
 
 function preloadExportModal() {
   void import('@/components/ExportModal');
-}
-
-function readTutorialDismissed(storageKey: string) {
-  try {
-    return localStorage.getItem(storageKey) === '1';
-  } catch {
-    return false;
-  }
 }
 
 const ACTIVITY_AUDIT_FIELD_LABELS: Record<string, string> = {
@@ -242,7 +226,6 @@ export default function Dashboard() {
     refetchOnWindowFocus: 'always',
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
-  const { data: projects = [], isLoading: projectsLoading } = useProjects({ archived: false });
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
   useActivities({ from, to });
@@ -282,19 +265,6 @@ export default function Dashboard() {
     update: true,
     delete: true,
   });
-  const tutorialDismissedStorageKey = useMemo(
-    () => `dashboard-getting-started-v1:${user?.id || 'guest'}:${scopeKey}`,
-    [scopeKey, user?.id],
-  );
-  const [tutorialDismissed, setTutorialDismissed] = useState(() =>
-    readTutorialDismissed(`dashboard-getting-started-v1:${user?.id || 'guest'}:${scopeKey}`),
-  );
-  const [tutorialOpen, setTutorialOpen] = useState(false);
-
-  useEffect(() => {
-    setTutorialDismissed(readTutorialDismissed(tutorialDismissedStorageKey));
-  }, [tutorialDismissedStorageKey]);
-
   // Determine effective orgId for opening hours
   const effectiveOrgId = user?.role === 'superadmin'
     ? (typeof scope === 'string' ? scope : null)
@@ -334,18 +304,6 @@ export default function Dashboard() {
     };
   }, [user?.role]);
 
-  useEffect(() => {
-    if (!projectsLoading && projects.length === 0 && !tutorialDismissed) {
-      setTutorialOpen(true);
-    }
-  }, [projects.length, projectsLoading, tutorialDismissed]);
-
-  useEffect(() => {
-    if (tutorialDismissed) {
-      setTutorialOpen(false);
-    }
-  }, [tutorialDismissed]);
-
   const recentActionGroups = useMemo(() => {
     const auditByAction: Record<AuditLogAction, AuditLog[]> = {
       login: loginAudit,
@@ -368,26 +326,6 @@ export default function Dashboard() {
 
   const fmt = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
   // keep date helpers only where needed; recent actions use locale string
-
-  const dismissTutorial = () => {
-    try {
-      localStorage.setItem(tutorialDismissedStorageKey, '1');
-    } catch {
-      /* ignore */
-    }
-    setTutorialDismissed(true);
-  };
-
-  const closeTutorial = (dismiss = false) => {
-    if (dismiss) dismissTutorial();
-    setTutorialOpen(false);
-  };
-
-  const navigateFromTutorial = (path: string, dismiss = false) => {
-    if (dismiss) dismissTutorial();
-    setTutorialOpen(false);
-    navigate(path);
-  };
 
   // Build Daily Log: last 5 activities in the last 14 days that have notes and/or tags
   const nowISO = new Date();
@@ -867,390 +805,6 @@ export default function Dashboard() {
           />
         </Suspense>
       )}
-      <GettingStartedTutorialModal
-        open={tutorialOpen}
-        onClose={closeTutorial}
-        onNavigate={navigateFromTutorial}
-      />
-    </div>
-  );
-}
-
-function GettingStartedTutorialModal({
-  open,
-  onClose,
-  onNavigate,
-}: {
-  open: boolean;
-  onClose: (dismiss?: boolean) => void;
-  onNavigate: (path: string, dismiss?: boolean) => void;
-}) {
-  const [stepIndex, setStepIndex] = useState(0);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setStepIndex(0);
-      setDontShowAgain(false);
-    }
-  }, [open]);
-
-  const steps: Array<{
-    id: string;
-    step: string;
-    title: string;
-    subtitle: string;
-    description: string;
-    icon: ReactNode;
-    actionLabel: string;
-    actionPath: string;
-    preview: ReactNode;
-  }> = [
-    {
-      id: 'projects',
-      step: '01',
-      title: 'Projekte anlegen',
-      subtitle: 'Hier entsteht die Basis fuer alle Aktivitaeten.',
-      description:
-        'Legen Sie zuerst ein Projekt an. Dort definieren Sie Titel, Typ, Zielgruppe, Standardzeiten, Bild, Farben sowie passende Kategorien und Tags. Neue Kategorien und Tags legen Sie bei Bedarf in den Einstellungen an. Danach koennen Aktivitaeten mit einem Klick auf dieses Projekt gebucht werden.',
-      icon: <FolderPlus className="w-5 h-5" />,
-      actionLabel: 'Zu Projekte',
-      actionPath: '/projects?create=1',
-      preview: (
-        <TutorialPreviewCard title="Projektformular" badge="Projekte">
-          <ScreenField label="Titel" value="Makerspace Mittwoch" />
-          <div className="grid grid-cols-2 gap-2">
-            <ScreenField label="Typ" value="Projekt (offen)" compact />
-            <ScreenField label="Zielgruppe" value="12-16 Jahre" compact />
-          </div>
-          <div className="grid grid-cols-[1fr_92px] gap-2 items-end">
-            <ScreenField label="Zeitraum" value="April - Juli" compact />
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 h-[58px] flex items-center justify-center text-[11px] text-gray-600 gap-1.5">
-              <ImageIcon className="w-3.5 h-3.5" />
-              Bild
-            </div>
-          </div>
-          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-600 leading-5">
-            Kategorien und Tags legen Sie bei Bedarf in den Einstellungen an; im Projekt waehlen Sie
-            diese dann aus. Die Farbe setzen Sie direkt hier.
-          </div>
-        </TutorialPreviewCard>
-      ),
-    },
-    {
-      id: 'activities',
-      step: '02',
-      title: 'Aktivitaeten erfassen',
-      subtitle: 'Hier dokumentieren Sie den Alltag vor Ort.',
-      description:
-        'In den Aktivitaeten erfassen Sie Datum, Uhrzeit, Projekt, Standort, Kategorie, Teilnehmendenzahlen und Notizen. Das ist die zentrale Arbeitsflaeche fuer Ihre Dokumentation.',
-      icon: <ClipboardList className="w-5 h-5" />,
-      actionLabel: 'Zu Aktivitaeten',
-      actionPath: '/activities',
-      preview: (
-        <TutorialPreviewCard title="Aktivitaetsmaske" badge="Aktivitaeten">
-          <div className="grid grid-cols-2 gap-2">
-            <ScreenField label="Datum" value="22.03.2026" compact />
-            <ScreenField label="Zeit" value="15:00 - 18:00" compact />
-          </div>
-          <ScreenField label="Projekt" value="Makerspace Mittwoch" />
-          <div className="grid grid-cols-2 gap-2">
-            <ScreenField label="Kategorie" value="Kreativ" compact />
-            <ScreenField label="Standort" value="Jugendhaus" compact />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <MetricPill label="m" value="7" />
-            <MetricPill label="w" value="9" />
-            <MetricPill label="d" value="1" />
-          </div>
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-600 leading-5">
-            Notiz: Offene Werkbank, hohe Beteiligung, neue Teilnehmende kamen ueber Ferienprogramm.
-          </div>
-        </TutorialPreviewCard>
-      ),
-    },
-    {
-      id: 'calendar',
-      step: '03',
-      title: 'Kalender nutzen',
-      subtitle: 'Planen, ueberblicken und schnell nachbuchen.',
-      description:
-        'Im Kalender sehen Sie alle Eintraege im Tages-, Wochen- oder Monatsblick. Von dort aus koennen Sie schnell pruefen, was gelaufen ist, und Eintraege direkt oeffnen.',
-      icon: <CalendarIcon className="w-5 h-5" />,
-      actionLabel: 'Zum Kalender',
-      actionPath: '/calendar',
-      preview: (
-        <TutorialPreviewCard title="Kalenderblick" badge="Kalender">
-          <div className="grid grid-cols-7 gap-1.5 text-[10px] uppercase tracking-[0.12em] text-gray-500">
-            {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day) => (
-              <div key={day} className="text-center">{day}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1.5">
-            {[...Array(14)].map((_, index) => (
-              <div key={index} className="rounded-xl border border-gray-200 bg-white p-1.5 min-h-[52px]">
-                <div className="text-[10px] text-gray-400">{index + 10}</div>
-                {(index === 2 || index === 8) && (
-                  <div className="mt-1 rounded-lg bg-viridian/90 px-1.5 py-1 text-[10px] text-white">
-                    Makerspace
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </TutorialPreviewCard>
-      ),
-    },
-    {
-      id: 'statistics',
-      step: '04',
-      title: 'Statistiken lesen',
-      subtitle: 'Aus Dokumentation werden auswertbare Zahlen.',
-      description:
-        'In den Statistiken sehen Sie Monatswerte, Trends, Teilnehmerzahlen und Verteilungen nach Projekten oder Kategorien. Dort entstehen die Uebersichten fuer Berichte und Gespraeche.',
-      icon: <BarChart3 className="w-5 h-5" />,
-      actionLabel: 'Zu Statistiken',
-      actionPath: '/statistics',
-      preview: (
-        <TutorialPreviewCard title="Statistikbereich" badge="Statistiken">
-          <div className="flex flex-wrap gap-2">
-            <FilterChip label="Monat" active />
-            <FilterChip label="Projekt" />
-            <FilterChip label="Kategorie" />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <MiniStat label="Aktivitaeten" value="12" />
-            <MiniStat label="Teilnehmende" value="148" />
-          </div>
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
-            <div className="flex items-end gap-2 h-24">
-              {[38, 62, 48, 84, 70, 56].map((height, index) => (
-                <div
-                  key={index}
-                  className="flex-1 rounded-t-xl bg-gradient-to-t from-viridian to-cambridge-blue"
-                  style={{ height: `${height}%` }}
-                />
-              ))}
-            </div>
-          </div>
-        </TutorialPreviewCard>
-      ),
-    },
-    {
-      id: 'settings',
-      step: '05',
-      title: 'Einstellungen pflegen',
-      subtitle: 'Stammdaten, Kategorien und Organisation im Blick behalten.',
-      description:
-        'Unter Einstellungen verwalten Sie Grundlagen wie Benutzer, Kategorien, Tags, Vorlagen und weitere Systemdaten. Hier wird Stato an Ihre Arbeitsweise angepasst.',
-      icon: <Settings2 className="w-5 h-5" />,
-      actionLabel: 'Zu Einstellungen',
-      actionPath: '/settings',
-      preview: (
-        <TutorialPreviewCard title="Einstellungsbereiche" badge="Einstellungen">
-          <div className="space-y-2">
-            {[
-              'Benutzer & Rollen',
-              'Kategorien & Tags',
-              'Projektvorlagen',
-              'Standorte & Oeffnungszeiten',
-            ].map((entry) => (
-              <div key={entry} className="rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 flex items-center justify-between">
-                <span>{entry}</span>
-                <ArrowRight className="w-4 h-4 text-gray-400" />
-              </div>
-            ))}
-          </div>
-          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-600 leading-5">
-            Ideal, um die App nach dem Start auf Ihre Organisation zuzuschneiden.
-          </div>
-        </TutorialPreviewCard>
-      ),
-    },
-  ];
-
-  const step = steps[stepIndex];
-  const isFirstStep = stepIndex === 0;
-  const isLastStep = stepIndex === steps.length - 1;
-
-  return (
-    <Modal open={open} onClose={onClose} title="Stato Schritt fuer Schritt" maxWidth="3xl">
-      <div className="space-y-6">
-        <div className="rounded-[28px] border border-white/70 bg-[radial-gradient(circle_at_top_left,rgba(124,143,255,0.16),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.15),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,255,0.94))] p-5 md:p-6">
-          <div className="flex flex-col md:flex-row md:items-start gap-6">
-            <div className="md:w-[340px] shrink-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-viridian shadow-sm">
-                <Sparkles className="w-3.5 h-3.5" />
-                Schritt {step.step}
-              </div>
-              <h4 className="mt-4 text-2xl font-bold text-gray-900 leading-tight">{step.title}</h4>
-              <p className="mt-2 text-sm font-medium text-viridian">{step.subtitle}</p>
-              <p className="mt-4 text-sm text-gray-600 leading-7">{step.description}</p>
-
-              <div className="mt-5 rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm">
-                <div className="text-xs uppercase tracking-[0.16em] text-gray-500">Sie befinden sich hier</div>
-                <div className="mt-2 flex items-center gap-3 text-sm text-gray-800 font-medium">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-viridian text-white shadow-sm">
-                    {step.icon}
-                  </span>
-                  <span>{step.actionLabel.replace('Zu ', '')}</span>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {steps.map((entry, index) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    onClick={() => setStepIndex(index)}
-                    className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium border transition ${
-                      stepIndex === index
-                        ? 'bg-viridian text-white border-viridian'
-                        : 'bg-white/80 text-gray-700 border-white hover:bg-white'
-                    }`}
-                  >
-                    {entry.step}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex-1 min-w-[240px]">{step.preview}</div>
-          </div>
-        </div>
-
-        <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-3">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <span className="font-medium text-gray-700">{stepIndex + 1}</span>
-              <span>/</span>
-              <span>{steps.length}</span>
-              <div className="ml-2 flex items-center gap-1.5">
-                {steps.map((entry, index) => (
-                  <span
-                    key={entry.id}
-                    className={`h-1.5 rounded-full transition-all ${
-                      index === stepIndex ? 'w-8 bg-viridian' : 'w-3 bg-gray-200'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {isLastStep && (
-              <label className="inline-flex items-start gap-3 rounded-2xl border border-gray-200 bg-white/90 px-3 py-2.5 text-sm text-gray-700 shadow-sm cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={dontShowAgain}
-                  onChange={(event) => setDontShowAgain(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
-                />
-                <span>Tutorial nicht mehr automatisch anzeigen</span>
-              </label>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
-              disabled={isFirstStep}
-              className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Zurueck
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate(step.actionPath, isLastStep && dontShowAgain)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-viridian px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[rgba(91,108,255,0.20)] hover:brightness-105 transition"
-            >
-              {step.icon}
-              {step.actionLabel}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (isLastStep) onClose(dontShowAgain);
-                else setStepIndex((index) => Math.min(steps.length - 1, index + 1));
-              }}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/90 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition"
-            >
-              {isLastStep ? 'Fertig' : 'Weiter'}
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function TutorialPreviewCard({
-  title,
-  badge,
-  children,
-}: {
-  title: string;
-  badge: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-[26px] border border-white/80 bg-white/78 backdrop-blur-md p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-gray-100">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.18em] text-gray-500">{badge}</div>
-          <div className="mt-1 text-lg font-semibold text-gray-900">{title}</div>
-        </div>
-        <div className="inline-flex items-center rounded-full bg-viridian/10 text-viridian px-3 py-1 text-xs font-semibold">
-          Vorschau
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-[22px] border border-gray-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,248,255,0.92))] p-4 space-y-3">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function ScreenField({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
-  return (
-    <div className={`rounded-xl border border-white/80 bg-white/60 px-3 ${compact ? 'py-2' : 'py-2.5'}`}>
-      <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">{label}</div>
-      <div className={`mt-1 font-medium text-gray-800 ${compact ? 'text-xs' : 'text-sm'}`}>{value}</div>
-    </div>
-  );
-}
-
-function MetricPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/80 bg-white/65 px-2.5 py-2 text-center">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-gray-800">{value}</div>
-    </div>
-  );
-}
-
-function FilterChip({ label, active = false }: { label: string; active?: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium border ${
-        active
-          ? 'bg-viridian text-white border-viridian'
-          : 'bg-white/65 text-gray-700 border-white/80'
-      }`}
-    >
-      {label}
-    </span>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/80 bg-white/60 px-3 py-2.5">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-gray-900">{value}</div>
     </div>
   );
 }

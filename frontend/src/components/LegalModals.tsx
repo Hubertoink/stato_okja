@@ -72,7 +72,7 @@ export function CookieNoticeModal({
         <section className="space-y-2">
           <h3 className="text-base font-semibold text-gray-900">Kurzfassung</h3>
           <p>
-            StatO setzt in dieser On-Prem-Variante aktuell keine Analyse-, Marketing- oder Social-Media-Cookies ein.
+            StatO setzt aktuell keine Analyse-, Marketing- oder Social-Media-Cookies ein.
             Für Anmeldung, Sicherheit und Bedienkomfort nutzt die Anwendung technisch notwendige Browser-Speicher.
           </p>
         </section>

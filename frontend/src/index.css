@@ -1414,7 +1414,12 @@ code {
   box-shadow: var(--card-shadow);
 }
 
-.dashboard-accent-panel,
+.dashboard-accent-panel {
+  background: var(--viridian);
+  color: #ffffff;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+}
+
 .theme-accent-panel {
   background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
   color: #ffffff;
@@ -1440,7 +1445,16 @@ code {
   transform: translateY(-1px);
 }
 
-.dashboard-accent-solid-button,
+.dashboard-accent-solid-button {
+  background: var(--viridian);
+  color: #ffffff;
+  transition:
+    filter 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+}
+
 .theme-accent-solid-button {
   background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
   color: #ffffff;

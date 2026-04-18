@@ -289,7 +289,7 @@ export default function Layout() {
             </div>
             <button
               aria-label="Benutzer"
-              className="hidden sm:flex items-center gap-2 hover:bg-black/5 rounded px-1 py-1"
+              className="hidden sm:flex items-center gap-2 rounded px-1 py-1 transition-colors theme-header-action"
               onClick={() => setMenuOpen((v) => !v)}
             >
               {user?.avatarUrl ? (
@@ -305,7 +305,7 @@ export default function Layout() {
             {/* Compact user/org on mobile - entire area clickable */}
             <button
               aria-label="Benutzermenü öffnen"
-              className="flex sm:hidden items-center gap-2 hover:bg-black/5 rounded px-1 py-1"
+              className="flex sm:hidden items-center gap-2 rounded px-1 py-1 transition-colors theme-header-action"
               onClick={() => setMenuOpen((v) => !v)}
             >
               {user?.avatarUrl ? (
@@ -328,10 +328,10 @@ export default function Layout() {
             </button>
             {menuOpen && (
               <div
-                className="absolute right-0 top-full mt-2 bg-white text-gray-800 rounded shadow-lg w-56 z-50"
+                className="absolute right-0 top-full mt-2 w-56 z-50 rounded-xl theme-menu-panel"
                 {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}
               >
-                <div className="px-4 py-3 border-b">
+                <div className="px-4 py-3 border-b theme-menu-section">
                   <div className="font-semibold">{user?.name || user?.email}</div>
                   <div className="text-xs text-gray-500">
                     {roleLabel[user?.role || 'user']}
@@ -345,7 +345,7 @@ export default function Layout() {
                 <ul className="py-1 text-sm">
                   <li>
                     <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                      className="w-full px-4 py-2 text-left theme-menu-item"
                       onClick={() => {
                         navigate('/me');
                         setMenuOpen(false);
@@ -357,7 +357,7 @@ export default function Layout() {
                   {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
                     <li>
                       <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        className="w-full px-4 py-2 text-left theme-menu-item"
                         onClick={() => {
                           setScopeModalOpen(true);
                           setMenuOpen(false);
@@ -370,7 +370,7 @@ export default function Layout() {
                   {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
                     <li>
                       <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        className="w-full px-4 py-2 text-left theme-menu-item"
                         onClick={() => {
                           navigate('/admin/orgs');
                           setMenuOpen(false);
@@ -383,7 +383,7 @@ export default function Layout() {
                   {!restrictToPasswordChange && canAccessDevTools(user?.role) && (
                     <li>
                       <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        className="w-full px-4 py-2 text-left theme-menu-item"
                         onClick={() => {
                           navigate('/admin/dev-tools');
                           setMenuOpen(false);
@@ -396,7 +396,7 @@ export default function Layout() {
                   {!restrictToPasswordChange && user?.role === 'superadmin' && (
                     <li>
                       <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        className="w-full px-4 py-2 text-left theme-menu-item"
                         onClick={() => {
                           navigate('/admin/audit');
                           setMenuOpen(false);
@@ -409,7 +409,7 @@ export default function Layout() {
                   {!restrictToPasswordChange && user?.role === 'superadmin' && (
                     <li>
                       <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        className="w-full px-4 py-2 text-left theme-menu-item"
                         onClick={() => {
                           navigate('/admin/system-data');
                           setMenuOpen(false);
@@ -422,7 +422,7 @@ export default function Layout() {
                   {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
                     <li>
                       <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                        className="w-full px-4 py-2 text-left theme-menu-item"
                         onClick={() => {
                           navigate('/admin/users');
                           setMenuOpen(false);
@@ -434,7 +434,7 @@ export default function Layout() {
                   )}
                   <li>
                     <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                      className="w-full px-4 py-2 text-left theme-menu-item"
                       onClick={() => {
                         logout();
                         setMenuOpen(false);
@@ -458,10 +458,10 @@ export default function Layout() {
               <Link
                 to="/dashboard"
                 data-tooltip="Dashboard"
-                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
                   isActive('/dashboard')
-                    ? 'bg-black/5 text-viridian'
-                    : 'text-gray-700 hover:text-gray-900'
+                    ? 'theme-nav-item-active'
+                    : ''
                 }`}
               >
                 <Home className="w-5 h-5 lg:mr-2 flex-shrink-0" />
@@ -472,10 +472,10 @@ export default function Layout() {
               <Link
                 to="/activities"
                 data-tooltip="Aktivitäten"
-                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
                   isActive('/activities')
-                    ? 'bg-black/5 text-viridian'
-                    : 'text-gray-700 hover:text-gray-900'
+                    ? 'theme-nav-item-active'
+                    : ''
                 }`}
               >
                 <Activity className="w-5 h-5 lg:mr-2 flex-shrink-0" />
@@ -486,10 +486,10 @@ export default function Layout() {
               <Link
                 to="/calendar"
                 data-tooltip="Kalender"
-                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
                   isActive('/calendar')
-                    ? 'bg-black/5 text-viridian'
-                    : 'text-gray-700 hover:text-gray-900'
+                    ? 'theme-nav-item-active'
+                    : ''
                 }`}
               >
                 <CalendarIcon className="w-5 h-5 lg:mr-2 flex-shrink-0" />
@@ -500,10 +500,10 @@ export default function Layout() {
               <Link
                 to="/projects"
                 data-tooltip="Projekte"
-                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
                   isActive('/projects')
-                    ? 'bg-black/5 text-viridian'
-                    : 'text-gray-700 hover:text-gray-900'
+                    ? 'theme-nav-item-active'
+                    : ''
                 }`}
               >
                 <Boxes className="w-5 h-5 lg:mr-2 flex-shrink-0" />
@@ -514,10 +514,10 @@ export default function Layout() {
               <Link
                 to="/statistics"
                 data-tooltip="Statistiken"
-                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
                   isActive('/statistics')
-                    ? 'bg-black/5 text-viridian'
-                    : 'text-gray-700 hover:text-gray-900'
+                    ? 'theme-nav-item-active'
+                    : ''
                 }`}
               >
                 <BarChart3 className="w-5 h-5 lg:mr-2 flex-shrink-0" />
@@ -528,10 +528,10 @@ export default function Layout() {
               <Link
                 to="/settings"
                 data-tooltip="Einstellungen"
-                className={`nav-item-tooltip flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 hover:bg-black/5 ${
+                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
                   isActive('/settings')
-                    ? 'bg-black/5 text-viridian'
-                    : 'text-gray-700 hover:text-gray-900'
+                    ? 'theme-nav-item-active'
+                    : ''
                 }`}
               >
                 <Settings className="w-5 h-5 lg:mr-2 flex-shrink-0" />

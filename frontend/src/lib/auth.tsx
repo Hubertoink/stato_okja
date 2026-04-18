@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, setAuthToken } from './api';
 import { clearStoredAuthToken, getStoredAuthToken, storeAuthToken } from './authStorage';
@@ -18,34 +18,89 @@ interface AuthState {
 
 const AuthCtx = createContext<AuthState | undefined>(undefined);
 
+function normalizeThemeName(theme?: string | null) {
+  return theme === 'Light Steel' ? 'Default Theme' : (theme || 'Default Theme');
+}
+
+function applyTheme(theme?: string | null) {
+  try {
+    if (theme) document.documentElement.setAttribute('data-theme', theme);
+    else document.documentElement.removeAttribute('data-theme');
+  } catch {
+    // ignore
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const qc = useQueryClient();
+
+  const applyResolvedUser = useCallback((nextUser: AuthUser, options?: { resetCache?: boolean }) => {
+    const normalizedTheme = normalizeThemeName(nextUser.theme);
+    setUser({ ...nextUser, theme: normalizedTheme });
+    applyTheme(normalizedTheme);
+    if (options?.resetCache) {
+      qc.clear();
+    }
+  }, [qc]);
+
+  const clearSession = useCallback(() => {
+    setAuthToken(undefined);
+    clearStoredAuthToken();
+    setUser(null);
+    applyTheme(null);
+    qc.clear();
+  }, [qc]);
+
+  const refreshProfile = useCallback(async () => {
+    try {
+      const res = await api.get<AuthUser>('/auth/me');
+      const nextUser = res.data;
+      const mustResetCache = !!user && (
+        user.id !== nextUser.id ||
+        user.role !== nextUser.role ||
+        (user.orgId ?? null) !== (nextUser.orgId ?? null)
+      );
+      applyResolvedUser(nextUser, { resetCache: mustResetCache });
+    } catch {
+      // ignore transient refresh failures
+    }
+  }, [applyResolvedUser, user]);
 
   useEffect(() => {
     // Rehydrate session from stored token and fetch /auth/me
     const token = getStoredAuthToken();
     if (token) {
       setAuthToken(token);
-  api.get<AuthUser>('/auth/me').then(res => {
-    const t = (res.data.theme === 'Light Steel') ? 'Default Theme' : (res.data.theme || 'Default Theme');
-    setUser({ ...res.data, theme: t });
-  try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ }
+      api.get<AuthUser>('/auth/me').then(res => {
+        applyResolvedUser(res.data);
         setLoading(false);
       }).catch(() => {
-        setAuthToken(undefined);
-        clearStoredAuthToken();
-        setUser(null);
-  try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* noop */ }
-        qc.clear();
+        clearSession();
         setLoading(false);
       });
     } else {
       qc.clear();
       setLoading(false);
     }
-  }, []);
+  }, [applyResolvedUser, clearSession, qc]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'hidden') return;
+      void refreshProfile();
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    return () => {
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
+  }, [refreshProfile, user]);
 
   const value = useMemo<AuthState>(() => ({
     user,
@@ -57,37 +112,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         storeAuthToken(token);
         setAuthToken(token);
         // Clear any cached data from a previous session so next queries refetch for this user/org
-        qc.clear();
-    const t = (res.data.user.theme === 'Light Steel') ? 'Default Theme' : (res.data.user.theme || 'Default Theme');
-    setUser({ ...res.data.user, theme: t });
-  try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ }
+        applyResolvedUser(res.data.user, { resetCache: true });
         // Also proactively invalidate any active queries
         qc.invalidateQueries({ predicate: () => true });
         return { ok: true } as const;
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Login fehlgeschlagen';
-  return { ok: false, error: Array.isArray(msg as []) ? (msg as string[]).join(', ') : String(msg) } as const;
+        return { ok: false, error: Array.isArray(msg as []) ? (msg as string[]).join(', ') : String(msg) } as const;
       }
     },
     logout() {
-      clearStoredAuthToken();
-      setAuthToken(undefined);
-      setUser(null);
-  try { document.documentElement.removeAttribute('data-theme'); } catch (e) { /* noop */ }
-      // Remove all cached queries so the next login starts fresh
-      qc.clear();
+      clearSession();
     },
     async refresh() {
-      try {
-        const res = await api.get<AuthUser>('/auth/me');
-    const t = (res.data.theme === 'Light Steel') ? 'Default Theme' : (res.data.theme || 'Default Theme');
-    setUser({ ...res.data, theme: t });
-  try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ }
-      } catch {
-        // ignore
-      }
+      await refreshProfile();
     },
-  }), [user, loading, qc]);
+  }), [applyResolvedUser, clearSession, loading, qc, refreshProfile, user]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

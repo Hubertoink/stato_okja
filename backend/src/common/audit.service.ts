@@ -48,7 +48,7 @@ export class AuditService {
     return e;
   }
 
-  async list(params: { orgId?: string | null; orgIds?: string[]; limit?: number }) {
+  async list(params: { orgId?: string | null; orgIds?: string[]; limit?: number; actions?: AuditAction[] }) {
     // Join organizations to fetch org name for UI without extra calls
     const qb = this.repo.createQueryBuilder('a')
       .leftJoin('organizations', 'o', 'o.id = a.orgId')
@@ -58,13 +58,35 @@ export class AuditService {
       .orderBy('a.createdAt', 'DESC')
       .take(Math.min(Math.max(params.limit || 50, 1), 100));
 
+    let hasWhere = false;
+
+    if (Array.isArray(params.actions) && params.actions.length > 0) {
+      qb.where('a.action IN (:...actions)', { actions: params.actions });
+      hasWhere = true;
+    }
+
     if (Array.isArray(params.orgIds) && params.orgIds.length > 0) {
-      qb.where('a.orgId IN (:...orgIds)', { orgIds: params.orgIds });
+      if (hasWhere) {
+        qb.andWhere('a.orgId IN (:...orgIds)', { orgIds: params.orgIds });
+      } else {
+        qb.where('a.orgId IN (:...orgIds)', { orgIds: params.orgIds });
+        hasWhere = true;
+      }
     } else if (typeof params.orgId !== 'undefined') {
       if (params.orgId === null) {
-        qb.where('a.orgId IS NULL');
+        if (hasWhere) {
+          qb.andWhere('a.orgId IS NULL');
+        } else {
+          qb.where('a.orgId IS NULL');
+          hasWhere = true;
+        }
       } else {
-        qb.where('a.orgId = :orgId', { orgId: params.orgId });
+        if (hasWhere) {
+          qb.andWhere('a.orgId = :orgId', { orgId: params.orgId });
+        } else {
+          qb.where('a.orgId = :orgId', { orgId: params.orgId });
+          hasWhere = true;
+        }
       }
     }
 

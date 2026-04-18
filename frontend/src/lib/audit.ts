@@ -6,7 +6,7 @@ export interface AuditLog {
   id: string;
   entityType: 'activity' | 'project' | 'tag' | 'category' | 'cohort' | 'auth' | string;
   entityId: string;
-  action: 'create' | 'update' | 'delete' | 'login';
+  action: AuditLogAction;
   userId?: string | null;
   userName?: string | null;
   orgId?: string | null;
@@ -17,17 +17,26 @@ export interface AuditLog {
   createdAt: string;
 }
 
+export type AuditLogAction = 'create' | 'update' | 'delete' | 'login';
+
 type AuditQueryOptions = {
   refetchOnWindowFocus?: boolean | 'always';
   refetchIntervalMs?: number;
+  actions?: AuditLogAction[];
 };
 
 export function useAuditLogs(limit = 10, options?: AuditQueryOptions) {
   const scopeKey = useOrgScopeKey();
+  const actionsKey = options?.actions?.join(',') || 'all';
   return useQuery<AuditLog[]>({
-    queryKey: ['audit', scopeKey, { limit }],
+    queryKey: ['audit', scopeKey, { limit, actions: actionsKey }],
     queryFn: async () => {
-      const res = await api.get('/audit', { params: { limit } });
+      const res = await api.get('/audit', {
+        params: {
+          limit,
+          actions: options?.actions?.length ? options.actions.join(',') : undefined,
+        },
+      });
       return res.data as AuditLog[];
     },
     staleTime: 5000,

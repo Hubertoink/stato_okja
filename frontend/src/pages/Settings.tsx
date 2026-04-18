@@ -60,20 +60,20 @@ export default function Settings() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((open) => !open)}
-            className="relative z-20 w-full flex items-center justify-between gap-4 rounded-lg bg-white px-4 py-4 text-left shadow"
+            className="settings-mobile-trigger relative z-20 w-full flex items-center justify-between gap-4 rounded-lg px-4 py-4 text-left"
             aria-expanded={mobileMenuOpen}
             aria-controls="settings-mobile-navigation"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <span className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-viridian/10 text-viridian shrink-0">
+              <span className="settings-mobile-icon-shell inline-flex items-center justify-center w-11 h-11 rounded-2xl shrink-0">
                 <activeTabMeta.icon className="w-5 h-5" />
               </span>
               <div className="min-w-0">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Bereich</div>
+                <div className="settings-mobile-trigger-label text-xs font-semibold uppercase tracking-[0.18em]">Bereich</div>
                 <div className="text-base font-semibold text-viridian truncate">{activeTabMeta.label}</div>
               </div>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 shrink-0">
+            <span className="settings-mobile-trigger-pill inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium shrink-0">
               Menü
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </span>
@@ -82,7 +82,7 @@ export default function Settings() {
           {mobileMenuOpen && (
             <div
               id="settings-mobile-navigation"
-              className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-gray-100 bg-white/95 px-3 py-3 shadow-2xl backdrop-blur"
+              className="settings-mobile-menu absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl px-3 py-3 shadow-2xl backdrop-blur"
             >
               <div className="flex flex-col gap-2">
                 {tabs.map((tab) => {
@@ -96,13 +96,13 @@ export default function Settings() {
                         setActiveTab(tab.id);
                         setMobileMenuOpen(false);
                       }}
-                      className={`w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors ${
+                      className={`settings-mobile-option w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors ${
                         active
-                          ? 'bg-viridian text-white shadow-sm'
-                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                          ? 'settings-mobile-option-active shadow-sm'
+                          : ''
                       }`}
                     >
-                      <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${active ? 'bg-white/15' : 'bg-viridian/10 text-viridian'}`}>
+                      <span className={`settings-mobile-icon-shell inline-flex items-center justify-center w-10 h-10 rounded-xl ${active ? 'settings-mobile-icon-shell-active' : ''}`}>
                         <Icon className="w-5 h-5" />
                       </span>
                       <span className="font-medium">{tab.label}</span>
@@ -114,7 +114,7 @@ export default function Settings() {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow mb-6 overflow-x-auto overflow-y-hidden md:overflow-x-visible md:overflow-y-visible">
+        <div className="settings-nav-surface mb-6 overflow-x-auto overflow-y-hidden rounded-lg md:overflow-x-visible md:overflow-y-visible">
           <div className="flex">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -123,10 +123,10 @@ export default function Settings() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   title={tab.label}
-                  className={`group relative inline-flex items-center justify-center xl:justify-start gap-2 px-3 xl:px-4 py-3 font-medium transition-colors whitespace-nowrap w-12 sm:w-14 md:w-16 xl:w-auto ${
+                  className={`settings-tab-button group relative inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-3 font-medium transition-colors sm:w-14 md:w-16 xl:w-auto xl:justify-start xl:px-4 ${
                     activeTab === tab.id
-                      ? 'text-viridian border-b-2 border-viridian'
-                      : 'text-gray-600 hover:text-viridian'
+                      ? 'settings-tab-button-active'
+                      : ''
                   }`}
                 >
                   <Icon className="w-5 h-5" />

@@ -83,6 +83,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
   const scopeChangeSourceRef = useRef<'init' | 'user'>('init');
   const switchRunIdRef = useRef(0);
+  const previousUserRef = useRef<{ id: string; orgId: string | null; role: string } | null>(null);
 
   // Load persisted scope on mount and whenever user changes
   useEffect(() => {
@@ -93,11 +94,13 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
       scopeChangeSourceRef.current = 'init';
       setScopeState(undefined);
       try { localStorage.removeItem(LEGACY_KEY); } catch { /* ignore */ }
+      previousUserRef.current = null;
       return;
     }
 
     // Any scope updates in this effect are hydration/init.
     scopeChangeSourceRef.current = 'init';
+    const previousUser = previousUserRef.current;
     const key = storageKeyFor(user.id);
     // Migrate legacy key -> user-specific key if needed
     try {
@@ -122,12 +125,22 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
       const next = (typeof parsed === 'undefined') ? null : parsed;
       setScopeState(next);
       try { localStorage.setItem(key, next === null ? 'null' : String(next)); } catch { /* ignore */ }
+      previousUserRef.current = { id: user.id, orgId: user.orgId ?? null, role: user.role };
       return;
     }
+
+    const roleOrOrgChangedForSameUser = !!previousUser && previousUser.id === user.id && (
+      previousUser.role !== user.role ||
+      previousUser.orgId !== (user.orgId ?? null)
+    );
+
     // org_admin/user: allow persisted selection within subtree; sanitize null/undefined to own orgId
-    const next = (typeof parsed === 'string') ? parsed : (user.orgId ?? null);
+    const next = roleOrOrgChangedForSameUser
+      ? (user.orgId ?? null)
+      : (typeof parsed === 'string' ? parsed : (user.orgId ?? null));
     setScopeState(next);
     try { localStorage.setItem(key, next === null ? 'null' : String(next)); } catch { /* ignore */ }
+    previousUserRef.current = { id: user.id, orgId: user.orgId ?? null, role: user.role };
   }, [user?.id, user?.role, user?.orgId, loading]);
 
   // Apply the org scope header before regular query effects run.

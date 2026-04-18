@@ -8,6 +8,13 @@ export interface OrgTaxonomyTypeSetting {
   inheritAll: boolean;
 }
 
+export interface OrgChildTaxonomyDefaults {
+  categories: OrgTaxonomyTypeSetting;
+  tags: OrgTaxonomyTypeSetting;
+  cohorts: OrgTaxonomyTypeSetting;
+  allowChildAdminOverrides: boolean;
+}
+
 export interface VisibleTaxonomyItem {
   id: string;
   name: string;
@@ -26,6 +33,8 @@ export interface OrgTaxonomySettingsSnapshot {
   hasExplicitSettings: boolean;
   hasChildDefaults: boolean;
   childCount: number;
+  directChildCount: number;
+  descendantCount: number;
   settings: {
     categories: OrgTaxonomyTypeSetting;
     tags: OrgTaxonomyTypeSetting;
@@ -46,10 +55,15 @@ export interface OrgTaxonomySettingsSnapshot {
     tags: { mode: 'default' | 'legacy'; sourceOrgId: string | null; sourceOrgName: string | null };
     cohorts: { mode: 'default' | 'legacy'; sourceOrgId: string | null; sourceOrgName: string | null };
   };
-  childDefaults: {
-    categories: OrgTaxonomyTypeSetting;
-    tags: OrgTaxonomyTypeSetting;
-    cohorts: OrgTaxonomyTypeSetting;
+  childDefaults: OrgChildTaxonomyDefaults;
+  ownAdminPolicy: {
+    allowChildAdminOverrides: boolean;
+    sourceOrgId: string | null;
+    sourceOrgName: string | null;
+  };
+  permissions: {
+    canEditSelf: boolean;
+    canEditChildDefaults: boolean;
   };
   access: {
     categories: { canCreateOwn: boolean };

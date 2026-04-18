@@ -32,9 +32,13 @@ export interface OrganizationTaxonomySettings {
   cohorts?: OrganizationTaxonomyTypeSetting;
 }
 
+export interface OrganizationChildTaxonomyDefaults extends OrganizationTaxonomySettings {
+  allowChildAdminOverrides?: boolean;
+}
+
 export interface OrganizationTaxonomySettingsUpdatePayload {
   settings?: OrganizationTaxonomySettings | null;
-  childDefaults?: OrganizationTaxonomySettings | null;
+  childDefaults?: OrganizationChildTaxonomyDefaults | null;
 }
 
 @Entity('organizations')
@@ -74,5 +78,5 @@ export class Organization {
 
   // Standardregeln, die Unterorganisationen ohne eigenen Override übernehmen
   @Column({ type: 'simple-json', nullable: true })
-  childTaxonomyDefaults!: OrganizationTaxonomySettings | null;
+  childTaxonomyDefaults!: OrganizationChildTaxonomyDefaults | null;
 }

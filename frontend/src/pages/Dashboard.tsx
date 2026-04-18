@@ -2,8 +2,10 @@ import { Suspense, lazy, useMemo, useState, useEffect, type ReactNode } from 're
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
-import { useAuditLogs } from '@/lib/audit';
+import { useAuditLogs, type AuditLog, type AuditLogAction } from '@/lib/audit';
 import {
+  ChevronDown,
+  ChevronUp,
   Pencil,
   PlusCircle,
   Trash2,
@@ -125,6 +127,78 @@ const ACTIVITY_AUDIT_TYPE_LABELS: Record<string, string> = {
   outreach: 'Aufsuchend',
 };
 
+const AUDIT_ENTITY_LABELS: Record<string, string> = {
+  activity: 'Aktivität',
+  project: 'Projekt',
+  tag: 'Tag',
+  category: 'Kategorie',
+  cohort: 'Kohorte',
+  auth: 'Anmeldung',
+  user: 'Benutzer',
+  staff: 'Mitarbeiter',
+  location: 'Einrichtung',
+  organization: 'Organisation',
+  project_template: 'Vorlage',
+};
+
+const RECENT_ACTIONS_PER_GROUP = 10;
+const RECENT_ACTION_FETCH_LIMIT = 25;
+
+const AUDIT_ACTION_PRESENTATION: Record<
+  AuditLogAction,
+  {
+    label: string;
+    emptyState: string;
+    icon: typeof LogIn;
+    iconClassName: string;
+    summary: string;
+  }
+> = {
+  login: {
+    label: 'Anmeldungen',
+    emptyState: 'Noch keine Anmeldungen im Feed.',
+    icon: LogIn,
+    iconClassName: 'text-sky-600',
+    summary: 'Die neuesten Login-Events, separat von Inhaltsänderungen.',
+  },
+  create: {
+    label: 'Neu angelegt',
+    emptyState: 'Noch keine neuen Einträge im Feed.',
+    icon: PlusCircle,
+    iconClassName: 'text-green-600',
+    summary: 'Neu angelegte Inhalte und Datensätze.',
+  },
+  update: {
+    label: 'Bearbeitet',
+    emptyState: 'Noch keine Bearbeitungen im Feed.',
+    icon: Pencil,
+    iconClassName: 'text-blue-600',
+    summary: 'Aktualisierte Inhalte inklusive Feldänderungen.',
+  },
+  delete: {
+    label: 'Gelöscht',
+    emptyState: 'Noch keine Löschungen im Feed.',
+    icon: Trash2,
+    iconClassName: 'text-red-500',
+    summary: 'Entfernte Datensätze und Inhalte.',
+  },
+};
+
+const AUDIT_ACTION_ORDER: AuditLogAction[] = ['login', 'create', 'update', 'delete'];
+
+function filterDuplicateAuditEntries(items: AuditLog[]) {
+  const seenKeyWithUser = new Set<string>();
+  for (const entry of items) {
+    const key = `${entry.action}:${entry.entityType}:${entry.entityId}`;
+    if (entry.userName) seenKeyWithUser.add(key);
+  }
+
+  return items.filter((entry) => {
+    const key = `${entry.action}:${entry.entityType}:${entry.entityId}`;
+    return !(!entry.userName && seenKeyWithUser.has(key));
+  });
+}
+
 function formatAuditDiffLabel(entityType: string, key: string) {
   if (entityType === 'activity') return ACTIVITY_AUDIT_FIELD_LABELS[key] || key;
   return key;
@@ -176,9 +250,38 @@ export default function Dashboard() {
     refetchOnWindowFocus: 'always',
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
+  const auditRealtimeOptions = useMemo(
+    () => ({
+      refetchOnWindowFocus: 'always' as const,
+      refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+    }),
+    [publicConfig?.liveRefreshIntervalMs],
+  );
+  const { data: loginAudit = [] } = useAuditLogs(RECENT_ACTION_FETCH_LIMIT, {
+    ...auditRealtimeOptions,
+    actions: ['login'],
+  });
+  const { data: createAudit = [] } = useAuditLogs(RECENT_ACTION_FETCH_LIMIT, {
+    ...auditRealtimeOptions,
+    actions: ['create'],
+  });
+  const { data: updateAudit = [] } = useAuditLogs(RECENT_ACTION_FETCH_LIMIT, {
+    ...auditRealtimeOptions,
+    actions: ['update'],
+  });
+  const { data: deleteAudit = [] } = useAuditLogs(RECENT_ACTION_FETCH_LIMIT, {
+    ...auditRealtimeOptions,
+    actions: ['delete'],
+  });
   const [exportOpen, setExportOpen] = useState(false);
   const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
+  const [expandedRecentActionGroups, setExpandedRecentActionGroups] = useState<Record<AuditLogAction, boolean>>({
+    login: true,
+    create: true,
+    update: true,
+    delete: true,
+  });
   const tutorialDismissedStorageKey = useMemo(
     () => `dashboard-getting-started-v1:${user?.id || 'guest'}:${scopeKey}`,
     [scopeKey, user?.id],
@@ -243,21 +346,25 @@ export default function Dashboard() {
     }
   }, [tutorialDismissed]);
 
-  const lastFive = useMemo(() => {
-    const items = audit || [];
-    // Filter duplicate anonymous updates/deletes when a user-attributed entry with same entity/action exists
-    const seenKeyWithUser = new Set<string>();
-    for (const e of items) {
-      const key = `${e.action}:${e.entityType}:${e.entityId}`;
-      if (e.userName) seenKeyWithUser.add(key);
-    }
-    const filtered = items.filter((e) => {
-      const key = `${e.action}:${e.entityType}:${e.entityId}`;
-      if (!e.userName && seenKeyWithUser.has(key)) return false;
-      return true;
+  const recentActionGroups = useMemo(() => {
+    const auditByAction: Record<AuditLogAction, AuditLog[]> = {
+      login: loginAudit,
+      create: createAudit,
+      update: updateAudit,
+      delete: deleteAudit,
+    };
+
+    return AUDIT_ACTION_ORDER.map((action) => {
+      const deduplicatedItems = filterDuplicateAuditEntries(auditByAction[action]);
+      return {
+        action,
+        items: deduplicatedItems.slice(0, RECENT_ACTIONS_PER_GROUP),
+        visibleCount: Math.min(deduplicatedItems.length, RECENT_ACTIONS_PER_GROUP),
+        presentation: AUDIT_ACTION_PRESENTATION[action],
+      };
     });
-    return filtered.slice(0, 10);
-  }, [audit]);
+  }, [createAudit, deleteAudit, loginAudit, updateAudit]);
+  const hasRecentActionEntries = recentActionGroups.some((group) => group.items.length > 0);
 
   const fmt = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
   // keep date helpers only where needed; recent actions use locale string
@@ -351,6 +458,75 @@ export default function Dashboard() {
     if (!activityAuditRefreshKey) return;
     void refetchDailyLogActivities();
   }, [activityAuditRefreshKey, refetchDailyLogActivities]);
+
+  const toggleRecentActionGroup = (action: AuditLogAction) => {
+    setExpandedRecentActionGroups((current) => ({
+      ...current,
+      [action]: !current[action],
+    }));
+  };
+
+  const renderRecentActionEntry = (entry: AuditLog) => {
+    const who = entry.userName || 'Jemand';
+    const what = AUDIT_ENTITY_LABELS[entry.entityType] || entry.entityType;
+    const title = entry.entityTitle ? ` „${entry.entityTitle}“` : '';
+    const when = new Date(entry.createdAt).toLocaleString('de-DE');
+    const ackDone =
+      entry.entityType === 'activity' &&
+      entry.action === 'update' &&
+      typeof (entry.details as { ackDone?: unknown } | null | undefined)?.ackDone === 'boolean'
+        ? Boolean((entry.details as { ackDone?: boolean }).ackDone)
+        : null;
+    const verb =
+      entry.action === 'login'
+        ? 'angemeldet'
+        : entry.action === 'create'
+          ? 'angelegt'
+          : ackDone !== null
+            ? ackDone
+              ? 'als besprochen markiert'
+              : 'als unbesprochen markiert'
+            : entry.action === 'update'
+              ? 'bearbeitet'
+              : 'gelöscht';
+    const orgName = entry.orgName || (entry.orgId ? orgMap[entry.orgId] : undefined);
+    const titleLine =
+      entry.action === 'login'
+        ? `${who} hat sich angemeldet.`
+        : `${who} hat ${what}${title} ${verb}.`;
+
+    return (
+      <div key={entry.id} className="recent-actions-entry rounded-lg px-3 py-2.5 sm:px-4 sm:py-3">
+        <div className="min-w-0">
+          <h4 className="recent-actions-entry-title font-semibold">{titleLine}</h4>
+          <p className="recent-actions-entry-meta text-xs">{when}</p>
+          {entry.action === 'login' && entry.entityTitle && (
+            <span className="recent-actions-chip mt-1 inline-block rounded px-1.5 py-0.5 text-[11px]">
+              Account: {entry.entityTitle}
+            </span>
+          )}
+          {orgName && (
+            <span className="recent-actions-chip mt-1 ml-0 inline-block rounded px-1.5 py-0.5 text-[11px] sm:ml-1">
+              Organisation: {orgName}
+            </span>
+          )}
+          {entry.diff && Object.keys(entry.diff).length > 0 && (
+            <ul className="recent-actions-diff mt-2 list-disc space-y-0.5 pl-5 text-sm">
+              {Object.entries(
+                entry.diff as Record<string, { from: unknown; to: unknown }>,
+              ).map(([key, value]) => (
+                <li key={key}>
+                  <span className="font-medium">{formatAuditDiffLabel(entry.entityType, key)}:</span>{' '}
+                  {formatAuditDiffValue(entry.entityType, key, value.from)} →{' '}
+                  {formatAuditDiffValue(entry.entityType, key, value.to)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // Sync server-side ack state for the visible Daily Log items
   useEffect(() => {
@@ -600,94 +776,62 @@ export default function Dashboard() {
       {/* Recent Actions */}
       <div className="modern-card p-4 sm:p-6">
         <h3 className="mb-3 text-lg font-bold text-gray-800 sm:mb-4 sm:text-xl">Letzte Aktionen</h3>
-        <div className="space-y-2.5 sm:space-y-3">
-          {(lastFive || []).map((e) => {
-            const icon =
-              e.action === 'login' ? (
-                <LogIn className="w-5 h-5 text-sky-600" />
-              ) : e.action === 'create' ? (
-                <PlusCircle className="w-5 h-5 text-green-600" />
-              ) : e.action === 'update' ? (
-                <Pencil className="w-5 h-5 text-blue-600" />
-              ) : (
-                <Trash2 className="w-5 h-5 text-red-500" />
-              );
-            const labelMap: Record<string, string> = {
-              activity: 'Aktivität',
-              project: 'Projekt',
-              tag: 'Tag',
-              category: 'Kategorie',
-              cohort: 'Kohorte',
-              auth: 'Anmeldung',
-            };
-            const who = e.userName || 'Jemand';
-            const what = labelMap[e.entityType] || e.entityType;
-            const title = e.entityTitle ? ` „${e.entityTitle}“` : '';
-            const when = new Date(e.createdAt).toLocaleString('de-DE');
-            const ackDone =
-              e.entityType === 'activity' &&
-              e.action === 'update' &&
-              typeof (e.details as { ackDone?: unknown } | null | undefined)?.ackDone === 'boolean'
-                ? Boolean((e.details as { ackDone?: boolean }).ackDone)
-                : null;
-            const verb =
-              e.action === 'login'
-                ? 'angemeldet'
-                : e.action === 'create'
-                ? 'angelegt'
-                : ackDone !== null
-                  ? ackDone
-                    ? 'als besprochen markiert'
-                    : 'als unbesprochen markiert'
-                : e.action === 'update'
-                  ? 'bearbeitet'
-                  : 'gelöscht';
-            // Prefer backend-provided orgName; fallback to local mapping for older entries
-            const orgName = e.orgName || (e.orgId ? orgMap[e.orgId] : undefined);
+        <div className="space-y-3">
+          {recentActionGroups.map((group) => {
+            const GroupIcon = group.presentation.icon;
+            const expanded = expandedRecentActionGroups[group.action];
 
-            const titleLine =
-              e.action === 'login'
-                ? `${who} hat sich angemeldet.`
-                : `${who} hat ${what}${title} ${verb}.`;
             return (
-              <div key={e.id} className="rounded-lg bg-gray-50 px-3 py-2.5 sm:px-4 sm:py-3">
-                <div className="flex justify-between items-start gap-3">
-                  <div className="flex items-start gap-2.5 sm:gap-3">
-                    <div className="rounded-lg bg-white p-1.5 shadow-sm sm:p-2">{icon}</div>
-                    <div className="min-w-0">
-                      <h4 className="font-semibold text-gray-800">{titleLine}</h4>
-                      <p className="text-xs text-gray-600">{when}</p>
-                      {e.action === 'login' && e.entityTitle && (
-                        <span className="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
-                          Account: {e.entityTitle}
-                        </span>
-                      )}
-                      {orgName && (
-                        <span className="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
-                          Organisation: {orgName}
-                        </span>
-                      )}
-                      {e.diff && Object.keys(e.diff).length > 0 && (
-                        <ul className="mt-2 text-sm text-gray-700 list-disc pl-5 space-y-0.5">
-                          {Object.entries(
-                            e.diff as Record<string, { from: unknown; to: unknown }>,
-                          ).map(([k, v]) => (
-                            <li key={k}>
-                              <span className="font-medium">{formatAuditDiffLabel(e.entityType, k)}:</span>{' '}
-                              {formatAuditDiffValue(e.entityType, k, v.from)} →{' '}
-                              {formatAuditDiffValue(e.entityType, k, v.to)}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+              <section key={group.action} className="recent-actions-group">
+                <button
+                  type="button"
+                  className="recent-actions-group-header flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors sm:px-5"
+                  onClick={() => toggleRecentActionGroup(group.action)}
+                  aria-expanded={expanded}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="recent-actions-icon-shell inline-flex rounded-xl p-2.5">
+                      <GroupIcon className={`h-5 w-5 ${group.presentation.iconClassName}`} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-[color:var(--text-primary)]">
+                        {group.presentation.label}
+                      </span>
+                      <span className="recent-actions-group-kicker block truncate text-xs">
+                        {group.presentation.summary}
+                      </span>
+                    </span>
                   </div>
-                </div>
-              </div>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="recent-actions-group-count inline-flex rounded-full px-2.5 py-1 text-xs font-medium">
+                      {group.visibleCount}
+                    </span>
+                    {expanded ? (
+                      <ChevronUp className="h-4 w-4 text-[color:var(--text-muted)]" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-[color:var(--text-muted)]" />
+                    )}
+                  </span>
+                </button>
+
+                {expanded && (
+                  <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+                    {group.items.length === 0 ? (
+                      <div className="recent-actions-empty px-2 py-2 text-sm">
+                        {group.presentation.emptyState}
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 sm:space-y-3">
+                        {group.items.map(renderRecentActionEntry)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
             );
           })}
-          {(lastFive || []).length === 0 && (
-            <div className="text-gray-500">Noch keine Aktionen vorhanden.</div>
+          {!hasRecentActionEntries && (
+            <div className="recent-actions-empty text-sm">Noch keine Aktionen vorhanden.</div>
           )}
         </div>
       </div>

@@ -4,6 +4,7 @@ import { In, Repository } from 'typeorm';
 import {
   Organization,
   OpeningHours,
+  OrganizationChildTaxonomyDefaults,
   OrganizationTaxonomySettings,
   OrganizationTaxonomySettingsUpdatePayload,
   OrganizationTaxonomyType,
@@ -20,11 +21,27 @@ const SUBTREE_CACHE_TTL_MS = 10_000;
 type SubtreeCacheEntry = { expiresAt: number; ids: string[] };
 type TaxonomyRecord = Category | Tag | Cohort;
 type NormalizedTaxonomySetting = { allowOwn: boolean; inheritedIds: string[]; inheritAll: boolean };
+type NormalizedChildTaxonomyDefaults = {
+  categories: NormalizedTaxonomySetting;
+  tags: NormalizedTaxonomySetting;
+  cohorts: NormalizedTaxonomySetting;
+  allowChildAdminOverrides: boolean;
+};
 type ResolvedTaxonomySetting = {
   setting: NormalizedTaxonomySetting;
   mode: 'explicit' | 'default' | 'legacy';
   sourceOrgId: string | null;
   sourceOrgName: string | null;
+};
+type OrgAdminPolicy = {
+  allowChildAdminOverrides: boolean;
+  sourceOrgId: string | null;
+  sourceOrgName: string | null;
+};
+type TaxonomyConfigPermissions = {
+  canView: boolean;
+  canEditSelf: boolean;
+  canEditChildDefaults: boolean;
 };
 
 export interface VisibleTaxonomyMeta {
@@ -48,6 +65,8 @@ export interface OrgTaxonomySettingsSnapshot {
   hasExplicitSettings: boolean;
   hasChildDefaults: boolean;
   childCount: number;
+  directChildCount: number;
+  descendantCount: number;
   settings: {
     categories: NormalizedTaxonomySetting;
     tags: NormalizedTaxonomySetting;
@@ -72,6 +91,12 @@ export interface OrgTaxonomySettingsSnapshot {
     categories: NormalizedTaxonomySetting;
     tags: NormalizedTaxonomySetting;
     cohorts: NormalizedTaxonomySetting;
+    allowChildAdminOverrides: boolean;
+  };
+  ownAdminPolicy: OrgAdminPolicy;
+  permissions: {
+    canEditSelf: boolean;
+    canEditChildDefaults: boolean;
   };
   access: TaxonomyAccessMap;
   parentOptions: {
@@ -157,6 +182,14 @@ export class OrgsService {
     };
   }
 
+  private normalizeChildTaxonomyDefaults(settings?: OrganizationChildTaxonomyDefaults | null): NormalizedChildTaxonomyDefaults {
+    const normalized = this.normalizeTaxonomySettings(settings);
+    return {
+      ...normalized,
+      allowChildAdminOverrides: settings?.allowChildAdminOverrides !== false,
+    };
+  }
+
   private sortTaxonomies<T extends TaxonomyRecord>(kind: OrganizationTaxonomyType, items: T[]): T[] {
     const copy = [...items];
     copy.sort((left, right) => {
@@ -219,8 +252,9 @@ export class OrgsService {
       const parent = orgMap.get(currentParentId);
       if (!parent) break;
       if (parent.childTaxonomyDefaults) {
+        const parentDefaults = this.normalizeChildTaxonomyDefaults(parent.childTaxonomyDefaults);
         return {
-          setting: this.normalizeTaxonomySettings(parent.childTaxonomyDefaults)[kind],
+          setting: parentDefaults[kind],
           mode: 'default',
           sourceOrgId: parent.id,
           sourceOrgName: parent.name,
@@ -247,8 +281,9 @@ export class OrgsService {
       const parent = orgMap.get(currentParentId);
       if (!parent) break;
       if (parent.childTaxonomyDefaults) {
+        const parentDefaults = this.normalizeChildTaxonomyDefaults(parent.childTaxonomyDefaults);
         return {
-          setting: this.normalizeTaxonomySettings(parent.childTaxonomyDefaults)[kind],
+          setting: parentDefaults[kind],
           mode: 'default',
           sourceOrgId: parent.id,
           sourceOrgName: parent.name,
@@ -369,7 +404,6 @@ export class OrgsService {
     const orgMap = this.toOrgMap(orgs);
     const org = orgMap.get(orgId);
     if (!org) return false;
-    if (!org.parentId) return true;
     return this.resolveTaxonomySettingFromData(kind, org, orgMap).setting.allowOwn;
   }
 
@@ -443,11 +477,74 @@ export class OrgsService {
   }
 
   private async assertCanManageOrgTaxonomyConfig(org: Organization, actor: { role: string; orgId?: string | null }) {
-    if (actor.role === 'superadmin') return;
-    const actorOrgId = actor.orgId ?? null;
-    if (!actorOrgId || (org.id !== actorOrgId && org.parentId !== actorOrgId)) {
+    const permissions = this.getTaxonomyConfigPermissions(org, actor, this.toOrgMap(await this.repo.find()));
+    if (!permissions.canView) {
       throw new ForbiddenException('Org-Admins können nur die eigene Organisation und direkte Unterorganisationen konfigurieren');
     }
+  }
+
+  private resolveOwnAdminPolicyForOrg(org: Organization, orgMap: Map<string, Organization>): OrgAdminPolicy {
+    if (!org.parentId) {
+      return {
+        allowChildAdminOverrides: true,
+        sourceOrgId: null,
+        sourceOrgName: null,
+      };
+    }
+
+    const parent = orgMap.get(org.parentId);
+    if (!parent) {
+      return {
+        allowChildAdminOverrides: true,
+        sourceOrgId: null,
+        sourceOrgName: null,
+      };
+    }
+
+    if (!parent.childTaxonomyDefaults) {
+      return {
+        allowChildAdminOverrides: true,
+        sourceOrgId: parent.id,
+        sourceOrgName: parent.name,
+      };
+    }
+
+    const normalizedDefaults = this.normalizeChildTaxonomyDefaults(parent.childTaxonomyDefaults);
+    return {
+      allowChildAdminOverrides: normalizedDefaults.allowChildAdminOverrides,
+      sourceOrgId: parent.id,
+      sourceOrgName: parent.name,
+    };
+  }
+
+  private getTaxonomyConfigPermissions(
+    org: Organization,
+    actor: { role: string; orgId?: string | null },
+    orgMap: Map<string, Organization>,
+  ): TaxonomyConfigPermissions {
+    if (actor.role === 'superadmin') {
+      return { canView: true, canEditSelf: true, canEditChildDefaults: true };
+    }
+
+    const actorOrgId = actor.orgId ?? null;
+    if (!actorOrgId) {
+      return { canView: false, canEditSelf: false, canEditChildDefaults: false };
+    }
+
+    if (org.parentId === actorOrgId) {
+      return { canView: true, canEditSelf: true, canEditChildDefaults: true };
+    }
+
+    if (org.id === actorOrgId) {
+      const ownPolicy = this.resolveOwnAdminPolicyForOrg(org, orgMap);
+      return {
+        canView: true,
+        canEditSelf: ownPolicy.allowChildAdminOverrides,
+        canEditChildDefaults: ownPolicy.allowChildAdminOverrides,
+      };
+    }
+
+    return { canView: false, canEditSelf: false, canEditChildDefaults: false };
   }
 
   findAll() { return this.repo.find(); }
@@ -502,9 +599,13 @@ export class OrgsService {
     const org = orgMap.get(orgId);
     if (!org) throw new BadRequestException('Organisation nicht gefunden');
 
-    await this.assertCanManageOrgTaxonomyConfig(org, actor);
+    const permissions = this.getTaxonomyConfigPermissions(org, actor, orgMap);
+    if (!permissions.canView) {
+      throw new ForbiddenException('Org-Admins können nur die eigene Organisation und direkte Unterorganisationen konfigurieren');
+    }
 
     const parent = org.parentId ? orgMap.get(org.parentId) : null;
+    const ownAdminPolicy = this.resolveOwnAdminPolicyForOrg(org, orgMap);
     const resolvedSettings = {
       categories: this.resolveTaxonomySettingFromData('categories', org, orgMap),
       tags: this.resolveTaxonomySettingFromData('tags', org, orgMap),
@@ -521,7 +622,8 @@ export class OrgsService {
       cohorts: resolvedSettings.cohorts.setting,
     };
     const access = await this.getTaxonomyAccessForOrg(org.id);
-    const childCount = orgs.filter((candidate) => candidate.parentId === org.id).length;
+    const directChildCount = orgs.filter((candidate) => candidate.parentId === org.id).length;
+    const descendantCount = this.getSubtreeIdsFromMap(org.id, orgMap).length - 1;
 
     return {
       orgId: org.id,
@@ -530,7 +632,9 @@ export class OrgsService {
       parentName: parent?.name || null,
       hasExplicitSettings: !!org.taxonomySettings,
       hasChildDefaults: !!org.childTaxonomyDefaults,
-      childCount,
+      childCount: descendantCount,
+      directChildCount,
+      descendantCount,
       settings,
       settingsSource: {
         categories: { mode: resolvedSettings.categories.mode, sourceOrgId: resolvedSettings.categories.sourceOrgId, sourceOrgName: resolvedSettings.categories.sourceOrgName },
@@ -547,7 +651,12 @@ export class OrgsService {
         tags: { mode: fallbackSettings.tags.mode, sourceOrgId: fallbackSettings.tags.sourceOrgId, sourceOrgName: fallbackSettings.tags.sourceOrgName },
         cohorts: { mode: fallbackSettings.cohorts.mode, sourceOrgId: fallbackSettings.cohorts.sourceOrgId, sourceOrgName: fallbackSettings.cohorts.sourceOrgName },
       },
-      childDefaults: this.normalizeTaxonomySettings(org.childTaxonomyDefaults),
+      childDefaults: this.normalizeChildTaxonomyDefaults(org.childTaxonomyDefaults),
+      ownAdminPolicy,
+      permissions: {
+        canEditSelf: permissions.canEditSelf,
+        canEditChildDefaults: permissions.canEditChildDefaults,
+      },
       access,
       parentOptions: {
         categories: org.parentId ? await this.listVisibleCategoriesForOrg(org.parentId) : [],
@@ -567,43 +676,64 @@ export class OrgsService {
     payload: OrganizationTaxonomySettingsUpdatePayload,
     actor: { role: string; orgId?: string | null },
   ): Promise<OrgTaxonomySettingsSnapshot> {
-    const org = await this.repo.findOne({ where: { id: orgId } });
+    const orgs = await this.repo.find();
+    const orgMap = this.toOrgMap(orgs);
+    const org = orgMap.get(orgId);
     if (!org) throw new BadRequestException('Organisation nicht gefunden');
 
-    await this.assertCanManageOrgTaxonomyConfig(org, actor);
+    const permissions = this.getTaxonomyConfigPermissions(org, actor, orgMap);
+    if (!permissions.canView) {
+      throw new ForbiddenException('Org-Admins können nur die eigene Organisation und direkte Unterorganisationen konfigurieren');
+    }
+    if (typeof payload.settings !== 'undefined' && !permissions.canEditSelf) {
+      throw new ForbiddenException('Die übergeordnete Organisation hat Änderungen an den Vererbungsregeln für diese Organisation gesperrt');
+    }
+    if (typeof payload.childDefaults !== 'undefined' && !permissions.canEditChildDefaults) {
+      throw new ForbiddenException('Die übergeordnete Organisation hat Änderungen an den Vererbungsregeln für diese Organisation gesperrt');
+    }
 
     if (typeof payload.settings !== 'undefined') {
-      if (!org.parentId && payload.settings !== null) {
-        throw new BadRequestException('Oberste Organisationen können keine eigene Vererbungsregel von einem Parent erhalten');
-      }
-
       if (payload.settings === null) {
         org.taxonomySettings = null;
       } else {
         const normalized = this.normalizeTaxonomySettings(payload.settings);
-        const parentVisible = {
-          categories: new Set((await this.listVisibleCategoriesForOrg(org.parentId)).map((item) => item.id)),
-          tags: new Set((await this.listVisibleTagsForOrg(org.parentId)).map((item) => item.id)),
-          cohorts: new Set((await this.listVisibleCohortsForOrg(org.parentId)).map((item) => item.id)),
-        };
+        const normalizedSettings = !org.parentId
+          ? {
+              categories: { ...normalized.categories, inheritAll: false, inheritedIds: [] },
+              tags: { ...normalized.tags, inheritAll: false, inheritedIds: [] },
+              cohorts: { ...normalized.cohorts, inheritAll: false, inheritedIds: [] },
+            }
+          : normalized;
 
-        if (!normalized.categories.inheritAll) {
-          for (const id of normalized.categories.inheritedIds) {
+        const parentVisible = org.parentId
+          ? {
+              categories: new Set((await this.listVisibleCategoriesForOrg(org.parentId)).map((item) => item.id)),
+              tags: new Set((await this.listVisibleTagsForOrg(org.parentId)).map((item) => item.id)),
+              cohorts: new Set((await this.listVisibleCohortsForOrg(org.parentId)).map((item) => item.id)),
+            }
+          : {
+              categories: new Set<string>(),
+              tags: new Set<string>(),
+              cohorts: new Set<string>(),
+            };
+
+        if (!normalizedSettings.categories.inheritAll) {
+          for (const id of normalizedSettings.categories.inheritedIds) {
             if (!parentVisible.categories.has(id)) throw new BadRequestException('Ungültige Kategorien-Vererbung');
           }
         }
-        if (!normalized.tags.inheritAll) {
-          for (const id of normalized.tags.inheritedIds) {
+        if (!normalizedSettings.tags.inheritAll) {
+          for (const id of normalizedSettings.tags.inheritedIds) {
             if (!parentVisible.tags.has(id)) throw new BadRequestException('Ungültige Tags-Vererbung');
           }
         }
-        if (!normalized.cohorts.inheritAll) {
-          for (const id of normalized.cohorts.inheritedIds) {
+        if (!normalizedSettings.cohorts.inheritAll) {
+          for (const id of normalizedSettings.cohorts.inheritedIds) {
             if (!parentVisible.cohorts.has(id)) throw new BadRequestException('Ungültige Kohorten-Vererbung');
           }
         }
 
-        org.taxonomySettings = normalized;
+        org.taxonomySettings = normalizedSettings;
       }
     }
 
@@ -611,7 +741,7 @@ export class OrgsService {
       if (payload.childDefaults === null) {
         org.childTaxonomyDefaults = null;
       } else {
-        const normalizedChildDefaults = this.normalizeTaxonomySettings(payload.childDefaults);
+        const normalizedChildDefaults = this.normalizeChildTaxonomyDefaults(payload.childDefaults);
         const ownVisible = {
           categories: new Set((await this.listVisibleCategoriesForOrg(org.id)).map((item) => item.id)),
           tags: new Set((await this.listVisibleTagsForOrg(org.id)).map((item) => item.id)),

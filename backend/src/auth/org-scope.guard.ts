@@ -17,7 +17,8 @@ import { OrgsService } from '../orgs/orgs.service';
  *   - If user.orgId is set:
  *       - Header absent -> effectiveOrgId = user.orgId (default to own org)
  *       - Header 'null' or empty -> 403 (cannot scope outside subtree)
- *       - Header '<uuid>' -> must be within subtree of user's org -> effectiveOrgId = uuid else 403
+ *       - Header '<uuid>' -> must be within subtree of user's org
+ *         otherwise it falls back to user.orgId to recover from stale client scope
  */
 @Injectable()
 export class OrgScopeGuard implements CanActivate {
@@ -75,6 +76,8 @@ export class OrgScopeGuard implements CanActivate {
       request.effectiveOrgId = requested;
       return true;
     }
-    throw new ForbiddenException('Nicht erlaubt (Org-Scope)');
+
+    request.effectiveOrgId = myOrgId;
+    return true;
   }
 }

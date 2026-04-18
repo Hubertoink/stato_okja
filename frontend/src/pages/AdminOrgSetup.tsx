@@ -48,6 +48,23 @@ function Tooltip({ label, names, children }: { label: string; names?: string[]; 
   );
 }
 
+const taxonomySurfaceClass = 'rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-primary)]';
+const taxonomyMutedSurfaceClass = 'rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)]';
+const taxonomySecondaryTextClass = 'text-[var(--text-secondary)]';
+const taxonomyMutedTextClass = 'text-[var(--text-muted)]';
+const taxonomyNeutralButtonClass = 'rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-secondary)] transition-colors hover:bg-[var(--interactive-soft)]';
+const taxonomySegmentedClass = 'inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-1 shadow-sm';
+const taxonomySegmentedButtonInactiveClass = 'text-[var(--text-secondary)] hover:bg-[var(--interactive-soft)]';
+const taxonomySectionCardClass = 'rounded-xl border p-4 space-y-3';
+const taxonomyBannerInfoClass = 'taxonomy-config-info-banner rounded-lg px-4 py-3 text-sm';
+const taxonomyBannerWarningClass = 'taxonomy-config-warning-banner rounded-lg px-4 py-3 text-sm';
+const taxonomyOverrideSoftClass = 'taxonomy-config-warning-soft';
+const taxonomyOverrideSurfaceClass = 'taxonomy-config-override-surface';
+const taxonomyOverridePillClass = 'taxonomy-config-override-pill rounded-full px-2 py-0.5 text-[11px] font-medium';
+
+type TaxonomyDraftState = OrgTaxonomySettingsSnapshot['settings'] | OrgTaxonomySettingsSnapshot['childDefaults'];
+type TaxonomySectionKey = keyof OrgTaxonomySettingsSnapshot['settings'];
+
 function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto | null; open: boolean; onClose: () => void; onSaved: () => void }) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -69,7 +86,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
         setSnapshot(data);
         setSettingsDraft(data.settings);
         setChildDefaultsDraft(data.childDefaults);
-        setActivePanel(data.parentId ? 'self' : 'children');
+        setActivePanel('self');
         setClearOwnSettings(false);
         setClearChildDefaults(false);
       })
@@ -91,10 +108,22 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     key: keyof OrgTaxonomySettingsSnapshot['settings'],
     id: string,
   ) => {
-    const setDraft = target === 'self' ? setSettingsDraft : setChildDefaultsDraft;
     if (target === 'self') setClearOwnSettings(false);
     else setClearChildDefaults(false);
-    setDraft((current) => {
+    if (target === 'self') {
+      setSettingsDraft((current) => {
+        if (!current) return current;
+        const nextIds = new Set(current[key].inheritedIds || []);
+        if (nextIds.has(id)) nextIds.delete(id);
+        else nextIds.add(id);
+        return {
+          ...current,
+          [key]: { ...current[key], inheritedIds: Array.from(nextIds) },
+        };
+      });
+      return;
+    }
+    setChildDefaultsDraft((current) => {
       if (!current) return current;
       const nextIds = new Set(current[key].inheritedIds || []);
       if (nextIds.has(id)) nextIds.delete(id);
@@ -111,10 +140,18 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     key: keyof OrgTaxonomySettingsSnapshot['settings'],
     allowOwn: boolean,
   ) => {
-    const setDraft = target === 'self' ? setSettingsDraft : setChildDefaultsDraft;
     if (target === 'self') setClearOwnSettings(false);
     else setClearChildDefaults(false);
-    setDraft((current) => current ? { ...current, [key]: { ...current[key], allowOwn } } : current);
+    if (target === 'self') {
+      setSettingsDraft((current) => current ? { ...current, [key]: { ...current[key], allowOwn } } : current);
+      return;
+    }
+    setChildDefaultsDraft((current) => current ? { ...current, [key]: { ...current[key], allowOwn } } : current);
+  };
+
+  const updateAllowChildAdminOverrides = (allowChildAdminOverrides: boolean) => {
+    setClearChildDefaults(false);
+    setChildDefaultsDraft((current) => current ? { ...current, allowChildAdminOverrides } : current);
   };
 
   const updateInheritAll = (
@@ -122,10 +159,13 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     key: keyof OrgTaxonomySettingsSnapshot['settings'],
     inheritAll: boolean,
   ) => {
-    const setDraft = target === 'self' ? setSettingsDraft : setChildDefaultsDraft;
     if (target === 'self') setClearOwnSettings(false);
     else setClearChildDefaults(false);
-    setDraft((current) => current ? { ...current, [key]: { ...current[key], inheritAll } } : current);
+    if (target === 'self') {
+      setSettingsDraft((current) => current ? { ...current, [key]: { ...current[key], inheritAll } } : current);
+      return;
+    }
+    setChildDefaultsDraft((current) => current ? { ...current, [key]: { ...current[key], inheritAll } } : current);
   };
 
   const sections = [
@@ -153,8 +193,8 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
   ];
 
   const settingsEqual = (
-    left: OrgTaxonomySettingsSnapshot['settings'],
-    right: OrgTaxonomySettingsSnapshot['settings'],
+    left: TaxonomyDraftState,
+    right: TaxonomyDraftState,
   ) => sections.every((section) => {
     const leftEntry = left[section.key];
     const rightEntry = right[section.key];
@@ -163,9 +203,14 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     return leftEntry.inheritedIds.every((id, index) => id === rightEntry.inheritedIds[index]);
   });
 
+  const childDefaultsEqual = (
+    left: OrgTaxonomySettingsSnapshot['childDefaults'],
+    right: OrgTaxonomySettingsSnapshot['childDefaults'],
+  ) => settingsEqual(left, right) && left.allowChildAdminOverrides === right.allowChildAdminOverrides;
+
   const isSectionItemSelected = (
-    settings: OrgTaxonomySettingsSnapshot['settings'],
-    key: keyof OrgTaxonomySettingsSnapshot['settings'],
+    settings: TaxonomyDraftState,
+    key: TaxonomySectionKey,
     id: string,
   ) => settings[key].inheritAll || settings[key].inheritedIds.includes(id);
 
@@ -176,20 +221,26 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     baseline,
     intro,
     reset,
+    readOnly,
   }: {
-    draft: OrgTaxonomySettingsSnapshot['settings'];
+    draft: TaxonomyDraftState;
     target: 'self' | 'children';
     options: OrgTaxonomySettingsSnapshot['parentOptions'] | OrgTaxonomySettingsSnapshot['childDefaultOptions'];
-    baseline?: OrgTaxonomySettingsSnapshot['settings'];
+    baseline?: TaxonomyDraftState;
     intro: React.ReactNode;
     reset?: React.ReactNode;
-  }) => (
+    readOnly: boolean;
+  }) => {
+    const hasParentSource = target === 'self' && !!snapshot?.parentId;
+    const showInheritedContentRules = target === 'children' || hasParentSource;
+
+    return (
     <div className="space-y-5">
       {intro}
       {reset}
       {target === 'self' && baseline ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          Gelb markierte Felder weichen von der aktuell geerbten Standardregel der übergeordneten Organisation ab.
+        <div className={`${taxonomyBannerWarningClass} text-xs`}>
+          Gelb markierte Felder weichen von der aktuell geltenden Standardregel ab.
         </div>
       ) : null}
       {sections.map((section) => {
@@ -203,50 +254,56 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
           : 0;
         const hasSectionDiff = hasAllowOwnDiff || hasInheritAllDiff || changedItemCount > 0;
         return (
-          <div key={`${target}-${section.key}`} className={`rounded-xl border p-4 space-y-3 ${hasSectionDiff ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}>
+          <div key={`${target}-${section.key}`} className={`${taxonomySectionCardClass} ${hasSectionDiff ? taxonomyOverrideSurfaceClass : 'border-[var(--border-subtle)] bg-[var(--surface-1)]'}`}>
             <div>
               <div className="flex items-center justify-between gap-3">
-                <h4 className="font-semibold text-gray-900">{section.title}</h4>
-                {hasSectionDiff ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">Override aktiv</span> : null}
+                <h4 className="font-semibold text-[var(--text-primary)]">{section.title}</h4>
+                {hasSectionDiff ? <span className={taxonomyOverridePillClass}>Override aktiv</span> : null}
               </div>
-              <p className="text-xs text-gray-500">
+              <p className={`text-xs ${taxonomyMutedTextClass}`}>
                 {target === 'self'
-                  ? 'Wähle, welche Einträge aus der Parent-Organisation in dieser Unterorganisation sichtbar sind.'
+                  ? hasParentSource
+                    ? 'Wähle, welche Einträge aus der Parent-Organisation in dieser Unterorganisation sichtbar sind.'
+                    : 'Steuere für diese Organisation, ob lokale Einträge zusätzlich erlaubt sind.'
                   : 'Lege fest, welche Einträge Unterorganisationen standardmäßig von dieser Organisation sehen.'}
               </p>
             </div>
-            {target === 'self' && source && source.mode !== 'explicit' ? (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+            {hasParentSource && source && source.mode !== 'explicit' ? (
+              <div className={`${taxonomyBannerInfoClass} text-xs`}>
                 Derzeit greift {source.mode === 'default' ? `der Standard von ${source.sourceOrgName || 'einer übergeordneten Organisation'}` : 'das bisherige Standardsystem ohne expliziten Override'}.
               </div>
             ) : null}
-            <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/80 p-3">
-              <label className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 ${hasInheritAllDiff ? 'border border-amber-300 bg-amber-50' : 'bg-white'}`}>
-                <input
-                  type="checkbox"
-                  checked={draft[section.key].inheritAll}
-                  onChange={(event) => updateInheritAll(target, section.key, event.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
-                />
-                <span className="min-w-0">
-                  <span className="block font-medium text-gray-800">{section.inheritAllLabel}</span>
-                  <span className="block text-xs text-gray-500">
-                    {target === 'self'
-                      ? 'Bestehende und künftig sichtbare Parent-Einträge werden automatisch übernommen.'
-                      : 'Direkte und weitere Unterorganisationen übernehmen bestehende und künftig sichtbare Einträge automatisch, solange dort kein eigener Override gesetzt ist.'}
+            <div className={`space-y-2 p-3 ${taxonomyMutedSurfaceClass}`}>
+              {showInheritedContentRules ? (
+                <label className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm ${taxonomySecondaryTextClass} ${hasInheritAllDiff ? taxonomyOverrideSoftClass : 'bg-[var(--surface-1)]'} ${readOnly ? 'cursor-not-allowed opacity-75' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={draft[section.key].inheritAll}
+                    onChange={(event) => updateInheritAll(target, section.key, event.target.checked)}
+                    disabled={readOnly}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                  />
+                  <span className="min-w-0">
+                    <span className="block font-medium text-[var(--text-primary)]">{section.inheritAllLabel}</span>
+                    <span className={`block text-xs ${taxonomyMutedTextClass}`}>
+                      {target === 'self'
+                        ? 'Bestehende und künftig sichtbare Parent-Einträge werden automatisch übernommen.'
+                        : 'Direkte und weitere Unterorganisationen übernehmen bestehende und künftig sichtbare Einträge automatisch, solange dort kein eigener Override gesetzt ist.'}
+                    </span>
                   </span>
-                </span>
-              </label>
-              <label className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 ${hasAllowOwnDiff ? 'border border-amber-300 bg-amber-50' : 'bg-white'}`}>
+                </label>
+              ) : null}
+              <label className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm ${taxonomySecondaryTextClass} ${hasAllowOwnDiff ? taxonomyOverrideSoftClass : 'bg-[var(--surface-1)]'} ${readOnly ? 'cursor-not-allowed opacity-75' : ''}`}>
                 <input
                   type="checkbox"
                   checked={draft[section.key].allowOwn}
                   onChange={(event) => updateAllowOwn(target, section.key, event.target.checked)}
+                  disabled={readOnly}
                   className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
                 />
                 <span className="min-w-0">
-                  <span className="block font-medium text-gray-800">{section.allowLabel}</span>
-                  <span className="block text-xs text-gray-500">
+                  <span className="block font-medium text-[var(--text-primary)]">{section.allowLabel}</span>
+                  <span className={`block text-xs ${taxonomyMutedTextClass}`}>
                     {target === 'self'
                       ? 'Lokale Einträge können zusätzlich in dieser Organisation angelegt werden.'
                       : 'Unterorganisationen dürfen zusätzlich eigene lokale Einträge anlegen, sofern sie keinen eigenen Override setzen.'}
@@ -254,7 +311,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                 </span>
               </label>
             </div>
-            {sectionOptions.length > 0 ? (
+            {showInheritedContentRules && sectionOptions.length > 0 ? (
               <>
                 {draft[section.key].inheritAll && (
                   <div className="rounded-lg border border-viridian/20 bg-viridian/5 px-3 py-2 text-xs text-viridian">
@@ -270,18 +327,18 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                       ? isSectionItemSelected(draft, section.key, item.id) !== isSectionItemSelected(baseline, section.key, item.id)
                       : false;
                     return (
-                      <label key={`${target}-${section.key}-${item.id}`} className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${draft[section.key].inheritAll ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${differsFromBaseline ? 'border-amber-300 bg-amber-50' : selected ? 'border-viridian bg-viridian/5' : 'border-gray-200 bg-white'}`}>
+                      <label key={`${target}-${section.key}-${item.id}`} className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${draft[section.key].inheritAll || readOnly ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${differsFromBaseline ? taxonomyOverrideSoftClass : selected ? 'border-viridian bg-viridian/5' : 'border-[var(--border-subtle)] bg-[var(--surface-1)]'}`}>
                         <input
                           type="checkbox"
                           checked={selected}
                           onChange={() => updateInherited(target, section.key, item.id)}
-                          disabled={draft[section.key].inheritAll}
+                          disabled={draft[section.key].inheritAll || readOnly}
                           className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
                         />
                         <span className="min-w-0">
-                          <span className="block text-sm font-medium text-gray-800">{section.renderItem(item as never)}</span>
+                          <span className="block text-sm font-medium text-[var(--text-primary)]">{section.renderItem(item as never)}</span>
                           {item.sourceOrgName && target === 'self' && item.sourceOrgName !== snapshot?.parentName && (
-                            <span className="block text-xs text-gray-500">Im Parent-Kontext geerbt aus {item.sourceOrgName}</span>
+                            <span className={`block text-xs ${taxonomyMutedTextClass}`}>Im Parent-Kontext geerbt aus {item.sourceOrgName}</span>
                           )}
                         </span>
                       </label>
@@ -290,12 +347,14 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                 </div>
               </>
             ) : (
-              <div className="text-sm text-gray-500">
-                {draft[section.key].inheritAll
-                  ? 'Derzeit sind noch keine passenden Einträge sichtbar. Neue Einträge werden nach dem Anlegen automatisch berücksichtigt.'
-                  : target === 'self'
-                    ? 'In der Parent-Organisation sind derzeit keine passenden Einträge sichtbar.'
-                    : 'In dieser Organisation sind derzeit keine passenden Einträge sichtbar.'}
+              <div className={`text-sm ${taxonomyMutedTextClass}`}>
+                {!showInheritedContentRules
+                  ? 'Es gibt keine übergeordnete Organisation. In diesem Bereich steuerst du daher nur die lokalen Erstellungsrechte.'
+                  : draft[section.key].inheritAll
+                    ? 'Derzeit sind noch keine passenden Einträge sichtbar. Neue Einträge werden nach dem Anlegen automatisch berücksichtigt.'
+                    : target === 'self'
+                      ? 'In der Parent-Organisation sind derzeit keine passenden Einträge sichtbar.'
+                      : 'In dieser Organisation sind derzeit keine passenden Einträge sichtbar.'}
               </div>
             )}
           </div>
@@ -303,54 +362,71 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
       })}
     </div>
   );
+  };
 
   return (
     <Modal open={open} onClose={onClose} title={org ? `Vererbung für „${org.name}“` : 'Vererbung'} maxWidth="5xl">
       {loading && <div className="py-8 text-center text-gray-500">Lade Vererbungsregeln…</div>}
       {!loading && snapshot && settingsDraft && childDefaultsDraft && (
         <div className="space-y-5">
-          <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
+          <div className={`${taxonomyMutedSurfaceClass} px-4 py-3 text-sm ${taxonomySecondaryTextClass}`}>
             {snapshot.parentName ? (
               <>
                 Quelle der geerbten Einträge: <strong>{snapshot.parentName}</strong>
               </>
             ) : (
               <>
-                Oberste Organisation: Hier kannst du Standardregeln für Unterorganisationen definieren.
+                Oberste Organisation: Hier kannst du Regeln für diese Organisation und optionale Standards für Unterorganisationen definieren.
               </>
             )}
           </div>
-          <div className="inline-flex items-center rounded-xl border border-gray-300 bg-white p-1 shadow-sm">
-            {snapshot.parentId ? (
-              <button
-                type="button"
-                onClick={() => setActivePanel('self')}
-                aria-pressed={activePanel === 'self'}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'self' ? 'bg-viridian text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100'}`}
-              >
-                Diese Organisation
-              </button>
-            ) : null}
+          <div className={taxonomySegmentedClass}>
+            <button
+              type="button"
+              onClick={() => setActivePanel('self')}
+              aria-pressed={activePanel === 'self'}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'self' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
+            >
+              Diese Organisation
+            </button>
             <button
               type="button"
               onClick={() => setActivePanel('children')}
               aria-pressed={activePanel === 'children'}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'children' ? 'bg-viridian text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100'}`}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'children' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
             >
               Unterorganisationen
             </button>
           </div>
-          {activePanel === 'self' && snapshot.parentId ? renderSettingsEditor({
+          {activePanel === 'self' ? renderSettingsEditor({
             draft: settingsDraft,
             target: 'self',
             options: snapshot.parentOptions,
             baseline: snapshot.fallbackSettings,
             intro: (
-              <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
-                Diese Regeln gelten nur für <strong>{snapshot.orgName}</strong>. Wenn kein eigener Override gesetzt ist, werden Standards aus der Hierarchie verwendet.
+              <div className={`${taxonomySurfaceClass} px-4 py-3 text-sm ${taxonomySecondaryTextClass}`}>
+                {snapshot.parentId ? (
+                  <>
+                    Diese Regeln gelten nur für <strong>{snapshot.orgName}</strong>. Wenn kein eigener Override gesetzt ist, werden Standards aus der Hierarchie verwendet.
+                  </>
+                ) : (
+                  <>
+                    Diese Regeln gelten direkt für <strong>{snapshot.orgName}</strong>. Da es keine übergeordnete Organisation gibt, steuerst du hier vor allem, ob lokale Kategorien, Tags und Kohorten angelegt werden dürfen.
+                  </>
+                )}
                 {snapshot.hasExplicitSettings ? (
-                  <div className="mt-1 text-xs text-gray-500">
-                    Vergleichsbasis: {snapshot.fallbackSource.categories.sourceOrgName || snapshot.fallbackSource.tags.sourceOrgName || snapshot.fallbackSource.cohorts.sourceOrgName || 'übergeordnete Standardvererbung'}
+                  <div className={`mt-1 text-xs ${taxonomyMutedTextClass}`}>
+                    Vergleichsbasis: {snapshot.fallbackSource.categories.sourceOrgName || snapshot.fallbackSource.tags.sourceOrgName || snapshot.fallbackSource.cohorts.sourceOrgName || (snapshot.parentId ? 'übergeordnete Standardvererbung' : 'systemweite Standardregel')}
+                  </div>
+                ) : null}
+                {!snapshot.ownAdminPolicy.allowChildAdminOverrides ? (
+                  <div className={`${taxonomyBannerInfoClass} mt-3`}>
+                    Admins dieser Organisation können die Vererbungsregeln aktuell nicht selbst ändern. Gesteuert durch {snapshot.ownAdminPolicy.sourceOrgName || 'die übergeordnete Organisation'}.
+                  </div>
+                ) : null}
+                {!snapshot.permissions.canEditSelf ? (
+                  <div className={`${taxonomyBannerWarningClass} mt-3`}>
+                    Deine Admin-Rolle darf diese Vererbungsregeln aktuell nur ansehen, aber nicht bearbeiten.
                   </div>
                 ) : null}
               </div>
@@ -359,7 +435,8 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
               <div className="flex justify-end">
                 <button
                   type="button"
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className={taxonomyNeutralButtonClass}
+                  disabled={!snapshot.permissions.canEditSelf}
                   onClick={() => {
                     if (clearOwnSettings) {
                       setClearOwnSettings(false);
@@ -374,25 +451,53 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                 </button>
               </div>
             ) : clearOwnSettings ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Beim Speichern wird der eigene Override entfernt. Danach gelten wieder die Standards der übergeordneten Organisation.
+              <div className={taxonomyBannerWarningClass}>
+                Beim Speichern wird der eigene Override entfernt. Danach gelten wieder {snapshot.parentId ? 'die Standards der übergeordneten Organisation' : 'die systemweiten Standardwerte'}.
               </div>
             ) : null,
+            readOnly: !snapshot.permissions.canEditSelf,
           }) : renderSettingsEditor({
             draft: childDefaultsDraft,
             target: 'children',
             options: snapshot.childDefaultOptions,
             intro: (
-              <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
-                Diese Standardregeln gelten für direkte und weitere Unterorganisationen von <strong>{snapshot.orgName}</strong>, solange dort kein eigener Override gesetzt ist.
-                <div className="mt-1 text-xs text-gray-500">Direkte Unterorganisationen aktuell: {snapshot.childCount}</div>
+              <div className="space-y-3">
+                <div className={`${taxonomySurfaceClass} px-4 py-3 text-sm ${taxonomySecondaryTextClass}`}>
+                  Diese Standardregeln gelten für direkte und weitere Unterorganisationen von <strong>{snapshot.orgName}</strong>, solange dort kein eigener Override gesetzt ist.
+                  <div className={`mt-1 text-xs ${taxonomyMutedTextClass}`}>
+                    Direkte Unterorganisationen: {snapshot.directChildCount} · In der Kaskade insgesamt: {snapshot.descendantCount}
+                  </div>
+                </div>
+                <div className={`space-y-2 p-3 ${taxonomyMutedSurfaceClass}`}>
+                  <label className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm ${taxonomySecondaryTextClass} ${childDefaultsDraft.allowChildAdminOverrides !== snapshot.childDefaults.allowChildAdminOverrides ? taxonomyOverrideSoftClass : 'bg-[var(--surface-1)]'} ${!snapshot.permissions.canEditChildDefaults ? 'cursor-not-allowed opacity-75' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={childDefaultsDraft.allowChildAdminOverrides}
+                      onChange={(event) => updateAllowChildAdminOverrides(event.target.checked)}
+                      disabled={!snapshot.permissions.canEditChildDefaults}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-medium text-[var(--text-primary)]">Admins von Unterorganisationen dürfen Vererbungen anpassen</span>
+                      <span className={`block text-xs ${taxonomyMutedTextClass}`}>
+                        Wenn deaktiviert, können Org-Admins in direkten Unterorganisationen ihre eigenen Vererbungsregeln nur ansehen. Superadmins und die übergeordnete Organisation können weiterhin ändern.
+                      </span>
+                    </span>
+                  </label>
+                  {!snapshot.permissions.canEditChildDefaults ? (
+                    <div className={taxonomyBannerWarningClass}>
+                      Deine Admin-Rolle darf diese Standardregeln aktuell nur ansehen, aber nicht bearbeiten.
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ),
             reset: snapshot.hasChildDefaults ? (
               <div className="flex justify-end">
                 <button
                   type="button"
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className={taxonomyNeutralButtonClass}
+                  disabled={!snapshot.permissions.canEditChildDefaults}
                   onClick={() => {
                     setClearChildDefaults(true);
                     setChildDefaultsDraft(snapshot.childDefaults);
@@ -402,31 +507,30 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                 </button>
               </div>
             ) : clearChildDefaults ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <div className={taxonomyBannerWarningClass}>
                 Beim Speichern werden keine Standardregeln mehr vorgegeben. Unterorganisationen verwenden dann den nächsthöheren Standard oder ihre eigenen Overrides.
               </div>
             ) : null,
+            readOnly: !snapshot.permissions.canEditChildDefaults,
           })}
           <div className="flex items-center justify-end gap-3 pt-2 border-t">
-            <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200" onClick={onClose}>Abbrechen</button>
+            <button className="px-4 py-2 rounded-lg bg-[var(--interactive-soft)] text-[var(--text-secondary)] hover:bg-[var(--interactive-soft-strong)]" onClick={onClose}>Abbrechen</button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={saving}
+              disabled={saving || (activePanel === 'self' ? !snapshot.permissions.canEditSelf : !snapshot.permissions.canEditChildDefaults)}
               onClick={async () => {
                 if (!org || !settingsDraft || !childDefaultsDraft) return;
                 try {
                   setSaving(true);
                   const payload = {
-                    settings: snapshot.parentId
-                      ? clearOwnSettings
-                        ? null
-                        : settingsEqual(settingsDraft, snapshot.settings)
-                          ? undefined
-                          : settingsDraft
-                      : undefined,
+                    settings: clearOwnSettings
+                      ? null
+                      : settingsEqual(settingsDraft, snapshot.settings)
+                        ? undefined
+                        : settingsDraft,
                     childDefaults: clearChildDefaults
                       ? null
-                      : settingsEqual(childDefaultsDraft, snapshot.childDefaults)
+                      : childDefaultsEqual(childDefaultsDraft, snapshot.childDefaults)
                         ? undefined
                         : childDefaultsDraft,
                   };

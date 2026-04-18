@@ -6,6 +6,7 @@ import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { OrgsService } from '../orgs/orgs.service';
+import { AuditAction } from './enums';
 
 type AuditListRequest = {
   user: { role: string; orgId?: string | null; id: string };
@@ -41,14 +42,31 @@ export class AuditController {
     return { orgId, orgIds };
   }
 
+  private parseActions(actions?: string) {
+    if (!actions) return undefined;
+
+    const allowed = new Set<string>(Object.values(AuditAction));
+    const parsed = actions
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter((value): value is AuditAction => allowed.has(value));
+
+    return parsed.length > 0 ? Array.from(new Set(parsed)) : undefined;
+  }
+
   @Get()
   @ApiOperation({ summary: 'Letzte Aktionen (Audit-Logs) auflisten' })
   @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'actions', required: false, description: 'CSV-Liste der Audit-Aktionen, z. B. login,create,update,delete' })
   @Roles('superadmin', 'org_admin', 'user')
-  async list(@Req() req: AuditListRequest, @Query('limit') limit?: string) {
+  async list(
+    @Req() req: AuditListRequest,
+    @Query('limit') limit?: string,
+    @Query('actions') actions?: string,
+  ) {
     const l = limit ? Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100) : 50;
     const { orgId, orgIds } = await this.resolveAuditFilter(req);
-    return this.audit.list({ orgId, orgIds, limit: l });
+    return this.audit.list({ orgId, orgIds, limit: l, actions: this.parseActions(actions) });
   }
 
   @Get('metrics')

@@ -1,7 +1,4 @@
 const AUTH_TOKEN_KEY = 'auth_token';
-const AUTH_EVENT_KEY = 'stato:auth:event';
-
-type AuthEventType = 'login' | 'logout';
 
 function getSessionStorage(): Storage | null {
   try {
@@ -16,16 +13,6 @@ function getLocalStorage(): Storage | null {
     return window.localStorage;
   } catch {
     return null;
-  }
-}
-
-function broadcastAuthEvent(type: AuthEventType) {
-  const storage = getLocalStorage();
-  if (!storage) return;
-  try {
-    storage.setItem(AUTH_EVENT_KEY, JSON.stringify({ type, at: Date.now() }));
-  } catch {
-    // ignore
   }
 }
 
@@ -57,7 +44,6 @@ export function storeAuthToken(token: string) {
   } catch {
     // ignore
   }
-  broadcastAuthEvent('login');
 }
 
 export function clearStoredAuthToken() {
@@ -69,26 +55,10 @@ export function clearStoredAuthToken() {
   } catch {
     // ignore
   }
-  broadcastAuthEvent('logout');
 }
 
-export function subscribeToAuthEvents(onLogout: () => void) {
-  const handler = (event: StorageEvent) => {
-    if (event.key === AUTH_EVENT_KEY && event.newValue) {
-      try {
-        const payload = JSON.parse(event.newValue) as { type?: AuthEventType };
-        if (payload.type === 'logout') onLogout();
-      } catch {
-        // ignore malformed events
-      }
-      return;
-    }
-
-    if (event.key === AUTH_TOKEN_KEY && !event.newValue) {
-      onLogout();
-    }
+export function subscribeToAuthEvents(_onLogout: () => void) {
+  return () => {
+    // Auth is intentionally isolated per tab via sessionStorage.
   };
-
-  window.addEventListener('storage', handler);
-  return () => window.removeEventListener('storage', handler);
 }

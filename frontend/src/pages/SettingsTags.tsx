@@ -35,7 +35,7 @@ function TagForm({
 
   return (
     <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 pb-safe md:items-center md:p-6">
-      <div className="mb-safe bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
+      <div className="mb-safe bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? 'Tag bearbeiten' : 'Neues Tag'}
         </h3>
@@ -85,45 +85,51 @@ function TagForm({
             />
           </div>
         </div>
-        <div className="modal-sticky-actions -mx-4 px-4 md:-mx-6 md:px-6">
-          <span className="tooltip-wrapper">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-              onClick={onCancel}
-              title="Abbrechen"
-              aria-label="Abbrechen"
-            >
-              <XIcon className="w-5 h-5" />
-            </button>
-            <span className="tooltip-bubble">Abbrechen</span>
-          </span>
-          <span className="tooltip-wrapper">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-              onClick={handleSave}
-              title="Speichern"
-              aria-label="Speichern"
-            >
-              <SaveIcon className="w-5 h-5" />
-            </button>
-            <span className="tooltip-bubble">Speichern</span>
-          </span>
-          {initial?.id && onArchive && (
+        <div className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 py-2 pb-safe flex items-center justify-between gap-3">
+          <div className="flex-1 flex items-center">
             <span className="tooltip-wrapper">
               <button
                 type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 bg-white"
-                onClick={onArchive}
-                title="Archivieren"
-                aria-label="Archivieren"
+                className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+                onClick={onCancel}
+                title="Abbrechen"
+                aria-label="Abbrechen"
               >
-                <ArchiveIcon className="w-5 h-5" />
+                <XIcon className="w-5 h-5" />
               </button>
-              <span className="tooltip-bubble">Archivieren</span>
+              <span className="tooltip-bubble">Abbrechen</span>
             </span>
-          )}
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            {initial?.id && onArchive ? (
+              <span className="tooltip-wrapper">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 bg-white"
+                  onClick={onArchive}
+                  title="Archivieren"
+                  aria-label="Archivieren"
+                >
+                  <ArchiveIcon className="w-5 h-5" />
+                </button>
+                <span className="tooltip-bubble">Archivieren</span>
+              </span>
+            ) : null}
+          </div>
+          <div className="flex-1 flex items-center justify-end">
+            <span className="tooltip-wrapper">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+                onClick={handleSave}
+                title="Speichern"
+                aria-label="Speichern"
+              >
+                <SaveIcon className="w-5 h-5" />
+              </button>
+              <span className="tooltip-bubble">Speichern</span>
+            </span>
+          </div>
         </div>
       </div>
     </div>

@@ -927,8 +927,9 @@ export default function Activities() {
                     </>
                   ) : null}
                   <button
+                    type="button"
                     onClick={() => setEditId(a.id)}
-                    className="relative z-10 inline-flex items-center justify-center rounded-full bg-white border p-2 text-viridian hover:bg-azure-web"
+                    className="activity-edit-button relative z-10 p-2"
                     title="Bearbeiten"
                     aria-label="Bearbeiten"
                   >

@@ -28,6 +28,22 @@ export class TaxonomyService {
     return typeof user.effectiveOrgId === 'undefined' ? (user.orgId || null) : user.effectiveOrgId;
   }
 
+  private getTaxonomyLockedMessage(kind: 'categories' | 'tags' | 'cohorts') {
+    if (kind === 'categories') return 'Für diese Organisation sind lokale Kategorien gesperrt';
+    if (kind === 'tags') return 'Für diese Organisation sind lokale Tags gesperrt';
+    return 'Für diese Organisation sind lokale Kohorten gesperrt';
+  }
+
+  private async assertScopedTaxonomyManagementAllowed(
+    kind: 'categories' | 'tags' | 'cohorts',
+    scopeOrgId: string | null,
+  ) {
+    if (scopeOrgId === null) return;
+    if (!(await this.orgsService.canCreateOwnTaxonomy(scopeOrgId, kind))) {
+      throw new ForbiddenException(this.getTaxonomyLockedMessage(kind));
+    }
+  }
+
   // Categories
   async findAllCategories(active?: boolean, orgId?: string | null, orgIds?: string[]): Promise<Array<Category & VisibleTaxonomyMeta>> {
     if (typeof orgId !== 'undefined') {
@@ -186,6 +202,9 @@ export class TaxonomyService {
     if (!existing) return null;
     const scopeOrgId = this.getScopedOrgId(user);
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
+    if ((existing.orgId ?? null) === scopeOrgId) {
+      await this.assertScopedTaxonomyManagementAllowed('categories', scopeOrgId);
+    }
     if (user.role !== 'superadmin') {
       const d = data as Partial<Category> & { orgId?: string | null };
       if ('orgId' in d) delete d.orgId;
@@ -209,6 +228,9 @@ export class TaxonomyService {
     if (!existing) return;
     const scopeOrgId = this.getScopedOrgId(user);
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
+    if ((existing.orgId ?? null) === scopeOrgId) {
+      await this.assertScopedTaxonomyManagementAllowed('categories', scopeOrgId);
+    }
     await this.removeCategory(id);
     await this.audit.log({ action: AuditAction.DELETE, entityType: 'category', entityId: id, entityTitle: existing.name || null, orgId: scopeOrgId ?? null, user });
   }
@@ -230,6 +252,9 @@ export class TaxonomyService {
     if (!existing) return null;
     const scopeOrgId = this.getScopedOrgId(user);
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
+    if ((existing.orgId ?? null) === scopeOrgId) {
+      await this.assertScopedTaxonomyManagementAllowed('tags', scopeOrgId);
+    }
     if (user.role !== 'superadmin') {
       const d = data as Partial<Tag> & { orgId?: string | null };
       if ('orgId' in d) delete d.orgId;
@@ -256,6 +281,9 @@ export class TaxonomyService {
     if (!existing) return;
     const scopeOrgId = this.getScopedOrgId(user);
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
+    if ((existing.orgId ?? null) === scopeOrgId) {
+      await this.assertScopedTaxonomyManagementAllowed('tags', scopeOrgId);
+    }
     await this.removeTag(id);
     await this.audit.log({ action: AuditAction.DELETE, entityType: 'tag', entityId: id, entityTitle: existing.name || null, orgId: scopeOrgId ?? null, user });
   }
@@ -277,6 +305,9 @@ export class TaxonomyService {
     if (!existing) return null;
     const scopeOrgId = this.getScopedOrgId(user);
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
+    if ((existing.orgId ?? null) === scopeOrgId) {
+      await this.assertScopedTaxonomyManagementAllowed('cohorts', scopeOrgId);
+    }
     if (user.role !== 'superadmin') {
       const d = data as Partial<Cohort> & { orgId?: string | null };
       if ('orgId' in d) delete d.orgId;
@@ -300,6 +331,9 @@ export class TaxonomyService {
     if (!existing) return;
     const scopeOrgId = this.getScopedOrgId(user);
     if (user.role !== 'superadmin' && (existing.orgId ?? null) !== scopeOrgId) throw new ForbiddenException('Not allowed');
+    if ((existing.orgId ?? null) === scopeOrgId) {
+      await this.assertScopedTaxonomyManagementAllowed('cohorts', scopeOrgId);
+    }
     await this.removeCohort(id);
     await this.audit.log({ action: AuditAction.DELETE, entityType: 'cohort', entityId: id, entityTitle: existing.name || null, orgId: scopeOrgId ?? null, user });
   }

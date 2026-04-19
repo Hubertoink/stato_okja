@@ -43,8 +43,8 @@ function CategoryForm({
   });
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
-      <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
+    <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 pb-safe md:items-center md:p-6">
+      <div className="mb-safe bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? 'Kategorie bearbeiten' : 'Neue Kategorie'}
         </h3>
@@ -107,7 +107,7 @@ function CategoryForm({
           </div>
           {/* Kategorien werden immer aktiv angelegt; kein Toggle im UI */}
         </div>
-        <div className="modal-sticky-actions md:-mx-6 md:px-6">
+        <div className="modal-sticky-actions -mx-4 px-4 md:-mx-6 md:px-6">
           <span className="tooltip-wrapper">
             <button
               type="button"
@@ -210,8 +210,8 @@ export default function SettingsCategories() {
         <div>
           <h3 className="text-xl font-semibold text-viridian">Kategorien verwalten</h3>
           {!canCreateOwn && (
-            <p className="text-xs text-amber-700 mt-1">
-              Lokale Kategorien sind in diesem Org-Kontext gesperrt. Geerbte Kategorien bleiben auswählbar, neue lokale Kategorien sind hier nicht erlaubt.
+            <p className="taxonomy-lock-hint">
+              Lokale Kategorien sind in diesem Org-Kontext gesperrt. Sichtbar bleiben geerbte und bestehende Kategorien, neue lokale Kategorien sowie Bearbeiten, Archivieren und Löschen lokaler Kategorien sind hier nicht erlaubt.
             </p>
           )}
           <div className="text-xs text-gray-600 mt-1">
@@ -219,12 +219,15 @@ export default function SettingsCategories() {
               type="button"
               className="text-viridian hover:underline disabled:text-gray-400"
               onClick={() => {
+                if (!canCreateOwn) return;
                 setSelectedDefaultNames(defaultsMissing.map((c) => c.name));
                 setSeedConfirm({ open: true });
               }}
-              disabled={defaultsMissing.length === 0}
+              disabled={!canCreateOwn || defaultsMissing.length === 0}
               title={
-                defaultsMissing.length === 0
+                !canCreateOwn
+                  ? 'Standard-Kategorien sind gesperrt, solange lokale Kategorien in diesem Org-Kontext nicht erlaubt sind'
+                  : defaultsMissing.length === 0
                   ? 'Alle Standard-Kategorien sind bereits vorhanden'
                   : undefined
               }
@@ -276,66 +279,66 @@ export default function SettingsCategories() {
           const isInherited = !!c.isInherited;
           const canManage = c.canManage !== false;
           return (
-          <div key={c.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
-            <div className="min-w-0 flex items-center gap-3">
-              <span
-                className={`inline-block w-4 h-4 rounded ${getBgClass(c.color as string, 'bg-slate-400')}`}
-              />
-              <div>
-                <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">
-                  <span>{c.name}</span>
-                  {isInherited && (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">
-                      geerbt{c.sourceOrgName ? ` aus ${c.sourceOrgName}` : ''}
-                    </span>
+            <div key={c.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
+              <div className="min-w-0 flex items-center gap-3">
+                <span
+                  className={`inline-block w-4 h-4 rounded ${getBgClass(c.color as string, 'bg-slate-400')}`}
+                />
+                <div>
+                  <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">
+                    <span>{c.name}</span>
+                    {isInherited && (
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">
+                        geerbt{c.sourceOrgName ? ` aus ${c.sourceOrgName}` : ''}
+                      </span>
+                    )}
+                  </div>
+                  {c.description && (
+                    <div className="text-sm text-gray-600 line-clamp-2">{c.description}</div>
                   )}
                 </div>
-                {c.description && (
-                  <div className="text-sm text-gray-600 line-clamp-2">{c.description}</div>
+              </div>
+              <div className="flex gap-2">
+                {showArchived && (c as Category).active === false && canManage && (
+                  <button
+                    className="text-viridian hover:underline"
+                    onClick={() => update.mutate({ id: c.id, data: { active: true } })}
+                  >
+                    Wiederherstellen
+                  </button>
                 )}
+                {canManage && <button
+                  className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
+                  title="Bearbeiten"
+                  aria-label={`Kategorie ${c.name} bearbeiten`}
+                  onClick={() => setModal({ mode: 'edit', category: c })}
+                >
+                  <Pencil className="w-4 h-4 text-viridian" />
+                </button>}
+                {canManage && <button
+                  className="danger-icon-button p-1.5"
+                  aria-label="Löschen"
+                  title="Löschen"
+                  onClick={async () => {
+                    setConfirm({ open: true, category: c, loading: true });
+                    try {
+                      const res = await api.get('/activities', { params: { categoryIds: c.id } });
+                      const list = res.data as unknown[];
+                      setConfirm({
+                        open: true,
+                        category: c,
+                        count: Array.isArray(list) ? list.length : 0,
+                        loading: false,
+                      });
+                    } catch {
+                      setConfirm((prv) => ({ ...prv, loading: false }));
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>}
               </div>
             </div>
-            <div className="flex gap-2">
-              {showArchived && (c as Category).active === false && canManage && (
-                <button
-                  className="text-viridian hover:underline"
-                  onClick={() => update.mutate({ id: c.id, data: { active: true } })}
-                >
-                  Wiederherstellen
-                </button>
-              )}
-              {canManage && <button
-                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
-                title="Bearbeiten"
-                aria-label={`Kategorie ${c.name} bearbeiten`}
-                onClick={() => setModal({ mode: 'edit', category: c })}
-              >
-                <Pencil className="w-4 h-4 text-viridian" />
-              </button>}
-              {canManage && <button
-                className="danger-icon-button p-1.5"
-                aria-label="Löschen"
-                title="Löschen"
-                onClick={async () => {
-                  setConfirm({ open: true, category: c, loading: true });
-                  try {
-                    const res = await api.get('/activities', { params: { categoryIds: c.id } });
-                    const list = res.data as unknown[];
-                    setConfirm({
-                      open: true,
-                      category: c,
-                      count: Array.isArray(list) ? list.length : 0,
-                      loading: false,
-                    });
-                  } catch {
-                    setConfirm((prv) => ({ ...prv, loading: false }));
-                  }
-                }}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>}
-            </div>
-          </div>
           );
         })}
         {categories.length === 0 && (

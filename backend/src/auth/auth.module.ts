@@ -26,7 +26,7 @@ import { OrgsModule } from '../orgs/orgs.module';
 	],
 	controllers: [AuthController],
 	providers: [AuthService, JwtStrategy, EmailService],
-	exports: [JwtModule, AuthService],
+	exports: [JwtModule, AuthService, EmailService],
 })
 export class AuthModule implements OnModuleInit {
 	constructor(private readonly auth: AuthService) {}

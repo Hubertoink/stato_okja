@@ -62,6 +62,11 @@ export class AuthService {
     };
   }
 
+  private shouldSurfaceEmailDeliveryErrors() {
+    const appEnv = String(process.env.APP_ENV || process.env.NODE_ENV || '').trim().toLowerCase();
+    return appEnv !== 'production';
+  }
+
   isTwoFactorAuthenticationEnabled() {
     return isTwoFactorAuthenticationEnabled();
   }
@@ -170,8 +175,13 @@ export class AuthService {
     const link = `${origin}/reset-password?token=${token}`;
     try {
       await this.email.sendPasswordResetEmail(user.email, user.name || user.email, link);
-    } catch {
-      /* ignore email errors */
+    } catch (error) {
+      if (this.shouldSurfaceEmailDeliveryErrors()) {
+        throw new HttpException(
+          'Die Passwort-Reset-E-Mail konnte nicht versendet werden. Bitte SMTP-Konfiguration und Backend-Logs pruefen.',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
     }
     return { ok: true as const, mode: 'email' as const };
   }

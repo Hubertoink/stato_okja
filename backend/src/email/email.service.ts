@@ -5,6 +5,7 @@ import * as nodemailer from 'nodemailer';
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter | null = null;
+  private smtpVerificationPromise: Promise<void> | null = null;
 
   // StatO Brand Colors
   private readonly brandColors = {
@@ -38,6 +39,52 @@ export class EmailService {
     }
     this.transporter = nodemailer.createTransport(options);
     return this.transporter;
+  }
+
+  private getTransportSummary() {
+    const host = String(process.env.SMTP_HOST || '').trim();
+    const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
+    const user = String(process.env.SMTP_USER || '').trim();
+    return {
+      host: host || '(not configured)',
+      port,
+      user: user || '(unauthenticated)',
+    };
+  }
+
+  async verifySmtpConnection(options?: { failOnError?: boolean }) {
+    const transporter = this.getTransporter();
+    if (!transporter) return false;
+
+    if (!this.smtpVerificationPromise) {
+      const summary = this.getTransportSummary();
+      this.smtpVerificationPromise = transporter
+        .verify()
+        .then(() => {
+          this.logger.log(
+            `SMTP connection verified successfully (host=${summary.host}, port=${summary.port}, user=${summary.user})`,
+          );
+        })
+        .catch((error) => {
+          this.smtpVerificationPromise = null;
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `SMTP verification failed (host=${summary.host}, port=${summary.port}, user=${summary.user}): ${message}`,
+          );
+          throw error;
+        });
+    }
+
+    try {
+      await this.smtpVerificationPromise;
+      return true;
+    } catch (error) {
+      if (options?.failOnError) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`SMTP verification failed: ${message}`);
+      }
+      return false;
+    }
   }
 
   private getEmailTemplate(content: {

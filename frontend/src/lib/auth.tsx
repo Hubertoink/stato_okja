@@ -6,12 +6,32 @@ import { clearStoredAuthToken, getStoredAuthToken, storeAuthToken } from './auth
 export type Role = 'superadmin' | 'org_admin' | 'user';
 export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean }
 
-type LoginResult = { ok: true } | { ok: false; error: string };
+type TwoFactorChallenge = {
+  requiresTwoFactor: true;
+  challengeToken: string;
+  emailHint: string;
+  expiresInSeconds: number;
+};
+
+type LoginResult =
+  | { status: 'authenticated' }
+  | ({ status: 'two-factor-required' } & TwoFactorChallenge)
+  | { status: 'error'; error: string };
+
+type TwoFactorResult = { ok: true } | { ok: false; error: string };
+
+function isTwoFactorChallenge(
+  value: TwoFactorChallenge | { access_token: string; user: AuthUser },
+): value is TwoFactorChallenge {
+  return 'requiresTwoFactor' in value && value.requiresTwoFactor === true;
+}
 
 interface AuthState {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
+  verifyTwoFactor: (challengeToken: string, code: string) => Promise<TwoFactorResult>;
+  resendTwoFactor: (challengeToken: string) => Promise<({ ok: true } & TwoFactorChallenge) | { ok: false; error: string }>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -52,6 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     applyTheme(null);
     qc.clear();
   }, [qc]);
+
+  const applyAuthenticatedSession = useCallback((payload: { access_token: string; user: AuthUser }) => {
+    const token = payload.access_token;
+    storeAuthToken(token);
+    setAuthToken(token);
+    applyResolvedUser(payload.user, { resetCache: true });
+    qc.invalidateQueries({ predicate: () => true });
+  }, [applyResolvedUser, qc]);
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -107,17 +135,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     async login(email: string, password: string) {
       try {
-        const res = await api.post<{ access_token: string; user: AuthUser }>('/auth/login', { email, password });
-        const token = res.data.access_token;
-        storeAuthToken(token);
-        setAuthToken(token);
-        // Clear any cached data from a previous session so next queries refetch for this user/org
-        applyResolvedUser(res.data.user, { resetCache: true });
-        // Also proactively invalidate any active queries
-        qc.invalidateQueries({ predicate: () => true });
-        return { ok: true } as const;
+        const res = await api.post<{ access_token: string; user: AuthUser } | TwoFactorChallenge>('/auth/login', { email, password });
+        const data = res.data;
+        if (isTwoFactorChallenge(data)) {
+          return { status: 'two-factor-required', ...data } as const;
+        }
+        applyAuthenticatedSession(data);
+        return { status: 'authenticated' } as const;
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Login fehlgeschlagen';
+        return { status: 'error', error: Array.isArray(msg as []) ? (msg as string[]).join(', ') : String(msg) } as const;
+      }
+    },
+    async verifyTwoFactor(challengeToken: string, code: string) {
+      try {
+        const res = await api.post<{ access_token: string; user: AuthUser }>('/auth/verify-two-factor', { challengeToken, code });
+        applyAuthenticatedSession(res.data);
+        return { ok: true } as const;
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Codeprüfung fehlgeschlagen';
+        return { ok: false, error: Array.isArray(msg as []) ? (msg as string[]).join(', ') : String(msg) } as const;
+      }
+    },
+    async resendTwoFactor(challengeToken: string) {
+      try {
+        const res = await api.post<TwoFactorChallenge>('/auth/resend-two-factor', { challengeToken });
+        return { ok: true, ...res.data } as const;
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Code konnte nicht erneut versendet werden';
         return { ok: false, error: Array.isArray(msg as []) ? (msg as string[]).join(', ') : String(msg) } as const;
       }
     },
@@ -127,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async refresh() {
       await refreshProfile();
     },
-  }), [applyResolvedUser, clearSession, loading, qc, refreshProfile, user]);
+  }), [applyAuthenticatedSession, clearSession, loading, refreshProfile, user]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

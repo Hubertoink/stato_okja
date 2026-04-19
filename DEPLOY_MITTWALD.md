@@ -38,6 +38,8 @@ Wichtig: Wenn deine Dev-Umgebung „komisch alte Features“ zeigt, läuft sehr 
   - `APP_ORIGIN=https://app.stato-okja.de`
   - `TRUST_PROXY=true`
   - `JWT_SECRET=<zufaelliger_wert_mit_mindestens_32_zeichen>`
+  - `AUTH_2FA_ENABLED=false`
+  - `AUTH_2FA_CODE_TTL=600`
   - `CORS_ORIGINS=https://app.stato-okja.de`
   - `RATE_LIMIT_TTL=60`
   - `RATE_LIMIT_MAX=100`

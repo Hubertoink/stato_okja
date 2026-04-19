@@ -50,4 +50,13 @@ export class User {
 
   @Column({ type: 'boolean', default: false })
   mustChangePassword!: boolean;
+
+  @Column({ type: 'int', default: 0 })
+  twoFactorTokenVersion!: number;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  twoFactorCodeHash!: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  twoFactorCodeExpiresAt!: Date | null;
 }

@@ -110,6 +110,8 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 - `JWT_SECRET`: lang, zufällig, stabil, nicht bei jedem Deploy ändern
 - `JWT_ACCESS_EXPIRATION`: optional, Standard z. B. `12h`
 - `PASSWORD_RESET_MODE`: `email`, `admin_temp_password` oder `hybrid`
+- `AUTH_2FA_ENABLED`: optionale E-Mail-Zwei-Faktor-Authentifizierung für den Login, Standard `false`
+- `AUTH_2FA_CODE_TTL`: Gültigkeit des E-Mail-Codes in Sekunden, Standard `600`
 
 ### Frischer Erststart / Schema-Bootstrap
 

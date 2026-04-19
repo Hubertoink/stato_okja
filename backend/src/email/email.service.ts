@@ -204,4 +204,66 @@ export class EmailService {
       throw error;
     }
   }
+
+  async sendTwoFactorCodeEmail(to: string, name: string, code: string, expiresInMinutes: number) {
+    const from = process.env.SMTP_FROM || 'no-reply@stato.local';
+    const displayName = name || 'dort';
+    const subject = '🔐 Dein StatO Sicherheitscode';
+    const text = `Hallo ${displayName},\n\n` +
+      `für deine Anmeldung bei StatO wurde ein Sicherheitscode angefordert.\n\n` +
+      `Dein Code lautet: ${code}\n\n` +
+      `Der Code ist ${expiresInMinutes} Minute(n) gültig. Falls du dich nicht anmelden wolltest, ignoriere diese E-Mail.\n\n` +
+      `Viele Grüße,\nDein StatO-Team`;
+
+    const html = `
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StatO Sicherheitscode</title>
+</head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#f5f5f5;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f5f5;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background:linear-gradient(135deg, #40916c 0%, #74c69d 100%);padding:32px 40px;border-radius:12px 12px 0 0;">
+              <h1 style="margin:0;font-size:28px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">Stat<span style="color:#d8f3dc;">O</span></h1>
+              <p style="margin:4px 0 0 0;font-size:13px;color:rgba(255,255,255,0.85);">OKJA Statistik & Dokumentation</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px;">
+              <h2 style="margin:0 0 16px 0;font-size:22px;font-weight:600;color:#1a1a1a;">Hallo ${displayName}</h2>
+              <p style="margin:0 0 24px 0;font-size:16px;line-height:1.6;color:#666666;">für deine Anmeldung bei StatO wurde ein Sicherheitscode angefordert.</p>
+              <div style="margin:32px 0;padding:20px;border-radius:12px;background:#f8f9fa;border:1px solid #e5e7eb;text-align:center;">
+                <p style="margin:0 0 8px 0;font-size:13px;color:#666666;letter-spacing:0.08em;text-transform:uppercase;">Sicherheitscode</p>
+                <p style="margin:0;font-size:36px;font-weight:700;letter-spacing:0.2em;color:#40916c;">${code}</p>
+              </div>
+              <p style="margin:24px 0 0 0;font-size:14px;color:#666666;">Der Code ist ${expiresInMinutes} Minute(n) gültig. Falls du dich nicht anmelden wolltest, ignoriere diese E-Mail.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const transporter = this.getTransporter();
+    if (!transporter) {
+      throw new Error('SMTP not configured');
+    }
+
+    try {
+      await transporter.sendMail({ from, to, subject, text, html });
+      this.logger.log(`Two-factor email sent successfully to ${to}`);
+      return { queued: true };
+    } catch (error) {
+      this.logger.error(`Failed to send two-factor email to ${to}: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
+  }
 }

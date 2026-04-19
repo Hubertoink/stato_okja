@@ -76,6 +76,36 @@ describe('OrgsService taxonomy access', () => {
     await expect(service.canCreateOwnTaxonomy('root-org', 'categories')).resolves.toBe(true);
   });
 
+  it('marks local taxonomy entries as read-only when own categories are locked', async () => {
+    (orgRepo.find as jest.Mock).mockResolvedValue([
+      {
+        id: 'root-org',
+        name: 'Bobibo',
+        parentId: null,
+        taxonomySettings: {
+          categories: { allowOwn: false, inheritAll: false, inheritedIds: [] },
+        },
+        childTaxonomyDefaults: null,
+      },
+    ]);
+    (categoryRepo.find as jest.Mock).mockResolvedValue([
+      {
+        id: 'cat-1',
+        name: 'Beratung',
+        orgId: 'root-org',
+        active: true,
+      },
+    ]);
+
+    await expect(service.listVisibleCategoriesForOrg('root-org')).resolves.toEqual([
+      expect.objectContaining({
+        id: 'cat-1',
+        isInherited: false,
+        canManage: false,
+      }),
+    ]);
+  });
+
   it('returns read-only permissions for locked child org admins', async () => {
     (orgRepo.find as jest.Mock).mockResolvedValue([
       {

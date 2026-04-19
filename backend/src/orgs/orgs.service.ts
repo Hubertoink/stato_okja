@@ -351,13 +351,14 @@ export class OrgsService {
     items: T[],
     currentOrgId: string | null,
     orgMap: Map<string, Organization>,
+    canManageOwn: boolean,
   ): Array<T & VisibleTaxonomyMeta> {
     return items.map((item) => ({
       ...item,
       sourceOrgId: item.orgId ?? null,
       sourceOrgName: this.getSourceOrgName(orgMap, item.orgId ?? null),
       isInherited: (item.orgId ?? null) !== currentOrgId,
-      canManage: (item.orgId ?? null) === currentOrgId,
+      canManage: (item.orgId ?? null) === currentOrgId && canManageOwn,
     }));
   }
 
@@ -365,20 +366,24 @@ export class OrgsService {
     const items = await this.loadTaxonomies(kind);
     if (typeof orgId === 'undefined') {
       const orgMap = this.toOrgMap(await this.repo.find());
-      return this.decorateVisibleTaxonomies(items, null, orgMap);
+      return this.decorateVisibleTaxonomies(items, null, orgMap, true);
     }
 
     if (orgId === null) {
       const globalItems = items.filter((item) => (item.orgId ?? null) === null);
       const orgMap = this.toOrgMap(await this.repo.find());
-      return this.decorateVisibleTaxonomies(this.sortTaxonomies(kind, globalItems), null, orgMap);
+      return this.decorateVisibleTaxonomies(this.sortTaxonomies(kind, globalItems), null, orgMap, true);
     }
 
     const orgs = await this.repo.find();
     const orgMap = this.toOrgMap(orgs);
     const grouped = this.groupTaxonomiesByOrg(items);
     const resolved = this.resolveVisibleTaxonomiesFromData(kind, orgId, orgMap, grouped, new Map());
-    return this.decorateVisibleTaxonomies(resolved, orgId, orgMap);
+    const scopedOrg = orgMap.get(orgId);
+    const canManageOwn = scopedOrg
+      ? this.resolveTaxonomySettingFromData(kind, scopedOrg, orgMap).setting.allowOwn
+      : false;
+    return this.decorateVisibleTaxonomies(resolved, orgId, orgMap, canManageOwn);
   }
 
   async listVisibleCategoriesForOrg(orgId?: string | null) {

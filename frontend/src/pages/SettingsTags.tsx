@@ -34,8 +34,8 @@ function TagForm({
   });
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
-      <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
+    <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 pb-safe md:items-center md:p-6">
+      <div className="mb-safe bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? 'Tag bearbeiten' : 'Neues Tag'}
         </h3>
@@ -85,7 +85,7 @@ function TagForm({
             />
           </div>
         </div>
-        <div className="modal-sticky-actions md:-mx-6 md:px-6">
+        <div className="modal-sticky-actions -mx-4 px-4 md:-mx-6 md:px-6">
           <span className="tooltip-wrapper">
             <button
               type="button"
@@ -157,8 +157,8 @@ export default function SettingsTags() {
           <h3 className="text-xl font-semibold text-viridian">Tags verwalten</h3>
           <p className="text-gray-600">Freitext-Tags mit Farben für flexible Zuordnung</p>
           {!canCreateOwn && (
-            <p className="text-xs text-amber-700 mt-1">
-              Lokale Tags sind in diesem Org-Kontext gesperrt. Sichtbar bleiben geerbte und bestehende Tags.
+            <p className="taxonomy-lock-hint">
+              Lokale Tags sind in diesem Org-Kontext gesperrt. Sichtbar bleiben geerbte und bestehende Tags, lokale Tags sind hier nur lesbar.
             </p>
           )}
         </div>
@@ -204,66 +204,66 @@ export default function SettingsTags() {
           const isInherited = !!t.isInherited;
           const canManage = t.canManage !== false;
           return (
-          <div key={t.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
-            <div className="min-w-0 flex items-center gap-3">
-              <span
-                className={`inline-block w-4 h-4 rounded ${getBgClass(t.color as string, 'bg-slate-400')}`}
-              />
-              <div>
-                <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">
-                  <span>{t.name}</span>
-                  {isInherited && (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">
-                      geerbt{t.sourceOrgName ? ` aus ${t.sourceOrgName}` : ''}
-                    </span>
+            <div key={t.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
+              <div className="min-w-0 flex items-center gap-3">
+                <span
+                  className={`inline-block w-4 h-4 rounded ${getBgClass(t.color as string, 'bg-slate-400')}`}
+                />
+                <div>
+                  <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">
+                    <span>{t.name}</span>
+                    {isInherited && (
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">
+                        geerbt{t.sourceOrgName ? ` aus ${t.sourceOrgName}` : ''}
+                      </span>
+                    )}
+                  </div>
+                  {t.description && (
+                    <div className="text-sm text-gray-600 line-clamp-2">{t.description}</div>
                   )}
                 </div>
-                {t.description && (
-                  <div className="text-sm text-gray-600 line-clamp-2">{t.description}</div>
+              </div>
+              <div className="flex gap-2">
+                {showArchived && t.active === false && canManage && (
+                  <button
+                    className="text-viridian hover:underline"
+                    onClick={() => update.mutate({ id: t.id, data: { active: true } })}
+                  >
+                    Wiederherstellen
+                  </button>
                 )}
+                {canManage && <button
+                  className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
+                  title="Bearbeiten"
+                  aria-label={`Tag ${t.name} bearbeiten`}
+                  onClick={() => setModal({ mode: 'edit', tag: t })}
+                >
+                  <Pencil className="w-4 h-4 text-viridian" />
+                </button>}
+                {canManage && <button
+                  className="danger-icon-button p-1.5"
+                  aria-label="Löschen"
+                  title="Löschen"
+                  onClick={async () => {
+                    setConfirm({ open: true, tag: t, loading: true });
+                    try {
+                      const res = await api.get('/activities', { params: { tagIds: t.id } });
+                      const list = res.data as unknown[];
+                      setConfirm({
+                        open: true,
+                        tag: t,
+                        count: Array.isArray(list) ? list.length : 0,
+                        loading: false,
+                      });
+                    } catch {
+                      setConfirm((prv) => ({ ...prv, loading: false }));
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>}
               </div>
             </div>
-            <div className="flex gap-2">
-              {showArchived && t.active === false && canManage && (
-                <button
-                  className="text-viridian hover:underline"
-                  onClick={() => update.mutate({ id: t.id, data: { active: true } })}
-                >
-                  Wiederherstellen
-                </button>
-              )}
-              {canManage && <button
-                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
-                title="Bearbeiten"
-                aria-label={`Tag ${t.name} bearbeiten`}
-                onClick={() => setModal({ mode: 'edit', tag: t })}
-              >
-                <Pencil className="w-4 h-4 text-viridian" />
-              </button>}
-              {canManage && <button
-                className="danger-icon-button p-1.5"
-                aria-label="Löschen"
-                title="Löschen"
-                onClick={async () => {
-                  setConfirm({ open: true, tag: t, loading: true });
-                  try {
-                    const res = await api.get('/activities', { params: { tagIds: t.id } });
-                    const list = res.data as unknown[];
-                    setConfirm({
-                      open: true,
-                      tag: t,
-                      count: Array.isArray(list) ? list.length : 0,
-                      loading: false,
-                    });
-                  } catch {
-                    setConfirm((prv) => ({ ...prv, loading: false }));
-                  }
-                }}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>}
-            </div>
-          </div>
           );
         })}
         {tags.length === 0 && <div className="text-gray-500 py-6">Keine sichtbaren Tags in diesem Org-Kontext.</div>}

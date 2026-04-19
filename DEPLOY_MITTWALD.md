@@ -53,6 +53,7 @@ Wichtig: Wenn deine Dev-Umgebung „komisch alte Features“ zeigt, läuft sehr 
 
 Wichtig:
 - Der Backend-Container startet in Produktion nur, wenn `JWT_SECRET` gesetzt ist, kein Platzhalter ist und mindestens 32 Zeichen hat.
+- `APP_ORIGIN` muss exakt auf die öffentliche Frontend-URL zeigen. Die 2FA-E-Mail verwendet diese URL für einen Direktlink, der den Code im gleichen Browser automatisch in die Login-Maske eintragen kann.
 - Ein sicherer Beispielwert kann lokal erzeugt werden mit `openssl rand -base64 48`.
 - Wenn Mittwald fuer den Backend-Service keine Umgebungsvariable gesetzt hat, endet der Container genau mit dem Fehler aus deinem Log.
 - `TZ=Europe/Berlin` im Backend-Container behebt keine verschobenen Audit-Log-Zeiten zuverlaessig. Entscheidend ist die Postgres-Session-Zeitzone bzw. der Spaltentyp (`timestamp without time zone` vs. `timestamptz`).

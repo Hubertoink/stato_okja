@@ -112,6 +112,7 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 - `PASSWORD_RESET_MODE`: `email`, `admin_temp_password` oder `hybrid`
 - `AUTH_2FA_ENABLED`: optionale E-Mail-Zwei-Faktor-Authentifizierung für den Login, Standard `false`
 - `AUTH_2FA_CODE_TTL`: Gültigkeit des E-Mail-Codes in Sekunden, Standard `600`
+- `APP_ORIGIN` muss auf die echte Frontend-URL zeigen, damit der Direktlink aus der 2FA-E-Mail den Code wieder in die Login-Seite zurückgeben kann
 
 ### Frischer Erststart / Schema-Bootstrap
 

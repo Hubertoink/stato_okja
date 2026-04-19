@@ -206,6 +206,7 @@ Wichtige Betriebsvariablen:
 - `AUTH_2FA_CODE_TTL=600`
 	- Optionale E-Mail-Zwei-Faktor-Authentifizierung für den Login.
 	- Standard ist bewusst `false`, weil dafür eine funktionierende SMTP-Konfiguration erforderlich ist.
+	- Wichtig: `APP_ORIGIN` muss auf die echte Frontend-URL zeigen, weil die 2FA-E-Mail einen Direktlink zurück zur Login-Seite enthält, der den Code im gleichen Browser automatisch eintragen kann.
 - `ENABLE_ORG_MOVE=false`
 	- Standardwert: Organisationsverschiebung ist komplett deaktiviert.
 	- Nur wenn der Wert bewusst auf `true` gesetzt wird, werden die Move-Endpunkte im Backend freigeschaltet und der Verschieben-Button im Frontend-Build angezeigt.

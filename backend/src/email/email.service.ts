@@ -182,6 +182,13 @@ export class EmailService {
 </html>`;
   }
 
+  private buildTwoFactorLoginLink(code: string) {
+    const origin = String(process.env.APP_ORIGIN || 'http://localhost:5173').trim() || 'http://localhost:5173';
+    const url = new URL(origin);
+    url.searchParams.set('twoFactorCode', code);
+    return url.toString();
+  }
+
   async sendInviteEmail(to: string, name: string, link: string) {
     const from = process.env.SMTP_FROM || 'no-reply@stato.local';
     const displayName = name || 'dort';
@@ -256,9 +263,11 @@ export class EmailService {
     const from = process.env.SMTP_FROM || 'no-reply@stato.local';
     const displayName = name || 'dort';
     const subject = '🔐 Dein StatO Sicherheitscode';
+    const loginLink = this.buildTwoFactorLoginLink(code);
     const text = `Hallo ${displayName},\n\n` +
       `für deine Anmeldung bei StatO wurde ein Sicherheitscode angefordert.\n\n` +
       `Dein Code lautet: ${code}\n\n` +
+      `Wenn StatO im gleichen Browser bereits geöffnet ist, kannst du den Code direkt über diesen Link übernehmen:\n${loginLink}\n\n` +
       `Der Code ist ${expiresInMinutes} Minute(n) gültig. Falls du dich nicht anmelden wolltest, ignoriere diese E-Mail.\n\n` +
       `Viele Grüße,\nDein StatO-Team`;
 
@@ -288,6 +297,20 @@ export class EmailService {
               <div style="margin:32px 0;padding:20px;border-radius:12px;background:#f8f9fa;border:1px solid #e5e7eb;text-align:center;">
                 <p style="margin:0 0 8px 0;font-size:13px;color:#666666;letter-spacing:0.08em;text-transform:uppercase;">Sicherheitscode</p>
                 <p style="margin:0;font-size:36px;font-weight:700;letter-spacing:0.2em;color:#40916c;">${code}</p>
+              </div>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td style="border-radius:8px;background-color:#40916c;">
+                    <a href="${loginLink}" target="_blank" style="display:inline-block;padding:14px 24px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">
+                      &#128203; Code in StatO uebernehmen
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 24px 0;font-size:13px;line-height:1.6;color:#666666;">Wenn StatO im gleichen Browser bereits geöffnet ist, wird der Code beim Oeffnen des Links automatisch in die Anmeldemaske übernommen.</p>
+              <div style="margin:0 0 24px 0;padding:16px;border-radius:8px;background:#f8f9fa;">
+                <p style="margin:0 0 8px 0;font-size:12px;color:#666666;">Falls der Button nicht funktioniert, kopiere diesen Link:</p>
+                <p style="margin:0;font-size:12px;word-break:break-all;"><a href="${loginLink}" style="color:#40916c;">${loginLink}</a></p>
               </div>
               <p style="margin:24px 0 0 0;font-size:14px;color:#666666;">Der Code ist ${expiresInMinutes} Minute(n) gültig. Falls du dich nicht anmelden wolltest, ignoriere diese E-Mail.</p>
             </td>

@@ -1,7 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, setAuthToken } from './api';
-import { clearStoredAuthToken, getStoredAuthToken, storeAuthToken } from './authStorage';
+import {
+  clearStoredAuthToken,
+  clearStoredPendingTwoFactorChallenge,
+  getStoredAuthToken,
+  storeAuthToken,
+  storePendingTwoFactorChallenge,
+} from './authStorage';
 
 export type Role = 'superadmin' | 'org_admin' | 'user';
 export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean }
@@ -68,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearSession = useCallback(() => {
     setAuthToken(undefined);
     clearStoredAuthToken();
+    clearStoredPendingTwoFactorChallenge();
     setUser(null);
     applyTheme(null);
     qc.clear();
@@ -76,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applyAuthenticatedSession = useCallback((payload: { access_token: string; user: AuthUser }) => {
     const token = payload.access_token;
     storeAuthToken(token);
+    clearStoredPendingTwoFactorChallenge();
     setAuthToken(token);
     applyResolvedUser(payload.user, { resetCache: true });
     qc.invalidateQueries({ predicate: () => true });
@@ -138,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.post<{ access_token: string; user: AuthUser } | TwoFactorChallenge>('/auth/login', { email, password });
         const data = res.data;
         if (isTwoFactorChallenge(data)) {
+          storePendingTwoFactorChallenge(data);
           return { status: 'two-factor-required', ...data } as const;
         }
         applyAuthenticatedSession(data);
@@ -160,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async resendTwoFactor(challengeToken: string) {
       try {
         const res = await api.post<TwoFactorChallenge>('/auth/resend-two-factor', { challengeToken });
+        storePendingTwoFactorChallenge(res.data);
         return { ok: true, ...res.data } as const;
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Code konnte nicht erneut versendet werden';

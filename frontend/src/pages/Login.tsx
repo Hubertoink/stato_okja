@@ -1,5 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import {
+  clearStoredPendingTwoFactorChallenge,
+  getStoredPendingTwoFactorChallenge,
+} from '@/lib/authStorage';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
 import { CookieNoticeModal, ImprintModal } from '@/components/LegalModals';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +40,27 @@ export default function Login() {
     };
   }, []);
 
+  useEffect(() => {
+    const pendingChallenge = getStoredPendingTwoFactorChallenge();
+    const url = new URL(window.location.href);
+    const codeFromUrl = url.searchParams.get('twoFactorCode');
+
+    if (pendingChallenge) {
+      setChallengeToken(pendingChallenge.challengeToken);
+      setTwoFactorEmailHint(pendingChallenge.emailHint);
+      if (typeof codeFromUrl === 'string' && /^\d{6}$/.test(codeFromUrl)) {
+        setTwoFactorCode(codeFromUrl);
+      }
+    } else if (typeof codeFromUrl === 'string' && /^\d{6}$/.test(codeFromUrl)) {
+      setError('Bitte zuerst mit E-Mail und Passwort anmelden. Danach kann der Code aus dem E-Mail-Link automatisch uebernommen werden.');
+    }
+
+    if (codeFromUrl) {
+      url.searchParams.delete('twoFactorCode');
+      window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+    }
+  }, []);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -60,6 +85,7 @@ export default function Login() {
         setChallengeToken(res.challengeToken);
         setTwoFactorEmailHint(res.emailHint);
         setTwoFactorCode('');
+        setError(null);
         return;
       }
       navigate('/dashboard');
@@ -122,6 +148,9 @@ export default function Login() {
             <>
               <div className="rounded-2xl border border-viridian/20 bg-viridian/5 px-4 py-3 text-sm text-gray-600">
                 Wir haben einen 6-stelligen Sicherheitscode an <span className="font-semibold text-gray-800">{twoFactorEmailHint || 'deine E-Mail-Adresse'}</span> gesendet.
+                <div className="mt-2 text-xs text-gray-500">
+                  Wenn du den E-Mail-Link mit dem Clipboard-Symbol im gleichen Browser oeffnest, wird der Code automatisch eingetragen.
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Sicherheitscode</label>
@@ -144,7 +173,9 @@ export default function Login() {
                   type="button"
                   className="text-gray-500 hover:text-gray-700 transition-colors"
                   onClick={() => {
+                    clearStoredPendingTwoFactorChallenge();
                     setChallengeToken(null);
+                    setTwoFactorEmailHint(null);
                     setTwoFactorCode('');
                     setError(null);
                   }}

@@ -1,4 +1,11 @@
 const AUTH_TOKEN_KEY = 'auth_token';
+const PENDING_TWO_FACTOR_KEY = 'pending_two_factor_challenge';
+
+export type PendingTwoFactorChallenge = {
+  challengeToken: string;
+  emailHint: string;
+  expiresAt: number;
+};
 
 function getSessionStorage(): Storage | null {
   try {
@@ -52,6 +59,67 @@ export function clearStoredAuthToken() {
   try {
     sessionStorage?.removeItem(AUTH_TOKEN_KEY);
     localStorage?.removeItem(AUTH_TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function getStoredPendingTwoFactorChallenge(): PendingTwoFactorChallenge | null {
+  const localStorage = getLocalStorage();
+  try {
+    const raw = localStorage?.getItem(PENDING_TWO_FACTOR_KEY) || '';
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<PendingTwoFactorChallenge>;
+    if (
+      typeof parsed.challengeToken !== 'string' ||
+      typeof parsed.emailHint !== 'string' ||
+      typeof parsed.expiresAt !== 'number'
+    ) {
+      localStorage?.removeItem(PENDING_TWO_FACTOR_KEY);
+      return null;
+    }
+
+    if (parsed.expiresAt <= Date.now()) {
+      localStorage?.removeItem(PENDING_TWO_FACTOR_KEY);
+      return null;
+    }
+
+    return {
+      challengeToken: parsed.challengeToken,
+      emailHint: parsed.emailHint,
+      expiresAt: parsed.expiresAt,
+    };
+  } catch {
+    localStorage?.removeItem(PENDING_TWO_FACTOR_KEY);
+    return null;
+  }
+}
+
+export function storePendingTwoFactorChallenge(challenge: {
+  challengeToken: string;
+  emailHint: string;
+  expiresInSeconds: number;
+}) {
+  const localStorage = getLocalStorage();
+  try {
+    localStorage?.setItem(
+      PENDING_TWO_FACTOR_KEY,
+      JSON.stringify({
+        challengeToken: challenge.challengeToken,
+        emailHint: challenge.emailHint,
+        expiresAt: Date.now() + challenge.expiresInSeconds * 1000,
+      } satisfies PendingTwoFactorChallenge),
+    );
+  } catch {
+    // ignore
+  }
+}
+
+export function clearStoredPendingTwoFactorChallenge() {
+  const localStorage = getLocalStorage();
+  try {
+    localStorage?.removeItem(PENDING_TWO_FACTOR_KEY);
   } catch {
     // ignore
   }

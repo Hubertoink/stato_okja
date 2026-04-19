@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomInt } from 'crypto';
 import { User } from '../users/entities/user.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
@@ -13,9 +14,16 @@ import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { isStrictSecurityMode } from '../config/security.config';
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from './password-policy';
+import { getTwoFactorCodeTtlSeconds, isTwoFactorAuthenticationEnabled } from './two-factor.config';
 
 export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
 export type AdminResetActionMode = 'email' | 'temporary_password';
+export type TwoFactorChallengeResponse = {
+  requiresTwoFactor: true;
+  challengeToken: string;
+  emailHint: string;
+  expiresInSeconds: number;
+};
 
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
 const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
@@ -52,6 +60,83 @@ export class AuthService {
       forgotPasswordEnabled: passwordResetMode !== 'admin_temp_password',
       adminTemporaryPasswordEnabled: passwordResetMode !== 'email',
     };
+  }
+
+  isTwoFactorAuthenticationEnabled() {
+    return isTwoFactorAuthenticationEnabled();
+  }
+
+  private maskEmail(email: string) {
+    const normalized = String(email || '').trim();
+    const atIndex = normalized.indexOf('@');
+    if (atIndex <= 1) return normalized;
+
+    const local = normalized.slice(0, atIndex);
+    const domain = normalized.slice(atIndex + 1);
+    if (!domain) return `${local[0]}***`;
+    return `${local[0]}***${local[local.length - 1] || ''}@${domain}`;
+  }
+
+  private generateTwoFactorCode() {
+    return String(randomInt(0, 1_000_000)).padStart(6, '0');
+  }
+
+  private async clearTwoFactorChallenge(user: User, options?: { bumpVersion?: boolean }) {
+    user.twoFactorCodeHash = null;
+    user.twoFactorCodeExpiresAt = null;
+    if (options?.bumpVersion === true) {
+      user.twoFactorTokenVersion = (user.twoFactorTokenVersion || 0) + 1;
+    }
+    await this.users.save(user);
+  }
+
+  private async issueTwoFactorChallenge(user: User): Promise<TwoFactorChallengeResponse> {
+    const expiresInSeconds = getTwoFactorCodeTtlSeconds();
+    const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
+    const code = this.generateTwoFactorCode();
+    const nextVersion = (user.twoFactorTokenVersion || 0) + 1;
+
+    user.twoFactorTokenVersion = nextVersion;
+    user.twoFactorCodeHash = await bcrypt.hash(code, 10);
+    user.twoFactorCodeExpiresAt = expiresAt;
+    await this.users.save(user);
+
+    try {
+      await this.email.sendTwoFactorCodeEmail(
+        user.email,
+        user.name || user.email,
+        code,
+        Math.max(1, Math.ceil(expiresInSeconds / 60)),
+      );
+    } catch {
+      await this.clearTwoFactorChallenge(user);
+      throw new HttpException(
+        'Der Zwei-Faktor-Code konnte nicht versendet werden. Bitte später erneut versuchen.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    const challengeToken = await this.jwt.signAsync(
+      { sub: user.id, purpose: 'login-2fa', version: nextVersion },
+      { expiresIn: expiresInSeconds },
+    );
+
+    return {
+      requiresTwoFactor: true,
+      challengeToken,
+      emailHint: this.maskEmail(user.email),
+      expiresInSeconds,
+    };
+  }
+
+  private async verifyTwoFactorChallengeToken(challengeToken: string) {
+    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(challengeToken, {
+      secret: getJwtSecret(),
+    });
+    if (!decoded || decoded.purpose !== 'login-2fa' || typeof decoded.version !== 'number') {
+      throw new UnauthorizedException('Ungültige Zwei-Faktor-Anfrage');
+    }
+    return decoded;
   }
 
   private async savePassword(
@@ -219,7 +304,59 @@ export class AuthService {
       await this.users.save(user);
     }
 
+    if (this.isTwoFactorAuthenticationEnabled()) {
+      return this.issueTwoFactorChallenge(user);
+    }
+
     return this.login(user);
+  }
+
+  async verifyTwoFactorLogin(challengeToken: string, codeRaw: string) {
+    if (!this.isTwoFactorAuthenticationEnabled()) {
+      throw new BadRequestException('Zwei-Faktor-Authentifizierung ist deaktiviert');
+    }
+
+    const code = String(codeRaw || '').replace(/\D/g, '');
+    if (code.length !== 6) {
+      throw new UnauthorizedException('Ungültiger Sicherheitscode');
+    }
+
+    const decoded = await this.verifyTwoFactorChallengeToken(challengeToken);
+    const user = await this.users.findOne({ where: { id: decoded.sub } });
+    if (!user) throw new UnauthorizedException('Nicht autorisiert');
+    if ((user.twoFactorTokenVersion || 0) !== decoded.version) {
+      throw new UnauthorizedException('Die Zwei-Faktor-Anfrage ist nicht mehr gültig');
+    }
+    if (!user.twoFactorCodeHash || !user.twoFactorCodeExpiresAt) {
+      throw new UnauthorizedException('Kein aktiver Sicherheitscode vorhanden');
+    }
+    if (user.twoFactorCodeExpiresAt.getTime() < Date.now()) {
+      await this.clearTwoFactorChallenge(user, { bumpVersion: true });
+      throw new UnauthorizedException('Der Sicherheitscode ist abgelaufen');
+    }
+
+    const ok = await bcrypt.compare(code, user.twoFactorCodeHash);
+    if (!ok) {
+      throw new UnauthorizedException('Ungültiger Sicherheitscode');
+    }
+
+    await this.clearTwoFactorChallenge(user, { bumpVersion: true });
+    return this.login(user);
+  }
+
+  async resendTwoFactorLogin(challengeToken: string) {
+    if (!this.isTwoFactorAuthenticationEnabled()) {
+      throw new BadRequestException('Zwei-Faktor-Authentifizierung ist deaktiviert');
+    }
+
+    const decoded = await this.verifyTwoFactorChallengeToken(challengeToken);
+    const user = await this.users.findOne({ where: { id: decoded.sub } });
+    if (!user) throw new UnauthorizedException('Nicht autorisiert');
+    if ((user.twoFactorTokenVersion || 0) !== decoded.version) {
+      throw new UnauthorizedException('Die Zwei-Faktor-Anfrage ist nicht mehr gültig');
+    }
+
+    return this.issueTwoFactorChallenge(user);
   }
 
   async login(user: User) {

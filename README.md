@@ -202,6 +202,10 @@ Wichtige Betriebsvariablen:
 - `AUTH_RATE_LIMIT_TTL=60`
 - `AUTH_RATE_LIMIT_MAX=10`
 	- Empfohlene Hosted-Standardwerte für globales Backend-Rate-Limiting und strengere Limits auf Login-, Invite- und Passwort-Reset-Endpunkten.
+- `AUTH_2FA_ENABLED=false`
+- `AUTH_2FA_CODE_TTL=600`
+	- Optionale E-Mail-Zwei-Faktor-Authentifizierung für den Login.
+	- Standard ist bewusst `false`, weil dafür eine funktionierende SMTP-Konfiguration erforderlich ist.
 - `ENABLE_ORG_MOVE=false`
 	- Standardwert: Organisationsverschiebung ist komplett deaktiviert.
 	- Nur wenn der Wert bewusst auf `true` gesetzt wird, werden die Move-Endpunkte im Backend freigeschaltet und der Verschieben-Button im Frontend-Build angezeigt.

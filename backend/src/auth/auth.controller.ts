@@ -53,6 +53,7 @@ export class AuthController {
       loginTitle,
       loginSubtitle,
       liveRefreshIntervalMs,
+      twoFactorEnabled: this.auth.isTwoFactorAuthenticationEnabled(),
       ...this.auth.getPublicPasswordResetConfig(),
     };
   }
@@ -62,6 +63,18 @@ export class AuthController {
   async login(@Body() body: { email: string; password: string }) {
     const email = String(body?.email || '').toLowerCase();
     return this.auth.loginWithPassword(email, String(body?.password || ''));
+  }
+
+  @Throttle(AUTH_RATE_LIMIT)
+  @Post('verify-two-factor')
+  verifyTwoFactor(@Body() body: { challengeToken: string; code: string }) {
+    return this.auth.verifyTwoFactorLogin(String(body?.challengeToken || ''), String(body?.code || ''));
+  }
+
+  @Throttle(AUTH_RATE_LIMIT)
+  @Post('resend-two-factor')
+  resendTwoFactor(@Body() body: { challengeToken: string }) {
+    return this.auth.resendTwoFactorLogin(String(body?.challengeToken || ''));
   }
 
   @UseGuards(JwtAuthGuard)

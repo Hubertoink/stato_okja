@@ -29,6 +29,14 @@ Vorteile:
 - kein separates CORS-Konstrukt nötig
 - nur ein öffentlicher Einstiegspunkt
 - einfache URL-Struktur unter einer Domain
+- Frontend und Backend koennen miteinander sprechen, ohne dass der Frontend-Container direkten DB-Zugriff braucht
+
+Wichtig zur Sicherheitsgrenze:
+
+- Für On-Prem bleibt genau dieser eine öffentliche Einstiegspunkt der empfohlene Standard.
+- Das Backend sollte im Standard nicht zusätzlich mit eigenem öffentlichen Port exponiert werden.
+- Eine Trennung in Frontend-Port und Backend-Port wäre on-prem nur dann sinnvoll, wenn davor bewusst ein eigener Reverse Proxy oder eine Firewall-Regelung betrieben wird.
+- Die Compose-Datei trennt das interne Netz jetzt zusätzlich in `frontend-backend` und `backend-db`, damit der DB-Service nicht mehr im gleichen Docker-Netz wie das Frontend hängt.
 
 ## Voraussetzungen
 
@@ -95,6 +103,7 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 - `APP_ORIGIN`: öffentliche URL des Frontends, z. B. `https://stato.meine-kommune.de`
 - `CORS_ORIGINS`: erlaubte Frontend-Origin, meist identisch zu `APP_ORIGIN`
 - `API_PREFIX`: optional, Default ist `api`
+- `TRUST_PROXY`: im On-Prem-Proxy-Standard auf `true`, damit Backend-Rate-Limits die echte Client-IP statt nur den Frontend-Container sehen
 
 ### Sicherheit / Auth
 
@@ -107,6 +116,10 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 - `DB_SYNCHRONIZE`: für eine leere On-Prem-Datenbank aktuell auf `true` setzen
 - `DB_MIGRATIONS_RUN`: kann gesetzt bleiben; bei `DB_SYNCHRONIZE=true` werden Migrationen im Backend automatisch übersprungen
 - `DB_LOGGING`: optional, für produktionsnahe On-Prem-Instanzen meist `false`
+- `RATE_LIMIT_TTL`: Zeitfenster für das globale Backend-Rate-Limit in Sekunden, Standard `60`
+- `RATE_LIMIT_MAX`: maximale Requests pro Client-IP innerhalb des Zeitfensters, Standard `100`
+- `AUTH_RATE_LIMIT_TTL`: Zeitfenster für strengere Auth-Endpunkte in Sekunden, Standard `60`
+- `AUTH_RATE_LIMIT_MAX`: maximale Requests pro Client-IP auf Login, Invite und Passwort-Reset innerhalb des Auth-Zeitfensters, Standard `10`
 
 ### Optional: externe Postgres-Datenbank mit TLS
 
@@ -196,12 +209,17 @@ POSTGRES_PASSWORD=CHANGE_ME_STRONG
 APP_ORIGIN=https://stato.kommune.local
 CORS_ORIGINS=https://stato.kommune.local
 API_PREFIX=api
+TRUST_PROXY=true
 
 JWT_SECRET=CHANGE_ME_SUPER_LONG_RANDOM_STRING
 JWT_ACCESS_EXPIRATION=12h
 DB_SYNCHRONIZE=true
 DB_MIGRATIONS_RUN=true
 DB_LOGGING=false
+RATE_LIMIT_TTL=60
+RATE_LIMIT_MAX=100
+AUTH_RATE_LIMIT_TTL=60
+AUTH_RATE_LIMIT_MAX=10
 DB_REQUIRE_SSL=false
 DB_SSL=false
 DB_SSL_REJECT_UNAUTHORIZED=false

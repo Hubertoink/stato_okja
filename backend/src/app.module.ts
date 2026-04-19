@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeormConfig } from './config/typeorm.config';
+import { getRateLimitOptions } from './config/rate-limit.config';
 import { AuthModule } from './auth/auth.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { TaxonomyModule } from './taxonomy/taxonomy.module';
@@ -16,12 +19,18 @@ import { UploadsModule } from './uploads/uploads.module';
 import { ProjectTemplatesModule } from './project-templates/project-templates.module';
 import { DevToolsModule } from './dev-tools/dev-tools.module';
 import { SystemDataModule } from './system-data/system-data.module';
+import { ThrottlerBehindProxyGuard } from './common/throttler-behind-proxy.guard';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    ThrottlerModule.forRootAsync({
+      useFactory: () => ({
+        throttlers: getRateLimitOptions(process.env.RATE_LIMIT_TTL, process.env.RATE_LIMIT_MAX),
+      }),
     }),
     TypeOrmModule.forRootAsync({
       useFactory: () => ({
@@ -46,6 +55,12 @@ import { SystemDataModule } from './system-data/system-data.module';
     UploadsModule,
     DevToolsModule,
     SystemDataModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerBehindProxyGuard,
+    },
   ],
 })
 export class AppModule {}

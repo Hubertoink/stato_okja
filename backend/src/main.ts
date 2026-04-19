@@ -10,7 +10,8 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { assertSecureRuntimeConfig, shouldExposeSwaggerDocs } from './config/security.config';
 import { shouldTrustProxy } from './config/rate-limit.config';
-import { assertTwoFactorRuntimeConfig } from './auth/two-factor.config';
+import { assertTwoFactorRuntimeConfig, isTwoFactorAuthenticationEnabled } from './auth/two-factor.config';
+import { EmailService } from './email/email.service';
 
 const PG_TIMESTAMP_OID = 1114;
 
@@ -26,6 +27,13 @@ async function bootstrap() {
   assertSecureRuntimeConfig();
   assertTwoFactorRuntimeConfig();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const emailService = app.get(EmailService, { strict: false });
+
+  if (emailService) {
+    await emailService.verifySmtpConnection({
+      failOnError: isTwoFactorAuthenticationEnabled(),
+    });
+  }
 
   if (shouldTrustProxy(process.env.TRUST_PROXY)) {
     app.set('trust proxy', true);

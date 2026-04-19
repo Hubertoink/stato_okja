@@ -260,10 +260,10 @@ export default function Dashboard() {
   const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
   const [expandedRecentActionGroups, setExpandedRecentActionGroups] = useState<Record<AuditLogAction, boolean>>({
-    login: true,
-    create: true,
-    update: true,
-    delete: true,
+    login: false,
+    create: false,
+    update: false,
+    delete: false,
   });
   // Determine effective orgId for opening hours
   const effectiveOrgId = user?.role === 'superadmin'

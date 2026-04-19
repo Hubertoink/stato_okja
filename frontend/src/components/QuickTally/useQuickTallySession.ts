@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '@/lib/auth';
+import { useOrgScopeKey } from '@/lib/orgScope';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -11,52 +13,87 @@ export interface TallySession {
   startedAt: string; // ISO timestamp
 }
 
-const STORAGE_KEY = 'stato_quick_tally_session';
+const LEGACY_STORAGE_KEY = 'stato_quick_tally_session';
 const SYNC_EVENT = 'stato:quick-tally-session-changed';
 
-function readSessionFromStorage(): TallySession | null {
+function buildStorageKey(userId: string | null | undefined, scopeKey: string): string | null {
+  if (!userId) return null;
+  return `${LEGACY_STORAGE_KEY}:${userId}:${scopeKey}`;
+}
+
+function readSessionFromStorage(storageKey: string | null): TallySession | null {
+  if (!storageKey) return null;
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(storageKey);
     if (!stored) return null;
     const parsed = JSON.parse(stored) as TallySession;
     const today = new Date().toISOString().slice(0, 10);
     if (parsed.date === today) return parsed;
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(storageKey);
     return null;
   } catch {
     return null;
   }
 }
 
-function writeSessionToStorage(session: TallySession | null) {
+function writeSessionToStorage(storageKey: string | null, session: TallySession | null) {
+  if (!storageKey) return;
   try {
-    if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    else localStorage.removeItem(STORAGE_KEY);
+    if (session) localStorage.setItem(storageKey, JSON.stringify(session));
+    else localStorage.removeItem(storageKey);
   } finally {
     // Ensure all hook instances in the same tab update immediately.
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event(SYNC_EVENT));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { storageKey } }));
+    }
   }
 }
 
 export function useQuickTallySession() {
+  const { user } = useAuth();
+  const scopeKey = useOrgScopeKey();
+  const storageKey = useMemo(() => buildStorageKey(user?.id ?? null, scopeKey), [user?.id, scopeKey]);
   const [session, setSession] = useState<TallySession | null>(() => {
-    return readSessionFromStorage();
+    return null;
   });
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch {
+      // ignore storage cleanup failures
+    }
+  }, []);
+
+  useEffect(() => {
+    setSession(readSessionFromStorage(storageKey));
+  }, [storageKey]);
 
   // Keep multiple hook instances in sync (same tab + other tabs)
   useEffect(() => {
-    const sync = () => setSession(readSessionFromStorage());
-    window.addEventListener(SYNC_EVENT, sync);
-    // 'storage' fires in other tabs/windows when localStorage changes.
-    window.addEventListener('storage', sync);
-    return () => {
-      window.removeEventListener(SYNC_EVENT, sync);
-      window.removeEventListener('storage', sync);
+    const sync = (event?: Event) => {
+      if (event instanceof CustomEvent) {
+        const eventStorageKey = (event.detail as { storageKey?: string | null } | undefined)?.storageKey;
+        if (eventStorageKey && eventStorageKey !== storageKey) return;
+      }
+      setSession(readSessionFromStorage(storageKey));
     };
-  }, []);
+    const syncFromStorage = (event: StorageEvent) => {
+      if (event.key && event.key !== storageKey && event.key !== LEGACY_STORAGE_KEY) return;
+      setSession(readSessionFromStorage(storageKey));
+    };
+    window.addEventListener(SYNC_EVENT, sync as EventListener);
+    // 'storage' fires in other tabs/windows when localStorage changes.
+    window.addEventListener('storage', syncFromStorage);
+    return () => {
+      window.removeEventListener(SYNC_EVENT, sync as EventListener);
+      window.removeEventListener('storage', syncFromStorage);
+    };
+  }, [storageKey]);
 
   const startSession = useCallback(
     (projectId: string, locationId?: string, startTime?: string) => {
+      if (!storageKey) return null;
       const now = new Date();
       const newSession: TallySession = {
         projectId,
@@ -67,10 +104,10 @@ export function useQuickTallySession() {
         startedAt: now.toISOString(),
       };
       setSession(newSession);
-      writeSessionToStorage(newSession);
+      writeSessionToStorage(storageKey, newSession);
       return newSession;
     },
-    []
+    [storageKey]
   );
 
   const updateCount = useCallback(
@@ -87,11 +124,11 @@ export function useQuickTallySession() {
             },
           },
         };
-        writeSessionToStorage(updated);
+        writeSessionToStorage(storageKey, updated);
         return updated;
       });
     },
-    []
+    [storageKey]
   );
 
   const incrementCount = useCallback(
@@ -109,17 +146,17 @@ export function useQuickTallySession() {
             },
           },
         };
-        writeSessionToStorage(updated);
+        writeSessionToStorage(storageKey, updated);
         return updated;
       });
     },
-    []
+    [storageKey]
   );
 
   const clearSession = useCallback(() => {
     setSession(null);
-    writeSessionToStorage(null);
-  }, []);
+    writeSessionToStorage(storageKey, null);
+  }, [storageKey]);
 
   const getTotals = useCallback(() => {
     if (!session) return { m: 0, w: 0, d: 0, total: 0 };

@@ -36,8 +36,13 @@ Wichtig: Wenn deine Dev-Umgebung „komisch alte Features“ zeigt, läuft sehr 
   - `PORT=3000`
   - `API_PREFIX=api`
   - `APP_ORIGIN=https://app.stato-okja.de`
+  - `TRUST_PROXY=true`
   - `JWT_SECRET=<zufaelliger_wert_mit_mindestens_32_zeichen>`
   - `CORS_ORIGINS=https://app.stato-okja.de`
+  - `RATE_LIMIT_TTL=60`
+  - `RATE_LIMIT_MAX=100`
+  - `AUTH_RATE_LIMIT_TTL=60`
+  - `AUTH_RATE_LIMIT_MAX=10`
   - `DB_TYPE=postgres`
   - `DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE`
   - Optional: `DB_SYNCHRONIZE=false`, `DB_LOGGING=false`

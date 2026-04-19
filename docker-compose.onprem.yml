@@ -14,7 +14,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [stato]
+    networks: [backend-db]
 
   backend:
     build:
@@ -39,6 +39,11 @@ services:
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
       DB_MIGRATIONS_RUN: ${DB_MIGRATIONS_RUN:-true}
       DB_LOGGING: ${DB_LOGGING:-false}
+      RATE_LIMIT_TTL: ${RATE_LIMIT_TTL:-60}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      AUTH_RATE_LIMIT_TTL: ${AUTH_RATE_LIMIT_TTL:-60}
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-10}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
       DB_REQUIRE_SSL: ${DB_REQUIRE_SSL:-false}
       DB_SSL: ${DB_SSL:-false}
       DB_SSL_REJECT_UNAUTHORIZED: ${DB_SSL_REJECT_UNAUTHORIZED:-false}
@@ -71,7 +76,7 @@ services:
     volumes:
       # Persistiert /uploads (u.a. /uploads/images)
       - backend-uploads:/app/uploads
-    networks: [stato]
+    networks: [frontend-backend, backend-db]
 
   frontend:
     build:
@@ -91,7 +96,7 @@ services:
       - backend
     ports:
       - "80:80"
-    networks: [stato]
+    networks: [frontend-backend]
 
   # Optional: lokale SMTP-Testbox (Mailpit)
   # mailpit:
@@ -100,7 +105,7 @@ services:
   #   ports:
   #     - "1025:1025"
   #     - "8025:8025"
-  #   networks: [stato]
+  #   networks: [frontend-backend]
 
 volumes:
   postgres-data:
@@ -109,5 +114,7 @@ volumes:
     name: stato-onprem-backend-uploads
 
 networks:
-  stato:
-    name: stato-onprem
+  frontend-backend:
+    name: stato-onprem-frontend-backend
+  backend-db:
+    name: stato-onprem-backend-db

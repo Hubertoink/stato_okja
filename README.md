@@ -194,6 +194,14 @@ npm run migration:run
 
 Wichtige Betriebsvariablen:
 
+- `TRUST_PROXY=true`
+	- Für Hosted-Betrieb hinter Mittwald oder einem Reverse Proxy empfohlen.
+	- Sorgt dafür, dass Sicherheitsfunktionen wie Rate-Limits mit der echten Client-IP statt nur mit der Proxy-IP arbeiten.
+- `RATE_LIMIT_TTL=60`
+- `RATE_LIMIT_MAX=100`
+- `AUTH_RATE_LIMIT_TTL=60`
+- `AUTH_RATE_LIMIT_MAX=10`
+	- Empfohlene Hosted-Standardwerte für globales Backend-Rate-Limiting und strengere Limits auf Login-, Invite- und Passwort-Reset-Endpunkten.
 - `ENABLE_ORG_MOVE=false`
 	- Standardwert: Organisationsverschiebung ist komplett deaktiviert.
 	- Nur wenn der Wert bewusst auf `true` gesetzt wird, werden die Move-Endpunkte im Backend freigeschaltet und der Verschieben-Button im Frontend-Build angezeigt.

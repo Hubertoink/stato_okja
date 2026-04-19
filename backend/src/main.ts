@@ -2,12 +2,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { types as pgTypes } from 'pg';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { assertSecureRuntimeConfig, shouldExposeSwaggerDocs } from './config/security.config';
+import { shouldTrustProxy } from './config/rate-limit.config';
 
 const PG_TIMESTAMP_OID = 1114;
 
@@ -22,6 +24,18 @@ pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
 async function bootstrap() {
   assertSecureRuntimeConfig();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  if (shouldTrustProxy(process.env.TRUST_PROXY)) {
+    app.set('trust proxy', true);
+  }
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   // Global prefix
   app.setGlobalPrefix(process.env.API_PREFIX || 'api');

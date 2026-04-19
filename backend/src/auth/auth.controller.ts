@@ -1,12 +1,18 @@
 import { Body, Controller, Get, Post, Patch, Req, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 import { OrgsService } from '../orgs/orgs.service';
 import type { AdminResetActionMode } from './auth.service';
+import { getAuthRateLimitOverride } from '../config/rate-limit.config';
 
 type InviteRole = 'superadmin' | 'org_admin' | 'user';
+
+const AUTH_RATE_LIMIT = {
+  default: getAuthRateLimitOverride(process.env.AUTH_RATE_LIMIT_TTL, process.env.AUTH_RATE_LIMIT_MAX),
+};
 
 function parseNonNegativeIntEnv(raw: string | undefined, fallback: number): number {
   if (typeof raw === 'undefined') return fallback;
@@ -51,6 +57,7 @@ export class AuthController {
     };
   }
 
+  @Throttle(AUTH_RATE_LIMIT)
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
     const email = String(body?.email || '').toLowerCase();
@@ -66,6 +73,7 @@ export class AuthController {
   // Invite and accept-invite
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('superadmin','org_admin')
+  @Throttle(AUTH_RATE_LIMIT)
   @Post('invite')
   async invite(
     @Body() body: { email: string; name: string; role?: 'org_admin'|'user'; orgId?: string|null; orgName?: string },
@@ -108,17 +116,20 @@ export class AuthController {
     });
   }
 
+  @Throttle(AUTH_RATE_LIMIT)
   @Post('accept-invite')
   acceptInvite(@Body() body: { token: string; password: string }) {
     return this.auth.acceptInvite(body?.token, body?.password);
   }
 
   // Password reset: self-service request + reset
+  @Throttle(AUTH_RATE_LIMIT)
   @Post('request-password-reset')
   requestPasswordReset(@Body() body: { email: string }) {
     return this.auth.requestPasswordReset(String(body?.email || ''));
   }
 
+  @Throttle(AUTH_RATE_LIMIT)
   @Post('reset-password')
   resetPassword(@Body() body: { token: string; password: string }) {
     return this.auth.resetPassword(String(body?.token || ''), String(body?.password || ''));
@@ -127,6 +138,7 @@ export class AuthController {
   // Superadmin-triggered reset link for a user
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('superadmin')
+  @Throttle(AUTH_RATE_LIMIT)
   @Post('admin-reset-password')
   adminResetPassword(
     @Req() req: { user: { id: string; name?: string | null; orgId?: string | null } },
@@ -145,6 +157,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Throttle(AUTH_RATE_LIMIT)
   @Post('change-password')
   changePassword(@Req() req: { user: { id: string } }, @Body() body: { currentPassword: string; newPassword: string }) {
     return this.auth.changePassword(req.user.id, body?.currentPassword, body?.newPassword);

@@ -76,6 +76,33 @@ function formatLocalDateInputValue(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function parseCalendarDate(value?: string | null) {
+  if (!value) return null;
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || !month || !day) return null;
+
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+}
+
+function getInclusiveWeekSpan(from?: string, to?: string) {
+  const start = parseCalendarDate(from);
+  const end = parseCalendarDate(to);
+  if (!start || !end) return 0;
+
+  const startTime = start.getTime();
+  const endTime = end.getTime();
+  const first = Math.min(startTime, endTime);
+  const last = Math.max(startTime, endTime);
+  const inclusiveDays = Math.floor((last - first) / 86400000) + 1;
+
+  return Math.max(inclusiveDays / 7, 1);
+}
+
 type StatsOverviewResponse = {
   summary: {
     totalActivities: number;
@@ -837,6 +864,30 @@ export default function Statistics() {
           : data.total
       }));
   }, [timeseries, timeAggregation, showAverage]);
+
+  const totalParticipantsPerHour = useMemo(() => {
+    const totalDurationHours = (summary?.totalDurationMinutes ?? 0) / 60;
+    if (totalDurationHours <= 0) return 0;
+    return (summary?.totalParticipants ?? 0) / totalDurationHours;
+  }, [summary?.totalDurationMinutes, summary?.totalParticipants]);
+
+  const averageHoursPerActivity = useMemo(() => {
+    const activityCount = summary?.totalActivities ?? 0;
+    if (activityCount <= 0) return 0;
+    return (summary?.totalDurationMinutes ?? 0) / activityCount / 60;
+  }, [summary?.totalActivities, summary?.totalDurationMinutes]);
+
+  const averageActivitiesPerWeek = useMemo(() => {
+    const activityCount = summary?.totalActivities ?? 0;
+    if (activityCount <= 0) return 0;
+
+    const firstActivityDate = timeseries?.[0]?.date;
+    const lastActivityDate = timeseries?.[timeseries.length - 1]?.date;
+    const weekSpan = getInclusiveWeekSpan(from || firstActivityDate, to || lastActivityDate);
+
+    if (weekSpan <= 0) return 0;
+    return activityCount / weekSpan;
+  }, [from, summary?.totalActivities, timeseries, to]);
 
   // Pagination für Aktivitäten
   const totalActivityPages = Math.max(1, Math.ceil(totalActivities / ACTIVITIES_PER_PAGE));
@@ -1872,16 +1923,20 @@ export default function Statistics() {
               }`}
               onClick={() => setShowAverage(true)}
             >
-              Ø / Aktivität
+              Ø Werte
             </button>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" data-pdf-section>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
-              {fmtNumber(summary?.totalActivities)}
+              {showAverage
+                ? averageActivitiesPerWeek.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                : fmtNumber(summary?.totalActivities)}
             </p>
-            <p className="text-sm text-gray-600 mt-2">Aktivitäten</p>
+            <p className="text-sm text-gray-600 mt-2">
+              {showAverage ? 'Ø Aktivitäten / Woche' : 'Aktivitäten'}
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-cambridge-blue">
@@ -1890,18 +1945,12 @@ export default function Statistics() {
                 : fmtNumber(summary?.totalParticipants)}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
+              {showAverage ? 'Ø Teilnehmende / Aktivität' : 'Teilnehmende'}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-cambridge-blue">
-              {showAverage
-                ? ((summary?.totalDurationMinutes ?? 0) > 0
-                    ? (((summary?.totalParticipants ?? 0) / ((summary?.totalDurationMinutes ?? 0) / 60))).toLocaleString('de-DE', { maximumFractionDigits: 1 })
-                    : '0')
-                : ((summary?.totalDurationMinutes ?? 0) > 0
-                    ? (((summary?.totalParticipants ?? 0) / ((summary?.totalDurationMinutes ?? 0) / 60))).toLocaleString('de-DE', { maximumFractionDigits: 1 })
-                    : '0')}
+              {totalParticipantsPerHour.toLocaleString('de-DE', { maximumFractionDigits: 1 })}
             </p>
             <p className="text-sm text-gray-600 mt-2">
               {showAverage ? 'Ø Teilnehmende / Stunde' : 'Teilnehmende / Stunde'}
@@ -1910,13 +1959,11 @@ export default function Statistics() {
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
               {showAverage
-                ? (summary?.totalActivities && summary?.totalActivities > 0
-                    ? ((summary?.totalDurationMinutes ?? 0) / summary.totalActivities / 60).toLocaleString('de-DE', { maximumFractionDigits: 1 })
-                    : '0')
+                ? averageHoursPerActivity.toLocaleString('de-DE', { maximumFractionDigits: 1 })
                 : summary?.totalHours?.toLocaleString('de-DE')}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? 'Ø Stunden' : 'Gesamt-Stunden'}
+              {showAverage ? 'Ø Stunden / Aktivität' : 'Gesamt-Stunden'}
             </p>
           </div>
         </div>

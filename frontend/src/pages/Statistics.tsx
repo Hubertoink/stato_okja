@@ -146,10 +146,13 @@ type PdfSlice = {
   endPx: number;
 };
 
+type ChartExportFormat = 'png' | 'pdf';
+
 const PDF_RENDER_SCALE = 2;
 const PDF_MARGIN_MM = 10;
 const PDF_HEADER_HEIGHT_MM = 40;
 const PDF_MIN_PAGE_FILL_RATIO = 0.58;
+const CHART_EXPORT_HEADER_HEIGHT_MM = 26;
 
 let pdfExportDependenciesPromise:
   | Promise<{
@@ -173,6 +176,40 @@ function loadPdfExportDependencies() {
 
 function preloadPdfExportDependencies() {
   void loadPdfExportDependencies();
+}
+
+function sanitizeExportSegment(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9_-]+/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+        return;
+      }
+      reject(new Error('Canvas export failed.'));
+    }, 'image/png');
+  });
 }
 
 function addPdfPageHeader(pdf: jsPDF, orgTitle: string, dateRange: string) {
@@ -328,11 +365,13 @@ export default function Statistics() {
 
   const [pdfMode, setPdfMode] = useState(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
+  const chartCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const statsUiFlowIdRef = useRef<string | null>(null);
   const statsUiFlowCompletedRef = useRef(false);
   const statsUiFlowMarksRef = useRef<Record<string, boolean>>({});
   const statsUiPendingRunKeyRef = useRef<string | null>(null);
   const statsUiFetchSeenRef = useRef<Record<string, boolean>>({});
+  const [activeChartExport, setActiveChartExport] = useState<string | null>(null);
   const { user } = useAuth();
   const scopeKey = useOrgScopeKey();
   const { data: publicConfig } = usePublicConfig();
@@ -1094,6 +1133,47 @@ export default function Statistics() {
 
   // Generic label renderer for bar charts (positions label above the bar)
   type LabelProps = { x?: number; y?: number; width?: number; value?: number | string };
+  type PieLabelProps = {
+    cx?: number;
+    x?: number;
+    y?: number;
+    percent?: number;
+    value?: number;
+    payload?: { color?: string };
+  };
+
+  const renderPieValueLabel = (showAbsoluteValue: boolean) => (props: PieLabelProps) => {
+    const { cx, x, y, percent, value, payload } = props;
+    if (typeof x !== 'number' || typeof y !== 'number' || typeof percent !== 'number') return null;
+    if (percent <= 0) return null;
+
+    const textAnchor = typeof cx === 'number' && x < cx ? 'end' : 'start';
+    const labelColor = payload?.color || chartValueLabelColor;
+    const percentageText = `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
+
+    return (
+      <text
+        x={x}
+        y={y}
+        textAnchor={textAnchor}
+        fill={labelColor}
+        stroke={chartValueLabelStroke}
+        strokeWidth={2}
+        paintOrder="stroke"
+        fontWeight={600}
+      >
+        <tspan x={x} dy="0" fontSize={12}>
+          {percentageText}
+        </tspan>
+        {showAbsoluteValue && (
+          <tspan x={x} dy="1.15em" fontSize={10}>
+            {fmtNumber(value)}
+          </tspan>
+        )}
+      </text>
+    );
+  };
+
   const ValueLabel = (props: LabelProps) => {
     const { x, y, width, value } = props;
     const txt =
@@ -1116,6 +1196,130 @@ export default function Statistics() {
       >
         {txt}
       </text>
+    );
+  };
+
+  const exportRangeLabel = [from, to].filter(Boolean).join(' bis ') || 'Gesamter Zeitraum';
+
+  const setChartCardRef = (chartId: string) => (node: HTMLDivElement | null) => {
+    chartCardRefs.current[chartId] = node;
+  };
+
+  const getChartFileName = (chartTitle: string, extension: ChartExportFormat) => {
+    const parts = [
+      'stato',
+      sanitizeExportSegment(user?.orgName || 'organisation'),
+      sanitizeExportSegment(chartTitle) || 'diagramm',
+      sanitizeExportSegment(exportRangeLabel) || 'gesamt',
+    ].filter(Boolean);
+    return `${parts.join('-')}.${extension}`;
+  };
+
+  async function exportChart(chartId: string, chartTitle: string, format: ChartExportFormat) {
+    const card = chartCardRefs.current[chartId];
+    if (!card) return;
+
+    const exportKey = `${chartId}:${format}`;
+    setActiveChartExport(exportKey);
+
+    try {
+      const { JsPDF, html2canvas } = await loadPdfExportDependencies();
+      await new Promise(requestAnimationFrame);
+
+      const canvas = await html2canvas(card, {
+        scale: PDF_RENDER_SCALE,
+        backgroundColor: '#ffffff',
+        ignoreElements: (element) =>
+          element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
+      });
+
+      if (format === 'png') {
+        const blob = await canvasToBlob(canvas);
+        downloadBlob(blob, getChartFileName(chartTitle, 'png'));
+        return;
+      }
+
+      const orientation = canvas.width >= canvas.height ? 'landscape' : 'portrait';
+      const pdf = new JsPDF({ orientation, unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const availableWidth = pageWidth - PDF_MARGIN_MM * 2;
+      const availableHeight = pageHeight - CHART_EXPORT_HEADER_HEIGHT_MM - PDF_MARGIN_MM;
+      const scale = Math.min(availableWidth / canvas.width, availableHeight / canvas.height);
+      const imageWidth = canvas.width * scale;
+      const imageHeight = canvas.height * scale;
+      const imageX = (pageWidth - imageWidth) / 2;
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(15);
+      pdf.text(chartTitle, PDF_MARGIN_MM, 16);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(11);
+      pdf.text(exportRangeLabel, PDF_MARGIN_MM, 23);
+      pdf.addImage(
+        canvas.toDataURL('image/png'),
+        'PNG',
+        imageX,
+        CHART_EXPORT_HEADER_HEIGHT_MM,
+        imageWidth,
+        imageHeight,
+        undefined,
+        'FAST',
+      );
+      pdf.save(getChartFileName(chartTitle, 'pdf'));
+    } catch (error) {
+      console.error('Chart export failed', error);
+    } finally {
+      setActiveChartExport(null);
+    }
+  }
+
+  const renderChartExportActions = (chartId: string, chartTitle: string) => {
+    const isExporting = activeChartExport?.startsWith(`${chartId}:`) ?? false;
+
+    return (
+      <div
+        className="group/chart-export relative shrink-0"
+        data-chart-export-ignore="true"
+        onMouseEnter={preloadPdfExportDependencies}
+      >
+        <button
+          type="button"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-viridian hover:text-viridian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viridian/30 opacity-100 md:opacity-0 md:group-hover/chart-card:opacity-100 md:group-focus-within/chart-card:opacity-100"
+          aria-label={`${chartTitle} exportieren`}
+          title={`${chartTitle} exportieren`}
+          onFocus={preloadPdfExportDependencies}
+        >
+          <FileDown className="h-4 w-4" />
+        </button>
+
+        <div className="invisible pointer-events-none absolute right-0 top-full z-20 mt-2 w-44 translate-y-1 rounded-xl border border-gray-200 bg-white p-2 opacity-0 shadow-xl transition-all group-hover/chart-export:visible group-hover/chart-export:pointer-events-auto group-hover/chart-export:translate-y-0 group-hover/chart-export:opacity-100 group-focus-within/chart-export:visible group-focus-within/chart-export:pointer-events-auto group-focus-within/chart-export:translate-y-0 group-focus-within/chart-export:opacity-100">
+          <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+            Diagramm exportieren
+          </div>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => void exportChart(chartId, chartTitle, 'png')}
+            disabled={isExporting}
+          >
+            <span>Als PNG</span>
+            <span className="text-xs text-gray-400">Bild</span>
+          </button>
+          <button
+            type="button"
+            className="mt-1 flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => void exportChart(chartId, chartTitle, 'pdf')}
+            disabled={isExporting}
+          >
+            <span>Als PDF</span>
+            <span className="text-xs text-gray-400">A4</span>
+          </button>
+          {isExporting && (
+            <div className="px-3 pt-2 text-xs text-gray-500">Export wird vorbereitet…</div>
+          )}
+        </div>
+      </div>
     );
   };
 
@@ -2013,10 +2217,14 @@ export default function Statistics() {
 
         {/* Charts */}
         <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
-          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
+          <div
+            className="group/chart-card bg-white rounded-lg shadow p-6"
+            data-pdf-section
+            ref={setChartCardRef('activity-types')}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-viridian">Verteilung nach Tätigkeitstyp</h3>
-              {/* Toggle entfernt (Prozent/Anzahl). Labels zeigen Prozent, Tooltip absolute Werte. */}
+              {renderChartExportActions('activity-types', 'Verteilung nach Tätigkeitstyp')}
             </div>
             <div className="h-80 md:h-[23rem]">
               <ResponsiveContainer width="100%" height="100%">
@@ -2030,9 +2238,7 @@ export default function Statistics() {
                     outerRadius={byTypeOuterRadius}
                     stroke={chartSeparatorColor}
                     strokeWidth={1.25}
-                    label={({ percent }) =>
-                      `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
-                    }
+                    label={renderPieValueLabel(activeChartExport?.startsWith('activity-types:') ?? false)}
                   >
                     {byTypeData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -2056,8 +2262,15 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6" data-pdf-section>
-            <h3 className="text-lg font-semibold mb-4 text-viridian">Geschlechterverteilung</h3>
+          <div
+            className="group/chart-card bg-white rounded-lg shadow p-6"
+            data-pdf-section
+            ref={setChartCardRef('gender-distribution')}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold text-viridian">Geschlechterverteilung</h3>
+              {renderChartExportActions('gender-distribution', 'Geschlechterverteilung')}
+            </div>
             <div className="h-80 md:h-[23rem]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
@@ -2071,9 +2284,7 @@ export default function Statistics() {
                     outerRadius={genderOuterRadius}
                     stroke={chartSeparatorColor}
                     strokeWidth={1.25}
-                    label={({ percent }) =>
-                      `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
-                    }
+                    label={renderPieValueLabel(activeChartExport?.startsWith('gender-distribution:') ?? false)}
                   >
                     {genderData.map((entry, index) => (
                       <Cell key={`gcell-${index}`} fill={entry.color} />
@@ -2097,42 +2308,52 @@ export default function Statistics() {
           </div>
 
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
-          <div className="bg-white rounded-lg shadow p-3 md:p-6 lg:col-span-2" data-pdf-section>
+          <div
+            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6 lg:col-span-2"
+            data-pdf-section
+            ref={setChartCardRef('participants-trend')}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-viridian">
                 {showAverage ? 'Zeitverlauf Ø Teilnehmende' : 'Zeitverlauf Teilnehmende'}
               </h3>
-              <div className="stats-kpi-toggle flex items-center gap-1 rounded-lg p-1">
-                <button
-                  onClick={() => setTimeAggregation('day')}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                    timeAggregation === 'day'
-                      ? 'stats-kpi-toggle-button-active font-medium'
-                      : 'stats-kpi-toggle-button'
-                  }`}
-                >
-                  Tag
-                </button>
-                <button
-                  onClick={() => setTimeAggregation('week')}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                    timeAggregation === 'week'
-                      ? 'stats-kpi-toggle-button-active font-medium'
-                      : 'stats-kpi-toggle-button'
-                  }`}
-                >
-                  Woche
-                </button>
-                <button
-                  onClick={() => setTimeAggregation('month')}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                    timeAggregation === 'month'
-                      ? 'stats-kpi-toggle-button-active font-medium'
-                      : 'stats-kpi-toggle-button'
-                  }`}
-                >
-                  Monat
-                </button>
+              <div className="flex items-center gap-2">
+                {renderChartExportActions(
+                  'participants-trend',
+                  showAverage ? 'Zeitverlauf Ø Teilnehmende' : 'Zeitverlauf Teilnehmende',
+                )}
+                <div className="stats-kpi-toggle flex items-center gap-1 rounded-lg p-1">
+                  <button
+                    onClick={() => setTimeAggregation('day')}
+                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
+                      timeAggregation === 'day'
+                        ? 'stats-kpi-toggle-button-active font-medium'
+                        : 'stats-kpi-toggle-button'
+                    }`}
+                  >
+                    Tag
+                  </button>
+                  <button
+                    onClick={() => setTimeAggregation('week')}
+                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
+                      timeAggregation === 'week'
+                        ? 'stats-kpi-toggle-button-active font-medium'
+                        : 'stats-kpi-toggle-button'
+                    }`}
+                  >
+                    Woche
+                  </button>
+                  <button
+                    onClick={() => setTimeAggregation('month')}
+                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
+                      timeAggregation === 'month'
+                        ? 'stats-kpi-toggle-button-active font-medium'
+                        : 'stats-kpi-toggle-button'
+                    }`}
+                  >
+                    Monat
+                  </button>
+                </div>
               </div>
             </div>
             <div className="h-64">
@@ -2210,32 +2431,42 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 md:p-6" data-pdf-section>
+          <div
+            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
+            data-pdf-section
+            ref={setChartCardRef('cohorts')}
+          >
             <div className="flex items-center justify-between mb-4 gap-3">
               <h3 className="text-lg font-semibold text-viridian">
                 {showAverage ? 'Ø Alterskohorten' : 'Alterskohorten'}
               </h3>
-              <div className="stats-kpi-toggle flex items-center gap-1 rounded-lg p-1">
-                <button
-                  onClick={() => setCohortChartMode('bar')}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                    cohortChartMode === 'bar'
-                      ? 'stats-kpi-toggle-button-active font-medium'
-                      : 'stats-kpi-toggle-button'
-                  }`}
-                >
-                  Balken
-                </button>
-                <button
-                  onClick={() => setCohortChartMode('pie')}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                    cohortChartMode === 'pie'
-                      ? 'stats-kpi-toggle-button-active font-medium'
-                      : 'stats-kpi-toggle-button'
-                  }`}
-                >
-                  Kreis
-                </button>
+              <div className="flex items-center gap-2">
+                {renderChartExportActions(
+                  'cohorts',
+                  showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
+                )}
+                <div className="stats-kpi-toggle flex items-center gap-1 rounded-lg p-1">
+                  <button
+                    onClick={() => setCohortChartMode('bar')}
+                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
+                      cohortChartMode === 'bar'
+                        ? 'stats-kpi-toggle-button-active font-medium'
+                        : 'stats-kpi-toggle-button'
+                    }`}
+                  >
+                    Balken
+                  </button>
+                  <button
+                    onClick={() => setCohortChartMode('pie')}
+                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
+                      cohortChartMode === 'pie'
+                        ? 'stats-kpi-toggle-button-active font-medium'
+                        : 'stats-kpi-toggle-button'
+                    }`}
+                  >
+                    Kreis
+                  </button>
+                </div>
               </div>
             </div>
             <div
@@ -2261,9 +2492,7 @@ export default function Statistics() {
                       outerRadius={cohortPieOuterRadius}
                       stroke={chartSeparatorColor}
                       strokeWidth={1.25}
-                      label={({ percent }) =>
-                        `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
-                      }
+                      label={renderPieValueLabel(activeChartExport?.startsWith('cohorts:') ?? false)}
                     >
                       {cohortPieData.map((entry, index) => (
                         <Cell key={`cohort-cell-${index}`} fill={entry.color} />
@@ -2320,8 +2549,15 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 md:p-6" data-pdf-section>
-            <h3 className="text-lg font-semibold mb-4 text-viridian">Top Kategorien</h3>
+          <div
+            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
+            data-pdf-section
+            ref={setChartCardRef('top-categories')}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold text-viridian">Top Kategorien</h3>
+              {renderChartExportActions('top-categories', 'Top Kategorien')}
+            </div>
             <div className={pdfMode ? 'h-64' : 'h-80 md:h-[23rem]'}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
@@ -2353,8 +2589,15 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 md:p-6" data-pdf-section>
-            <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tags</h3>
+          <div
+            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
+            data-pdf-section
+            ref={setChartCardRef('top-tags')}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold text-viridian">Top Tags</h3>
+              {renderChartExportActions('top-tags', 'Top Tags')}
+            </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topTags} margin={compactBarChartMargin}>
@@ -2383,10 +2626,17 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 md:p-6" data-pdf-section>
+          <div
+            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
+            data-pdf-section
+            ref={setChartCardRef(projectId ? 'top-days' : 'top-projects')}
+          >
             {projectId ? (
               <>
-                <h3 className="text-lg font-semibold mb-4 text-viridian">Top Tage</h3>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-viridian">Top Tage</h3>
+                  {renderChartExportActions('top-days', 'Top Tage')}
+                </div>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topDays} margin={compactBarChartMargin}>
@@ -2430,7 +2680,10 @@ export default function Statistics() {
               </>
             ) : (
               <>
-                <h3 className="text-lg font-semibold mb-4 text-viridian">Top Projekte</h3>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-viridian">Top Projekte</h3>
+                  {renderChartExportActions('top-projects', 'Top Projekte')}
+                </div>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topProjects} margin={compactBarChartMargin}>

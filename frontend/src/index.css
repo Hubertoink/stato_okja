@@ -1375,6 +1375,7 @@ code {
   background: color-mix(in srgb, var(--surface-1) 94%, transparent);
   border: 1px solid var(--border-subtle);
   border-radius: 1rem;
+  overflow: hidden;
 }
 
 .recent-actions-group-header {

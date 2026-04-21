@@ -63,6 +63,11 @@ const WEEKDAY_OPTIONS = [
   { value: 6, shortLabel: 'Sa', label: 'Samstag' },
 ] as const;
 
+const WEEKDAY_CHART_OPTIONS = [
+  { value: 0, shortLabel: 'So', label: 'Sonntag' },
+  ...WEEKDAY_OPTIONS,
+] as const;
+
 function normalizeWeekdays(weekdays: number[]) {
   return Array.from(
     new Set(weekdays.filter((weekday) => Number.isInteger(weekday) && weekday >= 0 && weekday <= 6)),
@@ -918,18 +923,56 @@ export default function Statistics() {
 
   const topDays = useMemo(() => {
     const list = Array.isArray(timeseries) ? timeseries : [];
-    return list
-      .filter((d) => d && typeof d.totalParticipants === 'number')
-      .slice()
-      .sort((a, b) => b.totalParticipants - a.totalParticipants)
-      .slice(0, 10)
-      .map((d) => ({
-        id: d.date,
-        date: d.date,
-        name: fmtDateCompact(d.date),
-        count: d.totalParticipants,
-      }));
-  }, [timeseries]);
+    const weekdayTotals = new Map<
+      number,
+      {
+        weekday: number;
+        name: string;
+        fullName: string;
+        count: number;
+        activityCount: number;
+      }
+    >(
+      WEEKDAY_CHART_OPTIONS.map((weekday) => [
+        weekday.value,
+        {
+          weekday: weekday.value,
+          name: weekday.shortLabel,
+          fullName: weekday.label,
+          count: 0,
+          activityCount: 0,
+        },
+      ]),
+    );
+
+    for (const entry of list) {
+      if (!entry || typeof entry.totalParticipants !== 'number') continue;
+      const parsedDate = parseCalendarDate(entry.date);
+      if (!parsedDate) continue;
+
+      const weekday = parsedDate.getUTCDay();
+      const bucket = weekdayTotals.get(weekday);
+      if (!bucket) continue;
+
+      bucket.count += entry.totalParticipants;
+      bucket.activityCount += entry.activityCount;
+    }
+
+    return Array.from(weekdayTotals.values())
+      .filter((entry) => entry.activityCount > 0 || entry.count > 0)
+      .map((entry) => ({
+        ...entry,
+        id: String(entry.weekday),
+        chartValue:
+          entry.activityCount > 0 ? Math.round((entry.count / entry.activityCount) * 10) / 10 : 0,
+      }))
+      .sort((left, right) => {
+        const leftValue = showAverage ? left.chartValue : left.count;
+        const rightValue = showAverage ? right.chartValue : right.count;
+        if (rightValue !== leftValue) return rightValue - leftValue;
+        return left.weekday - right.weekday;
+      });
+  }, [showAverage, timeseries]);
 
   // Color maps
   const tagColor = useMemo(() => {
@@ -2356,17 +2399,30 @@ export default function Statistics() {
                         textAnchor="end"
                         height={50}
                       />
-                      <YAxis allowDecimals={false} tick={chartAxisTick} />
+                      <YAxis allowDecimals={showAverage} tick={chartAxisTick} />
                       <Tooltip
                         contentStyle={chartTooltipContentStyle}
                         labelStyle={chartTooltipLabelStyle}
                         itemStyle={chartTooltipItemStyle}
                         cursor={barChartCursor}
-                        formatter={(value: number) => value.toLocaleString('de-DE')}
-                        labelFormatter={(l) => `Datum: ${l}`}
+                        formatter={(value: number) =>
+                          value.toLocaleString('de-DE', {
+                            maximumFractionDigits: showAverage ? 1 : 0,
+                          })
+                        }
+                        labelFormatter={(_, payload) =>
+                          `Wochentag: ${payload?.[0]?.payload?.fullName ?? '—'}`
+                        }
                       />
-                      <Bar dataKey="count" name="Teilnehmende" fill="#10b981">
-                        <LabelList dataKey="count" content={<ValueLabel />} />
+                      <Bar
+                        dataKey={showAverage ? 'chartValue' : 'count'}
+                        name={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
+                        fill="#10b981"
+                      >
+                        <LabelList
+                          dataKey={showAverage ? 'chartValue' : 'count'}
+                          content={<ValueLabel />}
+                        />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>

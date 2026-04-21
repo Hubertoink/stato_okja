@@ -6,14 +6,14 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Activity } from './activity.entity';
+import type { Activity } from './activity.entity';
 
 @Entity('attachments')
 export class Attachment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Activity, (activity) => activity.attachments, {
+  @ManyToOne('Activity', (activity: Activity) => activity.attachments, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'activityId' })

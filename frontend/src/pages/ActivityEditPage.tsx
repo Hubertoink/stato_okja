@@ -18,8 +18,16 @@ import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
-
-type GenderKey = 'm' | 'w' | 'd';
+import {
+  type ActivityFormState,
+  getActivityCohortCounts,
+  getCohortSums,
+  type GenderKey,
+  getProjectCategoryIds,
+  getProjectTagIds,
+  getStaffGroupMembers,
+  getWeekdayLabel,
+} from './activityEditorShared';
 
 export default function ActivityEditPage() {
   const navigate = useNavigate();
@@ -45,33 +53,10 @@ export default function ActivityEditPage() {
     return typeof raw === 'string' && raw.length > 0 ? raw : '/activities';
   })();
 
-  const [form, setForm] = useState<{
-    date?: string;
-    projectId?: string;
-    locationId?: string;
-    start?: string;
-    end?: string;
-    title?: string;
-    categoryIds?: string[];
-    tagIds?: string[];
-    notes?: string;
-    staffIds?: string[];
-    cohortCounts?: Record<string, { m: number; w: number; d: number }>;
-  }>({ cohortCounts: {} });
+  const [form, setForm] = useState<ActivityFormState>({ cohortCounts: {} });
 
   useEffect(() => {
     if (!activity) return;
-    const cohortCounts: Record<string, { m: number; w: number; d: number }> = {};
-    if (Array.isArray(activity.cohorts)) {
-      for (const c of activity.cohorts) {
-        const prev = cohortCounts[c.cohortId] || { m: 0, w: 0, d: 0 };
-        cohortCounts[c.cohortId] = {
-          m: (prev.m || 0) + (c.m || 0),
-          w: (prev.w || 0) + (c.w || 0),
-          d: (prev.d || 0) + (c.d || 0),
-        };
-      }
-    }
     setForm({
       date: (activity.date || '').slice(0, 10) || undefined,
       projectId: activity.projectId || activity.project?.id || undefined,
@@ -83,7 +68,7 @@ export default function ActivityEditPage() {
       tagIds: (activity.tags || []).map((t) => t.id),
       notes: activity.notes || undefined,
       staffIds: (activity.staff || []).map((s) => s.id),
-      cohortCounts,
+      cohortCounts: getActivityCohortCounts(activity),
     });
   }, [activity]);
 
@@ -91,54 +76,18 @@ export default function ActivityEditPage() {
     () => (projects || []).find((p) => p.id === form.projectId),
     [projects, form.projectId],
   );
-  const selectedDateWeekday = useMemo(() => {
-    const isoDate = (form.date || '').slice(0, 10);
-    if (!isoDate) return '';
-    const [year, month, day] = isoDate.split('-').map((value) => Number(value));
-    if (!year || !month || !day) return '';
-    const date = new Date(year, month - 1, day);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
-  }, [form.date]);
+  const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
   const isOpenDoor = selectedProject?.type === 'open_door';
-  const employeeStaff = useMemo(
-    () =>
-      (staff || []).filter((member) =>
-        Array.isArray(member.roles)
-          ? member.roles.includes('lead') || member.roles.includes('employee')
-          : member.role === 'lead' || member.role === 'employee',
-      ),
-    [staff],
-  );
-  const volunteerStaff = useMemo(
-    () =>
-      (staff || []).filter((member) =>
-        Array.isArray(member.roles)
-          ? member.roles.includes('volunteer')
-          : member.role === 'volunteer',
-      ),
-    [staff],
-  );
-  const helperStaff = useMemo(
-    () =>
-      (staff || []).filter((member) =>
-        Array.isArray(member.roles) ? member.roles.includes('helper') : member.role === 'helper',
-      ),
-    [staff],
-  );
+  const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
+  const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
+  const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
 
   // Prefill tags from project's default tag names if none chosen yet
   useEffect(() => {
     if (!selectedProject) return;
     const cur = form.tagIds || [];
     if (cur.length > 0) return;
-    const names = (selectedProject.tag || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (names.length === 0) return;
-    const byName = new Map((tags || []).map((t) => [t.name, t.id] as const));
-    const ids = Array.from(new Set(names.map((n) => byName.get(n)).filter(Boolean))) as string[];
+    const ids = getProjectTagIds(selectedProject, tags);
     if (ids.length > 0) setForm((f) => ({ ...f, tagIds: ids }));
   }, [selectedProject, tags]);
 
@@ -151,24 +100,14 @@ export default function ActivityEditPage() {
     }
     const cur = form.categoryIds || [];
     if (cur.length > 0) return;
-    const set = new Set<string>();
-    (selectedProject.categories || []).forEach((c) => set.add(c.id));
-    if (selectedProject.categoryId) set.add(selectedProject.categoryId);
-    if (set.size > 0) setForm((f) => ({ ...f, categoryIds: Array.from(set) }));
+    const categoryIds = getProjectCategoryIds(selectedProject);
+    if (categoryIds.length > 0) setForm((f) => ({ ...f, categoryIds }));
   }, [selectedProject]);
 
   if (!activity) return null;
 
   // Derive cohort-based totals
-  const cohortSums = useMemo(() => {
-    const sums: { m: number; w: number; d: number } = { m: 0, w: 0, d: 0 };
-    Object.values(form.cohortCounts || {}).forEach((e) => {
-      sums.m += e.m || 0;
-      sums.w += e.w || 0;
-      sums.d += e.d || 0;
-    });
-    return sums;
-  }, [form.cohortCounts]);
+  const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
 
   // Vereinfachung: Action-Bar grundsätzlich nicht sticky, nur Safe-Area berücksichtigen.

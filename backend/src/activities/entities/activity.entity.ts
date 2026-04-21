@@ -15,7 +15,7 @@ import { Location } from '../../locations/entities/location.entity';
 import { Category } from '../../taxonomy/entities/category.entity';
 import { Tag } from '../../taxonomy/entities/tag.entity';
 import { Staff } from '../../staff/entities/staff.entity';
-import { Attachment } from './attachment.entity';
+import type { Attachment } from './attachment.entity';
 import { Project } from '../../projects/entities/project.entity';
 
 @Entity('activities')
@@ -106,7 +106,7 @@ export class Activity {
   goals: string;
 
   // Anhänge
-  @OneToMany(() => Attachment, (attachment) => attachment.activity, {
+  @OneToMany('Attachment', (attachment: Attachment) => attachment.activity, {
     cascade: true,
   })
   attachments: Attachment[];

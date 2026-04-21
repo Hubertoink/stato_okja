@@ -1,5 +1,5 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { Organization } from '../../orgs/entities/organization.entity';
+import type { Organization } from '../../orgs/entities/organization.entity';
 
 export type UserRole = 'superadmin' | 'org_admin' | 'user';
 
@@ -28,7 +28,7 @@ export class User {
   @Column({ type: 'uuid', nullable: true })
   orgId!: string | null;
 
-  @ManyToOne(() => Organization, (o) => o.users, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne('Organization', (o: Organization) => o.users, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'orgId' })
   org!: Organization | null;
 

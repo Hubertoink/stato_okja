@@ -20,55 +20,19 @@ import { createPortal } from 'react-dom';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
-import { Link } from 'react-router-dom';
-
-type GenderKey = 'm' | 'w' | 'd';
-
-type FormState = {
-  date?: string;
-  projectId?: string;
-  locationId?: string;
-  start?: string;
-  end?: string;
-  title?: string;
-  categoryIds?: string[];
-  tagIds?: string[];
-  notes?: string;
-  staffIds?: string[];
-  cohortCounts?: Record<string, { m: number; w: number; d: number }>;
-};
-
-function FieldInfoHint({ label, settingsTab }: { label: string; settingsTab: string }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <span className="relative inline-flex">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-normal leading-none text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors"
-        aria-label="Info"
-      >
-        i
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-[80]" onClick={() => setOpen(false)} />
-          <div className="absolute left-1/2 top-full z-[81] mt-2 w-56 -translate-x-1/2 rounded-xl border border-gray-200 bg-white p-3 text-xs text-gray-600 shadow-lg space-y-2">
-            <p>{label} können Sie in den Einstellungen anlegen und verwalten.</p>
-            <Link
-              to={`/settings?tab=${settingsTab}`}
-              className="inline-flex items-center gap-1 text-viridian font-medium hover:underline"
-              onClick={() => setOpen(false)}
-            >
-              Zu Einstellungen →
-            </Link>
-          </div>
-        </>
-      )}
-    </span>
-  );
-}
+import {
+  type ActivityFormState,
+  FieldInfoHint,
+  getActivityCohortCounts,
+  getCohortSums,
+  type GenderKey,
+  getProjectCategoryIds,
+  getProjectTagIds,
+  getStaffGroupMembers,
+  getWeekdayLabel,
+  mergeProjectStaffIds,
+  toMinutes,
+} from './activityEditorShared';
 
 export default function ActivityQuickAdd({
   dateISO,
@@ -95,7 +59,7 @@ export default function ActivityQuickAdd({
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
   const { showToast } = useToast();
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
-  const [form, setForm] = useState<FormState>(() => {
+  const [form, setForm] = useState<ActivityFormState>(() => {
     return { cohortCounts: {}, date: (dateISO || '').slice(0, 10) };
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -103,57 +67,17 @@ export default function ActivityQuickAdd({
     () => (projects || []).find((p: Project) => p.id === form.projectId) || initialProject,
     [projects, form.projectId, initialProject],
   );
-  const selectedDateWeekday = useMemo(() => {
-    const isoDate = (form.date || '').slice(0, 10);
-    if (!isoDate) return '';
-    const [year, month, day] = isoDate.split('-').map((value) => Number(value));
-    if (!year || !month || !day) return '';
-    const date = new Date(year, month - 1, day);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
-  }, [form.date]);
-  const cohortSums = useMemo(() => {
-    const sums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
-    Object.values(form.cohortCounts || {}).forEach((entry) => {
-      sums.m += entry.m || 0;
-      sums.w += entry.w || 0;
-      sums.d += entry.d || 0;
-    });
-    return sums;
-  }, [form.cohortCounts]);
+  const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
+  const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
   const isOpenDoor = (selectedProject || initialProject)?.type === 'open_door';
-  const employeeStaff = useMemo(
-    () =>
-      (staff || []).filter((member) =>
-        Array.isArray(member.roles)
-          ? member.roles.includes('lead') || member.roles.includes('employee')
-          : member.role === 'lead' || member.role === 'employee',
-      ),
-    [staff],
-  );
-  const volunteerStaff = useMemo(
-    () =>
-      (staff || []).filter((member) =>
-        Array.isArray(member.roles)
-          ? member.roles.includes('volunteer')
-          : member.role === 'volunteer',
-      ),
-    [staff],
-  );
-  const helperStaff = useMemo(
-    () =>
-      (staff || []).filter((member) =>
-        Array.isArray(member.roles)
-          ? member.roles.includes('helper')
-          : member.role === 'helper',
-      ),
-    [staff],
-  );
+  const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
+  const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
+  const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
 
   useEffect(() => {
     // Default times; if project provided, prefill from defaults
-    setForm((f: FormState) => ({
+    setForm((f: ActivityFormState) => ({
       start: f.start || initialProject?.defaultStartTime || '15:00',
       end: f.end || initialProject?.defaultEndTime || '17:00',
       projectId: f.projectId || initialProject?.id,
@@ -168,16 +92,8 @@ export default function ActivityQuickAdd({
     if (!proj) return;
     const current = form.tagIds || [];
     if (current.length > 0) return; // user already has a selection
-    const names = (proj.tag || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (names.length === 0) return;
-    const byName = new Map(
-      (tags || []).map((t: { name: string; id: string }) => [t.name, t.id] as const),
-    );
-    const ids = Array.from(new Set(names.map((n) => byName.get(n)).filter(Boolean))) as string[];
-    if (ids.length > 0) setForm((f: FormState) => ({ ...f, tagIds: ids }));
+    const ids = getProjectTagIds(proj, tags);
+    if (ids.length > 0) setForm((f: ActivityFormState) => ({ ...f, tagIds: ids }));
   }, [selectedProject, initialProject, tags, activity]);
   // Prefill categories from project when creating (include primary categoryId)
   useEffect(() => {
@@ -186,33 +102,31 @@ export default function ActivityQuickAdd({
     if (!proj) return;
     if (proj.type === 'open_door') {
       // Ensure no categories for open-door
-      setForm((f: FormState) => ({ ...f, categoryIds: [] }));
+      setForm((f: ActivityFormState) => ({ ...f, categoryIds: [] }));
       return;
     }
     const cur = form.categoryIds || [];
     if (cur.length > 0) return; // already chosen
-    const set = new Set<string>();
-    (proj.categories || []).forEach((c) => set.add(c.id));
-    if (proj.categoryId) set.add(proj.categoryId);
-    if (set.size > 0) setForm((f: FormState) => ({ ...f, categoryIds: Array.from(set) }));
+    const categoryIds = getProjectCategoryIds(proj);
+    if (categoryIds.length > 0) setForm((f: ActivityFormState) => ({ ...f, categoryIds }));
   }, [selectedProject, initialProject, activity]);
   // If switching to an open-door project, clear categories
   useEffect(() => {
     const proj = selectedProject || initialProject;
     if (proj && proj.type === 'open_door') {
-      setForm((f: FormState) => ({ ...f, categoryIds: [] }));
+      setForm((f: ActivityFormState) => ({ ...f, categoryIds: [] }));
     }
   }, [selectedProject?.type, initialProject?.type]);
   useEffect(() => {
     // If there is exactly one location, auto-select it to reduce friction
     if ((locations || []).length === 1 && !form.locationId) {
-      setForm((f: FormState) => ({ ...f, locationId: locations![0]?.id }));
+      setForm((f: ActivityFormState) => ({ ...f, locationId: locations![0]?.id }));
     }
   }, [locations]);
   useEffect(() => {
     // Prefill for edit mode
     if (activity) {
-      setForm((f: FormState) => ({
+      setForm((f: ActivityFormState) => ({
         ...f,
         date: (activity.date || f.date || dateISO).slice(0, 10),
         projectId: activity.projectId || activity.project?.id || f.projectId || initialProject?.id,
@@ -225,17 +139,14 @@ export default function ActivityQuickAdd({
         staffIds: (activity.staff || []).map((s) => s.id),
         notes: activity.notes || f.notes,
         cohortCounts: (() => {
-          const obj: Record<string, { m: number; w: number; d: number }> = {};
-          (activity.cohorts || []).forEach((c) => {
-            obj[c.cohortId] = { m: c.m || 0, w: c.w || 0, d: c.d || 0 };
-          });
-          return Object.keys(obj).length ? obj : f.cohortCounts;
+          const cohortCounts = getActivityCohortCounts(activity);
+          return Object.keys(cohortCounts).length ? cohortCounts : f.cohortCounts;
         })(),
       }));
       return;
     }
     // Default times; if project provided, prefill from defaults
-    setForm((f: FormState) => ({
+    setForm((f: ActivityFormState) => ({
       start: f.start || initialProject?.defaultStartTime || '15:00',
       end: f.end || initialProject?.defaultEndTime || '17:00',
       projectId: f.projectId || initialProject?.id,
@@ -247,32 +158,8 @@ export default function ActivityQuickAdd({
   // Prefill default staff/category from project if provided
   useEffect(() => {
     if (!initialProject) return;
-    setForm((f: FormState) => {
-      const updated = { ...f };
-      // Staff: parse CSVs, we only prefill staffIds by name match where possible
-      const names: string[] = (initialProject.defaultStaff || '')
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter((x): x is string => Boolean(x));
-      const volNames: string[] = (initialProject.defaultVolunteers || '')
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter((x): x is string => Boolean(x));
-      const byName = new Map(
-        (staff || []).map((s: { name: string; id: string }) => [s.name, s.id] as const),
-      );
-      const ids = new Set<string>(f.staffIds || []);
-      names.forEach((n: string) => {
-        const id = byName.get(n) as string | undefined;
-        if (id) ids.add(id as string);
-      });
-      volNames.forEach((n: string) => {
-        const id = byName.get(n) as string | undefined;
-        if (id) ids.add(id as string);
-      });
-      updated.staffIds = Array.from(ids);
-      // category -> we don't store in activity payload yet; skip for now (backend accepts categoryIds)
-      return updated;
+    setForm((f: ActivityFormState) => {
+      return { ...f, staffIds: mergeProjectStaffIds(f.staffIds, initialProject, staff) };
     });
   }, [initialProject, staff]);
 
@@ -315,12 +202,6 @@ export default function ActivityQuickAdd({
       cohortSums.d += entry.d || 0;
     });
     const totalsByGender: Record<GenderKey, number> = { ...cohortSums };
-    const toMinutes = (hhmm?: string | null) => {
-      if (!hhmm) return undefined;
-      const [hh, mm] = hhmm.split(':').map((value) => parseInt(value, 10));
-      if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
-      return hh * 60 + mm;
-    };
     const startM = toMinutes(form.start || selectedProject?.defaultStartTime || null);
     const endM = toMinutes(form.end || selectedProject?.defaultEndTime || null);
     const durationMinutes =

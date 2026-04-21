@@ -1,5 +1,5 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import type { User } from '../../users/entities/user.entity';
 
 // Öffnungszeiten pro Wochentag
 export interface DayOpeningHours {
@@ -49,7 +49,7 @@ export class Organization {
   @Column({ type: 'varchar', length: 200 })
   name!: string;
 
-  @OneToMany(() => User, (u) => u.org)
+  @OneToMany('User', (u: User) => u.org)
   users!: User[];
 
   // Hierarchy support

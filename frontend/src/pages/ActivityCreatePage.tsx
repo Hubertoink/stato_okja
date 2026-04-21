@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { X as XIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
 import { useCreateActivity, type Activity } from '@/lib/activities';
 import { useProjects, type Project } from '@/lib/projects';
@@ -18,53 +18,18 @@ import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
-
-type GenderKey = 'm' | 'w' | 'd';
-
-type FormState = {
-  date?: string;
-  projectId?: string;
-  locationId?: string;
-  start?: string;
-  end?: string;
-  title?: string;
-  categoryIds?: string[];
-  tagIds?: string[];
-  notes?: string;
-  staffIds?: string[];
-  cohortCounts?: Record<string, { m: number; w: number; d: number }>;
-};
-
-function FieldInfoHint({ label, settingsTab }: { label: string; settingsTab: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <span className="relative inline-flex">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-normal leading-none text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors"
-        aria-label="Info"
-      >
-        i
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-[80]" onClick={() => setOpen(false)} />
-          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[81] w-56 rounded-xl border border-gray-200 bg-white shadow-lg p-3 text-xs text-gray-600 space-y-2">
-            <p>{label} können Sie in den Einstellungen anlegen und verwalten.</p>
-            <Link
-              to={`/settings?tab=${settingsTab}`}
-              className="inline-flex items-center gap-1 text-viridian font-medium hover:underline"
-              onClick={() => setOpen(false)}
-            >
-              Zu Einstellungen →
-            </Link>
-          </div>
-        </>
-      )}
-    </span>
-  );
-}
+import {
+  type ActivityFormState,
+  FieldInfoHint,
+  type GenderKey,
+  getCohortSums,
+  getProjectCategoryIds,
+  getProjectTagIds,
+  getStaffGroupMembers,
+  getWeekdayLabel,
+  mergeProjectStaffIds,
+  toMinutes,
+} from './activityEditorShared';
 
 export default function ActivityCreatePage() {
   const navigate = useNavigate();
@@ -87,7 +52,7 @@ export default function ActivityCreatePage() {
 
   const [picker, setPicker] = useState(false);
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(() => ({
+  const [form, setForm] = useState<ActivityFormState>(() => ({
     cohortCounts: {},
     date: (qpDate || new Date().toISOString()).slice(0, 10),
     projectId: qpProjectId,
@@ -97,51 +62,13 @@ export default function ActivityCreatePage() {
     const id = form.projectId || qpProjectId;
     return (projects || []).find((p) => p.id === id);
   }, [projects, qpProjectId, form.projectId]);
-  const selectedDateWeekday = useMemo(() => {
-    const isoDate = (form.date || '').slice(0, 10);
-    if (!isoDate) return '';
-    const [year, month, day] = isoDate.split('-').map((value) => Number(value));
-    if (!year || !month || !day) return '';
-    const date = new Date(year, month - 1, day);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
-  }, [form.date]);
-  const cohortSums = useMemo(() => {
-    const sums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
-    Object.values(form.cohortCounts || {}).forEach((entry) => {
-      sums.m += entry.m || 0;
-      sums.w += entry.w || 0;
-      sums.d += entry.d || 0;
-    });
-    return sums;
-  }, [form.cohortCounts]);
+  const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
+  const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
   const isOpenDoor = selectedProject?.type === 'open_door';
-  const employeeStaff = useMemo(
-    () =>
-      (staff || []).filter((member) =>
-        Array.isArray(member.roles)
-          ? member.roles.includes('lead') || member.roles.includes('employee')
-          : member.role === 'lead' || member.role === 'employee',
-      ),
-    [staff],
-  );
-  const volunteerStaff = useMemo(
-    () =>
-      (staff || []).filter((member) =>
-        Array.isArray(member.roles)
-          ? member.roles.includes('volunteer')
-          : member.role === 'volunteer',
-      ),
-    [staff],
-  );
-  const helperStaff = useMemo(
-    () =>
-      (staff || []).filter((member) =>
-        Array.isArray(member.roles) ? member.roles.includes('helper') : member.role === 'helper',
-      ),
-    [staff],
-  );
+  const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
+  const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
+  const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
 
   // Default times; if project provided, prefill from defaults
   useEffect(() => {
@@ -160,13 +87,7 @@ export default function ActivityCreatePage() {
     if (!proj) return;
     const current = form.tagIds || [];
     if (current.length > 0) return;
-    const names = (proj.tag || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (names.length === 0) return;
-    const byName = new Map((tags || []).map((t) => [t.name, t.id] as const));
-    const ids = Array.from(new Set(names.map((n) => byName.get(n)).filter(Boolean))) as string[];
+    const ids = getProjectTagIds(proj, tags);
     if (ids.length > 0) setForm((f) => ({ ...f, tagIds: ids }));
   }, [selectedProject, tags, form.tagIds]);
 
@@ -180,10 +101,8 @@ export default function ActivityCreatePage() {
     }
     const cur = form.categoryIds || [];
     if (cur.length > 0) return;
-    const set = new Set<string>();
-    (proj.categories || []).forEach((c) => set.add(c.id));
-    if (proj.categoryId) set.add(proj.categoryId);
-    if (set.size > 0) setForm((f) => ({ ...f, categoryIds: Array.from(set) }));
+    const categoryIds = getProjectCategoryIds(proj);
+    if (categoryIds.length > 0) setForm((f) => ({ ...f, categoryIds: categoryIds }));
   }, [selectedProject, form.categoryIds]);
 
   // Clear categories when switching to open-door
@@ -202,38 +121,9 @@ export default function ActivityCreatePage() {
   useEffect(() => {
     if (!selectedProject) return;
     setForm((f) => {
-      const updated = { ...f };
-      const names: string[] = (selectedProject.defaultStaff || '')
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter((x): x is string => Boolean(x));
-      const volNames: string[] = (selectedProject.defaultVolunteers || '')
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter((x): x is string => Boolean(x));
-      const byName = new Map(
-        (staff || []).map((s: { name: string; id: string }) => [s.name, s.id] as const),
-      );
-      const ids = new Set<string>(f.staffIds || []);
-      names.forEach((n: string) => {
-        const id = byName.get(n) as string | undefined;
-        if (id) ids.add(id as string);
-      });
-      volNames.forEach((n: string) => {
-        const id = byName.get(n) as string | undefined;
-        if (id) ids.add(id as string);
-      });
-      updated.staffIds = Array.from(ids);
-      return updated;
+      return { ...f, staffIds: mergeProjectStaffIds(f.staffIds, selectedProject, staff) };
     });
   }, [selectedProject, staff]);
-
-  const toMinutes = (hhmm?: string | null) => {
-    if (!hhmm) return undefined;
-    const [hh, mm] = hhmm.split(':').map((v) => parseInt(v, 10));
-    if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
-    return hh * 60 + mm;
-  };
 
   const handleSave = () => {
     if (create.isPending || submitLockedRef.current) return;

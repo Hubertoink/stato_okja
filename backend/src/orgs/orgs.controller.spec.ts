@@ -2,7 +2,6 @@ import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrgsController } from './orgs.controller';
 import { OrgsService } from './orgs.service';
-import { UsersService } from '../users/users.service';
 
 describe('OrgsController create permissions', () => {
   let controller: OrgsController;
@@ -16,7 +15,6 @@ describe('OrgsController create permissions', () => {
       controllers: [OrgsController],
       providers: [
         { provide: OrgsService, useValue: service },
-        { provide: UsersService, useValue: {} },
       ],
     }).compile();
 

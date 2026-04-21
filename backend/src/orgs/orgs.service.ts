@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import {
   Organization,
   OpeningHours,
@@ -16,6 +16,7 @@ import { Tag } from '../taxonomy/entities/tag.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
+import { User } from '../users/entities/user.entity';
 
 const SUBTREE_CACHE_TTL_MS = 10_000;
 type SubtreeCacheEntry = { expiresAt: number; ids: string[] };
@@ -156,7 +157,18 @@ export class OrgsService {
     @InjectRepository(Cohort) private readonly cohorts: Repository<Cohort>,
     @InjectRepository(Activity) private readonly activities: Repository<Activity>,
     @InjectRepository(Project) private readonly projects: Repository<Project>,
+    @InjectRepository(User) private readonly users: Repository<User>,
   ) {}
+
+  findUsersByOrg(orgId: string | null) {
+    const where = orgId ? { orgId } : { orgId: IsNull() };
+    return this.users.find({ where, relations: { org: true } });
+  }
+
+  findUsersByOrgIds(orgIds: string[]) {
+    if (!orgIds.length) return Promise.resolve([]);
+    return this.users.find({ where: { orgId: In(orgIds) }, relations: { org: true } });
+  }
 
   private clearSubtreeCache() {
     this.subtreeCache.clear();

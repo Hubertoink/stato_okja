@@ -3,7 +3,6 @@ import { OrgsService } from './orgs.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import { UsersService } from '../users/users.service';
 import type { OpeningHours, OrganizationTaxonomySettingsUpdatePayload } from './entities/organization.entity';
 
 function orgMoveFeatureEnabled() {
@@ -13,7 +12,7 @@ function orgMoveFeatureEnabled() {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('orgs')
 export class OrgsController {
-  constructor(private readonly service: OrgsService, private readonly users: UsersService) {}
+  constructor(private readonly service: OrgsService) {}
 
   @Roles('superadmin')
   @Get()
@@ -89,11 +88,10 @@ export class OrgsController {
       if (include) {
         return (async () => {
           const ids = await this.service.getSubtreeOrgIds(id);
-          const all = await this.users.findAll();
-          return all.filter(u => u.orgId && ids.includes(u.orgId));
+          return this.service.findUsersByOrgIds(ids);
         })();
       }
-      return this.users.findByOrg(id || null);
+      return this.service.findUsersByOrg(id || null);
     }
     const myOrgId = req.user.orgId || null;
     if (!myOrgId) return [];
@@ -102,10 +100,9 @@ export class OrgsController {
       if (!ids.includes(id)) return [];
       if (include) {
         const subtree = await this.service.getSubtreeOrgIds(id);
-        const all = await this.users.findAll();
-        return all.filter(u => u.orgId && subtree.includes(u.orgId));
+        return this.service.findUsersByOrgIds(subtree);
       }
-      return this.users.findByOrg(id || null);
+      return this.service.findUsersByOrg(id || null);
     })();
   }
 

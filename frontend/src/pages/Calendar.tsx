@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsMobile } from '@/lib/useIsMobile';
 import type { Project } from '@/lib/projects';
 import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
@@ -9,14 +9,23 @@ import { useActivities, Activity } from '@/lib/activities';
 // colorForActivityType no longer needed after switching to class-based palette
 import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holidays';
 import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
-import { getOpeningHours, OpeningHours } from '@/lib/orgs';
+import {
+  deleteClosureDay,
+  getClosureDays,
+  getOpeningHours,
+  type OpeningHours,
+  type OrganizationClosureDay,
+  upsertClosureDay,
+} from '@/lib/orgs';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import type React from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Plus } from 'lucide-react';
+import { Building2, Pencil, Plus } from 'lucide-react';
 import ProtectedImage from '@/components/ProtectedImage';
+import CalendarClosureModal from '@/components/CalendarClosureModal';
+import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity } from '@/lib/activityExecutionStatus';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -111,6 +120,7 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
   if (!activity || !position) return null;
   
   const label = `${activity.project?.title || typeLabel[activity.type] || activity.type}${activity.title ? ` (${activity.title})` : ''}`;
+  const statusLabel = isCancelledActivity(activity.executionStatus) ? 'Ausgefallen' : null;
   const time = fmtTimeRange(activity.startTime, activity.endTime);
   const total = activity.countTotal ?? 0;
   const m = activity.countMale ?? 0;
@@ -128,12 +138,15 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
           ref={ref}
           className={panelClass}
         >
+          {statusLabel && <div className="mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{statusLabel}</div>}
           <div className="font-semibold mb-1 text-viridian">{label}</div>
           {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Zeit:</span> {time}</div>}
-          <div className="calendar-tooltip-body">
-            <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
-            <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
-          </div>
+          {!statusLabel && (
+            <div className="calendar-tooltip-body">
+              <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
+              <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
+            </div>
+          )}
           {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Ort:</span> {loc}</div>}
         </div>
       </div>,
@@ -150,12 +163,15 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
         ref={ref}
         className={`relative ${panelClass}`}
       >
+        {statusLabel && <div className="mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{statusLabel}</div>}
         <div className="font-semibold mb-1 text-viridian">{label}</div>
         {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Zeit:</span> {time}</div>}
-        <div className="calendar-tooltip-body">
-          <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
-          <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
-        </div>
+        {!statusLabel && (
+          <div className="calendar-tooltip-body">
+            <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
+            <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
+          </div>
+        )}
         {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Ort:</span> {loc}</div>}
         {/* Tooltip arrow */}
         <div
@@ -215,6 +231,7 @@ function getISOWeek(d: Date) {
 export default function Calendar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { scope } = useOrgScope();
@@ -224,6 +241,7 @@ export default function Calendar() {
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
   const [picker, setPicker] = useState<{ date: string } | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
+  const [closureDate, setClosureDate] = useState<string | null>(null);
   
   // Tooltip state for activity hover
   const [tooltipActivity, setTooltipActivity] = useState<Activity | null>(null);
@@ -332,8 +350,44 @@ export default function Calendar() {
     const end = addDays(start, 6);
     return { from: fmtLocalISO(start), to: fmtLocalISO(end) };
   }, [cursor, view]);
+  const closureDaysQ = useQuery({
+    queryKey: ['org-closure-days', effectiveOrgId, range.from, range.to],
+    queryFn: () => getClosureDays(effectiveOrgId!, { from: range.from, to: range.to }),
+    enabled: !!effectiveOrgId,
+  });
   const activitiesQ = useActivities({ from: range.from, to: range.to });
   const activities = activitiesQ.data;
+  const closureDays = closureDaysQ.data ?? [];
+  const closureDaysByDate = useMemo(() => {
+    const map = new Map<string, OrganizationClosureDay>();
+    closureDays.forEach((entry) => {
+      map.set(entry.date, entry);
+    });
+    return map;
+  }, [closureDays]);
+  const selectedClosureDay = closureDate ? closureDaysByDate.get(closureDate) ?? null : null;
+  const saveClosureMutation = useMutation({
+    mutationFn: async ({ date, payload }: { date: string; payload: Pick<OrganizationClosureDay, 'from' | 'to'> }) => {
+      if (!effectiveOrgId) throw new Error('Keine Organisation ausgewählt');
+      return upsertClosureDay(effectiveOrgId, date, payload);
+    },
+    onSuccess: async () => {
+      if (!effectiveOrgId) return;
+      await queryClient.invalidateQueries({ queryKey: ['org-closure-days', effectiveOrgId] });
+      setClosureDate(null);
+    },
+  });
+  const deleteClosureMutation = useMutation({
+    mutationFn: async (date: string) => {
+      if (!effectiveOrgId) throw new Error('Keine Organisation ausgewählt');
+      return deleteClosureDay(effectiveOrgId, date);
+    },
+    onSuccess: async () => {
+      if (!effectiveOrgId) return;
+      await queryClient.invalidateQueries({ queryKey: ['org-closure-days', effectiveOrgId] });
+      setClosureDate(null);
+    },
+  });
   const activitiesByDate = useMemo(() => {
     const map = new Map<string, Activity[]>();
     const list: Activity[] = (activities ?? []) as Activity[];
@@ -345,6 +399,29 @@ export default function Calendar() {
     });
     return map;
   }, [activities]);
+
+  const formatClosureLabel = (closureDay?: OrganizationClosureDay | null, compact = false) => {
+    if (!closureDay) return null;
+    const from = closureDay.from ? String(closureDay.from).slice(0, 5) : '';
+    const to = closureDay.to ? String(closureDay.to).slice(0, 5) : '';
+    if (from && to) return compact ? `Geschl. ${from}-${to}` : `Einrichtung geschlossen ${from} - ${to}`;
+    return compact ? 'Geschlossen' : 'Einrichtung ganztägig geschlossen';
+  };
+
+  const renderClosureBadge = (iso: string, compact = false) => {
+    const closureDay = closureDaysByDate.get(iso);
+    const label = formatClosureLabel(closureDay, compact);
+    if (!closureDay || !label) return null;
+
+    return (
+      <div
+        className={`calendar-closure-badge rounded border font-semibold truncate max-w-full ${compact ? 'mb-0.5 px-1 py-[1px] text-[9px] md:text-[10px]' : 'mb-1 px-1.5 py-0.5 text-[10px]'}`}
+        title={label}
+      >
+        {label}
+      </div>
+    );
+  };
 
   // Holidays overlay
   const { state: holidayState, school: showSchool } = readHolidayPrefs();
@@ -700,11 +777,13 @@ export default function Calendar() {
       <div className="space-y-0.5" onMouseLeave={handleActivityStackMouseLeave}>
         {visible.map((a: Activity, i: number) => {
           const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
-          const bgClass = pickBgClass(
-            a.project?.title || a.title || typeLabel[a.type] || '',
-            a.type,
-          );
+          const bgClass = isCancelledActivity(a.executionStatus)
+            ? 'bg-rose-600/35'
+            : pickBgClass(a.project?.title || a.title || typeLabel[a.type] || '', a.type);
           const hasImg = Boolean(a.project?.imageUrl);
+          const compactStatusPrefix = isCancelledActivity(a.executionStatus)
+            ? `${ACTIVITY_EXECUTION_STATUS_SHORT_LABELS.cancelled} `
+            : '';
           return (
             <div key={i} className="group relative">
               <button
@@ -731,7 +810,7 @@ export default function Calendar() {
                     hasImg ? 'text-white drop-shadow-sm' : 'text-gray-900'
                   }`}
                 >
-                  {label}
+                  {compactStatusPrefix}{label}
                 </span>
               </button>
               <button
@@ -771,10 +850,9 @@ export default function Calendar() {
         {items.map((a: Activity, i: number) => {
           const title = a.project?.title || typeLabel[a.type] || a.type;
           const subtitle = a.title ? a.title : undefined;
-          const bgClass = pickBgClass(
-            a.project?.title || a.title || typeLabel[a.type] || '',
-            a.type,
-          );
+          const bgClass = isCancelledActivity(a.executionStatus)
+            ? 'bg-rose-600/30'
+            : pickBgClass(a.project?.title || a.title || typeLabel[a.type] || '', a.type);
           const time = fmtTimeRange(a.startTime, a.endTime);
           const counts = a.countTotal ?? 0;
           const m = a.countMale ?? 0;
@@ -801,6 +879,11 @@ export default function Calendar() {
                   />
                 )}
                 {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
+                {isCancelledActivity(a.executionStatus) && (
+                  <div className="relative z-10 mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+                    Ausgefallen
+                  </div>
+                )}
                 <div
                   className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-800'}`}
                 >
@@ -814,11 +897,13 @@ export default function Calendar() {
                     {time} Uhr
                   </div>
                 )}
-                <div
-                  className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
-                >
-                  {counts} (m:{m}, w:{w}, d:{d})
-                </div>
+                {!isCancelledActivity(a.executionStatus) && (
+                  <div
+                    className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
+                  >
+                    {counts} (m:{m}, w:{w}, d:{d})
+                  </div>
+                )}
               </button>
               <button
                 type="button"
@@ -1002,18 +1087,34 @@ export default function Calendar() {
                         </div>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAddActivityForDate(iso);
-                      }}
-                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
-                      aria-label={`Aktivität zu ${day.toLocaleDateString('de-DE')} hinzufügen`}
-                      title="Aktivität zu diesem Tag hinzufügen"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {effectiveOrgId && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setClosureDate(iso);
+                          }}
+                          className={`calendar-closure-button inline-flex h-5 w-5 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? 'calendar-closure-button-active' : ''}`}
+                          aria-label={`Schließzeit für ${day.toLocaleDateString('de-DE')} bearbeiten`}
+                          title={closureDaysByDate.has(iso) ? 'Schließung bearbeiten' : 'Tag als geschlossen markieren'}
+                        >
+                          <Building2 className="h-3 w-3" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddActivityForDate(iso);
+                        }}
+                        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
+                        aria-label={`Aktivität zu ${day.toLocaleDateString('de-DE')} hinzufügen`}
+                        title="Aktivität zu diesem Tag hinzufügen"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                   {/* School holiday band */}
                   {hasSchoolHoliday && (
@@ -1024,6 +1125,7 @@ export default function Calendar() {
                       <span className="truncate inline-block align-top leading-[14px]">{schoolLabelFor(iso)}</span>
                     </div>
                   )}
+                  {renderClosureBadge(iso, true)}
                   {renderEntries(
                     iso,
                     isMobile ? (hasSchoolHoliday ? 2 : 3) : hasSchoolHoliday ? 5 : 6,
@@ -1078,18 +1180,34 @@ export default function Calendar() {
                     >
                       {d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
                     </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAddActivityForDate(iso);
-                      }}
-                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
-                      aria-label={`Aktivität zu ${d.toLocaleDateString('de-DE')} hinzufügen`}
-                      title="Aktivität zu diesem Tag hinzufügen"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {effectiveOrgId && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setClosureDate(iso);
+                          }}
+                          className={`calendar-closure-button inline-flex h-6 w-6 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? 'calendar-closure-button-active' : ''}`}
+                          aria-label={`Schließzeit für ${d.toLocaleDateString('de-DE')} bearbeiten`}
+                          title={closureDaysByDate.has(iso) ? 'Schließung bearbeiten' : 'Tag als geschlossen markieren'}
+                        >
+                          <Building2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddActivityForDate(iso);
+                        }}
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
+                        aria-label={`Aktivität zu ${d.toLocaleDateString('de-DE')} hinzufügen`}
+                        title="Aktivität zu diesem Tag hinzufügen"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                   {!!holidaysByDate.get(iso)?.length && (
                     <div
@@ -1110,6 +1228,7 @@ export default function Calendar() {
                       {schoolLabelFor(iso)}
                     </div>
                   )}
+                  {renderClosureBadge(iso)}
                   {renderEntriesWeek(iso)}
                 </div>
               );
@@ -1140,6 +1259,17 @@ export default function Calendar() {
           onClose={() => setEdit(null)}
           project={edit.project ?? undefined}
           activity={edit}
+        />
+      )}
+      {closureDate && effectiveOrgId && (
+        <CalendarClosureModal
+          date={closureDate}
+          closureDay={selectedClosureDay}
+          onClose={() => setClosureDate(null)}
+          onSave={(payload) => saveClosureMutation.mutate({ date: closureDate, payload })}
+          onDelete={() => deleteClosureMutation.mutate(closureDate)}
+          saving={saveClosureMutation.isPending}
+          deleting={deleteClosureMutation.isPending}
         />
       )}
       

@@ -31,6 +31,17 @@ import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import { usePublicConfig } from '@/lib/publicConfig';
+import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
+import type { OrganizationClosureStateFilter } from '@/lib/orgs';
+import {
+  ACTIVITY_EXECUTION_STATUS_OPTIONS,
+  DEFAULT_ACTIVITY_EXECUTION_STATUS,
+  formatActivityExecutionStatusList,
+  isCancelledActivity,
+  isDefaultActivityExecutionStatusFilter,
+  normalizeActivityExecutionStatuses,
+  type ActivityExecutionStatus,
+} from '@/lib/activityExecutionStatus';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -67,6 +78,11 @@ const WEEKDAY_CHART_OPTIONS = [
   { value: 0, shortLabel: 'So', label: 'Sonntag' },
   ...WEEKDAY_OPTIONS,
 ] as const;
+
+const CLOSURE_FILTER_LABELS: Record<OrganizationClosureStateFilter, string> = {
+  closed: 'Nur Schließtage',
+  open: 'Ohne Schließtage',
+};
 
 function normalizeWeekdays(weekdays: number[]) {
   return Array.from(
@@ -118,6 +134,7 @@ type StatsOverviewResponse = {
     totalDurationMinutes: number;
     totalHours: number;
     averageParticipants: number;
+    closureDaysCount?: number;
   };
   byType: Array<{ type: string; count: number; totalParticipants: number }>;
   gender: { male: number; female: number; diverse: number };
@@ -367,18 +384,32 @@ function createCanvasSlice(sourceCanvas: HTMLCanvasElement, startPx: number, end
 }
 
 function useStatsOverview(
-  params: { from?: string; to?: string; projectId?: string; type?: string; weekdays?: number[] },
+  params: {
+    from?: string;
+    to?: string;
+    projectId?: string;
+    type?: string;
+    executionStatuses?: ActivityExecutionStatus[];
+    closureState?: OrganizationClosureStateFilter;
+    weekdays?: number[];
+  },
   scopeKey: string,
   options?: StatisticsRealtimeOptions,
 ) {
   return useQuery({
-    queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? '', params.type ?? '', params.weekdays?.join(',') ?? ''],
+    queryKey: ['stats:overview', scopeKey, params.from ?? '', params.to ?? '', params.projectId ?? '', params.type ?? '', params.executionStatuses?.join(',') ?? '', params.closureState ?? '', params.weekdays?.join(',') ?? ''],
     queryFn: async () => {
       const queryParams: Record<string, string> = {};
       if (params.from) queryParams.from = params.from;
       if (params.to) queryParams.to = params.to;
       if (params.projectId) queryParams.projectId = params.projectId;
       if (params.type) queryParams.type = params.type;
+      if (Array.isArray(params.executionStatuses) && params.executionStatuses.length > 0) {
+        queryParams.executionStatuses = params.executionStatuses.join(',');
+      }
+      if (params.closureState) {
+        queryParams.closureState = params.closureState;
+      }
       if (Array.isArray(params.weekdays) && params.weekdays.length > 0) {
         queryParams.weekdays = params.weekdays.join(',');
       }
@@ -421,6 +452,10 @@ export default function Statistics() {
   const [mobileProjectFilterExpanded, setMobileProjectFilterExpanded] = useState(false);
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
   const [tempSelectedWeekdays, setTempSelectedWeekdays] = useState<number[]>([]);
+  const [selectedExecutionStatuses, setSelectedExecutionStatuses] = useState<ActivityExecutionStatus[] | undefined>(undefined);
+  const [tempSelectedExecutionStatuses, setTempSelectedExecutionStatuses] = useState<ActivityExecutionStatus[]>([DEFAULT_ACTIVITY_EXECUTION_STATUS]);
+  const [selectedClosureState, setSelectedClosureState] = useState<OrganizationClosureStateFilter | undefined>(undefined);
+  const [tempSelectedClosureState, setTempSelectedClosureState] = useState<OrganizationClosureStateFilter | undefined>(undefined);
   
   // Toggle für absolute vs. relative (Durchschnitt) Zahlen in KPIs
   const [showAverage, setShowAverage] = useState<boolean>(false);
@@ -446,15 +481,28 @@ export default function Statistics() {
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const { data: publicConfig } = usePublicConfig();
+  const effectiveExecutionStatuses = useMemo(
+    () => normalizeActivityExecutionStatuses(selectedExecutionStatuses),
+    [selectedExecutionStatuses],
+  );
+  const executionStatusFilterParam = useMemo(
+    () =>
+      isDefaultActivityExecutionStatusFilter(selectedExecutionStatuses)
+        ? undefined
+        : effectiveExecutionStatuses,
+    [effectiveExecutionStatuses, selectedExecutionStatuses],
+  );
   const statsParams = useMemo(
     () => ({
       from: from || undefined,
       to: to || undefined,
       projectId: projectId || undefined,
       type: selectedType || undefined,
+      executionStatuses: executionStatusFilterParam,
+      closureState: selectedClosureState,
       weekdays: selectedWeekdays.length > 0 ? selectedWeekdays : undefined,
     }),
-    [from, to, projectId, selectedType, selectedWeekdays],
+    [executionStatusFilterParam, from, to, projectId, selectedClosureState, selectedType, selectedWeekdays],
   );
   const activitiesParams = useMemo(
     () => ({
@@ -463,8 +511,10 @@ export default function Statistics() {
       weekdays: selectedWeekdays.length > 0 ? selectedWeekdays : undefined,
       projectIds: projectId ? [projectId] : undefined,
       type: selectedType || undefined,
+      executionStatuses: executionStatusFilterParam,
+      closureState: selectedClosureState,
     }),
-    [from, to, projectId, selectedType, selectedWeekdays],
+    [executionStatusFilterParam, from, to, projectId, selectedClosureState, selectedType, selectedWeekdays],
   );
   const overviewQ = useStatsOverview(statsParams, scopeKey, {
     refetchOnWindowFocus: 'always',
@@ -490,8 +540,8 @@ export default function Statistics() {
   const { data: projectsAll = [] } = useProjects();
 
   const statsRunKey = useMemo(
-    () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '', statsParams.type ?? '', statsParams.weekdays?.join(',') ?? '']),
-    [scopeKey, statsParams.from, statsParams.to, statsParams.projectId, statsParams.type, statsParams.weekdays],
+    () => JSON.stringify([scopeKey, statsParams.from ?? '', statsParams.to ?? '', statsParams.projectId ?? '', statsParams.type ?? '', statsParams.executionStatuses?.join(',') ?? '', statsParams.closureState ?? '', statsParams.weekdays?.join(',') ?? '']),
+    [scopeKey, statsParams.from, statsParams.to, statsParams.projectId, statsParams.type, statsParams.executionStatuses, statsParams.closureState, statsParams.weekdays],
   );
 
   const initialLoading = overviewQ.isLoading;
@@ -759,9 +809,14 @@ export default function Statistics() {
   // Apply custom date range from modal
   const applyCustomRange = () => {
     const weekdays = normalizeWeekdays(tempSelectedWeekdays);
+    const executionStatuses = normalizeActivityExecutionStatuses(tempSelectedExecutionStatuses);
     const nextFrom = tempFrom?.trim() || '';
     const nextTo = tempTo?.trim() || '';
     setSelectedWeekdays(weekdays);
+    setSelectedExecutionStatuses(
+      isDefaultActivityExecutionStatusFilter(executionStatuses) ? undefined : executionStatuses,
+    );
+    setSelectedClosureState(tempSelectedClosureState);
 
     if (!nextFrom && !nextTo) {
       if (isCustomRange) {
@@ -791,6 +846,10 @@ export default function Statistics() {
   const resetAdvancedFilters = () => {
     setSelectedWeekdays([]);
     setTempSelectedWeekdays([]);
+    setSelectedExecutionStatuses(undefined);
+    setTempSelectedExecutionStatuses([DEFAULT_ACTIVITY_EXECUTION_STATUS]);
+    setSelectedClosureState(undefined);
+    setTempSelectedClosureState(undefined);
     if (isCustomRange) {
       selectYear(String(currentYear));
     }
@@ -814,7 +873,9 @@ export default function Statistics() {
   }, [from, to]);
 
   const hasWeekdayFilter = selectedWeekdays.length > 0;
-  const hasAdvancedFilter = isCustomRange || hasWeekdayFilter;
+  const hasExecutionStatusFilter = !isDefaultActivityExecutionStatusFilter(selectedExecutionStatuses);
+  const hasClosureStateFilter = typeof selectedClosureState !== 'undefined';
+  const hasAdvancedFilter = isCustomRange || hasWeekdayFilter || hasExecutionStatusFilter || hasClosureStateFilter;
 
   // Format the current range for display
   const formatRangeDisplay = () => {
@@ -836,6 +897,8 @@ export default function Statistics() {
   const formatAdvancedFilterDisplay = () => {
     const parts = [
       isCustomRange ? formatRangeDisplay() : '',
+      hasExecutionStatusFilter ? formatActivityExecutionStatusList(selectedExecutionStatuses) : '',
+      hasClosureStateFilter && selectedClosureState ? CLOSURE_FILTER_LABELS[selectedClosureState] : '',
       hasWeekdayFilter ? formatWeekdayDisplay(selectedWeekdays) : '',
     ].filter(Boolean);
     return parts.join(' · ');
@@ -1010,7 +1073,7 @@ export default function Statistics() {
   // Reset page when filters change
   useEffect(() => {
     setActivitiesPage(1);
-    }, [from, to, projectId, selectedType]);
+    }, [from, to, projectId, selectedType, selectedExecutionStatuses, selectedClosureState, selectedWeekdays]);
 
   const fmtNumber = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
 
@@ -1344,6 +1407,15 @@ export default function Statistics() {
       queryParams.weekdays = activitiesParams.weekdays.join(',');
     } else {
       delete queryParams.weekdays;
+    }
+
+    if (
+      Array.isArray(activitiesParams.executionStatuses) &&
+      activitiesParams.executionStatuses.length > 0
+    ) {
+      queryParams.executionStatuses = activitiesParams.executionStatuses.join(',');
+    } else {
+      delete queryParams.executionStatuses;
     }
 
     const response = await api.get('/activities', { params: queryParams });
@@ -1796,6 +1868,8 @@ export default function Statistics() {
             setTempFrom(isCustomRange ? from : '');
             setTempTo(isCustomRange ? to : '');
             setTempSelectedWeekdays(selectedWeekdays);
+            setTempSelectedExecutionStatuses(effectiveExecutionStatuses);
+            setTempSelectedClosureState(selectedClosureState);
             setCustomFilterOpen(true);
           };
 
@@ -1911,6 +1985,18 @@ export default function Statistics() {
                       <span className="inline-flex items-center gap-2 rounded-full border border-viridian/20 bg-viridian/10 px-3 py-1.5 text-sm font-medium text-viridian">
                         <Calendar className="h-3.5 w-3.5" />
                         {formatWeekdayDisplay(selectedWeekdays)}
+                      </span>
+                    )}
+
+                    {hasExecutionStatusFilter && (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-700">
+                        {formatActivityExecutionStatusList(selectedExecutionStatuses)}
+                      </span>
+                    )}
+
+                    {hasClosureStateFilter && selectedClosureState && (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700">
+                        {CLOSURE_FILTER_LABELS[selectedClosureState]}
                       </span>
                     )}
 
@@ -2566,7 +2652,7 @@ export default function Statistics() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" data-pdf-section>
+        <div className={`grid grid-cols-1 gap-6 mb-8 ${selectedClosureState === 'closed' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`} data-pdf-section>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
               {showAverage
@@ -2605,6 +2691,14 @@ export default function Statistics() {
               {showAverage ? 'Ø Stunden / Aktivität' : 'Gesamt-Stunden'}
             </p>
           </div>
+          {selectedClosureState === 'closed' && (
+            <div className="bg-white rounded-lg shadow p-6 text-center">
+              <p className="text-4xl font-bold text-amber-500">
+                {fmtNumber(summary?.closureDaysCount ?? 0)}
+              </p>
+              <p className="text-sm text-gray-600 mt-2">Schließtage</p>
+            </div>
+          )}
         </div>
 
         {/* Charts */}
@@ -3107,16 +3201,25 @@ export default function Statistics() {
                   const dateDE = formatActivityDateGerman(a.date);
                   const total = getActivityParticipantTotal(a);
                   const duration = getActivityDurationMinutes(a);
+                  const cancelled = isCancelledActivity(a.executionStatus);
                   return (
                     <tr key={a.id} data-pdf-row>
                       <td className="px-3 py-1.5">{dateDE}</td>
                       <td className="px-3 py-1.5">{getActivityTypeLabel(a.type)}</td>
                       <td className="px-3 py-1.5">{a.title || ''}</td>
                       <td className="px-3 py-1.5">{a.project?.title || ''}</td>
-                      <td className="px-3 py-1.5 text-right">{fmtNumber(total)}</td>
-                      <td className="px-3 py-1.5 text-right">{fmtNumber(a.countMale || 0)}</td>
-                      <td className="px-3 py-1.5 text-right">{fmtNumber(a.countFemale || 0)}</td>
-                      <td className="px-3 py-1.5 text-right">{fmtNumber(a.countDiverse || 0)}</td>
+                      <td className="px-3 py-1.5 text-right">
+                        {cancelled ? (
+                          <div className="flex justify-end">
+                            <ActivityExecutionStatusBadge status={a.executionStatus} compact />
+                          </div>
+                        ) : (
+                          fmtNumber(total)
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5 text-right">{cancelled ? '' : fmtNumber(a.countMale || 0)}</td>
+                      <td className="px-3 py-1.5 text-right">{cancelled ? '' : fmtNumber(a.countFemale || 0)}</td>
+                      <td className="px-3 py-1.5 text-right">{cancelled ? '' : fmtNumber(a.countDiverse || 0)}</td>
                       <td className="px-3 py-1.5 text-right">{duration ?? ''}</td>
                     </tr>
                   );
@@ -3450,7 +3553,7 @@ export default function Statistics() {
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Wähle Zeitraum und Wochentage für die Statistik-Auswertung.
+            Wähle Zeitraum, Wochentage und Status für die Statistik-Auswertung.
           </p>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -3477,6 +3580,83 @@ export default function Statistics() {
           <p className="text-xs text-gray-500">
             Leer lassen = aktuelle Auswahl oben links beibehalten. Ein eigener Zeitraum wird nur angewendet, wenn hier ein Datum gesetzt ist.
           </p>
+
+          <div className="pt-2 border-t">
+            <div className="text-xs font-medium text-gray-500 mb-2">Status</div>
+            <div className="flex flex-wrap gap-2">
+              {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((status) => {
+                const active = tempSelectedExecutionStatuses.includes(status);
+                const activeClass =
+                  status === 'cancelled'
+                    ? 'border-rose-600 bg-rose-600 text-white'
+                    : 'border-viridian bg-viridian text-white';
+
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      active
+                        ? activeClass
+                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
+                    onClick={() => {
+                      setTempSelectedExecutionStatuses((current) => {
+                        const next = current.includes(status)
+                          ? current.filter((entry) => entry !== status)
+                          : [...current, status];
+                        return normalizeActivityExecutionStatuses(next);
+                      });
+                    }}
+                    aria-pressed={active}
+                  >
+                    {status === 'cancelled' ? 'Ausgefallen' : 'Stattgefunden'}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Standard: nur stattgefundene Aktivitäten. Wähle zusätzlich ausgefallene Aktivitäten aus, wenn sie in der Auswertung erscheinen sollen.
+            </p>
+          </div>
+
+          <div className="pt-2 border-t">
+            <div className="text-xs font-medium text-gray-500 mb-2">Einrichtung geschlossen</div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'all', label: 'Alle Tage', value: undefined },
+                { key: 'closed', label: 'Nur Schließtage', value: 'closed' as const },
+                { key: 'open', label: 'Ohne Schließtage', value: 'open' as const },
+              ].map((option) => {
+                const active = tempSelectedClosureState === option.value;
+                const activeClass =
+                  option.value === 'closed'
+                    ? 'border-amber-600 bg-amber-600 text-white'
+                    : option.value === 'open'
+                      ? 'border-slate-700 bg-slate-700 text-white'
+                      : 'border-viridian bg-viridian text-white';
+
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      active
+                        ? activeClass
+                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setTempSelectedClosureState(option.value)}
+                    aria-pressed={active}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Filtert Aktivitäten danach, ob ihr Datum als geschlossener Kalendertag markiert wurde.
+            </p>
+          </div>
 
           <div className="pt-2 border-t">
             <div className="flex items-center justify-between gap-3 mb-2">

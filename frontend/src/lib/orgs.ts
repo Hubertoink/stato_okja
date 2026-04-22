@@ -193,6 +193,14 @@ export interface OpeningHours {
   sunday: DayOpeningHours;
 }
 
+export interface OrganizationClosureDay {
+  date: string;
+  from?: string | null;
+  to?: string | null;
+}
+
+export type OrganizationClosureStateFilter = 'closed' | 'open';
+
 export const DEFAULT_OPENING_HOURS: OpeningHours = {
   monday:    { open: false, from: '08:00', to: '17:00' },
   tuesday:   { open: false, from: '08:00', to: '17:00' },
@@ -210,5 +218,27 @@ export async function getOpeningHours(orgId: string): Promise<OpeningHours | nul
 
 export async function updateOpeningHours(orgId: string, hours: OpeningHours): Promise<OpeningHours> {
   const res = await api.patch<OpeningHours>(`/orgs/${orgId}/opening-hours`, hours);
+  return res.data;
+}
+
+export async function getClosureDays(
+  orgId: string,
+  params?: { from?: string; to?: string },
+): Promise<OrganizationClosureDay[]> {
+  const res = await api.get<OrganizationClosureDay[]>(`/orgs/${orgId}/closure-days`, { params });
+  return res.data;
+}
+
+export async function upsertClosureDay(
+  orgId: string,
+  date: string,
+  payload: Pick<OrganizationClosureDay, 'from' | 'to'>,
+): Promise<OrganizationClosureDay[]> {
+  const res = await api.patch<OrganizationClosureDay[]>(`/orgs/${orgId}/closure-days/${date}`, payload);
+  return res.data;
+}
+
+export async function deleteClosureDay(orgId: string, date: string): Promise<OrganizationClosureDay[]> {
+  const res = await api.delete<OrganizationClosureDay[]>(`/orgs/${orgId}/closure-days/${date}`);
   return res.data;
 }

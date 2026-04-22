@@ -10,7 +10,7 @@ import {
   JoinColumn,
   OneToMany,
 } from 'typeorm';
-import { ActivityType } from '../../common/enums';
+import { ActivityExecutionStatus, ActivityType } from '../../common/enums';
 import { Location } from '../../locations/entities/location.entity';
 import { Category } from '../../taxonomy/entities/category.entity';
 import { Tag } from '../../taxonomy/entities/tag.entity';
@@ -34,6 +34,13 @@ export class Activity {
 
   @Column({ type: 'int', nullable: true })
   durationMinutes: number;
+
+  @Column({
+    type: 'enum',
+    enum: ActivityExecutionStatus,
+    default: ActivityExecutionStatus.COMPLETED,
+  })
+  executionStatus: ActivityExecutionStatus;
 
   @Column({
     type: 'enum',

@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/com
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Brackets, SelectQueryBuilder } from 'typeorm';
 import { Activity } from './entities/activity.entity';
-import { ActivityType } from '../common/enums';
+import { ActivityExecutionStatus, ActivityType } from '../common/enums';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { Tag } from '../taxonomy/entities/tag.entity';
@@ -18,6 +18,7 @@ type ActivityAuditSnapshot = {
   startTime: string | null;
   endTime: string | null;
   durationMinutes: number | null;
+  executionStatus: string | null;
   type: string | null;
   project: string | null;
   location: string | null;
@@ -32,6 +33,8 @@ type ActivityAuditSnapshot = {
   staff: string[];
   cohorts: string[];
 };
+
+type ClosureStateFilter = 'closed' | 'open';
 
 @Injectable()
 export class ActivitiesService {
@@ -96,6 +99,64 @@ export class ActivitiesService {
     return typeof value === 'number' && Number.isFinite(value) ? value : null;
   }
 
+  private normalizeExecutionStatus(
+    value?: string | null,
+  ): ActivityExecutionStatus {
+    return value === ActivityExecutionStatus.CANCELLED
+      ? ActivityExecutionStatus.CANCELLED
+      : ActivityExecutionStatus.COMPLETED;
+  }
+
+  private normalizeExecutionStatuses(
+    values?: string[] | null,
+  ): ActivityExecutionStatus[] | undefined {
+    if (!Array.isArray(values) || values.length === 0) return undefined;
+
+    const normalized = Array.from(
+      new Set(values.map((value) => this.normalizeExecutionStatus(value))),
+    );
+
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  private normalizeClosureState(value?: string | null): ClosureStateFilter | undefined {
+    return value === 'closed' || value === 'open' ? value : undefined;
+  }
+
+  private async applyClosureStateFilter(
+    qb: SelectQueryBuilder<Activity>,
+    filters?: {
+      from?: string;
+      to?: string;
+      orgId?: string | null;
+      orgIds?: string[];
+      closureState?: string;
+    },
+  ) {
+    const closureState = this.normalizeClosureState(filters?.closureState);
+    if (!closureState) return;
+
+    const closedDates = await this.orgs.getClosedDatesForOrganizations(
+      filters?.orgId,
+      filters?.orgIds,
+      filters?.from,
+      filters?.to,
+    );
+
+    if (closureState === 'closed') {
+      if (closedDates.length === 0) {
+        qb.andWhere('1 = 0');
+        return;
+      }
+      qb.andWhere('a.date IN (:...closedDates)', { closedDates });
+      return;
+    }
+
+    if (closedDates.length > 0) {
+      qb.andWhere('a.date NOT IN (:...closedDates)', { closedDates });
+    }
+  }
+
   private formatAuditDate(value?: string | Date | null): string | null {
     if (!value) return null;
     if (typeof value === 'string') {
@@ -144,6 +205,7 @@ export class ActivitiesService {
       startTime: this.normalizeAuditText(activity?.startTime ?? null),
       endTime: this.normalizeAuditText(activity?.endTime ?? null),
       durationMinutes: this.normalizeAuditNumber(activity?.durationMinutes ?? null),
+      executionStatus: this.normalizeAuditText(activity?.executionStatus ?? null),
       type: this.normalizeAuditText(activity?.type ?? null),
       project:
         this.normalizeAuditText(activity?.project?.title ?? null) ??
@@ -191,6 +253,7 @@ export class ActivitiesService {
       'startTime',
       'endTime',
       'durationMinutes',
+      'executionStatus',
       'type',
       'project',
       'location',
@@ -216,7 +279,7 @@ export class ActivitiesService {
     return diff;
   }
 
-  private buildListQuery(
+  private async buildListQuery(
     filters?: {
     search?: string;
     from?: string;
@@ -231,6 +294,8 @@ export class ActivitiesService {
     tagIds?: string[];
     staffIds?: string[];
     cohortIds?: string[];
+    executionStatuses?: string[];
+    closureState?: string;
     weekdays?: number[];
     hasNotes?: boolean;
     participantsMin?: number;
@@ -331,6 +396,16 @@ export class ActivitiesService {
         { cohortIds: filters.cohortIds },
       );
     }
+    if (filters?.executionStatuses?.length) {
+      const executionStatuses = this.normalizeExecutionStatuses(filters.executionStatuses);
+      if (executionStatuses?.length) {
+        qb.andWhere('COALESCE(a.executionStatus, :defaultExecutionStatus) IN (:...executionStatuses)', {
+          defaultExecutionStatus: ActivityExecutionStatus.COMPLETED,
+          executionStatuses,
+        });
+      }
+    }
+    await this.applyClosureStateFilter(qb, filters);
     this.applyWeekdayFilter(qb, filters?.weekdays);
     if (typeof filters?.hasNotes !== 'undefined') {
       // Treat whitespace-only as empty; TRIM works in Postgres/SQLite
@@ -368,6 +443,8 @@ export class ActivitiesService {
     tagIds?: string[];
     staffIds?: string[];
     cohortIds?: string[];
+    executionStatuses?: string[];
+    closureState?: string;
     weekdays?: number[];
     hasNotes?: boolean;
     uncategorized?: boolean;
@@ -378,7 +455,7 @@ export class ActivitiesService {
     orgIds?: string[];
     order?: 'asc' | 'desc';
   }): Promise<Activity[]> {
-    const qb = this.buildListQuery(filters, { includeStaff: true });
+    const qb = await this.buildListQuery(filters, { includeStaff: true });
     const rows = await qb.getMany();
     if (filters?.cohortIds?.length && !this.usesPostgresCohortQuery()) {
       return rows.filter((row) => this.matchesSelectedCohorts(row, filters.cohortIds));
@@ -399,6 +476,8 @@ export class ActivitiesService {
     tagIds?: string[];
     staffIds?: string[];
     cohortIds?: string[];
+    executionStatuses?: string[];
+    closureState?: string;
     weekdays?: number[];
     hasNotes?: boolean;
     participantsMin?: number;
@@ -411,7 +490,7 @@ export class ActivitiesService {
     page: number;
     limit: number;
   }): Promise<{ data: Activity[]; total: number; page: number; pageSize: number }> {
-    const qb = this.buildListQuery(filters, { includeStaff: false });
+    const qb = await this.buildListQuery(filters, { includeStaff: false });
     const page = Math.max(filters.page || 1, 1);
     const limit = Math.min(Math.max(filters.limit || 50, 1), 50);
 
@@ -480,7 +559,8 @@ export class ActivitiesService {
     // locationId is optional; if omitted, activity can still be created
 
     const activity = this.activityRepository.create(rest);
-  const activityOrgId = (rest.orgId ?? null) as string | null;
+    activity.executionStatus = this.normalizeExecutionStatus(rest.executionStatus);
+    const activityOrgId = (rest.orgId ?? null) as string | null;
 
     // If a project is linked, enforce the activity type to match the project's type
     const restWithProject = rest as Partial<Activity> & { projectId?: string | null };
@@ -612,6 +692,7 @@ export class ActivitiesService {
     };
 
     Object.assign(existing, rest);
+    existing.executionStatus = this.normalizeExecutionStatus(rest.executionStatus ?? existing.executionStatus);
 
     // If a project is linked (new or existing), ensure the activity type mirrors the project's type
     const restWithProject = rest as Partial<Activity> & { projectId?: string | null };

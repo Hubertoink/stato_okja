@@ -18,6 +18,12 @@ export interface OpeningHours {
   sunday: DayOpeningHours;
 }
 
+export interface OrganizationClosureDay {
+  date: string; // YYYY-MM-DD
+  from?: string | null; // HH:mm format; omitted/null means full-day closure
+  to?: string | null; // HH:mm format; omitted/null means full-day closure
+}
+
 export type OrganizationTaxonomyType = 'categories' | 'tags' | 'cohorts';
 
 export interface OrganizationTaxonomyTypeSetting {
@@ -71,6 +77,10 @@ export class Organization {
   // Öffnungszeiten als JSON
   @Column({ type: 'simple-json', nullable: true })
   openingHours!: OpeningHours | null;
+
+  // Tagesbezogene Schließzeiten der Einrichtung
+  @Column({ type: 'simple-json', nullable: true })
+  closureDays!: OrganizationClosureDay[] | null;
 
   // Kind-spezifische Regeln für geerbte Statistik-Taxonomien
   @Column({ type: 'simple-json', nullable: true })

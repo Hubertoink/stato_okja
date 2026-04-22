@@ -8,9 +8,11 @@ import {
   Boxes,
   Pencil,
 } from 'lucide-react';
+import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import type { Activity } from '@/lib/activities';
 import { getBgClass } from '@/lib/colorPalette';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { isCancelledActivity } from '@/lib/activityExecutionStatus';
 
 const typeLabel: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -116,6 +118,11 @@ export default function ActivityDetailModal({
         </div>
 
         <div className="space-y-3">
+          {isCancelledActivity(activity.executionStatus) && (
+            <div className="activity-status-banner rounded-xl px-3 py-2">
+              <ActivityExecutionStatusBadge status={activity.executionStatus} compact />
+            </div>
+          )}
           <div className="flex items-center gap-2 text-sm text-gray-700">
             <CalendarIcon className="w-4 h-4" /> {dateLabel}
           </div>
@@ -140,10 +147,14 @@ export default function ActivityDetailModal({
 
           <div className="text-sm text-gray-700">
             <div className="font-medium mb-1">Teilnehmende</div>
-            <div>
-              {activity.countTotal ?? 0} (m:{activity.countMale ?? 0}, w:{activity.countFemale ?? 0}
-              , d:{activity.countDiverse ?? 0})
-            </div>
+            {isCancelledActivity(activity.executionStatus) ? (
+              <ActivityExecutionStatusBadge status={activity.executionStatus} />
+            ) : (
+              <div>
+                {activity.countTotal ?? 0} (m:{activity.countMale ?? 0}, w:{activity.countFemale ?? 0}
+                , d:{activity.countDiverse ?? 0})
+              </div>
+            )}
           </div>
 
           {activity.categories && activity.categories.length > 0 && (

@@ -1037,6 +1037,30 @@ code {
   border-color: rgba(148, 163, 184, 0.3);
 }
 
+.calendar-closure-button {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #64748b;
+}
+
+.calendar-closure-button:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(248, 113, 113, 0.36);
+  color: #be123c;
+}
+
+.calendar-closure-button-active {
+  background: rgba(255, 241, 242, 0.98);
+  border-color: rgba(248, 113, 113, 0.36);
+  color: #be123c;
+}
+
+.calendar-closure-badge {
+  background: rgba(255, 241, 242, 0.94);
+  border-color: rgba(248, 113, 113, 0.32);
+  color: #be123c;
+}
+
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .danger-icon-button {
   background: rgba(248, 113, 113, 0.14);
   color: #fca5a5;
@@ -1060,6 +1084,120 @@ code {
   background: rgba(110, 168, 255, 0.16);
   border-color: rgba(110, 168, 255, 0.34);
   color: #ecf3ff;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .calendar-closure-button {
+  background: rgba(17, 26, 43, 0.88);
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #c9d5eb;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .calendar-closure-button:hover,
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .calendar-closure-button-active {
+  background: rgba(159, 18, 57, 0.22);
+  border-color: rgba(251, 113, 133, 0.28);
+  color: #fecdd3;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .calendar-closure-badge {
+  background: rgba(159, 18, 57, 0.18);
+  border-color: rgba(251, 113, 133, 0.26);
+  color: #fecdd3;
+}
+
+.activity-status-control,
+.activity-status-badge {
+  border-color: var(--activity-status-border);
+  background: var(--activity-status-bg);
+  color: var(--activity-status-fg);
+}
+
+.activity-status-control {
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.activity-status-control:hover {
+  background: var(--activity-status-bg-hover);
+}
+
+.activity-status-control--completed,
+.activity-status-badge--completed {
+  --activity-status-border: rgba(16, 185, 129, 0.26);
+  --activity-status-bg: rgba(236, 253, 245, 0.96);
+  --activity-status-bg-hover: rgba(209, 250, 229, 0.98);
+  --activity-status-fg: #047857;
+}
+
+.activity-status-control--cancelled,
+.activity-status-badge--cancelled {
+  --activity-status-border: rgba(244, 63, 94, 0.24);
+  --activity-status-bg: rgba(255, 241, 242, 0.97);
+  --activity-status-bg-hover: rgba(255, 228, 230, 0.99);
+  --activity-status-fg: #be123c;
+}
+
+.activity-status-menu {
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
+  color: var(--text-primary);
+  backdrop-filter: blur(18px);
+}
+
+.activity-status-menu-label {
+  color: var(--text-faint);
+}
+
+.activity-status-menu-item {
+  color: var(--text-secondary);
+}
+
+.activity-status-menu-item:hover,
+.activity-status-menu-item--active {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.activity-status-banner {
+  border: 1px solid rgba(244, 63, 94, 0.22);
+  background: rgba(255, 241, 242, 0.78);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-control {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-control--completed,
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-badge--completed {
+  --activity-status-border: rgba(74, 222, 128, 0.22);
+  --activity-status-bg: rgba(22, 101, 52, 0.18);
+  --activity-status-bg-hover: rgba(22, 101, 52, 0.26);
+  --activity-status-fg: #bbf7d0;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-control--cancelled,
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-badge--cancelled {
+  --activity-status-border: rgba(251, 113, 133, 0.24);
+  --activity-status-bg: rgba(159, 18, 57, 0.18);
+  --activity-status-bg-hover: rgba(159, 18, 57, 0.26);
+  --activity-status-fg: #fecdd3;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-menu {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: color-mix(in srgb, var(--surface-elevated) 92%, transparent);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.4);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-menu-item:hover,
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-menu-item--active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-banner {
+  border-color: rgba(251, 113, 133, 0.2);
+  background: rgba(159, 18, 57, 0.14);
 }
 
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .segmented-control {

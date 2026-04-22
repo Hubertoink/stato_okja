@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
+import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
 import { Download, Plus, Search, SlidersHorizontal } from 'lucide-react';
@@ -29,6 +30,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 import { useLocations } from '@/lib/locations';
 import { usePublicConfig } from '@/lib/publicConfig';
 import { useStaff } from '@/lib/staff';
+import { isCancelledActivity } from '@/lib/activityExecutionStatus';
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -839,10 +841,16 @@ export default function Activities() {
                   <div className="text-xs text-gray-600 truncate">{a.project?.title || '-'}</div>
                 </td>
                 <td className="px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
-                  <span className="font-medium">{a.countTotal ?? 0}</span>
-                  <span className="text-gray-500 text-xs ml-1 hidden lg:inline">
-                    (m:{a.countMale ?? 0}, w:{a.countFemale ?? 0}, d:{a.countDiverse ?? 0})
-                  </span>
+                  {isCancelledActivity(a.executionStatus) ? (
+                    <ActivityExecutionStatusBadge status={a.executionStatus} />
+                  ) : (
+                    <>
+                      <span className="font-medium">{a.countTotal ?? 0}</span>
+                      <span className="text-gray-500 text-xs ml-1 hidden lg:inline">
+                        (m:{a.countMale ?? 0}, w:{a.countFemale ?? 0}, d:{a.countDiverse ?? 0})
+                      </span>
+                    </>
+                  )}
                 </td>
                 <td className="px-3 lg:px-6 py-4 text-sm hidden lg:table-cell">
                   {(() => {
@@ -1081,17 +1089,21 @@ export default function Activities() {
                 {a.project?.title || '-'}
               </div>
               <div className="relative z-10 text-xs text-gray-600 mb-2">
-                {(() => {
-                  const m = a.countMale || 0;
-                  const w = a.countFemale || 0;
-                  const d = a.countDiverse || 0;
-                  const total = (a.countTotal ?? m + w + d) || 0;
-                  return (
-                    <>
-                      Teilnehmende: {total} (m:{m}, w:{w}, d:{d})
-                    </>
-                  );
-                })()}
+                {isCancelledActivity(a.executionStatus) ? (
+                  <ActivityExecutionStatusBadge status={a.executionStatus} />
+                ) : (
+                  (() => {
+                    const m = a.countMale || 0;
+                    const w = a.countFemale || 0;
+                    const d = a.countDiverse || 0;
+                    const total = (a.countTotal ?? m + w + d) || 0;
+                    return (
+                      <>
+                        Teilnehmende: {total} (m:{m}, w:{w}, d:{d})
+                      </>
+                    );
+                  })()
+                )}
               </div>
               <div className="relative z-10 flex flex-wrap gap-1.5 mb-2">
                 {(a.categories || []).map((c) => (

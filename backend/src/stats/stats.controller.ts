@@ -5,6 +5,24 @@ import { OrgsService } from '../orgs/orgs.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 
+function parseExecutionStatuses(value?: string): string[] | undefined {
+  if (!value) return undefined;
+  const executionStatuses = Array.from(
+    new Set(
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry === 'completed' || entry === 'cancelled'),
+    ),
+  );
+  return executionStatuses.length > 0 ? executionStatuses : undefined;
+}
+
+function parseClosureState(value?: string): 'closed' | 'open' | undefined {
+  if (value === 'closed' || value === 'open') return value;
+  return undefined;
+}
+
 type ReqWithScope = {
   user: { role: string; orgId?: string | null };
   effectiveOrgId?: string | null | undefined;
@@ -81,6 +99,8 @@ export class StatsController {
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'projectId', required: false })
   @ApiQuery({ name: 'type', required: false })
+  @ApiQuery({ name: 'executionStatuses', required: false, description: 'CSV Liste (completed,cancelled)' })
+  @ApiQuery({ name: 'closureState', required: false, description: 'closed|open' })
   @ApiQuery({ name: 'weekdays', required: false, description: 'CSV Liste von Wochentagen (0=So bis 6=Sa)' })
   async getOverview(
     @Req() req: ReqWithScope,
@@ -89,10 +109,22 @@ export class StatsController {
     @Query('projectId') projectId?: string,
     @Query('type') type?: string,
     @Query('orgId') orgIdQuery?: string,
+    @Query('executionStatuses') executionStatusesCsv?: string,
     @Query('weekdays') weekdaysCsv?: string,
+    @Query('closureState') closureState?: string,
   ) {
     const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
-    return this.statsService.getOverview({ from, to, orgId, orgIds, projectId, type, weekdays: parseWeekdays(weekdaysCsv) });
+    return this.statsService.getOverview({
+      from,
+      to,
+      orgId,
+      orgIds,
+      projectId,
+      type,
+      executionStatuses: parseExecutionStatuses(executionStatusesCsv),
+      closureState: parseClosureState(closureState),
+      weekdays: parseWeekdays(weekdaysCsv),
+    });
   }
 
   @Get('summary')

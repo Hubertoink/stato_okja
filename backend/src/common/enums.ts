@@ -15,6 +15,11 @@ export enum ActivityType {
   OUTREACH = 'outreach',
 }
 
+export enum ActivityExecutionStatus {
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+
 export enum Gender {
   MALE = 'male',
   FEMALE = 'female',

@@ -3,6 +3,8 @@ import { api } from './api';
 import { useOrgScope, useOrgScopeKey } from './orgScope';
 import type { Location } from './locations';
 import type { Project } from './projects';
+import type { ActivityExecutionStatus } from './activityExecutionStatus';
+import type { OrganizationClosureStateFilter } from './orgs';
 
 function invalidateStatsQueries(qc: QueryClient, scopeKey: string) {
   void qc.invalidateQueries({
@@ -34,6 +36,7 @@ export interface Activity {
   startTime?: string | null;
   endTime?: string | null;
   durationMinutes?: number | null;
+  executionStatus?: ActivityExecutionStatus | null;
   type: 'open_door' | 'project_open' | 'project_closed' | 'event' | 'outreach';
   locationId?: string | null;
   projectId?: string | null;
@@ -67,6 +70,8 @@ export type ActivitiesFilter = {
   tagIds?: string[];
   staffIds?: string[];
   cohortIds?: string[];
+  executionStatuses?: ActivityExecutionStatus[];
+  closureState?: OrganizationClosureStateFilter;
   hasNotes?: boolean;
   participantsMin?: number;
   participantsMax?: number;
@@ -89,7 +94,7 @@ export function useActivities(params?: ActivitiesFilter, options?: ActivitiesQue
       // Encode arrays as comma-separated strings for simple query parsing
       const qp: Record<string, unknown> = { ...params };
       applyOrgScopeParam(qp, scope);
-      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','staffIds','cohortIds'];
+      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','staffIds','cohortIds','executionStatuses'];
       for (const k of arrayKeys) {
         const v = params?.[k];
         if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
@@ -132,7 +137,7 @@ export function useActivitiesPaged(
     queryFn: async () => {
       const qp: Record<string, unknown> = { ...params };
       applyOrgScopeParam(qp, scope);
-      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','staffIds','cohortIds'];
+      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','staffIds','cohortIds','executionStatuses'];
       for (const k of arrayKeys) {
         const v = params?.[k];
         if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');

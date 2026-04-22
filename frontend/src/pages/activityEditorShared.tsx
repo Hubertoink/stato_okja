@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Activity } from '@/lib/activities';
+import type { ActivityExecutionStatus } from '@/lib/activityExecutionStatus';
 import type { Project } from '@/lib/projects';
 import type { StaffMember, StaffRole } from '@/lib/staff';
 import type { Tag } from '@/lib/taxonomy';
@@ -13,6 +14,7 @@ export type ActivityFormState = {
   locationId?: string;
   start?: string;
   end?: string;
+  executionStatus?: ActivityExecutionStatus;
   title?: string;
   categoryIds?: string[];
   tagIds?: string[];

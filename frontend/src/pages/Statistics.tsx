@@ -21,7 +21,7 @@ import { useAuth } from '@/lib/auth';
 import { useActivitiesPaged, type Activity } from '@/lib/activities';
 import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
-import { useOrgScopeKey } from '@/lib/orgScope';
+import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { colorForActivityType, translucent } from '@/lib/colors';
 import { isDarkThemeName } from '../lib/theme';
@@ -147,6 +147,19 @@ type PdfSlice = {
 };
 
 type ChartExportFormat = 'png' | 'pdf';
+type ActivitiesExportFormat = 'pdf' | 'xlsx';
+
+type ActivityExportRow = {
+  date: string;
+  type: string;
+  title: string;
+  project: string;
+  total: number;
+  male: number;
+  female: number;
+  diverse: number;
+  duration: number | '';
+};
 
 const PDF_RENDER_SCALE = 2;
 const PDF_MARGIN_MM = 10;
@@ -176,6 +189,11 @@ function loadPdfExportDependencies() {
 
 function preloadPdfExportDependencies() {
   void loadPdfExportDependencies();
+}
+
+function preloadActivitiesExportDependencies() {
+  preloadPdfExportDependencies();
+  void import('xlsx-js-style');
 }
 
 function sanitizeExportSegment(value: string) {
@@ -210,6 +228,58 @@ function canvasToBlob(canvas: HTMLCanvasElement) {
       reject(new Error('Canvas export failed.'));
     }, 'image/png');
   });
+}
+
+function getActivityTypeLabel(type?: string | null) {
+  if (!type) return '';
+  return TYPE_LABEL[type] || type;
+}
+
+function getActivityParticipantTotal(activity: Activity) {
+  return (
+    activity.countTotal ??
+    (activity.countMale || 0) + (activity.countFemale || 0) + (activity.countDiverse || 0)
+  ) || 0;
+}
+
+function getActivityDurationMinutes(activity: Activity): number | undefined {
+  if (typeof activity.durationMinutes === 'number' && activity.durationMinutes >= 0) {
+    return activity.durationMinutes;
+  }
+
+  const toMinutes = (time?: string | null) => {
+    if (!time) return undefined;
+    const [hours, minutes] = String(time)
+      .split(':')
+      .map((value) => parseInt(value, 10));
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return undefined;
+    return hours * 60 + minutes;
+  };
+
+  const start = toMinutes(activity.startTime);
+  const end = toMinutes(activity.endTime);
+  return start !== undefined && end !== undefined && end >= start ? end - start : undefined;
+}
+
+function formatActivityDateGerman(date?: string | null) {
+  const safeDate = String(date || '').slice(0, 10);
+  const [year, month, day] = safeDate.split('-');
+  if (!year || !month || !day) return safeDate;
+  return `${day}.${month}.${year}`;
+}
+
+function toActivityExportRows(activities: Activity[]): ActivityExportRow[] {
+  return activities.map((activity) => ({
+    date: formatActivityDateGerman(activity.date),
+    type: getActivityTypeLabel(activity.type),
+    title: activity.title || '',
+    project: activity.project?.title || '',
+    total: getActivityParticipantTotal(activity),
+    male: activity.countMale || 0,
+    female: activity.countFemale || 0,
+    diverse: activity.countDiverse || 0,
+    duration: getActivityDurationMinutes(activity) ?? '',
+  }));
 }
 
 function addPdfPageHeader(pdf: jsPDF, orgTitle: string, dateRange: string) {
@@ -354,7 +424,6 @@ export default function Statistics() {
   
   // Toggle für absolute vs. relative (Durchschnitt) Zahlen in KPIs
   const [showAverage, setShowAverage] = useState<boolean>(false);
-  const [cohortChartMode, setCohortChartMode] = useState<'bar' | 'pie'>('bar');
 
   // Zeitverlauf Aggregation: 'day' | 'week' | 'month'
   const [timeAggregation, setTimeAggregation] = useState<'day' | 'week' | 'month'>('day');
@@ -372,7 +441,9 @@ export default function Statistics() {
   const statsUiPendingRunKeyRef = useRef<string | null>(null);
   const statsUiFetchSeenRef = useRef<Record<string, boolean>>({});
   const [activeChartExport, setActiveChartExport] = useState<string | null>(null);
+  const [activeActivitiesExport, setActiveActivitiesExport] = useState<ActivitiesExportFormat | null>(null);
   const { user } = useAuth();
+  const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const { data: publicConfig } = usePublicConfig();
   const statsParams = useMemo(
@@ -1133,6 +1204,7 @@ export default function Statistics() {
 
   // Generic label renderer for bar charts (positions label above the bar)
   type LabelProps = { x?: number; y?: number; width?: number; value?: number | string };
+  type LineLabelProps = { x?: number; y?: number; value?: number | string };
   type PieLabelProps = {
     cx?: number;
     x?: number;
@@ -1199,7 +1271,35 @@ export default function Statistics() {
     );
   };
 
+  const LineValueLabel = (props: LineLabelProps) => {
+    const { x, y, value } = props;
+    if (typeof x !== 'number' || typeof y !== 'number') return null;
+
+    const txt =
+      typeof value === 'number'
+        ? value.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+        : String(value ?? '');
+
+    return (
+      <text
+        x={x}
+        y={y - 12}
+        textAnchor="middle"
+        fill={chartValueLabelColor}
+        stroke={chartValueLabelStroke}
+        strokeWidth={2}
+        paintOrder="stroke"
+        fontSize={12}
+        fontWeight={600}
+      >
+        {txt}
+      </text>
+    );
+  };
+
   const exportRangeLabel = [from, to].filter(Boolean).join(' bis ') || 'Gesamter Zeitraum';
+  const isParticipantsTrendExporting =
+    activeChartExport?.startsWith('participants-trend:') ?? false;
 
   const setChartCardRef = (chartId: string) => (node: HTMLDivElement | null) => {
     chartCardRefs.current[chartId] = node;
@@ -1215,6 +1315,245 @@ export default function Statistics() {
     return `${parts.join('-')}.${extension}`;
   };
 
+  const getActivitiesExportFileName = (extension: ActivitiesExportFormat) => {
+    const parts = [
+      'stato',
+      sanitizeExportSegment(user?.orgName || 'organisation'),
+      'aktivitaeten-gefiltert',
+      sanitizeExportSegment(exportRangeLabel) || 'gesamt',
+    ].filter(Boolean);
+    return `${parts.join('-')}.${extension}`;
+  };
+
+  const fetchAllFilteredActivities = async () => {
+    const queryParams: Record<string, unknown> = { ...activitiesParams };
+
+    if (typeof scope === 'string') {
+      queryParams.orgId = scope;
+    } else if (scope === null) {
+      queryParams.orgId = '';
+    }
+
+    if (Array.isArray(activitiesParams.projectIds) && activitiesParams.projectIds.length > 0) {
+      queryParams.projectIds = activitiesParams.projectIds.join(',');
+    } else {
+      delete queryParams.projectIds;
+    }
+
+    if (Array.isArray(activitiesParams.weekdays) && activitiesParams.weekdays.length > 0) {
+      queryParams.weekdays = activitiesParams.weekdays.join(',');
+    } else {
+      delete queryParams.weekdays;
+    }
+
+    const response = await api.get('/activities', { params: queryParams });
+    const payload = response.data;
+    if (Array.isArray(payload?.data)) return payload.data as Activity[];
+    return (Array.isArray(payload) ? payload : []) as Activity[];
+  };
+
+  const exportActivitiesAsExcel = async (activities: Activity[]) => {
+    const rows = toActivityExportRows(activities);
+    const sheetRows: Array<Array<string | number>> = [
+      ['Datum', 'Typ', 'Titel', 'Projekt', 'TN ges.', 'm', 'w', 'd', 'Dauer (min)'],
+      ...rows.map((row) => [
+        row.date,
+        row.type,
+        row.title,
+        row.project,
+        row.total,
+        row.male,
+        row.female,
+        row.diverse,
+        row.duration === '' ? '' : row.duration,
+      ]),
+    ];
+
+    const xlsx = await import('xlsx-js-style');
+    const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
+    type CellStyle = { font?: { bold?: boolean; color?: { rgb: string } } };
+    const worksheet = utils.aoa_to_sheet(sheetRows);
+    (worksheet as unknown as { ['!autofilter']?: { ref: string } })['!autofilter'] = {
+      ref: `A1:${utils.encode_col((sheetRows[0]?.length || 1) - 1)}1`,
+    };
+    worksheet['!cols'] = [
+      { wch: 13 },
+      { wch: 22 },
+      { wch: 34 },
+      { wch: 30 },
+      { wch: 10 },
+      { wch: 8 },
+      { wch: 8 },
+      { wch: 8 },
+      { wch: 12 },
+    ];
+
+    for (let column = 0; column < (sheetRows[0]?.length || 0); column++) {
+      const address = utils.encode_cell({ r: 0, c: column });
+      const cell = worksheet[address] as unknown as { s?: CellStyle } | undefined;
+      if (cell) {
+        cell.s = { ...(cell.s || {}), font: { ...(cell.s?.font || {}), bold: true } };
+      }
+    }
+
+    for (let rowIndex = 1; rowIndex < sheetRows.length; rowIndex++) {
+      const typeText = String(sheetRows[rowIndex][1] ?? '');
+      const activityType = Object.entries(TYPE_LABEL).find(([, label]) => label === typeText)?.[0];
+      if (!activityType) continue;
+
+      const hex = colorForActivityType(activityType);
+      const rgb = `FF${hex.replace('#', '').toUpperCase()}`;
+      const address = utils.encode_cell({ r: rowIndex, c: 1 });
+      const cell = worksheet[address] as unknown as { s?: CellStyle } | undefined;
+      if (cell) {
+        cell.s = {
+          ...(cell.s || {}),
+          font: { ...(cell.s?.font || {}), color: { rgb } },
+        };
+      }
+    }
+
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, 'Aktivitäten');
+    writeFile(workbook, getActivitiesExportFileName('xlsx'));
+  };
+
+  const exportActivitiesAsPdf = async (activities: Activity[]) => {
+    const rows = toActivityExportRows(activities);
+    const { JsPDF } = await loadPdfExportDependencies();
+    const pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const tableTop = 34;
+    const rowPaddingY = 1.5;
+    const lineHeight = 3.8;
+    const columns = [
+      { key: 'date', label: 'Datum', width: 18, align: 'left' as const },
+      { key: 'type', label: 'Typ', width: 31, align: 'left' as const },
+      { key: 'title', label: 'Titel', width: 64, align: 'left' as const },
+      { key: 'project', label: 'Projekt', width: 58, align: 'left' as const },
+      { key: 'total', label: 'TN ges.', width: 17, align: 'right' as const },
+      { key: 'male', label: 'm', width: 11, align: 'right' as const },
+      { key: 'female', label: 'w', width: 11, align: 'right' as const },
+      { key: 'diverse', label: 'd', width: 11, align: 'right' as const },
+      { key: 'duration', label: 'Dauer', width: 18, align: 'right' as const },
+    ];
+    const totalTableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+    const orgTitle = user?.orgName || 'Organisation';
+    let pageNumber = 1;
+
+    const drawTableHeader = (startY: number) => {
+      let currentX = margin;
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(margin, startY, totalTableWidth, 7, 'F');
+      pdf.setDrawColor(203, 213, 225);
+      pdf.rect(margin, startY, totalTableWidth, 7);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8.5);
+
+      columns.forEach((column) => {
+        pdf.rect(currentX, startY, column.width, 7);
+        pdf.text(column.label, currentX + 1.5, startY + 4.6);
+        currentX += column.width;
+      });
+
+      return startY + 7;
+    };
+
+    const drawPageFrame = () => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(15);
+      pdf.text('Alle Aktivitäten (gefiltert)', margin, 15);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10.5);
+      pdf.text(orgTitle, margin, 21);
+      pdf.text(exportRangeLabel, margin, 26);
+      pdf.text(`${rows.length.toLocaleString('de-DE')} Einträge`, pageWidth - margin, 21, { align: 'right' });
+      pdf.text(`Seite ${pageNumber}`, pageWidth - margin, 26, { align: 'right' });
+      return drawTableHeader(tableTop);
+    };
+
+    let currentY = drawPageFrame();
+
+    if (rows.length === 0) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text('Keine Aktivitäten für die aktuelle Filterung.', margin, currentY + 8);
+      pdf.save(getActivitiesExportFileName('pdf'));
+      return;
+    }
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+
+    rows.forEach((row, rowIndex) => {
+      const cellLines = columns.map((column) => {
+        const rawValue = row[column.key as keyof ActivityExportRow];
+        const text = rawValue === '' ? '' : String(rawValue);
+        if (column.align === 'right') return [text];
+        const lines = pdf.splitTextToSize(text || ' ', column.width - 3);
+        return Array.isArray(lines) && lines.length > 0 ? lines : [' '];
+      });
+
+      const maxLineCount = Math.max(...cellLines.map((lines) => lines.length), 1);
+      const rowHeight = maxLineCount * lineHeight + rowPaddingY * 2;
+
+      if (currentY + rowHeight > pageHeight - margin) {
+        pdf.addPage('a4', 'landscape');
+        pageNumber += 1;
+        currentY = drawPageFrame();
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+      }
+
+      if (rowIndex % 2 === 0) {
+        pdf.setFillColor(248, 250, 252);
+        pdf.rect(margin, currentY, totalTableWidth, rowHeight, 'F');
+      }
+
+      let currentX = margin;
+      pdf.setDrawColor(226, 232, 240);
+      columns.forEach((column, columnIndex) => {
+        pdf.rect(currentX, currentY, column.width, rowHeight);
+        const lines = cellLines[columnIndex];
+
+        lines.forEach((line, lineIndex) => {
+          const textY = currentY + rowPaddingY + 3.1 + lineIndex * lineHeight;
+          if (column.align === 'right') {
+            pdf.text(line, currentX + column.width - 1.2, textY, { align: 'right' });
+          } else {
+            pdf.text(line, currentX + 1.2, textY);
+          }
+        });
+
+        currentX += column.width;
+      });
+
+      currentY += rowHeight;
+    });
+
+    pdf.save(getActivitiesExportFileName('pdf'));
+  };
+
+  async function exportActivitiesTable(format: ActivitiesExportFormat) {
+    setActiveActivitiesExport(format);
+
+    try {
+      const activities = await fetchAllFilteredActivities();
+      if (format === 'xlsx') {
+        await exportActivitiesAsExcel(activities);
+        return;
+      }
+
+      await exportActivitiesAsPdf(activities);
+    } catch (error) {
+      console.error('Activities export failed', error);
+    } finally {
+      setActiveActivitiesExport(null);
+    }
+  }
+
   async function exportChart(chartId: string, chartTitle: string, format: ChartExportFormat) {
     const card = chartCardRefs.current[chartId];
     if (!card) return;
@@ -1224,6 +1563,7 @@ export default function Statistics() {
 
     try {
       const { JsPDF, html2canvas } = await loadPdfExportDependencies();
+      await new Promise(requestAnimationFrame);
       await new Promise(requestAnimationFrame);
 
       const canvas = await html2canvas(card, {
@@ -1280,7 +1620,6 @@ export default function Statistics() {
     return (
       <div
         className="group/chart-export relative shrink-0"
-        data-chart-export-ignore="true"
         onMouseEnter={preloadPdfExportDependencies}
       >
         <button
@@ -1289,11 +1628,15 @@ export default function Statistics() {
           aria-label={`${chartTitle} exportieren`}
           title={`${chartTitle} exportieren`}
           onFocus={preloadPdfExportDependencies}
+          style={isExporting ? { visibility: 'hidden' } : undefined}
         >
           <FileDown className="h-4 w-4" />
         </button>
 
-        <div className="invisible pointer-events-none absolute right-0 top-full z-20 mt-2 w-44 translate-y-1 rounded-xl border border-gray-200 bg-white p-2 opacity-0 shadow-xl transition-all group-hover/chart-export:visible group-hover/chart-export:pointer-events-auto group-hover/chart-export:translate-y-0 group-hover/chart-export:opacity-100 group-focus-within/chart-export:visible group-focus-within/chart-export:pointer-events-auto group-focus-within/chart-export:translate-y-0 group-focus-within/chart-export:opacity-100">
+        <div
+          className="invisible pointer-events-none absolute right-0 top-full z-20 mt-2 w-44 translate-y-1 rounded-xl border border-gray-200 bg-white p-2 opacity-0 shadow-xl transition-all group-hover/chart-export:visible group-hover/chart-export:pointer-events-auto group-hover/chart-export:translate-y-0 group-hover/chart-export:opacity-100 group-focus-within/chart-export:visible group-focus-within/chart-export:pointer-events-auto group-focus-within/chart-export:translate-y-0 group-focus-within/chart-export:opacity-100"
+          data-chart-export-ignore="true"
+        >
           <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">
             Diagramm exportieren
           </div>
@@ -1314,6 +1657,55 @@ export default function Statistics() {
           >
             <span>Als PDF</span>
             <span className="text-xs text-gray-400">A4</span>
+          </button>
+          {isExporting && (
+            <div className="px-3 pt-2 text-xs text-gray-500">Export wird vorbereitet…</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderActivitiesExportActions = () => {
+    const isExporting = activeActivitiesExport !== null;
+
+    return (
+      <div
+        className="group/chart-export relative shrink-0"
+        onMouseEnter={preloadActivitiesExportDependencies}
+      >
+        <button
+          type="button"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-viridian hover:text-viridian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viridian/30 opacity-100 md:opacity-0 md:group-hover/chart-card:opacity-100 md:group-focus-within/chart-card:opacity-100"
+          aria-label="Aktivitäten exportieren"
+          title="Aktivitäten exportieren"
+          onFocus={preloadActivitiesExportDependencies}
+          style={isExporting ? { visibility: 'hidden' } : undefined}
+        >
+          <FileDown className="h-4 w-4" />
+        </button>
+
+        <div className="invisible pointer-events-none absolute right-0 top-full z-20 mt-2 w-44 translate-y-1 rounded-xl border border-gray-200 bg-white p-2 opacity-0 shadow-xl transition-all group-hover/chart-export:visible group-hover/chart-export:pointer-events-auto group-hover/chart-export:translate-y-0 group-hover/chart-export:opacity-100 group-focus-within/chart-export:visible group-focus-within/chart-export:pointer-events-auto group-focus-within/chart-export:translate-y-0 group-focus-within/chart-export:opacity-100">
+          <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+            Aktivitäten exportieren
+          </div>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => void exportActivitiesTable('pdf')}
+            disabled={isExporting}
+          >
+            <span>Als PDF</span>
+            <span className="text-xs text-gray-400">Komplett</span>
+          </button>
+          <button
+            type="button"
+            className="mt-1 flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => void exportActivitiesTable('xlsx')}
+            disabled={isExporting}
+          >
+            <span>Als Excel</span>
+            <span className="text-xs text-gray-400">Komplett</span>
           </button>
           {isExporting && (
             <div className="px-3 pt-2 text-xs text-gray-500">Export wird vorbereitet…</div>
@@ -2236,6 +2628,9 @@ export default function Statistics() {
                     cx="50%"
                     cy={byTypePieCenterY}
                     outerRadius={byTypeOuterRadius}
+                    isAnimationActive={!(activeChartExport?.startsWith('activity-types:') ?? false)}
+                    animationBegin={80}
+                    animationDuration={700}
                     stroke={chartSeparatorColor}
                     strokeWidth={1.25}
                     label={renderPieValueLabel(activeChartExport?.startsWith('activity-types:') ?? false)}
@@ -2282,6 +2677,9 @@ export default function Statistics() {
                     cy={genderPieCenterY}
                     innerRadius={genderInnerRadius}
                     outerRadius={genderOuterRadius}
+                    isAnimationActive={!(activeChartExport?.startsWith('gender-distribution:') ?? false)}
+                    animationBegin={80}
+                    animationDuration={700}
                     stroke={chartSeparatorColor}
                     strokeWidth={1.25}
                     label={renderPieValueLabel(activeChartExport?.startsWith('gender-distribution:') ?? false)}
@@ -2360,7 +2758,11 @@ export default function Statistics() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={aggregatedTimeseries}
-                  margin={lineChartMargin}
+                  margin={
+                    isParticipantsTrendExporting
+                      ? { ...lineChartMargin, top: Math.max(lineChartMargin.top, 28) }
+                      : lineChartMargin
+                  }
                 >
                   <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                   <XAxis
@@ -2423,9 +2825,18 @@ export default function Statistics() {
                     name={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
                     stroke="#10b981"
                     strokeWidth={2}
+                    isAnimationActive={!isParticipantsTrendExporting}
                     activeDot={{ r: 6, fill: '#10b981', stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
-                    dot={timeAggregation !== 'day'}
-                  />
+                    dot={
+                      isParticipantsTrendExporting
+                        ? { r: 4, fill: '#10b981', stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }
+                        : timeAggregation !== 'day'
+                    }
+                  >
+                    {isParticipantsTrendExporting && (
+                      <LabelList dataKey="totalParticipants" content={<LineValueLabel />} />
+                    )}
+                  </Line>
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -2440,111 +2851,49 @@ export default function Statistics() {
               <h3 className="text-lg font-semibold text-viridian">
                 {showAverage ? 'Ø Alterskohorten' : 'Alterskohorten'}
               </h3>
-              <div className="flex items-center gap-2">
-                {renderChartExportActions(
-                  'cohorts',
-                  showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
-                )}
-                <div className="stats-kpi-toggle flex items-center gap-1 rounded-lg p-1">
-                  <button
-                    onClick={() => setCohortChartMode('bar')}
-                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                      cohortChartMode === 'bar'
-                        ? 'stats-kpi-toggle-button-active font-medium'
-                        : 'stats-kpi-toggle-button'
-                    }`}
-                  >
-                    Balken
-                  </button>
-                  <button
-                    onClick={() => setCohortChartMode('pie')}
-                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                      cohortChartMode === 'pie'
-                        ? 'stats-kpi-toggle-button-active font-medium'
-                        : 'stats-kpi-toggle-button'
-                    }`}
-                  >
-                    Kreis
-                  </button>
-                </div>
-              </div>
+              {renderChartExportActions(
+                'cohorts',
+                showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
+              )}
             </div>
-            <div
-              className={
-                cohortChartMode === 'pie'
-                  ? pdfMode
-                    ? 'h-72'
-                    : 'h-80 md:h-[23rem]'
-                  : pdfMode
-                    ? 'h-64'
-                    : 'h-72'
-              }
-            >
+            <div className={pdfMode ? 'h-72' : 'h-80 md:h-[23rem]'}>
               <ResponsiveContainer width="100%" height="100%">
-                {cohortChartMode === 'pie' ? (
-                  <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
-                    <Pie
-                      dataKey="value"
-                      data={cohortPieData}
-                      nameKey="name"
-                      cx="50%"
-                      cy={cohortPieCenterY}
-                      outerRadius={cohortPieOuterRadius}
-                      stroke={chartSeparatorColor}
-                      strokeWidth={1.25}
-                      label={renderPieValueLabel(activeChartExport?.startsWith('cohorts:') ?? false)}
-                    >
-                      {cohortPieData.map((entry, index) => (
-                        <Cell key={`cohort-cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={chartTooltipContentStyle}
-                      labelStyle={chartTooltipLabelStyle}
-                      itemStyle={chartTooltipItemStyle}
-                      formatter={(
-                        value: number,
-                        _name: string,
-                        entry?: { payload?: { name?: string } },
-                      ) => [fmtNumber(value), entry?.payload?.name || '']}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      align="center"
-                      iconSize={11}
-                      wrapperStyle={pieLegendWrapperStyle}
-                    />
-                  </PieChart>
-                ) : (
-                  <BarChart data={cohortChartData} margin={compactBarChartMargin}>
-                    <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="name"
-                      tick={chartAxisTick}
-                      interval={0}
-                      angle={-15}
-                      textAnchor="end"
-                      height={50}
-                    />
-                    <YAxis allowDecimals={showAverage} tick={chartAxisTick} />
-                    <Tooltip
-                      contentStyle={chartTooltipContentStyle}
-                      labelStyle={chartTooltipLabelStyle}
-                      itemStyle={chartTooltipItemStyle}
-                      cursor={barChartCursor}
-                      formatter={(value: number) =>
-                        value.toLocaleString('de-DE', { maximumFractionDigits: 1 })
-                      }
-                    />
-                    <Bar
-                      dataKey={showAverage ? 'chartValue' : 'total'}
-                      name={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
-                      fill="#2563eb"
-                    >
-                      <LabelList dataKey={showAverage ? 'chartValue' : 'total'} content={<ValueLabel />} />
-                    </Bar>
-                  </BarChart>
-                )}
+                <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
+                  <Pie
+                    dataKey="value"
+                    data={cohortPieData}
+                    nameKey="name"
+                    cx="50%"
+                    cy={cohortPieCenterY}
+                    outerRadius={cohortPieOuterRadius}
+                    isAnimationActive={!(activeChartExport?.startsWith('cohorts:') ?? false)}
+                    animationBegin={80}
+                    animationDuration={700}
+                    stroke={chartSeparatorColor}
+                    strokeWidth={1.25}
+                    label={renderPieValueLabel(activeChartExport?.startsWith('cohorts:') ?? false)}
+                  >
+                    {cohortPieData.map((entry, index) => (
+                      <Cell key={`cohort-cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={chartTooltipContentStyle}
+                    labelStyle={chartTooltipLabelStyle}
+                    itemStyle={chartTooltipItemStyle}
+                    formatter={(
+                      value: number,
+                      _name: string,
+                      entry?: { payload?: { name?: string } },
+                    ) => [fmtNumber(value), entry?.payload?.name || '']}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    align="center"
+                    iconSize={11}
+                    wrapperStyle={pieLegendWrapperStyle}
+                  />
+                </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -2719,21 +3068,24 @@ export default function Statistics() {
         </div>
 
         {/* Aktivitäten-Tabelle (nach Diagrammen) */}
-        <div className="bg-white rounded-lg shadow p-6 mt-8" data-pdf-section>
-          <div className="flex items-center justify-between mb-4">
+        <div className="group/chart-card bg-white rounded-lg shadow p-6 mt-8" data-pdf-section>
+          <div className="flex items-center justify-between mb-4 gap-3">
             <h3 className="text-lg font-semibold text-viridian">
               Alle Aktivitäten (gefiltert)
               <span className="ml-2 text-sm font-normal text-gray-500">
                 {totalActivities} Einträge
               </span>
             </h3>
-            {totalActivityPages > 1 && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500">
-                  Seite {activitiesPage} von {totalActivityPages}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {renderActivitiesExportActions()}
+              {totalActivityPages > 1 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-500">
+                    Seite {activitiesPage} von {totalActivityPages}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -2752,38 +3104,13 @@ export default function Statistics() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {pagedActivities.map((a: Activity) => {
-                  const s = String(a.date || '').slice(0, 10);
-                  const [y, m, d] = s.split('-');
-                  const dateDE = `${d}.${m}.${y}`;
-                  const typeLabel: Record<string, string> = {
-                    open_door: 'Offene Tür',
-                    project_open: 'Projekt (offen)',
-                    project_closed: 'Projekt (geschlossen)',
-                    event: 'Veranstaltung',
-                    outreach: 'Aufsuchend',
-                  };
-                  const total =
-                    (a.countTotal ??
-                      (a.countMale || 0) + (a.countFemale || 0) + (a.countDiverse || 0)) ||
-                    0;
-                  const duration = (() => {
-                    if (typeof a.durationMinutes === 'number') return a.durationMinutes;
-                    const parse = (t?: string | null) => {
-                      if (!t) return undefined;
-                      const [hh, mm] = String(t)
-                        .split(':')
-                        .map((v) => parseInt(v, 10));
-                      if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
-                      return hh * 60 + mm;
-                    };
-                    const s = parse(a.startTime);
-                    const e = parse(a.endTime);
-                    return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
-                  })();
+                  const dateDE = formatActivityDateGerman(a.date);
+                  const total = getActivityParticipantTotal(a);
+                  const duration = getActivityDurationMinutes(a);
                   return (
                     <tr key={a.id} data-pdf-row>
                       <td className="px-3 py-1.5">{dateDE}</td>
-                      <td className="px-3 py-1.5">{typeLabel[a.type] || a.type}</td>
+                      <td className="px-3 py-1.5">{getActivityTypeLabel(a.type)}</td>
                       <td className="px-3 py-1.5">{a.title || ''}</td>
                       <td className="px-3 py-1.5">{a.project?.title || ''}</td>
                       <td className="px-3 py-1.5 text-right">{fmtNumber(total)}</td>

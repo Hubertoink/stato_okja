@@ -101,9 +101,12 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
   // Setup view - no active session (full modal)
   if (!session) {
     const setupContent = (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'var(--overlay-backdrop)' }}>
+      <div
+        className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 modal-overlay"
+        style={{ backgroundColor: 'var(--overlay-backdrop)' }}
+      >
         <div
-          className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border"
+          className="w-full max-w-md rounded-t-2xl md:rounded-2xl shadow-2xl overflow-hidden border bottom-sheet-animate"
           style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
         >
           {/* Header with gradient */}

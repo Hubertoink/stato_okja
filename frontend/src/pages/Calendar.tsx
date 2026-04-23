@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useIsMobile } from '@/lib/useIsMobile';
 import type { Project } from '@/lib/projects';
 import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
@@ -29,6 +29,50 @@ import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity } from '@/l
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
+}
+
+function filterClosureDaysForRange(
+  closureDays: OrganizationClosureDay[],
+  from?: string,
+  to?: string,
+) {
+  return closureDays.filter((entry) => {
+    if (from && entry.date < from) return false;
+    if (to && entry.date > to) return false;
+    return true;
+  });
+}
+
+function syncClosureDayQueries(
+  queryClient: QueryClient,
+  orgId: string,
+  closureDays: OrganizationClosureDay[],
+) {
+  const queries = queryClient.getQueriesData<OrganizationClosureDay[]>({
+    queryKey: ['org-closure-days', orgId],
+  });
+
+  queries.forEach(([queryKey]) => {
+    const from = typeof queryKey[2] === 'string' ? queryKey[2] : undefined;
+    const to = typeof queryKey[3] === 'string' ? queryKey[3] : undefined;
+    queryClient.setQueryData(queryKey, filterClosureDaysForRange(closureDays, from, to));
+  });
+}
+
+async function invalidateClosureDerivedQueries(
+  queryClient: QueryClient,
+  scopeKey: string,
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['activities', scopeKey], refetchType: 'active' }),
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        const [key, queryScopeKey] = Array.isArray(query.queryKey) ? query.queryKey : [];
+        return typeof key === 'string' && key.startsWith('stats:') && queryScopeKey === scopeKey;
+      },
+      refetchType: 'active',
+    }),
+  ]);
 }
 
 type TooltipLayout = {
@@ -404,9 +448,13 @@ export default function Calendar() {
       if (!effectiveOrgId) throw new Error('Keine Organisation ausgewählt');
       return upsertClosureDay(effectiveOrgId, date, payload);
     },
-    onSuccess: async () => {
+    onSuccess: async (nextClosureDays) => {
       if (!effectiveOrgId) return;
-      await queryClient.invalidateQueries({ queryKey: ['org-closure-days', effectiveOrgId] });
+      syncClosureDayQueries(queryClient, effectiveOrgId, nextClosureDays);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['org-closure-days', effectiveOrgId], refetchType: 'active' }),
+        invalidateClosureDerivedQueries(queryClient, scopeKey),
+      ]);
       setClosureDate(null);
     },
   });
@@ -415,9 +463,13 @@ export default function Calendar() {
       if (!effectiveOrgId) throw new Error('Keine Organisation ausgewählt');
       return deleteClosureDay(effectiveOrgId, date);
     },
-    onSuccess: async () => {
+    onSuccess: async (nextClosureDays) => {
       if (!effectiveOrgId) return;
-      await queryClient.invalidateQueries({ queryKey: ['org-closure-days', effectiveOrgId] });
+      syncClosureDayQueries(queryClient, effectiveOrgId, nextClosureDays);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['org-closure-days', effectiveOrgId], refetchType: 'active' }),
+        invalidateClosureDerivedQueries(queryClient, scopeKey),
+      ]);
       setClosureDate(null);
     },
   });

@@ -2,6 +2,7 @@ import { Project, useProjects } from '@/lib/projects';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Save as SaveIcon, X as XIcon, Boxes, Plus as PlusIcon, Trash2 as TrashIcon } from 'lucide-react';
+import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useStaff } from '@/lib/staff';
 import { useTags, useCohorts, useCategories } from '@/lib/taxonomy';
@@ -20,6 +21,7 @@ import { createPortal } from 'react-dom';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
+import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
 import {
   type ActivityFormState,
   FieldInfoHint,
@@ -60,7 +62,11 @@ export default function ActivityQuickAdd({
   const { showToast } = useToast();
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
   const [form, setForm] = useState<ActivityFormState>(() => {
-    return { cohortCounts: {}, date: (dateISO || '').slice(0, 10) };
+    return {
+      cohortCounts: {},
+      date: (dateISO || '').slice(0, 10),
+      executionStatus: DEFAULT_ACTIVITY_EXECUTION_STATUS,
+    };
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const selectedProject: Project | undefined = useMemo(
@@ -133,6 +139,8 @@ export default function ActivityQuickAdd({
         locationId: activity.locationId || activity.location?.id || f.locationId,
         start: activity.startTime || f.start || initialProject?.defaultStartTime || '15:00',
         end: activity.endTime || f.end || initialProject?.defaultEndTime || '17:00',
+        executionStatus:
+          activity.executionStatus || f.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
         title: activity.title || f.title,
         categoryIds: (activity.categories || []).map((c) => c.id),
         tagIds: (activity.tags || []).map((t) => t.id),
@@ -151,6 +159,7 @@ export default function ActivityQuickAdd({
       end: f.end || initialProject?.defaultEndTime || '17:00',
       projectId: f.projectId || initialProject?.id,
       date: f.date || (dateISO || '').slice(0, 10),
+      executionStatus: f.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
       ...f,
     }));
   }, [initialProject, activity]);
@@ -210,6 +219,7 @@ export default function ActivityQuickAdd({
       date: (form.date || activity?.date || dateISO).slice(0, 10),
       startTime: form.start || null,
       endTime: form.end || null,
+      executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
       type: selectedProject?.type || activity?.type || 'project_open',
       projectId: form.projectId,
       ...(form.locationId ? { locationId: form.locationId } : {}),
@@ -292,15 +302,21 @@ export default function ActivityQuickAdd({
               return `${d}.${m}.${y}`;
             })()}
           </h3>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-            title="Schließen"
-            aria-label="Schließen"
-          >
-            <XIcon className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <ActivityExecutionStatusControl
+              value={form.executionStatus}
+              onChange={(executionStatus) => setForm((current) => ({ ...current, executionStatus }))}
+            />
+            <button
+              type="button"
+              onClick={handleClose}
+              className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+              title="Schließen"
+              aria-label="Schließen"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6">
         <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 lg:items-start">

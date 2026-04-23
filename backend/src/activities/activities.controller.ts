@@ -30,6 +30,24 @@ function csvToWeekdays(value?: string): number[] | undefined {
   return weekdays.length > 0 ? weekdays : undefined;
 }
 
+function csvToExecutionStatuses(value?: string): string[] | undefined {
+  if (!value) return undefined;
+  const statuses = Array.from(
+    new Set(
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry === 'completed' || entry === 'cancelled'),
+    ),
+  );
+  return statuses.length > 0 ? statuses : undefined;
+}
+
+function parseClosureState(value?: string): 'closed' | 'open' | undefined {
+  if (value === 'closed' || value === 'open') return value;
+  return undefined;
+}
+
 @ApiTags('activities')
 @Controller('activities')
 @UseGuards(JwtAuthGuard, OrgScopeGuard)
@@ -54,6 +72,8 @@ export class ActivitiesController {
   @ApiQuery({ name: 'tagIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'staffIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'cohortIds', required: false, description: 'CSV Liste' })
+  @ApiQuery({ name: 'executionStatuses', required: false, description: 'CSV Liste (completed,cancelled)' })
+  @ApiQuery({ name: 'closureState', required: false, description: 'closed|open' })
   @ApiQuery({ name: 'weekdays', required: false, description: 'CSV Liste von Wochentagen (0=So bis 6=Sa)' })
   @ApiQuery({ name: 'hasNotes', required: false })
   @ApiQuery({ name: 'participantsMin', required: false })
@@ -89,6 +109,8 @@ export class ActivitiesController {
     @Query('uncategorized') uncategorized?: string, // Added support for filtering uncategorized activities
     @Query('tagIds') tagIdsCsv?: string,
     @Query('cohortIds') cohortIdsCsv?: string,
+    @Query('executionStatuses') executionStatusesCsv?: string,
+    @Query('closureState') closureState?: string,
     @Query('weekdays') weekdaysCsv?: string,
     @Query('staffIds') staffIdsCsv?: string,
     @Query('hasNotes') hasNotes?: string,
@@ -160,6 +182,8 @@ export class ActivitiesController {
       tagIds: csvToArray(tagIdsCsv),
       staffIds: csvToArray(staffIdsCsv),
       cohortIds: csvToArray(cohortIdsCsv),
+      executionStatuses: csvToExecutionStatuses(executionStatusesCsv),
+      closureState: parseClosureState(closureState),
       weekdays: csvToWeekdays(weekdaysCsv),
       hasNotes:
         typeof hasNotes !== 'undefined' ? hasNotes === 'true' || hasNotes === '1' : undefined,

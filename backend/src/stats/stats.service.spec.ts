@@ -1,5 +1,5 @@
 import { StatsService } from './stats.service';
-import { ActivityType } from '../common/enums';
+import { ActivityExecutionStatus, ActivityType } from '../common/enums';
 
 describe('StatsService date normalization', () => {
   const createQueryBuilder = (rows: Array<{ date: string | Date; totalParticipants?: string; activityCount?: string }>) => ({
@@ -26,6 +26,7 @@ describe('StatsService date normalization', () => {
       dataSource as never,
       activityRepository as never,
       {} as never,
+      { getClosedDatesForOrganizations: jest.fn(async () => []) } as never,
     );
 
     return { service, qb };
@@ -103,6 +104,7 @@ describe('StatsService category buckets', () => {
       dataSource as never,
       activityRepository as never,
       {} as never,
+      { getClosedDatesForOrganizations: jest.fn(async () => []) } as never,
     );
 
     const result = await service.getByCategory();
@@ -121,5 +123,101 @@ describe('StatsService category buckets', () => {
       { id: '__open_door__', name: 'Offene Tür', count: 3 },
       { id: '__uncategorized__', name: 'Unkategorisiert', count: 2 },
     ]);
+  });
+});
+
+describe('StatsService execution status filtering', () => {
+  it('defaults overview queries to completed activities', async () => {
+    const qb = {
+      leftJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      distinct: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
+      getRawOne: jest.fn().mockResolvedValue({
+        totalActivities: '0',
+        totalParticipants: '0',
+        totalMale: '0',
+        totalFemale: '0',
+        totalDiverse: '0',
+        totalDurationMinutes: '0',
+      }),
+    };
+
+    const activityRepository = {
+      createQueryBuilder: jest.fn(() => qb),
+    };
+    const dataSource = {
+      options: { type: 'postgres' },
+    };
+
+    const service = new StatsService(
+      dataSource as never,
+      activityRepository as never,
+      { createQueryBuilder: jest.fn(() => ({ where: jest.fn().mockReturnThis(), select: jest.fn().mockReturnThis(), addSelect: jest.fn().mockReturnThis(), getRawMany: jest.fn().mockResolvedValue([]) })) } as never,
+      { getClosedDatesForOrganizations: jest.fn(async () => []) } as never,
+    );
+
+    await service.getSummary();
+
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      'COALESCE(activity.executionStatus, :defaultExecutionStatus) IN (:...executionStatuses)',
+      {
+        defaultExecutionStatus: ActivityExecutionStatus.COMPLETED,
+        executionStatuses: [ActivityExecutionStatus.COMPLETED],
+      },
+    );
+  });
+
+  it('filters overview queries to closed dates when closureState is closed', async () => {
+    const qb = {
+      leftJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      distinct: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({
+        totalActivities: '0',
+        totalParticipants: '0',
+        totalMale: '0',
+        totalFemale: '0',
+        totalDiverse: '0',
+        totalDurationMinutes: '0',
+      }),
+    };
+
+    const activityRepository = {
+      createQueryBuilder: jest.fn(() => qb),
+    };
+    const dataSource = {
+      options: { type: 'postgres' },
+    };
+    const orgs = {
+      getClosedDatesForOrganizations: jest.fn(async () => ['2026-04-10', '2026-04-11']),
+    };
+
+    const service = new StatsService(
+      dataSource as never,
+      activityRepository as never,
+      { createQueryBuilder: jest.fn(() => ({ where: jest.fn().mockReturnThis(), select: jest.fn().mockReturnThis(), addSelect: jest.fn().mockReturnThis(), getRawMany: jest.fn().mockResolvedValue([]) })) } as never,
+      orgs as never,
+    );
+
+    await service.getSummary('2026-04-01', '2026-04-30', undefined, ['org-1'], undefined, undefined, undefined, undefined, 'closed');
+
+    expect(orgs.getClosedDatesForOrganizations).toHaveBeenCalledWith(undefined, ['org-1'], '2026-04-01', '2026-04-30');
+    expect(qb.andWhere).toHaveBeenCalledWith('activity.date IN (:...closedDates)', {
+      closedDates: ['2026-04-10', '2026-04-11'],
+    });
+    await expect(
+      service.getSummary('2026-04-01', '2026-04-30', undefined, ['org-1'], undefined, undefined, undefined, undefined, 'closed'),
+    ).resolves.toMatchObject({ closureDaysCount: 2 });
   });
 });

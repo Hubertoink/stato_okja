@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsMobile } from '@/lib/useIsMobile';
 import type { Project } from '@/lib/projects';
 import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
@@ -9,14 +9,23 @@ import { useActivities, Activity } from '@/lib/activities';
 // colorForActivityType no longer needed after switching to class-based palette
 import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holidays';
 import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
-import { getOpeningHours, OpeningHours } from '@/lib/orgs';
+import {
+  deleteClosureDay,
+  getClosureDays,
+  getOpeningHours,
+  type OpeningHours,
+  type OrganizationClosureDay,
+  upsertClosureDay,
+} from '@/lib/orgs';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import type React from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Plus } from 'lucide-react';
+import { Building2, Pencil, Plus } from 'lucide-react';
 import ProtectedImage from '@/components/ProtectedImage';
+import CalendarClosureModal from '@/components/CalendarClosureModal';
+import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity } from '@/lib/activityExecutionStatus';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -111,6 +120,7 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
   if (!activity || !position) return null;
   
   const label = `${activity.project?.title || typeLabel[activity.type] || activity.type}${activity.title ? ` (${activity.title})` : ''}`;
+  const statusLabel = isCancelledActivity(activity.executionStatus) ? 'Ausgefallen' : null;
   const time = fmtTimeRange(activity.startTime, activity.endTime);
   const total = activity.countTotal ?? 0;
   const m = activity.countMale ?? 0;
@@ -128,12 +138,15 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
           ref={ref}
           className={panelClass}
         >
+          {statusLabel && <div className="mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{statusLabel}</div>}
           <div className="font-semibold mb-1 text-viridian">{label}</div>
           {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Zeit:</span> {time}</div>}
-          <div className="calendar-tooltip-body">
-            <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
-            <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
-          </div>
+          {!statusLabel && (
+            <div className="calendar-tooltip-body">
+              <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
+              <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
+            </div>
+          )}
           {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Ort:</span> {loc}</div>}
         </div>
       </div>,
@@ -150,12 +163,15 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
         ref={ref}
         className={`relative ${panelClass}`}
       >
+        {statusLabel && <div className="mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{statusLabel}</div>}
         <div className="font-semibold mb-1 text-viridian">{label}</div>
         {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Zeit:</span> {time}</div>}
-        <div className="calendar-tooltip-body">
-          <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
-          <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
-        </div>
+        {!statusLabel && (
+          <div className="calendar-tooltip-body">
+            <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
+            <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
+          </div>
+        )}
         {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Ort:</span> {loc}</div>}
         {/* Tooltip arrow */}
         <div
@@ -169,13 +185,14 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
 }
 // duplicate import removed
 
-type View = 'month' | 'week';
+type View = 'month' | 'week' | 'three-day';
 
 const CALENDAR_VIEW_STORAGE_KEY = 'calendar:view';
 
 function readStoredCalendarView(): View {
   try {
-    return localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY) === 'week' ? 'week' : 'month';
+    const stored = localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY);
+    return stored === 'week' || stored === 'three-day' ? stored : 'month';
   } catch {
     return 'month';
   }
@@ -215,6 +232,7 @@ function getISOWeek(d: Date) {
 export default function Calendar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { scope } = useOrgScope();
@@ -224,6 +242,14 @@ export default function Calendar() {
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
   const [picker, setPicker] = useState<{ date: string } | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
+  const [closureDate, setClosureDate] = useState<string | null>(null);
+  const calendarView: View = isMobile
+    ? view === 'week'
+      ? 'three-day'
+      : view
+    : view === 'three-day'
+      ? 'week'
+      : view;
   
   // Tooltip state for activity hover
   const [tooltipActivity, setTooltipActivity] = useState<Activity | null>(null);
@@ -267,13 +293,19 @@ export default function Calendar() {
   };
 
   const label = useMemo(() => {
+    if (calendarView === 'three-day') {
+      const start = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+      const end = addDays(start, 2);
+      return `${start.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} – ${end.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+    }
+
     const base = cursor.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-    if (view === 'week') {
+    if (calendarView === 'week') {
       const kw = getISOWeek(cursor);
       return `${base} (KW ${kw})`;
     }
     return base;
-  }, [cursor, view]);
+  }, [calendarView, cursor]);
   const fmtLocalISO = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const fmtTime = (t?: string | null) => (t ? String(t).slice(0, 5) : '');
@@ -299,10 +331,24 @@ export default function Calendar() {
     if (isMobile) navigate(`/activities/new/select-project?date=${iso}`);
     else setPicker({ date: iso });
   };
+  const goToPrevious = () => {
+    setCursor((c) => {
+      if (calendarView === 'month') return addMonths(c, -1);
+      if (calendarView === 'three-day') return addDays(new Date(c.getFullYear(), c.getMonth(), c.getDate()), -3);
+      return addDays(startOfWeek(c), -7);
+    });
+  };
+  const goToNext = () => {
+    setCursor((c) => {
+      if (calendarView === 'month') return addMonths(c, 1);
+      if (calendarView === 'three-day') return addDays(new Date(c.getFullYear(), c.getMonth(), c.getDate()), 3);
+      return addDays(startOfWeek(c), 7);
+    });
+  };
 
   // Build month grid (6 weeks)
   const monthWeeks = useMemo(() => {
-    if (view !== 'month') return [] as Date[][];
+    if (calendarView !== 'month') return [] as Date[][];
     const first = startOfMonth(cursor);
     const gridStart = startOfWeek(first);
     const days: Date[] = [];
@@ -310,30 +356,71 @@ export default function Calendar() {
     const weeks: Date[][] = [];
     for (let w = 0; w < 6; w++) weeks.push(days.slice(w * 7, w * 7 + 7));
     return weeks;
-  }, [cursor, view]);
+  }, [calendarView, cursor]);
 
   const todayISO = fmtLocalISO(new Date());
   const gotoToday = () => setCursor(new Date());
-  const weekDays = useMemo(() => {
-    if (view !== 'week') return [] as Date[];
-    const start = startOfWeek(cursor);
-    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, [cursor, view]);
+  const visibleDays = useMemo(() => {
+    if (calendarView === 'month') return [] as Date[];
+    const start = calendarView === 'three-day'
+      ? new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())
+      : startOfWeek(cursor);
+    const length = calendarView === 'three-day' ? 3 : 7;
+    return Array.from({ length }, (_, i) => addDays(start, i));
+  }, [calendarView, cursor]);
 
   // Compute visible range and fetch activities
   const range = useMemo(() => {
-    if (view === 'month') {
+    if (calendarView === 'month') {
       const first = startOfMonth(cursor);
       const gridStart = startOfWeek(first);
       const gridEnd = addDays(gridStart, 41);
       return { from: fmtLocalISO(gridStart), to: fmtLocalISO(gridEnd) };
     }
-    const start = startOfWeek(cursor);
-    const end = addDays(start, 6);
+    const start = calendarView === 'three-day'
+      ? new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())
+      : startOfWeek(cursor);
+    const end = addDays(start, calendarView === 'three-day' ? 2 : 6);
     return { from: fmtLocalISO(start), to: fmtLocalISO(end) };
-  }, [cursor, view]);
+  }, [calendarView, cursor]);
+  const closureDaysQ = useQuery({
+    queryKey: ['org-closure-days', effectiveOrgId, range.from, range.to],
+    queryFn: () => getClosureDays(effectiveOrgId!, { from: range.from, to: range.to }),
+    enabled: !!effectiveOrgId,
+  });
   const activitiesQ = useActivities({ from: range.from, to: range.to });
   const activities = activitiesQ.data;
+  const closureDays = closureDaysQ.data ?? [];
+  const closureDaysByDate = useMemo(() => {
+    const map = new Map<string, OrganizationClosureDay>();
+    closureDays.forEach((entry) => {
+      map.set(entry.date, entry);
+    });
+    return map;
+  }, [closureDays]);
+  const selectedClosureDay = closureDate ? closureDaysByDate.get(closureDate) ?? null : null;
+  const saveClosureMutation = useMutation({
+    mutationFn: async ({ date, payload }: { date: string; payload: Pick<OrganizationClosureDay, 'from' | 'to'> }) => {
+      if (!effectiveOrgId) throw new Error('Keine Organisation ausgewählt');
+      return upsertClosureDay(effectiveOrgId, date, payload);
+    },
+    onSuccess: async () => {
+      if (!effectiveOrgId) return;
+      await queryClient.invalidateQueries({ queryKey: ['org-closure-days', effectiveOrgId] });
+      setClosureDate(null);
+    },
+  });
+  const deleteClosureMutation = useMutation({
+    mutationFn: async (date: string) => {
+      if (!effectiveOrgId) throw new Error('Keine Organisation ausgewählt');
+      return deleteClosureDay(effectiveOrgId, date);
+    },
+    onSuccess: async () => {
+      if (!effectiveOrgId) return;
+      await queryClient.invalidateQueries({ queryKey: ['org-closure-days', effectiveOrgId] });
+      setClosureDate(null);
+    },
+  });
   const activitiesByDate = useMemo(() => {
     const map = new Map<string, Activity[]>();
     const list: Activity[] = (activities ?? []) as Activity[];
@@ -345,6 +432,29 @@ export default function Calendar() {
     });
     return map;
   }, [activities]);
+
+  const formatClosureLabel = (closureDay?: OrganizationClosureDay | null, compact = false) => {
+    if (!closureDay) return null;
+    const from = closureDay.from ? String(closureDay.from).slice(0, 5) : '';
+    const to = closureDay.to ? String(closureDay.to).slice(0, 5) : '';
+    if (from && to) return compact ? `Geschl. ${from}-${to}` : `Einrichtung geschlossen ${from} - ${to}`;
+    return compact ? 'Geschlossen' : 'Einrichtung ganztägig geschlossen';
+  };
+
+  const renderClosureBadge = (iso: string, compact = false) => {
+    const closureDay = closureDaysByDate.get(iso);
+    const label = formatClosureLabel(closureDay, compact);
+    if (!closureDay || !label) return null;
+
+    return (
+      <div
+        className={`calendar-closure-badge rounded border font-semibold truncate max-w-full ${compact ? 'mb-0.5 px-1 py-[1px] text-[9px] md:text-[10px]' : 'mb-1 px-1.5 py-0.5 text-[10px]'}`}
+        title={label}
+      >
+        {label}
+      </div>
+    );
+  };
 
   // Holidays overlay
   const { state: holidayState, school: showSchool } = readHolidayPrefs();
@@ -700,11 +810,13 @@ export default function Calendar() {
       <div className="space-y-0.5" onMouseLeave={handleActivityStackMouseLeave}>
         {visible.map((a: Activity, i: number) => {
           const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
-          const bgClass = pickBgClass(
-            a.project?.title || a.title || typeLabel[a.type] || '',
-            a.type,
-          );
+          const bgClass = isCancelledActivity(a.executionStatus)
+            ? 'bg-rose-600/35'
+            : pickBgClass(a.project?.title || a.title || typeLabel[a.type] || '', a.type);
           const hasImg = Boolean(a.project?.imageUrl);
+          const compactStatusPrefix = isCancelledActivity(a.executionStatus)
+            ? `${ACTIVITY_EXECUTION_STATUS_SHORT_LABELS.cancelled} `
+            : '';
           return (
             <div key={i} className="group relative">
               <button
@@ -731,7 +843,7 @@ export default function Calendar() {
                     hasImg ? 'text-white drop-shadow-sm' : 'text-gray-900'
                   }`}
                 >
-                  {label}
+                  {compactStatusPrefix}{label}
                 </span>
               </button>
               <button
@@ -771,10 +883,9 @@ export default function Calendar() {
         {items.map((a: Activity, i: number) => {
           const title = a.project?.title || typeLabel[a.type] || a.type;
           const subtitle = a.title ? a.title : undefined;
-          const bgClass = pickBgClass(
-            a.project?.title || a.title || typeLabel[a.type] || '',
-            a.type,
-          );
+          const bgClass = isCancelledActivity(a.executionStatus)
+            ? 'bg-rose-600/30'
+            : pickBgClass(a.project?.title || a.title || typeLabel[a.type] || '', a.type);
           const time = fmtTimeRange(a.startTime, a.endTime);
           const counts = a.countTotal ?? 0;
           const m = a.countMale ?? 0;
@@ -801,6 +912,11 @@ export default function Calendar() {
                   />
                 )}
                 {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
+                {isCancelledActivity(a.executionStatus) && (
+                  <div className="relative z-10 mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+                    Ausgefallen
+                  </div>
+                )}
                 <div
                   className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-800'}`}
                 >
@@ -814,11 +930,13 @@ export default function Calendar() {
                     {time} Uhr
                   </div>
                 )}
-                <div
-                  className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
-                >
-                  {counts} (m:{m}, w:{w}, d:{d})
-                </div>
+                {!isCancelledActivity(a.executionStatus) && (
+                  <div
+                    className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
+                  >
+                    {counts} (m:{m}, w:{w}, d:{d})
+                  </div>
+                )}
               </button>
               <button
                 type="button"
@@ -855,17 +973,13 @@ export default function Calendar() {
             </button>
             <button
               className="calendar-control px-2 py-1.5 rounded text-sm"
-              onClick={() =>
-                setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), -7) : addMonths(c, -1)))
-              }
+              onClick={goToPrevious}
             >
               «
             </button>
             <button
               className="calendar-control px-2 py-1.5 rounded text-sm"
-              onClick={() =>
-                setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), 7) : addMonths(c, 1)))
-              }
+              onClick={goToNext}
             >
               »
             </button>
@@ -878,17 +992,13 @@ export default function Calendar() {
           </button>
           <button
             className="calendar-control px-3 py-2 rounded"
-            onClick={() =>
-              setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), -7) : addMonths(c, -1)))
-            }
+            onClick={goToPrevious}
           >
             «
           </button>
           <button
             className="calendar-control px-3 py-2 rounded"
-            onClick={() =>
-              setCursor((c) => (view === 'week' ? addDays(startOfWeek(c), 7) : addMonths(c, 1)))
-            }
+            onClick={goToNext}
           >
             »
           </button>
@@ -896,20 +1006,20 @@ export default function Calendar() {
             <button
               type="button"
               className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                view === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                calendarView === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
               }`}
               onClick={() => setView('month')}
-              aria-pressed={view === 'month'}
+              aria-pressed={calendarView === 'month'}
             >
               Monat
             </button>
             <button
               type="button"
               className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                view === 'week' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                calendarView === 'week' ? 'stats-kpi-toggle-button-active font-medium' : ''
               }`}
               onClick={() => setView('week')}
-              aria-pressed={view === 'week'}
+              aria-pressed={calendarView === 'week'}
             >
               Woche
             </button>
@@ -921,29 +1031,29 @@ export default function Calendar() {
             <button
               type="button"
               className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                view === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                calendarView === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
               }`}
               onClick={() => setView('month')}
-              aria-pressed={view === 'month'}
+              aria-pressed={calendarView === 'month'}
             >
               Monat
             </button>
             <button
               type="button"
               className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                view === 'week' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                calendarView === 'three-day' ? 'stats-kpi-toggle-button-active font-medium' : ''
               }`}
-              onClick={() => setView('week')}
-              aria-pressed={view === 'week'}
+              onClick={() => setView('three-day')}
+              aria-pressed={calendarView === 'three-day'}
             >
-              Woche
+              3 Tage
             </button>
           </div>
         </div>
       </div>
 
       {/* Month grid */}
-      {view === 'month' && (
+      {calendarView === 'month' && (
         <div className="calendar-surface rounded-lg shadow overflow-hidden">
           <div className="calendar-header-row grid grid-cols-7 text-xs md:text-sm font-medium">
             {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d, idx) => (
@@ -1002,18 +1112,36 @@ export default function Calendar() {
                         </div>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAddActivityForDate(iso);
-                      }}
-                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
-                      aria-label={`Aktivität zu ${day.toLocaleDateString('de-DE')} hinzufügen`}
-                      title="Aktivität zu diesem Tag hinzufügen"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
+                    {!isMobile && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        {effectiveOrgId && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setClosureDate(iso);
+                            }}
+                            className={`calendar-closure-button inline-flex h-5 w-5 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? 'calendar-closure-button-active' : ''}`}
+                            aria-label={`Schließzeit für ${day.toLocaleDateString('de-DE')} bearbeiten`}
+                            title={closureDaysByDate.has(iso) ? 'Schließung bearbeiten' : 'Tag als geschlossen markieren'}
+                          >
+                            <Building2 className="h-3 w-3" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openAddActivityForDate(iso);
+                          }}
+                          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
+                          aria-label={`Aktivität zu ${day.toLocaleDateString('de-DE')} hinzufügen`}
+                          title="Aktivität zu diesem Tag hinzufügen"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {/* School holiday band */}
                   {hasSchoolHoliday && (
@@ -1024,6 +1152,7 @@ export default function Calendar() {
                       <span className="truncate inline-block align-top leading-[14px]">{schoolLabelFor(iso)}</span>
                     </div>
                   )}
+                  {renderClosureBadge(iso, true)}
                   {renderEntries(
                     iso,
                     isMobile ? (hasSchoolHoliday ? 2 : 3) : hasSchoolHoliday ? 5 : 6,
@@ -1035,11 +1164,14 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* Week view */}
-      {view === 'week' && (
+      {/* Day-range view */}
+      {calendarView !== 'month' && (
         <div className="calendar-surface rounded-lg shadow overflow-hidden">
-          <div className="calendar-header-row grid grid-cols-7 text-xs md:text-sm font-medium">
-            {weekDays.map((d, idx) => (
+          <div
+            className="calendar-header-row grid text-xs md:text-sm font-medium"
+            style={{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(0, 1fr))` }}
+          >
+            {visibleDays.map((d) => (
               <div key={d.toISOString()} className="px-2 py-2 text-center">
                 <div>
                   {d.toLocaleDateString('de-DE', {
@@ -1050,14 +1182,17 @@ export default function Calendar() {
                 </div>
                 {openingHours && (
                   <div className="text-[10px] text-viridian font-normal">
-                    {getOpeningHoursForDay(idx)}
+                    {getOpeningHoursForDay((d.getDay() + 6) % 7)}
                   </div>
                 )}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7">
-            {weekDays.map((d) => {
+          <div
+            className="grid"
+            style={{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(0, 1fr))` }}
+          >
+            {visibleDays.map((d) => {
               const iso = fmtLocalISO(d);
               const isToday = iso === todayISO;
               return (
@@ -1078,18 +1213,34 @@ export default function Calendar() {
                     >
                       {d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
                     </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAddActivityForDate(iso);
-                      }}
-                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
-                      aria-label={`Aktivität zu ${d.toLocaleDateString('de-DE')} hinzufügen`}
-                      title="Aktivität zu diesem Tag hinzufügen"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {effectiveOrgId && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setClosureDate(iso);
+                          }}
+                          className={`calendar-closure-button inline-flex h-6 w-6 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? 'calendar-closure-button-active' : ''}`}
+                          aria-label={`Schließzeit für ${d.toLocaleDateString('de-DE')} bearbeiten`}
+                          title={closureDaysByDate.has(iso) ? 'Schließung bearbeiten' : 'Tag als geschlossen markieren'}
+                        >
+                          <Building2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddActivityForDate(iso);
+                        }}
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
+                        aria-label={`Aktivität zu ${d.toLocaleDateString('de-DE')} hinzufügen`}
+                        title="Aktivität zu diesem Tag hinzufügen"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                   {!!holidaysByDate.get(iso)?.length && (
                     <div
@@ -1110,6 +1261,7 @@ export default function Calendar() {
                       {schoolLabelFor(iso)}
                     </div>
                   )}
+                  {renderClosureBadge(iso)}
                   {renderEntriesWeek(iso)}
                 </div>
               );
@@ -1140,6 +1292,17 @@ export default function Calendar() {
           onClose={() => setEdit(null)}
           project={edit.project ?? undefined}
           activity={edit}
+        />
+      )}
+      {closureDate && effectiveOrgId && (
+        <CalendarClosureModal
+          date={closureDate}
+          closureDay={selectedClosureDay}
+          onClose={() => setClosureDate(null)}
+          onSave={(payload) => saveClosureMutation.mutate({ date: closureDate, payload })}
+          onDelete={() => deleteClosureMutation.mutate(closureDate)}
+          saving={saveClosureMutation.isPending}
+          deleting={deleteClosureMutation.isPending}
         />
       )}
       

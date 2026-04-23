@@ -3,7 +3,7 @@ import { OrgsService } from './orgs.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import type { OpeningHours, OrganizationTaxonomySettingsUpdatePayload } from './entities/organization.entity';
+import type { OpeningHours, OrganizationClosureDay, OrganizationTaxonomySettingsUpdatePayload } from './entities/organization.entity';
 
 function orgMoveFeatureEnabled() {
   return ['1', 'true', 'yes', 'on'].includes(String(process.env.ENABLE_ORG_MOVE || '').toLowerCase());
@@ -160,5 +160,52 @@ export class OrgsController {
       if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
     }
     return this.service.updateOpeningHours(id, body);
+  }
+
+  @Get(':id/closure-days')
+  async getClosureDays(
+    @Param('id') id: string,
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    if (req.user.role !== 'superadmin') {
+      const myOrgId = req.user.orgId || null;
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
+      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
+    }
+    return this.service.getClosureDays(id, from, to);
+  }
+
+  @Patch(':id/closure-days/:date')
+  async upsertClosureDay(
+    @Param('id') id: string,
+    @Param('date') date: string,
+    @Body() body: Pick<OrganizationClosureDay, 'from' | 'to'>,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    if (req.user.role !== 'superadmin') {
+      const myOrgId = req.user.orgId || null;
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
+      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
+    }
+    return this.service.upsertClosureDay(id, { date, from: body?.from, to: body?.to });
+  }
+
+  @Delete(':id/closure-days/:date')
+  async deleteClosureDay(
+    @Param('id') id: string,
+    @Param('date') date: string,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    if (req.user.role !== 'superadmin') {
+      const myOrgId = req.user.orgId || null;
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
+      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
+    }
+    return this.service.removeClosureDay(id, date);
   }
 }

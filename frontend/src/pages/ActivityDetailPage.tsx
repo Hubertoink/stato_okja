@@ -1,5 +1,6 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useActivity } from '@/lib/activities';
+import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import {
   X as XIcon,
   Calendar as CalendarIcon,
@@ -11,6 +12,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { getBgClass } from '@/lib/colorPalette';
+import { isCancelledActivity } from '@/lib/activityExecutionStatus';
 
 const typeLabel: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -112,6 +114,11 @@ export default function ActivityDetailPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 md:p-6 space-y-3">
+        {isCancelledActivity(activity.executionStatus) && (
+          <div className="activity-status-banner rounded-xl px-3 py-2">
+            <ActivityExecutionStatusBadge status={activity.executionStatus} compact />
+          </div>
+        )}
         <div className="flex items-center gap-2 text-sm text-gray-700">
           <CalendarIcon className="w-4 h-4" /> {dateLabel}
         </div>
@@ -136,10 +143,14 @@ export default function ActivityDetailPage() {
 
         <div className="text-sm text-gray-700">
           <div className="font-medium mb-1">Teilnehmende</div>
-          <div>
-            {activity.countTotal ?? 0} (m:{activity.countMale ?? 0}, w:{activity.countFemale ?? 0},
-            d:{activity.countDiverse ?? 0})
-          </div>
+          {isCancelledActivity(activity.executionStatus) ? (
+            <ActivityExecutionStatusBadge status={activity.executionStatus} />
+          ) : (
+            <div>
+              {activity.countTotal ?? 0} (m:{activity.countMale ?? 0}, w:{activity.countFemale ?? 0},
+              d:{activity.countDiverse ?? 0})
+            </div>
+          )}
         </div>
 
         {activity.categories && activity.categories.length > 0 && (

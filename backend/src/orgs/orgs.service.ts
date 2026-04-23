@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
 import {
   Organization,
+  OrganizationClosureDay,
   OpeningHours,
   OrganizationChildTaxonomyDefaults,
   OrganizationTaxonomySettings,
@@ -44,6 +45,9 @@ type TaxonomyConfigPermissions = {
   canEditSelf: boolean;
   canEditChildDefaults: boolean;
 };
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^\d{2}:\d{2}$/;
 
 export interface VisibleTaxonomyMeta {
   sourceOrgId: string | null;
@@ -1031,5 +1035,109 @@ export class OrgsService {
     await this.repo.update({ id }, { openingHours });
     const org = await this.repo.findOne({ where: { id } });
     return org?.openingHours || null;
+  }
+
+  private normalizeClosureTime(value?: string | null): string | null {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    return TIME_RE.test(trimmed) ? trimmed : null;
+  }
+
+  private normalizeClosureDay(value?: Partial<OrganizationClosureDay> | null): OrganizationClosureDay | null {
+    if (!value || typeof value.date !== 'string') return null;
+    const date = value.date.trim();
+    if (!ISO_DATE_RE.test(date)) return null;
+
+    const from = this.normalizeClosureTime(value.from ?? null);
+    const to = this.normalizeClosureTime(value.to ?? null);
+
+    return {
+      date,
+      ...(from ? { from } : {}),
+      ...(to ? { to } : {}),
+    };
+  }
+
+  private normalizeClosureDays(values?: Array<Partial<OrganizationClosureDay> | null> | null): OrganizationClosureDay[] {
+    if (!Array.isArray(values) || values.length === 0) return [];
+
+    const byDate = new Map<string, OrganizationClosureDay>();
+    for (const value of values) {
+      const normalized = this.normalizeClosureDay(value);
+      if (!normalized) continue;
+      byDate.set(normalized.date, normalized);
+    }
+
+    return Array.from(byDate.values()).sort((left, right) => left.date.localeCompare(right.date));
+  }
+
+  private filterClosureDays(values: OrganizationClosureDay[], from?: string, to?: string): OrganizationClosureDay[] {
+    return values.filter((value) => {
+      if (from && value.date < from) return false;
+      if (to && value.date > to) return false;
+      return true;
+    });
+  }
+
+  async getClosureDays(id: string, from?: string, to?: string): Promise<OrganizationClosureDay[]> {
+    const org = await this.repo.findOne({ where: { id } });
+    const closureDays = this.normalizeClosureDays(org?.closureDays);
+    return this.filterClosureDays(closureDays, from, to);
+  }
+
+  async upsertClosureDay(id: string, value: Partial<OrganizationClosureDay>): Promise<OrganizationClosureDay[]> {
+    const normalized = this.normalizeClosureDay(value);
+    if (!normalized) {
+      throw new BadRequestException('Ungültiger Schließtag');
+    }
+
+    const org = await this.repo.findOne({ where: { id } });
+    if (!org) throw new BadRequestException('Organisation nicht gefunden');
+
+    const closureDays = this.normalizeClosureDays(org.closureDays);
+    const next = this.normalizeClosureDays([
+      ...closureDays.filter((entry) => entry.date !== normalized.date),
+      normalized,
+    ]);
+
+    await this.repo.update({ id }, { closureDays: next });
+    return next;
+  }
+
+  async removeClosureDay(id: string, date: string): Promise<OrganizationClosureDay[]> {
+    if (!ISO_DATE_RE.test(date)) {
+      throw new BadRequestException('Ungültiges Datum');
+    }
+
+    const org = await this.repo.findOne({ where: { id } });
+    if (!org) throw new BadRequestException('Organisation nicht gefunden');
+
+    const next = this.normalizeClosureDays(org.closureDays).filter((entry) => entry.date !== date);
+    await this.repo.update({ id }, { closureDays: next.length > 0 ? next : null });
+    return next;
+  }
+
+  async getClosedDatesForOrganizations(
+    orgId?: string | null,
+    orgIds?: string[],
+    from?: string,
+    to?: string,
+  ): Promise<string[]> {
+    if (Array.isArray(orgIds) && orgIds.length === 0) return [];
+    if (typeof orgId !== 'string' && (!Array.isArray(orgIds) || orgIds.length === 0)) return [];
+
+    const orgs = Array.isArray(orgIds) && orgIds.length > 0
+      ? await this.repo.find({ where: { id: In(orgIds) } })
+      : await this.repo.find({ where: { id: orgId as string } });
+
+    const dates = new Set<string>();
+    for (const org of orgs) {
+      const closureDays = this.filterClosureDays(this.normalizeClosureDays(org.closureDays), from, to);
+      for (const closureDay of closureDays) {
+        dates.add(closureDay.date);
+      }
+    }
+
+    return Array.from(dates).sort((left, right) => left.localeCompare(right));
   }
 }

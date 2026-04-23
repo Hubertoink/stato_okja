@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { X as XIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
+import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import { useCreateActivity, type Activity } from '@/lib/activities';
+import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
 import { useProjects, type Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import { useTags, useCohorts, useCategories, type Cohort } from '@/lib/taxonomy';
@@ -55,6 +57,7 @@ export default function ActivityCreatePage() {
   const [form, setForm] = useState<ActivityFormState>(() => ({
     cohortCounts: {},
     date: (qpDate || new Date().toISOString()).slice(0, 10),
+    executionStatus: DEFAULT_ACTIVITY_EXECUTION_STATUS,
     projectId: qpProjectId,
   }));
 
@@ -150,6 +153,7 @@ export default function ActivityCreatePage() {
       date: (form.date || '').slice(0, 10),
       startTime: form.start || null,
       endTime: form.end || null,
+      executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
       type: (selectedProject?.type as Activity['type']) || 'project_open',
       projectId: form.projectId,
       ...(form.locationId ? { locationId: form.locationId } : {}),
@@ -222,15 +226,21 @@ export default function ActivityCreatePage() {
     <div className={`max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 ${containerPad}`}>
       <div className="flex items-center justify-between mb-4 mt-1">
         <h2 className="text-2xl font-bold text-viridian">Neue Aktivität</h2>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-          onClick={handleCancel}
-          title="Abbrechen"
-          aria-label="Abbrechen"
-        >
-          <XIcon className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <ActivityExecutionStatusControl
+            value={form.executionStatus}
+            onChange={(executionStatus) => setForm((current) => ({ ...current, executionStatus }))}
+          />
+          <button
+            type="button"
+            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+            onClick={handleCancel}
+            title="Abbrechen"
+            aria-label="Abbrechen"
+          >
+            <XIcon className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       <form

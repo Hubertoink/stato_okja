@@ -3,7 +3,8 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
-import { ActivityType } from '../common/enums';
+import { ActivityExecutionStatus, ActivityType } from '../common/enums';
+import { OrgsService } from '../orgs/orgs.service';
 
 type StatsScope = {
   from?: string;
@@ -12,6 +13,8 @@ type StatsScope = {
   orgIds?: string[];
   projectId?: string;
   type?: string;
+  executionStatuses?: string[];
+  closureState?: 'closed' | 'open';
   weekdays?: number[];
 };
 
@@ -41,6 +44,7 @@ export class StatsService {
     private activityRepository: Repository<Activity>,
     @InjectRepository(Cohort)
     private cohortRepository: Repository<Cohort>,
+    private readonly orgs: OrgsService,
   ) {}
 
   private getWeekdayExpression(column: string) {
@@ -56,14 +60,36 @@ export class StatsService {
     qb.andWhere(`${this.getWeekdayExpression('activity.date')} IN (:...weekdays)`, { weekdays });
   }
 
-  private createFilteredActivityQuery(
+  private normalizeExecutionStatuses(values?: string[]): ActivityExecutionStatus[] {
+    if (!Array.isArray(values) || values.length === 0) {
+      return [ActivityExecutionStatus.COMPLETED];
+    }
+
+    return Array.from(
+      new Set(
+        values.map((value) =>
+          value === ActivityExecutionStatus.CANCELLED
+            ? ActivityExecutionStatus.CANCELLED
+            : ActivityExecutionStatus.COMPLETED,
+        ),
+      ),
+    );
+  }
+
+  private normalizeClosureState(value?: string): 'closed' | 'open' | undefined {
+    return value === 'closed' || value === 'open' ? value : undefined;
+  }
+
+  private async createFilteredActivityQuery(
     from?: string,
     to?: string,
     orgId?: string | null,
     orgIds?: string[],
     projectId?: string,
     type?: string,
+    executionStatuses?: string[],
     weekdays?: number[],
+    closureState?: string,
   ) {
     const qb = this.activityRepository.createQueryBuilder('activity');
 
@@ -83,6 +109,25 @@ export class StatsService {
 
     if (type) {
       qb.andWhere('activity.type = :type', { type });
+    }
+
+    qb.andWhere('COALESCE(activity.executionStatus, :defaultExecutionStatus) IN (:...executionStatuses)', {
+      defaultExecutionStatus: ActivityExecutionStatus.COMPLETED,
+      executionStatuses: this.normalizeExecutionStatuses(executionStatuses),
+    });
+
+    const normalizedClosureState = this.normalizeClosureState(closureState);
+    if (normalizedClosureState) {
+      const closedDates = await this.orgs.getClosedDatesForOrganizations(orgId, orgIds, from, to);
+      if (normalizedClosureState === 'closed') {
+        if (closedDates.length === 0) {
+          qb.andWhere('1 = 0');
+        } else {
+          qb.andWhere('activity.date IN (:...closedDates)', { closedDates });
+        }
+      } else if (closedDates.length > 0) {
+        qb.andWhere('activity.date NOT IN (:...closedDates)', { closedDates });
+      }
     }
 
     this.applyWeekdayFilter(qb, weekdays);
@@ -144,7 +189,7 @@ export class StatsService {
   }
 
   async getAvailableYears(orgId?: string | null, orgIds?: string[]) {
-    const rows = await this.createFilteredActivityQuery(undefined, undefined, orgId, orgIds, undefined)
+    const rows = await (await this.createFilteredActivityQuery(undefined, undefined, orgId, orgIds, undefined))
       .select('activity.date', 'date')
       .distinct(true)
       .orderBy('activity.date', 'DESC')
@@ -161,16 +206,16 @@ export class StatsService {
   }
 
   async getOverview(scope: StatsScope) {
-    const { from, to, orgId, orgIds, projectId, type, weekdays } = scope;
+    const { from, to, orgId, orgIds, projectId, type, executionStatuses, closureState, weekdays } = scope;
     const [summary, byType, gender, participantsTimeseries, byCategory, byCohort, topTags, topProjects, availableYears] = await Promise.all([
-      this.getSummary(from, to, orgId, orgIds, projectId, type, weekdays),
-      this.getByType(from, to, orgId, orgIds, projectId, type, weekdays),
-      this.getGender(from, to, orgId, orgIds, projectId, type, weekdays),
-      this.getParticipantsTimeseries(from, to, orgId, orgIds, projectId, type, weekdays),
-      this.getByCategory(from, to, orgId, orgIds, projectId, type, weekdays),
-      this.getByCohort(from, to, orgId, orgIds, projectId, type, weekdays),
-      this.getTopTags(from, to, orgId, orgIds, projectId, type, weekdays),
-      projectId ? Promise.resolve([]) : this.getTopProjects(from, to, orgId, orgIds, type, weekdays),
+      this.getSummary(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
+      this.getByType(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
+      this.getGender(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
+      this.getParticipantsTimeseries(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
+      this.getByCategory(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
+      this.getByCohort(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
+      this.getTopTags(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
+      projectId ? Promise.resolve([]) : this.getTopProjects(from, to, orgId, orgIds, type, weekdays, executionStatuses, closureState),
       this.getAvailableYears(orgId, orgIds),
     ]);
 
@@ -187,8 +232,13 @@ export class StatsService {
     };
   }
 
-  async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[]) {
-    const raw = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, weekdays)
+  async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
+    const closureDaysCount =
+      closureState === 'closed'
+        ? (await this.orgs.getClosedDatesForOrganizations(orgId, orgIds, from, to)).length
+        : 0;
+
+    const raw = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('COUNT(*)', 'totalActivities')
       .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
       .addSelect('COALESCE(SUM(activity.countMale), 0)', 'totalMale')
@@ -220,11 +270,12 @@ export class StatsService {
       totalDurationMinutes,
       totalHours: +(totalDurationMinutes / 60).toFixed(1),
       averageParticipants: totalActivities > 0 ? +(totalParticipants / totalActivities).toFixed(1) : 0,
+      closureDaysCount,
     };
   }
 
-  async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[]) {
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, weekdays)
+  async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
+    const rows = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('activity.type', 'type')
       .addSelect('COUNT(*)', 'count')
       .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
@@ -239,8 +290,8 @@ export class StatsService {
     }));
   }
 
-  async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[]) {
-    const raw = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, weekdays)
+  async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
+    const raw = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('COALESCE(SUM(activity.countMale), 0)', 'male')
       .addSelect('COALESCE(SUM(activity.countFemale), 0)', 'female')
       .addSelect('COALESCE(SUM(activity.countDiverse), 0)', 'diverse')
@@ -252,8 +303,8 @@ export class StatsService {
     return { male, female, diverse };
   }
 
-  async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[]) {
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, weekdays)
+  async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
+    const rows = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('activity.date', 'date')
       .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
       .addSelect('COUNT(*)', 'activityCount')
@@ -268,7 +319,7 @@ export class StatsService {
     }));
   }
 
-  async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[]) {
+  async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
     const categoryIdExpr = `CASE
       WHEN category.id IS NULL AND activity.type = '${ActivityType.OPEN_DOOR}' THEN '__open_door__'
       WHEN category.id IS NULL THEN '__uncategorized__'
@@ -280,7 +331,7 @@ export class StatsService {
       ELSE category.name
     END`;
 
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, weekdays)
+    const rows = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .leftJoin('activity.categories', 'category')
       .leftJoin('activity.project', 'project')
       .select(categoryIdExpr, 'id')
@@ -298,8 +349,8 @@ export class StatsService {
     })).sort((a, b) => b.count - a.count);
   }
 
-  async getTopTags(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[]) {
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, weekdays)
+  async getTopTags(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
+    const rows = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .innerJoin('activity.tags', 'tag')
       .select('tag.id', 'id')
       .addSelect('tag.name', 'name')
@@ -317,8 +368,8 @@ export class StatsService {
     }));
   }
 
-  async getTopProjects(from?: string, to?: string, orgId?: string|null, orgIds?: string[], type?: string, weekdays?: number[]) {
-    const rows = await this.createFilteredActivityQuery(from, to, orgId, orgIds, undefined, type, weekdays)
+  async getTopProjects(from?: string, to?: string, orgId?: string|null, orgIds?: string[], type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
+    const rows = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, undefined, type, executionStatuses, weekdays, closureState))
       .innerJoin('activity.project', 'project')
       .select('project.id', 'id')
       .addSelect('project.title', 'name')
@@ -336,8 +387,8 @@ export class StatsService {
     }));
   }
 
-  async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[]) {
-    const activities = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, weekdays)
+  async getByCohort(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
+    const activities = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('activity.id', 'id')
       .addSelect('activity.cohorts', 'cohorts')
       .getRawMany<ActivityCohortRow>();

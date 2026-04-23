@@ -16,6 +16,7 @@ describe('StatsController org scoping', () => {
         totalDurationMinutes: 0,
         totalHours: 0,
         averageParticipants: 0,
+        closureDaysCount: 0,
       },
       byType: [],
       gender: { male: 0, female: 0, diverse: 0 },
@@ -35,6 +36,7 @@ describe('StatsController org scoping', () => {
       totalDurationMinutes: 0,
       totalHours: 0,
       averageParticipants: 0,
+      closureDaysCount: 0,
     })),
     getByType: jest.fn(async () => []),
   getGender: jest.fn(async () => ({ male: 0, female: 0, diverse: 0 })),
@@ -73,7 +75,7 @@ describe('StatsController org scoping', () => {
   it('overview: superadmin scoped string expands to subtree', async () => {
     await controller.getOverview({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined, undefined, undefined);
     expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: undefined, orgIds: ['org-1', 'child-1'], projectId: undefined, type: undefined, weekdays: undefined });
+    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: undefined, orgIds: ['org-1', 'child-1'], projectId: undefined, type: undefined, executionStatuses: undefined, closureState: undefined, weekdays: undefined });
   });
 
   it('overview: forwards explicit type filter', async () => {
@@ -92,6 +94,8 @@ describe('StatsController org scoping', () => {
       orgIds: ['org-1', 'child-1'],
       projectId: undefined,
       type: 'project_open',
+      executionStatuses: undefined,
+      closureState: undefined,
       weekdays: undefined,
     });
   });
@@ -104,6 +108,7 @@ describe('StatsController org scoping', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       '1,3,6',
     );
     expect(service.getOverview).toHaveBeenCalledWith({
@@ -113,7 +118,58 @@ describe('StatsController org scoping', () => {
       orgIds: ['org-1', 'child-1'],
       projectId: undefined,
       type: undefined,
+      executionStatuses: undefined,
+      closureState: undefined,
       weekdays: [1, 3, 6],
+    });
+  });
+
+  it('overview: forwards explicit execution status filters', async () => {
+    await controller.getOverview(
+      { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
+      '2026-01-01',
+      '2026-12-31',
+      undefined,
+      undefined,
+      undefined,
+      'completed,cancelled',
+      undefined,
+    );
+    expect(service.getOverview).toHaveBeenCalledWith({
+      from: '2026-01-01',
+      to: '2026-12-31',
+      orgId: undefined,
+      orgIds: ['org-1', 'child-1'],
+      projectId: undefined,
+      type: undefined,
+      executionStatuses: ['completed', 'cancelled'],
+      closureState: undefined,
+      weekdays: undefined,
+    });
+  });
+
+  it('overview: forwards explicit closure state filter', async () => {
+    await controller.getOverview(
+      { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
+      '2026-01-01',
+      '2026-12-31',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'closed',
+    );
+    expect(service.getOverview).toHaveBeenCalledWith({
+      from: '2026-01-01',
+      to: '2026-12-31',
+      orgId: undefined,
+      orgIds: ['org-1', 'child-1'],
+      projectId: undefined,
+      type: undefined,
+      executionStatuses: undefined,
+      closureState: 'closed',
+      weekdays: undefined,
     });
   });
 });

@@ -346,6 +346,7 @@ function ProjectGridCard({
   onEdit: () => void;
 }) {
   const prettyType = PROJECT_TYPE_LABELS[project.type] || project.type;
+  const hasLongTitle = project.title.trim().length > 28;
 
   return (
     <div
@@ -373,9 +374,15 @@ function ProjectGridCard({
       </div>
 
       <div className="relative z-10 p-4 flex flex-col gap-2 text-white">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="text-xl font-semibold drop-shadow-sm">{project.title}</div>
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
+          <div className="min-w-0 flex-1">
+            <div
+              className={`line-clamp-2 break-words font-semibold leading-tight drop-shadow-sm ${
+                hasLongTitle ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
+              }`}
+            >
+              {project.title}
+            </div>
             <div className="text-sm opacity-90">{prettyType}</div>
             {(category || staffNames.length > 0) && (
               <div className="mt-1 flex items-center flex-wrap gap-2">
@@ -408,7 +415,7 @@ function ProjectGridCard({
               </div>
             )}
           </div>
-          <div className="flex gap-3 text-sm items-start z-[2] relative">
+          <div className="relative z-[2] flex shrink-0 items-start gap-2 text-sm sm:gap-3">
             <span className="tooltip-wrapper">
               <button
                 type="button"

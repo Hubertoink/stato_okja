@@ -2,11 +2,11 @@ import { useSyncExternalStore } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import { devToolsFeatureEnabled } from './devToolsConfig';
 
-export type DevMetricKind = 'http' | 'query' | 'flow';
-export type DevMetricStatus = 'start' | 'success' | 'error' | 'info' | 'cancelled';
-export type DevFlowStatus = 'running' | 'success' | 'error' | 'cancelled';
+type DevMetricKind = 'http' | 'query' | 'flow';
+type DevMetricStatus = 'start' | 'success' | 'error' | 'info' | 'cancelled';
+type DevFlowStatus = 'running' | 'success' | 'error' | 'cancelled';
 
-export interface DevMetricEvent {
+interface DevMetricEvent {
   id: string;
   timestamp: number;
   kind: DevMetricKind;
@@ -17,14 +17,14 @@ export interface DevMetricEvent {
   meta?: Record<string, unknown>;
 }
 
-export interface DevFlowMark {
+interface DevFlowMark {
   label: string;
   timestamp: number;
   sinceStartMs: number;
   meta?: Record<string, unknown>;
 }
 
-export interface DevFlowRun {
+interface DevFlowRun {
   id: string;
   name: string;
   status: DevFlowStatus;
@@ -115,7 +115,7 @@ function previewValue(value: unknown): string {
   return typeof value;
 }
 
-export function describeQueryKey(queryKey: unknown): string {
+function describeQueryKey(queryKey: unknown): string {
   if (!Array.isArray(queryKey)) return previewValue(queryKey);
   return queryKey.slice(0, 4).map((entry) => previewValue(entry)).join(' / ');
 }

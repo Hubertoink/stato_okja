@@ -22,7 +22,8 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
 import {
   type ActivityFormState,
-  getActivityCohortCounts,
+  buildActivitySavePayload,
+  getActivityFormStateFromActivity,
   getCohortSums,
   type GenderKey,
   getProjectCategoryIds,
@@ -60,18 +61,8 @@ export default function ActivityEditPage() {
   useEffect(() => {
     if (!activity) return;
     setForm({
-      date: (activity.date || '').slice(0, 10) || undefined,
-      projectId: activity.projectId || activity.project?.id || undefined,
-      locationId: activity.locationId || activity.location?.id || undefined,
-      start: activity.startTime || undefined,
-      end: activity.endTime || undefined,
+      ...getActivityFormStateFromActivity(activity),
       executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-      title: activity.title || undefined,
-      categoryIds: (activity.categories || []).map((c) => c.id),
-      tagIds: (activity.tags || []).map((t) => t.id),
-      notes: activity.notes || undefined,
-      staffIds: (activity.staff || []).map((s) => s.id),
-      cohortCounts: getActivityCohortCounts(activity),
     });
   }, [activity]);
 
@@ -80,7 +71,6 @@ export default function ActivityEditPage() {
     [projects, form.projectId],
   );
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
-  const isOpenDoor = selectedProject?.type === 'open_door';
   const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
   const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
   const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
@@ -133,40 +123,16 @@ export default function ActivityEditPage() {
 
   const handleSave = () => {
     if (!form.projectId) return;
-    const cohortSumsLocal: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
-    Object.values(form.cohortCounts || {}).forEach((e) => {
-      cohortSumsLocal.m += e.m || 0;
-      cohortSumsLocal.w += e.w || 0;
-      cohortSumsLocal.d += e.d || 0;
+    const payload = buildActivitySavePayload({
+      form: {
+        ...form,
+        executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+      },
+      selectedProject,
+      fallbackDate: activity.date,
+      fallbackType: activity.type,
+      durationMinutesOverride: activity.durationMinutes,
     });
-    const counts = cohortSumsLocal;
-    const payload: Record<string, unknown> = {
-      date: (form.date || activity.date || '').slice(0, 10),
-      startTime: form.start || null,
-      endTime: form.end || null,
-      executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-      type: activity.type,
-      projectId: form.projectId,
-      ...(form.locationId ? { locationId: form.locationId } : {}),
-      title: form.title || null,
-      notes: form.notes || null,
-      tagIds: form.tagIds || [],
-      staffIds: form.staffIds || [],
-      durationMinutes: activity.durationMinutes,
-      countMale: counts.m,
-      countFemale: counts.w,
-      countDiverse: counts.d,
-      countTotal: counts.m + counts.w + counts.d,
-      cohorts: Object.entries(form.cohortCounts || {}).flatMap(([cohortId, gcounts]) => {
-        const arr: Array<{ cohortId: string; count: number; gender: GenderKey }> = [];
-        (['m', 'w', 'd'] as GenderKey[]).forEach((g) => {
-          const v = (gcounts as { m: number; w: number; d: number })[g] || 0;
-          if (v > 0) arr.push({ cohortId, count: v, gender: g });
-        });
-        return arr;
-      }),
-      categoryIds: isOpenDoor ? [] : form.categoryIds || [],
-    };
     update.mutate(
       { id: activity.id, data: payload as Partial<Activity> & Record<string, unknown> },
       {

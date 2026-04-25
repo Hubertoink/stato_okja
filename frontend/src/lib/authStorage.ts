@@ -1,7 +1,7 @@
 const AUTH_TOKEN_KEY = 'auth_token';
 const PENDING_TWO_FACTOR_KEY = 'pending_two_factor_challenge';
 
-export type PendingTwoFactorChallenge = {
+type PendingTwoFactorChallenge = {
   challengeToken: string;
   emailHint: string;
   expiresAt: number;

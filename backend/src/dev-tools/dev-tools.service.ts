@@ -598,6 +598,13 @@ export class DevToolsService {
       this.ensureCohorts(orgId),
       this.ensureStaff(orgId),
     ]);
+    const employeeStaff = staff.filter(
+      (member) => member.role === StaffRole.LEAD || member.role === StaffRole.EMPLOYEE,
+    );
+    const volunteerStaff = staff.filter(
+      (member) => member.role === StaffRole.VOLUNTEER || member.role === StaffRole.HELPER,
+    );
+    const defaultStaffPool = employeeStaff.length > 0 ? employeeStaff : staff;
 
     const projectTemplates = Array.from({ length: config.projects }, (_, index) => {
       const template = PROJECT_LIBRARY[index % PROJECT_LIBRARY.length];
@@ -607,6 +614,14 @@ export class DevToolsService {
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + this.randomInt(2, 9));
       const time = this.buildTime(template.type);
+      const pickedVolunteers = volunteerStaff.length
+        ? this.pickMany(
+            volunteerStaff,
+            this.randomInt(0, Math.min(2, volunteerStaff.length)),
+          )
+            .map((member) => member.name)
+            .join(', ')
+        : '';
       return this.projectRepository.create({
         title: `[Testdaten] ${template.title} ${index + 1}`,
         type: template.type,
@@ -618,8 +633,14 @@ export class DevToolsService {
         dateTo: this.formatDate(endDate),
         defaultStartTime: time.startTime,
         defaultEndTime: time.endTime,
-        defaultStaff: this.pickMany(staff, this.randomInt(1, Math.min(2, staff.length))).map((member) => member.name).join(', '),
-        defaultVolunteers: Math.random() > 0.7 ? 'Jugendleiter*in im Aufbau' : null,
+        defaultStaff: this.pickMany(
+          defaultStaffPool,
+          this.randomInt(1, Math.min(2, defaultStaffPool.length)),
+        )
+          .map((member) => member.name)
+          .join(', '),
+        defaultVolunteers:
+          pickedVolunteers || (Math.random() > 0.7 ? 'Jugendleiter*in im Aufbau' : null),
         tag: template.tag,
         activityField: template.activityField,
         description: this.generatedDescription(template.description),

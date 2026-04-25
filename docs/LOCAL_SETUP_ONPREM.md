@@ -32,7 +32,7 @@ Ziel: Ein Kommune/Träger kann StatO in einem eigenen Netzwerk betreiben (VM, Ba
 
 ## Wichtige Umgebungsvariablen (Backend)
 
-Siehe auch: `backend/BACKEND_CONTAINER_ENV.md` und `backend/.env.example`.
+Siehe auch: [backend/BACKEND_CONTAINER_ENV.md](../backend/BACKEND_CONTAINER_ENV.md) und [.env.onprem.example](../.env.onprem.example).
 
 **Minimal für On‑Prem**
 - `NODE_ENV=production`
@@ -103,7 +103,8 @@ cp .env.onprem.example .env.onprem
 - `JWT_SECRET=<sehr lang & random>`
 - `SUPERADMIN_EMAIL=...` / `SUPERADMIN_PASSWORD=...`
 - `POSTGRES_*` (DB Name/User/Passwort)
-- `DB_SYNCHRONIZE=true` für den ersten Start mit leerer Datenbank
+- `DB_SYNCHRONIZE=false`
+- `DB_MIGRATIONS_RUN=true` für automatische Migrationen beim Backend-Start
 
 Wichtig für produktiven/staging Erststart:
 
@@ -122,25 +123,9 @@ Wichtig für produktiven/staging Erststart:
 docker compose -f docker-compose.onprem.yml --env-file .env.onprem up -d --build
 ```
 
-6) **Migrationen ausführen (einmalig nach Erststart / nach Updates)**
+6) **Migrationen prüfen**
 
-Variante A (empfohlen, wenn Node auf dem Server verfügbar ist):
-
-```bash
-cd backend
-npm ci
-npm run migration:run
-```
-
-Variante B (ohne Node-Installation, via One‑Shot Container):
-
-```bash
-docker run --rm -it \
-  --network stato-onprem \
-  -v "$PWD/backend:/app" \
-  -w /app \
-  node:20-alpine sh -lc "npm ci && npm run migration:run"
-```
+Mit der On-Prem-Compose-Datei werden Migrationen beim Backend-Start automatisch ausgeführt, wenn `DB_MIGRATIONS_RUN=true` und `DB_SYNCHRONIZE=false` gesetzt sind. Prüfe nach dem Start die Backend-Logs auf Migrations- oder Datenbankfehler.
 
 7) **Funktionstest / Checkpoints**
 - Frontend: `http(s)://<eure-domain>` lädt.
@@ -208,30 +193,9 @@ Zusätzlich muss gelten:
 
 - `DB_SYNCHRONIZE=false`
 
-Wenn `DB_SYNCHRONIZE=true` gesetzt ist, werden Migrationen absichtlich übersprungen. Das ist nur für frische Bootstrap-Setups sinnvoll.
+Wenn `DB_SYNCHRONIZE=true` gesetzt ist, werden Migrationen absichtlich übersprungen. Das ist nicht der empfohlene Produktionspfad. Für On-Prem sollte die Datenbank reproduzierbar über Migrationen aufgebaut werden.
 
-Aktuell werden Migrationen in der Entwicklung per TypeORM + TS ausgeführt (siehe `backend/package.json` Scripts). Der Production‑Backend‑Container installiert **nur Produktions‑Dependencies** – je nach Setup kann das bedeuten, dass `npm run migration:run` **im Container nicht** verfügbar ist.
-
-Empfehlung für On‑Prem:
-
-### Variante 1: Migrationen auf dem Server (Node.js installiert)
-1. Repo auf den Server kopieren/klonen
-2. `cd backend && npm ci`
-3. `npm run migration:run`
-4. Danach `docker compose up -d`
-
-### Variante 2: „Migrations“-One‑Shot Container
-Ihr könnt einen One‑Shot Container mit Node nutzen, der den `backend/` Ordner mountet und die Migrationen ausführt:
-
-```bash
-docker run --rm -it \
-  --network stato-onprem \
-  -v "$PWD/backend:/app" \
-  -w /app \
-  node:20-alpine sh -lc "npm ci && npm run migration:run"
-```
-
-Hinweis: Dafür muss das Compose‑Netzwerk (`stato-onprem`) existieren und Postgres bereits laufen.
+Manuelle Migrationen sind nur für Sonderfälle nötig, etwa wenn eine separate Deployment-Pipeline die Datenbank vor dem Backend-Start aktualisiert. Dann muss dieselbe Datenbank-Konfiguration aus `.env.onprem` verwendet werden.
 
 ---
 

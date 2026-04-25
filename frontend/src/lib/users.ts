@@ -15,11 +15,6 @@ export async function fetchUsers(): Promise<UserDto[]> {
   return res.data;
 }
 
-export async function createUserApi(payload: { email: string; name: string; role?: Role; orgId?: string | null }) {
-  const res = await api.post<UserDto>('/users', payload);
-  return res.data;
-}
-
 export async function updateUserApi(id: string, patch: { role?: Exclude<Role, 'superadmin'>; orgId?: string | null }) {
   await api.patch(`/users/${id}`, patch);
 }

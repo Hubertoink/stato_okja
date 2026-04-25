@@ -4,7 +4,7 @@ import { useOrgScopeKey } from './orgScope';
 
 export type TestDataPreset = 'small' | 'realistic' | 'large';
 
-export type GenerateTestDataPayload = {
+type GenerateTestDataPayload = {
   preset: TestDataPreset;
   projects?: number;
   activities?: number;

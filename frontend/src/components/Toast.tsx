@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import { createPortal } from 'react-dom';
 
 type ToastType = 'success' | 'error' | 'info';
-export interface Toast {
+interface Toast {
   id: string;
   message: string;
   type?: ToastType;

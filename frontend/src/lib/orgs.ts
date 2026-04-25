@@ -2,20 +2,20 @@ import { api } from './api';
 
 export interface OrgDto { id: string; name: string; parentId?: string | null; path?: string | null }
 
-export interface OrgTaxonomyTypeSetting {
+interface OrgTaxonomyTypeSetting {
   allowOwn: boolean;
   inheritedIds: string[];
   inheritAll: boolean;
 }
 
-export interface OrgChildTaxonomyDefaults {
+interface OrgChildTaxonomyDefaults {
   categories: OrgTaxonomyTypeSetting;
   tags: OrgTaxonomyTypeSetting;
   cohorts: OrgTaxonomyTypeSetting;
   allowChildAdminOverrides: boolean;
 }
 
-export interface VisibleTaxonomyItem {
+interface VisibleTaxonomyItem {
   id: string;
   name: string;
   orgId?: string | null;
@@ -82,7 +82,7 @@ export interface OrgTaxonomySettingsSnapshot {
   };
 }
 
-export interface OrgTaxonomySettingsUpdatePayload {
+interface OrgTaxonomySettingsUpdatePayload {
   settings?: OrgTaxonomySettingsSnapshot['settings'] | null;
   childDefaults?: OrgTaxonomySettingsSnapshot['childDefaults'] | null;
 }
@@ -143,11 +143,6 @@ export async function acceptInviteApi(token: string, password: string) {
 export async function listUsersByOrg(orgId: string, includeSubtree = false) {
   const res = await api.get('/orgs/' + orgId + '/users', { params: { includeSubtree } });
   return res.data as Array<{ id: string; email: string; name: string; role: string; orgId?: string | null }>;
-}
-
-export async function moveOrgApi(id: string, parentId: string | null) {
-  const res = await api.patch(`/orgs/${id}/move`, { parentId });
-  return res.data as OrgDto;
 }
 
 export async function previewMoveOrgApi(id: string, parentId: string | null) {

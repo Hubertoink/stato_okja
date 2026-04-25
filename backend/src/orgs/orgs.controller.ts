@@ -14,6 +14,19 @@ function orgMoveFeatureEnabled() {
 export class OrgsController {
   constructor(private readonly service: OrgsService) {}
 
+  private async assertCanAccessOrg(
+    id: string,
+    user: { role: string; orgId?: string | null },
+  ) {
+    if (user.role === 'superadmin') return;
+
+    const myOrgId = user.orgId || null;
+    if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+
+    const subtree = await this.service.getSubtreeOrgIds(myOrgId);
+    if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
+  }
+
   @Roles('superadmin')
   @Get()
   list() { return this.service.findAll(); }
@@ -135,13 +148,7 @@ export class OrgsController {
     @Param('id') id: string,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
-    // Allow access if superadmin or if org is in user's subtree
-    if (req.user.role !== 'superadmin') {
-      const myOrgId = req.user.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
-      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
-    }
+    await this.assertCanAccessOrg(id, req.user);
     return this.service.getOpeningHours(id);
   }
 
@@ -152,13 +159,7 @@ export class OrgsController {
     @Body() body: OpeningHours,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
-    // superadmin or org_admin of that org (or parent org)
-    if (req.user.role !== 'superadmin') {
-      const myOrgId = req.user.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
-      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
-    }
+    await this.assertCanAccessOrg(id, req.user);
     return this.service.updateOpeningHours(id, body);
   }
 
@@ -169,12 +170,7 @@ export class OrgsController {
     @Query('to') to: string | undefined,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
-    if (req.user.role !== 'superadmin') {
-      const myOrgId = req.user.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
-      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
-    }
+    await this.assertCanAccessOrg(id, req.user);
     return this.service.getClosureDays(id, from, to);
   }
 
@@ -185,12 +181,7 @@ export class OrgsController {
     @Body() body: Pick<OrganizationClosureDay, 'from' | 'to'>,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
-    if (req.user.role !== 'superadmin') {
-      const myOrgId = req.user.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
-      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
-    }
+    await this.assertCanAccessOrg(id, req.user);
     return this.service.upsertClosureDay(id, { date, from: body?.from, to: body?.to });
   }
 
@@ -200,12 +191,7 @@ export class OrgsController {
     @Param('date') date: string,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
-    if (req.user.role !== 'superadmin') {
-      const myOrgId = req.user.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-      const subtree = await this.service.getSubtreeOrgIds(myOrgId);
-      if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
-    }
+    await this.assertCanAccessOrg(id, req.user);
     return this.service.removeClosureDay(id, date);
   }
 }

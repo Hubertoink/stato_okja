@@ -20,12 +20,6 @@ export enum ActivityExecutionStatus {
   CANCELLED = 'cancelled',
 }
 
-export enum Gender {
-  MALE = 'male',
-  FEMALE = 'female',
-  DIVERSE = 'diverse',
-}
-
 export enum AuditAction {
   CREATE = 'create',
   UPDATE = 'update',

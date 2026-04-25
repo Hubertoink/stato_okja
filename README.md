@@ -20,7 +20,7 @@ StatO kann grundsätzlich auf zwei Arten genutzt werden:
 	- Anleitung: [docs/LOCAL_SETUP_ONPREM.md](docs/LOCAL_SETUP_ONPREM.md)
 	- Schritt-für-Schritt Docker-Anleitung: [docs/DOCKER_ONPREM_SETUP.md](docs/DOCKER_ONPREM_SETUP.md)
 	- Dateien: [docker-compose.onprem.yml](docker-compose.onprem.yml) + [.env.onprem.example](.env.onprem.example)
-	- Vollständige Beschreibung der unterstützten On-Prem-Umgebungsvariablen: [docs/DOCKER_ONPREM_SETUP.md](docs/DOCKER_ONPREM_SETUP.md)
+	- Vollständige Beschreibung der Backend-Container-Variablen: [backend/BACKEND_CONTAINER_ENV.md](backend/BACKEND_CONTAINER_ENV.md)
 
 ### Voraussetzungen
 - Node.js 20+
@@ -175,9 +175,6 @@ stato-2.0/
 # Unit Tests
 npm run test
 
-# E2E Tests
-npm run test:e2e
-
 # Coverage Report
 npm run test:cov
 ```
@@ -221,7 +218,7 @@ Hinweis zu Migrationen:
 
 - Für automatische Migrationen beim Backend-Start gilt: `DB_MIGRATIONS_RUN=true`
 - Gleichzeitig muss `DB_SYNCHRONIZE=false` gesetzt sein, sonst werden Migrationen absichtlich übersprungen.
-- Bei einer frischen leeren Test-/Bootstrap-Datenbank kann weiterhin `DB_SYNCHRONIZE=true` genutzt werden; dann ist keine automatische Migration aktiv.
+- Auch bei frischen Docker-/Bootstrap-Datenbanken ist der empfohlene Pfad: Migrationen nutzen und `DB_SYNCHRONIZE=false` lassen.
 
 Weitere Hinweise für Hosting bei Mittwald (inkl. Subdomains, Registry und ENV):
 - DEPLOY_MITTWALD.md

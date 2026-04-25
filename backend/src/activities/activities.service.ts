@@ -34,7 +34,42 @@ type ActivityAuditSnapshot = {
   cohorts: string[];
 };
 
+type ActivityCohortGender = 'm' | 'w' | 'd';
+type ActivityCohortInput =
+  | { cohortId: string; m?: number; w?: number; d?: number }
+  | { cohortId: string; count: number; gender?: ActivityCohortGender | string };
+type NormalizedActivityCohort = { cohortId: string; m: number; w: number; d: number };
+type ActivityCohortTarget = Pick<
+  Activity,
+  'cohorts' | 'countMale' | 'countFemale' | 'countDiverse' | 'countTotal'
+>;
 type ClosureStateFilter = 'closed' | 'open';
+type ActivityListFilters = {
+  search?: string;
+  from?: string;
+  to?: string;
+  type?: string;
+  types?: string[];
+  locationId?: string;
+  locationIds?: string[];
+  projectIds?: string[];
+  categoryIds?: string[];
+  uncategorized?: boolean;
+  tagIds?: string[];
+  staffIds?: string[];
+  cohortIds?: string[];
+  executionStatuses?: string[];
+  closureState?: string;
+  weekdays?: number[];
+  hasNotes?: boolean;
+  participantsMin?: number;
+  participantsMax?: number;
+  durationMin?: number;
+  durationMax?: number;
+  orgId?: string | null;
+  orgIds?: string[];
+  order?: 'asc' | 'desc';
+};
 
 @Injectable()
 export class ActivitiesService {
@@ -117,6 +152,74 @@ export class ActivitiesService {
     );
 
     return normalized.length > 0 ? normalized : undefined;
+  }
+
+  private assertUserCanAccessActivity(
+    activity: Pick<Activity, 'orgId'>,
+    user: { role: string; orgId?: string | null },
+  ) {
+    if (user.role !== 'superadmin' && (activity.orgId ?? null) !== (user.orgId ?? null)) {
+      throw new ForbiddenException('Not allowed');
+    }
+  }
+
+  private getCohortIds(cohorts: Array<ActivityCohortInput | null | undefined>): string[] {
+    return cohorts
+      .map((entry) => (entry && 'cohortId' in entry ? entry.cohortId : null))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0);
+  }
+
+  private normalizeActivityCohorts(
+    cohorts: Array<ActivityCohortInput | null | undefined>,
+  ): { cohorts: NormalizedActivityCohort[]; totals: { m: number; w: number; d: number } } {
+    const byId = new Map<string, NormalizedActivityCohort>();
+    for (const cohort of cohorts) {
+      if (!cohort || !('cohortId' in cohort) || !cohort.cohortId) continue;
+      const current = byId.get(cohort.cohortId) || { cohortId: cohort.cohortId, m: 0, w: 0, d: 0 };
+      if ('m' in cohort || 'w' in cohort || 'd' in cohort) {
+        current.m += (cohort as { m?: number }).m ?? 0;
+        current.w += (cohort as { w?: number }).w ?? 0;
+        current.d += (cohort as { d?: number }).d ?? 0;
+      } else if ('count' in cohort) {
+        const gender = (cohort as { gender?: ActivityCohortGender }).gender;
+        const count = (cohort as { count: number }).count || 0;
+        if (gender === 'm') current.m += count;
+        else if (gender === 'w') current.w += count;
+        else if (gender === 'd') current.d += count;
+      }
+      byId.set(cohort.cohortId, current);
+    }
+
+    const normalizedCohorts = Array.from(byId.values());
+    const totals = normalizedCohorts.reduce(
+      (acc, entry) => {
+        acc.m += entry.m;
+        acc.w += entry.w;
+        acc.d += entry.d;
+        return acc;
+      },
+      { m: 0, w: 0, d: 0 },
+    );
+
+    return { cohorts: normalizedCohorts, totals };
+  }
+
+  private async applyActivityCohorts(
+    target: ActivityCohortTarget,
+    activityOrgId: string | null,
+    cohorts: Array<ActivityCohortInput | null | undefined>,
+  ) {
+    await this.orgs.assertTaxonomyIdsVisibleForOrg(
+      activityOrgId,
+      'cohorts',
+      this.getCohortIds(cohorts),
+    );
+    const normalized = this.normalizeActivityCohorts(cohorts);
+    target.cohorts = normalized.cohorts;
+    target.countMale = normalized.totals.m;
+    target.countFemale = normalized.totals.w;
+    target.countDiverse = normalized.totals.d;
+    target.countTotal = normalized.totals.m + normalized.totals.w + normalized.totals.d;
   }
 
   private normalizeClosureState(value?: string | null): ClosureStateFilter | undefined {
@@ -280,32 +383,7 @@ export class ActivitiesService {
   }
 
   private async buildListQuery(
-    filters?: {
-    search?: string;
-    from?: string;
-    to?: string;
-    type?: string;
-    types?: string[];
-    locationId?: string;
-    locationIds?: string[];
-    projectIds?: string[];
-    categoryIds?: string[];
-    uncategorized?: boolean;
-    tagIds?: string[];
-    staffIds?: string[];
-    cohortIds?: string[];
-    executionStatuses?: string[];
-    closureState?: string;
-    weekdays?: number[];
-    hasNotes?: boolean;
-    participantsMin?: number;
-    participantsMax?: number;
-    durationMin?: number;
-    durationMax?: number;
-    orgId?: string | null;
-    orgIds?: string[];
-    order?: 'asc' | 'desc';
-    },
+    filters?: ActivityListFilters,
     options?: {
       includeStaff?: boolean;
     },
@@ -430,31 +508,7 @@ export class ActivitiesService {
     return qb;
   }
 
-  async findAll(filters?: {
-    search?: string;
-    from?: string;
-    to?: string;
-    type?: string;
-    types?: string[];
-    locationId?: string;
-    locationIds?: string[];
-    projectIds?: string[];
-    categoryIds?: string[];
-    tagIds?: string[];
-    staffIds?: string[];
-    cohortIds?: string[];
-    executionStatuses?: string[];
-    closureState?: string;
-    weekdays?: number[];
-    hasNotes?: boolean;
-    uncategorized?: boolean;
-    participantsMax?: number;
-    durationMin?: number;
-    durationMax?: number;
-    orgId?: string | null;
-    orgIds?: string[];
-    order?: 'asc' | 'desc';
-  }): Promise<Activity[]> {
+  async findAll(filters?: ActivityListFilters): Promise<Activity[]> {
     const qb = await this.buildListQuery(filters, { includeStaff: true });
     const rows = await qb.getMany();
     if (filters?.cohortIds?.length && !this.usesPostgresCohortQuery()) {
@@ -463,33 +517,9 @@ export class ActivitiesService {
     return rows;
   }
 
-  async findAllPaged(filters: {
-    search?: string;
-    from?: string;
-    to?: string;
-    type?: string;
-    types?: string[];
-    locationId?: string;
-    locationIds?: string[];
-    projectIds?: string[];
-    categoryIds?: string[];
-    tagIds?: string[];
-    staffIds?: string[];
-    cohortIds?: string[];
-    executionStatuses?: string[];
-    closureState?: string;
-    weekdays?: number[];
-    hasNotes?: boolean;
-    participantsMin?: number;
-    uncategorized?: boolean;
-    durationMin?: number;
-    durationMax?: number;
-    orgId?: string | null;
-    orgIds?: string[];
-    order?: 'asc' | 'desc';
-    page: number;
-    limit: number;
-  }): Promise<{ data: Activity[]; total: number; page: number; pageSize: number }> {
+  async findAllPaged(
+    filters: ActivityListFilters & { page: number; limit: number },
+  ): Promise<{ data: Activity[]; total: number; page: number; pageSize: number }> {
     const qb = await this.buildListQuery(filters, { includeStaff: false });
     const page = Math.max(filters.page || 1, 1);
     const limit = Math.min(Math.max(filters.limit || 50, 1), 50);
@@ -530,9 +560,7 @@ export class ActivitiesService {
   async findOneScoped(id: string, user: { role: string; orgId?: string | null }) {
     const a = await this.findOne(id);
     if (!a) return null;
-    if (user.role !== 'superadmin' && (a.orgId ?? null) !== (user.orgId ?? null)) {
-      throw new ForbiddenException('Not allowed');
-    }
+    this.assertUserCanAccessActivity(a, user);
     return a;
   }
 
@@ -541,9 +569,7 @@ export class ActivitiesService {
       tagIds?: string[];
       staffIds?: string[];
       categoryIds?: string[];
-      cohorts?:
-        | Array<{ cohortId: string; m?: number; w?: number; d?: number }>
-        | Array<{ cohortId: string; count: number; gender?: string }>;
+      cohorts?: ActivityCohortInput[];
     },
     user?: { id?: string; name?: string; orgId?: string | null },
   ): Promise<Activity> {
@@ -551,9 +577,7 @@ export class ActivitiesService {
       tagIds?: string[];
       staffIds?: string[];
       categoryIds?: string[];
-      cohorts?:
-        | Array<{ cohortId: string; m?: number; w?: number; d?: number }>
-        | Array<{ cohortId: string; count: number; gender?: 'm' | 'w' | 'd' }>;
+      cohorts?: ActivityCohortInput[];
     };
 
     // locationId is optional; if omitted, activity can still be created
@@ -589,53 +613,8 @@ export class ActivitiesService {
       activity.categories = categories;
     }
 
-    // Cohorts: allow two input shapes; normalize to per-gender {cohortId,m,w,d}
     if (Array.isArray(cohorts)) {
-      await this.orgs.assertTaxonomyIdsVisibleForOrg(
-        activityOrgId,
-        'cohorts',
-        cohorts
-          .map((entry) => ('cohortId' in entry ? entry.cohortId : null))
-          .filter((value): value is string => typeof value === 'string' && value.length > 0),
-      );
-      const byId = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
-      for (const c of cohorts as Array<
-        | { cohortId: string; m?: number; w?: number; d?: number }
-        | { cohortId: string; count: number; gender?: 'm' | 'w' | 'd' }
-      >) {
-        if (!c || !('cohortId' in c) || !c.cohortId) continue;
-        const cur = byId.get(c.cohortId) || { cohortId: c.cohortId, m: 0, w: 0, d: 0 };
-        if ('m' in c || 'w' in c || 'd' in c) {
-          const cm = (c as { m?: number }).m ?? 0;
-          const cw = (c as { w?: number }).w ?? 0;
-          const cd = (c as { d?: number }).d ?? 0;
-          cur.m += cm;
-          cur.w += cw;
-          cur.d += cd;
-        } else if ('count' in c) {
-          const g = (c as { gender?: 'm' | 'w' | 'd' }).gender;
-          const cnt = (c as { count: number }).count || 0;
-          if (g === 'm') cur.m += cnt;
-          else if (g === 'w') cur.w += cnt;
-          else if (g === 'd') cur.d += cnt;
-        }
-        byId.set(c.cohortId, cur);
-      }
-      activity.cohorts = Array.from(byId.values());
-      // derive totals
-      const totals = Array.from(byId.values()).reduce(
-        (acc, e) => {
-          acc.m += e.m;
-          acc.w += e.w;
-          acc.d += e.d;
-          return acc;
-        },
-        { m: 0, w: 0, d: 0 },
-      );
-      activity.countMale = totals.m;
-      activity.countFemale = totals.w;
-      activity.countDiverse = totals.d;
-      activity.countTotal = totals.m + totals.w + totals.d;
+      await this.applyActivityCohorts(activity, activityOrgId, cohorts);
     }
 
     const saved = await this.activityRepository.save(activity);
@@ -657,10 +636,7 @@ export class ActivitiesService {
       tagIds?: string[];
       staffIds?: string[];
       categoryIds?: string[];
-      cohorts?: Array<
-        | { cohortId: string; m?: number; w?: number; d?: number }
-        | { cohortId: string; count: number; gender?: string }
-      >;
+      cohorts?: ActivityCohortInput[];
     },
     user?: { id?: string; name?: string | null; orgId?: string | null },
   ): Promise<Activity | null> {
@@ -686,9 +662,7 @@ export class ActivitiesService {
       tagIds?: string[];
       staffIds?: string[];
       categoryIds?: string[];
-      cohorts?:
-        | Array<{ cohortId: string; m?: number; w?: number; d?: number }>
-        | Array<{ cohortId: string; count: number; gender?: 'm' | 'w' | 'd' }>;
+      cohorts?: ActivityCohortInput[];
     };
 
     Object.assign(existing, rest);
@@ -722,52 +696,8 @@ export class ActivitiesService {
         : [];
     }
 
-    // Cohorts: normalize to per-gender and recompute totals
     if (Array.isArray(cohorts)) {
-      await this.orgs.assertTaxonomyIdsVisibleForOrg(
-        activityOrgId,
-        'cohorts',
-        cohorts
-          .map((entry) => ('cohortId' in entry ? entry.cohortId : null))
-          .filter((value): value is string => typeof value === 'string' && value.length > 0),
-      );
-      const byId = new Map<string, { cohortId: string; m: number; w: number; d: number }>();
-      for (const c of cohorts as Array<
-        | { cohortId: string; m?: number; w?: number; d?: number }
-        | { cohortId: string; count: number; gender?: 'm' | 'w' | 'd' }
-      >) {
-        if (!c || !('cohortId' in c) || !c.cohortId) continue;
-        const cur = byId.get(c.cohortId) || { cohortId: c.cohortId, m: 0, w: 0, d: 0 };
-        if ('m' in c || 'w' in c || 'd' in c) {
-          const cm = (c as { m?: number }).m ?? 0;
-          const cw = (c as { w?: number }).w ?? 0;
-          const cd = (c as { d?: number }).d ?? 0;
-          cur.m += cm;
-          cur.w += cw;
-          cur.d += cd;
-        } else if ('count' in c) {
-          const g = (c as { gender?: 'm' | 'w' | 'd' }).gender;
-          const cnt = (c as { count: number }).count || 0;
-          if (g === 'm') cur.m += cnt;
-          else if (g === 'w') cur.w += cnt;
-          else if (g === 'd') cur.d += cnt;
-        }
-        byId.set(c.cohortId, cur);
-      }
-      existing.cohorts = Array.from(byId.values());
-      const totals = Array.from(byId.values()).reduce(
-        (acc, e) => {
-          acc.m += e.m;
-          acc.w += e.w;
-          acc.d += e.d;
-          return acc;
-        },
-        { m: 0, w: 0, d: 0 },
-      );
-      existing.countMale = totals.m;
-      existing.countFemale = totals.w;
-      existing.countDiverse = totals.d;
-      existing.countTotal = totals.m + totals.w + totals.d;
+      await this.applyActivityCohorts(existing, activityOrgId, cohorts);
     }
 
     await this.activityRepository.save(existing);
@@ -802,9 +732,7 @@ export class ActivitiesService {
   ) {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
-      throw new ForbiddenException('Not allowed');
-    }
+    this.assertUserCanAccessActivity(existing, user);
     // enforce orgId remains same for non-superadmin
     const patch: Partial<Activity> = { ...data };
     if (user.role !== 'superadmin') patch.orgId = existing.orgId ?? null;
@@ -821,9 +749,7 @@ export class ActivitiesService {
   ): Promise<void> {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
-      throw new ForbiddenException('Not allowed');
-    }
+    this.assertUserCanAccessActivity(existing, user);
     await this.activityRepository.delete(id);
     await this.audit.log({
       action: AuditAction.DELETE,
@@ -868,9 +794,7 @@ export class ActivitiesService {
   ): Promise<Activity | null> {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
-      throw new ForbiddenException('Not allowed');
-    }
+    this.assertUserCanAccessActivity(existing, user);
     existing.ackDone = !!done;
     await this.activityRepository.save(existing);
     const updated = await this.findOne(id);

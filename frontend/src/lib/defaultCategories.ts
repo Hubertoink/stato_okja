@@ -1,6 +1,6 @@
 import { FIXED_PALETTE } from './colorPalette';
 
-export type DefaultCategoryDef = {
+type DefaultCategoryDef = {
   name: string;
   color: string;
   description?: string;

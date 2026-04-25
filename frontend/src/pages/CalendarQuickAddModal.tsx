@@ -25,7 +25,9 @@ import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus
 import {
   type ActivityFormState,
   FieldInfoHint,
+  buildActivitySavePayload,
   getActivityCohortCounts,
+  getActivityFormStateFromActivity,
   getCohortSums,
   type GenderKey,
   getProjectCategoryIds,
@@ -33,7 +35,6 @@ import {
   getStaffGroupMembers,
   getWeekdayLabel,
   mergeProjectStaffIds,
-  toMinutes,
 } from './activityEditorShared';
 
 export default function ActivityQuickAdd({
@@ -76,7 +77,6 @@ export default function ActivityQuickAdd({
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
-  const isOpenDoor = (selectedProject || initialProject)?.type === 'open_door';
   const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
   const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
   const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
@@ -134,18 +134,13 @@ export default function ActivityQuickAdd({
     if (activity) {
       setForm((f: ActivityFormState) => ({
         ...f,
-        date: (activity.date || f.date || dateISO).slice(0, 10),
-        projectId: activity.projectId || activity.project?.id || f.projectId || initialProject?.id,
-        locationId: activity.locationId || activity.location?.id || f.locationId,
-        start: activity.startTime || f.start || initialProject?.defaultStartTime || '15:00',
-        end: activity.endTime || f.end || initialProject?.defaultEndTime || '17:00',
-        executionStatus:
-          activity.executionStatus || f.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-        title: activity.title || f.title,
-        categoryIds: (activity.categories || []).map((c) => c.id),
-        tagIds: (activity.tags || []).map((t) => t.id),
-        staffIds: (activity.staff || []).map((s) => s.id),
-        notes: activity.notes || f.notes,
+        ...getActivityFormStateFromActivity(activity, {
+          date: f.date || dateISO,
+          projectId: f.projectId || initialProject?.id,
+          start: f.start || initialProject?.defaultStartTime || '15:00',
+          end: f.end || initialProject?.defaultEndTime || '17:00',
+        }),
+        executionStatus: activity.executionStatus || f.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
         cohortCounts: (() => {
           const cohortCounts = getActivityCohortCounts(activity);
           return Object.keys(cohortCounts).length ? cohortCounts : f.cohortCounts;
@@ -203,44 +198,15 @@ export default function ActivityQuickAdd({
       setErrorOpen('Bitte ein Projekt wählen.');
       return;
     }
-    // Standort optional – keine Validierung nötig
-    const cohortSums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
-    Object.values(form.cohortCounts || {}).forEach((entry) => {
-      cohortSums.m += entry.m || 0;
-      cohortSums.w += entry.w || 0;
-      cohortSums.d += entry.d || 0;
+    const payloadBase = buildActivitySavePayload({
+      form: {
+        ...form,
+        executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+      },
+      selectedProject,
+      fallbackDate: activity?.date || dateISO,
+      fallbackType: activity?.type,
     });
-    const totalsByGender: Record<GenderKey, number> = { ...cohortSums };
-    const startM = toMinutes(form.start || selectedProject?.defaultStartTime || null);
-    const endM = toMinutes(form.end || selectedProject?.defaultEndTime || null);
-    const durationMinutes =
-      startM !== undefined && endM !== undefined && endM >= startM ? endM - startM : undefined;
-    const payloadBase = {
-      date: (form.date || activity?.date || dateISO).slice(0, 10),
-      startTime: form.start || null,
-      endTime: form.end || null,
-      executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-      type: selectedProject?.type || activity?.type || 'project_open',
-      projectId: form.projectId,
-      ...(form.locationId ? { locationId: form.locationId } : {}),
-      title: form.title || null,
-      notes: form.notes || null,
-      categoryIds: isOpenDoor ? [] : form.categoryIds || [],
-      tagIds: form.tagIds || [],
-      staffIds: form.staffIds || [],
-      durationMinutes,
-    } as Record<string, unknown>;
-
-    payloadBase.countMale = totalsByGender.m;
-    payloadBase.countFemale = totalsByGender.w;
-    payloadBase.countDiverse = totalsByGender.d;
-    payloadBase.countTotal = totalsByGender.m + totalsByGender.w + totalsByGender.d;
-    payloadBase.cohorts = Object.entries(form.cohortCounts || {}).map(([cohortId, gcounts]) => ({
-      cohortId,
-      m: (gcounts as { m: number; w: number; d: number }).m || 0,
-      w: (gcounts as { m: number; w: number; d: number }).w || 0,
-      d: (gcounts as { m: number; w: number; d: number }).d || 0,
-    }));
 
     submitLockedRef.current = true;
 

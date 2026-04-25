@@ -23,7 +23,7 @@ export function isInFixedPalette(color?: string | null): boolean {
 }
 
 // Tailwind bg- class mapping for fixed palette
-export const HEX_TO_TW_BG: Record<string, string> = {
+const HEX_TO_TW_BG: Record<string, string> = {
   '#2563eb': 'bg-blue-600',
   '#ef4444': 'bg-red-500',
   '#f59e0b': 'bg-amber-500',
@@ -54,7 +54,7 @@ export const TAG_PALETTE: string[] = [
   '#475569', // slate-600
 ];
 
-export const HEX_TO_TW_BG_TAG: Record<string, string> = {
+const HEX_TO_TW_BG_TAG: Record<string, string> = {
   '#1d4ed8': 'bg-blue-700',
   '#b91c1c': 'bg-red-700',
   '#b45309': 'bg-amber-700',

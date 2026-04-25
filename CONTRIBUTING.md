@@ -210,13 +210,6 @@ describe('ActivityService', () => {
 });
 ```
 
-### E2E Tests
-
-```powershell
-cd backend
-npm run test:e2e
-```
-
 ---
 
 ## 📦 Commit Konventionen

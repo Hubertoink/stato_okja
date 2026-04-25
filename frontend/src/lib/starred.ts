@@ -11,7 +11,7 @@ export function getStarredProjectIds(): string[] {
   }
 }
 
-export function setStarredProjectIds(ids: string[]) {
+function setStarredProjectIds(ids: string[]) {
   try {
     localStorage.setItem(KEY, JSON.stringify(Array.from(new Set(ids))));
   } catch {
@@ -28,8 +28,3 @@ export function toggleStarredProject(id: string): string[] {
   return result;
 }
 
-export function isProjectStarred(id?: string | null): boolean {
-  if (!id) return false;
-  const set = new Set(getStarredProjectIds());
-  return set.has(id);
-}

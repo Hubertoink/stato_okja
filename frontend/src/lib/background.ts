@@ -1,4 +1,4 @@
-export const BACKGROUND_STORAGE_KEY = 'stato:background' as const;
+const BACKGROUND_STORAGE_KEY = 'stato:background' as const;
 
 export type BackgroundId = 'stato' | 'bg2' | 'bg3';
 
@@ -18,7 +18,7 @@ export const BACKGROUNDS: BackgroundOption[] = [
 	{ id: 'bg3', label: 'Hintergrund 3', url: bg3Url },
 ];
 
-export function isBackgroundId(value: unknown): value is BackgroundId {
+function isBackgroundId(value: unknown): value is BackgroundId {
 	return value === 'stato' || value === 'bg2' || value === 'bg3';
 }
 

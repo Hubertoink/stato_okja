@@ -1,7 +1,7 @@
 export const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
-export const MAX_IMAGE_WIDTH = 600;
+const MAX_IMAGE_WIDTH = 600;
 
-export type ProcessImageResult = {
+type ProcessImageResult = {
   file: File;
   originalBytes: number;
   processedBytes: number;

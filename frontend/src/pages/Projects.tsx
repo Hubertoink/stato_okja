@@ -26,8 +26,8 @@ import {
 import { Star, StarOff } from 'lucide-react';
 import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
 import { api } from '@/lib/api';
-import { useCategories, useTags, useUpdateCategory, Tag } from '@/lib/taxonomy';
-import { useStaff } from '@/lib/staff';
+import { useCategories, useTags, useUpdateCategory } from '@/lib/taxonomy';
+import { type StaffMember, type StaffRole, useStaff } from '@/lib/staff';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import Modal from '@/components/Modal';
@@ -82,6 +82,73 @@ type ProjectBadgeTag = {
   color?: string | null;
 };
 
+type NamedTaxonomyItem = {
+  id: string;
+  name: string;
+  active?: boolean | null;
+};
+
+const normalizeNamedTaxonomyItem = (name: string) => name.trim().toLowerCase();
+
+const findNamedTaxonomyItem = <T extends NamedTaxonomyItem>(
+  items: T[] | undefined,
+  name: string,
+): T | undefined => {
+  const needle = normalizeNamedTaxonomyItem(name || '');
+  if (!needle) return undefined;
+  const list = Array.isArray(items) ? items : [];
+  return list.find((item) => normalizeNamedTaxonomyItem(item.name || '') === needle);
+};
+
+async function ensureNamedTaxonomyItem<T extends NamedTaxonomyItem>({
+  items,
+  name,
+  createPath,
+  listPath,
+  createPayload,
+  reactivate,
+  refresh,
+}: {
+  items: T[] | undefined;
+  name: string;
+  createPath: string;
+  listPath: string;
+  createPayload: Record<string, unknown>;
+  reactivate?: (id: string) => Promise<void>;
+  refresh?: () => Promise<unknown>;
+}): Promise<{ id: string } | null> {
+  const normalizedName = normalizeNamedTaxonomyItem(name || '');
+  if (!normalizedName) return null;
+
+  const existing = findNamedTaxonomyItem(items, name);
+  if (existing?.id) {
+    if (existing.active === false && reactivate) {
+      try {
+        await reactivate(existing.id);
+      } catch {
+        // If reactivation fails, keep the existing id so the caller can still proceed.
+      }
+    }
+    return { id: existing.id };
+  }
+
+  try {
+    const created = await api.post(createPath, createPayload);
+    await refresh?.();
+    const id = created?.data?.id as string | undefined;
+    return id ? { id } : null;
+  } catch {
+    try {
+      const res = await api.get(listPath);
+      const list = (res.data || []) as NamedTaxonomyItem[];
+      const found = list.find((item) => normalizeNamedTaxonomyItem(item.name || '') === normalizedName);
+      return found?.id ? { id: found.id } : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 function createClientRequestId() {
   if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
@@ -115,15 +182,77 @@ const truncateWords = (text?: string | null, words = 20) => {
   return parts.slice(0, words).join(' ') + '…';
 };
 
+const splitProjectStaffNames = (value?: string | null): string[] =>
+  (value || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+const hasProjectStaffRole = (
+  member: Pick<StaffMember, 'role' | 'roles'> | undefined,
+  roles: StaffRole[],
+): boolean => {
+  if (!member) return false;
+  if (Array.isArray(member.roles)) return member.roles.some((role) => roles.includes(role));
+  if (typeof member.roles === 'string') return roles.includes(member.roles);
+  return typeof member.role === 'string' ? roles.includes(member.role) : false;
+};
+
+const normalizeProjectStaffAssignments = (
+  project: Partial<Project>,
+  staff: StaffMember[] | undefined,
+  emptyValue: '' | null,
+): Partial<Project> => {
+  const hasSourceFields =
+    Object.prototype.hasOwnProperty.call(project, 'defaultStaff') ||
+    Object.prototype.hasOwnProperty.call(project, 'defaultVolunteers');
+  if (!hasSourceFields) return project;
+
+  const employeeNames = new Set<string>();
+  const volunteerNames = new Set<string>();
+  const staffByName = new Map(
+    (staff || []).map((member) => [member.name.trim(), member] as const),
+  );
+
+  const assignName = (name: string, fallbackGroup: 'employee' | 'volunteer') => {
+    const member = staffByName.get(name);
+    if (hasProjectStaffRole(member, ['lead', 'employee'])) {
+      employeeNames.add(member?.name || name);
+      return;
+    }
+    if (hasProjectStaffRole(member, ['volunteer', 'helper'])) {
+      volunteerNames.add(member?.name || name);
+      return;
+    }
+    if (fallbackGroup === 'employee') employeeNames.add(name);
+    else volunteerNames.add(name);
+  };
+
+  splitProjectStaffNames(project.defaultStaff).forEach((name) => assignName(name, 'employee'));
+  splitProjectStaffNames(project.defaultVolunteers).forEach((name) => assignName(name, 'volunteer'));
+
+  const nextDefaultStaff =
+    employeeNames.size > 0 ? Array.from(employeeNames).join(', ') : emptyValue;
+  const nextDefaultVolunteers =
+    volunteerNames.size > 0 ? Array.from(volunteerNames).join(', ') : emptyValue;
+
+  if (
+    project.defaultStaff === nextDefaultStaff &&
+    project.defaultVolunteers === nextDefaultVolunteers
+  ) {
+    return project;
+  }
+
+  return {
+    ...project,
+    defaultStaff: nextDefaultStaff,
+    defaultVolunteers: nextDefaultVolunteers,
+  };
+};
+
 const pickStaffNames = (project: Project): string[] => {
-  const names1 = (project.defaultStaff || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const names2 = (project.defaultVolunteers || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const names1 = splitProjectStaffNames(project.defaultStaff);
+  const names2 = splitProjectStaffNames(project.defaultVolunteers);
   const picked = new Set<string>();
   for (const name of names1) {
     if (picked.size < 2) picked.add(name);
@@ -757,104 +886,52 @@ function ProjectForm({
     }
   }, []);
 
-  const findCategoryByName = useCallback(
-    (name: string) => {
-      const needle = (name || '').trim().toLowerCase();
-      const list = Array.isArray(allCategories) ? allCategories : [];
-      return list.find((c) => (c.name || '').trim().toLowerCase() === needle);
-    },
-    [allCategories],
-  );
-
   const ensureCategoryByName = useCallback(
     async (name: string): Promise<{ id: string } | null> => {
       const def = defaultCategoryByName(name);
-      const existing = findCategoryByName(name);
-      if (existing?.id) {
-        // Reactivate if archived/inactive
-        if (existing.active === false) {
-          try {
-            await updateCategory.mutateAsync({
-              id: existing.id,
-              data: { active: true, ...(def?.color ? { color: def.color } : {}) },
-            });
-            await qc.invalidateQueries({ queryKey: ['categories'] });
-          } catch {
-            // If it fails, continue; user can still pick manually.
-          }
-        }
-        return { id: existing.id };
-      }
-      try {
-        const created = await api.post('/taxonomy/categories', {
-          name: name,
+      return ensureNamedTaxonomyItem({
+        items: allCategories,
+        name,
+        createPath: '/taxonomy/categories',
+        listPath: '/taxonomy/categories',
+        createPayload: {
+          name,
           active: true,
           ...(def?.color ? { color: def.color } : {}),
-        });
-        await qc.invalidateQueries({ queryKey: ['categories'] });
-        const id = created?.data?.id as string | undefined;
-        return id ? { id } : null;
-      } catch {
-        // Race-condition fallback: re-fetch by name
-        try {
-          const res = await api.get('/taxonomy/categories');
-          const list = (res.data || []) as Array<{ id: string; name: string }>;
-          const found = list.find((c) => (c.name || '').trim().toLowerCase() === (name || '').trim().toLowerCase());
-          return found?.id ? { id: found.id } : null;
-        } catch {
-          return null;
-        }
-      }
+        },
+        reactivate: async (id) => {
+          await updateCategory.mutateAsync({
+            id,
+            data: { active: true, ...(def?.color ? { color: def.color } : {}) },
+          });
+          await qc.invalidateQueries({ queryKey: ['categories'] });
+        },
+        refresh: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+      });
     },
-    [findCategoryByName, qc, updateCategory],
-  );
-
-  const findTagByName = useCallback(
-    (name: string): Tag | undefined => {
-      const needle = (name || '').trim().toLowerCase();
-      const list = Array.isArray(allTags) ? allTags : [];
-      return list.find((t) => (t.name || '').trim().toLowerCase() === needle);
-    },
-    [allTags],
+    [allCategories, qc, updateCategory],
   );
 
   const ensureTagByName = useCallback(
     async (name: string, color?: string): Promise<{ id: string } | null> => {
-      const existing = findTagByName(name);
-      if (existing?.id) {
-        // Reactivate if archived/inactive
-        if (existing.active === false) {
-          try {
-            await api.patch(`/taxonomy/tags/${existing.id}`, { active: true, ...(color ? { color } : {}) });
-            await qc.invalidateQueries({ queryKey: ['tags'] });
-          } catch {
-            // Ignore
-          }
-        }
-        return { id: existing.id };
-      }
-      try {
-        const created = await api.post('/taxonomy/tags', {
-          name: name,
+      return ensureNamedTaxonomyItem({
+        items: allTags,
+        name,
+        createPath: '/taxonomy/tags',
+        listPath: '/taxonomy/tags',
+        createPayload: {
+          name,
           active: true,
           ...(color ? { color } : {}),
-        });
-        await qc.invalidateQueries({ queryKey: ['tags'] });
-        const id = created?.data?.id as string | undefined;
-        return id ? { id } : null;
-      } catch {
-        // Race-condition fallback: re-fetch by name
-        try {
-          const res = await api.get('/taxonomy/tags');
-          const list = (res.data || []) as Array<{ id: string; name: string }>;
-          const found = list.find((t) => (t.name || '').trim().toLowerCase() === (name || '').trim().toLowerCase());
-          return found?.id ? { id: found.id } : null;
-        } catch {
-          return null;
-        }
-      }
+        },
+        reactivate: async (id) => {
+          await api.patch(`/taxonomy/tags/${id}`, { active: true, ...(color ? { color } : {}) });
+          await qc.invalidateQueries({ queryKey: ['tags'] });
+        },
+        refresh: () => qc.invalidateQueries({ queryKey: ['tags'] }),
+      });
     },
-    [findTagByName, qc],
+    [allTags, qc],
   );
 
   const applyTemplate = useCallback(
@@ -1079,6 +1156,7 @@ function ProjectForm({
       }
       return acc;
     }, {} as Partial<Project>);
+    const normalized = normalizeProjectStaffAssignments(cleaned, staff, null);
     const imgSize = (cleaned as Partial<Project> & { imageSize?: unknown }).imageSize;
     const bytes =
       typeof imgSize === 'number'
@@ -1096,8 +1174,13 @@ function ProjectForm({
     }
 
     submitLockedRef.current = true;
-    onSubmit(cleaned);
-  }, [form, isTitleMissing, onSubmit, saving]);
+    onSubmit(normalized);
+  }, [form, isTitleMissing, onSubmit, saving, staff]);
+
+  useEffect(() => {
+    if (!staff?.length) return;
+    setForm((current) => normalizeProjectStaffAssignments(current, staff, ''));
+  }, [staff]);
 
   useEffect(() => {
     if (!saving) submitLockedRef.current = false;

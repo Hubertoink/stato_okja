@@ -38,11 +38,6 @@ export const germanStates: { code: StateCode; name: string }[] = [
   { code: 'TH', name: 'Thüringen' },
 ];
 
-export function stateLabel(code: StateCode | '' | null | undefined) {
-  if (!code) return '';
-  return germanStates.find((s) => s.code === code)?.name ?? String(code);
-}
-
 function ymd(y: number, m: number, d: number) {
   // m: 1-12
   const dt = new Date(y, m - 1, d);
@@ -150,7 +145,7 @@ function stateSpecific(year: number, state?: StateCode | '' | null): Holiday[] {
   return list;
 }
 
-export function getHolidays(year: number, state?: StateCode | '' | null): Holiday[] {
+function getHolidays(year: number, state?: StateCode | '' | null): Holiday[] {
   return [...baseHolidays(year), ...stateSpecific(year, state)];
 }
 

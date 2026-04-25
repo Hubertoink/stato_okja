@@ -2,9 +2,6 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import {
-  PieChart,
-  Pie,
-  Cell,
   ResponsiveContainer,
   Tooltip,
   Legend,
@@ -13,8 +10,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  BarChart,
-  Bar,
   LabelList,
 } from 'recharts';
 import { useAuth } from '@/lib/auth';
@@ -42,6 +37,26 @@ import {
   normalizeActivityExecutionStatuses,
   type ActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
+import {
+  buildTopDayChartData,
+  formatStatisticsAggregationTickLabel,
+  formatStatisticsAggregationTooltipLabel,
+  getInclusiveWeekSpan,
+  getVisibleSelectedItems,
+} from './statisticsHelpers';
+import {
+  createBarValueLabelRenderer,
+  createLineValueLabelRenderer,
+  createPieValueLabelRenderer,
+} from './statisticsChartLabels';
+import {
+  buildStatisticsActivitiesFileName,
+  buildStatisticsChartFileName,
+  buildStatisticsExportRangeLabel,
+} from './statisticsExport';
+import { StatisticsBarChartCard } from './StatisticsBarChartCard';
+import { StatisticsExportActions } from './StatisticsExportActions';
+import { StatisticsPieChartCard } from './StatisticsPieChartCard';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -74,11 +89,6 @@ const WEEKDAY_OPTIONS = [
   { value: 6, shortLabel: 'Sa', label: 'Samstag' },
 ] as const;
 
-const WEEKDAY_CHART_OPTIONS = [
-  { value: 0, shortLabel: 'So', label: 'Sonntag' },
-  ...WEEKDAY_OPTIONS,
-] as const;
-
 const CLOSURE_FILTER_LABELS: Record<OrganizationClosureStateFilter, string> = {
   closed: 'Nur Schließtage',
   open: 'Ohne Schließtage',
@@ -94,33 +104,6 @@ function formatLocalDateInputValue(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-function parseCalendarDate(value?: string | null) {
-  if (!value) return null;
-  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (!year || !month || !day) return null;
-
-  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-}
-
-function getInclusiveWeekSpan(from?: string, to?: string) {
-  const start = parseCalendarDate(from);
-  const end = parseCalendarDate(to);
-  if (!start || !end) return 0;
-
-  const startTime = start.getTime();
-  const endTime = end.getTime();
-  const first = Math.min(startTime, endTime);
-  const last = Math.max(startTime, endTime);
-  const inclusiveDays = Math.floor((last - first) / 86400000) + 1;
-
-  return Math.max(inclusiveDays / 7, 1);
 }
 
 type StatsOverviewResponse = {
@@ -210,16 +193,6 @@ function preloadPdfExportDependencies() {
 function preloadActivitiesExportDependencies() {
   preloadPdfExportDependencies();
   void import('xlsx-js-style');
-}
-
-function sanitizeExportSegment(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9_-]+/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
 }
 
 function downloadBlob(blob: Blob, fileName: string) {
@@ -1076,74 +1049,8 @@ export default function Statistics() {
 
   const fmtNumber = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
 
-  const fmtDateCompact = (iso: string) => {
-    const s = String(iso || '').slice(0, 10);
-    const [yy, mm, dd] = s.split('-');
-    const y = Number(yy);
-    const m = Number(mm);
-    const d = Number(dd);
-    if (!y || !m || !d) return s || String(iso || '');
-    // Use noon UTC to avoid timezone edge cases around midnight.
-    const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-    const y2 = String(y).slice(-2);
-    const mon = new Intl.DateTimeFormat('de-DE', { month: 'short' })
-      .format(dt)
-      .replace('.', '');
-    const d2 = String(d).padStart(2, '0');
-    return `${y2} ${mon} ${d2}`;
-  };
-
   const topDays = useMemo(() => {
-    const list = Array.isArray(timeseries) ? timeseries : [];
-    const weekdayTotals = new Map<
-      number,
-      {
-        weekday: number;
-        name: string;
-        fullName: string;
-        count: number;
-        activityCount: number;
-      }
-    >(
-      WEEKDAY_CHART_OPTIONS.map((weekday) => [
-        weekday.value,
-        {
-          weekday: weekday.value,
-          name: weekday.shortLabel,
-          fullName: weekday.label,
-          count: 0,
-          activityCount: 0,
-        },
-      ]),
-    );
-
-    for (const entry of list) {
-      if (!entry || typeof entry.totalParticipants !== 'number') continue;
-      const parsedDate = parseCalendarDate(entry.date);
-      if (!parsedDate) continue;
-
-      const weekday = parsedDate.getUTCDay();
-      const bucket = weekdayTotals.get(weekday);
-      if (!bucket) continue;
-
-      bucket.count += entry.totalParticipants;
-      bucket.activityCount += entry.activityCount;
-    }
-
-    return Array.from(weekdayTotals.values())
-      .filter((entry) => entry.activityCount > 0 || entry.count > 0)
-      .map((entry) => ({
-        ...entry,
-        id: String(entry.weekday),
-        chartValue:
-          entry.activityCount > 0 ? Math.round((entry.count / entry.activityCount) * 10) / 10 : 0,
-      }))
-      .sort((left, right) => {
-        const leftValue = showAverage ? left.chartValue : left.count;
-        const rightValue = showAverage ? right.chartValue : right.count;
-        if (rightValue !== leftValue) return rightValue - leftValue;
-        return left.weekday - right.weekday;
-      });
+    return buildTopDayChartData(timeseries, showAverage);
   }, [showAverage, timeseries]);
 
   // Color maps
@@ -1175,13 +1082,12 @@ export default function Statistics() {
   );
   const useDesktopProjectCollapse = !isMobile && sortedProjects.length > DESKTOP_PROJECT_CHIP_COLLAPSE_THRESHOLD;
   const visibleDesktopProjects = useMemo(() => {
-    if (!useDesktopProjectCollapse || desktopProjectFilterExpanded) return sortedProjects;
-
-    const initialProjects = sortedProjects.slice(0, DESKTOP_PROJECT_CHIP_VISIBLE_COUNT);
-    if (!projectId || initialProjects.some((project) => project.id === projectId)) return initialProjects;
-
-    const selectedProject = sortedProjects.find((project) => project.id === projectId);
-    return selectedProject ? [...initialProjects, selectedProject] : initialProjects;
+    return getVisibleSelectedItems({
+      items: sortedProjects,
+      selectedId: projectId,
+      expanded: !useDesktopProjectCollapse || desktopProjectFilterExpanded,
+      visibleCount: DESKTOP_PROJECT_CHIP_VISIBLE_COUNT,
+    });
   }, [desktopProjectFilterExpanded, projectId, sortedProjects, useDesktopProjectCollapse]);
   const hiddenDesktopProjectCount = Math.max(sortedProjects.length - visibleDesktopProjects.length, 0);
   const useMobileTypeCollapse = isMobile && STATISTICS_TYPE_OPTIONS.length > MOBILE_TYPE_CHIP_VISIBLE_COUNT;
@@ -1199,13 +1105,12 @@ export default function Statistics() {
   );
   const useMobileProjectCollapse = isMobile && sortedProjects.length > MOBILE_PROJECT_CHIP_VISIBLE_COUNT;
   const visibleMobileProjects = useMemo(() => {
-    if (!useMobileProjectCollapse || mobileProjectFilterExpanded) return sortedProjects;
-
-    const initialProjects = sortedProjects.slice(0, MOBILE_PROJECT_CHIP_VISIBLE_COUNT);
-    if (!projectId || initialProjects.some((project) => project.id === projectId)) return initialProjects;
-
-    const selectedProject = sortedProjects.find((project) => project.id === projectId);
-    return selectedProject ? [...initialProjects, selectedProject] : initialProjects;
+    return getVisibleSelectedItems({
+      items: sortedProjects,
+      selectedId: projectId,
+      expanded: !useMobileProjectCollapse || mobileProjectFilterExpanded,
+      visibleCount: MOBILE_PROJECT_CHIP_VISIBLE_COUNT,
+    });
   }, [mobileProjectFilterExpanded, projectId, sortedProjects, useMobileProjectCollapse]);
   const hiddenMobileProjectCount = Math.max(sortedProjects.length - visibleMobileProjects.length, 0);
   useEffect(() => {
@@ -1264,102 +1169,37 @@ export default function Statistics() {
     [cohortChartData, fallbackBarColors, showAverage],
   );
 
-  // Generic label renderer for bar charts (positions label above the bar)
-  type LabelProps = { x?: number; y?: number; width?: number; value?: number | string };
-  type LineLabelProps = { x?: number; y?: number; value?: number | string };
-  type PieLabelProps = {
-    cx?: number;
-    x?: number;
-    y?: number;
-    percent?: number;
-    value?: number;
-    payload?: { color?: string };
-  };
+  const renderPieValueLabel = (showAbsoluteValue: boolean) =>
+    createPieValueLabelRenderer({
+      showAbsoluteValue,
+      fallbackColor: chartValueLabelColor,
+      strokeColor: chartValueLabelStroke,
+      formatNumber: fmtNumber,
+    });
 
-  const renderPieValueLabel = (showAbsoluteValue: boolean) => (props: PieLabelProps) => {
-    const { cx, x, y, percent, value, payload } = props;
-    if (typeof x !== 'number' || typeof y !== 'number' || typeof percent !== 'number') return null;
-    if (percent <= 0) return null;
+  const ValueLabel = useMemo(
+    () =>
+      createBarValueLabelRenderer({
+        fillColor: chartValueLabelColor,
+        strokeColor: chartValueLabelStroke,
+      }),
+    [chartValueLabelColor, chartValueLabelStroke],
+  );
 
-    const textAnchor = typeof cx === 'number' && x < cx ? 'end' : 'start';
-    const labelColor = payload?.color || chartValueLabelColor;
-    const percentageText = `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
+  const LineValueLabel = useMemo(
+    () =>
+      createLineValueLabelRenderer({
+        fillColor: chartValueLabelColor,
+        strokeColor: chartValueLabelStroke,
+      }),
+    [chartValueLabelColor, chartValueLabelStroke],
+  );
 
-    return (
-      <text
-        x={x}
-        y={y}
-        textAnchor={textAnchor}
-        fill={labelColor}
-        stroke={chartValueLabelStroke}
-        strokeWidth={2}
-        paintOrder="stroke"
-        fontWeight={600}
-      >
-        <tspan x={x} dy="0" fontSize={12}>
-          {percentageText}
-        </tspan>
-        {showAbsoluteValue && (
-          <tspan x={x} dy="1.15em" fontSize={10}>
-            {fmtNumber(value)}
-          </tspan>
-        )}
-      </text>
-    );
-  };
-
-  const ValueLabel = (props: LabelProps) => {
-    const { x, y, width, value } = props;
-    const txt =
-      typeof value === 'number'
-        ? value.toLocaleString('de-DE', { maximumFractionDigits: 1 })
-        : String(value ?? '');
-    const cx = (x ?? 0) + (width ?? 0) / 2;
-    const cy = (y ?? 0) - 4;
-    return (
-      <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
-        fill={chartValueLabelColor}
-        stroke={chartValueLabelStroke}
-        strokeWidth={2}
-        paintOrder="stroke"
-        fontSize={12}
-        fontWeight={600}
-      >
-        {txt}
-      </text>
-    );
-  };
-
-  const LineValueLabel = (props: LineLabelProps) => {
-    const { x, y, value } = props;
-    if (typeof x !== 'number' || typeof y !== 'number') return null;
-
-    const txt =
-      typeof value === 'number'
-        ? value.toLocaleString('de-DE', { maximumFractionDigits: 1 })
-        : String(value ?? '');
-
-    return (
-      <text
-        x={x}
-        y={y - 12}
-        textAnchor="middle"
-        fill={chartValueLabelColor}
-        stroke={chartValueLabelStroke}
-        strokeWidth={2}
-        paintOrder="stroke"
-        fontSize={12}
-        fontWeight={600}
-      >
-        {txt}
-      </text>
-    );
-  };
-
-  const exportRangeLabel = [from, to].filter(Boolean).join(' bis ') || 'Gesamter Zeitraum';
+  const exportRangeLabel = buildStatisticsExportRangeLabel(from, to);
+  const isActivityTypesExporting = activeChartExport?.startsWith('activity-types:') ?? false;
+  const isGenderDistributionExporting =
+    activeChartExport?.startsWith('gender-distribution:') ?? false;
+  const isCohortsExporting = activeChartExport?.startsWith('cohorts:') ?? false;
   const isParticipantsTrendExporting =
     activeChartExport?.startsWith('participants-trend:') ?? false;
 
@@ -1368,23 +1208,20 @@ export default function Statistics() {
   };
 
   const getChartFileName = (chartTitle: string, extension: ChartExportFormat) => {
-    const parts = [
-      'stato',
-      sanitizeExportSegment(user?.orgName || 'organisation'),
-      sanitizeExportSegment(chartTitle) || 'diagramm',
-      sanitizeExportSegment(exportRangeLabel) || 'gesamt',
-    ].filter(Boolean);
-    return `${parts.join('-')}.${extension}`;
+    return buildStatisticsChartFileName({
+      orgName: user?.orgName,
+      chartTitle,
+      exportRangeLabel,
+      extension,
+    });
   };
 
   const getActivitiesExportFileName = (extension: ActivitiesExportFormat) => {
-    const parts = [
-      'stato',
-      sanitizeExportSegment(user?.orgName || 'organisation'),
-      'aktivitaeten-gefiltert',
-      sanitizeExportSegment(exportRangeLabel) || 'gesamt',
-    ].filter(Boolean);
-    return `${parts.join('-')}.${extension}`;
+    return buildStatisticsActivitiesFileName({
+      orgName: user?.orgName,
+      exportRangeLabel,
+      extension,
+    });
   };
 
   const fetchAllFilteredActivities = async () => {
@@ -1688,51 +1525,24 @@ export default function Statistics() {
     const isExporting = activeChartExport?.startsWith(`${chartId}:`) ?? false;
 
     return (
-      <div
-        className="group/chart-export relative shrink-0"
-        onMouseEnter={preloadPdfExportDependencies}
-      >
-        <button
-          type="button"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-viridian hover:text-viridian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viridian/30 opacity-100 md:opacity-0 md:group-hover/chart-card:opacity-100 md:group-focus-within/chart-card:opacity-100"
-          aria-label={`${chartTitle} exportieren`}
-          title={`${chartTitle} exportieren`}
-          onFocus={preloadPdfExportDependencies}
-          style={isExporting ? { visibility: 'hidden' } : undefined}
-        >
-          <FileDown className="h-4 w-4" />
-        </button>
-
-        <div
-          className="invisible pointer-events-none absolute right-0 top-full z-20 mt-2 w-44 translate-y-1 rounded-xl border border-gray-200 bg-white p-2 opacity-0 shadow-xl transition-all group-hover/chart-export:visible group-hover/chart-export:pointer-events-auto group-hover/chart-export:translate-y-0 group-hover/chart-export:opacity-100 group-focus-within/chart-export:visible group-focus-within/chart-export:pointer-events-auto group-focus-within/chart-export:translate-y-0 group-focus-within/chart-export:opacity-100"
-          data-chart-export-ignore="true"
-        >
-          <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">
-            Diagramm exportieren
-          </div>
-          <button
-            type="button"
-            className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => void exportChart(chartId, chartTitle, 'png')}
-            disabled={isExporting}
-          >
-            <span>Als PNG</span>
-            <span className="text-xs text-gray-400">Bild</span>
-          </button>
-          <button
-            type="button"
-            className="mt-1 flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => void exportChart(chartId, chartTitle, 'pdf')}
-            disabled={isExporting}
-          >
-            <span>Als PDF</span>
-            <span className="text-xs text-gray-400">A4</span>
-          </button>
-          {isExporting && (
-            <div className="px-3 pt-2 text-xs text-gray-500">Export wird vorbereitet…</div>
-          )}
-        </div>
-      </div>
+      <StatisticsExportActions
+        triggerLabel={`${chartTitle} exportieren`}
+        menuTitle="Diagramm exportieren"
+        preload={preloadPdfExportDependencies}
+        isExporting={isExporting}
+        options={[
+          {
+            label: 'Als PNG',
+            meta: 'Bild',
+            onClick: () => void exportChart(chartId, chartTitle, 'png'),
+          },
+          {
+            label: 'Als PDF',
+            meta: 'A4',
+            onClick: () => void exportChart(chartId, chartTitle, 'pdf'),
+          },
+        ]}
+      />
     );
   };
 
@@ -1740,48 +1550,24 @@ export default function Statistics() {
     const isExporting = activeActivitiesExport !== null;
 
     return (
-      <div
-        className="group/chart-export relative shrink-0"
-        onMouseEnter={preloadActivitiesExportDependencies}
-      >
-        <button
-          type="button"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-viridian hover:text-viridian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viridian/30 opacity-100 md:opacity-0 md:group-hover/chart-card:opacity-100 md:group-focus-within/chart-card:opacity-100"
-          aria-label="Aktivitäten exportieren"
-          title="Aktivitäten exportieren"
-          onFocus={preloadActivitiesExportDependencies}
-          style={isExporting ? { visibility: 'hidden' } : undefined}
-        >
-          <FileDown className="h-4 w-4" />
-        </button>
-
-        <div className="invisible pointer-events-none absolute right-0 top-full z-20 mt-2 w-44 translate-y-1 rounded-xl border border-gray-200 bg-white p-2 opacity-0 shadow-xl transition-all group-hover/chart-export:visible group-hover/chart-export:pointer-events-auto group-hover/chart-export:translate-y-0 group-hover/chart-export:opacity-100 group-focus-within/chart-export:visible group-focus-within/chart-export:pointer-events-auto group-focus-within/chart-export:translate-y-0 group-focus-within/chart-export:opacity-100">
-          <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">
-            Aktivitäten exportieren
-          </div>
-          <button
-            type="button"
-            className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => void exportActivitiesTable('pdf')}
-            disabled={isExporting}
-          >
-            <span>Als PDF</span>
-            <span className="text-xs text-gray-400">Komplett</span>
-          </button>
-          <button
-            type="button"
-            className="mt-1 flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => void exportActivitiesTable('xlsx')}
-            disabled={isExporting}
-          >
-            <span>Als Excel</span>
-            <span className="text-xs text-gray-400">Komplett</span>
-          </button>
-          {isExporting && (
-            <div className="px-3 pt-2 text-xs text-gray-500">Export wird vorbereitet…</div>
-          )}
-        </div>
-      </div>
+      <StatisticsExportActions
+        triggerLabel="Aktivitäten exportieren"
+        menuTitle="Aktivitäten exportieren"
+        preload={preloadActivitiesExportDependencies}
+        isExporting={isExporting}
+        options={[
+          {
+            label: 'Als PDF',
+            meta: 'Komplett',
+            onClick: () => void exportActivitiesTable('pdf'),
+          },
+          {
+            label: 'Als Excel',
+            meta: 'Komplett',
+            onClick: () => void exportActivitiesTable('xlsx'),
+          },
+        ]}
+      />
     );
   };
 
@@ -2701,101 +2487,44 @@ export default function Statistics() {
 
         {/* Charts */}
         <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
-          <div
-            className="group/chart-card bg-white rounded-lg shadow p-6"
-            data-pdf-section
-            ref={setChartCardRef('activity-types')}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-viridian">Verteilung nach Tätigkeitstyp</h3>
-              {renderChartExportActions('activity-types', 'Verteilung nach Tätigkeitstyp')}
-            </div>
-            <div className="h-80 md:h-[23rem]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
-                  <Pie
-                    dataKey="value"
-                    data={byTypeData}
-                    nameKey="name"
-                    cx="50%"
-                    cy={byTypePieCenterY}
-                    outerRadius={byTypeOuterRadius}
-                    isAnimationActive={!(activeChartExport?.startsWith('activity-types:') ?? false)}
-                    animationBegin={80}
-                    animationDuration={700}
-                    stroke={chartSeparatorColor}
-                    strokeWidth={1.25}
-                    label={renderPieValueLabel(activeChartExport?.startsWith('activity-types:') ?? false)}
-                  >
-                    {byTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={chartTooltipContentStyle}
-                    labelStyle={chartTooltipLabelStyle}
-                    itemStyle={chartTooltipItemStyle}
-                    // Hover zeigt jeweils die "gegenteilige" Darstellung
-                    // (wenn Labels absolute zeigen, Tooltip prozentual und umgekehrt)
-                    formatter={(
-                      value: number,
-                      _name: string,
-                      entry?: { payload?: { name?: string } },
-                    ) => [fmtNumber(value), entry?.payload?.name || '']}
-                  />
-                  <Legend verticalAlign="bottom" align="center" iconSize={11} wrapperStyle={pieLegendWrapperStyle} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          <StatisticsPieChartCard
+            title="Verteilung nach Tätigkeitstyp"
+            exportActions={renderChartExportActions('activity-types', 'Verteilung nach Tätigkeitstyp')}
+            bodyClassName="h-80 md:h-[23rem]"
+            chartRef={setChartCardRef('activity-types')}
+            data={byTypeData}
+            centerY={byTypePieCenterY}
+            outerRadius={byTypeOuterRadius}
+            showAbsoluteValueLabels={isActivityTypesExporting}
+            createLabelRenderer={renderPieValueLabel}
+            formatValue={fmtNumber}
+            separatorColor={chartSeparatorColor}
+            tooltipContentStyle={chartTooltipContentStyle}
+            tooltipLabelStyle={chartTooltipLabelStyle}
+            tooltipItemStyle={chartTooltipItemStyle}
+            legendWrapperStyle={pieLegendWrapperStyle}
+            cellKeyPrefix="activity-type"
+          />
 
-          <div
-            className="group/chart-card bg-white rounded-lg shadow p-6"
-            data-pdf-section
-            ref={setChartCardRef('gender-distribution')}
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-viridian">Geschlechterverteilung</h3>
-              {renderChartExportActions('gender-distribution', 'Geschlechterverteilung')}
-            </div>
-            <div className="h-80 md:h-[23rem]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
-                  <Pie
-                    dataKey="value"
-                    data={genderData}
-                    nameKey="name"
-                    cx="50%"
-                    cy={genderPieCenterY}
-                    innerRadius={genderInnerRadius}
-                    outerRadius={genderOuterRadius}
-                    isAnimationActive={!(activeChartExport?.startsWith('gender-distribution:') ?? false)}
-                    animationBegin={80}
-                    animationDuration={700}
-                    stroke={chartSeparatorColor}
-                    strokeWidth={1.25}
-                    label={renderPieValueLabel(activeChartExport?.startsWith('gender-distribution:') ?? false)}
-                  >
-                    {genderData.map((entry, index) => (
-                      <Cell key={`gcell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={chartTooltipContentStyle}
-                    labelStyle={chartTooltipLabelStyle}
-                    itemStyle={chartTooltipItemStyle}
-                    // Labels sind relativ (Prozent), daher im Tooltip die absoluten Werte anzeigen
-                    formatter={(
-                      value: number,
-                      _name: string,
-                      entry?: { payload?: { name?: string } },
-                    ) => [fmtNumber(value), entry?.payload?.name || '']}
-                  />
-                  <Legend verticalAlign="bottom" align="center" iconSize={11} wrapperStyle={pieLegendWrapperStyle} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          <StatisticsPieChartCard
+            title="Geschlechterverteilung"
+            exportActions={renderChartExportActions('gender-distribution', 'Geschlechterverteilung')}
+            bodyClassName="h-80 md:h-[23rem]"
+            chartRef={setChartCardRef('gender-distribution')}
+            data={genderData}
+            centerY={genderPieCenterY}
+            innerRadius={genderInnerRadius}
+            outerRadius={genderOuterRadius}
+            showAbsoluteValueLabels={isGenderDistributionExporting}
+            createLabelRenderer={renderPieValueLabel}
+            formatValue={fmtNumber}
+            separatorColor={chartSeparatorColor}
+            tooltipContentStyle={chartTooltipContentStyle}
+            tooltipLabelStyle={chartTooltipLabelStyle}
+            tooltipItemStyle={chartTooltipItemStyle}
+            legendWrapperStyle={pieLegendWrapperStyle}
+            cellKeyPrefix="gender"
+          />
 
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
           <div
@@ -2860,22 +2589,9 @@ export default function Statistics() {
                   <XAxis
                     dataKey="date"
                     tick={chartAxisTick}
-                    tickFormatter={(v) => {
-                      const s = String(v);
-                      if (timeAggregation === 'week') {
-                        // Format: 2026-W05 -> KW 05
-                        const match = s.match(/^\d{4}-W(\d{2})$/);
-                        if (match) return `KW ${match[1]}`;
-                      }
-                      if (timeAggregation === 'month') {
-                        // Format: 2026-01 -> Jan 26
-                        const [y, m] = s.split('-');
-                        const dt = new Date(Number(y), Number(m) - 1, 15);
-                        const mon = new Intl.DateTimeFormat('de-DE', { month: 'short' }).format(dt).replace('.', '');
-                        return `${mon} ${y.slice(-2)}`;
-                      }
-                      return fmtDateCompact(s);
-                    }}
+                    tickFormatter={(value) =>
+                      formatStatisticsAggregationTickLabel(String(value), timeAggregation)
+                    }
                   />
                   <YAxis allowDecimals={false} tick={chartAxisTick} />
                   <Tooltip
@@ -2887,28 +2603,9 @@ export default function Statistics() {
                       value.toLocaleString('de-DE', { maximumFractionDigits: 1 }),
                       showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'
                     ]}
-                    labelFormatter={(l) => {
-                      const s = String(l);
-                      if (timeAggregation === 'week') {
-                        const match = s.match(/^(\d{4})-W(\d{2})$/);
-                        if (match) return `Kalenderwoche ${match[2]}, ${match[1]}`;
-                        return s;
-                      }
-                      if (timeAggregation === 'month') {
-                        const match = s.match(/^(\d{4})-(\d{2})$/);
-                        if (match) {
-                          const y = Number(match[1]);
-                          const m = Number(match[2]);
-                          const dt = new Date(y, m - 1, 15);
-                          if (!isNaN(dt.getTime())) {
-                            const mon = new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(dt);
-                            return `${mon} ${match[1]}`;
-                          }
-                        }
-                        return s;
-                      }
-                      return `Datum: ${fmtDateCompact(s)}`;
-                    }}
+                    labelFormatter={(value) =>
+                      formatStatisticsAggregationTooltipLabel(String(value), timeAggregation)
+                    }
                   />
                   <Legend />
                   <Line
@@ -2934,229 +2631,136 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div
-            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
-            data-pdf-section
-            ref={setChartCardRef('cohorts')}
-          >
-            <div className="flex items-center justify-between mb-4 gap-3">
-              <h3 className="text-lg font-semibold text-viridian">
-                {showAverage ? 'Ø Alterskohorten' : 'Alterskohorten'}
-              </h3>
-              {renderChartExportActions(
-                'cohorts',
-                showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
-              )}
-            </div>
-            <div className={pdfMode ? 'h-72' : 'h-80 md:h-[23rem]'}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
-                  <Pie
-                    dataKey="value"
-                    data={cohortPieData}
-                    nameKey="name"
-                    cx="50%"
-                    cy={cohortPieCenterY}
-                    outerRadius={cohortPieOuterRadius}
-                    isAnimationActive={!(activeChartExport?.startsWith('cohorts:') ?? false)}
-                    animationBegin={80}
-                    animationDuration={700}
-                    stroke={chartSeparatorColor}
-                    strokeWidth={1.25}
-                    label={renderPieValueLabel(activeChartExport?.startsWith('cohorts:') ?? false)}
-                  >
-                    {cohortPieData.map((entry, index) => (
-                      <Cell key={`cohort-cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={chartTooltipContentStyle}
-                    labelStyle={chartTooltipLabelStyle}
-                    itemStyle={chartTooltipItemStyle}
-                    formatter={(
-                      value: number,
-                      _name: string,
-                      entry?: { payload?: { name?: string } },
-                    ) => [fmtNumber(value), entry?.payload?.name || '']}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    align="center"
-                    iconSize={11}
-                    wrapperStyle={pieLegendWrapperStyle}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div
-            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
-            data-pdf-section
-            ref={setChartCardRef('top-categories')}
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-viridian">Top Kategorien</h3>
-              {renderChartExportActions('top-categories', 'Top Kategorien')}
-            </div>
-            <div className={pdfMode ? 'h-64' : 'h-80 md:h-[23rem]'}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={topCategoryChartData}
-                  margin={compactBarChartMarginWithBottom}
-                >
-                  <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    tick={chartAxisTick}
-                    interval={0}
-                    angle={-15}
-                    textAnchor="end"
-                    height={64}
-                  />
-                  <YAxis allowDecimals={false} tick={chartAxisTick} />
-                  <Tooltip contentStyle={chartTooltipContentStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} cursor={barChartCursor} formatter={(value: number) => value.toLocaleString('de-DE')} />
-                  <Bar dataKey="count" name="Aktivitäten">
-                    {topCategoryChartData.map((_, i) => (
-                      <Cell
-                        key={`bc-${i}`}
-                        fill={fallbackBarColors[i % fallbackBarColors.length]}
-                      />
-                    ))}
-                    <LabelList dataKey="count" content={<ValueLabel />} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div
-            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
-            data-pdf-section
-            ref={setChartCardRef('top-tags')}
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-viridian">Top Tags</h3>
-              {renderChartExportActions('top-tags', 'Top Tags')}
-            </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topTags} margin={compactBarChartMargin}>
-                  <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    tick={chartAxisTick}
-                    interval={0}
-                    angle={-15}
-                    textAnchor="end"
-                    height={50}
-                  />
-                  <YAxis allowDecimals={false} tick={chartAxisTick} />
-                  <Tooltip contentStyle={chartTooltipContentStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} cursor={barChartCursor} formatter={(value: number) => value.toLocaleString('de-DE')} />
-                  <Bar dataKey="count" name="Aktivitäten">
-                    {topTags.map((t, i) => (
-                      <Cell
-                        key={`tt-${t.id}`}
-                        fill={tagColor.get(t.id) || fallbackBarColors[i % fallbackBarColors.length]}
-                      />
-                    ))}
-                    <LabelList dataKey="count" content={<ValueLabel />} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div
-            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
-            data-pdf-section
-            ref={setChartCardRef(projectId ? 'top-days' : 'top-projects')}
-          >
-            {projectId ? (
-              <>
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-viridian">Top Tage</h3>
-                  {renderChartExportActions('top-days', 'Top Tage')}
-                </div>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topDays} margin={compactBarChartMargin}>
-                      <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="name"
-                        tick={chartAxisTick}
-                        interval={0}
-                        angle={-15}
-                        textAnchor="end"
-                        height={50}
-                      />
-                      <YAxis allowDecimals={showAverage} tick={chartAxisTick} />
-                      <Tooltip
-                        contentStyle={chartTooltipContentStyle}
-                        labelStyle={chartTooltipLabelStyle}
-                        itemStyle={chartTooltipItemStyle}
-                        cursor={barChartCursor}
-                        formatter={(value: number) =>
-                          value.toLocaleString('de-DE', {
-                            maximumFractionDigits: showAverage ? 1 : 0,
-                          })
-                        }
-                        labelFormatter={(_, payload) =>
-                          `Wochentag: ${payload?.[0]?.payload?.fullName ?? '—'}`
-                        }
-                      />
-                      <Bar
-                        dataKey={showAverage ? 'chartValue' : 'count'}
-                        name={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
-                        fill="#10b981"
-                      >
-                        <LabelList
-                          dataKey={showAverage ? 'chartValue' : 'count'}
-                          content={<ValueLabel />}
-                        />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-viridian">Top Projekte</h3>
-                  {renderChartExportActions('top-projects', 'Top Projekte')}
-                </div>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topProjects} margin={compactBarChartMargin}>
-                      <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="name"
-                        tick={chartAxisTick}
-                        interval={0}
-                        angle={-15}
-                        textAnchor="end"
-                        height={50}
-                      />
-                      <YAxis allowDecimals={false} tick={chartAxisTick} />
-                      <Tooltip contentStyle={chartTooltipContentStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} cursor={barChartCursor} formatter={(value: number) => value.toLocaleString('de-DE')} />
-                      <Bar dataKey="count" name="Aktivitäten">
-                        {topProjects.map((p, i) => (
-                          <Cell
-                            key={`tp-${p.id}`}
-                            fill={
-                              projectColor.get(p.id) ||
-                              fallbackBarColors[i % fallbackBarColors.length]
-                            }
-                          />
-                        ))}
-                        <LabelList dataKey="count" content={<ValueLabel />} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </>
+          <StatisticsPieChartCard
+            title={showAverage ? 'Ø Alterskohorten' : 'Alterskohorten'}
+            exportActions={renderChartExportActions(
+              'cohorts',
+              showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
             )}
-          </div>
+            cardClassName="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
+            bodyClassName={pdfMode ? 'h-72' : 'h-80 md:h-[23rem]'}
+            chartRef={setChartCardRef('cohorts')}
+            data={cohortPieData}
+            centerY={cohortPieCenterY}
+            outerRadius={cohortPieOuterRadius}
+            showAbsoluteValueLabels={isCohortsExporting}
+            createLabelRenderer={renderPieValueLabel}
+            formatValue={fmtNumber}
+            separatorColor={chartSeparatorColor}
+            tooltipContentStyle={chartTooltipContentStyle}
+            tooltipLabelStyle={chartTooltipLabelStyle}
+            tooltipItemStyle={chartTooltipItemStyle}
+            legendWrapperStyle={pieLegendWrapperStyle}
+            cellKeyPrefix="cohort"
+          />
+
+          <StatisticsBarChartCard
+            title="Top Kategorien"
+            exportActions={renderChartExportActions('top-categories', 'Top Kategorien')}
+            chartRef={setChartCardRef('top-categories')}
+            data={topCategoryChartData}
+            bodyClassName={pdfMode ? 'h-64' : 'h-80 md:h-[23rem]'}
+            margin={compactBarChartMarginWithBottom}
+            gridStroke={chartGridColor}
+            axisTick={chartAxisTick}
+            xAxisHeight={64}
+            yAxisAllowDecimals={false}
+            tooltipContentStyle={chartTooltipContentStyle}
+            tooltipLabelStyle={chartTooltipLabelStyle}
+            tooltipItemStyle={chartTooltipItemStyle}
+            tooltipCursor={barChartCursor}
+            tooltipFormatter={(value) => value.toLocaleString('de-DE')}
+            barDataKey="count"
+            labelDataKey="count"
+            barName="Aktivitäten"
+            valueLabelContent={<ValueLabel />}
+            getCellFill={(_item, index) => fallbackBarColors[index % fallbackBarColors.length]}
+            getCellKey={(_item, index) => `bc-${index}`}
+          />
+
+          <StatisticsBarChartCard
+            title="Top Tags"
+            exportActions={renderChartExportActions('top-tags', 'Top Tags')}
+            chartRef={setChartCardRef('top-tags')}
+            data={topTags}
+            bodyClassName="h-64"
+            margin={compactBarChartMargin}
+            gridStroke={chartGridColor}
+            axisTick={chartAxisTick}
+            xAxisHeight={50}
+            yAxisAllowDecimals={false}
+            tooltipContentStyle={chartTooltipContentStyle}
+            tooltipLabelStyle={chartTooltipLabelStyle}
+            tooltipItemStyle={chartTooltipItemStyle}
+            tooltipCursor={barChartCursor}
+            tooltipFormatter={(value) => value.toLocaleString('de-DE')}
+            barDataKey="count"
+            labelDataKey="count"
+            barName="Aktivitäten"
+            valueLabelContent={<ValueLabel />}
+            getCellFill={(item, index) =>
+              tagColor.get(item.id) || fallbackBarColors[index % fallbackBarColors.length]
+            }
+            getCellKey={(item) => `tt-${item.id}`}
+          />
+
+          {projectId ? (
+            <StatisticsBarChartCard
+              title="Top Tage"
+              exportActions={renderChartExportActions('top-days', 'Top Tage')}
+              chartRef={setChartCardRef('top-days')}
+              data={topDays}
+              bodyClassName="h-64"
+              margin={compactBarChartMargin}
+              gridStroke={chartGridColor}
+              axisTick={chartAxisTick}
+              xAxisHeight={50}
+              yAxisAllowDecimals={showAverage}
+              tooltipContentStyle={chartTooltipContentStyle}
+              tooltipLabelStyle={chartTooltipLabelStyle}
+              tooltipItemStyle={chartTooltipItemStyle}
+              tooltipCursor={barChartCursor}
+              tooltipFormatter={(value) =>
+                value.toLocaleString('de-DE', {
+                  maximumFractionDigits: showAverage ? 1 : 0,
+                })
+              }
+              tooltipLabelFormatter={(_label, payload) =>
+                `Wochentag: ${payload?.[0]?.payload?.fullName ?? '—'}`
+              }
+              barDataKey={showAverage ? 'chartValue' : 'count'}
+              labelDataKey={showAverage ? 'chartValue' : 'count'}
+              barName={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
+              barFill="#10b981"
+              valueLabelContent={<ValueLabel />}
+            />
+          ) : (
+            <StatisticsBarChartCard
+              title="Top Projekte"
+              exportActions={renderChartExportActions('top-projects', 'Top Projekte')}
+              chartRef={setChartCardRef('top-projects')}
+              data={topProjects}
+              bodyClassName="h-64"
+              margin={compactBarChartMargin}
+              gridStroke={chartGridColor}
+              axisTick={chartAxisTick}
+              xAxisHeight={50}
+              yAxisAllowDecimals={false}
+              tooltipContentStyle={chartTooltipContentStyle}
+              tooltipLabelStyle={chartTooltipLabelStyle}
+              tooltipItemStyle={chartTooltipItemStyle}
+              tooltipCursor={barChartCursor}
+              tooltipFormatter={(value) => value.toLocaleString('de-DE')}
+              barDataKey="count"
+              labelDataKey="count"
+              barName="Aktivitäten"
+              valueLabelContent={<ValueLabel />}
+              getCellFill={(item, index) =>
+                projectColor.get(item.id) || fallbackBarColors[index % fallbackBarColors.length]
+              }
+              getCellKey={(item) => `tp-${item.id}`}
+            />
+          )}
         </div>
 
         {/* Aktivitäten-Tabelle (nach Diagrammen) */}

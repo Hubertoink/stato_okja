@@ -169,7 +169,77 @@ export function getActivityCohortCounts(
   return cohortCounts;
 }
 
-export function toMinutes(hhmm?: string | null): number | undefined {
+export function getActivityFormStateFromActivity(
+  activity: Activity,
+  fallback?: { date?: string; projectId?: string; start?: string; end?: string },
+): ActivityFormState {
+  return {
+    date: (activity.date || fallback?.date || '').slice(0, 10) || undefined,
+    projectId: activity.projectId || activity.project?.id || fallback?.projectId || undefined,
+    locationId: activity.locationId || activity.location?.id || undefined,
+    start: activity.startTime || fallback?.start || undefined,
+    end: activity.endTime || fallback?.end || undefined,
+    executionStatus: activity.executionStatus || undefined,
+    title: activity.title || undefined,
+    categoryIds: (activity.categories || []).map((category) => category.id),
+    tagIds: (activity.tags || []).map((tag) => tag.id),
+    notes: activity.notes || undefined,
+    staffIds: (activity.staff || []).map((member) => member.id),
+    cohortCounts: getActivityCohortCounts(activity),
+  };
+}
+
+export function buildActivitySavePayload({
+  form,
+  selectedProject,
+  fallbackDate,
+  fallbackType,
+  durationMinutesOverride,
+}: {
+  form: ActivityFormState;
+  selectedProject?: Project;
+  fallbackDate?: string;
+  fallbackType?: Activity['type'];
+  durationMinutesOverride?: number | null;
+}): Partial<Activity> & Record<string, unknown> {
+  const cohortSums = getCohortSums(form.cohortCounts);
+  const startMinutes = toMinutes(form.start || selectedProject?.defaultStartTime || null);
+  const endMinutes = toMinutes(form.end || selectedProject?.defaultEndTime || null);
+  const computedDurationMinutes =
+    startMinutes !== undefined && endMinutes !== undefined && endMinutes >= startMinutes
+      ? endMinutes - startMinutes
+      : undefined;
+  const durationMinutes = durationMinutesOverride ?? computedDurationMinutes;
+  const isOpenDoor = selectedProject?.type === 'open_door';
+
+  return {
+    date: (form.date || fallbackDate || '').slice(0, 10),
+    startTime: form.start || null,
+    endTime: form.end || null,
+    executionStatus: form.executionStatus,
+    type: (selectedProject?.type as Activity['type'] | undefined) || fallbackType || 'project_open',
+    projectId: form.projectId,
+    ...(form.locationId ? { locationId: form.locationId } : {}),
+    title: form.title || null,
+    notes: form.notes || null,
+    categoryIds: isOpenDoor ? [] : form.categoryIds || [],
+    tagIds: form.tagIds || [],
+    staffIds: form.staffIds || [],
+    durationMinutes,
+    countMale: cohortSums.m,
+    countFemale: cohortSums.w,
+    countDiverse: cohortSums.d,
+    countTotal: cohortSums.m + cohortSums.w + cohortSums.d,
+    cohorts: Object.entries(form.cohortCounts || {}).map(([cohortId, genderCounts]) => ({
+      cohortId,
+      m: genderCounts.m || 0,
+      w: genderCounts.w || 0,
+      d: genderCounts.d || 0,
+    })),
+  };
+}
+
+function toMinutes(hhmm?: string | null): number | undefined {
   if (!hhmm) return undefined;
 
   const [hh, mm] = hhmm.split(':').map((value) => parseInt(value, 10));

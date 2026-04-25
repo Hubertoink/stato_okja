@@ -32,6 +32,42 @@ SWAGGER_ENABLED=false
 
 Der produktive Erststart einer leeren Datenbank ist streng: `SUPERADMIN_EMAIL` darf kein Platzhalter sein und `SUPERADMIN_PASSWORD` muss mindestens 12 Zeichen mit Grossbuchstaben, Kleinbuchstaben, Zahl und Sonderzeichen enthalten.
 
+## GitHub Schnellreferenz
+
+Die folgende Tabelle ist als praktische Referenz fuer GitHub Deployments gedacht, z. B. fuer Repository Variables, Environment Variables oder Secrets in GitHub Actions. Best Practice: alles mit Zugangsdaten, Tokens oder Passwoertern als Secret pflegen; reine Konfigurationswerte als Variable.
+
+| Variable | GitHub-Empfehlung | Erwartete Werte / Format | Beschreibung |
+| --- | --- | --- | --- |
+| `TZ` | Variable | z. B. `Europe/Berlin`, `UTC` | Zeitzone des Backend-Containers. Beeinflusst Logs und prozessnahe Zeitdarstellung; fuer deutsche Installationen meist `Europe/Berlin`. |
+| `DB_MIGRATIONS_RUN` | Variable | `true` oder `false` | Steuert, ob das Backend beim Start TypeORM-Migrationen automatisch ausfuehrt. Fuer reproduzierbare Deployments in Produktion normalerweise `true`. |
+| `PASSWORD_RESET_MODE` | Variable | `email`, `admin_temp_password` oder `hybrid` | Legt fest, wie Passwort-Resets funktionieren: per E-Mail, nur ueber temporaeres Admin-Passwort oder hybrid. |
+| `VITE_ENABLE_DEV_TOOLS` | Variable | `true` oder `false` | Frontend-Build-Flag, nicht vom Backend gelesen. Aktiviert nur das Dev-Tools-Menue im Frontend und sollte in Produktion normalerweise `false` sein. |
+| `APP_ENV` | Variable | typischerweise `development`, `staging` oder `production` | App-spezifischer Modus. `production` deaktiviert Dev- und Seed-Funktionen auch dann, wenn `NODE_ENV` abweichend gesetzt ist. |
+| `NODE_ENV` | Variable | typischerweise `development`, `test` oder `production` | Standard-Node-Runtime-Modus. `production` aktiviert produktionsnahe Defaults und strengere Sicherheitspruefungen. |
+| `PUBLIC_ORG_NAME` | Variable | Freitext, z. B. `Stadt Musterstadt` | Optionaler Organisationsname fuer Branding auf Login-Seite und Public Config. Kein Secret. |
+| `SUPERADMIN_EMAIL` | Variable | gueltige E-Mail-Adresse, z. B. `admin@example.org` | E-Mail-Adresse fuer den initialen Superadmin beim Erststart. Sollte bewusst gesetzt sein, ist aber typischerweise kein Secret. |
+| `AUTH_2FA_ENABLED` | Variable | `true` oder `false` | Aktiviert E-Mail-basierte Zwei-Faktor-Anmeldung. Nur sinnvoll, wenn SMTP korrekt konfiguriert ist. |
+| `AUTH_2FA_CODE_TTL` | Variable | Ganzzahl in Sekunden, z. B. `600` | Gueltigkeit des 2FA-Codes in Sekunden. Bestimmt, wie lange ein zugesandter Code genutzt werden kann. |
+| `DB_PASSWORD` | Secret | starkes Passwort als Freitextwert | Passwort der Datenbankverbindung des Backends. Muss geheim bleiben und sollte nie als normale Variable gepflegt werden. |
+| `JWT_SECRET` | Secret | langer zufaelliger String, mindestens 32 Zeichen | Zentrales Signatur-Secret fuer Auth-Tokens. Muss lang, zufaellig und stabil sein; Aenderungen machen bestehende Logins ungueltig. |
+| `DB_HOST` | Variable | Hostname oder DNS-Name, z. B. `postgres`, `db.example.com` | Hostname der Datenbank. In Docker Compose oft `postgres`, bei externer DB z. B. ein DNS-Name oder Hostname. |
+| `PORT` | Variable | Portnummer, meist `3000` | Interner Port, auf dem das NestJS-Backend lauscht. Meist `3000`, oft nur intern relevant. |
+| `DB_PORT` | Variable | Portnummer, meist `5432` | TCP-Port der Datenbank, bei Postgres standardmaessig `5432`. |
+| `DB_DATABASE` | Variable | Datenbankname, z. B. `stato_prod` | Name der Datenbank, mit der sich das Backend verbindet. |
+| `DB_USERNAME` | Variable | Benutzername, z. B. `stato_user` | Benutzername fuer die Datenbankverbindung des Backends. Kann als Variable gepflegt werden; nur das Passwort gehoert ins Secret. |
+| `DB_SYNCHRONIZE` | Variable | `true` oder `false` | Aktiviert TypeORM-Schema-Sync. Fuer Produktion Best Practice: `false`, damit stattdessen Migrationen genutzt werden. |
+| `DB_LOGGING` | Variable | `true` oder `false` | Schaltet SQL-Logging ein oder aus. In Produktion meist `false`, um Logs schlank und datensparsam zu halten. |
+| `API_PREFIX` | Variable | Pfadsegment ohne fuehrenden Slash, meist `api` | Globaler API-Prefix des Backends, typischerweise `api`, wodurch Endpoints unter `/api/...` erreichbar sind. |
+| `CORS_ORIGINS` | Variable | eine oder mehrere Origins, komma-separiert, z. B. `https://app.example.com` | Erlaubte Browser-Origins fuer CORS. Muss zur oeffentlichen Frontend-URL passen, sonst blockiert der Browser Requests. |
+| `APP_ORIGIN` | Variable | vollstaendige URL, z. B. `https://app.example.com` | Oeffentliche URL des Frontends. Wird fuer Links in Einladungen, Passwort-Resets und 2FA-Mails genutzt. |
+| `SMTP_HOST` | Variable | Hostname, z. B. `smtp.example.com`; optional leer | Hostname des SMTP-Servers. Wenn leer, versendet das Backend keine E-Mails und loggt bestimmte Links stattdessen lokal. |
+| `SMTP_PORT` | Variable | Portnummer, meist `587` oder `465` | Port des SMTP-Servers, meist `587` oder `465` je nach Setup. |
+| `SMTP_USER` | Variable oder Secret | Benutzername oder Mailadresse, z. B. `mailer@example.com` | SMTP-Benutzername. Wenn er intern sensibel ist, als Secret pflegen; technisch reicht oft auch eine Variable. |
+| `SMTP_PASS` | Secret | SMTP-Passwort als Freitextwert | Passwort fuer den SMTP-Zugang. Muss immer als Secret gepflegt werden. |
+| `SMTP_FROM` | Variable | gueltige Absenderadresse, z. B. `no-reply@example.com` | Absenderadresse fuer Invite-, Reset- und ggf. 2FA-Mails. Kein Secret, aber funktional wichtig fuer Mail-Zustellung. |
+
+Hinweis zu GitHub: `JWT_SECRET`, `DB_PASSWORD` und `SMTP_PASS` sollten immer Secrets sein. Reine Konfiguration wie `APP_ORIGIN`, `NODE_ENV` oder `DB_PORT` gehoert in Variables. Mischfaelle wie `SMTP_USER` haengen von eurem Sicherheitsmodell ab, sind aber haeufig noch als Variable vertretbar.
+
 ## Server und HTTP
 
 | Variable | Default | Beschreibung |

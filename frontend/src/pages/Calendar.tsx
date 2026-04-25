@@ -870,7 +870,7 @@ export default function Calendar() {
             ? `${ACTIVITY_EXECUTION_STATUS_SHORT_LABELS.cancelled} `
             : '';
           return (
-            <div key={i} className="group relative">
+            <div key={i} className="group/activity relative">
               <button
                 type="button"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -900,7 +900,7 @@ export default function Calendar() {
               </button>
               <button
                 type="button"
-                className="pointer-events-none absolute left-0.5 top-1/2 z-20 hidden h-4 w-4 -translate-y-1/2 items-center justify-center rounded bg-white/92 text-viridian shadow-sm opacity-0 ring-1 ring-black/10 transition-opacity md:flex md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100"
+                className="pointer-events-none absolute left-0.5 top-1/2 z-20 hidden h-4 w-4 -translate-y-1/2 items-center justify-center rounded bg-white/92 text-viridian shadow-sm opacity-0 ring-1 ring-black/10 transition-opacity md:flex md:group-hover/activity:pointer-events-auto md:group-hover/activity:opacity-100 md:group-focus-within/activity:pointer-events-auto md:group-focus-within/activity:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
                   setEdit(a);
@@ -945,7 +945,7 @@ export default function Calendar() {
           const d = a.countDiverse ?? 0;
           const hasImg = Boolean(a.project?.imageUrl);
           return (
-            <div key={i} className="group relative">
+            <div key={i} className="group/activity relative">
               <button
                 type="button"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -992,7 +992,7 @@ export default function Calendar() {
               </button>
               <button
                 type="button"
-                className="pointer-events-none absolute left-1 top-2 z-20 hidden h-5 w-5 items-center justify-center rounded bg-white/92 text-viridian shadow-sm opacity-0 ring-1 ring-black/10 transition-opacity md:flex md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100"
+                className="pointer-events-none absolute left-1 top-2 z-20 hidden h-5 w-5 items-center justify-center rounded bg-white/92 text-viridian shadow-sm opacity-0 ring-1 ring-black/10 transition-opacity md:flex md:group-hover/activity:pointer-events-auto md:group-hover/activity:opacity-100 md:group-focus-within/activity:pointer-events-auto md:group-focus-within/activity:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
                   setEdit(a);
@@ -1137,35 +1137,22 @@ export default function Calendar() {
                         : ''
                   }`}
                 >
-                  {/* Top row: Day number + Holiday badge inline */}
-                  <div className="mb-0.5 flex items-start justify-between gap-1">
-                    <div className="flex min-w-0 items-start gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openActivitiesForDate(iso);
-                        }}
-                        className={`calendar-day-number text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? 'calendar-day-number-other' : ''}`}
-                        title={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
-                        aria-label={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
-                      >
-                        {day.getDate()}
-                      </button>
-                      {hasHoliday && (
-                        <div
-                          className="calendar-holiday-badge px-1 py-[1px] rounded text-[9px] md:text-[10px] font-semibold border truncate max-w-[calc(100%-1.5rem)]"
-                          title={holidaysByDate
-                            .get(iso)!
-                            .map((h) => h.name)
-                            .join(', ')}
-                        >
-                          {holidaysByDate.get(iso)![0].name}
-                        </div>
-                      )}
-                    </div>
+                  {/* Top row: Day number + desktop actions overlay */}
+                  <div className="mb-0.5 flex items-start gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openActivitiesForDate(iso);
+                      }}
+                      className={`calendar-day-number text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? 'calendar-day-number-other' : ''}`}
+                      title={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
+                      aria-label={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
+                    >
+                      {day.getDate()}
+                    </button>
                     {!isMobile && (
-                      <div className="flex shrink-0 items-center gap-1">
+                      <div className="absolute right-1 top-1 z-10 flex items-center gap-1">
                         {effectiveOrgId && (
                           <button
                             type="button"
@@ -1195,6 +1182,17 @@ export default function Calendar() {
                       </div>
                     )}
                   </div>
+                  {hasHoliday && (
+                    <div
+                      className="calendar-holiday-badge mb-0.5 block w-full rounded px-1 py-[1px] text-[9px] md:text-[10px] font-semibold border truncate"
+                      title={holidaysByDate
+                        .get(iso)!
+                        .map((h) => h.name)
+                        .join(', ')}
+                    >
+                      {holidaysByDate.get(iso)![0].name}
+                    </div>
+                  )}
                   {/* School holiday band */}
                   {hasSchoolHoliday && (
                     <div

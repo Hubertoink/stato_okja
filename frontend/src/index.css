@@ -534,6 +534,18 @@ code {
   color: var(--viridian);
 }
 
+.org-tree-settings-button {
+  background: color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--accent-pink) 42%, var(--border-subtle));
+  color: color-mix(in srgb, var(--accent-pink) 84%, white 16%);
+}
+
+.org-tree-settings-button:hover {
+  background: color-mix(in srgb, var(--accent-pink) 22%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--accent-pink) 58%, var(--border-subtle));
+  color: color-mix(in srgb, var(--accent-pink) 92%, white 8%);
+}
+
 .org-tree-status-pill,
 .org-tree-count-pill,
 .taxonomy-context-pill {
@@ -599,26 +611,11 @@ code {
   background: color-mix(in srgb, var(--accent-pink) 16%, var(--surface-1));
 }
 
-.org-detail-panel {
-  background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
-}
-
-.org-detail-icon,
-.org-detail-stat,
-.org-detail-hint,
 .taxonomy-context-stat,
 .taxonomy-rule-summary-card,
 .taxonomy-rule-control {
   background: color-mix(in srgb, var(--surface-2) 82%, transparent);
   border: 1px solid var(--border-subtle);
-}
-
-.taxonomy-modal-hero {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--interactive-soft) 48%, var(--surface-1)) 0%,
-    color-mix(in srgb, var(--surface-1) 92%, transparent) 100%
-  );
 }
 
 .taxonomy-rule-summary-card {

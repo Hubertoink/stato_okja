@@ -59,7 +59,7 @@ export interface Cohort {
   canManage?: boolean;
 }
 
-export interface TaxonomyAccess {
+interface TaxonomyAccess {
   categories: { canCreateOwn: boolean };
   tags: { canCreateOwn: boolean };
   cohorts: { canCreateOwn: boolean };

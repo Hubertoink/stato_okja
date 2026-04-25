@@ -8,8 +8,8 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
+    "rootDir": "./src",
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
@@ -21,6 +21,8 @@
     "esModuleInterop": true
   },
   "exclude": [
+    "dist/**/*",
+    "node_modules/**/*",
     "test/**/*"
   ]
 }

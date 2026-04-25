@@ -6,7 +6,7 @@ export const PASSWORD_REQUIREMENTS_SHORT =
 
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$/;
 
-export type PasswordRequirementState = {
+type PasswordRequirementState = {
   id: 'length' | 'uppercase' | 'lowercase' | 'digit' | 'special';
   label: string;
   met: boolean;

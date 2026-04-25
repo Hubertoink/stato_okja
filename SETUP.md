@@ -215,14 +215,6 @@ cd frontend
 npm run test
 ```
 
-### E2E Tests
-
-```powershell
-# Backend Integration Tests
-cd backend
-npm run test:e2e
-```
-
 ---
 
 ## 🔧 Troubleshooting

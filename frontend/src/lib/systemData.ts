@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 
-export type SystemDataSummary = {
+type SystemDataSummary = {
   generatedAt: string;
   confirmationText: string;
   restoreConfirmationText: string;
@@ -16,17 +16,17 @@ export type SystemDataSummary = {
   tables: Array<{ tableName: string; rowCount: number }>;
 };
 
-export type SystemDataExport = {
+type SystemDataExport = {
   blob: Blob;
   filename: string;
 };
 
-export type PurgeSystemDataPayload = {
+type PurgeSystemDataPayload = {
   password: string;
   confirmationText: string;
 };
 
-export type PurgeSystemDataResult = {
+type PurgeSystemDataResult = {
   deletedTables: Array<{ tableName: string; deletedRows: number }>;
   deletedUsers: number;
   preservedSuperadmins: Array<{ id: string; email: string; name: string | null }>;
@@ -36,7 +36,7 @@ export type PurgeSystemDataResult = {
   warnings: string[];
 };
 
-export type SystemDataImportPreview = {
+type SystemDataImportPreview = {
   filename: string;
   generatedAt: string | null;
   generatedBy: { id?: string; name?: string | null; role?: string } | null;
@@ -53,13 +53,13 @@ export type SystemDataImportPreview = {
   warnings: string[];
 };
 
-export type ImportSystemDataPayload = {
+type ImportSystemDataPayload = {
   file: File;
   password: string;
   confirmationText: string;
 };
 
-export type ImportSystemDataResult = {
+type ImportSystemDataResult = {
   importedAt: string;
   filename: string;
   deletedTables: Array<{ tableName: string; deletedRows: number }>;

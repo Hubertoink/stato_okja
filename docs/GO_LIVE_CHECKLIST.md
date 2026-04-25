@@ -79,10 +79,8 @@ Persistente Volumes für Postgres-Daten unbedingt konfigurieren (Compose: `volum
 ## 7) Datenbank-Schema: Migrationen vs. Synchronize
 
 - Produktion: `DB_SYNCHRONIZE=false` setzen und Migrationen nutzen.
-- Erster Start: Entweder
-  1) Migrationen laufen lassen (`npm run migration:run` im Backend-Container), oder
-  2) Einmalig `DB_SYNCHRONIZE=true` zum Schemaaufbau setzen, danach wieder `false`.  
-     Empfohlen ist (1), da reproduzierbar.
+- Erster Start und Updates: `DB_MIGRATIONS_RUN=true` setzen, damit der Backend-Container Migrationen beim Start automatisch ausführt.
+- `DB_SYNCHRONIZE=true` ist nicht der empfohlene Produktionspfad, weil Migrationen dann absichtlich übersprungen werden.
 
 Superadmin: Beim Start sorgt die Auth-Initialisierung dafür, dass ein Superadmin existiert. Nach Go-Live das Standardpasswort umgehend ändern.
 

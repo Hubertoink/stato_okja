@@ -10,7 +10,7 @@ import {
 } from './authStorage';
 
 export type Role = 'superadmin' | 'org_admin' | 'user';
-export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean }
+interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean }
 
 type TwoFactorChallenge = {
   requiresTwoFactor: true;
@@ -191,9 +191,4 @@ export function useAuth() {
   const ctx = useContext(AuthCtx);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
-}
-
-export function useRequireRole(roles: Array<'superadmin' | 'org_admin' | 'user'>) {
-  const { user } = useAuth();
-  return !!user && roles.includes(user.role);
 }

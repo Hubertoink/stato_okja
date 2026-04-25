@@ -8,6 +8,9 @@ import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { OrgsService } from '../orgs/orgs.service';
 
+type ProjectWriteData = Partial<Project> & { categoryIds?: string[]; categoryId?: string | null };
+type ProjectAuditUser = { id?: string; name?: string | null; orgId?: string | null };
+
 @Injectable()
 export class ProjectsService {
   constructor(
@@ -22,6 +25,87 @@ export class ProjectsService {
   private normalizeProjectImage<T extends Pick<Project, 'imageUrl'>>(project: T): T {
     project.imageUrl = normalizeUploadPath(project.imageUrl);
     return project;
+  }
+
+  private normalizeClientRequestId(clientRequestId: unknown): string | null {
+    return typeof clientRequestId === 'string' && clientRequestId.trim().length > 0
+      ? clientRequestId.trim()
+      : null;
+  }
+
+  private resolveSingleCategoryId(
+    data: Partial<Project> & { categoryId?: string | null },
+    categoryIds?: string[],
+  ): string | null | undefined {
+    let categoryId: string | null | undefined = data.categoryId ?? undefined;
+    if (!categoryId && Array.isArray(categoryIds) && categoryIds.length) {
+      categoryId = categoryIds[0] || null;
+    }
+    return categoryId;
+  }
+
+  private normalizeProjectWriteData(data: ProjectWriteData): ProjectWriteData {
+    return {
+      ...data,
+      ...(Object.prototype.hasOwnProperty.call(data, 'imageUrl')
+        ? { imageUrl: normalizeUploadPath(data.imageUrl) }
+        : {}),
+    };
+  }
+
+  private clearProjectCategory(project: Project) {
+    project.categories = [];
+    project.categoryId = null;
+  }
+
+  private async applyProjectCategory(
+    project: Project,
+    categoryId: string | null | undefined,
+    options: { clearWhenEmpty?: boolean; clearWhenMissing?: boolean } = {},
+  ) {
+    if (typeof categoryId === 'string' && categoryId) {
+      await this.orgs.assertTaxonomyIdsVisibleForOrg((project.orgId ?? null) as string | null, 'categories', [categoryId]);
+      const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
+      if (category) {
+        project.categories = [category];
+        project.categoryId = category.id;
+      } else if (options.clearWhenMissing) {
+        this.clearProjectCategory(project);
+      }
+      return;
+    }
+
+    if (options.clearWhenEmpty) {
+      this.clearProjectCategory(project);
+    }
+  }
+
+  private isDuplicateClientRequestError(error: unknown, clientRequestId: string | null): boolean {
+    return Boolean(
+      clientRequestId &&
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: string }).code === '23505',
+    );
+  }
+
+  private async findByClientRequestId(clientRequestId: string): Promise<Project | null> {
+    const existing = await this.projectRepository.findOne({ where: { clientRequestId } });
+    return existing ? this.normalizeProjectImage(existing) : null;
+  }
+
+  private async saveProjectIdempotently(project: Project, clientRequestId: string | null): Promise<Project> {
+    try {
+      return await this.projectRepository.save(project);
+    } catch (error) {
+      if (clientRequestId && this.isDuplicateClientRequestError(error, clientRequestId)) {
+        const existing = await this.findByClientRequestId(clientRequestId);
+        if (existing) return existing;
+      }
+
+      throw error;
+    }
   }
 
   findAll(search?: string, archived?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Project[]> {
@@ -47,17 +131,14 @@ export class ProjectsService {
 
   async create(
     data: Partial<Project> & { categoryIds?: string[] },
-    user?: { id?: string; name?: string | null; orgId?: string | null },
+    user?: ProjectAuditUser,
   ): Promise<Project> {
     const { categoryIds, ...rest } = data;
-    const clientRequestId =
-      typeof rest.clientRequestId === 'string' && rest.clientRequestId.trim().length > 0
-        ? rest.clientRequestId.trim()
-        : null;
+    const clientRequestId = this.normalizeClientRequestId(rest.clientRequestId);
 
     if (clientRequestId) {
-      const existing = await this.projectRepository.findOne({ where: { clientRequestId } });
-      if (existing) return this.normalizeProjectImage(existing);
+      const existing = await this.findByClientRequestId(clientRequestId);
+      if (existing) return existing;
     }
 
     const project = this.projectRepository.create({
@@ -65,42 +146,13 @@ export class ProjectsService {
       clientRequestId,
       imageUrl: normalizeUploadPath(rest.imageUrl),
     });
-    // Enforce single category: prefer explicit categoryId, else take the first from categoryIds for backward compatibility
-    let singleCategoryId: string | undefined | null = (rest as Partial<Project> & { categoryId?: string | null }).categoryId ?? undefined;
-    if (!singleCategoryId && Array.isArray(categoryIds) && categoryIds.length) {
-      singleCategoryId = categoryIds[0];
-    }
-    if (singleCategoryId) {
-      await this.orgs.assertTaxonomyIdsVisibleForOrg((project.orgId ?? null) as string | null, 'categories', [singleCategoryId]);
-      const cat = await this.categoryRepository.findOne({ where: { id: singleCategoryId } });
-      if (cat) {
-        project.categories = [cat];
-        // Ensure column is in sync
-        (project as Partial<Project> & { categoryId?: string | null }).categoryId = cat.id;
-      }
-    } else if (Array.isArray(categoryIds) && categoryIds.length) {
-      // If provided but invalid, clear relation
-      project.categories = [];
-      (project as Partial<Project> & { categoryId?: string | null }).categoryId = null;
-    }
-    let saved: Project;
-    try {
-      saved = await this.projectRepository.save(project);
-    } catch (error) {
-      const isClientRequestDuplicate =
-        clientRequestId &&
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code?: string }).code === '23505';
 
-      if (isClientRequestDuplicate) {
-        const existing = await this.projectRepository.findOne({ where: { clientRequestId } });
-        if (existing) return this.normalizeProjectImage(existing);
-      }
+    const categoryId = this.resolveSingleCategoryId(rest, categoryIds);
+    await this.applyProjectCategory(project, categoryId, {
+      clearWhenEmpty: !categoryId && Array.isArray(categoryIds) && categoryIds.length > 0,
+    });
 
-      throw error;
-    }
+    let saved = await this.saveProjectIdempotently(project, clientRequestId);
 
     saved = this.normalizeProjectImage(saved);
     await this.audit.log({ action: AuditAction.CREATE, entityType: 'project', entityId: saved.id, entityTitle: saved.title || null, orgId: saved.orgId ?? null, user });
@@ -108,38 +160,18 @@ export class ProjectsService {
   }
 
   async update(id: string, data: Partial<Project> & { categoryIds?: string[] }): Promise<Project | null> {
-    const { categoryIds, ...rest } = data as Partial<Project> & { categoryIds?: string[] };
-    const normalizedRest = {
-      ...rest,
-      ...(Object.prototype.hasOwnProperty.call(rest, 'imageUrl')
-        ? { imageUrl: normalizeUploadPath(rest.imageUrl) }
-        : {}),
-    };
+    const { categoryIds, ...rest } = data as ProjectWriteData;
+    const normalizedRest = this.normalizeProjectWriteData(rest);
     await this.projectRepository.update(id, normalizedRest);
-    // Handle category mapping when either categoryId or legacy categoryIds are present
+
     if (Object.prototype.hasOwnProperty.call(data, 'categoryId') || Array.isArray(categoryIds)) {
       const proj = await this.projectRepository.findOne({ where: { id } });
       if (proj) {
-        // Determine desired single category
-        let desiredId: string | null | undefined = (data as Partial<Project> & { categoryId?: string | null }).categoryId;
-        if ((desiredId === undefined || desiredId === null || desiredId === '') && Array.isArray(categoryIds) && categoryIds.length) {
-          desiredId = categoryIds[0] || null;
-        }
-        if (typeof desiredId === 'string' && desiredId) {
-          await this.orgs.assertTaxonomyIdsVisibleForOrg((proj.orgId ?? null) as string | null, 'categories', [desiredId]);
-          const cat = await this.categoryRepository.findOne({ where: { id: desiredId } });
-          if (cat) {
-            proj.categories = [cat];
-            proj.categoryId = cat.id;
-          } else {
-            proj.categories = [];
-            proj.categoryId = null;
-          }
-        } else {
-          // Clear category when null/empty
-          proj.categories = [];
-          proj.categoryId = null;
-        }
+        const desiredId = this.resolveSingleCategoryId(data, categoryIds);
+        await this.applyProjectCategory(proj, desiredId, {
+          clearWhenEmpty: true,
+          clearWhenMissing: true,
+        });
         await this.projectRepository.save(proj);
       }
     }

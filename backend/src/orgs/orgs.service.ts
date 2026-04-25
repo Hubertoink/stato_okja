@@ -22,6 +22,7 @@ import { User } from '../users/entities/user.entity';
 const SUBTREE_CACHE_TTL_MS = 10_000;
 type SubtreeCacheEntry = { expiresAt: number; ids: string[] };
 type TaxonomyRecord = Category | Tag | Cohort;
+type TaxonomySettingMap<T> = Record<OrganizationTaxonomyType, T>;
 type NormalizedTaxonomySetting = { allowOwn: boolean; inheritedIds: string[]; inheritAll: boolean };
 type NormalizedChildTaxonomyDefaults = {
   categories: NormalizedTaxonomySetting;
@@ -45,9 +46,16 @@ type TaxonomyConfigPermissions = {
   canEditSelf: boolean;
   canEditChildDefaults: boolean;
 };
+type OrgTaxonomyConfigContext = {
+  orgs: Organization[];
+  orgMap: Map<string, Organization>;
+  org: Organization;
+  permissions: TaxonomyConfigPermissions;
+};
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
+const TAXONOMY_KINDS: OrganizationTaxonomyType[] = ['categories', 'tags', 'cohorts'];
 
 export interface VisibleTaxonomyMeta {
   sourceOrgId: string | null;
@@ -263,21 +271,8 @@ export class OrgsService {
       };
     }
 
-    let currentParentId = org.parentId ?? null;
-    while (currentParentId) {
-      const parent = orgMap.get(currentParentId);
-      if (!parent) break;
-      if (parent.childTaxonomyDefaults) {
-        const parentDefaults = this.normalizeChildTaxonomyDefaults(parent.childTaxonomyDefaults);
-        return {
-          setting: parentDefaults[kind],
-          mode: 'default',
-          sourceOrgId: parent.id,
-          sourceOrgName: parent.name,
-        };
-      }
-      currentParentId = parent.parentId ?? null;
-    }
+    const inheritedDefault = this.resolveInheritedTaxonomyDefault(kind, org, orgMap);
+    if (inheritedDefault) return inheritedDefault;
 
     return {
       setting: this.normalizeTaxonomySetting(undefined),
@@ -292,6 +287,22 @@ export class OrgsService {
     org: Organization,
     orgMap: Map<string, Organization>,
   ): ResolvedTaxonomySetting {
+    const inheritedDefault = this.resolveInheritedTaxonomyDefault(kind, org, orgMap);
+    if (inheritedDefault) return inheritedDefault;
+
+    return {
+      setting: this.normalizeTaxonomySetting(undefined),
+      mode: 'legacy',
+      sourceOrgId: null,
+      sourceOrgName: null,
+    };
+  }
+
+  private resolveInheritedTaxonomyDefault(
+    kind: OrganizationTaxonomyType,
+    org: Organization,
+    orgMap: Map<string, Organization>,
+  ): ResolvedTaxonomySetting | null {
     let currentParentId = org.parentId ?? null;
     while (currentParentId) {
       const parent = orgMap.get(currentParentId);
@@ -308,12 +319,7 @@ export class OrgsService {
       currentParentId = parent.parentId ?? null;
     }
 
-    return {
-      setting: this.normalizeTaxonomySetting(undefined),
-      mode: 'legacy',
-      sourceOrgId: null,
-      sourceOrgName: null,
-    };
+    return null;
   }
 
   private resolveVisibleTaxonomiesFromData<T extends TaxonomyRecord>(
@@ -412,6 +418,42 @@ export class OrgsService {
 
   async listVisibleCohortsForOrg(orgId?: string | null) {
     return this.listVisibleTaxonomiesForOrg('cohorts', orgId) as Promise<Array<Cohort & VisibleTaxonomyMeta>>;
+  }
+
+  private emptyTaxonomyIdSets(): TaxonomySettingMap<Set<string>> {
+    return {
+      categories: new Set<string>(),
+      tags: new Set<string>(),
+      cohorts: new Set<string>(),
+    };
+  }
+
+  private async getVisibleTaxonomyIdSets(orgId: string): Promise<TaxonomySettingMap<Set<string>>> {
+    const [categories, tags, cohorts] = await Promise.all([
+      this.listVisibleCategoriesForOrg(orgId),
+      this.listVisibleTagsForOrg(orgId),
+      this.listVisibleCohortsForOrg(orgId),
+    ]);
+
+    return {
+      categories: new Set(categories.map((item) => item.id)),
+      tags: new Set(tags.map((item) => item.id)),
+      cohorts: new Set(cohorts.map((item) => item.id)),
+    };
+  }
+
+  private assertInheritedTaxonomyIdsVisible(
+    settings: TaxonomySettingMap<NormalizedTaxonomySetting>,
+    visible: TaxonomySettingMap<Set<string>>,
+    messages: TaxonomySettingMap<string>,
+  ) {
+    for (const kind of TAXONOMY_KINDS) {
+      if (settings[kind].inheritAll) continue;
+
+      for (const id of settings[kind].inheritedIds) {
+        if (!visible[kind].has(id)) throw new BadRequestException(messages[kind]);
+      }
+    }
   }
 
   async getVisibleTaxonomyIdsForOrg(orgId: string | null, kind: OrganizationTaxonomyType): Promise<string[]> {
@@ -568,6 +610,23 @@ export class OrgsService {
     return { canView: false, canEditSelf: false, canEditChildDefaults: false };
   }
 
+  private async getTaxonomyConfigContext(
+    orgId: string,
+    actor: { role: string; orgId?: string | null },
+  ): Promise<OrgTaxonomyConfigContext> {
+    const orgs = await this.repo.find();
+    const orgMap = this.toOrgMap(orgs);
+    const org = orgMap.get(orgId);
+    if (!org) throw new BadRequestException('Organisation nicht gefunden');
+
+    const permissions = this.getTaxonomyConfigPermissions(org, actor, orgMap);
+    if (!permissions.canView) {
+      throw new ForbiddenException('Org-Admins können nur die eigene Organisation und direkte Unterorganisationen konfigurieren');
+    }
+
+    return { orgs, orgMap, org, permissions };
+  }
+
   findAll() { return this.repo.find(); }
 
   async create(name: string, parentId?: string | null) {
@@ -615,15 +674,7 @@ export class OrgsService {
     orgId: string,
     actor: { role: string; orgId?: string | null },
   ): Promise<OrgTaxonomySettingsSnapshot> {
-    const orgs = await this.repo.find();
-    const orgMap = this.toOrgMap(orgs);
-    const org = orgMap.get(orgId);
-    if (!org) throw new BadRequestException('Organisation nicht gefunden');
-
-    const permissions = this.getTaxonomyConfigPermissions(org, actor, orgMap);
-    if (!permissions.canView) {
-      throw new ForbiddenException('Org-Admins können nur die eigene Organisation und direkte Unterorganisationen konfigurieren');
-    }
+    const { orgs, orgMap, org, permissions } = await this.getTaxonomyConfigContext(orgId, actor);
 
     const parent = org.parentId ? orgMap.get(org.parentId) : null;
     const ownAdminPolicy = this.resolveOwnAdminPolicyForOrg(org, orgMap);
@@ -697,15 +748,7 @@ export class OrgsService {
     payload: OrganizationTaxonomySettingsUpdatePayload,
     actor: { role: string; orgId?: string | null },
   ): Promise<OrgTaxonomySettingsSnapshot> {
-    const orgs = await this.repo.find();
-    const orgMap = this.toOrgMap(orgs);
-    const org = orgMap.get(orgId);
-    if (!org) throw new BadRequestException('Organisation nicht gefunden');
-
-    const permissions = this.getTaxonomyConfigPermissions(org, actor, orgMap);
-    if (!permissions.canView) {
-      throw new ForbiddenException('Org-Admins können nur die eigene Organisation und direkte Unterorganisationen konfigurieren');
-    }
+    const { org, permissions } = await this.getTaxonomyConfigContext(orgId, actor);
     if (typeof payload.settings !== 'undefined' && !permissions.canEditSelf) {
       throw new ForbiddenException('Die übergeordnete Organisation hat Änderungen an den Vererbungsregeln für diese Organisation gesperrt');
     }
@@ -727,32 +770,14 @@ export class OrgsService {
           : normalized;
 
         const parentVisible = org.parentId
-          ? {
-              categories: new Set((await this.listVisibleCategoriesForOrg(org.parentId)).map((item) => item.id)),
-              tags: new Set((await this.listVisibleTagsForOrg(org.parentId)).map((item) => item.id)),
-              cohorts: new Set((await this.listVisibleCohortsForOrg(org.parentId)).map((item) => item.id)),
-            }
-          : {
-              categories: new Set<string>(),
-              tags: new Set<string>(),
-              cohorts: new Set<string>(),
-            };
+          ? await this.getVisibleTaxonomyIdSets(org.parentId)
+          : this.emptyTaxonomyIdSets();
 
-        if (!normalizedSettings.categories.inheritAll) {
-          for (const id of normalizedSettings.categories.inheritedIds) {
-            if (!parentVisible.categories.has(id)) throw new BadRequestException('Ungültige Kategorien-Vererbung');
-          }
-        }
-        if (!normalizedSettings.tags.inheritAll) {
-          for (const id of normalizedSettings.tags.inheritedIds) {
-            if (!parentVisible.tags.has(id)) throw new BadRequestException('Ungültige Tags-Vererbung');
-          }
-        }
-        if (!normalizedSettings.cohorts.inheritAll) {
-          for (const id of normalizedSettings.cohorts.inheritedIds) {
-            if (!parentVisible.cohorts.has(id)) throw new BadRequestException('Ungültige Kohorten-Vererbung');
-          }
-        }
+        this.assertInheritedTaxonomyIdsVisible(normalizedSettings, parentVisible, {
+          categories: 'Ungültige Kategorien-Vererbung',
+          tags: 'Ungültige Tags-Vererbung',
+          cohorts: 'Ungültige Kohorten-Vererbung',
+        });
 
         org.taxonomySettings = normalizedSettings;
       }
@@ -763,27 +788,13 @@ export class OrgsService {
         org.childTaxonomyDefaults = null;
       } else {
         const normalizedChildDefaults = this.normalizeChildTaxonomyDefaults(payload.childDefaults);
-        const ownVisible = {
-          categories: new Set((await this.listVisibleCategoriesForOrg(org.id)).map((item) => item.id)),
-          tags: new Set((await this.listVisibleTagsForOrg(org.id)).map((item) => item.id)),
-          cohorts: new Set((await this.listVisibleCohortsForOrg(org.id)).map((item) => item.id)),
-        };
+        const ownVisible = await this.getVisibleTaxonomyIdSets(org.id);
 
-        if (!normalizedChildDefaults.categories.inheritAll) {
-          for (const id of normalizedChildDefaults.categories.inheritedIds) {
-            if (!ownVisible.categories.has(id)) throw new BadRequestException('Ungültige Kategorien-Standardvererbung');
-          }
-        }
-        if (!normalizedChildDefaults.tags.inheritAll) {
-          for (const id of normalizedChildDefaults.tags.inheritedIds) {
-            if (!ownVisible.tags.has(id)) throw new BadRequestException('Ungültige Tags-Standardvererbung');
-          }
-        }
-        if (!normalizedChildDefaults.cohorts.inheritAll) {
-          for (const id of normalizedChildDefaults.cohorts.inheritedIds) {
-            if (!ownVisible.cohorts.has(id)) throw new BadRequestException('Ungültige Kohorten-Standardvererbung');
-          }
-        }
+        this.assertInheritedTaxonomyIdsVisible(normalizedChildDefaults, ownVisible, {
+          categories: 'Ungültige Kategorien-Standardvererbung',
+          tags: 'Ungültige Tags-Standardvererbung',
+          cohorts: 'Ungültige Kohorten-Standardvererbung',
+        });
 
         org.childTaxonomyDefaults = normalizedChildDefaults;
       }

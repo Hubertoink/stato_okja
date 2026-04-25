@@ -2,7 +2,7 @@ import { Column, Entity, OneToMany, PrimaryGeneratedColumn, ManyToOne, JoinColum
 import type { User } from '../../users/entities/user.entity';
 
 // Öffnungszeiten pro Wochentag
-export interface DayOpeningHours {
+interface DayOpeningHours {
   open: boolean;
   from?: string; // HH:mm format
   to?: string;   // HH:mm format

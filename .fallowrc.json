@@ -1,0 +1,53 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "backend/src/main.ts",
+    "backend/src/config/typeorm.config.ts",
+    "backend/src/database/seeds/quick-seed.ts",
+    "backend/src/database/seeds/run-seed.ts",
+    "frontend/src/main.tsx"
+  ],
+  "ignorePatterns": [
+    "backend/src/database/migrations/**"
+  ],
+  "ignoreDependencies": [
+    "class-transformer",
+    "passport",
+    "rxjs",
+    "sharp",
+    "sql.js",
+    "typeorm-sqljs",
+    "@nestjs/schematics",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser",
+    "autoprefixer",
+    "eslint-config-prettier",
+    "eslint-plugin-prettier",
+    "tsconfig-paths"
+  ],
+  "workspaces": {
+    "patterns": [
+      "backend",
+      "frontend"
+    ]
+  },
+  "duplicates": {
+    "ignore": [
+      "backend/src/database/migrations/**",
+      "backend/src/**/*.spec.ts",
+      "backend/test/**"
+    ],
+    "ignoreImports": true
+  },
+  "health": {
+    "ignore": [
+      "backend/src/database/migrations/**",
+      "backend/src/database/seeds/**"
+    ]
+  },
+  "rules": {
+    "unused-dev-dependencies": "warn",
+    "type-only-dependencies": "warn",
+    "test-only-dependencies": "warn"
+  }
+}

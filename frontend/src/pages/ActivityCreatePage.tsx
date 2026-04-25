@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { X as XIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
-import { useCreateActivity, type Activity } from '@/lib/activities';
+import { useCreateActivity } from '@/lib/activities';
 import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
 import { useProjects, type Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
@@ -23,6 +23,7 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import {
   type ActivityFormState,
   FieldInfoHint,
+  buildActivitySavePayload,
   type GenderKey,
   getCohortSums,
   getProjectCategoryIds,
@@ -30,7 +31,6 @@ import {
   getStaffGroupMembers,
   getWeekdayLabel,
   mergeProjectStaffIds,
-  toMinutes,
 } from './activityEditorShared';
 
 export default function ActivityCreatePage() {
@@ -68,7 +68,6 @@ export default function ActivityCreatePage() {
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
-  const isOpenDoor = selectedProject?.type === 'open_door';
   const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
   const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
   const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
@@ -139,41 +138,13 @@ export default function ActivityCreatePage() {
       setErrorOpen('Bitte ein Projekt wählen.');
       return;
     }
-    const cohortSums: Record<GenderKey, number> = { m: 0, w: 0, d: 0 };
-    Object.values(form.cohortCounts || {}).forEach((e) => {
-      cohortSums.m += e.m || 0;
-      cohortSums.w += e.w || 0;
-      cohortSums.d += e.d || 0;
+    const payload = buildActivitySavePayload({
+      form: {
+        ...form,
+        executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+      },
+      selectedProject,
     });
-    const startM = toMinutes(form.start || selectedProject?.defaultStartTime || null);
-    const endM = toMinutes(form.end || selectedProject?.defaultEndTime || null);
-    const durationMinutes =
-      startM !== undefined && endM !== undefined && endM >= startM ? endM - startM : undefined;
-    const payload: Partial<Activity> & Record<string, unknown> = {
-      date: (form.date || '').slice(0, 10),
-      startTime: form.start || null,
-      endTime: form.end || null,
-      executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-      type: (selectedProject?.type as Activity['type']) || 'project_open',
-      projectId: form.projectId,
-      ...(form.locationId ? { locationId: form.locationId } : {}),
-      title: form.title || null,
-      notes: form.notes || null,
-      categoryIds: isOpenDoor ? [] : form.categoryIds || [],
-      tagIds: form.tagIds || [],
-      staffIds: form.staffIds || [],
-      durationMinutes,
-      countMale: cohortSums.m,
-      countFemale: cohortSums.w,
-      countDiverse: cohortSums.d,
-      countTotal: cohortSums.m + cohortSums.w + cohortSums.d,
-      cohorts: Object.entries(form.cohortCounts || {}).map(([cohortId, gcounts]) => ({
-        cohortId,
-        m: (gcounts as { m: number; w: number; d: number }).m || 0,
-        w: (gcounts as { m: number; w: number; d: number }).w || 0,
-        d: (gcounts as { m: number; w: number; d: number }).d || 0,
-      })),
-    };
     submitLockedRef.current = true;
     create.mutate(payload, {
       onSuccess: () => {

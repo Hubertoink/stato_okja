@@ -7,10 +7,12 @@ import {
   Calendar as CalendarIcon,
   Boxes,
   UserCircle2,
+  Building2,
+  GitBranch,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -23,6 +25,34 @@ import { ImprintModal } from '@/components/LegalModals';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
+
+type OrgScopeTreeNode = { org: OrgDto; children: OrgScopeTreeNode[] };
+
+function buildOrgScopeTree(orgs: OrgDto[]): OrgScopeTreeNode[] {
+  const byId = new Map(orgs.map((org) => [org.id, { org, children: [] as OrgScopeTreeNode[] }]));
+  const roots: OrgScopeTreeNode[] = [];
+
+  for (const node of byId.values()) {
+    const parent = node.org.parentId ? byId.get(node.org.parentId) : undefined;
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+  }
+
+  const sortTree = (nodes: OrgScopeTreeNode[]) => {
+    nodes.sort((left, right) => left.org.name.localeCompare(right.org.name, 'de'));
+    nodes.forEach((node) => sortTree(node.children));
+  };
+  sortTree(roots);
+
+  return roots;
+}
+
+function flattenOrgScopeTree(nodes: OrgScopeTreeNode[], depth = 0): Array<{ org: OrgDto; depth: number }> {
+  return nodes.flatMap((node) => [
+    { org: node.org, depth },
+    ...flattenOrgScopeTree(node.children, depth + 1),
+  ]);
+}
 
 export default function Layout() {
   const location = useLocation();
@@ -113,6 +143,7 @@ export default function Layout() {
   const [parentForNewOrg, setParentForNewOrg] = useState<string | 'root' | ''>('');
   const isSuperadmin = user?.role === 'superadmin';
   const fixedParentOrgName = orgList.find((o) => o.id === user?.orgId)?.name || user?.orgName || 'Eigene Organisation';
+  const scopeOrgRows = useMemo(() => flattenOrgScopeTree(buildOrgScopeTree(orgList)), [orgList]);
   const keyboardOpen = useKeyboardOpen();
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
@@ -758,31 +789,45 @@ export default function Layout() {
       >
         <div className="space-y-3">
           {user?.role === 'superadmin' && (
-            <div className="flex items-center justify-between p-2 border rounded">
-              <label className="flex items-center gap-2 text-sm">
+            <div className={`org-scope-option rounded-lg ${pendingScope === null ? 'org-scope-option-active' : ''}`}>
+              <label className="flex w-full cursor-pointer items-center gap-3 text-sm">
                 <input
                   type="radio"
                   name="orgscope"
                   checked={pendingScope === null}
                   onChange={() => setPendingScope(null)}
+                  className="h-4 w-4 shrink-0"
                 />
-                <span>Superadmin Bereich (ohne Orga-Daten)</span>
+                <span className="org-scope-icon-shell">
+                  <Settings className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1 font-medium">Superadmin Bereich (ohne Orga-Daten)</span>
               </label>
             </div>
           )}
-          <div className="max-h-64 overflow-auto border rounded">
-            <ul>
+          <div className="max-h-72 overflow-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)]">
+            <ul className="divide-y divide-[var(--border-subtle)]">
               {/* For non-superadmin, limit to subtree visually; backend enforces anyway */}
-              {orgList.map((o) => (
-                <li key={o.id}>
-                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+              {scopeOrgRows.map(({ org, depth }) => (
+                <li key={org.id}>
+                  <label
+                    className={`org-scope-option flex cursor-pointer items-center gap-3 text-sm ${pendingScope === org.id ? 'org-scope-option-active' : ''}`}
+                    style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}
+                  >
                     <input
                       type="radio"
                       name="orgscope"
-                      checked={pendingScope === o.id}
-                      onChange={() => setPendingScope(o.id)}
+                      checked={pendingScope === org.id}
+                      onChange={() => setPendingScope(org.id)}
+                      className="h-4 w-4 shrink-0"
                     />
-                    <span className="truncate">{o.name}</span>
+                    <span className="org-scope-icon-shell">
+                      {depth === 0 ? <Building2 className="h-4 w-4" /> : <GitBranch className="h-4 w-4" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{org.name}</span>
+                      <span className="org-scope-depth-label">{depth === 0 ? 'Root' : `Ebene ${depth}`}</span>
+                    </span>
                   </label>
                 </li>
               ))}

@@ -116,8 +116,8 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 
 ### Frischer Erststart / Schema-Bootstrap
 
-- `DB_SYNCHRONIZE`: für eine leere On-Prem-Datenbank aktuell auf `true` setzen
-- `DB_MIGRATIONS_RUN`: kann gesetzt bleiben; bei `DB_SYNCHRONIZE=true` werden Migrationen im Backend automatisch übersprungen
+- `DB_SYNCHRONIZE`: im produktiven On-Prem-Betrieb auf `false` lassen
+- `DB_MIGRATIONS_RUN`: auf `true` setzen, damit das Backend Migrationen beim Container-Start ausführt
 - `DB_LOGGING`: optional, für produktionsnahe On-Prem-Instanzen meist `false`
 - `RATE_LIMIT_TTL`: Zeitfenster für das globale Backend-Rate-Limit in Sekunden, Standard `60`
 - `RATE_LIMIT_MAX`: maximale Requests pro Client-IP innerhalb des Zeitfensters, Standard `100`
@@ -207,7 +207,7 @@ Zusätzlich bei `ENABLE_ORG_MOVE`:
 ```env
 POSTGRES_DB=stato_prod
 POSTGRES_USER=stato_user
-POSTGRES_PASSWORD=CHANGE_ME_STRONG
+POSTGRES_PASSWORD=CHANGE_ME_DB_PASSWORD_2026!
 
 APP_ORIGIN=https://stato.kommune.local
 CORS_ORIGINS=https://stato.kommune.local
@@ -216,9 +216,15 @@ TRUST_PROXY=true
 
 JWT_SECRET=CHANGE_ME_SUPER_LONG_RANDOM_STRING
 JWT_ACCESS_EXPIRATION=12h
-DB_SYNCHRONIZE=true
+INVITE_TOKEN_EXPIRATION=7d
+RESET_TOKEN_EXPIRATION=1h
+AUTH_2FA_ENABLED=false
+AUTH_2FA_CODE_TTL=600
+DB_SYNCHRONIZE=false
 DB_MIGRATIONS_RUN=true
 DB_LOGGING=false
+STRICT_SECURITY_MODE=true
+SWAGGER_ENABLED=false
 RATE_LIMIT_TTL=60
 RATE_LIMIT_MAX=100
 AUTH_RATE_LIMIT_TTL=60
@@ -230,7 +236,7 @@ ENABLE_ORG_MOVE=false
 PASSWORD_RESET_MODE=admin_temp_password
 
 SUPERADMIN_EMAIL=admin@kommune.local
-SUPERADMIN_PASSWORD=CHANGE_ME_STRONG
+SUPERADMIN_PASSWORD=CHANGE_ME_STRONG_2026!
 SUPERADMIN_EMAIL_FORCE=false
 SUPERADMIN_PASSWORD_FORCE=false
 
@@ -292,46 +298,16 @@ Beispiel:
 - `http://<server-ip>` oder
 - `https://<eure-domain>` wenn davor ein TLS-Proxy oder Load Balancer läuft
 
-## Schritt 6: Datenbank-Migrationen ausführen
+## Schritt 6: Datenbank-Migrationen prüfen
 
-Für einen funktionierenden Produktionsstart müssen die Migrationen gegen die neue Datenbank gelaufen sein.
+Im On-Prem-Compose ist der empfohlene Produktionspfad bereits voreingestellt:
 
-Wichtig:
+- `DB_SYNCHRONIZE=false`
+- `DB_MIGRATIONS_RUN=true`
 
-- Wenn der Backend-Container mit `NODE_ENV=development` läuft, werden Migrationen standardmäßig **nicht** automatisch ausgeführt. Setze in diesem Fall `DB_MIGRATIONS_RUN=true`.
-- Wenn `DB_SYNCHRONIZE=true` gesetzt ist, werden Migrationen im aktuellen Backend absichtlich **übersprungen**.
-- Für den produktiven Migrationspfad muss also gelten: `DB_MIGRATIONS_RUN=true` und `DB_SYNCHRONIZE=false`.
+Damit führt der Backend-Container Migrationen beim Start automatisch aus. Prüfe nach dem Start die Backend-Logs; dort erscheinen Migrations- oder Datenbankfehler, falls das Schema nicht angelegt werden konnte.
 
-Es gibt dafür zwei praktikable Wege.
-
-### Variante A: direkt auf dem Server mit Node.js
-
-Wenn auf dem Server Node.js verfügbar ist:
-
-```bash
-cd backend
-npm ci
-npm run migration:run
-```
-
-Danach zurück ins Repo-Root und den Stack starten oder neu starten.
-
-### Variante B: One-shot Node-Container
-
-Wenn auf dem Server kein Node lokal installiert werden soll:
-
-```bash
-docker run --rm -it \
-  --network stato-onprem \
-  -v "$PWD/backend:/app" \
-  -w /app \
-  node:20-alpine sh -lc "npm ci && npm run migration:run"
-```
-
-Hinweise:
-
-- Das Netzwerk `stato-onprem` wird von [docker-compose.onprem.yml](../docker-compose.onprem.yml) angelegt.
-- Postgres muss dafür bereits laufen.
+Manuelle Migrationen sind nur für Sonderfälle nötig, etwa wenn ein separates Deployment-System die Datenbank vor dem Backend-Start aktualisiert. Dann muss dieselbe Datenbank-Konfiguration aus `.env.onprem` verwendet werden.
 
 ## Schritt 7: Login testen
 
@@ -486,13 +462,7 @@ git pull
 docker compose -f docker-compose.onprem.yml --env-file .env.onprem up -d --build
 ```
 
-Danach, falls Migrationen vorhanden sind, erneut:
-
-```bash
-cd backend
-npm ci
-npm run migration:run
-```
+Danach die Backend-Logs prüfen. Mit `DB_MIGRATIONS_RUN=true` und `DB_SYNCHRONIZE=false` führt der Backend-Container neue Migrationen beim Start automatisch aus.
 
 ## Backup-Empfehlung
 
@@ -567,7 +537,7 @@ Für einen eigenen On-Prem-Rechner ist der einfachste und sauberste Weg:
 1. [docker-compose.onprem.yml](../docker-compose.onprem.yml) nutzen
 2. `.env.onprem` sauber ausfüllen
 3. mit `docker compose ... up -d --build` starten
-4. Migrationen ausführen
+4. Backend-Logs prüfen, damit automatische Migrationen erfolgreich gelaufen sind
 5. nur das Frontend nach außen freigeben
 6. HTTPS davor setzen
 

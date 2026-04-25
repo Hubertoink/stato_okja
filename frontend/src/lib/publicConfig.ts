@@ -1,7 +1,7 @@
 import { api } from './api';
 import { useQuery } from '@tanstack/react-query';
 
-export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
+type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
 export type AdminResetActionMode = 'email' | 'temporary_password';
 
 export interface PublicConfig {

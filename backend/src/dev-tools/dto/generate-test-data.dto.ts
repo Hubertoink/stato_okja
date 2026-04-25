@@ -1,6 +1,6 @@
 import { IsBoolean, IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 
-export const TEST_DATA_PRESETS = ['small', 'realistic', 'large'] as const;
+const TEST_DATA_PRESETS = ['small', 'realistic', 'large'] as const;
 
 export type TestDataPreset = (typeof TEST_DATA_PRESETS)[number];
 

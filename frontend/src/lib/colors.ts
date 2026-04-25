@@ -1,5 +1,5 @@
 // Central color mapping for activity types
-export const TYPE_COLORS: Record<string, string> = {
+const TYPE_COLORS: Record<string, string> = {
   open_door: '#2563eb',       // blue
   project_open: '#10b981',    // emerald/green
   project_closed: '#8b5cf6',  // violet
@@ -19,7 +19,7 @@ export function translucent(hexColor: string, alphaHex = '33'): string {
 }
 
 // Shared palette used when hashing a string to a stable color
-export const HASH_PALETTE = [
+const HASH_PALETTE = [
   '#2563eb', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#22c55e', '#eab308', '#0ea5e9', '#a855f7',
 ];
 

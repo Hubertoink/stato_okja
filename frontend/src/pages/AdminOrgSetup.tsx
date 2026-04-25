@@ -19,6 +19,7 @@ import {
 } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useOrgScope } from '@/lib/orgScope';
 import { canAccessOrgMove } from '@/lib/orgMoveConfig';
 import { Link as LinkIcon, Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users, Settings2, ArrowRightLeft, CheckCircle2, Ban, GitBranch, Save as SaveIcon, X as XIcon } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
@@ -756,6 +757,7 @@ function MoveImpactList({ title, items }: { title: string; items: OrgMoveImpactI
 
 export default function AdminOrgSetup() {
   const { user } = useAuth();
+  const { scope } = useOrgScope();
   const { showToast } = useToast();
   const qc = useQueryClient();
   const [orgs, setOrgs] = useState<OrgDto[]>([]);
@@ -796,9 +798,11 @@ export default function AdminOrgSetup() {
   useEffect(() => {
     setSelectedOrgId((current) => {
       if (current && orgs.some((org) => org.id === current)) return current;
+      if (typeof scope === 'string' && orgs.some((org) => org.id === scope)) return scope;
+      if (user?.orgId && orgs.some((org) => org.id === user.orgId)) return user.orgId;
       return orgs[0]?.id ?? null;
     });
-  }, [orgs]);
+  }, [orgs, scope, user?.orgId]);
 
   async function invalidateTaxonomyQueriesForOrgTree(rootOrgId: string) {
     const rootOrg = orgs.find((candidate) => candidate.id === rootOrgId);
@@ -863,43 +867,11 @@ export default function AdminOrgSetup() {
     () => orgs.find((candidate) => candidate.id === selectedOrgId) || orgs[0] || null,
     [orgs, selectedOrgId],
   );
-  const selectedParent = useMemo(
-    () => selectedOrg?.parentId ? orgs.find((candidate) => candidate.id === selectedOrg.parentId) || null : null,
-    [orgs, selectedOrg],
-  );
-  const selectedChildren = useMemo(
-    () => selectedOrg ? orgs.filter((candidate) => candidate.parentId === selectedOrg.id) : [],
-    [orgs, selectedOrg],
-  );
-  const selectedDescendantCount = useMemo(() => {
-    if (!selectedOrg) return 0;
-    if (selectedOrg.path) {
-      return orgs.filter((candidate) => candidate.id !== selectedOrg.id && (candidate.path || '').startsWith(`${selectedOrg.path}/`)).length;
-    }
-
-    const childrenByParent = new Map<string, string[]>();
-    for (const org of orgs) {
-      if (!org.parentId) continue;
-      const siblings = childrenByParent.get(org.parentId) || [];
-      siblings.push(org.id);
-      childrenByParent.set(org.parentId, siblings);
-    }
-
-    let count = 0;
-    const queue = [...(childrenByParent.get(selectedOrg.id) || [])];
-    while (queue.length > 0) {
-      const current = queue.shift();
-      if (!current) continue;
-      count += 1;
-      queue.push(...(childrenByParent.get(current) || []));
-    }
-    return count;
-  }, [orgs, selectedOrg]);
-  const selectedDepth = selectedOrg?.path ? Math.max(0, selectedOrg.path.split('/').length - 1) : 0;
-  const canConfigureSelectedTaxonomy = !!selectedOrg && !!user && (
-    user.role === 'superadmin' ||
-    (user.role === 'org_admin' && (selectedOrg.id === user.orgId || selectedOrg.parentId === user.orgId))
-  );
+  const highlightedOrgId = useMemo(() => {
+    if (typeof scope === 'string' && orgs.some((candidate) => candidate.id === scope)) return scope;
+    if (user?.orgId && orgs.some((candidate) => candidate.id === user.orgId)) return user.orgId;
+    return selectedOrg?.id ?? null;
+  }, [orgs, scope, selectedOrg?.id, user?.orgId]);
 
   const resetCreateForm = () => {
     setOrgName('');
@@ -963,7 +935,7 @@ export default function AdminOrgSetup() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="grid grid-cols-1 gap-4">
         {/* Organisations-Liste */}
         <div className="org-admin-card rounded-lg shadow">
           <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
@@ -971,7 +943,7 @@ export default function AdminOrgSetup() {
               <h3 className="font-semibold text-[var(--text-primary)]">Bestehende Organisationen</h3>
               <span className="text-xs text-[var(--text-muted)]">{orgs.length} Organisation{orgs.length !== 1 ? 'en' : ''}</span>
             </div>
-            <p className="text-xs text-[var(--text-muted)] mt-1">Wähle eine Organisation aus; Regeln und Details erscheinen rechts.</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">Wähle eine Organisation im Baum, um Benutzer zu öffnen oder Vererbungsregeln direkt zu bearbeiten.</p>
           </div>
           
           <div className="p-2">
@@ -1004,7 +976,7 @@ export default function AdminOrgSetup() {
                     node={n}
                     depth={0}
                     allOrgs={orgs}
-                    selectedOrgId={selectedOrg?.id ?? null}
+                    selectedOrgId={highlightedOrgId}
                     onSelectOrg={(nextOrg) => setSelectedOrgId(nextOrg.id)}
                     onMoved={reloadOrgs}
                     onOpenSettings={(nextOrg) => {
@@ -1017,71 +989,6 @@ export default function AdminOrgSetup() {
             )}
           </div>
         </div>
-
-        <aside className="org-admin-card org-detail-panel rounded-lg p-4 shadow xl:sticky xl:top-4 xl:h-fit">
-          <div className="flex items-start gap-3">
-            <div className="org-detail-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">Ausgewählte Organisation</div>
-              <h3 className="mt-1 truncate text-lg font-bold text-[var(--text-primary)]">
-                {selectedOrg?.name || 'Keine Organisation'}
-              </h3>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                {selectedParent ? `Unterorganisation von ${selectedParent.name}` : selectedOrg ? 'Oberste Organisation' : 'Noch keine Auswahl'}
-              </p>
-            </div>
-          </div>
-
-          {selectedOrg ? (
-            <>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div className="org-detail-stat rounded-lg px-2 py-2">
-                  <div className="font-bold text-[var(--text-primary)]">{selectedDepth}</div>
-                  <div className="text-[11px] text-[var(--text-muted)]">Ebene</div>
-                </div>
-                <div className="org-detail-stat rounded-lg px-2 py-2">
-                  <div className="font-bold text-[var(--text-primary)]">{selectedChildren.length}</div>
-                  <div className="text-[11px] text-[var(--text-muted)]">direkt</div>
-                </div>
-                <div className="org-detail-stat rounded-lg px-2 py-2">
-                  <div className="font-bold text-[var(--text-primary)]">{selectedDescendantCount}</div>
-                  <div className="text-[11px] text-[var(--text-muted)]">gesamt</div>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2 text-sm text-[var(--text-secondary)]">
-                <div className="org-detail-hint rounded-lg px-3 py-2">
-                  <div className="font-semibold text-[var(--text-primary)]">Regellogik</div>
-                  <div className="mt-1 text-xs text-[var(--text-muted)]">
-                    {selectedParent
-                      ? 'Diese Organisation kann geerbte Einträge übernehmen und bei Bedarf eigene Overrides setzen.'
-                      : 'Diese Organisation steuert lokale Erstellung und Standards für darunterliegende Organisationen.'}
-                  </div>
-                </div>
-                <div className="org-detail-hint rounded-lg px-3 py-2">
-                  <div className="font-semibold text-[var(--text-primary)]">Benutzer</div>
-                  <div className="mt-1 text-xs text-[var(--text-muted)]">Klicke die Organisation im Baum an, um Benutzer und Einladungen zu öffnen.</div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-viridian px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cambridge-blue disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={!canConfigureSelectedTaxonomy}
-                onClick={() => {
-                  setSettingsOrg(selectedOrg);
-                }}
-              >
-                <Settings2 className="h-4 w-4" />
-                Vererbungsregeln öffnen
-              </button>
-            </>
-          ) : (
-            <div className="mt-4 text-sm text-[var(--text-muted)]">Lege zuerst eine Organisation an.</div>
-          )}
-        </aside>
       </div>
 
       {/* Neues einheitliches Create Modal */}
@@ -1411,7 +1318,6 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
     : 'Obere Ebene';
 
   const openMembers = async () => {
-    onSelectOrg(org);
     setMembers(null);
     setOpen(true);
     try {
@@ -1488,7 +1394,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
           </Tooltip>
           {canConfigureTaxonomy && (
             <button
-              className="org-tree-icon-button inline-flex items-center justify-center w-8 h-8 rounded"
+              className="org-tree-icon-button org-tree-settings-button inline-flex items-center justify-center w-8 h-8 rounded"
               title="Vererbungsregeln"
               onClick={() => { onSelectOrg(org); onOpenSettings(org); }}
             >
@@ -1562,7 +1468,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
 
         {canConfigureTaxonomy && (
           <button
-            className="org-tree-action-button inline-flex items-center justify-center gap-2 rounded px-2.5 py-2 text-xs font-medium"
+            className="org-tree-action-button org-tree-settings-button inline-flex items-center justify-center gap-2 rounded px-2.5 py-2 text-xs font-medium"
             title="Vererbungsregeln"
             onClick={() => { onSelectOrg(org); onOpenSettings(org); }}
           >

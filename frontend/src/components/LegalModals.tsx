@@ -53,6 +53,17 @@ export function ImprintModal({
             Version: {appVersionDisplay}
             {commitDisplay ? ` (${commitDisplay})` : ''}
           </p>
+          <p>
+            Repository:{' '}
+            <a
+              href="https://github.com/Hubertoink/stato_okja"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-viridian"
+            >
+              github.com/Hubertoink/stato_okja
+            </a>
+          </p>
         </section>
       </div>
     </Modal>

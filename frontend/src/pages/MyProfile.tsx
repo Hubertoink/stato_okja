@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
+import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
-import { Eye, EyeOff } from 'lucide-react';
+import { Camera, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 
@@ -19,11 +20,11 @@ export default function MyProfile() {
           Dein Passwort wurde temporär durch einen Superadmin gesetzt. Bitte ändere es jetzt, bevor du StatO weiter benutzt.
         </div>
       )}
-      <div className={`grid grid-cols-1 gap-6 ${mustChangePassword ? '' : 'md:grid-cols-2'}`}>
+      <div className="grid grid-cols-1 gap-6">
         {!mustChangePassword && (
           <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} />
         )}
-        <PasswordCard mustChangePassword={mustChangePassword} onPasswordChanged={refresh} />
+        <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={refresh} />
       </div>
     </div>
   );
@@ -37,7 +38,10 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
   const [err, setErr] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>(theme);
   const [selectedBackground, setSelectedBackground] = useState<BackgroundId>(getStoredBackgroundId());
+  const [appearanceExpanded, setAppearanceExpanded] = useState(false);
+  const [avatarActionOpen, setAvatarActionOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const selectedBackgroundLabel = BACKGROUNDS.find((background) => background.id === selectedBackground)?.label || 'Standard';
 
   async function handleFile(file: File) {
     const form = new FormData();
@@ -47,13 +51,30 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <>
+      <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-viridian mb-4">Profil</h3>
-      <div className="flex items-start gap-4">
-        <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden bg-azure-web flex items-center justify-center text-gray-500 shrink-0">
-          {image ? <ProtectedImage src={image} alt="Profilbild" className="w-full h-full object-cover" /> : <span className="text-sm">Kein Bild</span>}
+      <div className="flex flex-col gap-5 md:flex-row md:items-start">
+        <div className="w-full shrink-0 space-y-2 text-center md:w-auto md:text-left">
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={async (e)=>{ const f = e.target.files?.[0]; if (f) { const url = await handleFile(f); setImage(url); } }} />
+          <div className="flex justify-center md:block">
+            <button
+              type="button"
+              className="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-azure-web text-gray-500 transition-transform hover:scale-[1.02] md:h-28 md:w-28"
+              onClick={()=> setAvatarActionOpen(true)}
+              aria-label={image ? 'Profilbild ändern' : 'Profilbild auswählen'}
+              title={image ? 'Profilbild ändern' : 'Profilbild auswählen'}
+            >
+              {image ? <ProtectedImage src={image} alt="Profilbild" className="w-full h-full object-cover" /> : <span className="text-sm">Kein Bild</span>}
+              <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <Camera className="h-4 w-4" />
+                {image ? 'Optionen' : 'Wählen'}
+              </span>
+            </button>
+          </div>
+          <div className="text-xs text-gray-500">Avatar antippen oder anklicken. PNG/JPG, max. 10&nbsp;MB</div>
         </div>
-        <div className="flex-1 space-y-3">
+        <div className="w-full flex-1 space-y-3">
           <div>
             <label className="block text-sm font-medium">Name</label>
             <input className="border rounded px-3 py-2 w-full" value={name} onChange={(e)=> setName(e.target.value)} />
@@ -62,43 +83,41 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
             <label className="block text-sm font-medium">E-Mail</label>
             <input className="border rounded px-3 py-2 w-full bg-gray-50 text-gray-600" value={email} disabled />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Profilfoto</label>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={async (e)=>{ const f = e.target.files?.[0]; if (f) { const url = await handleFile(f); setImage(url); } }} />
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                className="inline-flex items-center px-3 py-2 rounded bg-viridian text-white hover:bg-cambridge-blue text-sm"
-                onClick={()=> fileInputRef.current?.click()}
-              >
-                Bild auswählen
-              </button>
-              {image && (
-                <button
-                  type="button"
-                  className="inline-flex items-center px-3 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 text-sm"
-                  onClick={()=> setImage(null)}
-                >
-                  Entfernen
-                </button>
-              )}
-              <span className="text-xs text-gray-500">PNG/JPG, max. 10&nbsp;MB</span>
-            </div>
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+            <button
+              type="button"
+              className="flex w-full items-start justify-between gap-3 text-left"
+              onClick={() => setAppearanceExpanded((current) => !current)}
+              aria-expanded={appearanceExpanded}
+            >
+              <div>
+                <div className="text-sm font-medium">Darstellung anpassen</div>
+                <div className="mt-1 text-xs text-gray-500">Theme: {selectedTheme} · Hintergrund: {selectedBackgroundLabel}</div>
+              </div>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--text-secondary)]">
+                {appearanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </span>
+            </button>
+
+            {appearanceExpanded && (
+              <div className="mt-4 space-y-4 border-t border-[var(--border-subtle)] pt-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Design-Theme</label>
+                  <ThemePicker value={selectedTheme} onChange={(t)=>{ setSelectedTheme(t); try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ } }} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Hintergrund</label>
+                  <BackgroundPicker
+                    value={selectedBackground}
+                    onChange={(bg) => {
+                      setSelectedBackground(bg);
+                      applyBackground(bg);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Design-Theme</label>
-            <ThemePicker value={selectedTheme} onChange={(t)=>{ setSelectedTheme(t); try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ } }} />
-          </div>
-      <div>
-      <label className="block text-sm font-medium mb-1">Hintergrund</label>
-      <BackgroundPicker
-        value={selectedBackground}
-        onChange={(bg) => {
-          setSelectedBackground(bg);
-          applyBackground(bg);
-        }}
-      />
-      </div>
           {msg && <div className="text-green-700 text-sm">{msg}</div>}
           {err && <div className="text-red-600 text-sm">{err}</div>}
           <button
@@ -118,11 +137,89 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
           >Speichern</button>
         </div>
       </div>
-    </div>
+      </div>
+
+      <Modal open={avatarActionOpen} onClose={() => setAvatarActionOpen(false)} title="Profilbild" maxWidth="sm">
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">
+            {image ? 'Du kannst dein aktuelles Profilbild ersetzen oder entfernen.' : 'Wähle ein Profilbild aus.'}
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
+              onClick={() => {
+                setAvatarActionOpen(false);
+                requestAnimationFrame(() => fileInputRef.current?.click());
+              }}
+            >
+              {image ? 'Bild ersetzen' : 'Bild auswählen'}
+            </button>
+            {image && (
+              <button
+                type="button"
+                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                onClick={() => {
+                  setImage(null);
+                  setAvatarActionOpen(false);
+                }}
+              >
+                Bild löschen
+              </button>
+            )}
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }
 
-function PasswordCard({ mustChangePassword, onPasswordChanged }: { mustChangePassword: boolean; onPasswordChanged: () => Promise<void> | void }) {
+function PasswordSection({ mustChangePassword, onPasswordChanged }: { mustChangePassword: boolean; onPasswordChanged: () => Promise<void> | void }) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (mustChangePassword) setOpen(true);
+  }, [mustChangePassword]);
+
+  return (
+    <>
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-viridian mb-3">Passwort ändern</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          {mustChangePassword
+            ? 'Bitte öffne den Dialog und ersetze dein temporäres Passwort durch ein eigenes Passwort.'
+            : 'Das Passwortformular wird nur bei Bedarf geöffnet und erscheint nicht dauerhaft auf der Profilseite.'}
+        </p>
+        <button
+          type="button"
+          className="bg-viridian text-white px-4 py-2 rounded disabled:opacity-60"
+          onClick={() => setOpen(true)}
+        >
+          Passwort ändern
+        </button>
+      </div>
+
+      <PasswordChangeModal
+        open={open}
+        mustChangePassword={mustChangePassword}
+        onClose={() => setOpen(false)}
+        onPasswordChanged={onPasswordChanged}
+      />
+    </>
+  );
+}
+
+function PasswordChangeModal({
+  open,
+  mustChangePassword,
+  onClose,
+  onPasswordChanged,
+}: {
+  open: boolean;
+  mustChangePassword: boolean;
+  onClose: () => void;
+  onPasswordChanged: () => Promise<void> | void;
+}) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -134,9 +231,21 @@ function PasswordCard({ mustChangePassword, onPasswordChanged }: { mustChangePas
   const [err, setErr] = useState<string | null>(null);
   const passwordValidationMessage = getPasswordValidationMessage(newPassword);
 
+  useEffect(() => {
+    if (open) return;
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setBusy(false);
+    setMsg(null);
+    setErr(null);
+  }, [open]);
+
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-viridian mb-4">Passwort ändern</h3>
+    <Modal open={open} onClose={onClose} title="Passwort ändern" maxWidth="md">
       {mustChangePassword && (
         <p className="mb-4 text-sm text-gray-600">
           Verwende dein temporäres Passwort als aktuelles Passwort und vergebe danach ein eigenes neues Passwort.
@@ -173,7 +282,14 @@ function PasswordCard({ mustChangePassword, onPasswordChanged }: { mustChangePas
         </div>
         {msg && <div className="text-green-700 text-sm">{msg}</div>}
         {err && <div className="text-red-600 text-sm">{err}</div>}
-        <div>
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            onClick={onClose}
+          >
+            Abbrechen
+          </button>
           <button
             className="bg-viridian text-white px-4 py-2 rounded disabled:opacity-60"
             disabled={busy || !currentPassword || !newPassword || newPassword!==confirmPassword || Boolean(passwordValidationMessage)}
@@ -184,6 +300,7 @@ function PasswordCard({ mustChangePassword, onPasswordChanged }: { mustChangePas
                 setMsg('Passwort wurde aktualisiert.');
                 setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
                 await onPasswordChanged();
+                onClose();
               } catch (e: unknown) {
                 const m = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Änderung fehlgeschlagen';
                 setErr(Array.isArray(m as []) ? (m as string[]).join(', ') : String(m));
@@ -192,7 +309,7 @@ function PasswordCard({ mustChangePassword, onPasswordChanged }: { mustChangePas
           >Passwort speichern</button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

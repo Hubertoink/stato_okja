@@ -516,10 +516,6 @@ export default function Statistics() {
     [scopeKey, statsParams.from, statsParams.to, statsParams.projectId, statsParams.type, statsParams.executionStatuses, statsParams.closureState, statsParams.weekdays],
   );
 
-  const initialLoading = overviewQ.isLoading;
-
-  const backgroundRefreshing = !initialLoading && overviewQ.isFetching;
-
   useEffect(() => {
     if (statsUiFlowIdRef.current && !statsUiFlowCompletedRef.current) {
       finishDevFlow(statsUiFlowIdRef.current, 'cancelled', { reason: 'superseded' });
@@ -1630,20 +1626,6 @@ export default function Statistics() {
   return (
     <div className="relative">
       <h2 className="text-3xl font-bold text-viridian mb-6">Statistiken & Auswertungen</h2>
-
-      {/* Loading indicator - fixed position bottom right */}
-      {(initialLoading || backgroundRefreshing) && (
-        <div
-          className="fixed bottom-20 md:bottom-6 right-4 z-40 flex items-center gap-2 bg-white/95 backdrop-blur-sm shadow-lg rounded-full px-4 py-2 text-sm border border-gray-200"
-          role="status"
-          aria-live="polite"
-        >
-          <span className="w-2 h-2 rounded-full bg-viridian animate-pulse" />
-          <span className="text-gray-700">
-            {initialLoading ? 'Laden…' : 'Aktualisieren…'}
-          </span>
-        </div>
-      )}
 
       {/* Time Range Selector */}
       <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">

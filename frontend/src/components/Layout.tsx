@@ -655,7 +655,7 @@ export default function Layout() {
 
       {/* Footer (hidden on full activity views or while keyboard open) */}
       {!hideFooter && !restrictToPasswordChange && (
-        <footer className="mt-12">
+        <footer className={`mt-12 ${hideBottomNav ? '' : 'mb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:mb-0'}`}>
           <div className="footer-surface w-full px-4 py-6 text-center text-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/45">
             <div className="flex items-center justify-center gap-1 flex-wrap">
               <p>

@@ -8,6 +8,10 @@ import { useProjects } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import { useStaff } from '@/lib/staff';
 import { api } from '@/lib/api';
+import {
+  ACTIVITY_EXECUTION_STATUS_LABELS,
+  ACTIVITY_EXECUTION_STATUS_OPTIONS,
+} from '@/lib/activityExecutionStatus';
 
 type ActivitiesTaxonomyAvailability = {
   categoryIds: string[];
@@ -115,6 +119,23 @@ export default function ActivitiesFilterDrawer({
         uncategorized: next,
         // Mutually exclusive with specific category selection
         categoryIds: next ? [] : prev.categoryIds,
+      };
+    });
+  };
+
+  const toggleExecutionStatus = (status: (typeof ACTIVITY_EXECUTION_STATUS_OPTIONS)[number]) => {
+    setF((prev) => {
+      const current = new Set(prev.executionStatuses || []);
+      if (current.has(status)) current.delete(status);
+      else current.add(status);
+
+      const next = Array.from(current);
+      return {
+        ...prev,
+        executionStatuses:
+          next.length === 0 || next.length === ACTIVITY_EXECUTION_STATUS_OPTIONS.length
+            ? undefined
+            : next,
       };
     });
   };
@@ -376,6 +397,28 @@ export default function ActivitiesFilterDrawer({
               />
               <span>Nur mit Notizen</span>
             </label>
+            <div>
+              <div className="text-xs text-gray-600 mb-1">Status</div>
+              <div className="flex flex-wrap gap-2">
+                {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((status) => {
+                  const active = !!f.executionStatuses?.includes(status);
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => toggleExecutionStatus(status)}
+                      className={`text-xs px-2 py-1 rounded-full border ${
+                        active
+                          ? 'bg-cambridge-blue text-white border-cambridge-blue'
+                          : 'bg-azure-web text-viridian border-transparent'
+                      }`}
+                    >
+                      {ACTIVITY_EXECUTION_STATUS_LABELS[status]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div>
               <div className="text-xs text-gray-600 mb-1">Alterskohorten</div>
               <div className="flex flex-wrap gap-2">

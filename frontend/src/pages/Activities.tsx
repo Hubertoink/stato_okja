@@ -30,7 +30,11 @@ import ProtectedImage from '@/components/ProtectedImage';
 import { useLocations } from '@/lib/locations';
 import { usePublicConfig } from '@/lib/publicConfig';
 import { useStaff } from '@/lib/staff';
-import { isCancelledActivity } from '@/lib/activityExecutionStatus';
+import {
+  ACTIVITY_EXECUTION_STATUS_LABELS,
+  formatActivityExecutionStatusList,
+  isCancelledActivity,
+} from '@/lib/activityExecutionStatus';
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -197,6 +201,7 @@ export default function Activities() {
     tagIds: advanced.tagIds,
     staffIds: advanced.staffIds,
     cohortIds: advanced.cohortIds,
+    executionStatuses: advanced.executionStatuses,
     hasNotes: advanced.hasNotes,
     participantsMin: advanced.participantsMin,
     participantsMax: advanced.participantsMax,
@@ -363,189 +368,289 @@ export default function Activities() {
     () => formatSelectedFilterBadge('Kohorten', advanced.cohortIds, cohortNameById),
     [advanced.cohortIds, cohortNameById],
   );
+  const executionStatusBadgeLabel = useMemo(() => {
+    if (!advanced.executionStatuses?.length) return null;
+    return `Status: ${formatActivityExecutionStatusList(advanced.executionStatuses)}`;
+  }, [advanced.executionStatuses]);
   const hasAdvancedFilters = useMemo(
     () => Object.values(advanced).some((value) => (Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '')),
     [advanced],
   );
   const goToPreviousPage = () => setPage((currentPage) => Math.max(currentPage - 1, 1));
   const goToNextPage = () => setPage((currentPage) => Math.min(currentPage + 1, pageCount));
-  const handleExportConfirm = async () => {
+  type ExportRow = {
+    id: string;
+    date: string;
+    type: string;
+    title?: string | null;
+    project?: { title?: string | null; type?: string | null } | null;
+    countTotal?: number | null;
+    countMale?: number | null;
+    countFemale?: number | null;
+    countDiverse?: number | null;
+    durationMinutes?: number | null;
+    startTime?: string | null;
+    endTime?: string | null;
+    tags?: Array<{ name: string; color?: string | null }>;
+    categories?: Array<{ name: string; color?: string | null }>;
+    notes?: string | null;
+    executionStatus?: 'completed' | 'cancelled' | null;
+    cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
+  };
+  const loadExportRows = async () => {
+    const qp: Record<string, unknown> = { ...filters };
+    const arrayKeys: (keyof ActivitiesFilter)[] = [
+      'types',
+      'locationIds',
+      'projectIds',
+      'categoryIds',
+      'tagIds',
+      'staffIds',
+      'cohortIds',
+      'executionStatuses',
+    ];
+    for (const key of arrayKeys) {
+      const value = (filters as ActivitiesFilter)[key];
+      if (Array.isArray(value) && value.length) qp[key as string] = (value as string[]).join(',');
+      else if (Array.isArray(value)) delete qp[key as string];
+    }
+    const res = await api.get('/activities', { params: qp });
+    return (Array.isArray(res.data?.data)
+      ? res.data.data
+      : Array.isArray(res.data)
+        ? res.data
+        : []) as Array<ExportRow>;
+  };
+  const buildExportSheet = (list: ExportRow[]) => {
+    const cohortOrder = (cohorts as Cohort[])
+      .slice()
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const cohortIds = cohortOrder.map((cohort) => cohort.id);
+    const cohortHeaders = cohortOrder.flatMap((cohort) => [
+      `${cohort.name} (m)`,
+      `${cohort.name} (w)`,
+      `${cohort.name} (d)`,
+    ]);
+    const header = [
+      'Datum',
+      'Status',
+      'Typ',
+      'Titel',
+      'Projekt',
+      'Teilnehmende',
+      'm',
+      'w',
+      'd',
+      ...cohortHeaders,
+      'Dauer (min)',
+      'Kategorien',
+      'Tags',
+      'Notizen',
+    ];
+    const rows = [header as (string | number)[]];
+    const durationFrom = (activity: ExportRow) => {
+      if (typeof activity.durationMinutes === 'number' && activity.durationMinutes >= 0) {
+        return activity.durationMinutes;
+      }
+      const toMinutes = (time?: string | null) => {
+        if (!time) return undefined;
+        const [hours, minutes] = time.split(':').map((value) => parseInt(value, 10));
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) return undefined;
+        return hours * 60 + minutes;
+      };
+      const start = toMinutes(activity.startTime);
+      const end = toMinutes(activity.endTime);
+      return start !== undefined && end !== undefined && end >= start ? end - start : undefined;
+    };
+
+    for (const activity of list) {
+      const dateIso = (activity.date || '').slice(0, 10);
+      const [year, month, day] = dateIso.split('-');
+      const dateDE = `${day}.${month}.${year}`;
+      const total =
+        (activity.countTotal ??
+          (activity.countMale || 0) + (activity.countFemale || 0) + (activity.countDiverse || 0)) || 0;
+      const perCohort: Record<string, { m: number; w: number; d: number }> = Object.fromEntries(
+        cohortIds.map((id) => [id, { m: 0, w: 0, d: 0 }] as const),
+      );
+      (activity.cohorts || []).forEach((cohort) => {
+        perCohort[cohort.cohortId] = {
+          m: (perCohort[cohort.cohortId]?.m || 0) + (cohort.m || 0),
+          w: (perCohort[cohort.cohortId]?.w || 0) + (cohort.w || 0),
+          d: (perCohort[cohort.cohortId]?.d || 0) + (cohort.d || 0),
+        };
+      });
+
+      rows.push([
+        dateDE,
+        ACTIVITY_EXECUTION_STATUS_LABELS[
+          activity.executionStatus === 'cancelled' ? 'cancelled' : 'completed'
+        ],
+        ACTIVITY_TYPE_LABELS[activity.type] || activity.type,
+        activity.title || '',
+        activity.project?.title || '',
+        total,
+        activity.countMale || 0,
+        activity.countFemale || 0,
+        activity.countDiverse || 0,
+        ...cohortIds.flatMap((id) => {
+          const cohort = perCohort[id] || { m: 0, w: 0, d: 0 };
+          return [cohort.m, cohort.w, cohort.d];
+        }),
+        durationFrom(activity) ?? '',
+        activity.project?.title && activity.project?.type === 'open_door'
+          ? ''
+          : (activity.categories || []).map((category) => category.name).join(', '),
+        (activity.tags || []).map((tag) => tag.name).join(', '),
+        activity.notes || '',
+      ]);
+    }
+
+    const durationCol = 9 + cohortHeaders.length;
+    return {
+      rows,
+      statusCol: 1,
+      typeCol: 2,
+      firstNumberCol: 5,
+      durationCol,
+      categoriesCol: durationCol + 1,
+      tagsCol: durationCol + 2,
+      notesCol: durationCol + 3,
+    };
+  };
+  const handleExportConfirm = async (variant: 'raw' | 'styled') => {
     try {
       setExportModalOpen(false);
       setExporting(true);
-      const qp: Record<string, unknown> = { ...filters };
-      const arrayKeys: (keyof ActivitiesFilter)[] = [
-        'types',
-        'locationIds',
-        'projectIds',
-        'categoryIds',
-        'tagIds',
-        'staffIds',
-        'cohortIds',
-      ];
-      for (const k of arrayKeys) {
-        const v = (filters as ActivitiesFilter)[k];
-        if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
-        else if (Array.isArray(v)) delete qp[k as string];
-      }
-      const res = await api.get('/activities', { params: qp });
-      type ExportRow = {
-        id: string;
-        date: string;
-        type: string;
-        title?: string | null;
-        project?: { title?: string | null; type?: string | null } | null;
-        countTotal?: number | null;
-        countMale?: number | null;
-        countFemale?: number | null;
-        countDiverse?: number | null;
-        durationMinutes?: number | null;
-        startTime?: string | null;
-        endTime?: string | null;
-        tags?: Array<{ name: string; color?: string | null }>;
-        categories?: Array<{ name: string; color?: string | null }>;
-        notes?: string | null;
-        cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
-      };
-      const list: Array<ExportRow> = Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-          ? res.data
-          : [];
+      const list = await loadExportRows();
+      const { rows, statusCol, typeCol, firstNumberCol, durationCol, categoriesCol, tagsCol, notesCol } =
+        buildExportSheet(list);
 
-      const cohortOrder = (cohorts as Cohort[])
-        .slice()
-        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-      const cohortIds = cohortOrder.map((c) => c.id);
-      const cohortHeaders = cohortOrder.flatMap((c) => [
-        `${c.name} (m)`,
-        `${c.name} (w)`,
-        `${c.name} (d)`,
-      ]);
-
-      const header = [
-        'Datum',
-        'Typ',
-        'Titel',
-        'Projekt',
-        'Teilnehmende',
-        'm',
-        'w',
-        'd',
-        ...cohortHeaders,
-        'Dauer (min)',
-        'Kategorien',
-        'Tags',
-        'Notizen',
-      ];
-      const rows = [header as (string | number)[]];
-      const typeLabel: Record<string, string> = {
-        open_door: 'Offene Tür',
-        project_open: 'Projekt (offen)',
-        project_closed: 'Projekt (geschlossen)',
-        event: 'Veranstaltung',
-        outreach: 'Aufsuchend',
-      };
-      const durFrom = (a: ExportRow) => {
-        if (typeof a.durationMinutes === 'number' && a.durationMinutes >= 0) return a.durationMinutes;
-        const toMinutes = (t?: string | null) => {
-          if (!t) return undefined;
-          const [hh, mm] = t.split(':').map((v) => parseInt(v, 10));
-          if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
-          return hh * 60 + mm;
-        };
-        const s = toMinutes(a.startTime);
-        const e = toMinutes(a.endTime);
-        return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
-      };
-      for (const a of list) {
-        const s = (a.date || '').slice(0, 10);
-        const [y, m, d] = s.split('-');
-        const dateDE = `${d}.${m}.${y}`;
-        const tlabel = typeLabel[a.type] || a.type;
-        const total =
-          (a.countTotal ?? (a.countMale || 0) + (a.countFemale || 0) + (a.countDiverse || 0)) || 0;
-        const mcount = a.countMale || 0;
-        const wcount = a.countFemale || 0;
-        const dcount = a.countDiverse || 0;
-        const perCoh: Record<string, { m: number; w: number; d: number }> = Object.fromEntries(
-          cohortIds.map((id) => [id, { m: 0, w: 0, d: 0 }] as const),
-        );
-        (a.cohorts || []).forEach((c) => {
-          perCoh[c.cohortId] = {
-            m: (perCoh[c.cohortId]?.m || 0) + (c.m || 0),
-            w: (perCoh[c.cohortId]?.w || 0) + (c.w || 0),
-            d: (perCoh[c.cohortId]?.d || 0) + (c.d || 0),
-          };
-        });
-        const duration = durFrom(a) ?? '';
-        const catsText =
-          a.project?.title && a.project?.type === 'open_door'
-            ? ''
-            : (a.categories || []).map((c) => c.name).join(', ');
-        const tagsText = (a.tags || []).map((t) => t.name).join(', ');
-        const row = [
-          dateDE,
-          tlabel,
-          a.title || '',
-          a.project?.title || '',
-          total,
-          mcount,
-          wcount,
-          dcount,
-          ...cohortIds.flatMap((id) => {
-            const entry = perCoh[id] || { m: 0, w: 0, d: 0 };
-            return [entry.m, entry.w, entry.d];
-          }),
-          duration,
-          catsText,
-          tagsText,
-          a.notes || '',
-        ];
-        rows.push(row);
-      }
       const xlsx = await import('xlsx-js-style');
       const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
-      type CellStyle = { font?: { bold?: boolean; color?: { rgb: string } } };
+      type CellStyle = {
+        font?: { bold?: boolean; color?: { rgb: string } };
+        fill?: { patternType: 'solid'; fgColor: { rgb: string } };
+        alignment?: { horizontal?: 'left' | 'center'; vertical?: 'top' | 'center'; wrapText?: boolean };
+      };
       const ws = utils.aoa_to_sheet(rows);
       (ws as unknown as { ['!autofilter']?: { ref: string } })['!autofilter'] = {
         ref: `A1:${utils.encode_col((rows[0]?.length || 1) - 1)}1`,
       };
-      ws['!cols'] = (rows[0] || []).map((h, i) => ({
-        wch: i <= 3 ? 18 : Math.max(10, String(h).length + 2),
-      }));
-      for (let c = 0; c < (rows[0]?.length || 0); c++) {
-        const addr = utils.encode_cell({ r: 0, c });
-        const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
-        if (cell) cell.s = { ...(cell.s || {}), font: { ...(cell.s?.font || {}), bold: true } };
-      }
-      const typeCol = 1;
-      const labelToCode: Record<string, string> = {
-        'Offene Tür': 'open_door',
-        'Projekt (offen)': 'project_open',
-        'Projekt (geschlossen)': 'project_closed',
-        Veranstaltung: 'event',
-        Aufsuchend: 'outreach',
-      };
-      for (let r = 1; r < rows.length; r++) {
-        const typeText = String(rows[r][typeCol] ?? '');
-        const code = labelToCode[typeText];
-        if (!code) continue;
-        const hex = colorForActivityType(code);
-        const rgb = 'FF' + hex.replace('#', '').toUpperCase();
-        const addr = utils.encode_cell({ r, c: typeCol });
-        const cell = ws[addr] as unknown as { s?: CellStyle } | undefined;
-        if (cell) {
+      ws['!cols'] = (rows[0] || []).map((header, index) => {
+        if (index === 0) return { wch: 14 };
+        if (index === statusCol) return { wch: 16 };
+        if (index === typeCol) return { wch: 22 };
+        if (index === 3 || index === 4) return { wch: 28 };
+        if (index === categoriesCol || index === tagsCol) return { wch: 30 };
+        if (index === notesCol) return { wch: 42 };
+        return { wch: Math.max(10, String(header).length + 2) };
+      });
+
+      if (variant === 'styled') {
+        const setStyle = (rowIndex: number, colIndex: number, style: CellStyle) => {
+          const address = utils.encode_cell({ r: rowIndex, c: colIndex });
+          const cell = ws[address] as unknown as { s?: CellStyle } | undefined;
+          if (!cell) return;
           cell.s = {
             ...(cell.s || {}),
-            font: { ...(cell.s?.font || {}), color: { rgb } },
+            ...style,
+            font: { ...(cell.s?.font || {}), ...(style.font || {}) },
+            fill: style.fill || cell.s?.fill,
+            alignment: { ...(cell.s?.alignment || {}), ...(style.alignment || {}) },
           };
+        };
+
+        const brandHeaderFill = 'FF5B6CFF';
+        const brandSoftFill = 'FFF5F7FF';
+        const brandSoftStrongFill = 'FFE8EBFF';
+        const successFill = 'FFEAF7EE';
+        const successText = 'FF027A48';
+        const cancelledFill = 'FFFDECEC';
+        const cancelledText = 'FFB42318';
+        const notesFill = 'FFF8FAFC';
+
+        for (let column = 0; column < (rows[0]?.length || 0); column++) {
+          setStyle(0, column, {
+            font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+            fill: { patternType: 'solid', fgColor: { rgb: brandHeaderFill } },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          });
+        }
+
+        const labelToCode: Record<string, string> = {
+          'Offene Tür': 'open_door',
+          'Projekt (offen)': 'project_open',
+          'Projekt (geschlossen)': 'project_closed',
+          Veranstaltung: 'event',
+          Aufsuchend: 'outreach',
+        };
+
+        for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+          setStyle(rowIndex, 0, { alignment: { horizontal: 'center', vertical: 'center' } });
+          setStyle(rowIndex, statusCol, {
+            font:
+              String(rows[rowIndex][statusCol] ?? '') === 'Ausgefallen'
+                ? { bold: true, color: { rgb: cancelledText } }
+                : { bold: true, color: { rgb: successText } },
+            fill: {
+              patternType: 'solid',
+              fgColor: {
+                rgb:
+                  String(rows[rowIndex][statusCol] ?? '') === 'Ausgefallen'
+                    ? cancelledFill
+                    : successFill,
+              },
+            },
+            alignment: { horizontal: 'center', vertical: 'center' },
+          });
+
+          const typeText = String(rows[rowIndex][typeCol] ?? '');
+          const typeCode = labelToCode[typeText];
+          if (typeCode) {
+            const typeRgb = `FF${colorForActivityType(typeCode).replace('#', '').toUpperCase()}`;
+            setStyle(rowIndex, typeCol, {
+              font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+              fill: { patternType: 'solid', fgColor: { rgb: typeRgb } },
+              alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            });
+          }
+
+          for (let column = firstNumberCol; column <= durationCol; column++) {
+            setStyle(rowIndex, column, {
+              alignment: { horizontal: 'center', vertical: 'center' },
+            });
+          }
+
+          if (rows[rowIndex][categoriesCol]) {
+            setStyle(rowIndex, categoriesCol, {
+              fill: { patternType: 'solid', fgColor: { rgb: brandSoftFill } },
+              alignment: { vertical: 'top', wrapText: true },
+            });
+          }
+          if (rows[rowIndex][tagsCol]) {
+            setStyle(rowIndex, tagsCol, {
+              fill: { patternType: 'solid', fgColor: { rgb: brandSoftStrongFill } },
+              alignment: { vertical: 'top', wrapText: true },
+            });
+          }
+          if (rows[rowIndex][notesCol]) {
+            setStyle(rowIndex, notesCol, {
+              fill: { patternType: 'solid', fgColor: { rgb: notesFill } },
+              alignment: { vertical: 'top', wrapText: true },
+            });
+          }
         }
       }
+
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, 'Aktivitäten');
-      const fname = `Aktivitäten_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      writeFile(wb, fname);
+      writeFile(
+        wb,
+        variant === 'styled'
+          ? `Aktivitäten_Stato_${new Date().toISOString().slice(0, 10)}.xlsx`
+          : `Aktivitäten_Rohdaten_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
     } finally {
       setExporting(false);
     }
@@ -692,6 +797,9 @@ export default function Activities() {
           {tagsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{tagsBadgeLabel}</span> : null}
           {staffBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{staffBadgeLabel}</span> : null}
           {cohortsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{cohortsBadgeLabel}</span> : null}
+          {executionStatusBadgeLabel ? (
+            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{executionStatusBadgeLabel}</span>
+          ) : null}
           {advanced.hasNotes ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
               Nur mit Notizen
@@ -1206,10 +1314,33 @@ export default function Activities() {
             {exportItemLabel} mit den aktuell gesetzten Filtern exportiert.
           </p>
           <p className="text-gray-600">
-            Der Export erstellt eine Excel-Datei mit allen passenden Einträgen inklusive
-            Teilnehmenden, Kategorien, Tags und Notizen.
+            Du kannst zwischen einer reinen Datendatei und einer Stato-formatierten Excel-Datei
+            wählen. Beide Varianten enthalten Status, Teilnehmende, Kategorien, Tags und Notizen.
           </p>
-          <p className="font-medium text-gray-900">Soll der Export jetzt gestartet werden?</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <button
+              type="button"
+              className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => void handleExportConfirm('raw')}
+              disabled={exporting || exportCount === 0}
+            >
+              <div className="font-semibold text-gray-900">Nur Daten (.xlsx)</div>
+              <div className="mt-1 text-xs text-gray-600">
+                Schlichte Tabelle ohne zusätzliche Farbgestaltung. Gut für Weiterverarbeitung und eigene Pivot-Auswertungen.
+              </div>
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => void handleExportConfirm('styled')}
+              disabled={exporting || exportCount === 0}
+            >
+              <div className="font-semibold text-viridian">Stato-Format (.xlsx)</div>
+              <div className="mt-1 text-xs text-gray-600">
+                Mit Header-Farben, Statusmarkierung, farbigem Typ-Feld und lesefreundlichen Hervorhebungen für Kategorien, Tags und Notizen.
+              </div>
+            </button>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -1218,14 +1349,6 @@ export default function Activities() {
               disabled={exporting}
             >
               Abbrechen
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-viridian px-4 py-2 text-white hover:bg-cambridge-blue disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={handleExportConfirm}
-              disabled={exporting || exportCount === 0}
-            >
-              {exporting ? 'Exportiere…' : 'OK'}
             </button>
           </div>
         </div>

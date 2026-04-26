@@ -25,6 +25,11 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   outreach: 'Aufsuchende Arbeit',
 };
 
+const ACTIVITY_EXECUTION_STATUS_LABELS: Record<string, string> = {
+  completed: 'Stattgefunden',
+  cancelled: 'Ausgefallen',
+};
+
 const USER_ROLE_LABELS: Record<string, string> = {
   superadmin: 'Superadmin',
   org_admin: 'Admin',
@@ -105,6 +110,7 @@ export function buildReadableWorkbook(input: WorkbookInput): {
       Organisation: valueOrEmpty(row.name),
       Elternorganisation: getName(orgById, row.parentId),
       Oeffnungszeiten: hasValue(row.openingHours) ? 'Ja' : 'Nein',
+      Schliesszeiten: formatClosureDays(row.closureDays),
       'Taxonomie-Regeln': hasValue(row.taxonomySettings) ? 'Ja' : 'Nein',
       'Kind-Defaults': hasValue(row.childTaxonomyDefaults) ? 'Ja' : 'Nein',
     })),
@@ -234,6 +240,7 @@ export function buildReadableWorkbook(input: WorkbookInput): {
     'Aktivitaeten',
     activities.map((row) => ({
       Datum: formatDate(row.date),
+      Status: activityExecutionStatusLabel(row.executionStatus),
       Start: valueOrEmpty(row.startTime),
       Ende: valueOrEmpty(row.endTime),
       'Dauer (Min.)': numberOrEmpty(row.durationMinutes),
@@ -514,6 +521,49 @@ function formatActivityCohorts(value: unknown, cohortById: Map<string, Row>) {
       return `${cohortName} (m:${row.m}, w:${row.w}, d:${row.d})`;
     })
     .join(' | ');
+}
+
+function activityExecutionStatusLabel(value: unknown) {
+  const status = stringValue(value) === 'cancelled' ? 'cancelled' : 'completed';
+  return ACTIVITY_EXECUTION_STATUS_LABELS[status];
+}
+
+function formatClosureDays(value: unknown) {
+  if (!hasValue(value)) return '';
+
+  const rows = parseClosureDays(value);
+  return rows
+    .map((row) => {
+      if (!row.date) return '';
+      if (!row.from && !row.to) return `${row.date} (ganztägig geschlossen)`;
+      return `${row.date} (${row.from || 'Start'}-${row.to || 'Ende'} geschlossen)`;
+    })
+    .filter(Boolean)
+    .join(' | ');
+}
+
+function parseClosureDays(value: unknown): Array<{ date: string; from?: string | null; to?: string | null }> {
+  if (Array.isArray(value)) {
+    return value.map((entry) => {
+      const row = entry as Record<string, unknown>;
+      return {
+        date: stringValue(row.date),
+        from: hasValue(row.from) ? stringValue(row.from) : null,
+        to: hasValue(row.to) ? stringValue(row.to) : null,
+      };
+    });
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parseClosureDays(parsed);
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
 }
 
 function parseCohortRows(value: unknown): Array<{ cohortId: string; m: number; w: number; d: number }> {

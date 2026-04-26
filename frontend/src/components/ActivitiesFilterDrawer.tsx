@@ -11,11 +11,13 @@ import { api } from '@/lib/api';
 import {
   ACTIVITY_EXECUTION_STATUS_LABELS,
   ACTIVITY_EXECUTION_STATUS_OPTIONS,
+  normalizeActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
 
 type ActivitiesTaxonomyAvailability = {
   categoryIds: string[];
   tagIds: string[];
+  executionStatuses: Array<(typeof ACTIVITY_EXECUTION_STATUS_OPTIONS)[number]>;
   hasUncategorized: boolean;
 };
 
@@ -50,6 +52,7 @@ export default function ActivitiesFilterDrawer({
       const list: Array<{
         tags?: Array<{ id: string }>;
         categories?: Array<{ id: string }>;
+        executionStatus?: string | null;
       }> = Array.isArray(res.data?.data)
         ? res.data.data
         : Array.isArray(res.data)
@@ -58,9 +61,11 @@ export default function ActivitiesFilterDrawer({
 
       const categoryIds = new Set<string>();
       const tagIds = new Set<string>();
+      const executionStatuses = new Set<(typeof ACTIVITY_EXECUTION_STATUS_OPTIONS)[number]>();
       let hasUncategorized = false;
 
       for (const activity of list) {
+        executionStatuses.add(normalizeActivityExecutionStatus(activity.executionStatus));
         if (!Array.isArray(activity.categories) || activity.categories.length === 0) {
           hasUncategorized = true;
         }
@@ -75,6 +80,7 @@ export default function ActivitiesFilterDrawer({
       return {
         categoryIds: Array.from(categoryIds),
         tagIds: Array.from(tagIds),
+        executionStatuses: Array.from(executionStatuses),
         hasUncategorized,
       } satisfies ActivitiesTaxonomyAvailability;
     },
@@ -91,6 +97,10 @@ export default function ActivitiesFilterDrawer({
   const availableTagIds = useMemo(
     () => new Set(availabilityQuery.data?.tagIds ?? []),
     [availabilityQuery.data?.tagIds],
+  );
+  const availableExecutionStatuses = useMemo(
+    () => new Set(availabilityQuery.data?.executionStatuses ?? []),
+    [availabilityQuery.data?.executionStatuses],
   );
   const availabilityLoaded = availabilityQuery.isSuccess;
   const hasUncategorized = availabilityLoaded ? availabilityQuery.data.hasUncategorized : true;
@@ -125,17 +135,12 @@ export default function ActivitiesFilterDrawer({
 
   const toggleExecutionStatus = (status: (typeof ACTIVITY_EXECUTION_STATUS_OPTIONS)[number]) => {
     setF((prev) => {
-      const current = new Set(prev.executionStatuses || []);
-      if (current.has(status)) current.delete(status);
-      else current.add(status);
-
-      const next = Array.from(current);
       return {
         ...prev,
         executionStatuses:
-          next.length === 0 || next.length === ACTIVITY_EXECUTION_STATUS_OPTIONS.length
+          prev.executionStatuses?.length === 1 && prev.executionStatuses[0] === status
             ? undefined
-            : next,
+            : [status],
       };
     });
   };
@@ -402,16 +407,25 @@ export default function ActivitiesFilterDrawer({
               <div className="flex flex-wrap gap-2">
                 {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((status) => {
                   const active = !!f.executionStatuses?.includes(status);
+                  const present = availabilityLoaded ? availableExecutionStatuses.has(status) : true;
+                  const base = present
+                    ? 'bg-azure-web text-viridian'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed';
+                  const disabled = !present && !active;
                   return (
                     <button
                       key={status}
                       type="button"
-                      onClick={() => toggleExecutionStatus(status)}
+                      onClick={() => {
+                        if (!disabled) toggleExecutionStatus(status);
+                      }}
+                      disabled={disabled}
+                      title={disabled ? 'Keine Aktivitäten mit diesem Status vorhanden' : undefined}
                       className={`text-xs px-2 py-1 rounded-full border ${
                         active
                           ? 'bg-cambridge-blue text-white border-cambridge-blue'
-                          : 'bg-azure-web text-viridian border-transparent'
-                      }`}
+                          : `${base} border-transparent`
+                      } ${present ? '' : 'opacity-80'}`}
                     >
                       {ACTIVITY_EXECUTION_STATUS_LABELS[status]}
                     </button>

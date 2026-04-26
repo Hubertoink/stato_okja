@@ -971,7 +971,17 @@ export class SystemDataService {
   }
 
   private normalizeRowsForImport(table: ManagedTable, rows: Array<Record<string, unknown>>) {
-    return rows.map((row) => this.normalizeDateOnlyColumns(table, row));
+    return rows.map((row) => this.normalizeActivityImportRow(table, this.normalizeDateOnlyColumns(table, row)));
+  }
+
+  private normalizeActivityImportRow(table: ManagedTable, row: Record<string, unknown>) {
+    if (table.key !== 'activities' || !Object.prototype.hasOwnProperty.call(table.columnTypes, 'executionStatus')) {
+      return row;
+    }
+
+    const normalizedRow = { ...row };
+    normalizedRow.executionStatus = normalizedRow.executionStatus === 'cancelled' ? 'cancelled' : 'completed';
+    return normalizedRow;
   }
 
   private normalizeDateOnlyColumns(table: ManagedTable, row: Record<string, unknown>) {

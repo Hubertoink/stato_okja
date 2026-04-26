@@ -354,6 +354,7 @@ function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)
     { name: 'Ocean Pearl', colors: ['#006d77','#83c5be','#edf6f9','#ffddd2','#f3f4f6'] },
     { name: 'Midnight', colors: ['#08101d','#6ea8ff','#66d9d1','#1a2333','#ecf3ff'] },
     { name: 'Coastal Vibes', colors: ['#2b2d42','#ef233c','#8d99ae','#edf2f4','#d90429'] },
+    { name: 'Amtsstube 1987', colors: ['#1f3a1f','#7a3b2e','#c2b78f','#b6873b','#d8d2bf'] },
   ];
   return (
     <div className="space-y-2">

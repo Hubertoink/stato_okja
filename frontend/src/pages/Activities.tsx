@@ -865,11 +865,11 @@ export default function Activities() {
 
       {/* Activity List */}
       {/* Desktop Table */}
-      <div className="bg-white rounded-lg shadow hidden md:block overflow-x-auto">
-        <table className="w-full min-w-[700px]">
+      <div className="activities-desktop-table-shell bg-white rounded-lg shadow hidden md:block overflow-x-auto">
+        <table className="activities-desktop-table w-full min-w-[700px]">
           <thead className="bg-azure-web">
             <tr>
-              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
+              <th className="activities-col-date px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
                 <button
                   type="button"
                   className="inline-flex items-center gap-1 hover:text-viridian"
@@ -887,24 +887,24 @@ export default function Activities() {
                   )}
                 </button>
               </th>
-              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700">Typ</th>
-              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
+              <th className="activities-col-type px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700">Typ</th>
+              <th className="activities-col-title px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
                 Titel / Projekt
               </th>
-              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
+              <th className="activities-col-participants px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
                 Teilnehmende
               </th>
-              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 hidden lg:table-cell">Dauer</th>
-              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 hidden xl:table-cell">
+              <th className="activities-col-duration px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 hidden lg:table-cell">Dauer</th>
+              <th className="activities-col-meta px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 hidden xl:table-cell">
                 Kategorien, Tags & Notizen
               </th>
-              <th className="px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">Aktion</th>
+              <th className="activities-col-action px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">Aktion</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {activities.map((a) => (
               <tr key={a.id} className="bg-white hover:bg-azure-web">
-                <td className="px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
+                <td className="activities-col-date px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
                   {(() => {
                     const isToday = (a.date || '').slice(0, 10) === todayIso;
                     return (
@@ -914,7 +914,7 @@ export default function Activities() {
                     );
                   })()}
                 </td>
-                <td className="px-3 lg:px-6 py-4 text-sm">
+                <td className="activities-col-type px-3 lg:px-6 py-4 text-sm">
                   {(() => {
                     const label =
                       (
@@ -944,11 +944,11 @@ export default function Activities() {
                     );
                   })()}
                 </td>
-                <td className="px-3 lg:px-6 py-4 text-sm max-w-[150px] lg:max-w-none">
+                <td className="activities-col-title px-3 lg:px-6 py-4 text-sm max-w-[150px] lg:max-w-none">
                   <div className="font-medium text-gray-900 truncate">{a.title || '-'}</div>
                   <div className="text-xs text-gray-600 truncate">{a.project?.title || '-'}</div>
                 </td>
-                <td className="px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
+                <td className="activities-col-participants px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
                   {isCancelledActivity(a.executionStatus) ? (
                     <ActivityExecutionStatusBadge status={a.executionStatus} />
                   ) : (
@@ -960,7 +960,7 @@ export default function Activities() {
                     </>
                   )}
                 </td>
-                <td className="px-3 lg:px-6 py-4 text-sm hidden lg:table-cell">
+                <td className="activities-col-duration px-3 lg:px-6 py-4 text-sm hidden lg:table-cell">
                   {(() => {
                     if (a.durationMinutes) return `${a.durationMinutes} min`;
                     const parse = (t?: string | null) => {
@@ -975,7 +975,7 @@ export default function Activities() {
                     return '-';
                   })()}
                 </td>
-                <td className="px-3 lg:px-6 py-4 text-sm hidden xl:table-cell">
+                <td className="activities-col-meta px-3 lg:px-6 py-4 text-sm hidden xl:table-cell">
                   <div className="flex flex-wrap gap-2 mb-2">
                     {(a.categories || []).map((c) => (
                       <span
@@ -1015,7 +1015,7 @@ export default function Activities() {
                     </div>
                   )}
                 </td>
-                <td className="px-3 lg:px-6 py-4 text-sm relative overflow-hidden">
+                <td className="activities-col-action px-3 lg:px-6 py-4 text-sm relative overflow-hidden">
                   {a.project?.imageUrl ? (
                     <>
                       <ProtectedImage

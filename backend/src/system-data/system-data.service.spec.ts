@@ -28,7 +28,7 @@ describe('SystemDataService', () => {
         queryLog.push(sql);
         queryCalls.push({ sql, params });
         if (sql === 'SELECT * FROM "organizations"') {
-          return [{ id: 'org-1', name: 'Beispielstadt', parentId: null, openingHours: null, taxonomySettings: null, childTaxonomyDefaults: null }];
+          return [{ id: 'org-1', name: 'Beispielstadt', parentId: null, openingHours: null, closureDays: [{ date: '2026-04-17' }], taxonomySettings: null, childTaxonomyDefaults: null }];
         }
         if (sql === 'SELECT * FROM "users"') {
           return [
@@ -37,7 +37,7 @@ describe('SystemDataService', () => {
           ];
         }
         if (sql === 'SELECT * FROM "activities"') {
-          return [{ id: 'activity-1', orgId: 'org-1', date: new Date(2026, 3, 17), startTime: '10:00', endTime: '11:00', durationMinutes: 60, type: 'open_door', locationId: null, countMale: 1, countFemale: 2, countDiverse: 0, countTotal: 3, title: 'Offener Treff', cohorts: null, notes: 'Note', goals: 'Goal', createdById: null, updatedById: null, createdAt: '2026-04-01T10:00:00Z', updatedAt: '2026-04-01T10:00:00Z', ackDone: false, projectId: null }];
+          return [{ id: 'activity-1', orgId: 'org-1', date: new Date(2026, 3, 17), executionStatus: 'cancelled', startTime: '10:00', endTime: '11:00', durationMinutes: 60, type: 'open_door', locationId: null, countMale: 1, countFemale: 2, countDiverse: 0, countTotal: 3, title: 'Offener Treff', cohorts: null, notes: 'Note', goals: 'Goal', createdById: null, updatedById: null, createdAt: '2026-04-01T10:00:00Z', updatedAt: '2026-04-01T10:00:00Z', ackDone: false, projectId: null }];
         }
         if (sql.includes('FROM "activities"') && sql.includes('COUNT(*)')) return [{ count: '3' }];
         if (sql.includes('FROM "organizations"') && sql.includes('COUNT(*)')) return [{ count: '2' }];
@@ -54,13 +54,14 @@ describe('SystemDataService', () => {
     const dataSource = {
       entityMetadatas: [
         { tableName: 'users', tablePath: 'users', relations: [], columns: [] },
-        { tableName: 'organizations', tablePath: 'organizations', relations: [], columns: [] },
+        { tableName: 'organizations', tablePath: 'organizations', relations: [], columns: [{ databaseName: 'closureDays', type: 'simple-json' }] },
         {
           tableName: 'activities',
           tablePath: 'activities',
           relations: [],
           columns: [
             { databaseName: 'date', type: 'date' },
+            { databaseName: 'executionStatus', type: 'varchar' },
           ],
         },
       ],
@@ -132,13 +133,16 @@ describe('SystemDataService', () => {
     const result = await service.exportAllData(actor);
     const zip = await JSZip.loadAsync(result.buffer);
     const manifest = JSON.parse(await zip.file('manifest.json')!.async('string')) as { format?: string; schemaVersion?: number };
-    const activities = JSON.parse(await zip.file('database/activities.json')!.async('string')) as Array<{ date: string }>;
+    const activities = JSON.parse(await zip.file('database/activities.json')!.async('string')) as Array<{ date: string; executionStatus?: string }>;
+    const organizations = JSON.parse(await zip.file('database/organizations.json')!.async('string')) as Array<{ closureDays?: unknown }>;
 
     expect(Object.keys(zip.files)).toContain('readable/stato-system-data-readable.xlsx');
     expect(Object.keys(zip.files)).toContain('manifest.json');
     expect(manifest.format).toBe('stato-system-data-export');
     expect(manifest.schemaVersion).toBe(2);
     expect(activities[0]?.date).toBe('2026-04-17');
+    expect(activities[0]?.executionStatus).toBe('cancelled');
+    expect(organizations[0]?.closureDays).toEqual([{ date: '2026-04-17' }]);
     expect(auditService.log).toHaveBeenCalled();
   });
 
@@ -182,6 +186,7 @@ describe('SystemDataService', () => {
       const activities = archive.tables.find((table: { key: string }) => table.key === 'activities');
 
       expect(activities.rows[0]?.date).toBe('2026-04-17');
+      expect(activities.rows[0]?.executionStatus).toBe('completed');
     } finally {
       await rm(tempZipPath, { force: true });
     }

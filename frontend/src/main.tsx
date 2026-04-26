@@ -11,6 +11,7 @@ import '@fontsource/inter/700.css';
 import '@fontsource/inter/800.css';
 import App from './App';
 import './index.css';
+import './styles/themes/amtsstube-1987.css';
 
 import { applyStoredBackground } from './lib/background';
 import { attachQueryClientMetrics } from './lib/devMetrics';

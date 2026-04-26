@@ -6,6 +6,10 @@ import { useActivities } from '@/lib/activities';
 import type { Cohort } from '@/lib/taxonomy';
 import { useCohorts, useCategories } from '@/lib/taxonomy';
 import { colorForActivityType } from '@/lib/colors';
+import {
+  ACTIVITY_EXECUTION_STATUS_LABELS,
+  normalizeActivityExecutionStatus,
+} from '@/lib/activityExecutionStatus';
 
 function csvEscape(value: unknown): string {
   const s = String(value ?? '');
@@ -35,6 +39,21 @@ function typeLabel(code?: string | null): string {
     outreach: 'Aufsuchend',
   };
   return code ? map[code] || code : '';
+}
+
+function executionStatusLabel(status?: string | null): string {
+  return ACTIVITY_EXECUTION_STATUS_LABELS[normalizeActivityExecutionStatus(status)];
+}
+
+function countActivitiesByStatus(items: Activity[]) {
+  return items.reduce(
+    (counts, activity) => {
+      const status = normalizeActivityExecutionStatus(activity.executionStatus);
+      counts[status] += 1;
+      return counts;
+    },
+    { completed: 0, cancelled: 0 },
+  );
 }
 
 function isoDate(date: Date): string {
@@ -133,6 +152,7 @@ export default function ExportModal({
     const rows: string[][] = [];
     const header = [
       'datum',
+      'status',
       'start',
       'ende',
       'dauer_min',
@@ -160,6 +180,7 @@ export default function ExportModal({
       const cohortTotals = cohortColumns.map((c) => String(getCohortTotal(a, c.id)));
       rows.push([
         a.date?.slice(0, 10) || '',
+        executionStatusLabel(a.executionStatus),
         hhmm(a.startTime),
         hhmm(a.endTime),
         String(computeDurationMinutes(a)),
@@ -205,6 +226,8 @@ export default function ExportModal({
       'kategorie',
       'typ',
       'anzahl',
+      'stattgefunden',
+      'ausgefallen',
       'dauer_avg_min',
       'm_avg',
       'w_avg',
@@ -228,6 +251,7 @@ export default function ExportModal({
 
     for (const g of groups.values()) {
       const n = g.items.length || 1;
+      const statusCounts = countActivitiesByStatus(g.items);
       let sumDur = 0,
         sumM = 0,
         sumW = 0,
@@ -262,6 +286,8 @@ export default function ExportModal({
         g.kategorie,
         g.typ,
         n,
+        statusCounts.completed,
+        statusCounts.cancelled,
         Math.round(durAvg * 100) / 100,
         mAvg,
         wAvg,
@@ -305,6 +331,8 @@ export default function ExportModal({
       'Kategorie',
       'Typ',
       'Anzahl',
+      'Stattgefunden',
+      'Ausgefallen',
       'Ø Dauer (Min.)',
       'Ø m',
       'Ø w',
@@ -315,10 +343,10 @@ export default function ExportModal({
     ];
     const topHeader: string[] = new Array(subHeader.length).fill('');
     // Place group labels: Geschlecht over m/w/d, Alterskohorten over cohort columns
-    // Indexes: 0..4 base, 5..7 gender, 8 spacer, 9.. cohorts
-    const genderStart = 5;
-    const genderEnd = 7;
-    const cohortStart = 9;
+    // Indexes: 0..6 base, 7..9 gender, 10 spacer, 11.. cohorts
+    const genderStart = 7;
+    const genderEnd = 9;
+    const cohortStart = 11;
     const cohortEnd = cohortStart + cohortNames.length - 1;
     if (genderStart <= genderEnd) topHeader[genderStart] = 'Geschlecht';
     if (cohortStart <= cohortEnd) topHeader[cohortStart] = 'Alterskohorten';
@@ -339,6 +367,7 @@ export default function ExportModal({
 
     for (const g of groups.values()) {
       const n = g.items.length || 1;
+      const statusCounts = countActivitiesByStatus(g.items);
       let sumDur = 0,
         sumM = 0,
         sumW = 0,
@@ -370,6 +399,8 @@ export default function ExportModal({
         g.kategorie,
         g.typ,
         n,
+        statusCounts.completed,
+        statusCounts.cancelled,
         durAvg,
         mAvg,
         wAvg,
@@ -392,6 +423,7 @@ export default function ExportModal({
     // Raw sheet
     const rawHeader = [
       'Datum',
+      'Status',
       'Start',
       'Ende',
       'Dauer (Minuten)',
@@ -418,6 +450,7 @@ export default function ExportModal({
       const cohortTotals = cohortColumns.map((c) => getCohortTotal(a, c.id));
       return [
         a.date?.slice(0, 10) || '',
+        executionStatusLabel(a.executionStatus),
         hhmm(a.startTime),
         hhmm(a.endTime),
         computeDurationMinutes(a),
@@ -451,9 +484,9 @@ export default function ExportModal({
     // Merges to create group headers in row 1
     const consHeaderTop = matrix[0] as string[];
     const consHeaderSub = matrix[1] as string[];
-    const genderStart = 5;
-    const genderEnd = 7; // F..H
-    const cohortStart = 9;
+    const genderStart = 7;
+    const genderEnd = 9; // H..J
+    const cohortStart = 11;
     const cohortEnd = consHeaderSub.length - 2; // cohort columns end before final Ø Gesamt
     const merges = [] as Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
     if (genderEnd >= genderStart)
@@ -467,7 +500,7 @@ export default function ExportModal({
 
     // Column widths (spacer column narrower)
     const consCols: ColInfo[] = consHeaderSub.map((h, i) => ({
-      wch: i === 8 ? 3 : i <= 2 ? 22 : Math.max(10, h.length + 2),
+      wch: i === 10 ? 3 : i <= 2 ? 22 : Math.max(10, h.length + 2),
     }));
     consSheet['!cols'] = consCols;
 
@@ -602,8 +635,8 @@ export default function ExportModal({
         <div className="border-t pt-4">
           <h4 className="font-semibold text-viridian mb-1">Konsolidiert (CSV)</h4>
           <p className="text-sm text-gray-600 mb-3">
-            Gruppiert nach Projekt mit Anzahl, durchschnittlicher Dauer, Ø m/w/d und Ø je
-            Alterskohorte.
+            Gruppiert nach Projekt mit Anzahl, Statusverteilung, durchschnittlicher Dauer, Ø m/w/d
+            und Ø je Alterskohorte.
           </p>
           <button
             className="px-4 py-2 rounded bg-cambridge-blue text-white hover:bg-viridian disabled:opacity-60 disabled:cursor-not-allowed"
@@ -616,7 +649,7 @@ export default function ExportModal({
         <div className="border-t pt-4">
           <h4 className="font-semibold text-viridian mb-1">Excel (XLSX)</h4>
           <p className="text-sm text-gray-600 mb-3">
-            Zwei Blätter: Rohdaten und Konsolidiert. Bessere Darstellung in Excel.
+            Zwei Blätter: Rohdaten und Konsolidiert inklusive Status. Bessere Darstellung in Excel.
           </p>
           <button
             className="px-4 py-2 rounded bg-azure-web text-viridian hover:bg-mint-green disabled:opacity-60 disabled:cursor-not-allowed"

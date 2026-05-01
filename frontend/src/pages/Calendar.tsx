@@ -27,6 +27,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 import CalendarClosureModal from '@/components/CalendarClosureModal';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity } from '@/lib/activityExecutionStatus';
+import DemoHoverHint from '@/demo/DemoHoverHint';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -1105,47 +1106,54 @@ export default function Calendar() {
           </div>
         </div>
         {/* Desktop controls */}
-        <div className="hidden md:flex gap-2">
-          {showTodayButton && (
-            <button className="bg-viridian text-white px-3 py-2 rounded" onClick={gotoToday}>
-              Heute
-            </button>
-          )}
-          <button
-            className="calendar-control px-3 py-2 rounded"
-            onClick={goToPrevious}
-          >
-            «
-          </button>
-          <button
-            className="calendar-control px-3 py-2 rounded"
-            onClick={goToNext}
-          >
-            »
-          </button>
-          <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label="Kalenderansicht">
+        <DemoHoverHint
+          title="Kalendersteuerung"
+          description="Wechselt zwischen Monaten und Wochen. Der Heute-Knopf erscheint nur, wenn der aktuelle Zeitraum nicht bereits sichtbar ist."
+          placement="bottom"
+          align="end"
+        >
+          <div className="hidden md:flex gap-2">
+            {showTodayButton && (
+              <button className="bg-viridian text-white px-3 py-2 rounded" onClick={gotoToday}>
+                Heute
+              </button>
+            )}
             <button
-              type="button"
-              className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                calendarView === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
-              }`}
-              onClick={() => setView('month')}
-              aria-pressed={calendarView === 'month'}
+              className="calendar-control px-3 py-2 rounded"
+              onClick={goToPrevious}
             >
-              Monat
+              «
             </button>
             <button
-              type="button"
-              className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                calendarView === 'week' ? 'stats-kpi-toggle-button-active font-medium' : ''
-              }`}
-              onClick={() => setView('week')}
-              aria-pressed={calendarView === 'week'}
+              className="calendar-control px-3 py-2 rounded"
+              onClick={goToNext}
             >
-              Woche
+              »
             </button>
+            <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label="Kalenderansicht">
+              <button
+                type="button"
+                className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
+                  calendarView === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                }`}
+                onClick={() => setView('month')}
+                aria-pressed={calendarView === 'month'}
+              >
+                Monat
+              </button>
+              <button
+                type="button"
+                className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
+                  calendarView === 'week' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                }`}
+                onClick={() => setView('week')}
+                aria-pressed={calendarView === 'week'}
+              >
+                Woche
+              </button>
+            </div>
           </div>
-        </div>
+        </DemoHoverHint>
 
         <div className="flex flex-wrap items-center gap-2 md:hidden">
           <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label="Kalenderansicht mobil">
@@ -1175,7 +1183,11 @@ export default function Calendar() {
 
       {/* Month grid */}
       {calendarView === 'month' && (
-        <div className="calendar-surface rounded-lg shadow overflow-hidden">
+        <DemoHoverHint
+          title="Kalenderflaeche"
+          description="Ein Klick auf ein Tagesfeld zeigt im Desktop die Aktivitaeten direkt unter dem Kalender. Die Plus- und Schliesszeit-Buttons erscheinen beim Hover."
+        >
+          <div className="calendar-surface rounded-lg shadow overflow-hidden">
           <div className="calendar-header-row grid grid-cols-7 text-xs md:text-sm font-medium">
             {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d, idx) => (
               <div key={d} className="px-2 py-2 text-center">
@@ -1282,11 +1294,16 @@ export default function Calendar() {
             })}
           </div>
         </div>
+        </DemoHoverHint>
       )}
 
       {/* Day-range view */}
       {calendarView !== 'month' && (
-        <div className="calendar-surface rounded-lg shadow overflow-hidden">
+        <DemoHoverHint
+          title="Kalenderflaeche"
+          description="Die Wochen- und 3-Tage-Ansicht zeigt Aktivitaeten dichter pro Tag. Klicks auf Tagesflaechen oeffnen im Desktop die Tagesliste darunter."
+        >
+          <div className="calendar-surface rounded-lg shadow overflow-hidden">
           <div
             className="calendar-header-row grid text-xs md:text-sm font-medium"
             style={{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(0, 1fr))` }}
@@ -1389,10 +1406,15 @@ export default function Calendar() {
             })}
           </div>
         </div>
+        </DemoHoverHint>
       )}
 
       {selectedDateISO && !isMobile && (
-        <section className="calendar-day-list activities-desktop-table-shell mt-4 hidden overflow-hidden rounded-lg border shadow md:block" aria-live="polite">
+        <DemoHoverHint
+          title="Tagesliste"
+          description="Nach dem Klick auf einen Tag erscheinen hier die Aktivitaeten dieses Tages. Ueber Pfeil, Plus und Stift wechselst du zur Liste, legst neu an oder bearbeitest direkt."
+        >
+          <section className="calendar-day-list activities-desktop-table-shell mt-4 hidden overflow-hidden rounded-lg border shadow md:block" aria-live="polite">
           <div className="calendar-day-list-header flex flex-col gap-3 border-b bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
@@ -1541,6 +1563,7 @@ export default function Calendar() {
             </div>
           )}
         </section>
+        </DemoHoverHint>
       )}
 
       {picker && (

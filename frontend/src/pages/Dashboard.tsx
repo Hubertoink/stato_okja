@@ -30,6 +30,7 @@ import { listOrgs, type OrgDto, getOpeningHours, OpeningHours } from '@/lib/orgs
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 import { usePublicConfig } from '@/lib/publicConfig';
+import DemoHoverHint from '@/demo/DemoHoverHint';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
 
@@ -536,243 +537,265 @@ export default function Dashboard() {
       {/* Quick Tally - Daily Attendance Counter */}
       {/* Show start button only when no active session */}
       {!activeQuickTallySession && (
-        <div className="dashboard-accent-panel rounded-2xl p-6 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/20 rounded-xl">
-                <Users className="w-8 h-8" />
+        <DemoHoverHint
+          title="Tageserfassung"
+          description="Startet eine schnelle Anwesenheitserfassung fuer den laufenden Tag. Ideal, wenn Teilnehmende direkt am Tablet mitgezaehlt werden."
+          placement="bottom"
+        >
+          <div className="dashboard-accent-panel rounded-2xl p-6 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-xl">
+                  <Users className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold">Tageserfassung</h3>
+                  <p className="text-white/80 text-sm">Schnelle Anwesenheitserfassung am Tablet</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-semibold">Tageserfassung</h3>
-                <p className="text-white/80 text-sm">Schnelle Anwesenheitserfassung am Tablet</p>
-              </div>
+              <button
+                onClick={openQuickTally}
+                className="dashboard-accent-button px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+              >
+                <Users className="w-5 h-5" />
+                Erfassung starten
+              </button>
             </div>
-            <button
-              onClick={openQuickTally}
-              className="dashboard-accent-button px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
-            >
-              <Users className="w-5 h-5" />
-              Erfassung starten
-            </button>
           </div>
-        </div>
+        </DemoHoverHint>
       )}
 
       {/* Quick Actions */}
-      <div className="modern-card p-6 mb-8">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Schnellzugriff</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            className="dashboard-accent-solid-button px-6 py-3 rounded-xl font-medium"
-            onClick={() => {
-              const dateISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-              if (isMobile) {
-                navigate(`/activities/new/select-project?date=${encodeURIComponent(dateISO)}`);
-              } else {
-                setPicker(true);
-              }
-            }}
-          >
-            Neue Aktivität erfassen
-          </button>
-          <button
-            className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
-            onClick={() => navigate('/statistics')}
-          >
-            Statistik anzeigen
-          </button>
-          <button
-            className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
-            onClick={() => setExportOpen(true)}
-            onMouseEnter={preloadExportModal}
-            onFocus={preloadExportModal}
-          >
-            Daten exportieren
-          </button>
+      <DemoHoverHint
+        title="Schnellzugriff"
+        description="Fuehrt zu den wichtigsten Demo-Workflows: neue Aktivitaet anlegen, Auswertungen ansehen oder Daten exportieren."
+      >
+        <div className="modern-card p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Schnellzugriff</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              className="dashboard-accent-solid-button px-6 py-3 rounded-xl font-medium"
+              onClick={() => {
+                const dateISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                if (isMobile) {
+                  navigate(`/activities/new/select-project?date=${encodeURIComponent(dateISO)}`);
+                } else {
+                  setPicker(true);
+                }
+              }}
+            >
+              Neue Aktivität erfassen
+            </button>
+            <button
+              className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              onClick={() => navigate('/statistics')}
+            >
+              Statistik anzeigen
+            </button>
+            <button
+              className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              onClick={() => setExportOpen(true)}
+              onMouseEnter={preloadExportModal}
+              onFocus={preloadExportModal}
+            >
+              Daten exportieren
+            </button>
+          </div>
         </div>
-      </div>
+      </DemoHoverHint>
 
       {/* Daily Log */}
-      <div className="modern-card p-6 mb-8">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Daily Log
-          <span className="ml-2 text-xs text-gray-400 font-normal">(letzte 14 Tage)</span>
-        </h3>
-        {dailyLog.length === 0 ? (
-          <div className="text-gray-500">
-            Keine Aktivitäten mit Notizen oder Tags im aktuellen Zeitraum.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {dailyLog.map((item) => (
-              <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2 gap-2">
-                  <h4 className="font-medium text-gray-800 truncate" title={item.title}>
-                    {item.title}
-                  </h4>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className="text-xs text-gray-500 flex items-center"
-                      title={new Date(item.createdAt || '').toLocaleString('de-DE')}
-                    >
-                      <CalendarIcon className="w-3.5 h-3.5 mr-1" />
-                      {(() => {
-                        const d = new Date(item.createdAt || '');
-                        return d.toLocaleDateString('de-DE', {
-                          weekday: 'long',
-                          day: '2-digit',
-                          month: '2-digit',
-                          // year intentionally omitted for recent daily log
-                        });
-                      })()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const next = !doneMap[item.id];
-                        // optimistic update
-                        setDoneMap((m) => ({ ...m, [item.id]: next }));
-                        try {
-                          await setActivityAck(item.id, next);
-                        } catch {
-                          // revert on error
-                          setDoneMap((m) => ({ ...m, [item.id]: !next }));
+      <DemoHoverHint
+        title="Daily Log"
+        description="Zeigt aktuelle Aktivitaeten mit Notizen oder Tags. So lassen sich offene Ruecksprachen und auffaellige Eintraege schnell nachhalten."
+      >
+        <div className="modern-card p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            Daily Log
+            <span className="ml-2 text-xs text-gray-400 font-normal">(letzte 14 Tage)</span>
+          </h3>
+          {dailyLog.length === 0 ? (
+            <div className="text-gray-500">
+              Keine Aktivitäten mit Notizen oder Tags im aktuellen Zeitraum.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {dailyLog.map((item) => (
+                <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2 gap-2">
+                    <h4 className="font-medium text-gray-800 truncate" title={item.title}>
+                      {item.title}
+                    </h4>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className="text-xs text-gray-500 flex items-center"
+                        title={new Date(item.createdAt || '').toLocaleString('de-DE')}
+                      >
+                        <CalendarIcon className="w-3.5 h-3.5 mr-1" />
+                        {(() => {
+                          const d = new Date(item.createdAt || '');
+                          return d.toLocaleDateString('de-DE', {
+                            weekday: 'long',
+                            day: '2-digit',
+                            month: '2-digit',
+                            // year intentionally omitted for recent daily log
+                          });
+                        })()}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const next = !doneMap[item.id];
+                          // optimistic update
+                          setDoneMap((m) => ({ ...m, [item.id]: next }));
+                          try {
+                            await setActivityAck(item.id, next);
+                          } catch {
+                            // revert on error
+                            setDoneMap((m) => ({ ...m, [item.id]: !next }));
+                          }
+                        }}
+                        className={`p-1.5 rounded-full transition-all duration-200 ${doneMap[item.id] ? 'bg-accent-green/10 text-accent-green' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                        title={
+                          doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'
                         }
-                      }}
-                      className={`p-1.5 rounded-full transition-all duration-200 ${doneMap[item.id] ? 'bg-accent-green/10 text-accent-green' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                      title={
-                        doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'
-                      }
-                      aria-label={
-                        doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'
-                      }
-                    >
-                      {doneMap[item.id] ? (
-                        <CheckCircle2 className="w-4 h-4" />
-                      ) : (
-                        <Circle className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-700 mb-2">
-                  {(() => {
-                    const labelMap: Record<string, string> = {
-                      open_door: 'Offene Tür',
-                      project_open: 'Projekt (offen)',
-                      project_closed: 'Projekt (geschlossen)',
-                      event: 'Veranstaltung',
-                      outreach: 'Aufsuchend',
-                    };
-                    const typeBgClass: Record<string, string> = {
-                      open_door: 'bg-emerald-700 text-white',
-                      project_open: 'bg-viridian text-white',
-                      project_closed: 'bg-slate-700 text-white',
-                      event: 'bg-amber-700 text-white',
-                      outreach: 'bg-red-700 text-white',
-                    };
-                    const cls = typeBgClass[item.type] || 'bg-gray-700 text-white';
-                    const label = labelMap[item.type] || item.type;
-                    return (
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 mr-2 text-xs font-medium border border-black/10 ${cls}`}
+                        aria-label={
+                          doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'
+                        }
                       >
-                        {label}
-                      </span>
-                    );
-                  })()}
-                  {item.project && (
-                    <span className="inline-block text-gray-600">Projekt: {item.project}</span>
+                        {doneMap[item.id] ? (
+                          <CheckCircle2 className="w-4 h-4" />
+                        ) : (
+                          <Circle className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-700 mb-2">
+                    {(() => {
+                      const labelMap: Record<string, string> = {
+                        open_door: 'Offene Tür',
+                        project_open: 'Projekt (offen)',
+                        project_closed: 'Projekt (geschlossen)',
+                        event: 'Veranstaltung',
+                        outreach: 'Aufsuchend',
+                      };
+                      const typeBgClass: Record<string, string> = {
+                        open_door: 'bg-emerald-700 text-white',
+                        project_open: 'bg-viridian text-white',
+                        project_closed: 'bg-slate-700 text-white',
+                        event: 'bg-amber-700 text-white',
+                        outreach: 'bg-red-700 text-white',
+                      };
+                      const cls = typeBgClass[item.type] || 'bg-gray-700 text-white';
+                      const label = labelMap[item.type] || item.type;
+                      return (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 mr-2 text-xs font-medium border border-black/10 ${cls}`}
+                        >
+                          {label}
+                        </span>
+                      );
+                    })()}
+                    {item.project && (
+                      <span className="inline-block text-gray-600">Projekt: {item.project}</span>
+                    )}
+                  </div>
+                  {item.notes && (
+                    <div className="text-sm text-gray-800 mb-2 flex items-start gap-2">
+                      <StickyNote className="w-4 h-4 text-gray-500 mt-0.5" />
+                      <span className="whitespace-pre-wrap">{item.notes}</span>
+                    </div>
                   )}
+                  {item.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {item.tags.map((t, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-gray-300 text-gray-700"
+                          title={t.name}
+                        >
+                          <TagIcon className="w-3 h-3" /> {t.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Removed creator footer to simplify card */}
                 </div>
-                {item.notes && (
-                  <div className="text-sm text-gray-800 mb-2 flex items-start gap-2">
-                    <StickyNote className="w-4 h-4 text-gray-500 mt-0.5" />
-                    <span className="whitespace-pre-wrap">{item.notes}</span>
-                  </div>
-                )}
-                {item.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {item.tags.map((t, i) => (
-                      <span
-                        key={i}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-gray-300 text-gray-700"
-                        title={t.name}
-                      >
-                        <TagIcon className="w-3 h-3" /> {t.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {/* Removed creator footer to simplify card */}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Recent Actions */}
-      <div className="modern-card p-4 sm:p-6">
-        <h3 className="mb-3 text-lg font-bold text-gray-800 sm:mb-4 sm:text-xl">Letzte Aktionen</h3>
-        <div className="space-y-3">
-          {recentActionGroups.map((group) => {
-            const GroupIcon = group.presentation.icon;
-            const expanded = expandedRecentActionGroups[group.action];
-
-            return (
-              <section key={group.action} className="recent-actions-group">
-                <button
-                  type="button"
-                  className="recent-actions-group-header flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors sm:px-5"
-                  onClick={() => toggleRecentActionGroup(group.action)}
-                  aria-expanded={expanded}
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="recent-actions-icon-shell inline-flex rounded-xl p-2.5">
-                      <GroupIcon className={`h-5 w-5 ${group.presentation.iconClassName}`} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-semibold text-[color:var(--text-primary)]">
-                        {group.presentation.label}
-                      </span>
-                      <span className="recent-actions-group-kicker block truncate text-xs">
-                        {group.presentation.summary}
-                      </span>
-                    </span>
-                  </div>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <span className="recent-actions-group-count inline-flex rounded-full px-2.5 py-1 text-xs font-medium">
-                      {group.visibleCount}
-                    </span>
-                    {expanded ? (
-                      <ChevronUp className="h-4 w-4 text-[color:var(--text-muted)]" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-[color:var(--text-muted)]" />
-                    )}
-                  </span>
-                </button>
-
-                {expanded && (
-                  <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-                    {group.items.length === 0 ? (
-                      <div className="recent-actions-empty px-2 py-2 text-sm">
-                        {group.presentation.emptyState}
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5 sm:space-y-3">
-                        {group.items.map(renderRecentActionEntry)}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            );
-          })}
-          {!hasRecentActionEntries && (
-            <div className="recent-actions-empty text-sm">Noch keine Aktionen vorhanden.</div>
+              ))}
+            </div>
           )}
         </div>
-      </div>
+      </DemoHoverHint>
+
+      {/* Recent Actions */}
+      <DemoHoverHint
+        title="Letzte Aktionen"
+        description="Fasst Login-, Anlage-, Bearbeitungs- und Loeschereignisse zusammen. Die Gruppen lassen sich aufklappen, um Details der Demo-Daten zu sehen."
+      >
+        <div className="modern-card p-4 sm:p-6">
+          <h3 className="mb-3 text-lg font-bold text-gray-800 sm:mb-4 sm:text-xl">Letzte Aktionen</h3>
+          <div className="space-y-3">
+            {recentActionGroups.map((group) => {
+              const GroupIcon = group.presentation.icon;
+              const expanded = expandedRecentActionGroups[group.action];
+
+              return (
+                <section key={group.action} className="recent-actions-group">
+                  <button
+                    type="button"
+                    className="recent-actions-group-header flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors sm:px-5"
+                    onClick={() => toggleRecentActionGroup(group.action)}
+                    aria-expanded={expanded}
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="recent-actions-icon-shell inline-flex rounded-xl p-2.5">
+                        <GroupIcon className={`h-5 w-5 ${group.presentation.iconClassName}`} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold text-[color:var(--text-primary)]">
+                          {group.presentation.label}
+                        </span>
+                        <span className="recent-actions-group-kicker block truncate text-xs">
+                          {group.presentation.summary}
+                        </span>
+                      </span>
+                    </div>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="recent-actions-group-count inline-flex rounded-full px-2.5 py-1 text-xs font-medium">
+                        {group.visibleCount}
+                      </span>
+                      {expanded ? (
+                        <ChevronUp className="h-4 w-4 text-[color:var(--text-muted)]" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-[color:var(--text-muted)]" />
+                      )}
+                    </span>
+                  </button>
+
+                  {expanded && (
+                    <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+                      {group.items.length === 0 ? (
+                        <div className="recent-actions-empty px-2 py-2 text-sm">
+                          {group.presentation.emptyState}
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5 sm:space-y-3">
+                          {group.items.map(renderRecentActionEntry)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+            {!hasRecentActionEntries && (
+              <div className="recent-actions-empty text-sm">Noch keine Aktionen vorhanden.</div>
+            )}
+          </div>
+        </div>
+      </DemoHoverHint>
+
       {picker && (
         <ProjectPickerModal
           onPick={(p) => {

@@ -35,6 +35,7 @@ import {
   formatActivityExecutionStatusList,
   isCancelledActivity,
 } from '@/lib/activityExecutionStatus';
+import DemoHoverHint from '@/demo/DemoHoverHint';
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -664,8 +665,14 @@ export default function Activities() {
     <div>
       <div className="mb-6 mt-1 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <h2 className="text-3xl font-bold text-viridian">Aktivitäten</h2>
-        <div className="flex justify-end mt-1">
-          <div className="flex gap-2 flex-wrap justify-end">
+        <DemoHoverHint
+          title="Aktivitaeten-Werkzeuge"
+          description="Hier suchst, exportierst, filterst und erstellst du Aktivitaeten. Der erweiterte Filter kombiniert Zeitraum, Typen, Projekte, Tags und Status."
+          placement="bottom"
+          align="end"
+        >
+          <div className="flex justify-end mt-1">
+            <div className="flex gap-2 flex-wrap justify-end">
             <div className="relative">
               {searchOpen && (
                 <div
@@ -758,16 +765,21 @@ export default function Activities() {
           >
             + Neue Aktivität
           </button>
+            </div>
           </div>
-        </div>
+        </DemoHoverHint>
       </div>
 
       {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-700">
-            {activitiesLoading ? 'Treffer werden geladen…' : `Treffer: ${exportCountLabel}`}
-          </span>
+      <DemoHoverHint
+        title="Filteruebersicht"
+        description="Diese Leiste zeigt Trefferzahl und aktive Filter. Einzelne Filterchips lassen sich entfernen, der Reset-Knopf setzt die Ansicht zurueck."
+      >
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-700">
+              {activitiesLoading ? 'Treffer werden geladen…' : `Treffer: ${exportCountLabel}`}
+            </span>
           {searchTerm.trim() ? (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-azure-web text-viridian">
               <span>Suche: {searchTerm.trim()}</span>
@@ -850,22 +862,27 @@ export default function Activities() {
               <X className="h-3.5 w-3.5" />
             </button>
           )}
-        </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="hidden md:block">
-            <ActivitiesPaginationControls
-              page={page}
-              pageCount={pageCount}
-              onPrevious={goToPreviousPage}
-              onNext={goToNextPage}
-            />
+          </div>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="hidden md:block">
+              <ActivitiesPaginationControls
+                page={page}
+                pageCount={pageCount}
+                onPrevious={goToPreviousPage}
+                onNext={goToNextPage}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </DemoHoverHint>
 
       {/* Activity List */}
       {/* Desktop Table */}
-      <div className="activities-desktop-table-shell bg-white rounded-lg shadow hidden md:block overflow-x-auto">
+      <DemoHoverHint
+        title="Aktivitaetenliste"
+        description="Die Tabelle zeigt die gefilterten Eintraege mit Datum, Typ, Teilnehmenden und Status. Ueber das Stift-Symbol oeffnest du die Bearbeitung."
+      >
+        <div className="activities-desktop-table-shell bg-white rounded-lg shadow hidden md:block overflow-x-auto">
         <table className="activities-desktop-table w-full min-w-[700px]">
           <thead className="bg-azure-web">
             <tr>
@@ -1063,7 +1080,8 @@ export default function Activities() {
             )}
           </tbody>
         </table>
-      </div>
+        </div>
+      </DemoHoverHint>
       {/* Pagination Controls */}
       <div className="mt-4 mb-4 md:mb-0 flex items-center justify-between gap-3">
         <div className="text-sm text-gray-600">
@@ -1096,7 +1114,11 @@ export default function Activities() {
       )}
 
       {/* Mobile Cards */}
-      <div className="relative min-h-[12rem] pt-2 md:hidden">
+      <DemoHoverHint
+        title="Aktivitaetenliste"
+        description="Auf kleinen Bildschirmen oeffnet ein Tipp auf die Karte die Aktivitaet. Die Demo-Hinweise erscheinen bei Mausbedienung."
+      >
+        <div className="relative min-h-[12rem] pt-2 md:hidden">
         <div className="space-y-3">
           {activities.map((a) => (
             <div
@@ -1252,7 +1274,8 @@ export default function Activities() {
             <div className="text-gray-500 py-6 text-center">Keine Aktivitäten im Zeitraum.</div>
           )}
         </div>
-      </div>
+        </div>
+      </DemoHoverHint>
       <div className="mt-4 flex items-center justify-between gap-3 md:hidden">
         <div className="text-sm text-gray-600">
           {total > 0 ? `Seite ${page} von ${pageCount} · ${total} Einträge` : 'Keine Einträge'}

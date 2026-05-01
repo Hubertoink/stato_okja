@@ -39,7 +39,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(() => ({ showToast }), [showToast]);
   const toastLayer = (
-    <div className="fixed right-4 z-[120] space-y-2 pointer-events-none bottom-24 md:bottom-4">
+    <div className="fixed right-4 z-[1000] space-y-2 pointer-events-none bottom-24 md:bottom-4">
       {toasts.map((t) => (
         <div
           key={t.id}

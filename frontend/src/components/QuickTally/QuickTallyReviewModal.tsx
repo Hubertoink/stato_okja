@@ -179,7 +179,7 @@ export default function QuickTallyReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-6" style={{ backgroundColor: 'var(--overlay-backdrop)' }}>
+    <div className="modal-overlay fixed inset-0 flex items-end md:items-center justify-center p-0 md:p-6" style={{ backgroundColor: 'var(--overlay-backdrop)' }}>
       <div
         className="w-full md:max-w-lg rounded-t-2xl md:rounded-lg max-h-[90vh] overflow-y-auto border"
         style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}

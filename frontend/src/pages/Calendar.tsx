@@ -179,7 +179,7 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
   if (!layout) {
     // First paint: render off-screen to measure without flashing.
     return createPortal(
-      <div className="fixed left-[-9999px] top-[-9999px] z-[9999] pointer-events-none" aria-hidden>
+      <div className="fixed left-[-9999px] top-[-9999px] z-[55] pointer-events-none" aria-hidden>
         <div
           ref={ref}
           className={panelClass}
@@ -202,7 +202,7 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
 
   return createPortal(
     <div
-      className="fixed z-[9999] pointer-events-none animate-tooltip-fade-in"
+      className="fixed z-[55] pointer-events-none animate-tooltip-fade-in"
       style={{ left: layout.left, top: layout.top, transform: layout.transform }}
     >
       <div
@@ -309,6 +309,7 @@ export default function Calendar() {
     : view === 'three-day'
       ? 'week'
       : view;
+  const showCalendarDayActions = !isMobile || calendarView === 'three-day';
   
   // Tooltip state for activity hover
   const [tooltipActivity, setTooltipActivity] = useState<Activity | null>(null);
@@ -1185,7 +1186,7 @@ export default function Calendar() {
       {calendarView === 'month' && (
         <DemoHoverHint
           title="Kalenderflaeche"
-          description="Ein Klick auf ein Tagesfeld zeigt im Desktop die Aktivitaeten direkt unter dem Kalender. Die Plus- und Schliesszeit-Buttons erscheinen beim Hover."
+          description="Ein Klick auf ein Tagesfeld zeigt im Desktop die Aktivitaeten direkt unter dem Kalender. Plus- und Schliesszeit-Buttons erscheinen im Desktop beim Hover; mobil bleiben sie in der Monatsuebersicht ausgeblendet."
         >
           <div className="calendar-surface rounded-lg shadow overflow-hidden">
           <div className="calendar-header-row grid grid-cols-7 text-xs md:text-sm font-medium">
@@ -1233,8 +1234,8 @@ export default function Calendar() {
                     >
                       {day.getDate()}
                     </button>
-                    {!isMobile && (
-                      <div className="absolute right-1 top-1 z-10 flex items-center gap-1">
+                    {showCalendarDayActions && (
+                      <div className="calendar-day-actions absolute right-1 top-1 z-10 flex items-center gap-1">
                         {effectiveOrgId && (
                           <button
                             type="button"
@@ -1301,7 +1302,7 @@ export default function Calendar() {
       {calendarView !== 'month' && (
         <DemoHoverHint
           title="Kalenderflaeche"
-          description="Die Wochen- und 3-Tage-Ansicht zeigt Aktivitaeten dichter pro Tag. Klicks auf Tagesflaechen oeffnen im Desktop die Tagesliste darunter."
+          description="Die mobile 3-Tage-Ansicht zeigt Schliesszeit- und Plus-Buttons direkt pro Tag. So kannst du Tage als geschlossen markieren oder neue Aktivitaeten hinzufuegen, ohne in die Monatsuebersicht zu wechseln."
         >
           <div className="calendar-surface rounded-lg shadow overflow-hidden">
           <div
@@ -1351,34 +1352,36 @@ export default function Calendar() {
                     >
                       {d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
                     </button>
-                    <div className="flex shrink-0 items-center gap-1">
-                      {effectiveOrgId && (
+                    {showCalendarDayActions && (
+                      <div className="calendar-day-actions flex shrink-0 items-center gap-1">
+                        {effectiveOrgId && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setClosureDate(iso);
+                            }}
+                            className={`calendar-closure-button inline-flex h-6 w-6 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? 'calendar-closure-button-active' : ''}`}
+                            aria-label={`Schließzeit für ${d.toLocaleDateString('de-DE')} bearbeiten`}
+                            title={closureDaysByDate.has(iso) ? 'Schließung bearbeiten' : 'Tag als geschlossen markieren'}
+                          >
+                            <Building2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setClosureDate(iso);
+                            openAddActivityForDate(iso);
                           }}
-                          className={`calendar-closure-button inline-flex h-6 w-6 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? 'calendar-closure-button-active' : ''}`}
-                          aria-label={`Schließzeit für ${d.toLocaleDateString('de-DE')} bearbeiten`}
-                          title={closureDaysByDate.has(iso) ? 'Schließung bearbeiten' : 'Tag als geschlossen markieren'}
+                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
+                          aria-label={`Aktivität zu ${d.toLocaleDateString('de-DE')} hinzufügen`}
+                          title="Aktivität zu diesem Tag hinzufügen"
                         >
-                          <Building2 className="h-3.5 w-3.5" />
+                          <Plus className="h-4 w-4" />
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openAddActivityForDate(iso);
-                        }}
-                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
-                        aria-label={`Aktivität zu ${d.toLocaleDateString('de-DE')} hinzufügen`}
-                        title="Aktivität zu diesem Tag hinzufügen"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                   {!!holidaysByDate.get(iso)?.length && (
                     <div

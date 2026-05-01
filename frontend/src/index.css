@@ -1077,8 +1077,15 @@ code {
 
 /* Prevent scroll chaining from modal content to page */
 .modal-overlay {
+  z-index: 900;
   overscroll-behavior: contain;
   background: var(--overlay-backdrop);
+}
+
+body:has(.modal-overlay) .demo-hover-hint-panel {
+  opacity: 0 !important;
+  transition: none !important;
+  visibility: hidden !important;
 }
 
 .modal-panel-roomy {

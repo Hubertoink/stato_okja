@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Clock3, Save, Trash2, X } from 'lucide-react';
 import type { OrganizationClosureDay } from '@/lib/orgs';
 
@@ -45,9 +46,9 @@ export default function CalendarClosureModal({
   const dateLabel = useMemo(() => formatDateLabel(date), [date]);
   const canSave = fullDay || (!!from && !!to);
 
-  return (
+  const content = (
     <div
-      className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/45 p-0 md:items-center md:p-4"
+      className="modal-overlay fixed inset-0 flex items-end justify-center bg-black/45 p-0 md:items-center md:p-4"
       onClick={onClose}
     >
       <div
@@ -177,4 +178,7 @@ export default function CalendarClosureModal({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') return createPortal(content, document.body);
+  return content;
 }

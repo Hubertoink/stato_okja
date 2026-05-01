@@ -62,6 +62,12 @@ function isoDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+type DateRangePreset = {
+  label: string;
+  from: string;
+  to: string;
+};
+
 function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -85,12 +91,54 @@ export default function ExportModal({
   initialFrom: string;
   initialTo: string;
 }) {
-  const today = useMemo(() => isoDate(new Date()), []);
+  const todayDate = useMemo(() => new Date(), []);
+  const today = useMemo(() => isoDate(todayDate), [todayDate]);
   const [from, setFrom] = useState<string>(initialFrom);
   const [to, setTo] = useState<string>(initialTo);
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const effectiveTo = from <= to ? to : from;
+  const dateRangePresets = useMemo<DateRangePreset[]>(() => {
+    const year = todayDate.getFullYear();
+    const month = todayDate.getMonth();
+    const day = todayDate.getDate();
+    const lastMonthStart = new Date(year, month - 1, 1);
+    const lastMonthEnd = new Date(year, month, 0);
+    const lastYear = year - 1;
+
+    return [
+      {
+        label: 'Dieses Jahr',
+        from: isoDate(new Date(year, 0, 1)),
+        to: today,
+      },
+      {
+        label: 'Diesen Monat',
+        from: isoDate(new Date(year, month, 1)),
+        to: today,
+      },
+      {
+        label: 'Letzten Monat',
+        from: isoDate(lastMonthStart),
+        to: isoDate(lastMonthEnd),
+      },
+      {
+        label: 'Letzte 3 Monate',
+        from: isoDate(new Date(year, month - 3, day)),
+        to: today,
+      },
+      {
+        label: 'Letzte 6 Monate',
+        from: isoDate(new Date(year, month - 6, day)),
+        to: today,
+      },
+      {
+        label: 'Letztes Jahr',
+        from: isoDate(new Date(lastYear, 0, 1)),
+        to: isoDate(new Date(lastYear, 11, 31)),
+      },
+    ];
+  }, [today, todayDate]);
   const { data: activities = [] } = useActivities({ from, to });
   const { data: cohorts } = useCohorts({ active: true });
   const { data: categoriesList = [] } = useCategories({ active: true });
@@ -143,6 +191,12 @@ export default function ExportModal({
   };
 
   const exportRangeLabel = `${from}-bis-${effectiveTo}`;
+
+  const applyDateRangePreset = (preset: DateRangePreset) => {
+    setFrom(preset.from);
+    setTo(preset.to);
+    setSaveStatus('');
+  };
 
   const saveCsv = async (rows: string[][], fileName: string) => {
     const csv = rows.map((r) => r.map(csvEscape).join(';')).join('\r\n');
@@ -614,6 +668,29 @@ export default function ExportModal({
               onChange={(e) => setTo(e.target.value)}
             />
           </label>
+        </div>
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-gray-500">Schnellauswahl</div>
+          <div className="flex flex-wrap gap-2">
+            {dateRangePresets.map((preset) => {
+              const active = from === preset.from && to === preset.to;
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    active
+                      ? 'bg-viridian text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  onClick={() => applyDateRangePreset(preset)}
+                  aria-pressed={active}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="text-xs text-gray-500">
           Zeitraum: {from} bis {effectiveTo} · Aktivitäten: {activities.length}

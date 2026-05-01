@@ -16,6 +16,8 @@ function csvEscape(value: unknown): string {
   return '"' + s.replace(/"/g, '""') + '"';
 }
 
+const UTF8_BOM = '\uFEFF';
+
 function computeDurationMinutes(a: Activity): number {
   if (typeof a.durationMinutes === 'number' && !Number.isNaN(a.durationMinutes))
     return a.durationMinutes;
@@ -144,7 +146,7 @@ export default function ExportModal({
 
   const saveCsv = async (rows: string[][], fileName: string) => {
     const csv = rows.map((r) => r.map(csvEscape).join(';')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([UTF8_BOM, csv], { type: 'text/csv;charset=utf-8;' });
     downloadBlob(blob, fileName);
   };
 

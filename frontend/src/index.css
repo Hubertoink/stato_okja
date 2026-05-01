@@ -1488,6 +1488,15 @@ code {
   box-shadow: inset 0 0 0 2px var(--calendar-today-ring);
 }
 
+.calendar-day-cell-selected {
+  background: var(--interactive-soft-strong);
+  box-shadow: inset 0 0 0 2px var(--viridian);
+}
+
+.calendar-day-cell-selected:hover {
+  background: var(--interactive-soft-strong);
+}
+
 .calendar-day-number {
   color: var(--text-primary);
 }
@@ -1532,6 +1541,59 @@ code {
 
 .calendar-tooltip-meta {
   color: var(--text-muted);
+}
+
+.calendar-day-list {
+  background: var(--surface-elevated);
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary);
+}
+
+.calendar-day-list-header {
+  border-color: var(--border-subtle) !important;
+}
+
+.calendar-day-list-table {
+  table-layout: fixed;
+}
+
+.calendar-day-list-table .activities-col-date {
+  width: 8rem;
+}
+
+.calendar-day-list-table .activities-col-type {
+  width: 8.25rem;
+}
+
+.calendar-day-list-table .activities-col-participants {
+  width: 7.25rem;
+}
+
+.calendar-day-list-table .activities-col-duration {
+  width: 5.5rem;
+}
+
+.calendar-day-list-table .activities-col-action {
+  width: 4.25rem;
+  text-align: center;
+}
+
+.calendar-day-list-table .activity-edit-button {
+  margin-inline: auto;
+}
+
+@media (max-width: 1199px) {
+  .calendar-day-list-table .activities-col-date {
+    width: 7.5rem;
+  }
+
+  .calendar-day-list-table .activities-col-type {
+    width: 7.75rem;
+  }
+
+  .calendar-day-list-table .activities-col-participants {
+    width: 8rem;
+  }
 }
 
 .activity-image-fade {

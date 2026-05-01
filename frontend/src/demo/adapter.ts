@@ -98,6 +98,7 @@ function handleAuth(method: string, path: string, body: Record<string, unknown>)
   if (method === 'post' && path === '/auth/login') return ok({ access_token: 'demo-token', user: demo.getDemoUser() });
   if (method === 'post' && path === '/auth/verify-two-factor') return ok({ access_token: 'demo-token', user: demo.getDemoUser() });
   if (method === 'post' && path === '/auth/resend-two-factor') return ok({ requiresTwoFactor: true, challengeToken: 'demo', emailHint: demo.getDemoUser().email, expiresInSeconds: 300 });
+  if (method === 'post' && path === '/auth/invite') throw new DemoHttpError(403, 'Im Demo-Modus können keine Benutzer eingeladen werden.');
   if (method === 'get' && path === '/auth/public-config') return ok(demo.getDemoPublicConfig());
   if (method === 'post' && (path === '/auth/change-password' || path === '/auth/request-password-reset' || path === '/auth/reset-password')) return ok({ ok: true });
   return undefined;
@@ -132,6 +133,7 @@ function handleTaxonomy(method: string, segments: string[], params: Record<strin
 function handleOrgs(method: string, segments: string[], params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult | undefined {
   if (segments[0] !== 'orgs') return undefined;
   if (method === 'get' && segments.length === 1) return ok(demo.listDemoOrgs());
+  if (method === 'post' && segments.length === 1) throw new DemoHttpError(403, 'Im Demo-Modus können keine Organisationen angelegt werden.');
   if (method === 'get' && segments[1] === 'subtree') return ok(demo.listDemoOrgs());
   const orgId = segments[1] ? decodeURIComponent(segments[1]) : '';
   if (method === 'get' && segments[2] === 'users') return ok(demo.listDemoUsers());

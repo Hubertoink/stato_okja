@@ -298,3 +298,43 @@
     width: 9.5rem;
   }
 }
+
+:root[data-theme='Amtsstube 1987'] .calendar-day-list .calendar-day-list-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+:root[data-theme='Amtsstube 1987'] .calendar-day-list .calendar-day-list-table .activities-col-date {
+  width: 8rem;
+}
+
+:root[data-theme='Amtsstube 1987'] .calendar-day-list .calendar-day-list-table .activities-col-type {
+  width: 8.25rem;
+}
+
+:root[data-theme='Amtsstube 1987'] .calendar-day-list .calendar-day-list-table .activities-col-participants {
+  width: 7.25rem;
+}
+
+:root[data-theme='Amtsstube 1987'] .calendar-day-list .calendar-day-list-table .activities-col-duration {
+  width: 5.5rem;
+}
+
+:root[data-theme='Amtsstube 1987'] .calendar-day-list .calendar-day-list-table .activities-col-action {
+  width: 4.25rem;
+  min-width: 4.25rem;
+}
+
+@media (max-width: 1199px) {
+  :root[data-theme='Amtsstube 1987'] .calendar-day-list .calendar-day-list-table .activities-col-date {
+    width: 7.5rem;
+  }
+
+  :root[data-theme='Amtsstube 1987'] .calendar-day-list .calendar-day-list-table .activities-col-type {
+    width: 7.75rem;
+  }
+
+  :root[data-theme='Amtsstube 1987'] .calendar-day-list .calendar-day-list-table .activities-col-participants {
+    width: 8rem;
+  }
+}

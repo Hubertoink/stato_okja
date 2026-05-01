@@ -22,9 +22,10 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import type React from 'react';
 import { createPortal } from 'react-dom';
-import { Building2, Pencil, Plus } from 'lucide-react';
+import { ArrowRight, Building2, Pencil, Plus } from 'lucide-react';
 import ProtectedImage from '@/components/ProtectedImage';
 import CalendarClosureModal from '@/components/CalendarClosureModal';
+import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity } from '@/lib/activityExecutionStatus';
 
 function clamp(n: number, min: number, max: number) {
@@ -273,6 +274,18 @@ function getISOWeek(d: Date) {
   return 1 + Math.floor((diff + ((jan4.getUTCDay() + 6) % 7)) / 7);
 }
 
+function formatLongDate(iso: string) {
+  const [year, month, day] = iso.split('-').map((value) => Number(value));
+  const date = new Date(year, (month || 1) - 1, day || 1);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString('de-DE', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
 export default function Calendar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -286,6 +299,7 @@ export default function Calendar() {
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
   const [picker, setPicker] = useState<{ date: string } | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
+  const [selectedDateISO, setSelectedDateISO] = useState<string | null>(null);
   const [closureDate, setClosureDate] = useState<string | null>(null);
   const calendarView: View = isMobile
     ? view === 'week'
@@ -358,7 +372,29 @@ export default function Calendar() {
     const E = fmtTime(e);
     return S && E ? `${S} – ${E}` : S || E || '';
   };
+  const fmtDuration = (activity: Activity) => {
+    if (typeof activity.durationMinutes === 'number' && activity.durationMinutes >= 0) {
+      return `${activity.durationMinutes} min`;
+    }
+    const toMinutes = (time?: string | null) => {
+      if (!time) return undefined;
+      const [hours, minutes] = time.split(':').map((value) => parseInt(value, 10));
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) return undefined;
+      return hours * 60 + minutes;
+    };
+    const start = toMinutes(activity.startTime);
+    const end = toMinutes(activity.endTime);
+    return start !== undefined && end !== undefined && end >= start ? `${end - start} min` : '-';
+  };
   const openActivitiesForDate = (iso: string) => {
+    if (!isMobile) {
+      setSelectedDateISO(iso);
+      return;
+    }
+    const qp = new URLSearchParams({ date: iso });
+    navigate(`/activities?${qp.toString()}`);
+  };
+  const openFilteredActivitiesForDate = (iso: string) => {
     const qp = new URLSearchParams({ date: iso });
     navigate(`/activities?${qp.toString()}`);
   };
@@ -402,7 +438,8 @@ export default function Calendar() {
     return weeks;
   }, [calendarView, cursor]);
 
-  const todayISO = fmtLocalISO(new Date());
+  const todayDate = new Date();
+  const todayISO = fmtLocalISO(todayDate);
   const gotoToday = () => setCursor(new Date());
   const visibleDays = useMemo(() => {
     if (calendarView === 'month') return [] as Date[];
@@ -412,6 +449,10 @@ export default function Calendar() {
     const length = calendarView === 'three-day' ? 3 : 7;
     return Array.from({ length }, (_, i) => addDays(start, i));
   }, [calendarView, cursor]);
+  const isTodayInCurrentView = calendarView === 'month'
+    ? cursor.getFullYear() === todayDate.getFullYear() && cursor.getMonth() === todayDate.getMonth()
+    : visibleDays.some((d) => fmtLocalISO(d) === todayISO);
+  const showTodayButton = !isTodayInCurrentView;
 
   // Compute visible range and fetch activities
   const range = useMemo(() => {
@@ -484,6 +525,11 @@ export default function Calendar() {
     });
     return map;
   }, [activities]);
+
+  useEffect(() => {
+    if (!selectedDateISO) return;
+    if (selectedDateISO < range.from || selectedDateISO > range.to) setSelectedDateISO(null);
+  }, [range.from, range.to, selectedDateISO]);
 
   const formatClosureLabel = (closureDay?: OrganizationClosureDay | null, compact = false) => {
     if (!closureDay) return null;
@@ -741,6 +787,13 @@ export default function Calendar() {
     event: 'bg-amber-600/35',
     outreach: 'bg-slate-600/35',
   };
+  const activityListTypePillClass: Record<string, string> = {
+    open_door: 'bg-emerald-700 text-white',
+    project_open: 'bg-viridian text-white',
+    project_closed: 'bg-slate-700 text-white',
+    event: 'bg-amber-700 text-white',
+    outreach: 'bg-red-700 text-white',
+  };
   const pickBgClass = (title?: string, type?: string) => {
     if (type && typeBgClass[type]) return typeBgClass[type];
     if (!title) return 'bg-slate-300/40';
@@ -748,6 +801,18 @@ export default function Calendar() {
     for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
     return paletteClasses[h % paletteClasses.length];
   };
+  const selectedDayActivities = useMemo(() => {
+    if (!selectedDateISO) return [] as Activity[];
+    return [...(activitiesByDate.get(selectedDateISO) || [])].sort((a, b) => {
+      const timeA = a.startTime || '';
+      const timeB = b.startTime || '';
+      if (timeA !== timeB) return timeA.localeCompare(timeB);
+      const titleA = a.project?.title || a.title || a.type;
+      const titleB = b.project?.title || b.title || b.type;
+      return titleA.localeCompare(titleB, 'de');
+    });
+  }, [activitiesByDate, selectedDateISO]);
+  const selectedDateLabel = selectedDateISO ? formatLongDate(selectedDateISO) : '';
   
   // Tooltip handlers
   const clearActivityTooltipOpen = () => {
@@ -1020,9 +1085,11 @@ export default function Calendar() {
           </div>
           {/* Navigation controls on mobile - inline with title */}
           <div className="flex gap-1.5 md:hidden">
-            <button className="bg-viridian text-white px-2.5 py-1.5 rounded text-sm" onClick={gotoToday}>
-              Heute
-            </button>
+            {showTodayButton && (
+              <button className="bg-viridian text-white px-2.5 py-1.5 rounded text-sm" onClick={gotoToday}>
+                Heute
+              </button>
+            )}
             <button
               className="calendar-control px-2 py-1.5 rounded text-sm"
               onClick={goToPrevious}
@@ -1039,9 +1106,11 @@ export default function Calendar() {
         </div>
         {/* Desktop controls */}
         <div className="hidden md:flex gap-2">
-          <button className="bg-viridian text-white px-3 py-2 rounded" onClick={gotoToday}>
-            Heute
-          </button>
+          {showTodayButton && (
+            <button className="bg-viridian text-white px-3 py-2 rounded" onClick={gotoToday}>
+              Heute
+            </button>
+          )}
           <button
             className="calendar-control px-3 py-2 rounded"
             onClick={goToPrevious}
@@ -1129,13 +1198,14 @@ export default function Calendar() {
               return (
                 <div
                   key={idx}
-                  className={`calendar-day-cell group relative min-h-[6.25rem] md:min-h-[8rem] border p-1 text-left transition-colors ${
+                  onClick={isMobile ? undefined : () => openActivitiesForDate(iso)}
+                  className={`calendar-day-cell group relative min-h-[6.25rem] md:min-h-[8rem] border p-1 text-left transition-colors ${!isMobile ? 'cursor-pointer' : ''} ${
                     isOtherMonth
                       ? 'calendar-day-cell-other'
                       : isToday
                         ? 'calendar-day-cell-today'
                         : ''
-                  }`}
+                  } ${!isMobile && selectedDateISO === iso ? 'calendar-day-cell-selected' : ''}`}
                 >
                   {/* Top row: Day number + desktop actions overlay */}
                   <div className="mb-0.5 flex items-start gap-1">
@@ -1248,7 +1318,8 @@ export default function Calendar() {
               return (
                 <div
                   key={iso}
-                  className={`calendar-day-cell group min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left transition-colors ${isToday ? 'calendar-day-cell-today' : ''}`}
+                  onClick={isMobile ? undefined : () => openActivitiesForDate(iso)}
+                  className={`calendar-day-cell group min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left transition-colors ${!isMobile ? 'cursor-pointer' : ''} ${isToday ? 'calendar-day-cell-today' : ''} ${!isMobile && selectedDateISO === iso ? 'calendar-day-cell-selected' : ''}`}
                 >
                   <div className="mb-1 flex items-start justify-between gap-2">
                     <button
@@ -1318,6 +1389,158 @@ export default function Calendar() {
             })}
           </div>
         </div>
+      )}
+
+      {selectedDateISO && !isMobile && (
+        <section className="calendar-day-list activities-desktop-table-shell mt-4 hidden overflow-hidden rounded-lg border shadow md:block" aria-live="polite">
+          <div className="calendar-day-list-header flex flex-col gap-3 border-b bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                Tagesauswahl
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Aktivitäten am {selectedDateLabel}
+                </h3>
+                <span className="inline-flex items-center rounded-full border border-gray-200 bg-white/80 px-2 py-1 text-xs text-gray-700">
+                  {selectedDayActivities.length} {selectedDayActivities.length === 1 ? 'Eintrag' : 'Einträge'}
+                </span>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                className="calendar-control inline-flex h-10 w-10 items-center justify-center rounded-lg"
+                onClick={() => openFilteredActivitiesForDate(selectedDateISO)}
+                aria-label={`Aktivitäten am ${selectedDateLabel} in der Aktivitätenliste öffnen`}
+                title="In Aktivitäten öffnen"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-viridian px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cambridge-blue"
+                onClick={() => openAddActivityForDate(selectedDateISO)}
+              >
+                <Plus className="h-4 w-4" />
+                Hinzufügen
+              </button>
+            </div>
+          </div>
+
+          {selectedDayActivities.length > 0 ? (
+            <div className="overflow-hidden">
+              <table className="calendar-day-list-table activities-desktop-table w-full min-w-0 table-fixed">
+                <thead className="bg-azure-web">
+                  <tr>
+                    <th className="activities-col-date px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">
+                      Zeit
+                    </th>
+                    <th className="activities-col-type px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">
+                      Typ
+                    </th>
+                    <th className="activities-col-title px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">
+                      Titel / Projekt
+                    </th>
+                    <th className="activities-col-participants px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">
+                      <span className="hidden xl:inline">Teilnehmende</span>
+                      <span className="xl:hidden" title="Teilnehmende">TN</span>
+                    </th>
+                    <th className="activities-col-duration hidden px-2 py-3 text-left text-sm font-semibold text-gray-700 xl:table-cell xl:px-4">
+                      Dauer
+                    </th>
+                    <th className="activities-col-action px-2 py-3 text-center text-sm font-semibold text-gray-700 lg:px-4">
+                      Aktion
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {selectedDayActivities.map((activity) => {
+                    const type = typeLabel[activity.type] || activity.type;
+                    const title = activity.title || '-';
+                    const projectTitle = activity.project?.title || '-';
+                    const time = fmtTimeRange(activity.startTime, activity.endTime);
+                    const total = activity.countTotal ?? 0;
+                    const male = activity.countMale ?? 0;
+                    const female = activity.countFemale ?? 0;
+                    const diverse = activity.countDiverse ?? 0;
+
+                    return (
+                      <tr key={activity.id} className="bg-white hover:bg-azure-web">
+                        <td className="activities-col-date whitespace-normal px-2 py-4 text-sm leading-snug text-gray-700 lg:px-4">
+                          {time ? `${time} Uhr` : '-'}
+                        </td>
+                        <td className="activities-col-type px-2 py-4 text-sm lg:px-4">
+                          <span className={`inline-flex items-center rounded-full border border-black/10 px-2 py-1 text-xs font-medium tracking-tight ${activityListTypePillClass[activity.type] || 'bg-gray-700 text-white'}`}>
+                            <span className="hidden lg:inline">{type}</span>
+                            <span className="lg:hidden" title={type}>{type.split(' ')[0]}</span>
+                          </span>
+                        </td>
+                        <td className="activities-col-title min-w-0 px-2 py-4 text-sm lg:px-4">
+                          <div className="truncate font-medium text-gray-900">{title}</div>
+                          <div className="truncate text-xs text-gray-600">{projectTitle}</div>
+                          {activity.location?.name && (
+                            <div className="truncate text-xs text-gray-500">{activity.location.name}</div>
+                          )}
+                        </td>
+                        <td className="activities-col-participants whitespace-nowrap px-2 py-4 text-sm lg:px-4">
+                          {isCancelledActivity(activity.executionStatus) ? (
+                            <ActivityExecutionStatusBadge status={activity.executionStatus} />
+                          ) : (
+                            <>
+                              <span className="font-medium">{total}</span>
+                              <span className="ml-1 hidden text-xs text-gray-500 xl:inline">
+                                (m:{male}, w:{female}, d:{diverse})
+                              </span>
+                            </>
+                          )}
+                        </td>
+                        <td className="activities-col-duration hidden px-2 py-4 text-sm xl:table-cell xl:px-4">
+                          {fmtDuration(activity)}
+                        </td>
+                        <td className="activities-col-action relative overflow-hidden px-2 py-4 text-center text-sm lg:px-4">
+                          {activity.project?.imageUrl ? (
+                            <>
+                              <ProtectedImage
+                                src={activity.project.imageUrl || undefined}
+                                alt=""
+                                aria-hidden
+                                className="absolute inset-0 h-full w-full object-cover object-right opacity-70"
+                              />
+                              <div className="activity-image-fade absolute inset-0" aria-hidden />
+                            </>
+                          ) : activity.project?.color ? (
+                            <>
+                              <div
+                                className="absolute inset-0 opacity-30"
+                                style={{ backgroundColor: activity.project.color || undefined }}
+                                aria-hidden
+                              />
+                              <div className="activity-image-fade absolute inset-0" aria-hidden />
+                            </>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="activity-edit-button relative z-10 p-2"
+                            onClick={() => setEdit(activity)}
+                            aria-label={`${title !== '-' ? title : projectTitle} bearbeiten`}
+                            title="Bearbeiten"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="bg-white px-4 py-6 text-center text-sm text-gray-500">
+              Keine Aktivitäten an diesem Tag.
+            </div>
+          )}
+        </section>
       )}
 
       {picker && (

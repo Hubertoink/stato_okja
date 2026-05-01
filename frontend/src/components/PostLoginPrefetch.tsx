@@ -6,6 +6,8 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import type { ActivitiesFilter, PagedActivitiesResult } from '@/lib/activities';
 import type { Project } from '@/lib/projects';
 import LoadingOverlay from '@/components/LoadingOverlay';
+import DemoSplashScreen from '@/demo/DemoSplashScreen';
+import { demoModeEnabled } from '@/demo/config';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 
 function readActivitiesPrefetchParams(): { params: ActivitiesFilter; page: number; limit: number } {
@@ -330,7 +332,11 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
   return (
     <>
       {children}
-      <LoadingOverlay open={open} title="Initialisiere StatO…" message={message} progress={progress} />
+      {demoModeEnabled ? (
+        <DemoSplashScreen open={open} message={message} progress={progress} />
+      ) : (
+        <LoadingOverlay open={open} title="Initialisiere StatO…" message={message} progress={progress} />
+      )}
     </>
   );
 }

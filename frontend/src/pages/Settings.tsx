@@ -16,6 +16,17 @@ import DemoHoverHint from '@/demo/DemoHoverHint';
 type Tab = 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays' | 'openingHours';
 const VALID_TABS: ReadonlySet<string> = new Set<Tab>(['categories', 'templates', 'tags', 'cohorts', 'team', 'locations', 'holidays', 'openingHours']);
 
+const SETTINGS_DEMO_DESCRIPTION_BY_TAB: Record<Tab, string> = {
+  categories: 'Kategorien geben der Dokumentation eine feste fachliche Struktur. Sie machen sichtbar, welche Schwerpunkte eine Aktivität abdeckt, und halten Erfassung und Auswertung vergleichbar.',
+  templates: 'Vorlagen übersetzen wiederkehrende Angebotsformen in vorbereitete Projekte. So startet die Dokumentation konsistent, statt jedes Mal dieselben Grunddaten neu zu setzen.',
+  tags: 'Tags ergänzen Kategorien um flexible Merkmale. Sie helfen, besondere Themen, Methoden oder Zielsetzungen später gezielt zu filtern und auszuwerten.',
+  cohorts: 'Kohorten definieren die Altersgruppen, nach denen Teilnahmen dokumentiert werden. Dadurch bleiben Eingaben im Alltag schnell und die Auswertung spricht dieselbe Sprache.',
+  team: 'Teamdaten ordnen Aktivitäten den beteiligten Mitarbeitenden zu. Das schafft Nachvollziehbarkeit für die Dokumentation, ohne in jedem Eintrag Namen neu pflegen zu müssen.',
+  locations: 'Einrichtungen bilden die Orte der Arbeit ab. Sie verbinden Angebote mit Standorten und ermöglichen später standortbezogene Kalender- und Statistikansichten.',
+  holidays: 'Feiertage markieren Tage, die für Planung und Auswertung besonders sind. Das Dokumentationstool kann Aktivitäten dadurch besser in den richtigen Kalenderkontext setzen.',
+  openingHours: 'Öffnungszeiten beschreiben den regulären Angebotsrahmen. Sie geben Kalender und Dokumentation eine gemeinsame Grundlage dafür, wann Arbeit üblicherweise stattfindet.',
+};
+
 export default function Settings() {
   const { user } = useAuth();
   const isMobile = useIsMobile(768);
@@ -50,7 +61,7 @@ export default function Settings() {
       {/* Tab Navigation */}
       <DemoHoverHint
         title="Einstellungsbereiche"
-        description="Wechselt zwischen Kategorien, Vorlagen, Tags, Kohorten, Team, Einrichtungen, Feiertagen und Oeffnungszeiten. Die Auswahl steuert den Bereich darunter."
+        description="Die Einstellungsbereiche sind die gemeinsame Stammdatenbasis des Dokumentationstools. Hier werden Begriffe, Orte, Gruppen und Zeitregeln gepflegt, auf die Erfassung, Kalender und Auswertungen zurückgreifen."
         placement="bottom"
       >
         {isMobile ? (
@@ -154,7 +165,7 @@ export default function Settings() {
       {/* Tab Content */}
       <DemoHoverHint
         title={activeTabMeta.label}
-        description="Bearbeitet die Stammdaten fuer den aktuell gewaehlten Einstellungsbereich. Aenderungen wirken direkt auf Erfassung, Kalender und Auswertungen."
+        description={SETTINGS_DEMO_DESCRIPTION_BY_TAB[activeTab]}
       >
         {activeTab === 'categories' && <SettingsCategories />}
 

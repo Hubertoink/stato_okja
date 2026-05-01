@@ -965,16 +965,14 @@ code {
   right: 1.4rem;
 }
 
-.demo-hover-hint:hover .demo-hover-hint-panel,
-.demo-hover-hint:focus-within .demo-hover-hint-panel {
+.demo-hover-hint[data-demo-hint-open='true'] .demo-hover-hint-panel {
   opacity: 1;
   transform: translateY(0) scale(1);
   visibility: visible;
   transition-delay: 0s;
 }
 
-.demo-hover-hint:hover,
-.demo-hover-hint:focus-within {
+.demo-hover-hint[data-demo-hint-open='true'] {
   z-index: 40;
 }
 
@@ -1033,6 +1031,12 @@ code {
   .group:focus-visible .settings-tab-tooltip {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+
+  .demo-hover-hint[data-demo-hint-open='true'] .group:hover .settings-tab-tooltip,
+  .demo-hover-hint[data-demo-hint-open='true'] .group:focus-visible .settings-tab-tooltip {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0.25rem);
   }
 }
 

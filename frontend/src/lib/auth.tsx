@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { demoModeEnabled, demoUser } from '../demo/config';
+import { getDemoUser, resetDemoStore } from '../demo/store';
 import { api, setAuthToken } from './api';
 import {
   clearStoredAuthToken,
@@ -10,7 +12,7 @@ import {
 } from './authStorage';
 
 export type Role = 'superadmin' | 'org_admin' | 'user';
-interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean }
+export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean }
 
 type TwoFactorChallenge = {
   requiresTwoFactor: true;
@@ -58,8 +60,8 @@ function applyTheme(theme?: string | null) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(() => demoModeEnabled ? demoUser : null);
+  const [loading, setLoading] = useState(!demoModeEnabled);
   const qc = useQueryClient();
 
   const applyResolvedUser = useCallback((nextUser: AuthUser, options?: { resetCache?: boolean }) => {
@@ -90,6 +92,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applyResolvedUser, qc]);
 
   const refreshProfile = useCallback(async () => {
+    if (demoModeEnabled) {
+      applyResolvedUser(getDemoUser());
+      return;
+    }
     try {
       const res = await api.get<AuthUser>('/auth/me');
       const nextUser = res.data;
@@ -105,6 +111,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applyResolvedUser, user]);
 
   useEffect(() => {
+    if (demoModeEnabled) {
+      setAuthToken(undefined);
+      clearStoredAuthToken();
+      clearStoredPendingTwoFactorChallenge();
+      applyResolvedUser(getDemoUser());
+      setLoading(false);
+      return;
+    }
     // Rehydrate session from stored token and fetch /auth/me
     const token = getStoredAuthToken();
     if (token) {
@@ -142,6 +156,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     loading,
     async login(email: string, password: string) {
+      if (demoModeEnabled) {
+        void email;
+        void password;
+        applyResolvedUser(getDemoUser(), { resetCache: true });
+        return { status: 'authenticated' } as const;
+      }
       try {
         const res = await api.post<{ access_token: string; user: AuthUser } | TwoFactorChallenge>('/auth/login', { email, password });
         const data = res.data;
@@ -157,6 +177,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     async verifyTwoFactor(challengeToken: string, code: string) {
+      if (demoModeEnabled) {
+        void challengeToken;
+        void code;
+        applyResolvedUser(getDemoUser(), { resetCache: true });
+        return { ok: true } as const;
+      }
       try {
         const res = await api.post<{ access_token: string; user: AuthUser }>('/auth/verify-two-factor', { challengeToken, code });
         applyAuthenticatedSession(res.data);
@@ -167,6 +193,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     async resendTwoFactor(challengeToken: string) {
+      if (demoModeEnabled) {
+        return {
+          ok: true,
+          requiresTwoFactor: true,
+          challengeToken,
+          emailHint: getDemoUser().email,
+          expiresInSeconds: 300,
+        } as const;
+      }
       try {
         const res = await api.post<TwoFactorChallenge>('/auth/resend-two-factor', { challengeToken });
         storePendingTwoFactorChallenge(res.data);
@@ -177,6 +212,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     logout() {
+      if (demoModeEnabled) {
+        resetDemoStore();
+        setAuthToken(undefined);
+        clearStoredAuthToken();
+        clearStoredPendingTwoFactorChallenge();
+        applyResolvedUser(getDemoUser(), { resetCache: true });
+        return;
+      }
       clearSession();
     },
     async refresh() {

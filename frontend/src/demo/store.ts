@@ -1,0 +1,1425 @@
+import { DEMO_ORG_ID, demoUser } from './config';
+import type { Activity, PagedActivitiesResult } from '../lib/activities';
+import type { AuditLog, AuditLogAction } from '../lib/audit';
+import type { AuthUser } from '../lib/auth';
+import type { Location } from '../lib/locations';
+import type { OpeningHours, OrganizationClosureDay, OrgDto, OrgTaxonomySettingsSnapshot } from '../lib/orgs';
+import type { ProjectTemplateDto } from '../lib/projectTemplatesApi';
+import type { Project } from '../lib/projects';
+import type { StaffMember, StaffRole } from '../lib/staff';
+import type { Category, Cohort, Tag } from '../lib/taxonomy';
+
+type DemoActivityRecord = Omit<Activity, 'project' | 'location' | 'categories' | 'tags' | 'staff'> & {
+  orgId: string;
+  categoryIds: string[];
+  tagIds: string[];
+  staffIds: string[];
+};
+
+type DemoProject = Project & { orgId: string };
+type DemoProjectTemplate = ProjectTemplateDto & { orgId: string | null };
+
+type DemoStore = {
+  generatedAt: string;
+  windowStart: string;
+  windowEnd: string;
+  sequence: number;
+  user: AuthUser;
+  orgs: OrgDto[];
+  categories: Category[];
+  tags: Tag[];
+  cohorts: Cohort[];
+  locations: Location[];
+  staff: StaffMember[];
+  projects: DemoProject[];
+  activities: DemoActivityRecord[];
+  projectTemplates: DemoProjectTemplate[];
+  openingHours: OpeningHours;
+  closureDays: OrganizationClosureDay[];
+  acks: Record<string, boolean>;
+  auditLogs: AuditLog[];
+};
+
+type StatsOverviewResponse = {
+  summary: {
+    totalActivities: number;
+    totalParticipants: number;
+    totalMale: number;
+    totalFemale: number;
+    totalDiverse: number;
+    totalDurationMinutes: number;
+    totalHours: number;
+    averageParticipants: number;
+    closureDaysCount?: number;
+  };
+  byType: Array<{ type: string; count: number; totalParticipants: number }>;
+  gender: { male: number; female: number; diverse: number };
+  participantsTimeseries: Array<{ date: string; totalParticipants: number; activityCount: number }>;
+  byCohort: Array<{ cohortId: string; name: string; total: number; male: number; female: number; diverse: number }>;
+  byCategory: Array<{ id: string; name: string; count: number }>;
+  topTags: Array<{ id: string; name: string; count: number }>;
+  topProjects: Array<{ id: string; name: string; count: number }>;
+  availableYears: string[];
+};
+
+type DemoQueryParams = Record<string, unknown>;
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function localIsoDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function addMonths(date: Date, months: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function lastDayOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
+function parseDate(isoDate: string): Date {
+  const [year, month, day] = isoDate.split('-').map((part) => Number(part));
+  return new Date(year, (month || 1) - 1, day || 1);
+}
+
+function readStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => readStringList(entry));
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === 'number') return [String(value)];
+  return [];
+}
+
+function readBoolean(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+  }
+  return undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function hashNumber(input: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function pickOne<T>(items: T[], seed: string): T {
+  return items[hashNumber(seed) % items.length];
+}
+
+function durationMinutes(startTime?: string | null, endTime?: string | null): number | null {
+  const toMinutes = (time?: string | null) => {
+    if (!time) return undefined;
+    const [hours, minutes] = time.split(':').map((part) => Number(part));
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return undefined;
+    return hours * 60 + minutes;
+  };
+  const start = toMinutes(startTime);
+  const end = toMinutes(endTime);
+  return start !== undefined && end !== undefined && end >= start ? end - start : null;
+}
+
+function activityType(value: unknown): Activity['type'] {
+  return value === 'open_door' ||
+    value === 'project_open' ||
+    value === 'project_closed' ||
+    value === 'event' ||
+    value === 'outreach'
+    ? value
+    : 'project_open';
+}
+
+function status(value: unknown): Activity['executionStatus'] {
+  return value === 'cancelled' ? 'cancelled' : 'completed';
+}
+
+function createDemoImage(label: string, color: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720"><rect width="1200" height="720" fill="${color}"/><circle cx="1000" cy="120" r="260" fill="rgba(255,255,255,.18)"/><circle cx="170" cy="620" r="220" fill="rgba(255,255,255,.16)"/><text x="80" y="390" font-family="Inter, Arial, sans-serif" font-size="76" font-weight="800" fill="white">${label}</text></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function categorySeed(): Category[] {
+  return [
+    { id: 'cat-open', name: 'Offene Arbeit', color: '#2563eb', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'cat-culture', name: 'Kultur & Kreatives', color: '#ec4899', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'cat-sports', name: 'Sport & Bewegung', color: '#10b981', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'cat-media', name: 'Medienbildung', color: '#8b5cf6', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'cat-advice', name: 'Beratung', color: '#f59e0b', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'cat-outreach', name: 'Aufsuchende Arbeit', color: '#14b8a6', active: true, orgId: DEMO_ORG_ID, canManage: true },
+  ];
+}
+
+function tagSeed(): Tag[] {
+  return [
+    { id: 'tag-holiday', name: 'Ferienprogramm', color: '#1d4ed8', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'tag-dropin', name: 'Drop-in', color: '#059669', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'tag-girls', name: 'Maedchenarbeit', color: '#be185d', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'tag-digital', name: 'Digital', color: '#7c3aed', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'tag-food', name: 'Kochen', color: '#c2410c', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'tag-school', name: 'Schulkooperation', color: '#0284c7', active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'tag-team', name: 'Teamangebot', color: '#475569', active: true, orgId: DEMO_ORG_ID, canManage: true },
+  ];
+}
+
+function cohortSeed(): Cohort[] {
+  return [
+    { id: 'cohort-6-10', name: '6-10 Jahre', minAge: 6, maxAge: 10, sortOrder: 10, active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'cohort-11-13', name: '11-13 Jahre', minAge: 11, maxAge: 13, sortOrder: 20, active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'cohort-14-17', name: '14-17 Jahre', minAge: 14, maxAge: 17, sortOrder: 30, active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'cohort-18-21', name: '18-21 Jahre', minAge: 18, maxAge: 21, sortOrder: 40, active: true, orgId: DEMO_ORG_ID, canManage: true },
+    { id: 'cohort-22-27', name: '22-27 Jahre', minAge: 22, maxAge: 27, sortOrder: 50, active: true, orgId: DEMO_ORG_ID, canManage: true },
+  ];
+}
+
+function locationSeed(): Location[] {
+  return [
+    { id: 'loc-house', name: 'Jugendhaus Mitte', address: 'Marktplatz 4', roomType: 'Offener Bereich', active: true },
+    { id: 'loc-workshop', name: 'Werkraum', address: 'Marktplatz 4', roomType: 'Kreativraum', active: true },
+    { id: 'loc-sports', name: 'Sporthalle Nord', address: 'Schulstrasse 18', roomType: 'Sport', active: true },
+    { id: 'loc-park', name: 'Stadtpark', address: 'Parkallee', roomType: 'Outdoor', active: true },
+    { id: 'loc-mobile', name: 'Mobiler Treff', address: 'wechselnd', roomType: 'Aufsuchend', active: true },
+  ];
+}
+
+function staffSeed(): StaffMember[] {
+  return [
+    { id: 'staff-mara', name: 'Mara Nguyen', email: 'mara.nguyen@example.org', role: 'lead', roles: ['lead'], active: true },
+    { id: 'staff-jonas', name: 'Jonas Keller', email: 'jonas.keller@example.org', role: 'employee', roles: ['employee'], active: true },
+    { id: 'staff-samira', name: 'Samira Yilmaz', email: 'samira.yilmaz@example.org', role: 'employee', roles: ['employee'], active: true },
+    { id: 'staff-lea', name: 'Lea Sommer', email: 'lea.sommer@example.org', role: 'volunteer', roles: ['volunteer'], active: true },
+    { id: 'staff-tom', name: 'Tom Becker', email: 'tom.becker@example.org', role: 'helper', roles: ['helper'], active: true },
+    { id: 'staff-nora', name: 'Nora Stein', email: 'nora.stein@example.org', role: 'analyst', roles: ['analyst'], active: true },
+  ];
+}
+
+function projectSeed(windowStart: string, windowEnd: string): DemoProject[] {
+  return [
+    {
+      id: 'project-open-door',
+      orgId: DEMO_ORG_ID,
+      title: 'Offene Tuer im Jugendhaus',
+      type: 'open_door',
+      categoryId: null,
+      categories: [],
+      targetGroup: '12-21 Jahre',
+      imageUrl: createDemoImage('Offene Tuer', '#2563eb'),
+      imageSize: 42000,
+      color: '#2563eb',
+      dateFrom: windowStart,
+      dateTo: windowEnd,
+      defaultStartTime: '15:00',
+      defaultEndTime: '19:00',
+      defaultStaff: 'Mara Nguyen, Jonas Keller',
+      defaultVolunteers: 'Lea Sommer',
+      tag: 'Drop-in, Teamangebot',
+      activityField: 'Offene Arbeit',
+      description: 'Regelmaessiger Treffpunkt mit Spielen, Gespraechen, Snacks und spontanen Angeboten.',
+      archived: false,
+    },
+    {
+      id: 'project-creative-lab',
+      orgId: DEMO_ORG_ID,
+      title: 'Kreativwerkstatt',
+      type: 'project_open',
+      categoryId: 'cat-culture',
+      categories: [{ id: 'cat-culture', name: 'Kultur & Kreatives', color: '#ec4899' }],
+      targetGroup: '10-16 Jahre',
+      imageUrl: createDemoImage('Kreativwerkstatt', '#ec4899'),
+      imageSize: 43000,
+      color: '#ec4899',
+      dateFrom: windowStart,
+      dateTo: windowEnd,
+      defaultStartTime: '16:00',
+      defaultEndTime: '18:00',
+      defaultStaff: 'Samira Yilmaz',
+      defaultVolunteers: 'Tom Becker',
+      tag: 'Ferienprogramm, Kochen',
+      activityField: 'Kulturpaedagogik',
+      description: 'Werkeln, Basteln, Graffiti-Skizzen, Textil und kleine Ausstellungen.',
+      archived: false,
+    },
+    {
+      id: 'project-digital-club',
+      orgId: DEMO_ORG_ID,
+      title: 'Digital Club',
+      type: 'project_closed',
+      categoryId: 'cat-media',
+      categories: [{ id: 'cat-media', name: 'Medienbildung', color: '#8b5cf6' }],
+      targetGroup: '13-18 Jahre',
+      imageUrl: createDemoImage('Digital Club', '#8b5cf6'),
+      imageSize: 44000,
+      color: '#8b5cf6',
+      dateFrom: windowStart,
+      dateTo: windowEnd,
+      defaultStartTime: '17:00',
+      defaultEndTime: '19:00',
+      defaultStaff: 'Jonas Keller, Nora Stein',
+      defaultVolunteers: '',
+      tag: 'Digital, Schulkooperation',
+      activityField: 'Medienbildung',
+      description: 'Coding, Games, Medienkritik und kreative Technikprojekte in fester Gruppe.',
+      archived: false,
+    },
+    {
+      id: 'project-sports-night',
+      orgId: DEMO_ORG_ID,
+      title: 'Sports Night',
+      type: 'project_open',
+      categoryId: 'cat-sports',
+      categories: [{ id: 'cat-sports', name: 'Sport & Bewegung', color: '#10b981' }],
+      targetGroup: '12-20 Jahre',
+      imageUrl: createDemoImage('Sports Night', '#10b981'),
+      imageSize: 41000,
+      color: '#10b981',
+      dateFrom: windowStart,
+      dateTo: windowEnd,
+      defaultStartTime: '18:00',
+      defaultEndTime: '20:00',
+      defaultStaff: 'Mara Nguyen',
+      defaultVolunteers: 'Lea Sommer, Tom Becker',
+      tag: 'Teamangebot',
+      activityField: 'Sport',
+      description: 'Bewegung, Fair Play und niedrigschwellige Turnierformate.',
+      archived: false,
+    },
+    {
+      id: 'project-outreach',
+      orgId: DEMO_ORG_ID,
+      title: 'Streetwork Runde',
+      type: 'outreach',
+      categoryId: 'cat-outreach',
+      categories: [{ id: 'cat-outreach', name: 'Aufsuchende Arbeit', color: '#14b8a6' }],
+      targetGroup: '14-27 Jahre',
+      imageUrl: createDemoImage('Streetwork', '#14b8a6'),
+      imageSize: 39000,
+      color: '#14b8a6',
+      dateFrom: windowStart,
+      dateTo: windowEnd,
+      defaultStartTime: '19:00',
+      defaultEndTime: '21:00',
+      defaultStaff: 'Samira Yilmaz, Jonas Keller',
+      defaultVolunteers: '',
+      tag: 'Drop-in',
+      activityField: 'Aufsuchende Arbeit',
+      description: 'Kontakte im Sozialraum, Kurzberatung und Vermittlung ins Jugendhaus.',
+      archived: false,
+    },
+    {
+      id: 'project-community-event',
+      orgId: DEMO_ORG_ID,
+      title: 'Community Event',
+      type: 'event',
+      categoryId: 'cat-open',
+      categories: [{ id: 'cat-open', name: 'Offene Arbeit', color: '#2563eb' }],
+      targetGroup: 'alle Jugendlichen',
+      imageUrl: createDemoImage('Community Event', '#f59e0b'),
+      imageSize: 45000,
+      color: '#f59e0b',
+      dateFrom: windowStart,
+      dateTo: windowEnd,
+      defaultStartTime: '16:00',
+      defaultEndTime: '21:00',
+      defaultStaff: 'Mara Nguyen, Samira Yilmaz',
+      defaultVolunteers: 'Lea Sommer, Tom Becker',
+      tag: 'Ferienprogramm, Teamangebot',
+      activityField: 'Veranstaltung',
+      description: 'Monatliches Event mit Musik, Essen, Beteiligungsformaten und offenen Aktionen.',
+      archived: false,
+    },
+  ];
+}
+
+function tagIdsFromProject(project: DemoProject, tags: Tag[]): string[] {
+  const names = new Set(
+    (project.tag || '')
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  );
+  return tags.filter((tag) => names.has(tag.name)).map((tag) => tag.id);
+}
+
+function staffIdsFromNames(names: string, staff: StaffMember[]): string[] {
+  const wantedNames = new Set(
+    names
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  );
+  return staff.filter((member) => wantedNames.has(member.name)).map((member) => member.id);
+}
+
+function splitParticipants(total: number, seed: string): Pick<Activity, 'countMale' | 'countFemale' | 'countDiverse' | 'countTotal'> {
+  const diverse = hashNumber(`${seed}:d`) % 3 === 0 ? 1 : 0;
+  const remaining = Math.max(0, total - diverse);
+  const male = Math.floor(remaining * (42 + (hashNumber(`${seed}:m`) % 17)) / 100);
+  const female = Math.max(0, remaining - male);
+  return { countMale: male, countFemale: female, countDiverse: diverse, countTotal: total };
+}
+
+function cohortBreakdown(
+  counts: Pick<Activity, 'countMale' | 'countFemale' | 'countDiverse'>,
+  seed: string,
+): NonNullable<Activity['cohorts']> {
+  const cohortIds = ['cohort-11-13', 'cohort-14-17', 'cohort-18-21'];
+  const firstWeight = 25 + (hashNumber(`${seed}:first`) % 20);
+  const secondWeight = 35 + (hashNumber(`${seed}:second`) % 25);
+  const weights = [firstWeight, secondWeight, Math.max(10, 100 - firstWeight - secondWeight)];
+  const allocate = (value: number | undefined, index: number) => Math.floor(((value || 0) * weights[index]) / 100);
+  const rows = cohortIds.map((cohortId, index) => ({
+    cohortId,
+    m: allocate(counts.countMale, index),
+    w: allocate(counts.countFemale, index),
+    d: allocate(counts.countDiverse, index),
+  }));
+  const totals = rows.reduce(
+    (sum, row) => ({ m: sum.m + row.m, w: sum.w + row.w, d: sum.d + row.d }),
+    { m: 0, w: 0, d: 0 },
+  );
+  rows[rows.length - 1].m += (counts.countMale || 0) - totals.m;
+  rows[rows.length - 1].w += (counts.countFemale || 0) - totals.w;
+  rows[rows.length - 1].d += (counts.countDiverse || 0) - totals.d;
+  return rows.filter((row) => row.m + row.w + row.d > 0);
+}
+
+function makeActivity(
+  id: string,
+  date: string,
+  project: DemoProject,
+  options: {
+    title?: string;
+    locationId: string;
+    total: number;
+    startTime?: string | null;
+    endTime?: string | null;
+    tagIds?: string[];
+    categoryIds?: string[];
+    staffIds?: string[];
+    cancelled?: boolean;
+    notes?: string | null;
+  },
+  tags: Tag[],
+  staff: StaffMember[],
+): DemoActivityRecord {
+  const startTime = options.startTime ?? project.defaultStartTime ?? null;
+  const endTime = options.endTime ?? project.defaultEndTime ?? null;
+  const executionStatus = options.cancelled ? 'cancelled' : 'completed';
+  const counts = executionStatus === 'cancelled'
+    ? { countMale: 0, countFemale: 0, countDiverse: 0, countTotal: 0 }
+    : splitParticipants(options.total, `${id}:${date}`);
+  return {
+    id,
+    orgId: DEMO_ORG_ID,
+    date,
+    startTime,
+    endTime,
+    durationMinutes: durationMinutes(startTime, endTime),
+    executionStatus,
+    type: activityType(project.type),
+    locationId: options.locationId,
+    projectId: project.id,
+    title: options.title || project.title,
+    notes: options.notes || null,
+    categoryIds: options.categoryIds ?? (project.categoryId ? [project.categoryId] : []),
+    tagIds: options.tagIds ?? tagIdsFromProject(project, tags),
+    staffIds: options.staffIds ?? staffIdsFromNames(`${project.defaultStaff || ''},${project.defaultVolunteers || ''}`, staff),
+    ...counts,
+    cohorts: cohortBreakdown(counts, `${id}:${date}`),
+  };
+}
+
+function activitySeed(
+  windowStart: string,
+  windowEnd: string,
+  projects: DemoProject[],
+  tags: Tag[],
+  staff: StaffMember[],
+): DemoActivityRecord[] {
+  const activities: DemoActivityRecord[] = [];
+  const projectById = new Map(projects.map((project) => [project.id, project]));
+  const start = parseDate(windowStart);
+  const end = parseDate(windowEnd);
+
+  for (let cursor = start; cursor <= end; cursor = addDays(cursor, 1)) {
+    const date = localIsoDate(cursor);
+    const weekday = cursor.getDay();
+    const dayOfMonth = cursor.getDate();
+    const weekInMonth = Math.floor((dayOfMonth - 1) / 7) + 1;
+    const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+
+    if (weekday >= 1 && weekday <= 5) {
+      activities.push(makeActivity(
+        `act-open-${date}`,
+        date,
+        projectById.get('project-open-door')!,
+        {
+          locationId: 'loc-house',
+          total: 18 + (hashNumber(`${date}:open`) % 34),
+          cancelled: dayOfMonth === 24 && weekday === 5,
+          notes: weekday === 5 ? 'Freitag mit Kuechenaktion und freiem Spiel.' : null,
+        },
+        tags,
+        staff,
+      ));
+    }
+
+    if (weekday === 2) {
+      activities.push(makeActivity(
+        `act-creative-${date}`,
+        date,
+        projectById.get('project-creative-lab')!,
+        { locationId: 'loc-workshop', total: 8 + (hashNumber(`${date}:creative`) % 14) },
+        tags,
+        staff,
+      ));
+    }
+
+    if (weekday === 3 && weekInMonth !== 5) {
+      activities.push(makeActivity(
+        `act-digital-${date}`,
+        date,
+        projectById.get('project-digital-club')!,
+        { locationId: 'loc-house', total: 7 + (hashNumber(`${date}:digital`) % 11), cancelled: dayOfMonth === 17 },
+        tags,
+        staff,
+      ));
+    }
+
+    if (weekday === 4) {
+      activities.push(makeActivity(
+        `act-sports-${date}`,
+        date,
+        projectById.get('project-sports-night')!,
+        { locationId: 'loc-sports', total: 12 + (hashNumber(`${date}:sports`) % 20) },
+        tags,
+        staff,
+      ));
+    }
+
+    if (weekday === 1 && weekInMonth % 2 === 0) {
+      activities.push(makeActivity(
+        `act-outreach-${date}`,
+        date,
+        projectById.get('project-outreach')!,
+        { locationId: pickOne(['loc-park', 'loc-mobile'], date), total: 6 + (hashNumber(`${date}:outreach`) % 18) },
+        tags,
+        staff,
+      ));
+    }
+
+    if (weekday === 5 && dayOfMonth <= 7) {
+      activities.push(makeActivity(
+        `act-event-${monthKey}`,
+        date,
+        projectById.get('project-community-event')!,
+        {
+          title: `Community Event ${cursor.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}`,
+          locationId: 'loc-house',
+          total: 35 + (hashNumber(`${monthKey}:event`) % 55),
+        },
+        tags,
+        staff,
+      ));
+    }
+  }
+
+  return activities.sort(compareActivityRecordsDesc);
+}
+
+function closureDaySeed(windowStart: string, windowEnd: string): OrganizationClosureDay[] {
+  const closures: OrganizationClosureDay[] = [];
+  const start = parseDate(windowStart);
+  const end = parseDate(windowEnd);
+  for (let monthDate = start; monthDate <= end; monthDate = addMonths(monthDate, 4)) {
+    const closure = new Date(monthDate.getFullYear(), monthDate.getMonth(), 15);
+    if (closure >= start && closure <= end) closures.push({ date: localIsoDate(closure), from: null, to: null });
+  }
+  return closures;
+}
+
+function openingHoursSeed(): OpeningHours {
+  return {
+    monday: { open: true, from: '14:00', to: '20:00' },
+    tuesday: { open: true, from: '14:00', to: '20:00' },
+    wednesday: { open: true, from: '14:00', to: '20:00' },
+    thursday: { open: true, from: '14:00', to: '20:00' },
+    friday: { open: true, from: '14:00', to: '21:00' },
+    saturday: { open: false, from: '10:00', to: '16:00' },
+    sunday: { open: false, from: '10:00', to: '16:00' },
+  };
+}
+
+function projectTemplateSeed(): DemoProjectTemplate[] {
+  return [
+    {
+      id: 'template-cooking',
+      title: 'Kochabend',
+      type: 'project_open',
+      targetGroup: '12-18 Jahre',
+      description: 'Gemeinsam planen, einkaufen, kochen und essen.',
+      categoryName: 'Kultur & Kreatives',
+      categoryColor: '#ec4899',
+      tags: 'Kochen:#c2410c,Teamangebot:#475569',
+      imageUrl: createDemoImage('Kochabend', '#c2410c'),
+      color: '#c2410c',
+      archived: false,
+      orgId: DEMO_ORG_ID,
+      org: { id: DEMO_ORG_ID, name: 'Demo Jugendhaus' },
+    },
+    {
+      id: 'template-holiday',
+      title: 'Ferienaktion',
+      type: 'event',
+      targetGroup: '10-16 Jahre',
+      description: 'Tagesaktion fuer Ferienzeiten mit offenem Zugang.',
+      categoryName: 'Offene Arbeit',
+      categoryColor: '#2563eb',
+      tags: 'Ferienprogramm:#1d4ed8',
+      imageUrl: createDemoImage('Ferienaktion', '#1d4ed8'),
+      color: '#1d4ed8',
+      archived: false,
+      orgId: DEMO_ORG_ID,
+      org: { id: DEMO_ORG_ID, name: 'Demo Jugendhaus' },
+    },
+  ];
+}
+
+function createInitialAuditLogs(activities: DemoActivityRecord[], projects: DemoProject[]): AuditLog[] {
+  const recentActivities = activities.slice(0, 8);
+  return [
+    {
+      id: 'audit-login-demo',
+      entityType: 'auth',
+      entityId: demoUser.id,
+      action: 'login',
+      userId: demoUser.id,
+      userName: demoUser.name,
+      orgId: DEMO_ORG_ID,
+      orgName: 'Demo Jugendhaus',
+      entityTitle: demoUser.name,
+      createdAt: new Date().toISOString(),
+    },
+    ...recentActivities.map((activity, index) => ({
+      id: `audit-activity-${index}`,
+      entityType: 'activity',
+      entityId: activity.id,
+      action: index % 3 === 0 ? 'update' : 'create',
+      userId: demoUser.id,
+      userName: demoUser.name,
+      orgId: DEMO_ORG_ID,
+      orgName: 'Demo Jugendhaus',
+      entityTitle: activity.title || projects.find((project) => project.id === activity.projectId)?.title || 'Aktivitaet',
+      createdAt: new Date(Date.now() - index * 1000 * 60 * 60 * 7).toISOString(),
+    } satisfies AuditLog)),
+  ];
+}
+
+function createDemoStore(now = new Date()): DemoStore {
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const windowStart = localIsoDate(addMonths(currentMonthStart, -12));
+  const windowEnd = localIsoDate(lastDayOfMonth(currentMonthStart));
+  const categories = categorySeed();
+  const tags = tagSeed();
+  const cohorts = cohortSeed();
+  const locations = locationSeed();
+  const staff = staffSeed();
+  const projects = projectSeed(windowStart, windowEnd);
+  const activities = activitySeed(windowStart, windowEnd, projects, tags, staff);
+  return {
+    generatedAt: now.toISOString(),
+    windowStart,
+    windowEnd,
+    sequence: 10000,
+    user: { ...demoUser },
+    orgs: [{ id: DEMO_ORG_ID, name: 'Demo Jugendhaus', parentId: null, path: DEMO_ORG_ID }],
+    categories,
+    tags,
+    cohorts,
+    locations,
+    staff,
+    projects,
+    activities,
+    projectTemplates: projectTemplateSeed(),
+    openingHours: openingHoursSeed(),
+    closureDays: closureDaySeed(windowStart, windowEnd),
+    acks: {},
+    auditLogs: createInitialAuditLogs(activities, projects),
+  };
+}
+
+let store = createDemoStore();
+
+export function resetDemoStore() {
+  store = createDemoStore();
+}
+
+function nextId(prefix: string): string {
+  store.sequence += 1;
+  return `${prefix}-${store.sequence}`;
+}
+
+function addAudit(entityType: string, entityId: string, action: AuditLogAction, entityTitle?: string | null) {
+  store.auditLogs.unshift({
+    id: nextId('audit'),
+    entityType,
+    entityId,
+    action,
+    userId: store.user.id,
+    userName: store.user.name,
+    orgId: DEMO_ORG_ID,
+    orgName: 'Demo Jugendhaus',
+    entityTitle: entityTitle || null,
+    createdAt: new Date().toISOString(),
+  });
+  store.auditLogs = store.auditLogs.slice(0, 80);
+}
+
+function compareActivityRecordsDesc(left: Pick<Activity, 'date' | 'startTime'>, right: Pick<Activity, 'date' | 'startTime'>) {
+  const leftKey = `${left.date || ''}T${left.startTime || '00:00'}`;
+  const rightKey = `${right.date || ''}T${right.startTime || '00:00'}`;
+  return rightKey.localeCompare(leftKey);
+}
+
+function compareActivityRecordsAsc(left: Pick<Activity, 'date' | 'startTime'>, right: Pick<Activity, 'date' | 'startTime'>) {
+  return compareActivityRecordsDesc(right, left);
+}
+
+function hydrateProject(project: DemoProject): Project {
+  const categories = project.categoryId
+    ? store.categories
+        .filter((category) => category.id === project.categoryId)
+        .map((category) => ({ id: category.id, name: category.name, color: category.color }))
+    : [];
+  return { ...project, categories };
+}
+
+function hydrateActivity(activity: DemoActivityRecord): Activity {
+  const project = store.projects.find((entry) => entry.id === activity.projectId);
+  const location = store.locations.find((entry) => entry.id === activity.locationId);
+  return {
+    ...activity,
+    project: project ? hydrateProject(project) : null,
+    location: location ? clone(location) : undefined,
+    categories: store.categories
+      .filter((category) => activity.categoryIds.includes(category.id))
+      .map((category) => ({ id: category.id, name: category.name, color: category.color })),
+    tags: store.tags
+      .filter((tag) => activity.tagIds.includes(tag.id))
+      .map((tag) => ({ id: tag.id, name: tag.name, color: tag.color })),
+    staff: store.staff
+      .filter((member) => activity.staffIds.includes(member.id))
+      .map((member) => ({ id: member.id, name: member.name, role: member.role, roles: member.roles } as { id: string; name: string })),
+  };
+}
+
+function filterByActive<T extends { active?: boolean }>(items: T[], params: DemoQueryParams): T[] {
+  const active = readBoolean(params.active);
+  if (typeof active === 'undefined') return items;
+  return items.filter((item) => (item.active !== false) === active);
+}
+
+function filterActivityRecords(params: DemoQueryParams = {}): DemoActivityRecord[] {
+  const from = typeof params.from === 'string' ? params.from.slice(0, 10) : undefined;
+  const to = typeof params.to === 'string' ? params.to.slice(0, 10) : undefined;
+  const search = typeof params.search === 'string' ? params.search.trim().toLowerCase() : '';
+  const types = new Set(readStringList(params.types).concat(readStringList(params.type)));
+  const locationIds = new Set(readStringList(params.locationIds).concat(readStringList(params.locationId)));
+  const projectIds = new Set(readStringList(params.projectIds).concat(readStringList(params.projectId)));
+  const categoryIds = new Set(readStringList(params.categoryIds));
+  const tagIds = new Set(readStringList(params.tagIds));
+  const staffIds = new Set(readStringList(params.staffIds));
+  const cohortIds = new Set(readStringList(params.cohortIds));
+  const executionStatuses = new Set(readStringList(params.executionStatuses));
+  const weekdays = new Set(readStringList(params.weekdays).map((value) => Number(value)).filter(Number.isFinite));
+  const participantsMin = readNumber(params.participantsMin);
+  const participantsMax = readNumber(params.participantsMax);
+  const durationMin = readNumber(params.durationMin);
+  const durationMax = readNumber(params.durationMax);
+  const closureDates = new Set(store.closureDays.map((closure) => closure.date));
+  const closureState = typeof params.closureState === 'string' ? params.closureState : '';
+
+  return store.activities.filter((activity) => {
+    if (from && activity.date < from) return false;
+    if (to && activity.date > to) return false;
+    if (types.size > 0 && !types.has(activity.type)) return false;
+    if (locationIds.size > 0 && (!activity.locationId || !locationIds.has(activity.locationId))) return false;
+    if (projectIds.size > 0 && (!activity.projectId || !projectIds.has(activity.projectId))) return false;
+    if (categoryIds.size > 0 && !activity.categoryIds.some((id) => categoryIds.has(id))) return false;
+    if (tagIds.size > 0 && !activity.tagIds.some((id) => tagIds.has(id))) return false;
+    if (staffIds.size > 0 && !activity.staffIds.some((id) => staffIds.has(id))) return false;
+    if (cohortIds.size > 0 && !(activity.cohorts || []).some((cohort) => cohortIds.has(cohort.cohortId))) return false;
+    if (executionStatuses.size > 0 && !executionStatuses.has(activity.executionStatus || 'completed')) return false;
+    if (weekdays.size > 0 && !weekdays.has(parseDate(activity.date).getDay())) return false;
+    if (typeof participantsMin === 'number' && (activity.countTotal || 0) < participantsMin) return false;
+    if (typeof participantsMax === 'number' && (activity.countTotal || 0) > participantsMax) return false;
+    if (typeof durationMin === 'number' && (activity.durationMinutes || 0) < durationMin) return false;
+    if (typeof durationMax === 'number' && (activity.durationMinutes || 0) > durationMax) return false;
+    if (closureState === 'closed' && !closureDates.has(activity.date)) return false;
+    if (closureState === 'open' && closureDates.has(activity.date)) return false;
+    if (readBoolean(params.uncategorized) === true && activity.categoryIds.length > 0) return false;
+    if (readBoolean(params.hasNotes) === true && !activity.notes) return false;
+    if (search) {
+      const hydrated = hydrateActivity(activity);
+      const haystack = [
+        hydrated.title,
+        hydrated.project?.title,
+        hydrated.location?.name,
+        hydrated.notes,
+        ...(hydrated.tags || []).map((tag) => tag.name),
+        ...(hydrated.categories || []).map((category) => category.name),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+}
+
+export function getDemoUser(): AuthUser {
+  return clone(store.user);
+}
+
+export function updateDemoUserProfile(patch: Partial<AuthUser>): AuthUser {
+  store.user = { ...store.user, ...patch, id: store.user.id, role: store.user.role, orgId: DEMO_ORG_ID, orgName: 'Demo Jugendhaus' };
+  return getDemoUser();
+}
+
+export function getDemoPublicConfig() {
+  return {
+    appName: 'StatO Demo',
+    orgName: 'Demo Jugendhaus',
+    loginTitle: 'StatO Demo',
+    loginSubtitle: 'OKJA Statistik & Dokumentation ohne Anmeldung',
+    liveRefreshIntervalMs: 0,
+    twoFactorEnabled: false,
+    passwordResetMode: 'email',
+    forgotPasswordEnabled: false,
+    adminTemporaryPasswordEnabled: false,
+  };
+}
+
+export function listDemoOrgs(): OrgDto[] {
+  return clone(store.orgs);
+}
+
+export function listDemoUsers() {
+  return [{ id: store.user.id, email: store.user.email, name: store.user.name, role: store.user.role, orgId: DEMO_ORG_ID, org: { id: DEMO_ORG_ID, name: 'Demo Jugendhaus' } }];
+}
+
+export function getDemoTaxonomySettings(): OrgTaxonomySettingsSnapshot {
+  const typeSetting = { allowOwn: true, inheritedIds: [], inheritAll: false };
+  const access = { canCreateOwn: true };
+  return {
+    orgId: DEMO_ORG_ID,
+    orgName: 'Demo Jugendhaus',
+    parentId: null,
+    parentName: null,
+    hasExplicitSettings: true,
+    hasChildDefaults: true,
+    childCount: 0,
+    directChildCount: 0,
+    descendantCount: 0,
+    settings: { categories: typeSetting, tags: typeSetting, cohorts: typeSetting },
+    settingsSource: {
+      categories: { mode: 'explicit', sourceOrgId: DEMO_ORG_ID, sourceOrgName: 'Demo Jugendhaus' },
+      tags: { mode: 'explicit', sourceOrgId: DEMO_ORG_ID, sourceOrgName: 'Demo Jugendhaus' },
+      cohorts: { mode: 'explicit', sourceOrgId: DEMO_ORG_ID, sourceOrgName: 'Demo Jugendhaus' },
+    },
+    fallbackSettings: { categories: typeSetting, tags: typeSetting, cohorts: typeSetting },
+    fallbackSource: {
+      categories: { mode: 'default', sourceOrgId: null, sourceOrgName: null },
+      tags: { mode: 'default', sourceOrgId: null, sourceOrgName: null },
+      cohorts: { mode: 'default', sourceOrgId: null, sourceOrgName: null },
+    },
+    childDefaults: { categories: typeSetting, tags: typeSetting, cohorts: typeSetting, allowChildAdminOverrides: true },
+    ownAdminPolicy: { allowChildAdminOverrides: true, sourceOrgId: DEMO_ORG_ID, sourceOrgName: 'Demo Jugendhaus' },
+    permissions: { canEditSelf: true, canEditChildDefaults: true },
+    access: { categories: access, tags: access, cohorts: access },
+    parentOptions: { categories: [], tags: [], cohorts: [] },
+    childDefaultOptions: { categories: [], tags: [], cohorts: [] },
+  };
+}
+
+export function listDemoCategories(params: DemoQueryParams = {}): Category[] {
+  return clone(filterByActive(store.categories, params));
+}
+
+export function createDemoCategory(data: Partial<Category>): Category {
+  const category: Category = {
+    id: nextId('cat'),
+    name: String(data.name || 'Neue Kategorie'),
+    description: data.description ?? null,
+    standardRef: data.standardRef ?? null,
+    color: data.color || '#64748b',
+    active: data.active ?? true,
+    orgId: DEMO_ORG_ID,
+    canManage: true,
+  };
+  store.categories.push(category);
+  addAudit('category', category.id, 'create', category.name);
+  return clone(category);
+}
+
+export function updateDemoCategory(id: string, data: Partial<Category>): Category {
+  const category = store.categories.find((entry) => entry.id === id);
+  if (!category) throw new Error('Kategorie nicht gefunden');
+  Object.assign(category, data, { id, orgId: DEMO_ORG_ID, canManage: true });
+  addAudit('category', category.id, 'update', category.name);
+  return clone(category);
+}
+
+export function deleteDemoCategory(id: string) {
+  store.categories = store.categories.filter((entry) => entry.id !== id);
+  store.activities.forEach((activity) => {
+    activity.categoryIds = activity.categoryIds.filter((entry) => entry !== id);
+  });
+  addAudit('category', id, 'delete', id);
+}
+
+export function listDemoTags(params: DemoQueryParams = {}): Tag[] {
+  const search = typeof params.search === 'string' ? params.search.toLowerCase().trim() : '';
+  const items = filterByActive(store.tags, params).filter((tag) => !search || tag.name.toLowerCase().includes(search));
+  return clone(items);
+}
+
+export function createDemoTag(data: Partial<Tag>): Tag {
+  const tag: Tag = {
+    id: nextId('tag'),
+    name: String(data.name || 'Neues Tag'),
+    synonyms: data.synonyms ?? null,
+    color: data.color || '#475569',
+    active: data.active ?? true,
+    description: data.description ?? null,
+    orgId: DEMO_ORG_ID,
+    canManage: true,
+  };
+  store.tags.push(tag);
+  addAudit('tag', tag.id, 'create', tag.name);
+  return clone(tag);
+}
+
+export function updateDemoTag(id: string, data: Partial<Tag>): Tag {
+  const tag = store.tags.find((entry) => entry.id === id);
+  if (!tag) throw new Error('Tag nicht gefunden');
+  Object.assign(tag, data, { id, orgId: DEMO_ORG_ID, canManage: true });
+  addAudit('tag', tag.id, 'update', tag.name);
+  return clone(tag);
+}
+
+export function deleteDemoTag(id: string) {
+  store.tags = store.tags.filter((entry) => entry.id !== id);
+  store.activities.forEach((activity) => {
+    activity.tagIds = activity.tagIds.filter((entry) => entry !== id);
+  });
+  addAudit('tag', id, 'delete', id);
+}
+
+export function listDemoCohorts(params: DemoQueryParams = {}): Cohort[] {
+  return clone(filterByActive(store.cohorts, params).sort((left, right) => (left.sortOrder || 0) - (right.sortOrder || 0)));
+}
+
+export function createDemoCohort(data: Partial<Cohort>): Cohort {
+  const cohort: Cohort = {
+    id: nextId('cohort'),
+    name: String(data.name || 'Neue Kohorte'),
+    minAge: Number(data.minAge || 0),
+    maxAge: Number(data.maxAge || 0),
+    sortOrder: Number(data.sortOrder || store.cohorts.length * 10),
+    active: data.active ?? true,
+    orgId: DEMO_ORG_ID,
+    canManage: true,
+  };
+  store.cohorts.push(cohort);
+  addAudit('cohort', cohort.id, 'create', cohort.name);
+  return clone(cohort);
+}
+
+export function updateDemoCohort(id: string, data: Partial<Cohort>): Cohort {
+  const cohort = store.cohorts.find((entry) => entry.id === id);
+  if (!cohort) throw new Error('Kohorte nicht gefunden');
+  Object.assign(cohort, data, { id, orgId: DEMO_ORG_ID, canManage: true });
+  addAudit('cohort', cohort.id, 'update', cohort.name);
+  return clone(cohort);
+}
+
+export function deleteDemoCohort(id: string) {
+  store.cohorts = store.cohorts.filter((entry) => entry.id !== id);
+  store.activities.forEach((activity) => {
+    activity.cohorts = (activity.cohorts || []).filter((cohort) => cohort.cohortId !== id);
+  });
+  addAudit('cohort', id, 'delete', id);
+}
+
+export function getDemoTaxonomyAccess() {
+  return { categories: { canCreateOwn: true }, tags: { canCreateOwn: true }, cohorts: { canCreateOwn: true } };
+}
+
+export function listDemoLocations(params: DemoQueryParams = {}): Location[] {
+  return clone(filterByActive(store.locations, params));
+}
+
+export function createDemoLocation(data: Partial<Location>): Location {
+  const location: Location = {
+    id: nextId('loc'),
+    name: String(data.name || 'Neue Einrichtung'),
+    address: data.address ?? null,
+    roomType: data.roomType ?? null,
+    active: data.active ?? true,
+  };
+  store.locations.push(location);
+  return clone(location);
+}
+
+export function updateDemoLocation(id: string, data: Partial<Location>): Location {
+  const location = store.locations.find((entry) => entry.id === id);
+  if (!location) throw new Error('Einrichtung nicht gefunden');
+  Object.assign(location, data, { id });
+  return clone(location);
+}
+
+export function deleteDemoLocation(id: string) {
+  store.locations = store.locations.filter((entry) => entry.id !== id);
+  store.activities.forEach((activity) => {
+    if (activity.locationId === id) activity.locationId = null;
+  });
+}
+
+export function listDemoStaff(params: DemoQueryParams = {}): StaffMember[] {
+  return clone(filterByActive(store.staff, params));
+}
+
+export function createDemoStaff(data: Partial<StaffMember>): StaffMember {
+  const role = (data.role || (Array.isArray(data.roles) ? data.roles[0] : data.roles) || 'employee') as StaffRole;
+  const staff: StaffMember = {
+    id: nextId('staff'),
+    name: String(data.name || 'Neue Person'),
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+    role,
+    roles: [role],
+    notes: data.notes ?? null,
+    active: data.active ?? true,
+  };
+  store.staff.push(staff);
+  return clone(staff);
+}
+
+export function updateDemoStaff(id: string, data: Partial<StaffMember>): StaffMember {
+  const staff = store.staff.find((entry) => entry.id === id);
+  if (!staff) throw new Error('Mitarbeitende Person nicht gefunden');
+  const role = (data.role || (Array.isArray(data.roles) ? data.roles[0] : data.roles) || staff.role || 'employee') as StaffRole;
+  Object.assign(staff, data, { id, role, roles: [role] });
+  return clone(staff);
+}
+
+export function deleteDemoStaff(id: string) {
+  store.staff = store.staff.filter((entry) => entry.id !== id);
+  store.activities.forEach((activity) => {
+    activity.staffIds = activity.staffIds.filter((entry) => entry !== id);
+  });
+}
+
+export function listDemoProjects(params: DemoQueryParams = {}): Project[] {
+  const search = typeof params.search === 'string' ? params.search.toLowerCase().trim() : '';
+  const archived = readBoolean(params.archived);
+  const projects = store.projects.filter((project) => {
+    if (typeof archived === 'boolean' && !!project.archived !== archived) return false;
+    if (search && !`${project.title} ${project.description || ''} ${project.targetGroup || ''}`.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  return clone(projects.map(hydrateProject));
+}
+
+export function getDemoProject(id: string): Project | null {
+  const project = store.projects.find((entry) => entry.id === id);
+  return project ? clone(hydrateProject(project)) : null;
+}
+
+export function createDemoProject(data: Partial<Project>): Project {
+  if (data.clientRequestId) {
+    const existing = store.projects.find((project) => project.clientRequestId === data.clientRequestId);
+    if (existing) return clone(hydrateProject(existing));
+  }
+  const project: DemoProject = {
+    id: nextId('project'),
+    orgId: DEMO_ORG_ID,
+    title: String(data.title || 'Neues Projekt'),
+    type: data.type || 'project_open',
+    categoryId: data.categoryId ?? null,
+    targetGroup: data.targetGroup ?? null,
+    imageUrl: data.imageUrl ?? null,
+    imageSize: data.imageSize ?? null,
+    color: data.color || '#2563eb',
+    dateFrom: data.dateFrom ?? store.windowStart,
+    dateTo: data.dateTo ?? store.windowEnd,
+    defaultStartTime: data.defaultStartTime ?? '15:00',
+    defaultEndTime: data.defaultEndTime ?? '17:00',
+    defaultStaff: data.defaultStaff ?? null,
+    defaultVolunteers: data.defaultVolunteers ?? null,
+    tag: data.tag ?? null,
+    activityField: data.activityField ?? null,
+    description: data.description ?? null,
+    clientRequestId: data.clientRequestId ?? null,
+    archived: data.archived ?? false,
+  };
+  store.projects.push(project);
+  addAudit('project', project.id, 'create', project.title);
+  return clone(hydrateProject(project));
+}
+
+export function updateDemoProject(id: string, data: Partial<Project>): Project {
+  const project = store.projects.find((entry) => entry.id === id);
+  if (!project) throw new Error('Projekt nicht gefunden');
+  Object.assign(project, data, { id, orgId: DEMO_ORG_ID });
+  addAudit('project', project.id, 'update', project.title);
+  return clone(hydrateProject(project));
+}
+
+export function deleteDemoProject(id: string) {
+  store.projects = store.projects.filter((entry) => entry.id !== id);
+  store.activities.forEach((activity) => {
+    if (activity.projectId === id) activity.projectId = null;
+  });
+  addAudit('project', id, 'delete', id);
+}
+
+export function listDemoActivities(params: DemoQueryParams = {}): Activity[] | PagedActivitiesResult {
+  const order = params.order === 'asc' ? 'asc' : 'desc';
+  const records = filterActivityRecords(params).sort(order === 'asc' ? compareActivityRecordsAsc : compareActivityRecordsDesc);
+  const activities = records.map(hydrateActivity);
+  const page = readNumber(params.page);
+  const limit = readNumber(params.limit);
+  if (page || limit) {
+    const pageNumber = Math.max(1, Math.trunc(page || 1));
+    const pageSize = Math.min(50, Math.max(1, Math.trunc(limit || 50)));
+    const startIndex = (pageNumber - 1) * pageSize;
+    return clone({ data: activities.slice(startIndex, startIndex + pageSize), total: activities.length, page: pageNumber, pageSize });
+  }
+  return clone(activities);
+}
+
+export function getDemoActivity(id: string): Activity | null {
+  const activity = store.activities.find((entry) => entry.id === id);
+  return activity ? clone(hydrateActivity(activity)) : null;
+}
+
+function normalizeActivityPayload(data: Partial<Activity> & Record<string, unknown>, fallback?: DemoActivityRecord): DemoActivityRecord {
+  const project = store.projects.find((entry) => entry.id === (data.projectId || fallback?.projectId)) || store.projects[0];
+  const categoryIds = readStringList(data.categoryIds).length > 0
+    ? readStringList(data.categoryIds)
+    : fallback?.categoryIds ?? (project.categoryId ? [project.categoryId] : []);
+  const tagIds = readStringList(data.tagIds).length > 0 ? readStringList(data.tagIds) : fallback?.tagIds ?? tagIdsFromProject(project, store.tags);
+  const staffIds = readStringList(data.staffIds).length > 0
+    ? readStringList(data.staffIds)
+    : fallback?.staffIds ?? staffIdsFromNames(`${project.defaultStaff || ''},${project.defaultVolunteers || ''}`, store.staff);
+  const startTime = typeof data.startTime === 'string' ? data.startTime : fallback?.startTime ?? project.defaultStartTime ?? null;
+  const endTime = typeof data.endTime === 'string' ? data.endTime : fallback?.endTime ?? project.defaultEndTime ?? null;
+  const countMale = readNumber(data.countMale) ?? fallback?.countMale ?? 0;
+  const countFemale = readNumber(data.countFemale) ?? fallback?.countFemale ?? 0;
+  const countDiverse = readNumber(data.countDiverse) ?? fallback?.countDiverse ?? 0;
+  const countTotal = readNumber(data.countTotal) ?? countMale + countFemale + countDiverse;
+  const counts = { countMale, countFemale, countDiverse, countTotal };
+  return {
+    id: fallback?.id || nextId('act'),
+    orgId: DEMO_ORG_ID,
+    date: String(data.date || fallback?.date || localIsoDate(new Date())).slice(0, 10),
+    startTime,
+    endTime,
+    durationMinutes: readNumber(data.durationMinutes) ?? durationMinutes(startTime, endTime),
+    executionStatus: status(data.executionStatus ?? fallback?.executionStatus),
+    type: activityType(data.type || project.type || fallback?.type),
+    locationId: typeof data.locationId === 'string' ? data.locationId : fallback?.locationId ?? null,
+    projectId: project.id,
+    title: typeof data.title === 'string' ? data.title : fallback?.title ?? project.title,
+    notes: typeof data.notes === 'string' ? data.notes : fallback?.notes ?? null,
+    categoryIds,
+    tagIds,
+    staffIds,
+    ...counts,
+    cohorts: Array.isArray(data.cohorts) ? data.cohorts : fallback?.cohorts ?? cohortBreakdown(counts, `${fallback?.id || 'new'}:${Date.now()}`),
+  };
+}
+
+export function createDemoActivity(data: Partial<Activity> & Record<string, unknown>): Activity {
+  const activity = normalizeActivityPayload(data);
+  store.activities.unshift(activity);
+  store.activities.sort(compareActivityRecordsDesc);
+  addAudit('activity', activity.id, 'create', activity.title);
+  return clone(hydrateActivity(activity));
+}
+
+export function updateDemoActivity(id: string, data: Partial<Activity> & Record<string, unknown>): Activity {
+  const index = store.activities.findIndex((entry) => entry.id === id);
+  if (index < 0) throw new Error('Aktivitaet nicht gefunden');
+  const updated = normalizeActivityPayload(data, store.activities[index]);
+  store.activities[index] = updated;
+  store.activities.sort(compareActivityRecordsDesc);
+  addAudit('activity', updated.id, 'update', updated.title);
+  return clone(hydrateActivity(updated));
+}
+
+export function deleteDemoActivity(id: string) {
+  store.activities = store.activities.filter((entry) => entry.id !== id);
+  delete store.acks[id];
+  addAudit('activity', id, 'delete', id);
+}
+
+export function getDemoActivityAcks(activityIds: string[]): Record<string, boolean> {
+  return Object.fromEntries(activityIds.map((id) => [id, store.acks[id] === true]));
+}
+
+export function setDemoActivityAck(activityId: string, done: boolean) {
+  store.acks[activityId] = done;
+  return { activityId, done };
+}
+
+function participantValue(activity: Activity, field: 'countMale' | 'countFemale' | 'countDiverse' | 'countTotal'): number {
+  if (activity.executionStatus === 'cancelled') return 0;
+  return Number(activity[field] || 0);
+}
+
+export function getDemoStatsSummary(params: DemoQueryParams = {}) {
+  const activities = filterActivityRecords(params).map(hydrateActivity);
+  const totalActivities = activities.length;
+  const totalParticipants = activities.reduce((sum, activity) => sum + participantValue(activity, 'countTotal'), 0);
+  const totalDurationMinutes = activities.reduce(
+    (sum, activity) => sum + (activity.executionStatus === 'cancelled' ? 0 : activity.durationMinutes || 0),
+    0,
+  );
+  return {
+    totalActivities,
+    totalParticipants,
+    totalDurationMinutes,
+    totalHours: Math.round((totalDurationMinutes / 60) * 10) / 10,
+    averageParticipants: totalActivities > 0 ? Math.round((totalParticipants / totalActivities) * 10) / 10 : 0,
+  };
+}
+
+function incrementMap(map: Map<string, number>, key: string, value = 1) {
+  map.set(key, (map.get(key) || 0) + value);
+}
+
+export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOverviewResponse {
+  const activities = filterActivityRecords(params).map(hydrateActivity);
+  const summaryBase = getDemoStatsSummary(params);
+  const byType = new Map<string, { count: number; totalParticipants: number }>();
+  const byCohort = new Map<string, { male: number; female: number; diverse: number }>();
+  const byCategory = new Map<string, number>();
+  const byTag = new Map<string, number>();
+  const byProject = new Map<string, number>();
+  const byDate = new Map<string, { totalParticipants: number; activityCount: number }>();
+  let totalMale = 0;
+  let totalFemale = 0;
+  let totalDiverse = 0;
+
+  for (const activity of activities) {
+    const male = participantValue(activity, 'countMale');
+    const female = participantValue(activity, 'countFemale');
+    const diverse = participantValue(activity, 'countDiverse');
+    const total = participantValue(activity, 'countTotal');
+    totalMale += male;
+    totalFemale += female;
+    totalDiverse += diverse;
+    const typeEntry = byType.get(activity.type) || { count: 0, totalParticipants: 0 };
+    typeEntry.count += 1;
+    typeEntry.totalParticipants += total;
+    byType.set(activity.type, typeEntry);
+    const dateEntry = byDate.get(activity.date) || { totalParticipants: 0, activityCount: 0 };
+    dateEntry.totalParticipants += total;
+    dateEntry.activityCount += 1;
+    byDate.set(activity.date, dateEntry);
+    (activity.cohorts || []).forEach((cohort) => {
+      const entry = byCohort.get(cohort.cohortId) || { male: 0, female: 0, diverse: 0 };
+      entry.male += activity.executionStatus === 'cancelled' ? 0 : cohort.m || 0;
+      entry.female += activity.executionStatus === 'cancelled' ? 0 : cohort.w || 0;
+      entry.diverse += activity.executionStatus === 'cancelled' ? 0 : cohort.d || 0;
+      byCohort.set(cohort.cohortId, entry);
+    });
+    (activity.categories || []).forEach((category) => incrementMap(byCategory, category.id));
+    (activity.tags || []).forEach((tag) => incrementMap(byTag, tag.id));
+    if (activity.project?.id) incrementMap(byProject, activity.project.id);
+  }
+
+  const availableYears = Array.from(new Set(store.activities.map((activity) => activity.date.slice(0, 4)))).sort();
+  return {
+    summary: {
+      ...summaryBase,
+      totalMale,
+      totalFemale,
+      totalDiverse,
+      closureDaysCount: store.closureDays.filter((closure) => {
+        const from = typeof params.from === 'string' ? params.from : store.windowStart;
+        const to = typeof params.to === 'string' ? params.to : store.windowEnd;
+        return closure.date >= from && closure.date <= to;
+      }).length,
+    },
+    byType: Array.from(byType.entries()).map(([type, value]) => ({ type, ...value })),
+    gender: { male: totalMale, female: totalFemale, diverse: totalDiverse },
+    participantsTimeseries: Array.from(byDate.entries())
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([date, value]) => ({ date, ...value })),
+    byCohort: Array.from(byCohort.entries()).map(([cohortId, value]) => ({
+      cohortId,
+      name: store.cohorts.find((cohort) => cohort.id === cohortId)?.name || cohortId,
+      total: value.male + value.female + value.diverse,
+      ...value,
+    })),
+    byCategory: Array.from(byCategory.entries()).map(([id, count]) => ({ id, name: store.categories.find((category) => category.id === id)?.name || id, count })),
+    topTags: Array.from(byTag.entries()).map(([id, count]) => ({ id, name: store.tags.find((tag) => tag.id === id)?.name || id, count })).sort((left, right) => right.count - left.count),
+    topProjects: Array.from(byProject.entries()).map(([id, count]) => ({ id, name: store.projects.find((project) => project.id === id)?.title || id, count })).sort((left, right) => right.count - left.count),
+    availableYears,
+  };
+}
+
+export function getDemoStatsByCohort() {
+  const overview = getDemoStatsOverview({});
+  return overview.byCohort.map((entry) => ({ cohortId: entry.cohortId, name: entry.name, total: entry.total, activities: filterActivityRecords({ cohortIds: entry.cohortId }).length }));
+}
+
+export function listDemoAuditLogs(params: DemoQueryParams = {}): AuditLog[] {
+  const limit = Math.max(1, Math.min(100, readNumber(params.limit) || 10));
+  const actions = new Set(readStringList(params.actions));
+  const logs = store.auditLogs.filter((log) => actions.size === 0 || actions.has(log.action));
+  return clone(logs.slice(0, limit));
+}
+
+export function getDemoAuditMetrics() {
+  return {
+    global: {
+      totalUsers: 1,
+      totalOrgs: 1,
+      totalActivities: store.activities.length,
+      totalProjects: store.projects.length,
+      loginsLast7Days: 1,
+      activeUsersLast30Days: 1,
+    },
+    orgs: [{ id: DEMO_ORG_ID, name: 'Demo Jugendhaus', users: 1, activities: store.activities.length, projects: store.projects.length, attachmentCount: 0, attachmentBytes: 0 }],
+    topUsers30d: [{ id: store.user.id, name: store.user.name, email: store.user.email, role: store.user.role, orgId: DEMO_ORG_ID, lastLoginAt: store.generatedAt, loginCount30d: 1 }],
+  };
+}
+
+export function getDemoOpeningHours(): OpeningHours {
+  return clone(store.openingHours);
+}
+
+export function updateDemoOpeningHours(hours: OpeningHours): OpeningHours {
+  store.openingHours = clone(hours);
+  return getDemoOpeningHours();
+}
+
+export function listDemoClosureDays(params: DemoQueryParams = {}): OrganizationClosureDay[] {
+  const from = typeof params.from === 'string' ? params.from : undefined;
+  const to = typeof params.to === 'string' ? params.to : undefined;
+  return clone(store.closureDays.filter((closure) => (!from || closure.date >= from) && (!to || closure.date <= to)));
+}
+
+export function upsertDemoClosureDay(date: string, data: Partial<OrganizationClosureDay>): OrganizationClosureDay[] {
+  const existing = store.closureDays.find((closure) => closure.date === date);
+  if (existing) Object.assign(existing, { from: data.from ?? null, to: data.to ?? null });
+  else store.closureDays.push({ date, from: data.from ?? null, to: data.to ?? null });
+  store.closureDays.sort((left, right) => left.date.localeCompare(right.date));
+  return listDemoClosureDays();
+}
+
+export function deleteDemoClosureDay(date: string): OrganizationClosureDay[] {
+  store.closureDays = store.closureDays.filter((closure) => closure.date !== date);
+  return listDemoClosureDays();
+}
+
+export function listDemoProjectTemplates(ownedOnly = false): ProjectTemplateDto[] {
+  return clone(store.projectTemplates.filter((template) => !ownedOnly || template.orgId === DEMO_ORG_ID));
+}
+
+export function createDemoProjectTemplate(data: Partial<ProjectTemplateDto>): ProjectTemplateDto {
+  const template: DemoProjectTemplate = {
+    id: nextId('template'),
+    title: String(data.title || 'Neue Vorlage'),
+    type: activityType(data.type) as ProjectTemplateDto['type'],
+    targetGroup: data.targetGroup ?? null,
+    description: data.description ?? null,
+    categoryName: data.categoryName ?? null,
+    categoryColor: data.categoryColor ?? null,
+    tags: data.tags ?? null,
+    imageUrl: data.imageUrl ?? null,
+    color: data.color ?? null,
+    archived: data.archived ?? false,
+    orgId: DEMO_ORG_ID,
+    org: { id: DEMO_ORG_ID, name: 'Demo Jugendhaus' },
+  };
+  store.projectTemplates.push(template);
+  return clone(template);
+}
+
+export function updateDemoProjectTemplate(id: string, data: Partial<ProjectTemplateDto>): ProjectTemplateDto {
+  const template = store.projectTemplates.find((entry) => entry.id === id);
+  if (!template) throw new Error('Vorlage nicht gefunden');
+  Object.assign(template, data, { id, orgId: DEMO_ORG_ID });
+  return clone(template);
+}
+
+export function deleteDemoProjectTemplate(id: string) {
+  store.projectTemplates = store.projectTemplates.filter((entry) => entry.id !== id);
+}
+
+export function getDemoGeneratedInfo() {
+  return { generatedAt: store.generatedAt, windowStart: store.windowStart, windowEnd: store.windowEnd };
+}
+
+export function runDemoTestDataGeneration() {
+  resetDemoStore();
+  return {
+    orgId: DEMO_ORG_ID,
+    orgName: 'Demo Jugendhaus',
+    preset: 'realistic',
+    config: { projects: store.projects.length, activities: store.activities.length, monthsBack: 12, clearExisting: true },
+    cleanedUp: { deletedActivities: 0, deletedProjects: 0 },
+    created: {
+      projects: store.projects.length,
+      activities: store.activities.length,
+      categories: store.categories.length,
+      tags: store.tags.length,
+      locations: store.locations.length,
+      cohorts: store.cohorts.length,
+      staff: store.staff.length,
+    },
+  };
+}
+
+export function deleteDemoGeneratedTestData() {
+  const deletedActivities = store.activities.length;
+  const deletedProjects = store.projects.length;
+  store.activities = [];
+  store.projects = [];
+  return { deletedActivities, deletedProjects };
+}

@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { demoAxiosAdapter } from '../demo/adapter';
+import { demoModeEnabled } from '../demo/config';
 import { addDevMetricEvent } from './devMetrics';
 import { devToolsFeatureEnabled } from './devToolsConfig';
 
@@ -8,6 +10,7 @@ const BASE_URL = (typeof import.meta !== 'undefined' && (import.meta as ImportMe
 
 export const api = axios.create({
   baseURL: BASE_URL,
+  ...(demoModeEnabled ? { adapter: demoAxiosAdapter } : {}),
 });
 
 let devMetricsInterceptorsAttached = false;

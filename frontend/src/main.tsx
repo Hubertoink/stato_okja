@@ -38,6 +38,8 @@ attachQueryClientMetrics(queryClient);
 applyStoredBackground();
 
 if (demoModeEnabled) {
+  document.title = 'Stato - Demo';
+
   try {
     window.sessionStorage.removeItem('stato_rq_cache_session_v1');
   } catch {

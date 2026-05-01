@@ -50,7 +50,6 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
-            type=raw,value=demo,enable=${{ github.ref == 'refs/heads/demo' }}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -97,6 +96,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=demo,enable=${{ github.ref == 'refs/heads/demo' }}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |

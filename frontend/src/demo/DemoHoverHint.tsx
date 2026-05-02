@@ -5,6 +5,7 @@ import { demoModeEnabled } from './config';
 
 type DemoHoverHintPlacement = 'top' | 'bottom';
 type DemoHoverHintAlign = 'start' | 'end';
+type DemoHoverHintMobileTriggerPosition = 'stacked' | 'corner';
 
 type ActiveHintListener = (activeHintId: string | null) => void;
 
@@ -25,6 +26,7 @@ export default function DemoHoverHint({
   description,
   placement = 'top',
   align = 'start',
+  mobileTriggerPosition = 'stacked',
   className = '',
   children,
 }: {
@@ -32,6 +34,7 @@ export default function DemoHoverHint({
   description: string;
   placement?: DemoHoverHintPlacement;
   align?: DemoHoverHintAlign;
+  mobileTriggerPosition?: DemoHoverHintMobileTriggerPosition;
   className?: string;
   children: ReactNode;
 }) {
@@ -85,7 +88,7 @@ export default function DemoHoverHint({
 
   return (
     <div
-      className={`demo-hover-hint demo-hover-hint-${placement} demo-hover-hint-align-${align} ${isMobileHint ? 'demo-hover-hint-touch' : ''} ${className}`.trim()}
+      className={`demo-hover-hint demo-hover-hint-${placement} demo-hover-hint-align-${align} ${isMobileHint ? `demo-hover-hint-touch demo-hover-hint-mobile-trigger-${mobileTriggerPosition}` : ''} ${className}`.trim()}
       aria-describedby={!isMobileHint && isOpen ? tooltipId : undefined}
       data-demo-hint-open={isOpen ? 'true' : undefined}
       onBlurCapture={isMobileHint ? undefined : handleBlur}

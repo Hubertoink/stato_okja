@@ -1054,11 +1054,24 @@ code {
   margin-bottom: 0.5rem;
 }
 
+.demo-hover-hint-touch.demo-hover-hint-mobile-trigger-corner .demo-hover-hint-mobile-controls {
+  margin-bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+  z-index: 2;
+}
+
+.demo-hover-hint-touch.demo-hover-hint-mobile-trigger-corner .demo-hover-hint-mobile-trigger {
+  pointer-events: auto;
+}
+
 .demo-hover-hint-touch.demo-hover-hint-top .demo-hover-hint-panel,
 .demo-hover-hint-touch.demo-hover-hint-bottom .demo-hover-hint-panel {
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 6.25rem);
   left: 1rem;
-  max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem);
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 7rem);
   overflow-y: auto;
   padding-right: 3.15rem;
   position: fixed;
@@ -1084,6 +1097,13 @@ code {
     left: 0.75rem;
     right: auto;
     width: min(19rem, calc(100vw - 1.5rem));
+  }
+
+  .demo-hover-hint-touch.demo-hover-hint-top .demo-hover-hint-panel,
+  .demo-hover-hint-touch.demo-hover-hint-bottom .demo-hover-hint-panel {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 6rem);
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 6.75rem);
+    right: 0.75rem;
   }
 
   .demo-hover-hint-align-start .demo-hover-hint-panel::after,

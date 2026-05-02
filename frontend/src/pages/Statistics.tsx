@@ -1633,6 +1633,7 @@ export default function Statistics() {
         title="Zeitraum & Filter"
         description="Grenzt die Auswertung nach Jahr, Monat, individuellem Zeitraum, Typ, Projekt, Wochentagen und Status ein. Alle Diagramme und Tabellen reagieren auf diese Auswahl."
         placement="bottom"
+        mobileTriggerPosition="corner"
       >
         <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
         {(() => {
@@ -2406,6 +2407,7 @@ export default function Statistics() {
         <DemoHoverHint
           title="Kennzahlen"
           description="Schaltet zwischen absoluten Summen und Durchschnittswerten um. Die Karten geben einen schnellen Ueberblick ueber Aktivitaeten, Teilnehmende und Stunden."
+          mobileTriggerPosition="corner"
         >
           <div className="flex items-center justify-end mb-4" data-pdf-section>
             <div className="stats-kpi-toggle flex items-center gap-2 rounded-lg p-1">
@@ -2483,6 +2485,7 @@ export default function Statistics() {
         <DemoHoverHint
           title="Diagramme"
           description="Visualisiert Verteilungen, Zeitverlauf, Kategorien, Tags und Projekte. Jedes Diagramm kann einzeln als PNG oder PDF exportiert werden."
+          mobileTriggerPosition="corner"
         >
           <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
           <StatisticsPieChartCard
@@ -2766,6 +2769,7 @@ export default function Statistics() {
         <DemoHoverHint
           title="Gefilterte Aktivitaeten"
           description="Listet alle Aktivitaeten zur aktuellen Auswertung tabellarisch. Die Tabelle laesst sich komplett als PDF oder Excel exportieren."
+          mobileTriggerPosition="corner"
         >
           <div className="group/chart-card bg-white rounded-lg shadow p-6 mt-8" data-pdf-section>
           <div className="flex items-center justify-between mb-4 gap-3">

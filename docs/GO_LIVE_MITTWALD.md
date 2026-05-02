@@ -94,8 +94,10 @@ Multi-Domain (optional, sauber getrennt):
 ## 7) Backups & Updates
 
 - Backups:
-  - Volume `postgres-data` regelmäßig sichern (DB)
-  - Volume `backend-uploads` sichern (Datei-Uploads)
+  - Wenn Postgres als Compose-Service laeuft: technisches Betriebsbackup ueber `scripts/onprem-backup.ps1` einrichten. Das Skript erstellt einen Postgres-Custom-Dump und sichert das Upload-Volume.
+  - Wenn Mittwald Managed PostgreSQL genutzt wird: DB-Backup ueber Mittwald/Managed-DB-Backup oder separaten `pg_dump` gegen den Managed-DB-Host einrichten; Upload-Volume separat sichern.
+  - In der Superadmin-Datenverwaltung gibt es zusaetzlich den fachlichen ZIP-Export/Restore und eine Betriebsbackup-Kachel mit Kopiervorlagen.
+  - Details: `docs/security/BACKUP_RESTORE_RUNBOOK_2026-05-02.md`
 - Updates/Deployments:
   - Neue Versionen auf `main` pushen → Mittwald-Deploy-Job neu anstoßen
   - Zero-Downtime je nach Mittwald-Rollout-Strategie (Rolling/Blue-Green)

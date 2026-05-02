@@ -101,6 +101,7 @@ export default function SuperAdminSystemData() {
   const [restorePassword, setRestorePassword] = useState('');
   const [restoreConfirmationText, setRestoreConfirmationText] = useState('');
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isPurgeOpen, setIsPurgeOpen] = useState(false);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
@@ -326,52 +327,66 @@ export default function SuperAdminSystemData() {
                 </div>
               </section>
 
-              <section className="system-data-panel bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-start justify-between gap-4 flex-wrap">
+              <section className="system-data-panel system-data-panel-info bg-white rounded-xl shadow-sm border border-blue-200 overflow-hidden">
+                <button
+                  type="button"
+                  className="system-data-collapse-header system-data-collapse-header-info w-full px-5 py-4 border-b flex items-start justify-between gap-4 text-left"
+                  onClick={() => setIsBackupOpen((current) => !current)}
+                  aria-expanded={isBackupOpen}
+                >
                   <div className="flex items-start gap-3">
-                    <Server className="w-5 h-5 text-viridian mt-0.5 shrink-0" />
+                    <Server className="system-data-info-icon w-5 h-5 mt-0.5 shrink-0" />
                     <div>
-                      <h3 className="system-data-panel-title font-semibold text-gray-900">Betriebsbackup</h3>
-                      <p className="system-data-panel-copy text-sm text-gray-500 mt-1">
+                      <h3 className="font-semibold">Betriebsbackup</h3>
+                      <p className="text-sm mt-1">
                         Technischer Docker-Backup-Pfad fuer Postgres und Upload-Volume. Ausfuehrung auf dem Host oder Docker-Context mit Zugriff auf den Compose-Stack.
                       </p>
                     </div>
                   </div>
-                  <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-                    <Clock className="w-4 h-4" />
-                    Automatisierbar
-                  </div>
-                </div>
+                  <span className="system-data-collapse-toggle system-data-collapse-toggle-info inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shrink-0">
+                    {isBackupOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {isBackupOpen ? 'Einklappen' : 'Ausklappen'}
+                  </span>
+                </button>
 
-                <div className="p-5 space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="rounded-xl bg-gray-50 px-4 py-3">
-                      <div className="text-xs uppercase tracking-wide text-gray-500">Ausfuehrung</div>
-                      <div className="mt-1 text-sm font-medium text-gray-800">Docker CLI / Compose</div>
+                {isBackupOpen && (
+                  <div className="p-5 space-y-5">
+                    <div className="flex justify-start">
+                      <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+                        <Clock className="w-4 h-4" />
+                        Automatisierbar
+                      </div>
                     </div>
-                    <div className="rounded-xl bg-gray-50 px-4 py-3">
-                      <div className="text-xs uppercase tracking-wide text-gray-500">Sicherung</div>
-                      <div className="mt-1 text-sm font-medium text-gray-800">Postgres-Dump + Uploads</div>
-                    </div>
-                    <div className="rounded-xl bg-gray-50 px-4 py-3">
-                      <div className="text-xs uppercase tracking-wide text-gray-500">Aufbewahrung</div>
-                      <div className="mt-1 text-sm font-medium text-gray-800">14 Tage lokal im Beispiel</div>
-                    </div>
-                  </div>
 
-                  <div className="system-data-banner system-data-banner-info rounded-xl px-4 py-3 text-sm flex gap-3">
-                    <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
-                    <div>
-                      Der Webbereich startet keine Docker-Kommandos selbst. Die Befehle laufen bewusst auf der Betriebsmaschine, damit keine Host- oder Docker-Rechte an die Anwendung gebunden werden.
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="rounded-xl bg-gray-50 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-gray-500">Ausfuehrung</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">Docker CLI / Compose</div>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-gray-500">Sicherung</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">Postgres-Dump + Uploads</div>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-gray-500">Aufbewahrung</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">14 Tage lokal im Beispiel</div>
+                      </div>
+                    </div>
+
+                    <div className="system-data-banner system-data-banner-info rounded-xl px-4 py-3 text-sm flex gap-3">
+                      <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
+                      <div>
+                        Der Webbereich startet keine Docker-Kommandos selbst. Die Befehle laufen bewusst auf der Betriebsmaschine, damit keine Host- oder Docker-Rechte an die Anwendung gebunden werden.
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <CommandSnippet label="Backup" command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Restore" command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Scheduler-Kommando" command={SCHEDULED_BACKUP_COMMAND} onCopy={handleCopyCommand} />
                     </div>
                   </div>
-
-                  <div className="space-y-3">
-                    <CommandSnippet label="Backup" command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
-                    <CommandSnippet label="Restore" command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
-                    <CommandSnippet label="Scheduler-Kommando" command={SCHEDULED_BACKUP_COMMAND} onCopy={handleCopyCommand} />
-                  </div>
-                </div>
+                )}
               </section>
 
               <section className="system-data-panel system-data-panel-import bg-white rounded-xl shadow-sm border border-amber-200 overflow-hidden">

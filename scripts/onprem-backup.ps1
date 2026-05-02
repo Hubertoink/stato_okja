@@ -21,15 +21,21 @@ if (-not (Test-Path $ComposeFile)) {
   throw "Compose file not found: $ComposeFile"
 }
 
-if (-not (Test-Path $EnvFile)) {
+if ($EnvFile -and -not (Test-Path $EnvFile)) {
   throw "Env file not found: $EnvFile"
 }
+
+$composeArgs = @()
+if ($EnvFile) {
+  $composeArgs += @("--env-file", $EnvFile)
+}
+$composeArgs += @("-f", $ComposeFile)
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $backupRoot = Join-Path $OutputDir "stato-onprem-$timestamp"
 New-Item -ItemType Directory -Force -Path $backupRoot | Out-Null
 
-$postgresContainer = (docker compose --env-file $EnvFile -f $ComposeFile ps -q postgres).Trim()
+$postgresContainer = (docker compose @composeArgs ps -q postgres).Trim()
 if (-not $postgresContainer) {
   throw "Postgres container is not running for compose file $ComposeFile."
 }
@@ -39,9 +45,9 @@ $dbDumpPath = Join-Path $backupRoot "postgres.dump"
 $uploadsArchivePath = Join-Path $backupRoot "uploads.tar.gz"
 
 Write-Host "Creating Postgres custom-format dump..."
-docker compose --env-file $EnvFile -f $ComposeFile exec -T postgres sh -lc "pg_dump -U `"`$POSTGRES_USER`" -d `"`$POSTGRES_DB`" --format=custom --no-owner --no-acl -f $tmpDump"
+docker compose @composeArgs exec -T postgres sh -lc "pg_dump -U `"`$POSTGRES_USER`" -d `"`$POSTGRES_DB`" --format=custom --no-owner --no-acl -f $tmpDump"
 docker cp "${postgresContainer}:$tmpDump" $dbDumpPath
-docker compose --env-file $EnvFile -f $ComposeFile exec -T postgres rm -f $tmpDump
+docker compose @composeArgs exec -T postgres rm -f $tmpDump
 
 Write-Host "Archiving uploads volume $UploadsVolume..."
 $uploadsArchiveContainer = "stato-backup-uploads-$timestamp"

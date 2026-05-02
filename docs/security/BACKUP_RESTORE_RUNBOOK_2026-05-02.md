@@ -39,6 +39,43 @@ Die Skripte greifen nicht direkt auf interne Backend-Dateipfade zu. Sie verwende
 
 Dadurch funktioniert der Ablauf auch mit einem Docker-Context auf einem anderen Host, solange `docker compose` denselben Stack und dessen Volumes erreicht. Der Zielpfad `backups/` liegt aus Sicht der Maschine, auf der das Skript ausgefuehrt wird.
 
+## Mittwald Konkret
+
+Zuerst klaeren, wie die Datenbank bei Mittwald laeuft:
+
+- **Compose-Postgres im Stato-Stack:** Der Service `postgres` laeuft als Docker-Container im selben Compose-Projekt. In diesem Fall koennen die Skripte Datenbank und Uploads sichern.
+- **Mittwald Managed PostgreSQL:** Die Datenbank ist kein Container im Stato-Compose-Stack. In diesem Fall DB-Backups ueber Mittwald/Managed-DB-Backup oder `pg_dump` gegen den Managed-DB-Host einrichten; die hier beschriebenen Docker-Skripte sind dann nur fuer den Compose-Stack mit Container-Postgres passend.
+
+Fuer die Compose-Postgres-Variante:
+
+1. Auf einer Admin-Maschine oder Shell arbeiten, auf der `docker` und `docker compose` den Mittwald-Stack erreichen. Das kann eine Mittwald-Shell oder ein lokaler Rechner mit passendem Docker-Context sein.
+2. Repository oder mindestens `scripts/`, Compose-Datei und ENV-Datei bereitstellen.
+3. Compose-Datei und ENV-Datei passend zur Umgebung waehlen, z. B. `docker-compose.prod.yml` und `.env.production`. Wenn die Variablen bereits in der Shell oder im Docker-Context gesetzt sind, kann `-EnvFile ""` verwendet werden.
+4. Den echten Upload-Volume-Namen ermitteln:
+
+```powershell
+docker volume ls --format "{{.Name}}" | Select-String backend-uploads
+```
+
+5. Backup ausfuehren:
+
+```powershell
+.\scripts\onprem-backup.ps1 -ComposeFile docker-compose.prod.yml -EnvFile .env.production -UploadsVolume <mittwald_backend_uploads_volume> -OutputDir .\backups -RetentionDays 14
+```
+
+6. Backup-Verzeichnis verschluesselt extern sichern, z. B. in einen separaten Storage, S3-kompatiblen Speicher oder ein kommunales Backup-Ziel.
+7. Restore nur in Wartungsfenstern testen:
+
+```powershell
+.\scripts\onprem-restore.ps1 -ComposeFile docker-compose.prod.yml -EnvFile .env.production -UploadsVolume <mittwald_backend_uploads_volume> -BackupDir .\backups\stato-onprem-YYYYMMDD-HHMMSS -ConfirmText "RESTORE STATO BACKUP"
+```
+
+Wenn auf Linux/SSH gearbeitet wird, kann das gleiche Skript mit PowerShell 7 ausgefuehrt werden:
+
+```bash
+pwsh ./scripts/onprem-backup.ps1 -ComposeFile docker-compose.prod.yml -EnvFile .env.production -UploadsVolume <mittwald_backend_uploads_volume> -OutputDir ./backups -RetentionDays 14
+```
+
 ## Restore Testen
 
 Ein Restore ist destruktiv und ersetzt Datenbankinhalte sowie Upload-Dateien. Daher ist ein expliziter Bestaetigungstext erforderlich:
@@ -61,6 +98,12 @@ Automatisierte Backups sollten auf Host-/Betriebsebene eingerichtet werden, nich
 
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File .\scripts\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14
+```
+
+Fuer Mittwald mit Compose-Postgres entsprechend anpassen:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\onprem-backup.ps1 -ComposeFile docker-compose.prod.yml -EnvFile .env.production -UploadsVolume <mittwald_backend_uploads_volume> -OutputDir .\backups -RetentionDays 14
 ```
 
 Empfehlung fuer den Task:

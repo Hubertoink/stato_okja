@@ -29,9 +29,15 @@ if (-not (Test-Path $ComposeFile)) {
   throw "Compose file not found: $ComposeFile"
 }
 
-if (-not (Test-Path $EnvFile)) {
+if ($EnvFile -and -not (Test-Path $EnvFile)) {
   throw "Env file not found: $EnvFile"
 }
+
+$composeArgs = @()
+if ($EnvFile) {
+  $composeArgs += @("--env-file", $EnvFile)
+}
+$composeArgs += @("-f", $ComposeFile)
 
 $backupRoot = (Resolve-Path $BackupDir).Path
 $dbDumpPath = Join-Path $backupRoot "postgres.dump"
@@ -46,17 +52,17 @@ if (-not (Test-Path $uploadsArchivePath)) {
 }
 
 Write-Host "Starting Postgres and stopping application containers..."
-docker compose --env-file $EnvFile -f $ComposeFile up -d postgres
-docker compose --env-file $EnvFile -f $ComposeFile stop backend frontend
+docker compose @composeArgs up -d postgres
+docker compose @composeArgs stop backend frontend
 
-$postgresContainer = (docker compose --env-file $EnvFile -f $ComposeFile ps -q postgres).Trim()
+$postgresContainer = (docker compose @composeArgs ps -q postgres).Trim()
 if (-not $postgresContainer) {
   throw "Postgres container is not running for compose file $ComposeFile."
 }
 
 Write-Host "Restoring Postgres dump. Existing database objects may be dropped."
 docker cp $dbDumpPath "${postgresContainer}:/tmp/stato-restore.dump"
-docker compose --env-file $EnvFile -f $ComposeFile exec -T postgres sh -lc 'pg_restore --clean --if-exists --no-owner --no-acl -U "$POSTGRES_USER" -d "$POSTGRES_DB" /tmp/stato-restore.dump; rm -f /tmp/stato-restore.dump'
+docker compose @composeArgs exec -T postgres sh -lc 'pg_restore --clean --if-exists --no-owner --no-acl -U "$POSTGRES_USER" -d "$POSTGRES_DB" /tmp/stato-restore.dump; rm -f /tmp/stato-restore.dump'
 
 Write-Host "Restoring uploads volume $UploadsVolume. Existing upload files will be replaced."
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -70,6 +76,6 @@ try {
 }
 
 Write-Host "Starting application containers..."
-docker compose --env-file $EnvFile -f $ComposeFile up -d backend frontend
+docker compose @composeArgs up -d backend frontend
 
 Write-Host "Restore completed from: $backupRoot"

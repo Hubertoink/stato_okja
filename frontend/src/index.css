@@ -2146,6 +2146,12 @@ code {
   border-bottom-color: rgba(245, 158, 11, 0.18);
 }
 
+.system-data-collapse-header-info {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.10) 0%, rgba(59, 130, 246, 0.04) 100%);
+  color: #1d4ed8;
+  border-bottom-color: rgba(59, 130, 246, 0.18);
+}
+
 .system-data-collapse-header-danger {
   background: linear-gradient(180deg, rgba(239, 68, 68, 0.10) 0%, rgba(239, 68, 68, 0.04) 100%);
   color: #991b1b;
@@ -2161,6 +2167,11 @@ code {
   border-color: rgba(245, 158, 11, 0.20);
 }
 
+.system-data-collapse-toggle-info {
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.20);
+}
+
 .system-data-collapse-toggle-danger {
   color: #b91c1c;
   border-color: rgba(239, 68, 68, 0.20);
@@ -2168,6 +2179,10 @@ code {
 
 .system-data-danger-icon {
   color: #dc2626;
+}
+
+.system-data-info-icon {
+  color: #2563eb;
 }
 
 .system-data-warning-copy {
@@ -2204,6 +2219,12 @@ code {
   border-bottom-color: rgba(245, 158, 11, 0.24);
 }
 
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-header-info {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.16) 0%, rgba(17, 26, 43, 0.92) 100%);
+  color: #dbeafe;
+  border-bottom-color: rgba(96, 165, 250, 0.24);
+}
+
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-header-danger {
   background: linear-gradient(180deg, rgba(239, 68, 68, 0.16) 0%, rgba(17, 26, 43, 0.92) 100%);
   color: #fecaca;
@@ -2216,6 +2237,12 @@ code {
   background: rgba(17, 26, 43, 0.78);
 }
 
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-toggle-info {
+  color: #dbeafe;
+  border-color: rgba(96, 165, 250, 0.28);
+  background: rgba(17, 26, 43, 0.78);
+}
+
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-toggle-danger {
   color: #fecaca;
   border-color: rgba(239, 68, 68, 0.28);
@@ -2224,6 +2251,10 @@ code {
 
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-danger-icon {
   color: #fca5a5;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-info-icon {
+  color: #93c5fd;
 }
 
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-warning-copy {

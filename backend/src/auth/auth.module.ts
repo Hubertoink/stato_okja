@@ -21,7 +21,7 @@ import { OrgsModule } from '../orgs/orgs.module';
 		OrgsModule,
 		JwtModule.register({
 			secret: getJwtSecret(),
-			signOptions: { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '12h' },
+			signOptions: { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '15m' },
 		}),
 	],
 	controllers: [AuthController],

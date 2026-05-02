@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { randomInt } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { User } from '../users/entities/user.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
@@ -25,13 +25,61 @@ export type TwoFactorChallengeResponse = {
   expiresInSeconds: number;
 };
 
+export type AuthUserResponse = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  orgId: string | null;
+  orgName: string | null;
+  avatarUrl: string | null;
+  theme: string;
+  mustChangePassword: boolean;
+};
+
+export type PublicAuthSessionResponse = {
+  access_token: string;
+  refresh_csrf_token: string;
+  user: AuthUserResponse;
+};
+
+export type AuthenticatedSessionResponse = PublicAuthSessionResponse & {
+  refreshToken: string;
+  refreshTokenMaxAgeMs: number;
+};
+
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
+const DEFAULT_REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
   'hubertoink@outlook.com',
   'admin@example.org',
   'admin@example.com',
   'admin@example.net',
 ]);
+
+function parseDurationToMs(raw: string | undefined, fallbackMs: number) {
+  const value = String(raw || '').trim().toLowerCase();
+  if (!value) return fallbackMs;
+
+  const match = value.match(/^(\d+)(ms|s|m|h|d)?$/);
+  if (!match) return fallbackMs;
+
+  const amount = Number.parseInt(match[1], 10);
+  if (!Number.isFinite(amount) || amount < 1) return fallbackMs;
+
+  const unit = match[2] || 'ms';
+  if (unit === 'ms') return amount;
+  if (unit === 's') return amount * 1000;
+  if (unit === 'm') return amount * 60 * 1000;
+  if (unit === 'h') return amount * 60 * 60 * 1000;
+  return amount * 24 * 60 * 60 * 1000;
+}
+
+function splitRefreshToken(refreshToken: string) {
+  const [id, secret] = String(refreshToken || '').split('.');
+  if (!id || !secret) return null;
+  return { id, secret };
+}
 
 @Injectable()
 export class AuthService {
@@ -69,6 +117,146 @@ export class AuthService {
 
   isTwoFactorAuthenticationEnabled() {
     return isTwoFactorAuthenticationEnabled();
+  }
+
+  getRefreshTokenMaxAgeMs() {
+    return parseDurationToMs(process.env.JWT_REFRESH_EXPIRATION, DEFAULT_REFRESH_TOKEN_TTL_MS);
+  }
+
+  private createRefreshTokenParts() {
+    return {
+      id: randomBytes(24).toString('hex'),
+      secret: randomBytes(48).toString('base64url'),
+    };
+  }
+
+  private createRefreshCsrfToken() {
+    return randomBytes(32).toString('base64url');
+  }
+
+  private clearRefreshSession(user: User) {
+    user.refreshTokenId = null;
+    user.refreshTokenHash = null;
+    user.refreshTokenCsrfHash = null;
+    user.refreshTokenExpiresAt = null;
+  }
+
+  private async issueRefreshSession(user: User) {
+    const refreshTokenParts = this.createRefreshTokenParts();
+    const refreshToken = `${refreshTokenParts.id}.${refreshTokenParts.secret}`;
+    const refreshCsrfToken = this.createRefreshCsrfToken();
+    const refreshTokenMaxAgeMs = this.getRefreshTokenMaxAgeMs();
+
+    user.refreshTokenId = refreshTokenParts.id;
+    user.refreshTokenHash = await bcrypt.hash(refreshTokenParts.secret, 10);
+    user.refreshTokenCsrfHash = await bcrypt.hash(refreshCsrfToken, 10);
+    user.refreshTokenExpiresAt = new Date(Date.now() + refreshTokenMaxAgeMs);
+    await this.users.save(user);
+
+    return { refreshToken, refreshCsrfToken, refreshTokenMaxAgeMs };
+  }
+
+  private async getSessionUser(user: User): Promise<AuthUserResponse> {
+    const orgName = user.orgId
+      ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
+      : null;
+    const avatarUrl = normalizeUploadPath(
+      (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
+    );
+    const rawTheme = (user as unknown as { theme?: string }).theme;
+    const theme =
+      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
+        ? 'Default Theme'
+        : rawTheme;
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      orgId: user.orgId,
+      orgName,
+      avatarUrl,
+      theme,
+      mustChangePassword: user.mustChangePassword === true,
+    };
+  }
+
+  private async createAuthenticatedSession(
+    user: User,
+    options?: { auditLogin?: boolean },
+  ): Promise<AuthenticatedSessionResponse> {
+    const payload = { sub: user.id, role: user.role, orgId: user.orgId, name: user.name || null };
+    const token = await this.jwt.signAsync(payload);
+    const refreshSession = await this.issueRefreshSession(user);
+
+    if (options?.auditLogin !== false) {
+      try {
+        await this.audit.log({
+          action: AuditAction.LOGIN,
+          entityType: 'auth',
+          entityId: user.id,
+          entityTitle: user.email || user.name || null,
+          user: { id: user.id, name: user.name || null, orgId: user.orgId ?? null },
+          orgId: user.orgId ?? null,
+        });
+      } catch {
+        /* ignore audit errors */
+      }
+    }
+
+    return {
+      access_token: token,
+      refresh_csrf_token: refreshSession.refreshCsrfToken,
+      refreshToken: refreshSession.refreshToken,
+      refreshTokenMaxAgeMs: refreshSession.refreshTokenMaxAgeMs,
+      user: await this.getSessionUser(user),
+    };
+  }
+
+  private async getUserForRefreshToken(refreshToken: string) {
+    const parsed = splitRefreshToken(refreshToken);
+    if (!parsed) throw new UnauthorizedException('Nicht autorisiert');
+
+    const user = await this.users.findOne({ where: { refreshTokenId: parsed.id } });
+    if (!user || !user.refreshTokenHash || !user.refreshTokenCsrfHash || !user.refreshTokenExpiresAt) {
+      throw new UnauthorizedException('Nicht autorisiert');
+    }
+
+    if (user.refreshTokenExpiresAt.getTime() <= Date.now()) {
+      this.clearRefreshSession(user);
+      await this.users.save(user);
+      throw new UnauthorizedException('Nicht autorisiert');
+    }
+
+    const tokenMatches = await bcrypt.compare(parsed.secret, user.refreshTokenHash);
+    if (!tokenMatches) throw new UnauthorizedException('Nicht autorisiert');
+
+    return user;
+  }
+
+  async refreshSession(refreshToken: string, csrfToken: string) {
+    if (!refreshToken || !csrfToken) throw new UnauthorizedException('Nicht autorisiert');
+
+    const user = await this.getUserForRefreshToken(refreshToken);
+    const csrfMatches = await bcrypt.compare(csrfToken, user.refreshTokenCsrfHash || '');
+    if (!csrfMatches) throw new UnauthorizedException('Nicht autorisiert');
+
+    return this.createAuthenticatedSession(user, { auditLogin: false });
+  }
+
+  async revokeRefreshSession(refreshToken: string) {
+    if (!refreshToken) return { ok: true as const };
+
+    try {
+      const user = await this.getUserForRefreshToken(refreshToken);
+      this.clearRefreshSession(user);
+      await this.users.save(user);
+    } catch {
+      /* logout should remain idempotent */
+    }
+
+    return { ok: true as const };
   }
 
   private maskEmail(email: string) {
@@ -157,6 +345,7 @@ export class AuthService {
       user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
     }
     user.mustChangePassword = options?.mustChangePassword === true;
+    this.clearRefreshSession(user);
     await this.users.save(user);
   }
 
@@ -370,46 +559,7 @@ export class AuthService {
   }
 
   async login(user: User) {
-    const payload = { sub: user.id, role: user.role, orgId: user.orgId, name: user.name || null };
-    const token = await this.jwt.signAsync(payload);
-    const orgName = user.orgId
-      ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
-      : null;
-    const avatarUrl = normalizeUploadPath(
-      (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
-    );
-    const rawTheme = (user as unknown as { theme?: string }).theme;
-    const theme =
-      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
-        ? 'Default Theme'
-        : rawTheme;
-    try {
-      await this.audit.log({
-        action: AuditAction.LOGIN,
-        entityType: 'auth',
-        entityId: user.id,
-        entityTitle: user.email || user.name || null,
-        user: { id: user.id, name: user.name || null, orgId: user.orgId ?? null },
-        orgId: user.orgId ?? null,
-      });
-    } catch {
-      /* ignore audit errors */
-    }
-
-    return {
-      access_token: token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        orgId: user.orgId,
-        orgName,
-        avatarUrl,
-        theme,
-        mustChangePassword: user.mustChangePassword === true,
-      },
-    };
+    return this.createAuthenticatedSession(user);
   }
 
   async inviteUser(payload: {
@@ -497,28 +647,7 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) return null;
-    const orgName = user.orgId
-      ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
-      : null;
-    const avatarUrl = normalizeUploadPath(
-      (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
-    );
-    const rawTheme = (user as unknown as { theme?: string }).theme;
-    const theme =
-      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
-        ? 'Default Theme'
-        : rawTheme;
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      orgId: user.orgId,
-      orgName,
-      avatarUrl,
-      theme,
-      mustChangePassword: user.mustChangePassword === true,
-    };
+    return this.getSessionUser(user);
   }
 
   async updateProfile(

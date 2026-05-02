@@ -110,7 +110,10 @@ Hinweis: Postgres-Sessions werden vom Backend auf UTC gesetzt. `TZ=Europe/Berlin
 | Variable | Default | Beschreibung |
 | --- | --- | --- |
 | `JWT_SECRET` | unsicherer Dev-Fallback | Pflicht in Strict Mode. Mindestens 32 Zeichen, zufaellig, stabil. Eine Aenderung invalidiert bestehende Logins. |
-| `JWT_ACCESS_EXPIRATION` | `12h` | Gueltigkeit von Access Tokens, z. B. `15m`, `1h`, `12h`. |
+| `JWT_ACCESS_EXPIRATION` | `15m` | Gueltigkeit von Access Tokens, z. B. `15m`, `1h`, `12h`. |
+| `JWT_REFRESH_EXPIRATION` | `7d` | Gueltigkeit der serverseitigen Refresh Session, z. B. `12h`, `7d`, `30d`. |
+| `AUTH_REFRESH_COOKIE_SAMESITE` | `lax` | SameSite-Policy fuer das HttpOnly-Refresh-Cookie: `lax`, `strict` oder `none`. |
+| `AUTH_REFRESH_COOKIE_SECURE` | abgeleitet aus Strict Mode | Optionaler Override fuer das Secure-Flag des Refresh-Cookies. In Produktion normalerweise `true`. |
 | `INVITE_TOKEN_EXPIRATION` | `7d` | Gueltigkeit von Einladungslinks. |
 | `RESET_TOKEN_EXPIRATION` | `1h` | Gueltigkeit von Passwort-Reset-Links. |
 | `PASSWORD_RESET_MODE` | `email` | `email`, `admin_temp_password` oder `hybrid`. |

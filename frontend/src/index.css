@@ -999,34 +999,6 @@ code {
   line-height: 1.45;
 }
 
-.demo-hover-hint-mobile-controls {
-  display: none;
-}
-
-.demo-hover-hint-mobile-trigger {
-  align-items: center;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: 9999px;
-  box-shadow: var(--card-shadow);
-  color: var(--viridian);
-  display: inline-flex;
-  height: 2.25rem;
-  justify-content: center;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease;
-  width: 2.25rem;
-}
-
-.demo-hover-hint-mobile-trigger:hover,
-.demo-hover-hint-mobile-trigger:focus-visible {
-  background: var(--interactive-soft);
-  border-color: color-mix(in srgb, var(--viridian) 42%, var(--border-subtle));
-  color: var(--text-primary);
-}
-
 .demo-hover-hint-mobile-close {
   align-items: center;
   background: rgba(255, 255, 255, 0.08);
@@ -1046,25 +1018,6 @@ code {
 .demo-hover-hint-mobile-close:focus-visible {
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
-}
-
-.demo-hover-hint-touch .demo-hover-hint-mobile-controls {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.5rem;
-}
-
-.demo-hover-hint-touch.demo-hover-hint-mobile-trigger-corner .demo-hover-hint-mobile-controls {
-  margin-bottom: 0;
-  pointer-events: none;
-  position: absolute;
-  right: 0.5rem;
-  top: 0.5rem;
-  z-index: 2;
-}
-
-.demo-hover-hint-touch.demo-hover-hint-mobile-trigger-corner .demo-hover-hint-mobile-trigger {
-  pointer-events: auto;
 }
 
 .demo-hover-hint-touch.demo-hover-hint-top .demo-hover-hint-panel,

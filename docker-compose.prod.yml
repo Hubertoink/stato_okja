@@ -125,9 +125,40 @@ services:
       retries: 5
       start_period: 10s
 
+  backup:
+    build:
+      context: .
+      dockerfile: backup/Dockerfile
+    image: ${BACKUP_IMAGE:-stato-backup:local}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:-stato_user}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGDATABASE: ${POSTGRES_DB:-stato_prod}
+      BACKUP_OUTPUT_DIR: /backups
+      BACKUP_UPLOADS_DIR: /mnt/uploads
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backend-uploads:/mnt/uploads:ro
+      - backup-data:/backups
+    networks: [stato]
+
 volumes:
   postgres-data: {}
   backend-uploads: {}
+  backup-data: {}
 
 networks:
   stato: {}

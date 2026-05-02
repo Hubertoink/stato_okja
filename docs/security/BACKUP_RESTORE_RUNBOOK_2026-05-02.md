@@ -2,9 +2,11 @@
 
 Stand: 2026-05-02
 
-Dieses Runbook beschreibt die technischen Backup- und Restore-Pfade fuer StatO-On-Prem-Installationen. Es ergaenzt den Superadmin-Systemdatenexport um ein containerbasiertes Betriebsbackup fuer Postgres und Uploads.
+Dieses Runbook beschreibt die technischen Backup- und Restore-Pfade fuer StatO-On-Prem-Installationen. Es ergaenzt den Superadmin-Systemdatenexport um ein Betriebsbackup fuer Postgres und Uploads.
 
 Die Skripte laufen ueber Docker Compose und Docker-Container. Sie muessen auf einer Maschine ausgefuehrt werden, deren Docker CLI Zugriff auf den passenden Compose-Stack hat. Das kann der lokale On-Prem-Host oder ein konfigurierter Docker-Context fuer einen externen/off-premise Docker-Host sein.
+
+Fuer Mittwald ist zusaetzlich ein eigener `backup`-Container vorgesehen. Dieser Container braucht keinen Docker-Socket, sondern nur Netzwerkzugriff auf `postgres`, das Upload-Volume read-only und ein Backup-Volume unter `/backups`.
 
 ## Backup-Ziele
 
@@ -39,6 +41,41 @@ Die Skripte greifen nicht direkt auf interne Backend-Dateipfade zu. Sie verwende
 
 Dadurch funktioniert der Ablauf auch mit einem Docker-Context auf einem anderen Host, solange `docker compose` denselben Stack und dessen Volumes erreicht. Der Zielpfad `backups/` liegt aus Sicht der Maschine, auf der das Skript ausgefuehrt wird.
 
+## Backup-Container
+
+Die Compose-Dateien enthalten einen Service `backup`. Dieser Service basiert auf `backup/Dockerfile`, bringt das Kommando `/usr/local/bin/stato-container-backup` mit und bleibt ohne oeffentlichen Port im Stack laufen. Der Mittwald-Cronjob kann diesen Service direkt auswaehlen.
+
+Der Container nutzt:
+
+- `PGHOST=postgres`, `PGPORT=5432`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` fuer den Postgres-Dump.
+- `/mnt/uploads` als read-only Mount des Backend-Upload-Volumes.
+- `/backups` als Ziel fuer technische Betriebsbackups.
+- `BACKUP_RETENTION_DAYS=14` als Standard-Aufbewahrung im Backup-Volume.
+
+Manueller Test aus einem Docker-Host mit Compose-Zugriff:
+
+```powershell
+docker compose -f docker-compose.prod.yml exec backup /usr/local/bin/stato-container-backup
+```
+
+Mittwald Cronjob:
+
+- Typ: `Container`
+- Verknuepfter Container: `backup`
+- Auszufuehrender Befehl: `/usr/local/bin/stato-container-backup`
+- Cron-Syntax: `0 3 * * *`
+- Zeitzone: `Europe/Berlin`
+- Timeout: mindestens 3600 Sekunden, falls ein Feld dafuer vorhanden ist.
+
+Das Kommando erzeugt unter `/backups/stato-container-<timestamp>/`:
+
+- `postgres.dump`
+- `uploads.tar.gz`
+- `SHA256SUMS`
+- `manifest.json`
+
+Wichtig: `/backups` liegt im Volume `backup-data`. Dieses Volume muss ueber Mittwald-Projektbackups, Volume-Backups oder einen separaten Export abgesichert werden. Der Container sorgt fuer konsistente DB-/Upload-Artefakte; die externe Aufbewahrung des Backup-Volumes bleibt Teil des Betriebs.
+
 ## Mittwald Konkret
 
 Zuerst klaeren, wie die Datenbank bei Mittwald laeuft:
@@ -46,7 +83,9 @@ Zuerst klaeren, wie die Datenbank bei Mittwald laeuft:
 - **Compose-Postgres im Stato-Stack:** Der Service `postgres` laeuft als Docker-Container im selben Compose-Projekt. In diesem Fall koennen die Skripte Datenbank und Uploads sichern.
 - **Mittwald Managed PostgreSQL:** Die Datenbank ist kein Container im Stato-Compose-Stack. In diesem Fall DB-Backups ueber Mittwald/Managed-DB-Backup oder `pg_dump` gegen den Managed-DB-Host einrichten; die hier beschriebenen Docker-Skripte sind dann nur fuer den Compose-Stack mit Container-Postgres passend.
 
-Fuer die Compose-Postgres-Variante:
+Fuer die Compose-Postgres-Variante ist auf Mittwald der `backup`-Container der bevorzugte Weg. Im mStudio einen Container-Cronjob auf `backup` mit dem Befehl `/usr/local/bin/stato-container-backup` anlegen.
+
+Alternativ kann weiterhin von einer Admin-Maschine mit Docker-Context gearbeitet werden:
 
 1. Auf einer Admin-Maschine oder Shell arbeiten, auf der `docker` und `docker compose` den Mittwald-Stack erreichen. Das kann eine Mittwald-Shell oder ein lokaler Rechner mit passendem Docker-Context sein.
 2. Repository oder mindestens `scripts/`, Compose-Datei und ENV-Datei bereitstellen.
@@ -94,7 +133,15 @@ Das Restore-Script:
 
 ## Automatisiertes Backup
 
-Automatisierte Backups sollten auf Host-/Betriebsebene eingerichtet werden, nicht aus der Webanwendung heraus. Beispiel-Kommando fuer Windows Aufgabenplanung:
+Automatisierte Backups sollten auf Host-/Betriebsebene oder ueber den dedizierten `backup`-Container eingerichtet werden, nicht aus der Webanwendung heraus.
+
+Beispiel fuer Mittwald Container-Cronjob:
+
+```sh
+/usr/local/bin/stato-container-backup
+```
+
+Beispiel-Kommando fuer Windows Aufgabenplanung:
 
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File .\scripts\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14

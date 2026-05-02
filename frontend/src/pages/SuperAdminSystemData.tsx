@@ -58,6 +58,7 @@ function SummaryCard({
 const TECHNICAL_BACKUP_COMMAND = '.\\scripts\\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14';
 const TECHNICAL_RESTORE_COMMAND = '.\\scripts\\onprem-restore.ps1 -BackupDir .\\backups\\stato-onprem-YYYYMMDD-HHMMSS -ConfirmText "RESTORE STATO BACKUP"';
 const SCHEDULED_BACKUP_COMMAND = 'powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14';
+const CONTAINER_BACKUP_COMMAND = '/usr/local/bin/stato-container-backup';
 
 function CommandSnippet({
   label,
@@ -339,7 +340,7 @@ export default function SuperAdminSystemData() {
                     <div>
                       <h3 className="font-semibold">Betriebsbackup</h3>
                       <p className="text-sm mt-1">
-                        Technischer Docker-Backup-Pfad fuer Postgres und Upload-Volume. Ausfuehrung auf dem Host oder Docker-Context mit Zugriff auf den Compose-Stack.
+                        Technischer Docker-Backup-Pfad fuer Postgres und Upload-Volume. Fuer Mittwald bevorzugt als Container-Cronjob ueber den Service backup.
                       </p>
                     </div>
                   </div>
@@ -358,10 +359,10 @@ export default function SuperAdminSystemData() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="rounded-xl bg-gray-50 px-4 py-3">
                         <div className="text-xs uppercase tracking-wide text-gray-500">Ausfuehrung</div>
-                        <div className="mt-1 text-sm font-medium text-gray-800">Docker CLI / Compose</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">Backup-Container</div>
                       </div>
                       <div className="rounded-xl bg-gray-50 px-4 py-3">
                         <div className="text-xs uppercase tracking-wide text-gray-500">Sicherung</div>
@@ -371,19 +372,24 @@ export default function SuperAdminSystemData() {
                         <div className="text-xs uppercase tracking-wide text-gray-500">Aufbewahrung</div>
                         <div className="mt-1 text-sm font-medium text-gray-800">14 Tage lokal im Beispiel</div>
                       </div>
+                      <div className="rounded-xl bg-gray-50 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-gray-500">Mittwald Cronjob</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">Container backup</div>
+                      </div>
                     </div>
 
                     <div className="system-data-banner system-data-banner-info rounded-xl px-4 py-3 text-sm flex gap-3">
                       <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
                       <div>
-                        Der Webbereich startet keine Docker-Kommandos selbst. Die Befehle laufen bewusst auf der Betriebsmaschine, damit keine Host- oder Docker-Rechte an die Anwendung gebunden werden.
+                        Der Webbereich startet keine Docker-Kommandos selbst. Bei Mittwald den Cronjob-Typ Container waehlen, Container backup verknuepfen und das backup-data Volume zusaetzlich per Projektbackup sichern.
                       </div>
                     </div>
 
                     <div className="space-y-3">
-                      <CommandSnippet label="Backup" command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Restore" command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Scheduler-Kommando" command={SCHEDULED_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Mittwald Container-Cronjob" command={CONTAINER_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Host-Backup" command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Host-Restore" command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Host-Scheduler" command={SCHEDULED_BACKUP_COMMAND} onCopy={handleCopyCommand} />
                     </div>
                   </div>
                 )}

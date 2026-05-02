@@ -91,10 +91,11 @@ export default function DemoMobilePageGuide() {
   const isMobile = useIsMobile(768);
   const guide = useMemo(() => guideForPath(location.pathname), [location.pathname]);
   const [open, setOpen] = useState(false);
+  const [guidesMutedForSession, setGuidesMutedForSession] = useState(false);
   const guideKey = guide?.key ?? '';
 
   useEffect(() => {
-    if (!demoModeEnabled || !isMobile || !guide) {
+    if (!demoModeEnabled || !isMobile || !guide || guidesMutedForSession) {
       setOpen(false);
       return;
     }
@@ -102,9 +103,14 @@ export default function DemoMobilePageGuide() {
     setOpen(false);
     const timer = window.setTimeout(() => setOpen(true), 1000);
     return () => window.clearTimeout(timer);
-  }, [guideKey, guide, isMobile]);
+  }, [guideKey, guide, guidesMutedForSession, isMobile]);
 
-  if (!demoModeEnabled || !isMobile || !guide || !open) return null;
+  const hideGuidesForSession = () => {
+    setGuidesMutedForSession(true);
+    setOpen(false);
+  };
+
+  if (!demoModeEnabled || !isMobile || !guide || !open || guidesMutedForSession) return null;
 
   return (
     <div className="demo-mobile-page-guide-shell" aria-live="polite">
@@ -142,6 +148,18 @@ export default function DemoMobilePageGuide() {
           <Lightbulb aria-hidden="true" className="h-4 w-4" />
           <span>{guide.tryThis}</span>
         </div>
+        <button
+          type="button"
+          className="demo-mobile-page-guide-session-toggle"
+          role="switch"
+          aria-checked="false"
+          onClick={hideGuidesForSession}
+        >
+          <span className="demo-mobile-page-guide-session-switch" aria-hidden="true">
+            <span />
+          </span>
+          <span>Hinweise bis zum Neuladen ausblenden</span>
+        </button>
         <button
           type="button"
           className="demo-mobile-page-guide-action"

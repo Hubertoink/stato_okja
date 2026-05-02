@@ -1148,6 +1148,55 @@ code {
   margin-top: 0.1rem;
 }
 
+.demo-mobile-page-guide-session-toggle {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  color: rgba(255, 255, 255, 0.84);
+  display: flex;
+  gap: 0.65rem;
+  justify-content: flex-start;
+  margin-top: 0.65rem;
+  min-height: 2.65rem;
+  padding: 0.65rem;
+  text-align: left;
+  width: 100%;
+}
+
+.demo-mobile-page-guide-session-toggle:hover,
+.demo-mobile-page-guide-session-toggle:focus-visible {
+  background: rgba(255, 255, 255, 0.11);
+  color: #ffffff;
+}
+
+.demo-mobile-page-guide-session-toggle > span:last-child {
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.demo-mobile-page-guide-session-switch {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 1.35rem;
+  padding: 0.12rem;
+  width: 2.35rem;
+}
+
+.demo-mobile-page-guide-session-switch span {
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(2, 6, 23, 0.32);
+  display: block;
+  height: 0.95rem;
+  width: 0.95rem;
+}
+
 .demo-mobile-page-guide-action {
   background: #5b6cff;
   border-radius: 0.75rem;

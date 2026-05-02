@@ -98,7 +98,10 @@ export default function DemoMobilePageGuide() {
       setOpen(false);
       return;
     }
-    setOpen(true);
+
+    setOpen(false);
+    const timer = window.setTimeout(() => setOpen(true), 1000);
+    return () => window.clearTimeout(timer);
   }, [guideKey, guide, isMobile]);
 
   if (!demoModeEnabled || !isMobile || !guide || !open) return null;

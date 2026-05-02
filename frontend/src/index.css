@@ -1008,16 +1008,49 @@ code {
   z-index: 65;
 }
 
+.demo-mobile-page-guide-shell::before {
+  background: linear-gradient(
+    to top,
+    rgba(15, 23, 42, 0.2),
+    rgba(15, 23, 42, 0.08) 62%,
+    transparent
+  );
+  border-radius: 1.25rem;
+  bottom: -0.65rem;
+  content: '';
+  left: -0.75rem;
+  pointer-events: none;
+  position: absolute;
+  right: -0.75rem;
+  top: -0.75rem;
+}
+
 .demo-mobile-page-guide {
+  animation: demoMobilePageGuideFadeIn 240ms ease-out both;
   background: rgba(15, 23, 42, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 1rem;
-  box-shadow: 0 22px 54px rgba(15, 23, 42, 0.32);
+  box-shadow:
+    0 34px 90px rgba(2, 6, 23, 0.62),
+    0 12px 30px rgba(2, 6, 23, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
   color: #ffffff;
   max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 7rem);
   overflow-y: auto;
   padding: 0.95rem;
   pointer-events: auto;
+  position: relative;
+}
+
+@keyframes demoMobilePageGuideFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .demo-mobile-page-guide-close {

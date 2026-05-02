@@ -824,22 +824,12 @@ export default function Statistics() {
     }
   };
 
-  // Check if custom range is active (not matching year or month pattern)
-  const isCustomRange = useMemo(() => {
-    if (!from || !to) return false;
-    // Check if it matches a full year
-    const yearMatch = from.match(/^(\d{4})-01-01$/) && to.match(/^(\d{4})-12-31$/);
-    if (yearMatch && from.slice(0, 4) === to.slice(0, 4)) return false;
-    // Check if it matches a full month
-    const monthMatch = from.match(/^(\d{4})-(\d{2})-01$/) && to.match(/^(\d{4})-(\d{2})-\d{2}$/);
-    if (monthMatch && from.slice(0, 7) === to.slice(0, 7)) {
-      const year = Number(from.slice(0, 4));
-      const month = Number(from.slice(5, 7));
-      const lastDay = new Date(year, month, 0).getDate();
-      if (to === `${from.slice(0, 7)}-${String(lastDay).padStart(2, '0')}`) return false;
-    }
-    return true;
-  }, [from, to]);
+  // A date filter from the advanced modal is active whenever it owns the range state
+  // instead of the standard year/month navigation.
+  const isCustomRange = useMemo(
+    () => Boolean(from || to) && !selectedYear && selectedMonth === null,
+    [from, selectedMonth, selectedYear, to],
+  );
 
   const hasWeekdayFilter = selectedWeekdays.length > 0;
   const hasExecutionStatusFilter = !isDefaultActivityExecutionStatusFilter(selectedExecutionStatuses);

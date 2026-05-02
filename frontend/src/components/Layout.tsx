@@ -25,6 +25,7 @@ import { ImprintModal } from '@/components/LegalModals';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
+import DemoMobilePageGuide from '@/demo/DemoMobilePageGuide';
 
 type OrgScopeTreeNode = { org: OrgDto; children: OrgScopeTreeNode[] };
 
@@ -652,6 +653,8 @@ export default function Layout() {
           </li>
         </ul>
       </nav>}
+
+      {!restrictToPasswordChange && !hideBottomNav && <DemoMobilePageGuide />}
 
       {/* Footer (hidden on full activity views or while keyboard open) */}
       {!hideFooter && !restrictToPasswordChange && (

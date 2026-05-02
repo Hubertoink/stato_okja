@@ -3165,6 +3165,73 @@ export default function Statistics() {
             Leer lassen = aktuelle Auswahl oben links beibehalten. Ein eigener Zeitraum wird nur angewendet, wenn hier ein Datum gesetzt ist.
           </p>
 
+            <div className="pt-2 border-t">
+              <div className="text-xs font-medium text-gray-500 mb-2">Schnellauswahl</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  onClick={() => {
+                    const today = new Date();
+                    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                    setTempFrom(formatLocalDateInputValue(firstDay));
+                    setTempTo(formatLocalDateInputValue(today));
+                  }}
+                >
+                  Diesen Monat
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  onClick={() => {
+                    const today = new Date();
+                    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+                    setTempFrom(formatLocalDateInputValue(lastMonth));
+                    setTempTo(formatLocalDateInputValue(lastDay));
+                  }}
+                >
+                  Letzten Monat
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  onClick={() => {
+                    const today = new Date();
+                    const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+                    setTempFrom(formatLocalDateInputValue(threeMonthsAgo));
+                    setTempTo(formatLocalDateInputValue(today));
+                  }}
+                >
+                  Letzte 3 Monate
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  onClick={() => {
+                    const today = new Date();
+                    const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
+                    setTempFrom(formatLocalDateInputValue(sixMonthsAgo));
+                    setTempTo(formatLocalDateInputValue(today));
+                  }}
+                >
+                  Letzte 6 Monate
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  onClick={() => {
+                    const today = new Date();
+                    const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+                    setTempFrom(formatLocalDateInputValue(yearAgo));
+                    setTempTo(formatLocalDateInputValue(today));
+                  }}
+                >
+                  Letztes Jahr
+                </button>
+              </div>
+            </div>
+
           <div className="pt-2 border-t">
             <div className="text-xs font-medium text-gray-500 mb-2">Status</div>
             <div className="flex flex-wrap gap-2">
@@ -3282,74 +3349,6 @@ export default function Statistics() {
               })}
             </div>
             <p className="mt-2 text-xs text-gray-500">Keine Auswahl = alle Tage.</p>
-          </div>
-
-          {/* Quick presets */}
-          <div className="pt-2 border-t">
-            <div className="text-xs font-medium text-gray-500 mb-2">Schnellauswahl</div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
-                onClick={() => {
-                  const today = new Date();
-                  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-                  setTempFrom(formatLocalDateInputValue(firstDay));
-                  setTempTo(formatLocalDateInputValue(today));
-                }}
-              >
-                Diesen Monat
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
-                onClick={() => {
-                  const today = new Date();
-                  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                  const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
-                  setTempFrom(formatLocalDateInputValue(lastMonth));
-                  setTempTo(formatLocalDateInputValue(lastDay));
-                }}
-              >
-                Letzten Monat
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
-                onClick={() => {
-                  const today = new Date();
-                  const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
-                  setTempFrom(formatLocalDateInputValue(threeMonthsAgo));
-                  setTempTo(formatLocalDateInputValue(today));
-                }}
-              >
-                Letzte 3 Monate
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
-                onClick={() => {
-                  const today = new Date();
-                  const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
-                  setTempFrom(formatLocalDateInputValue(sixMonthsAgo));
-                  setTempTo(formatLocalDateInputValue(today));
-                }}
-              >
-                Letzte 6 Monate
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
-                onClick={() => {
-                  const today = new Date();
-                  const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
-                  setTempFrom(formatLocalDateInputValue(yearAgo));
-                  setTempTo(formatLocalDateInputValue(today));
-                }}
-              >
-                Letztes Jahr
-              </button>
-            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">

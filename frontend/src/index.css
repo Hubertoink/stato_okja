@@ -973,7 +973,7 @@ code {
 }
 
 .demo-hover-hint[data-demo-hint-open='true'] {
-  z-index: 40;
+  z-index: 20;
 }
 
 .demo-hover-hint-kicker {

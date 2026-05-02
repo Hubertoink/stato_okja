@@ -5,6 +5,7 @@ import { randomBytes, randomInt } from 'crypto';
 import { User } from '../users/entities/user.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
+import { RefreshSession } from './entities/refresh-session.entity';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { EmailService } from '../email/email.service';
@@ -46,6 +47,11 @@ export type PublicAuthSessionResponse = {
 export type AuthenticatedSessionResponse = PublicAuthSessionResponse & {
   refreshToken: string;
   refreshTokenMaxAgeMs: number;
+};
+
+export type RefreshSessionMetadata = {
+  userAgent?: string | null;
+  ipAddress?: string | null;
 };
 
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
@@ -90,6 +96,7 @@ export class AuthService {
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Organization) private readonly orgs: Repository<Organization>,
     @InjectRepository(Location) private readonly locations: Repository<Location>,
+    @InjectRepository(RefreshSession) private readonly refreshSessions: Repository<RefreshSession>,
     private readonly jwt: JwtService,
     private readonly email: EmailService,
     private readonly audit: AuditService,
@@ -141,17 +148,29 @@ export class AuthService {
     user.refreshTokenExpiresAt = null;
   }
 
-  private async issueRefreshSession(user: User) {
+  private async revokeAllRefreshSessionsForUser(userId: string) {
+    await this.refreshSessions.delete({ userId });
+  }
+
+  private async issueRefreshSession(user: User, metadata?: RefreshSessionMetadata) {
     const refreshTokenParts = this.createRefreshTokenParts();
     const refreshToken = `${refreshTokenParts.id}.${refreshTokenParts.secret}`;
     const refreshCsrfToken = this.createRefreshCsrfToken();
     const refreshTokenMaxAgeMs = this.getRefreshTokenMaxAgeMs();
+    const now = new Date();
 
-    user.refreshTokenId = refreshTokenParts.id;
-    user.refreshTokenHash = await bcrypt.hash(refreshTokenParts.secret, 10);
-    user.refreshTokenCsrfHash = await bcrypt.hash(refreshCsrfToken, 10);
-    user.refreshTokenExpiresAt = new Date(Date.now() + refreshTokenMaxAgeMs);
-    await this.users.save(user);
+    const session = this.refreshSessions.create({
+      userId: user.id,
+      tokenId: refreshTokenParts.id,
+      tokenHash: await bcrypt.hash(refreshTokenParts.secret, 10),
+      csrfHash: await bcrypt.hash(refreshCsrfToken, 10),
+      expiresAt: new Date(Date.now() + refreshTokenMaxAgeMs),
+      createdAt: now,
+      lastUsedAt: now,
+      userAgent: metadata?.userAgent ? String(metadata.userAgent).slice(0, 255) : null,
+      ipAddress: metadata?.ipAddress ? String(metadata.ipAddress).slice(0, 80) : null,
+    });
+    await this.refreshSessions.save(session);
 
     return { refreshToken, refreshCsrfToken, refreshTokenMaxAgeMs };
   }
@@ -184,11 +203,11 @@ export class AuthService {
 
   private async createAuthenticatedSession(
     user: User,
-    options?: { auditLogin?: boolean },
+    options?: { auditLogin?: boolean; sessionMetadata?: RefreshSessionMetadata },
   ): Promise<AuthenticatedSessionResponse> {
     const payload = { sub: user.id, role: user.role, orgId: user.orgId, name: user.name || null };
     const token = await this.jwt.signAsync(payload);
-    const refreshSession = await this.issueRefreshSession(user);
+    const refreshSession = await this.issueRefreshSession(user, options?.sessionMetadata);
 
     if (options?.auditLogin !== false) {
       try {
@@ -214,48 +233,70 @@ export class AuthService {
     };
   }
 
-  private async getUserForRefreshToken(refreshToken: string) {
+  private async getSessionForRefreshToken(refreshToken: string) {
     const parsed = splitRefreshToken(refreshToken);
     if (!parsed) throw new UnauthorizedException('Nicht autorisiert');
 
-    const user = await this.users.findOne({ where: { refreshTokenId: parsed.id } });
-    if (!user || !user.refreshTokenHash || !user.refreshTokenCsrfHash || !user.refreshTokenExpiresAt) {
+    const session = await this.refreshSessions.findOne({
+      where: { tokenId: parsed.id },
+      relations: { user: true },
+    });
+    if (!session?.user) {
       throw new UnauthorizedException('Nicht autorisiert');
     }
 
-    if (user.refreshTokenExpiresAt.getTime() <= Date.now()) {
-      this.clearRefreshSession(user);
-      await this.users.save(user);
+    if (session.expiresAt.getTime() <= Date.now()) {
+      await this.refreshSessions.delete({ id: session.id });
       throw new UnauthorizedException('Nicht autorisiert');
     }
 
-    const tokenMatches = await bcrypt.compare(parsed.secret, user.refreshTokenHash);
+    const tokenMatches = await bcrypt.compare(parsed.secret, session.tokenHash);
     if (!tokenMatches) throw new UnauthorizedException('Nicht autorisiert');
 
-    return user;
+    return session;
   }
 
-  async refreshSession(refreshToken: string, csrfToken: string) {
+  async refreshSession(refreshToken: string, csrfToken: string, metadata?: RefreshSessionMetadata) {
     if (!refreshToken || !csrfToken) throw new UnauthorizedException('Nicht autorisiert');
 
-    const user = await this.getUserForRefreshToken(refreshToken);
-    const csrfMatches = await bcrypt.compare(csrfToken, user.refreshTokenCsrfHash || '');
+    const session = await this.getSessionForRefreshToken(refreshToken);
+    const csrfMatches = await bcrypt.compare(csrfToken, session.csrfHash);
     if (!csrfMatches) throw new UnauthorizedException('Nicht autorisiert');
 
-    return this.createAuthenticatedSession(user, { auditLogin: false });
+    await this.refreshSessions.delete({ id: session.id });
+    return this.createAuthenticatedSession(session.user, { auditLogin: false, sessionMetadata: metadata });
   }
 
   async revokeRefreshSession(refreshToken: string) {
     if (!refreshToken) return { ok: true as const };
 
     try {
-      const user = await this.getUserForRefreshToken(refreshToken);
-      this.clearRefreshSession(user);
-      await this.users.save(user);
+      const session = await this.getSessionForRefreshToken(refreshToken);
+      await this.refreshSessions.delete({ id: session.id });
     } catch {
       /* logout should remain idempotent */
     }
 
+    return { ok: true as const };
+  }
+
+  async listRefreshSessions(userId: string) {
+    const sessions = await this.refreshSessions.find({
+      where: { userId },
+      order: { lastUsedAt: 'DESC' },
+    });
+    return sessions.map((session) => ({
+      id: session.id,
+      createdAt: session.createdAt,
+      lastUsedAt: session.lastUsedAt,
+      expiresAt: session.expiresAt,
+      userAgent: session.userAgent,
+      ipAddress: session.ipAddress,
+    }));
+  }
+
+  async revokeRefreshSessionById(userId: string, sessionId: string) {
+    await this.refreshSessions.delete({ id: sessionId, userId });
     return { ok: true as const };
   }
 
@@ -345,8 +386,8 @@ export class AuthService {
       user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
     }
     user.mustChangePassword = options?.mustChangePassword === true;
-    this.clearRefreshSession(user);
     await this.users.save(user);
+    await this.revokeAllRefreshSessionsForUser(user.id);
   }
 
   private async issueResetToken(user: User) {
@@ -449,7 +490,7 @@ export class AuthService {
     return ok ? user : null;
   }
 
-  async loginWithPassword(email: string, password: string) {
+  async loginWithPassword(email: string, password: string, metadata?: RefreshSessionMetadata) {
     const normalizedEmail = String(email || '').toLowerCase();
     const now = new Date();
 
@@ -507,10 +548,10 @@ export class AuthService {
       return this.issueTwoFactorChallenge(user);
     }
 
-    return this.login(user);
+    return this.login(user, metadata);
   }
 
-  async verifyTwoFactorLogin(challengeToken: string, codeRaw: string) {
+  async verifyTwoFactorLogin(challengeToken: string, codeRaw: string, metadata?: RefreshSessionMetadata) {
     if (!this.isTwoFactorAuthenticationEnabled()) {
       throw new BadRequestException('Zwei-Faktor-Authentifizierung ist deaktiviert');
     }
@@ -540,7 +581,7 @@ export class AuthService {
     }
 
     await this.clearTwoFactorChallenge(user, { bumpVersion: true });
-    return this.login(user);
+    return this.login(user, metadata);
   }
 
   async resendTwoFactorLogin(challengeToken: string) {
@@ -558,8 +599,8 @@ export class AuthService {
     return this.issueTwoFactorChallenge(user);
   }
 
-  async login(user: User) {
-    return this.createAuthenticatedSession(user);
+  async login(user: User, metadata?: RefreshSessionMetadata) {
+    return this.createAuthenticatedSession(user, { sessionMetadata: metadata });
   }
 
   async inviteUser(payload: {
@@ -632,7 +673,7 @@ export class AuthService {
     };
   }
 
-  async acceptInvite(token: string, password: string) {
+  async acceptInvite(token: string, password: string, metadata?: RefreshSessionMetadata) {
     const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token, {
       secret: getJwtSecret(),
     });
@@ -641,7 +682,7 @@ export class AuthService {
     if (!user) throw new Error('User not found');
     if (user.passwordHash) throw new Error('Invite already accepted');
     await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
-    return this.login(user);
+    return this.login(user, metadata);
   }
 
   async getProfile(userId: string) {

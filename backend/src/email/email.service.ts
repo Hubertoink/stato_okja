@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { isStrictSecurityMode } from '../config/security.config';
 
 @Injectable()
 export class EmailService {
@@ -50,6 +51,15 @@ export class EmailService {
       port,
       user: user || '(unauthenticated)',
     };
+  }
+
+  private handleMissingTransportForLink(kind: 'Invite' | 'Password reset', recipient: string, link: string) {
+    if (isStrictSecurityMode()) {
+      throw new Error(`${kind} email cannot be sent because SMTP is not configured.`);
+    }
+
+    this.logger.log(`${kind} for ${recipient}: ${link}`);
+    return { queued: false, logged: true };
   }
 
   async verifySmtpConnection(options?: { failOnError?: boolean }) {
@@ -211,8 +221,7 @@ export class EmailService {
 
     const transporter = this.getTransporter();
     if (!transporter) {
-      this.logger.log(`Invite for ${to}: ${link}`);
-      return { queued: false, logged: true };
+      return this.handleMissingTransportForLink('Invite', to, link);
     }
     try {
       await transporter.sendMail({ from, to, subject, text, html });
@@ -246,8 +255,7 @@ export class EmailService {
 
     const transporter = this.getTransporter();
     if (!transporter) {
-      this.logger.log(`Password reset for ${to}: ${link}`);
-      return { queued: false, logged: true };
+      return this.handleMissingTransportForLink('Password reset', to, link);
     }
     try {
       await transporter.sendMail({ from, to, subject, text, html });

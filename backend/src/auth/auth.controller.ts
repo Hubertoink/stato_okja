@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Patch, Post, Req, Res, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Req, Res, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AuthService, type AuthenticatedSessionResponse } from './auth.service';
@@ -9,6 +9,7 @@ import { OrgsService } from '../orgs/orgs.service';
 import type { AdminResetActionMode } from './auth.service';
 import { getAuthRateLimitOverride } from '../config/rate-limit.config';
 import { isStrictSecurityMode } from '../config/security.config';
+import type { RefreshSessionMetadata } from './auth.service';
 import {
   AcceptInviteDto,
   AdminResetPasswordDto,
@@ -83,6 +84,14 @@ function parseCookies(cookieHeader: string | undefined) {
 
 function getHeaderValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] || '' : value || '';
+}
+
+function getSessionMetadata(req: { ip?: string; headers?: Record<string, string | string[] | undefined> }): RefreshSessionMetadata {
+  const forwardedFor = getHeaderValue(req.headers?.['x-forwarded-for']).split(',')[0]?.trim();
+  return {
+    userAgent: getHeaderValue(req.headers?.['user-agent']) || null,
+    ipAddress: forwardedFor || req.ip || null,
+  };
 }
 
 @Controller('auth')
@@ -160,15 +169,23 @@ export class AuthController {
 
   @Throttle(AUTH_RATE_LIMIT)
   @Post('login')
-  async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const result = await this.auth.loginWithPassword(body.email.toLowerCase(), body.password);
+  async login(
+    @Body() body: LoginDto,
+    @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.loginWithPassword(body.email.toLowerCase(), body.password, getSessionMetadata(req));
     return this.isAuthenticatedSession(result) ? this.finalizeAuthSession(res, result) : result;
   }
 
   @Throttle(AUTH_RATE_LIMIT)
   @Post('verify-two-factor')
-  async verifyTwoFactor(@Body() body: VerifyTwoFactorDto, @Res({ passthrough: true }) res: Response) {
-    const result = await this.auth.verifyTwoFactorLogin(body.challengeToken, body.code);
+  async verifyTwoFactor(
+    @Body() body: VerifyTwoFactorDto,
+    @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.verifyTwoFactorLogin(body.challengeToken, body.code, getSessionMetadata(req));
     return this.finalizeAuthSession(res, result);
   }
 
@@ -188,6 +205,7 @@ export class AuthController {
     const session = await this.auth.refreshSession(
       this.getRefreshTokenFromRequest(req),
       getHeaderValue(csrfToken),
+      getSessionMetadata(req),
     );
     return this.finalizeAuthSession(res, session);
   }
@@ -211,6 +229,18 @@ export class AuthController {
   @Get('me')
   me(@Req() req: { user: { id: string; role: string; orgId?: string | null } }) {
     return this.auth.getProfile(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('sessions')
+  sessions(@Req() req: { user: { id: string } }) {
+    return this.auth.listRefreshSessions(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('sessions/:id')
+  revokeSession(@Req() req: { user: { id: string } }, @Param('id') sessionId: string) {
+    return this.auth.revokeRefreshSessionById(req.user.id, sessionId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -261,8 +291,12 @@ export class AuthController {
 
   @Throttle(AUTH_RATE_LIMIT)
   @Post('accept-invite')
-  async acceptInvite(@Body() body: AcceptInviteDto, @Res({ passthrough: true }) res: Response) {
-    const session = await this.auth.acceptInvite(body.token, body.password);
+  async acceptInvite(
+    @Body() body: AcceptInviteDto,
+    @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = await this.auth.acceptInvite(body.token, body.password, getSessionMetadata(req));
     return this.finalizeAuthSession(res, session);
   }
 

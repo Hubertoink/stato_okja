@@ -44,7 +44,7 @@
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "jszip": "^3.10.1",
-    "multer": "^2.0.2",
+    "multer": "^2.1.1",
     "nodemailer": "^7.0.9",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -54,8 +54,7 @@
     "sharp": "^0.33.5",
     "sql.js": "^1.13.0",
     "typeorm": "^0.3.19",
-    "typeorm-sqljs": "^1.2.2",
-    "xlsx": "^0.18.5"
+    "typeorm-sqljs": "^1.2.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.2.1",

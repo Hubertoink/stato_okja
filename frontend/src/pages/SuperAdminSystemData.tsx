@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp, Database, Download, FileArchive, HardDrive, ShieldAlert, ShieldCheck, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Clock, Copy, Database, Download, FileArchive, HardDrive, Server, ShieldAlert, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/auth';
@@ -51,6 +51,37 @@ function SummaryCard({
         <div className="system-data-summary-label text-sm text-gray-500 font-medium">{label}</div>
         <div className="system-data-summary-value text-2xl font-bold text-gray-900 mt-0.5">{value}</div>
       </div>
+    </div>
+  );
+}
+
+const TECHNICAL_BACKUP_COMMAND = '.\\scripts\\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14';
+const TECHNICAL_RESTORE_COMMAND = '.\\scripts\\onprem-restore.ps1 -BackupDir .\\backups\\stato-onprem-YYYYMMDD-HHMMSS -ConfirmText "RESTORE STATO BACKUP"';
+const SCHEDULED_BACKUP_COMMAND = 'powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14';
+
+function CommandSnippet({
+  label,
+  command,
+  onCopy,
+}: {
+  label: string;
+  command: string;
+  onCopy: (command: string, label: string) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
+      <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between gap-3">
+        <div className="text-xs uppercase tracking-wide text-gray-500 font-semibold">{label}</div>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          onClick={() => onCopy(command, label)}
+          title="Befehl kopieren"
+        >
+          <Copy className="w-4 h-4" />
+        </button>
+      </div>
+      <pre className="px-4 py-3 text-xs text-gray-700 overflow-x-auto whitespace-pre-wrap break-all"><code>{command}</code></pre>
     </div>
   );
 }
@@ -113,6 +144,16 @@ export default function SuperAdminSystemData() {
       showToast('Datenexport erstellt.', { type: 'success' });
     } catch (error) {
       showToast(getApiErrorMessage(error, 'Export fehlgeschlagen.'), { type: 'error', durationMs: 4000 });
+    }
+  };
+
+  const handleCopyCommand = async (command: string, label: string) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(command);
+      showToast(`${label} kopiert.`, { type: 'success' });
+    } catch {
+      showToast('Befehl konnte nicht kopiert werden.', { type: 'error', durationMs: 3500 });
     }
   };
 
@@ -281,6 +322,54 @@ export default function SuperAdminSystemData() {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="system-data-panel bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex items-start gap-3">
+                    <Server className="w-5 h-5 text-viridian mt-0.5 shrink-0" />
+                    <div>
+                      <h3 className="system-data-panel-title font-semibold text-gray-900">Betriebsbackup</h3>
+                      <p className="system-data-panel-copy text-sm text-gray-500 mt-1">
+                        Technischer Docker-Backup-Pfad fuer Postgres und Upload-Volume. Ausfuehrung auf dem Host oder Docker-Context mit Zugriff auf den Compose-Stack.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+                    <Clock className="w-4 h-4" />
+                    Automatisierbar
+                  </div>
+                </div>
+
+                <div className="p-5 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="rounded-xl bg-gray-50 px-4 py-3">
+                      <div className="text-xs uppercase tracking-wide text-gray-500">Ausfuehrung</div>
+                      <div className="mt-1 text-sm font-medium text-gray-800">Docker CLI / Compose</div>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 px-4 py-3">
+                      <div className="text-xs uppercase tracking-wide text-gray-500">Sicherung</div>
+                      <div className="mt-1 text-sm font-medium text-gray-800">Postgres-Dump + Uploads</div>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 px-4 py-3">
+                      <div className="text-xs uppercase tracking-wide text-gray-500">Aufbewahrung</div>
+                      <div className="mt-1 text-sm font-medium text-gray-800">14 Tage lokal im Beispiel</div>
+                    </div>
+                  </div>
+
+                  <div className="system-data-banner system-data-banner-info rounded-xl px-4 py-3 text-sm flex gap-3">
+                    <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
+                    <div>
+                      Der Webbereich startet keine Docker-Kommandos selbst. Die Befehle laufen bewusst auf der Betriebsmaschine, damit keine Host- oder Docker-Rechte an die Anwendung gebunden werden.
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <CommandSnippet label="Backup" command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                    <CommandSnippet label="Restore" command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
+                    <CommandSnippet label="Scheduler-Kommando" command={SCHEDULED_BACKUP_COMMAND} onCopy={handleCopyCommand} />
                   </div>
                 </div>
               </section>

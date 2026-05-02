@@ -1,8 +1,14 @@
-import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 
 type Row = Record<string, unknown>;
 type TableRows = Record<string, Row[]>;
 type SheetRow = Record<string, string | number | boolean | null>;
+type WorkbookSheet = {
+  name: string;
+  columns: string[];
+  rows: SheetRow[];
+  widths: Array<{ wch: number }>;
+};
 
 type WorkbookInput = {
   generatedAt: string;
@@ -45,11 +51,11 @@ const STAFF_ROLE_LABELS: Record<string, string> = {
   analyst: 'Analyse',
 };
 
-export function buildReadableWorkbook(input: WorkbookInput): {
+export async function buildReadableWorkbook(input: WorkbookInput): Promise<{
   buffer: Buffer;
   sheetNames: string[];
-} {
-  const workbook = XLSX.utils.book_new();
+}> {
+  const workbook: WorkbookSheet[] = [];
   const sheetNames: string[] = [];
 
   const organizations = getRows(input.tableRows, 'organizations');
@@ -354,7 +360,7 @@ export function buildReadableWorkbook(input: WorkbookInput): {
   );
 
   return {
-    buffer: XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer,
+    buffer: await writeWorkbook(workbook),
     sheetNames,
   };
 }
@@ -386,17 +392,154 @@ function buildJoinMap(rows: Row[], leftKey: string, rightKey: string) {
 }
 
 function addSheet(
-  workbook: XLSX.WorkBook,
+  workbook: WorkbookSheet[],
   sheetNames: string[],
   sheetName: string,
   rows: SheetRow[],
 ) {
   const safeName = getSafeSheetName(sheetName, sheetNames);
   const normalizedRows = rows.length > 0 ? rows : [{ Hinweis: 'Keine Daten vorhanden' }];
-  const worksheet = XLSX.utils.json_to_sheet(normalizedRows);
-  worksheet['!cols'] = computeColumnWidths(normalizedRows);
-  XLSX.utils.book_append_sheet(workbook, worksheet, safeName);
+  const columns = getColumns(normalizedRows);
+  workbook.push({
+    name: safeName,
+    columns,
+    rows: normalizedRows,
+    widths: computeColumnWidths(normalizedRows, columns),
+  });
   sheetNames.push(safeName);
+}
+
+async function writeWorkbook(sheets: WorkbookSheet[]) {
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', buildContentTypesXml(sheets.length));
+  zip.file('_rels/.rels', buildRootRelationshipsXml());
+  zip.file('xl/workbook.xml', buildWorkbookXml(sheets));
+  zip.file('xl/_rels/workbook.xml.rels', buildWorkbookRelationshipsXml(sheets.length));
+  zip.file('xl/styles.xml', buildStylesXml());
+
+  sheets.forEach((sheet, index) => {
+    zip.file(`xl/worksheets/sheet${index + 1}.xml`, buildWorksheetXml(sheet));
+  });
+
+  return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+}
+
+function buildContentTypesXml(sheetCount: number) {
+  const sheetOverrides = Array.from({ length: sheetCount }, (_, index) => (
+    `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+  )).join('');
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  ${sheetOverrides}
+</Types>`;
+}
+
+function buildRootRelationshipsXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+}
+
+function buildWorkbookXml(sheets: WorkbookSheet[]) {
+  const sheetXml = sheets
+    .map((sheet, index) => `<sheet name="${escapeXml(sheet.name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`)
+    .join('');
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>${sheetXml}</sheets>
+</workbook>`;
+}
+
+function buildWorkbookRelationshipsXml(sheetCount: number) {
+  const sheetRelationships = Array.from({ length: sheetCount }, (_, index) => (
+    `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`
+  )).join('');
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${sheetRelationships}
+  <Relationship Id="rId${sheetCount + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+}
+
+function buildStylesXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>
+  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+}
+
+function buildWorksheetXml(sheet: WorkbookSheet) {
+  const headerRow = sheet.columns.reduce<SheetRow>((row, column) => {
+    row[column] = column;
+    return row;
+  }, {});
+  const rows = [headerRow, ...sheet.rows];
+  const rowXml = rows
+    .map((row, rowIndex) => buildRowXml(row, sheet.columns, rowIndex + 1))
+    .join('');
+  const maxColumn = columnName(Math.max(sheet.columns.length, 1) - 1);
+  const maxRow = Math.max(rows.length, 1);
+  const columnXml = sheet.widths
+    .map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width.wch}" customWidth="1"/>`)
+    .join('');
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A1:${maxColumn}${maxRow}"/>
+  <sheetViews><sheetView workbookViewId="0"/></sheetViews>
+  <cols>${columnXml}</cols>
+  <sheetData>${rowXml}</sheetData>
+</worksheet>`;
+}
+
+function buildRowXml(row: SheetRow, columns: string[], rowNumber: number) {
+  const cells = columns
+    .map((column, columnIndex) => buildCellXml(row[column], `${columnName(columnIndex)}${rowNumber}`))
+    .join('');
+  return `<row r="${rowNumber}">${cells}</row>`;
+}
+
+function buildCellXml(value: unknown, reference: string) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return `<c r="${reference}"><v>${value}</v></c>`;
+  }
+  if (typeof value === 'boolean') {
+    return `<c r="${reference}" t="b"><v>${value ? 1 : 0}</v></c>`;
+  }
+  return `<c r="${reference}" t="inlineStr"><is><t>${escapeXml(stringifyCell(value))}</t></is></c>`;
+}
+
+function columnName(index: number) {
+  let current = index + 1;
+  let name = '';
+  while (current > 0) {
+    const remainder = (current - 1) % 26;
+    name = String.fromCharCode(65 + remainder) + name;
+    current = Math.floor((current - 1) / 26);
+  }
+  return name;
+}
+
+function escapeXml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
 function getSafeSheetName(name: string, existing: string[]) {
@@ -411,14 +554,16 @@ function getSafeSheetName(name: string, existing: string[]) {
   return candidate;
 }
 
-function computeColumnWidths(rows: SheetRow[]) {
-  const columns = Array.from(
+function getColumns(rows: SheetRow[]) {
+  return Array.from(
     rows.reduce((keys, row) => {
       Object.keys(row).forEach((key) => keys.add(key));
       return keys;
     }, new Set<string>()),
   );
+}
 
+function computeColumnWidths(rows: SheetRow[], columns: string[]) {
   return columns.map((column) => {
     const contentWidth = Math.max(
       column.length,

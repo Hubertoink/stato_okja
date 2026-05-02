@@ -60,7 +60,7 @@ Die folgende Tabelle ist als praktische Referenz fuer GitHub Deployments gedacht
 | `API_PREFIX` | Variable | Pfadsegment ohne fuehrenden Slash, meist `api` | Globaler API-Prefix des Backends, typischerweise `api`, wodurch Endpoints unter `/api/...` erreichbar sind. |
 | `CORS_ORIGINS` | Variable | eine oder mehrere Origins, komma-separiert, z. B. `https://app.example.com` | Erlaubte Browser-Origins fuer CORS. Muss zur oeffentlichen Frontend-URL passen, sonst blockiert der Browser Requests. |
 | `APP_ORIGIN` | Variable | vollstaendige URL, z. B. `https://app.example.com` | Oeffentliche URL des Frontends. Wird fuer Links in Einladungen, Passwort-Resets und 2FA-Mails genutzt. |
-| `SMTP_HOST` | Variable | Hostname, z. B. `smtp.example.com`; optional leer | Hostname des SMTP-Servers. Wenn leer, versendet das Backend keine E-Mails und loggt bestimmte Links stattdessen lokal. |
+| `SMTP_HOST` | Variable | Hostname, z. B. `smtp.example.com`; optional leer | Hostname des SMTP-Servers. Wenn leer, versendet das Backend keine E-Mails. Im Strict-Security-Mode werden Invite-/Reset-Links dann nicht geloggt, sondern der Vorgang schlaegt fehl. |
 | `SMTP_PORT` | Variable | Portnummer, meist `587` oder `465` | Port des SMTP-Servers, meist `587` oder `465` je nach Setup. |
 | `SMTP_USER` | Variable oder Secret | Benutzername oder Mailadresse, z. B. `mailer@example.com` | SMTP-Benutzername. Wenn er intern sensibel ist, als Secret pflegen; technisch reicht oft auch eine Variable. |
 | `SMTP_PASS` | Secret | SMTP-Passwort als Freitextwert | Passwort fuer den SMTP-Zugang. Muss immer als Secret gepflegt werden. |
@@ -143,13 +143,13 @@ Fuer normalen Betrieb bleiben beide Force-Flags `false`. Sie sind nur fuer bewus
 
 | Variable | Default | Beschreibung |
 | --- | --- | --- |
-| `SMTP_HOST` | leer | SMTP-Host. Wenn leer, werden Mails nicht versendet; Invite-/Reset-Links werden geloggt. |
+| `SMTP_HOST` | leer | SMTP-Host. Wenn leer, werden Mails nicht versendet. Invite-/Reset-Links werden nur ausserhalb von Strict-Security-Mode geloggt. |
 | `SMTP_PORT` | `587` | SMTP-Port. `465` wird als secure SMTP behandelt. |
 | `SMTP_USER` | leer | SMTP-Benutzer. Wenn leer, versucht das Backend unauthentifiziertes SMTP. |
 | `SMTP_PASS` | leer | SMTP-Passwort. |
 | `SMTP_FROM` | `no-reply@stato.local` | Absenderadresse. |
 
-Wenn `AUTH_2FA_ENABLED=true` gesetzt ist, wird SMTP beim Backend-Start verifiziert. Schlaegt die Verbindung fehl, startet das Backend nicht. Fuer Passwort-Reset ohne SMTP ist `PASSWORD_RESET_MODE=admin_temp_password` der passende On-Prem-Modus.
+Wenn `AUTH_2FA_ENABLED=true` gesetzt ist, wird SMTP beim Backend-Start verifiziert. Schlaegt die Verbindung fehl, startet das Backend nicht. Fuer Passwort-Reset ohne SMTP ist `PASSWORD_RESET_MODE=admin_temp_password` der passende On-Prem-Modus. In Produktion/Staging oder bei `STRICT_SECURITY_MODE=true` werden Invite-/Reset-Links ohne SMTP nicht in Logs ausgegeben.
 
 ## Branding und Public Config
 

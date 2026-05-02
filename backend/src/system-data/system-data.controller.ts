@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { SystemDataService, type SystemDataActor } from './system-data.service';
+import { ConfirmSystemDataOperationDto } from './dto/system-data.dto';
 
 const systemDataImportTempDir = join(process.cwd(), '.tmp', 'system-data-imports');
 
@@ -95,7 +96,7 @@ export class SystemDataController {
   importAll(
     @Req() req: { user: SystemDataActor },
     @UploadedFile() file: Express.Multer.File | undefined,
-    @Body() body: { password?: string; confirmationText?: string },
+    @Body() body: ConfirmSystemDataOperationDto,
   ) {
     if (!file?.path) {
       throw new BadRequestException('ZIP-Datei ist erforderlich.');
@@ -112,7 +113,7 @@ export class SystemDataController {
   @ApiOperation({ summary: 'Löscht alle Nicht-Superadmin-Daten inklusive Upload-Dateien' })
   purgeAll(
     @Req() req: { user: SystemDataActor },
-    @Body() body: { password?: string; confirmationText?: string },
+    @Body() body: ConfirmSystemDataOperationDto,
   ) {
     return this.systemDataService.purgeAllData(req.user, {
       password: String(body?.password || ''),

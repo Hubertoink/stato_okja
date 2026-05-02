@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import type { WorkSheet, ColInfo } from 'xlsx';
 import Modal from './Modal';
 import type { Activity } from '@/lib/activities';
 import { useActivities } from '@/lib/activities';
@@ -10,6 +9,13 @@ import {
   ACTIVITY_EXECUTION_STATUS_LABELS,
   normalizeActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
+
+type ColInfo = { wch?: number };
+type WorkSheet = Record<string, unknown> & {
+  '!autofilter'?: { ref: string };
+  '!cols'?: ColInfo[];
+  '!merges'?: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
+};
 
 function csvEscape(value: unknown): string {
   const s = String(value ?? '');

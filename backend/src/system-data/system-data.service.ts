@@ -181,7 +181,7 @@ export class SystemDataService {
       }
 
       const readableWorkbookPath = 'readable/stato-system-data-readable.xlsx';
-      const readableWorkbook = buildReadableWorkbook({
+      const readableWorkbook = await buildReadableWorkbook({
         generatedAt,
         actor: {
           id: actor.id,

@@ -74,8 +74,11 @@ Diese Datei hält die Umsetzung der ersten beiden Security-Pakete fest: Containe
 
 ## Noch offen nach Paket 1 und 2
 
-- Multi-Device-Session-Tabelle statt einer Refresh Session pro User, falls parallele Geräte dauerhaft unterstützt werden sollen.
-- Zentrale Exception-Filter/API-Fehlerform und weitere DTO-Abdeckung außerhalb der Auth-Endpunkte.
-- Produktives Logging weiter härten: Invite-/Reset-Link-Logging bei fehlendem SMTP in Produktion vollständig verhindern.
-- Backup-/Restore-Automatisierung, Restore-Testprotokoll und TOM-Dokumentation separat in Paket 3 und 4 umsetzen.
+- Multi-Device-Session-Tabelle, Backend-Endpunkte und Profil-UI sind im Folgepaket umgesetzt. Details: [SECURITY_PRIORITIES_2026-05-02.md](SECURITY_PRIORITIES_2026-05-02.md)
+- Zentrale Exception-Filter/API-Fehlerform ist umgesetzt; weitere DTO-Abdeckung ausserhalb der kritischen Systemdaten-Endpunkte bleibt ein inkrementeller Ausbaupunkt.
+- Produktives Logging ist fuer Invite-/Reset-Links gehaertet: Bei fehlendem SMTP wird im Strict-Security-Mode nicht mehr geloggt, sondern ein Fehler geworfen.
+- Backup-/Restore-Automatisierung, Restore-Testprotokoll und TOM-/DSGVO-/ISO-Nachweise sind dokumentiert:
+  - [BACKUP_RESTORE_RUNBOOK_2026-05-02.md](BACKUP_RESTORE_RUNBOOK_2026-05-02.md)
+  - [TOM_DSGVO_ISO_EVIDENCE_2026-05-02.md](TOM_DSGVO_ISO_EVIDENCE_2026-05-02.md)
+- Dependency-Findings wurden reduziert; verbleibende High-Findings erfordern Major-Upgrades und sind separat klassifiziert: [DEPENDENCY_FINDINGS_2026-05-02.md](DEPENDENCY_FINDINGS_2026-05-02.md)
 - Optional: API-Versionierung (`/api/v1`) als eigener Migrationsschritt.

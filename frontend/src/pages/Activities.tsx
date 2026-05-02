@@ -774,6 +774,7 @@ export default function Activities() {
       <DemoHoverHint
         title="Filteruebersicht"
         description="Diese Leiste zeigt Trefferzahl und aktive Filter. Einzelne Filterchips lassen sich entfernen, der Reset-Knopf setzt die Ansicht zurueck."
+        placement="bottom"
       >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex flex-wrap gap-2 text-xs">
@@ -881,6 +882,8 @@ export default function Activities() {
       <DemoHoverHint
         title="Aktivitaetenliste"
         description="Die Tabelle zeigt die gefilterten Eintraege mit Datum, Typ, Teilnehmenden und Status. Ueber das Stift-Symbol oeffnest du die Bearbeitung."
+        placement="bottom"
+        className="demo-hover-hint-anchor-top"
       >
         <div className="activities-desktop-table-shell bg-white rounded-lg shadow hidden md:block overflow-x-auto">
         <table className="activities-desktop-table w-full min-w-[700px]">

@@ -951,6 +951,10 @@ code {
   transform: translateY(-0.35rem) scale(0.98);
 }
 
+.demo-hover-hint-anchor-top.demo-hover-hint-bottom .demo-hover-hint-panel {
+  top: 0.75rem;
+}
+
 .demo-hover-hint-bottom .demo-hover-hint-panel::after {
   top: -0.42rem;
   border-bottom: 0;

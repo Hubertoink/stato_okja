@@ -1187,6 +1187,8 @@ export default function Calendar() {
         <DemoHoverHint
           title="Kalenderflaeche"
           description="Ein Klick auf ein Tagesfeld zeigt im Desktop die Aktivitaeten direkt unter dem Kalender. Plus- und Schliesszeit-Buttons erscheinen im Desktop beim Hover; mobil bleiben sie in der Monatsuebersicht ausgeblendet."
+          placement="bottom"
+          className="demo-hover-hint-anchor-top"
         >
           <div className="calendar-surface rounded-lg shadow overflow-hidden">
           <div className="calendar-header-row grid grid-cols-7 text-xs md:text-sm font-medium">
@@ -1303,6 +1305,8 @@ export default function Calendar() {
         <DemoHoverHint
           title="Kalenderflaeche"
           description="Die mobile 3-Tage-Ansicht zeigt Schliesszeit- und Plus-Buttons direkt pro Tag. So kannst du Tage als geschlossen markieren oder neue Aktivitaeten hinzufuegen, ohne in die Monatsuebersicht zu wechseln."
+          placement="bottom"
+          className="demo-hover-hint-anchor-top"
         >
           <div className="calendar-surface rounded-lg shadow overflow-hidden">
           <div
@@ -1416,6 +1420,8 @@ export default function Calendar() {
         <DemoHoverHint
           title="Tagesliste"
           description="Nach dem Klick auf einen Tag erscheinen hier die Aktivitaeten dieses Tages. Ueber Pfeil, Plus und Stift wechselst du zur Liste, legst neu an oder bearbeitest direkt."
+          placement="bottom"
+          className="demo-hover-hint-anchor-top"
         >
           <section className="calendar-day-list activities-desktop-table-shell mt-4 hidden overflow-hidden rounded-lg border shadow md:block" aria-live="polite">
           <div className="calendar-day-list-header flex flex-col gap-3 border-b bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">

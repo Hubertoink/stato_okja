@@ -7,7 +7,33 @@ updates:
       day: monday
       time: "06:00"
       timezone: Europe/Berlin
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: tailwindcss
+        update-types:
+          - version-update:semver-major
+      - dependency-name: react
+        update-types:
+          - version-update:semver-major
+      - dependency-name: react-dom
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/react"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/react-dom"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@nestjs/jwt"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
@@ -16,6 +42,10 @@ updates:
       day: monday
       time: "06:30"
       timezone: Europe/Berlin
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: docker
     directory: /backend
@@ -24,6 +54,10 @@ updates:
       day: monday
       time: "07:00"
       timezone: Europe/Berlin
+    groups:
+      backend-docker-images:
+        patterns:
+          - "*"
 
   - package-ecosystem: docker
     directory: /frontend
@@ -32,3 +66,7 @@ updates:
       day: monday
       time: "07:15"
       timezone: Europe/Berlin
+    groups:
+      frontend-docker-images:
+        patterns:
+          - "*"

@@ -127,6 +127,20 @@ pwsh ./scripts/onprem-backup.ps1 -ComposeFile docker-compose.prod.yml -EnvFile .
 
 Ein Restore ist destruktiv und ersetzt Datenbankinhalte sowie Upload-Dateien. Daher ist ein expliziter Bestaetigungstext erforderlich:
 
+Einfacher Weg mit automatischer Auswahl des neuesten lokalen Backups:
+
+```powershell
+.\scripts\onprem-restore-easy.ps1
+```
+
+Nur Vorschau des ausgewaehlten lokalen Backups:
+
+```powershell
+.\scripts\onprem-restore-easy.ps1 -Preview
+```
+
+Erweiterter Weg mit explizitem Zielpfad:
+
 ```powershell
 .\scripts\onprem-restore.ps1 -BackupDir .\backups\stato-onprem-YYYYMMDD-HHMMSS -ConfirmText "RESTORE STATO BACKUP"
 ```
@@ -152,8 +166,15 @@ Beispiel fuer Mittwald Container-Cronjob:
 Beispiel-Kommando fuer Windows Aufgabenplanung:
 
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\scripts\onprem-backup-easy.ps1
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\onprem-daily-ops.ps1
 ```
+
+Das Daily-Ops-Skript prueft den Health-Endpunkt vor und nach dem Backup und schreibt zusaetzlich ein JSON-Protokoll unter `backups\logs\`.
+
+Fertige Windows-Aufgabenplaner-Vorlage und Schrittfolge:
+
+- `scripts/onprem-daily-backup-task.xml`
+- `docs/ONPREM_WINDOWS_TASK_SCHEDULER.md`
 
 Fuer Mittwald mit Compose-Postgres entsprechend anpassen:
 

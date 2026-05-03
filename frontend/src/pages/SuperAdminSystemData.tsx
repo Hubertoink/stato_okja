@@ -56,9 +56,11 @@ function SummaryCard({
 }
 
 const EASY_BACKUP_COMMAND = '.\\scripts\\onprem-backup-easy.ps1 -OpenFolder';
+const EASY_RESTORE_COMMAND = '.\\scripts\\onprem-restore-easy.ps1';
 const TECHNICAL_BACKUP_COMMAND = '.\\scripts\\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14';
 const TECHNICAL_RESTORE_COMMAND = '.\\scripts\\onprem-restore.ps1 -BackupDir .\\backups\\stato-onprem-YYYYMMDD-HHMMSS -ConfirmText "RESTORE STATO BACKUP"';
-const SCHEDULED_BACKUP_COMMAND = 'powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\onprem-backup-easy.ps1';
+const DAILY_OPS_COMMAND = 'powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\onprem-daily-ops.ps1';
+const TASK_SCHEDULER_XML = '.\\scripts\\onprem-daily-backup-task.xml';
 const CONTAINER_BACKUP_COMMAND = '/usr/local/bin/stato-container-backup';
 
 function CommandSnippet({
@@ -388,10 +390,12 @@ export default function SuperAdminSystemData() {
 
                     <div className="space-y-3">
                       <CommandSnippet label="Einfaches Host-Backup" command={EASY_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Einfaches Host-Restore" command={EASY_RESTORE_COMMAND} onCopy={handleCopyCommand} />
                       <CommandSnippet label="Mittwald Container-Cronjob" command={CONTAINER_BACKUP_COMMAND} onCopy={handleCopyCommand} />
                       <CommandSnippet label="Erweitertes Host-Backup" command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Host-Restore" command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Host-Scheduler" command={SCHEDULED_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Erweitertes Host-Restore" command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Daily Ops / Scheduler" command={DAILY_OPS_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Aufgabenplaner XML" command={TASK_SCHEDULER_XML} onCopy={handleCopyCommand} />
                     </div>
                   </div>
                 )}

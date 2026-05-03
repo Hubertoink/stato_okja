@@ -226,20 +226,29 @@ Weitere Hinweise für Hosting bei Mittwald (inkl. Subdomains, Registry und ENV):
 Produktive ENV-Beispielwerte:
 - env.production.example
 
+Zentrale Referenz fuer alle Umgebungsvariablen:
+- docs/ENVIRONMENT_VARIABLES.md
+
 ## 🗓️ Roadmap
 
+Aktueller Stand:
+
 - [x] Projektsetup & Architektur
-- [ ] Backend Core (Auth, CRUD)
-- [ ] Frontend Erfassung
-- [ ] Statistik-Dashboard
-- [ ] Rollen & RBAC
-- [ ] Attachments & Storage
-- [ ] PWA & Offline-Support
-- [ ] Beta-Rollout
+- [x] Backend Core mit Auth, Rollen und CRUD-Modulen
+- [x] Frontend fuer Erfassung, Uebersichten und Administration
+- [x] Statistik-Dashboard und Exporte
+- [x] Attachments, Uploads und selbst gehostete Deployments
+
+Naechste Ausbaupunkte:
+
+- [ ] PWA- und Offline-Unterstuetzung
+- [ ] Weitere Accessibility- und Mobile-Optimierungen
+- [ ] Erweiterte Reporting- und Import/Export-Workflows
+- [ ] Betriebs- und Rollout-Haertung fuer weitere Produktivumgebungen
 
 ## 📄 Lizenz
 
-Proprietär - © 2025 OKJA Team
+MIT License - siehe LICENSE
 
 ## 📞 Support
 

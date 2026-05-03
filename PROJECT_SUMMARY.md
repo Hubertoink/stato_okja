@@ -352,27 +352,19 @@ npm run dev
 
 ---
 
-## ⏭️ Roadmap Highlights
+## ⏭️ Produktstatus und Ausbau
 
-**Version 2.1** (Q4 2025)
-- Auth-Modul komplett
-- Seed-Daten
-- Frontend-Backend Integration
+**Aktuell umgesetzt**
+- Backend-Core mit Auth, Rollen und CRUD-Modulen
+- Frontend fuer Erfassung, Uebersichten und Administration
+- Statistik-Dashboard, Exporte und Uploads
+- Self-hosted Betrieb fuer On-Prem und Hosted Deployments
 
-**Version 2.2** (Q1 2026)
-- Attachment-Upload
-- Rich-Text Notizen
-- Charts & Analytics
-
-**Version 2.3** (Q2 2026)
-- PWA & Offline-Support
-- Mobile-Optimierungen
-- Accessibility (WCAG AA)
-
-**Version 3.0** (Q3 2026)
-- Multi-Tenant Support
-- Azure AD Integration
-- Advanced Reports
+**Geplante Ausbaupunkte**
+- PWA- und Offline-Unterstuetzung
+- Weitere Accessibility- und Mobile-Optimierungen
+- Erweiterte Reporting-, Import- und Export-Workflows
+- Weitere Betriebs-Haertung fuer produktive Rollouts
 
 ---
 
@@ -386,5 +378,5 @@ Dieses Projekt wurde mit viel Sorgfalt und Liebe zum Detail erstellt. Es soll OK
 
 **Erstellt:** Oktober 2025  
 **Version:** 2.0.0  
-**Lizenz:** Proprietär  
+**Lizenz:** MIT  
 **Team:** OKJA Development Team

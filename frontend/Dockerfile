@@ -22,7 +22,7 @@ ARG VITE_COMMIT_SHA
 ENV VITE_COMMIT_SHA=${VITE_COMMIT_SHA}
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runner
+FROM nginxinc/nginx-unprivileged:1.29-alpine AS runner
 USER root
 WORKDIR /usr/share/nginx/html
 

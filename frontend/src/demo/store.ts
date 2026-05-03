@@ -82,10 +82,6 @@ function addMonths(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + months, 1);
 }
 
-function lastDayOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-}
-
 function parseDate(isoDate: string): Date {
   const [year, month, day] = isoDate.split('-').map((part) => Number(part));
   return new Date(year, (month || 1) - 1, day || 1);
@@ -646,7 +642,7 @@ function createInitialAuditLogs(activities: DemoActivityRecord[], projects: Demo
 function createDemoStore(now = new Date()): DemoStore {
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const windowStart = localIsoDate(addMonths(currentMonthStart, -12));
-  const windowEnd = localIsoDate(lastDayOfMonth(currentMonthStart));
+  const windowEnd = localIsoDate(now);
   const categories = categorySeed();
   const tags = tagSeed();
   const cohorts = cohortSeed();

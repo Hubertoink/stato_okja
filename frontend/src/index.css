@@ -1189,6 +1189,7 @@ code {
   flex: 0 0 auto;
   height: 1.35rem;
   padding: 0.12rem;
+  transition: background 160ms ease, border-color 160ms ease;
   width: 2.35rem;
 }
 
@@ -1198,7 +1199,23 @@ code {
   box-shadow: 0 2px 6px rgba(2, 6, 23, 0.32);
   display: block;
   height: 0.95rem;
+  transition: transform 160ms ease, background 160ms ease;
   width: 0.95rem;
+}
+
+.demo-mobile-page-guide-session-toggle-active {
+  background: rgba(91, 108, 255, 0.22);
+  border-color: rgba(129, 140, 248, 0.48);
+}
+
+.demo-mobile-page-guide-session-toggle-active .demo-mobile-page-guide-session-switch {
+  background: #5b6cff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.demo-mobile-page-guide-session-toggle-active .demo-mobile-page-guide-session-switch span {
+  background: #ffffff;
+  transform: translateX(1rem);
 }
 
 .demo-mobile-page-guide-action {

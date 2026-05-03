@@ -9,6 +9,7 @@ import {
   UserCircle2,
   Building2,
   GitBranch,
+  Lightbulb,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
@@ -25,7 +26,9 @@ import { ImprintModal } from '@/components/LegalModals';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
-import DemoMobilePageGuide from '@/demo/DemoMobilePageGuide';
+import DemoMobilePageGuide, { hasDemoMobileGuideForPath } from '@/demo/DemoMobilePageGuide';
+import { demoModeEnabled } from '@/demo/config';
+import { setDemoMobileGuideMuted, useDemoMobileGuideMuted } from '@/demo/mobileGuideState';
 
 type OrgScopeTreeNode = { org: OrgDto; children: OrgScopeTreeNode[] };
 
@@ -65,6 +68,7 @@ export default function Layout() {
   const { scope, setScope, switching: orgSwitching } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
+  const demoGuidesMutedForPageLoad = useDemoMobileGuideMuted();
 
   const notifySession = useCallback(
     (msg: string) => showToast(msg, { type: 'info', durationMs: 3500 }),
@@ -150,6 +154,11 @@ export default function Layout() {
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
   const hideBottomNav = isActivityFull || keyboardOpen;
   const hideFooter = isActivityFull || keyboardOpen;
+  const showDemoGuideRestore = demoModeEnabled && demoGuidesMutedForPageLoad && hasDemoMobileGuideForPath(location.pathname);
+  const restoreDemoGuides = () => {
+    setDemoMobileGuideMuted(false);
+    setMenuOpen(false);
+  };
 
   // Resolve the active org name once on load and whenever scope/user changes
   useEffect(() => {
@@ -334,30 +343,54 @@ export default function Layout() {
                 <UserCircle2 className="w-8 h-8" />
               )}
             </button>
+            {showDemoGuideRestore && (
+              <button
+                type="button"
+                aria-label="Demo-Hinweise wieder einblenden"
+                title="Demo-Hinweise wieder einblenden"
+                className="hidden sm:inline-flex h-8 w-8 items-center justify-center rounded-full border border-indigo-200 bg-white/75 text-indigo-600 shadow-sm transition-colors hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                onClick={restoreDemoGuides}
+              >
+                <Lightbulb aria-hidden="true" className="h-4 w-4" />
+              </button>
+            )}
             {/* Compact user/org on mobile - entire area clickable */}
-            <button
-              aria-label="Benutzermenü öffnen"
-              className="flex sm:hidden items-center gap-2 rounded px-1 py-1 transition-colors theme-header-action"
-              onClick={() => setMenuOpen((v) => !v)}
-            >
-              {user?.avatarUrl ? (
-                <ProtectedImage
-                  src={user.avatarUrl}
-                  alt="Avatar"
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-              ) : (
-                <UserCircle2 className="w-8 h-8" />
-              )}
-              <div className="flex flex-col items-end text-[11px] leading-4">
-                <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
-                <div className="text-gray-600 truncate max-w-[40vw]">
-                  {activeOrgName ||
-                    (typeof scope === 'string' ? `Org ${scope.substring(0, 6)}…` : '')}
-                  {orgSwitching ? ' · lädt…' : ''}
+            <div className="flex sm:hidden items-center gap-1">
+              <button
+                aria-label="Benutzermenü öffnen"
+                className="flex items-center gap-2 rounded px-1 py-1 transition-colors theme-header-action"
+                onClick={() => setMenuOpen((v) => !v)}
+              >
+                {user?.avatarUrl ? (
+                  <ProtectedImage
+                    src={user.avatarUrl}
+                    alt="Avatar"
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <UserCircle2 className="w-8 h-8" />
+                )}
+                <div className="flex flex-col items-end text-[11px] leading-4">
+                  <div className="font-medium truncate max-w-[34vw]">{user?.name || user?.email}</div>
+                  <div className="text-gray-600 truncate max-w-[34vw]">
+                    {activeOrgName ||
+                      (typeof scope === 'string' ? `Org ${scope.substring(0, 6)}…` : '')}
+                    {orgSwitching ? ' · lädt…' : ''}
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+              {showDemoGuideRestore && (
+                <button
+                  type="button"
+                  aria-label="Demo-Hinweise wieder einblenden"
+                  title="Demo-Hinweise wieder einblenden"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-indigo-200 bg-white/75 text-indigo-600 shadow-sm transition-colors hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  onClick={restoreDemoGuides}
+                >
+                  <Lightbulb aria-hidden="true" className="h-4 w-4" />
+                </button>
+              )}
+            </div>
             {menuOpen && (
               <div
                 className="absolute right-0 top-full mt-2 w-56 z-50 rounded-xl theme-menu-panel"

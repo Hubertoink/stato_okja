@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { CheckCircle2, Lightbulb, X } from 'lucide-react';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { demoModeEnabled } from './config';
+import { setDemoMobileGuideMuted, useDemoMobileGuideMuted } from './mobileGuideState';
 
 type DemoMobilePageGuide = {
   key: string;
@@ -86,31 +87,43 @@ function guideForPath(pathname: string) {
   return PAGE_GUIDES[section] ?? null;
 }
 
+export function hasDemoMobileGuideForPath(pathname: string) {
+  return guideForPath(pathname) !== null;
+}
+
 export default function DemoMobilePageGuide() {
   const location = useLocation();
   const isMobile = useIsMobile(768);
   const guide = useMemo(() => guideForPath(location.pathname), [location.pathname]);
   const [open, setOpen] = useState(false);
-  const [guidesMutedForSession, setGuidesMutedForSession] = useState(false);
+  const [hideAfterConfirm, setHideAfterConfirm] = useState(false);
+  const guidesMutedForPageLoad = useDemoMobileGuideMuted();
   const guideKey = guide?.key ?? '';
 
   useEffect(() => {
-    if (!demoModeEnabled || !isMobile || !guide || guidesMutedForSession) {
+    if (!demoModeEnabled || !isMobile || !guide || guidesMutedForPageLoad) {
       setOpen(false);
+      setHideAfterConfirm(false);
       return;
     }
 
     setOpen(false);
+    setHideAfterConfirm(false);
     const timer = window.setTimeout(() => setOpen(true), 1000);
     return () => window.clearTimeout(timer);
-  }, [guideKey, guide, guidesMutedForSession, isMobile]);
+  }, [guideKey, guide, guidesMutedForPageLoad, isMobile]);
 
-  const hideGuidesForSession = () => {
-    setGuidesMutedForSession(true);
+  const closeGuide = () => {
+    setHideAfterConfirm(false);
     setOpen(false);
   };
 
-  if (!demoModeEnabled || !isMobile || !guide || !open || guidesMutedForSession) return null;
+  const confirmGuide = () => {
+    if (hideAfterConfirm) setDemoMobileGuideMuted(true);
+    closeGuide();
+  };
+
+  if (!demoModeEnabled || !isMobile || !guide || !open || guidesMutedForPageLoad) return null;
 
   return (
     <div className="demo-mobile-page-guide-shell" aria-live="polite">
@@ -124,7 +137,7 @@ export default function DemoMobilePageGuide() {
           type="button"
           className="demo-mobile-page-guide-close"
           aria-label="Demo-Szenario schließen"
-          onClick={() => setOpen(false)}
+          onClick={closeGuide}
         >
           <X aria-hidden="true" className="h-4 w-4" />
         </button>
@@ -150,10 +163,10 @@ export default function DemoMobilePageGuide() {
         </div>
         <button
           type="button"
-          className="demo-mobile-page-guide-session-toggle"
+          className={`demo-mobile-page-guide-session-toggle${hideAfterConfirm ? ' demo-mobile-page-guide-session-toggle-active' : ''}`}
           role="switch"
-          aria-checked="false"
-          onClick={hideGuidesForSession}
+          aria-checked={hideAfterConfirm}
+          onClick={() => setHideAfterConfirm((current) => !current)}
         >
           <span className="demo-mobile-page-guide-session-switch" aria-hidden="true">
             <span />
@@ -163,7 +176,7 @@ export default function DemoMobilePageGuide() {
         <button
           type="button"
           className="demo-mobile-page-guide-action"
-          onClick={() => setOpen(false)}
+          onClick={confirmGuide}
         >
           Verstanden
         </button>

@@ -55,9 +55,10 @@ function SummaryCard({
   );
 }
 
+const EASY_BACKUP_COMMAND = '.\\scripts\\onprem-backup-easy.ps1 -OpenFolder';
 const TECHNICAL_BACKUP_COMMAND = '.\\scripts\\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14';
 const TECHNICAL_RESTORE_COMMAND = '.\\scripts\\onprem-restore.ps1 -BackupDir .\\backups\\stato-onprem-YYYYMMDD-HHMMSS -ConfirmText "RESTORE STATO BACKUP"';
-const SCHEDULED_BACKUP_COMMAND = 'powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14';
+const SCHEDULED_BACKUP_COMMAND = 'powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\onprem-backup-easy.ps1';
 const CONTAINER_BACKUP_COMMAND = '/usr/local/bin/stato-container-backup';
 
 function CommandSnippet({
@@ -386,8 +387,9 @@ export default function SuperAdminSystemData() {
                     </div>
 
                     <div className="space-y-3">
+                      <CommandSnippet label="Einfaches Host-Backup" command={EASY_BACKUP_COMMAND} onCopy={handleCopyCommand} />
                       <CommandSnippet label="Mittwald Container-Cronjob" command={CONTAINER_BACKUP_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Host-Backup" command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label="Erweitertes Host-Backup" command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
                       <CommandSnippet label="Host-Restore" command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
                       <CommandSnippet label="Host-Scheduler" command={SCHEDULED_BACKUP_COMMAND} onCopy={handleCopyCommand} />
                     </div>

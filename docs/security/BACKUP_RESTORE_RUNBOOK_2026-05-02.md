@@ -19,6 +19,14 @@ Fuer Mittwald ist zusaetzlich ein eigener `backup`-Container vorgesehen. Dieser 
 Aus dem Repository-Root:
 
 ```powershell
+.\scripts\onprem-backup-easy.ps1 -OpenFolder
+```
+
+Das ist der einfachste lokale Weg: Der `backup`-Container erzeugt das technische Backup im Docker-Volume und das Skript kopiert das neueste Backup anschliessend automatisch in einen normalen Host-Ordner unter `backups\stato-container-<timestamp>`.
+
+Alternativ bleibt das direkte Host-Skript verfuegbar:
+
+```powershell
 .\scripts\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14
 ```
 
@@ -144,7 +152,7 @@ Beispiel fuer Mittwald Container-Cronjob:
 Beispiel-Kommando fuer Windows Aufgabenplanung:
 
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\scripts\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\onprem-backup-easy.ps1
 ```
 
 Fuer Mittwald mit Compose-Postgres entsprechend anpassen:

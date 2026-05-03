@@ -215,7 +215,9 @@ API_PREFIX=api
 TRUST_PROXY=true
 
 JWT_SECRET=CHANGE_ME_SUPER_LONG_RANDOM_STRING
-JWT_ACCESS_EXPIRATION=12h
+JWT_ACCESS_EXPIRATION=15m
+JWT_REFRESH_EXPIRATION=7d
+AUTH_REFRESH_COOKIE_SAMESITE=lax
 INVITE_TOKEN_EXPIRATION=7d
 RESET_TOKEN_EXPIRATION=1h
 AUTH_2FA_ENABLED=false
@@ -481,6 +483,15 @@ Beispiel für DB-Export:
 ```bash
 docker exec -t $(docker ps --filter name=postgres --format "{{.ID}}") pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > stato_backup.sql
 ```
+
+Fuer den regelmaessigen Betriebsbackup-Pfad stehen zusaetzlich PowerShell-Skripte bereit:
+
+```powershell
+.\scripts\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14
+.\scripts\onprem-restore.ps1 -BackupDir .\backups\stato-onprem-YYYYMMDD-HHMMSS -ConfirmText "RESTORE STATO BACKUP"
+```
+
+Die Skripte laufen ueber Docker Compose und koennen auch mit einem Docker-Context auf einem externen Host genutzt werden, solange die Docker CLI den richtigen Compose-Stack erreicht. Details, Automatisierung und Restore-Testprotokoll: [security/BACKUP_RESTORE_RUNBOOK_2026-05-02.md](security/BACKUP_RESTORE_RUNBOOK_2026-05-02.md)
 
 ## Häufige Fehlerbilder
 

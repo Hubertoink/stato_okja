@@ -1,6 +1,9 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-stato_prod}
       POSTGRES_USER: ${POSTGRES_USER:-stato_user}
@@ -8,11 +11,24 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks: [stato]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       APP_ENV: ${APP_ENV:-production}
@@ -42,7 +58,9 @@ services:
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
       AUTH_RATE_LIMIT_TTL: ${AUTH_RATE_LIMIT_TTL:-60}
       AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-10}
-      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-12h}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      AUTH_REFRESH_COOKIE_SAMESITE: ${AUTH_REFRESH_COOKIE_SAMESITE:-lax}
       INVITE_TOKEN_EXPIRATION: ${INVITE_TOKEN_EXPIRATION:-7d}
       RESET_TOKEN_EXPIRATION: ${RESET_TOKEN_EXPIRATION:-1h}
       PASSWORD_RESET_MODE: ${PASSWORD_RESET_MODE:-email}
@@ -65,27 +83,82 @@ services:
       SMTP_PASS: "${SMTP_PASS:-}"
       SMTP_FROM: ${SMTP_FROM:-no-reply@stato.local}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - backend-uploads:/app/uploads
     networks: [stato]
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         VITE_ENABLE_DEV_TOOLS: ${VITE_ENABLE_DEV_TOOLS:-false}
         VITE_ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "80:80"
+      - "80:8080"
+    networks: [stato]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backup:
+    build:
+      context: .
+      dockerfile: backup/Dockerfile
+    image: ${BACKUP_IMAGE:-stato-backup:local}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:-stato_user}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGDATABASE: ${POSTGRES_DB:-stato_prod}
+      BACKUP_OUTPUT_DIR: /backups
+      BACKUP_UPLOADS_DIR: /mnt/uploads
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backend-uploads:/mnt/uploads:ro
+      - backup-data:/backups
     networks: [stato]
 
 volumes:
   postgres-data: {}
   backend-uploads: {}
+  backup-data: {}
 
 networks:
   stato: {}

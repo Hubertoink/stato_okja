@@ -70,12 +70,12 @@ minio-data/
 .DS_Store
 
 # Docker
-.dockerignore
 docker-compose.override.yml
 
 # Uploads
 uploads/
 temp/
+backups/
 
 # Misc
 .cache/

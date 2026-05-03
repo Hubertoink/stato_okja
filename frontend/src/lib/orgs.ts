@@ -137,7 +137,7 @@ export async function inviteUserApi(payload: { email: string; name?: string; rol
 
 export async function acceptInviteApi(token: string, password: string) {
   const res = await api.post('/auth/accept-invite', { token, password });
-  return res.data as { access_token: string };
+  return res.data as { access_token: string; refresh_csrf_token: string };
 }
 
 export async function listUsersByOrg(orgId: string, includeSubtree = false) {

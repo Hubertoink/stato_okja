@@ -20,6 +20,7 @@ import { ProjectTemplatesModule } from './project-templates/project-templates.mo
 import { DevToolsModule } from './dev-tools/dev-tools.module';
 import { SystemDataModule } from './system-data/system-data.module';
 import { ThrottlerBehindProxyGuard } from './common/throttler-behind-proxy.guard';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { ThrottlerBehindProxyGuard } from './common/throttler-behind-proxy.guard
     DevToolsModule,
     SystemDataModule,
   ],
+  controllers: [HealthController],
   providers: [
     {
       provide: APP_GUARD,

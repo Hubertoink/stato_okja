@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { User } from '../users/entities/user.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
+import { RefreshSession } from './entities/refresh-session.entity';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
@@ -15,13 +16,13 @@ import { OrgsModule } from '../orgs/orgs.module';
 
 @Module({
 	imports: [
-	TypeOrmModule.forFeature([User, Organization, Location]),
+	TypeOrmModule.forFeature([User, Organization, Location, RefreshSession]),
 		PassportModule,
 		AuditModule,
 		OrgsModule,
 		JwtModule.register({
 			secret: getJwtSecret(),
-			signOptions: { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '12h' },
+			signOptions: { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '15m' },
 		}),
 	],
 	controllers: [AuthController],

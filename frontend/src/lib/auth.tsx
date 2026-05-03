@@ -6,9 +6,12 @@ import { api, setAuthToken } from './api';
 import {
   clearStoredAuthToken,
   clearStoredPendingTwoFactorChallenge,
+  clearStoredRefreshCsrfToken,
   getStoredAuthToken,
+  getStoredRefreshCsrfToken,
   storeAuthToken,
   storePendingTwoFactorChallenge,
+  storeRefreshCsrfToken,
 } from './authStorage';
 
 export type Role = 'superadmin' | 'org_admin' | 'user';
@@ -28,8 +31,14 @@ type LoginResult =
 
 type TwoFactorResult = { ok: true } | { ok: false; error: string };
 
+type AuthSessionPayload = {
+  access_token: string;
+  refresh_csrf_token: string;
+  user: AuthUser;
+};
+
 function isTwoFactorChallenge(
-  value: TwoFactorChallenge | { access_token: string; user: AuthUser },
+  value: TwoFactorChallenge | AuthSessionPayload,
 ): value is TwoFactorChallenge {
   return 'requiresTwoFactor' in value && value.requiresTwoFactor === true;
 }
@@ -77,14 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(undefined);
     clearStoredAuthToken();
     clearStoredPendingTwoFactorChallenge();
+    clearStoredRefreshCsrfToken();
     setUser(null);
     applyTheme(null);
     qc.clear();
   }, [qc]);
 
-  const applyAuthenticatedSession = useCallback((payload: { access_token: string; user: AuthUser }) => {
+  const applyAuthenticatedSession = useCallback((payload: AuthSessionPayload) => {
     const token = payload.access_token;
     storeAuthToken(token);
+    storeRefreshCsrfToken(payload.refresh_csrf_token);
     clearStoredPendingTwoFactorChallenge();
     setAuthToken(token);
     applyResolvedUser(payload.user, { resetCache: true });
@@ -163,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { status: 'authenticated' } as const;
       }
       try {
-        const res = await api.post<{ access_token: string; user: AuthUser } | TwoFactorChallenge>('/auth/login', { email, password });
+        const res = await api.post<AuthSessionPayload | TwoFactorChallenge>('/auth/login', { email, password });
         const data = res.data;
         if (isTwoFactorChallenge(data)) {
           storePendingTwoFactorChallenge(data);
@@ -184,7 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: true } as const;
       }
       try {
-        const res = await api.post<{ access_token: string; user: AuthUser }>('/auth/verify-two-factor', { challengeToken, code });
+        const res = await api.post<AuthSessionPayload>('/auth/verify-two-factor', { challengeToken, code });
         applyAuthenticatedSession(res.data);
         return { ok: true } as const;
       } catch (err: unknown) {
@@ -216,9 +227,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resetDemoStore();
         setAuthToken(undefined);
         clearStoredAuthToken();
+        clearStoredRefreshCsrfToken();
         clearStoredPendingTwoFactorChallenge();
         applyResolvedUser(getDemoUser(), { resetCache: true });
         return;
+      }
+
+      const csrfToken = getStoredRefreshCsrfToken();
+      if (csrfToken) {
+        void api.post('/auth/logout', undefined, { headers: { 'X-CSRF-Token': csrfToken } }).catch(() => undefined);
       }
       clearSession();
     },

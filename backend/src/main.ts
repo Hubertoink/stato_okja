@@ -12,6 +12,7 @@ import { assertSecureRuntimeConfig, shouldExposeSwaggerDocs } from './config/sec
 import { shouldTrustProxy } from './config/rate-limit.config';
 import { assertTwoFactorRuntimeConfig, isTwoFactorAuthenticationEnabled } from './auth/two-factor.config';
 import { EmailService } from './email/email.service';
+import { HttpExceptionFilter } from './common/http-exception.filter';
 
 const PG_TIMESTAMP_OID = 1114;
 
@@ -51,6 +52,7 @@ async function bootstrap() {
   app.setGlobalPrefix(process.env.API_PREFIX || 'api');
 
   // Validation pipe
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

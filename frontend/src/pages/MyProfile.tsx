@@ -5,7 +5,7 @@ import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId 
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
-import { Camera, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
+import { Camera, ChevronDown, ChevronUp, Eye, EyeOff, ShieldCheck, Trash2 } from 'lucide-react';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 
@@ -25,6 +25,104 @@ export default function MyProfile() {
           <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} />
         )}
         <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={refresh} />
+        {!mustChangePassword && <SessionsSection />}
+      </div>
+    </div>
+  );
+}
+
+type AuthSession = {
+  id: string;
+  createdAt: string;
+  lastUsedAt: string;
+  expiresAt: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+};
+
+function formatSessionDate(value: string) {
+  try {
+    return new Intl.DateTimeFormat('de-DE', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+function SessionsSection() {
+  const [sessions, setSessions] = useState<AuthSession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function loadSessions() {
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await api.get<AuthSession[]>('/auth/sessions');
+      setSessions(res.data);
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Sitzungen konnten nicht geladen werden';
+      setErr(Array.isArray(message as string[]) ? (message as string[]).join(', ') : String(message));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadSessions();
+  }, []);
+
+  async function revokeSession(sessionId: string) {
+    setBusyId(sessionId);
+    setErr(null);
+    try {
+      await api.delete(`/auth/sessions/${sessionId}`);
+      await loadSessions();
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Sitzung konnte nicht widerrufen werden';
+      setErr(Array.isArray(message as string[]) ? (message as string[]).join(', ') : String(message));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-viridian mb-2">Aktive Sitzungen</h3>
+          <p className="text-sm text-gray-600">Hier kannst du alte Browser-Sitzungen widerrufen.</p>
+        </div>
+        <ShieldCheck className="w-5 h-5 text-viridian shrink-0" />
+      </div>
+      {err && <div className="mt-4 text-sm text-red-600">{err}</div>}
+      <div className="mt-4 space-y-3">
+        {loading && <div className="text-sm text-gray-500">Sitzungen werden geladen…</div>}
+        {!loading && sessions.length === 0 && <div className="text-sm text-gray-500">Keine aktiven Refresh-Sitzungen gefunden.</div>}
+        {sessions.map((session) => (
+          <div key={session.id} className="rounded-lg border border-gray-200 px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-gray-800 truncate">{session.userAgent || 'Unbekannter Client'}</div>
+              <div className="mt-1 text-xs text-gray-500">
+                Zuletzt genutzt: {formatSessionDate(session.lastUsedAt)} · Ablauf: {formatSessionDate(session.expiresAt)}
+              </div>
+              {session.ipAddress && <div className="mt-1 text-xs text-gray-500">IP: {session.ipAddress}</div>}
+            </div>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+              disabled={busyId === session.id}
+              onClick={() => void revokeSession(session.id)}
+              title="Sitzung widerrufen"
+            >
+              <Trash2 className="w-4 h-4" />
+              Widerrufen
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

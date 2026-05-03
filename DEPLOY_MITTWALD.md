@@ -7,8 +7,10 @@ Dieses Dokument beschreibt, wie du das Projekt auf Mittwald mit separater API-Do
 - CI baut und pusht Images nach GHCR:
   - Backend (Prod/main): `ghcr.io/<Owner>/stato-backend:latest`
   - Frontend (Prod/main): `ghcr.io/<Owner>/stato-frontend:latest`
+  - Backup (Prod/main): `ghcr.io/<Owner>/stato-backup:latest`
   - Backend (Dev/dev): `ghcr.io/<Owner>/stato-backend:dev`
   - Frontend (Dev/dev): `ghcr.io/<Owner>/stato-frontend:dev`
+  - Backup (Dev/dev): `ghcr.io/<Owner>/stato-backup:dev`
 – Optional Tags (z. B. `v2.0.0`) verwenden für reproduzierbare Deploys.
 - Entweder Packages auf `Public` stellen oder Mittwald mit GHCR-Login (PAT mit `read:packages`) konfigurieren.
 
@@ -74,6 +76,28 @@ Für Dev setzt die CI automatisch `VITE_API_BASE_URL=https://devapi.stato-okja.d
 
 - Postgres: Mittwald Managed PostgreSQL empfohlen
 - S3/Storage: Externen S3-Dienst bevorzugen; alternativ vorerst `/app/uploads` Volume nutzen.
+
+## 5.1) Backup-Container bei Compose-Postgres
+
+Wenn Postgres als Container im selben Stack laeuft, kann der Service `backup` fuer Mittwald-Cronjobs genutzt werden:
+
+- Image (Prod): `ghcr.io/<Owner>/stato-backup:latest`
+- Image (Dev): `ghcr.io/<Owner>/stato-backup:dev`
+- Kein oeffentlicher Port
+- Volumes:
+  - `backend-uploads:/mnt/uploads:ro`
+  - `backup-data:/backups`
+- ENV:
+  - `PGHOST=postgres`
+  - `PGPORT=5432`
+  - `PGUSER`, `PGPASSWORD`, `PGDATABASE` passend zur Compose-Postgres-DB
+  - `BACKUP_RETENTION_DAYS=14`
+- Mittwald-Cronjob:
+  - Typ `Container`
+  - Container `backup`
+  - Befehl `/usr/local/bin/stato-container-backup`
+  - Intervall z. B. `0 3 * * *`
+- Das Volume `backup-data` zusaetzlich ueber Mittwald-Projektbackups/Volume-Backups oder einen separaten Export absichern.
 
 ## 6) Health Checks
 

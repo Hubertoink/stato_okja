@@ -1,10 +1,11 @@
 import { Injectable, BadRequestException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { randomInt } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { User } from '../users/entities/user.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
+import { RefreshSession } from './entities/refresh-session.entity';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { EmailService } from '../email/email.service';
@@ -25,13 +26,66 @@ export type TwoFactorChallengeResponse = {
   expiresInSeconds: number;
 };
 
+export type AuthUserResponse = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  orgId: string | null;
+  orgName: string | null;
+  avatarUrl: string | null;
+  theme: string;
+  mustChangePassword: boolean;
+};
+
+export type PublicAuthSessionResponse = {
+  access_token: string;
+  refresh_csrf_token: string;
+  user: AuthUserResponse;
+};
+
+export type AuthenticatedSessionResponse = PublicAuthSessionResponse & {
+  refreshToken: string;
+  refreshTokenMaxAgeMs: number;
+};
+
+export type RefreshSessionMetadata = {
+  userAgent?: string | null;
+  ipAddress?: string | null;
+};
+
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
+const DEFAULT_REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
   'hubertoink@outlook.com',
   'admin@example.org',
   'admin@example.com',
   'admin@example.net',
 ]);
+
+function parseDurationToMs(raw: string | undefined, fallbackMs: number) {
+  const value = String(raw || '').trim().toLowerCase();
+  if (!value) return fallbackMs;
+
+  const match = value.match(/^(\d+)(ms|s|m|h|d)?$/);
+  if (!match) return fallbackMs;
+
+  const amount = Number.parseInt(match[1], 10);
+  if (!Number.isFinite(amount) || amount < 1) return fallbackMs;
+
+  const unit = match[2] || 'ms';
+  if (unit === 'ms') return amount;
+  if (unit === 's') return amount * 1000;
+  if (unit === 'm') return amount * 60 * 1000;
+  if (unit === 'h') return amount * 60 * 60 * 1000;
+  return amount * 24 * 60 * 60 * 1000;
+}
+
+function splitRefreshToken(refreshToken: string) {
+  const [id, secret] = String(refreshToken || '').split('.');
+  if (!id || !secret) return null;
+  return { id, secret };
+}
 
 @Injectable()
 export class AuthService {
@@ -42,6 +96,7 @@ export class AuthService {
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Organization) private readonly orgs: Repository<Organization>,
     @InjectRepository(Location) private readonly locations: Repository<Location>,
+    @InjectRepository(RefreshSession) private readonly refreshSessions: Repository<RefreshSession>,
     private readonly jwt: JwtService,
     private readonly email: EmailService,
     private readonly audit: AuditService,
@@ -69,6 +124,180 @@ export class AuthService {
 
   isTwoFactorAuthenticationEnabled() {
     return isTwoFactorAuthenticationEnabled();
+  }
+
+  getRefreshTokenMaxAgeMs() {
+    return parseDurationToMs(process.env.JWT_REFRESH_EXPIRATION, DEFAULT_REFRESH_TOKEN_TTL_MS);
+  }
+
+  private createRefreshTokenParts() {
+    return {
+      id: randomBytes(24).toString('hex'),
+      secret: randomBytes(48).toString('base64url'),
+    };
+  }
+
+  private createRefreshCsrfToken() {
+    return randomBytes(32).toString('base64url');
+  }
+
+  private clearRefreshSession(user: User) {
+    user.refreshTokenId = null;
+    user.refreshTokenHash = null;
+    user.refreshTokenCsrfHash = null;
+    user.refreshTokenExpiresAt = null;
+  }
+
+  private async revokeAllRefreshSessionsForUser(userId: string) {
+    await this.refreshSessions.delete({ userId });
+  }
+
+  private async issueRefreshSession(user: User, metadata?: RefreshSessionMetadata) {
+    const refreshTokenParts = this.createRefreshTokenParts();
+    const refreshToken = `${refreshTokenParts.id}.${refreshTokenParts.secret}`;
+    const refreshCsrfToken = this.createRefreshCsrfToken();
+    const refreshTokenMaxAgeMs = this.getRefreshTokenMaxAgeMs();
+    const now = new Date();
+
+    const session = this.refreshSessions.create({
+      userId: user.id,
+      tokenId: refreshTokenParts.id,
+      tokenHash: await bcrypt.hash(refreshTokenParts.secret, 10),
+      csrfHash: await bcrypt.hash(refreshCsrfToken, 10),
+      expiresAt: new Date(Date.now() + refreshTokenMaxAgeMs),
+      createdAt: now,
+      lastUsedAt: now,
+      userAgent: metadata?.userAgent ? String(metadata.userAgent).slice(0, 255) : null,
+      ipAddress: metadata?.ipAddress ? String(metadata.ipAddress).slice(0, 80) : null,
+    });
+    await this.refreshSessions.save(session);
+
+    return { refreshToken, refreshCsrfToken, refreshTokenMaxAgeMs };
+  }
+
+  private async getSessionUser(user: User): Promise<AuthUserResponse> {
+    const orgName = user.orgId
+      ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
+      : null;
+    const avatarUrl = normalizeUploadPath(
+      (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
+    );
+    const rawTheme = (user as unknown as { theme?: string }).theme;
+    const theme =
+      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
+        ? 'Default Theme'
+        : rawTheme;
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      orgId: user.orgId,
+      orgName,
+      avatarUrl,
+      theme,
+      mustChangePassword: user.mustChangePassword === true,
+    };
+  }
+
+  private async createAuthenticatedSession(
+    user: User,
+    options?: { auditLogin?: boolean; sessionMetadata?: RefreshSessionMetadata },
+  ): Promise<AuthenticatedSessionResponse> {
+    const payload = { sub: user.id, role: user.role, orgId: user.orgId, name: user.name || null };
+    const token = await this.jwt.signAsync(payload);
+    const refreshSession = await this.issueRefreshSession(user, options?.sessionMetadata);
+
+    if (options?.auditLogin !== false) {
+      try {
+        await this.audit.log({
+          action: AuditAction.LOGIN,
+          entityType: 'auth',
+          entityId: user.id,
+          entityTitle: user.email || user.name || null,
+          user: { id: user.id, name: user.name || null, orgId: user.orgId ?? null },
+          orgId: user.orgId ?? null,
+        });
+      } catch {
+        /* ignore audit errors */
+      }
+    }
+
+    return {
+      access_token: token,
+      refresh_csrf_token: refreshSession.refreshCsrfToken,
+      refreshToken: refreshSession.refreshToken,
+      refreshTokenMaxAgeMs: refreshSession.refreshTokenMaxAgeMs,
+      user: await this.getSessionUser(user),
+    };
+  }
+
+  private async getSessionForRefreshToken(refreshToken: string) {
+    const parsed = splitRefreshToken(refreshToken);
+    if (!parsed) throw new UnauthorizedException('Nicht autorisiert');
+
+    const session = await this.refreshSessions.findOne({
+      where: { tokenId: parsed.id },
+      relations: { user: true },
+    });
+    if (!session?.user) {
+      throw new UnauthorizedException('Nicht autorisiert');
+    }
+
+    if (session.expiresAt.getTime() <= Date.now()) {
+      await this.refreshSessions.delete({ id: session.id });
+      throw new UnauthorizedException('Nicht autorisiert');
+    }
+
+    const tokenMatches = await bcrypt.compare(parsed.secret, session.tokenHash);
+    if (!tokenMatches) throw new UnauthorizedException('Nicht autorisiert');
+
+    return session;
+  }
+
+  async refreshSession(refreshToken: string, csrfToken: string, metadata?: RefreshSessionMetadata) {
+    if (!refreshToken || !csrfToken) throw new UnauthorizedException('Nicht autorisiert');
+
+    const session = await this.getSessionForRefreshToken(refreshToken);
+    const csrfMatches = await bcrypt.compare(csrfToken, session.csrfHash);
+    if (!csrfMatches) throw new UnauthorizedException('Nicht autorisiert');
+
+    await this.refreshSessions.delete({ id: session.id });
+    return this.createAuthenticatedSession(session.user, { auditLogin: false, sessionMetadata: metadata });
+  }
+
+  async revokeRefreshSession(refreshToken: string) {
+    if (!refreshToken) return { ok: true as const };
+
+    try {
+      const session = await this.getSessionForRefreshToken(refreshToken);
+      await this.refreshSessions.delete({ id: session.id });
+    } catch {
+      /* logout should remain idempotent */
+    }
+
+    return { ok: true as const };
+  }
+
+  async listRefreshSessions(userId: string) {
+    const sessions = await this.refreshSessions.find({
+      where: { userId },
+      order: { lastUsedAt: 'DESC' },
+    });
+    return sessions.map((session) => ({
+      id: session.id,
+      createdAt: session.createdAt,
+      lastUsedAt: session.lastUsedAt,
+      expiresAt: session.expiresAt,
+      userAgent: session.userAgent,
+      ipAddress: session.ipAddress,
+    }));
+  }
+
+  async revokeRefreshSessionById(userId: string, sessionId: string) {
+    await this.refreshSessions.delete({ id: sessionId, userId });
+    return { ok: true as const };
   }
 
   private maskEmail(email: string) {
@@ -158,6 +387,7 @@ export class AuthService {
     }
     user.mustChangePassword = options?.mustChangePassword === true;
     await this.users.save(user);
+    await this.revokeAllRefreshSessionsForUser(user.id);
   }
 
   private async issueResetToken(user: User) {
@@ -260,7 +490,7 @@ export class AuthService {
     return ok ? user : null;
   }
 
-  async loginWithPassword(email: string, password: string) {
+  async loginWithPassword(email: string, password: string, metadata?: RefreshSessionMetadata) {
     const normalizedEmail = String(email || '').toLowerCase();
     const now = new Date();
 
@@ -318,10 +548,10 @@ export class AuthService {
       return this.issueTwoFactorChallenge(user);
     }
 
-    return this.login(user);
+    return this.login(user, metadata);
   }
 
-  async verifyTwoFactorLogin(challengeToken: string, codeRaw: string) {
+  async verifyTwoFactorLogin(challengeToken: string, codeRaw: string, metadata?: RefreshSessionMetadata) {
     if (!this.isTwoFactorAuthenticationEnabled()) {
       throw new BadRequestException('Zwei-Faktor-Authentifizierung ist deaktiviert');
     }
@@ -351,7 +581,7 @@ export class AuthService {
     }
 
     await this.clearTwoFactorChallenge(user, { bumpVersion: true });
-    return this.login(user);
+    return this.login(user, metadata);
   }
 
   async resendTwoFactorLogin(challengeToken: string) {
@@ -369,47 +599,8 @@ export class AuthService {
     return this.issueTwoFactorChallenge(user);
   }
 
-  async login(user: User) {
-    const payload = { sub: user.id, role: user.role, orgId: user.orgId, name: user.name || null };
-    const token = await this.jwt.signAsync(payload);
-    const orgName = user.orgId
-      ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
-      : null;
-    const avatarUrl = normalizeUploadPath(
-      (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
-    );
-    const rawTheme = (user as unknown as { theme?: string }).theme;
-    const theme =
-      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
-        ? 'Default Theme'
-        : rawTheme;
-    try {
-      await this.audit.log({
-        action: AuditAction.LOGIN,
-        entityType: 'auth',
-        entityId: user.id,
-        entityTitle: user.email || user.name || null,
-        user: { id: user.id, name: user.name || null, orgId: user.orgId ?? null },
-        orgId: user.orgId ?? null,
-      });
-    } catch {
-      /* ignore audit errors */
-    }
-
-    return {
-      access_token: token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        orgId: user.orgId,
-        orgName,
-        avatarUrl,
-        theme,
-        mustChangePassword: user.mustChangePassword === true,
-      },
-    };
+  async login(user: User, metadata?: RefreshSessionMetadata) {
+    return this.createAuthenticatedSession(user, { sessionMetadata: metadata });
   }
 
   async inviteUser(payload: {
@@ -482,7 +673,7 @@ export class AuthService {
     };
   }
 
-  async acceptInvite(token: string, password: string) {
+  async acceptInvite(token: string, password: string, metadata?: RefreshSessionMetadata) {
     const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token, {
       secret: getJwtSecret(),
     });
@@ -491,34 +682,13 @@ export class AuthService {
     if (!user) throw new Error('User not found');
     if (user.passwordHash) throw new Error('Invite already accepted');
     await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
-    return this.login(user);
+    return this.login(user, metadata);
   }
 
   async getProfile(userId: string) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) return null;
-    const orgName = user.orgId
-      ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
-      : null;
-    const avatarUrl = normalizeUploadPath(
-      (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
-    );
-    const rawTheme = (user as unknown as { theme?: string }).theme;
-    const theme =
-      !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
-        ? 'Default Theme'
-        : rawTheme;
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      orgId: user.orgId,
-      orgName,
-      avatarUrl,
-      theme,
-      mustChangePassword: user.mustChangePassword === true,
-    };
+    return this.getSessionUser(user);
   }
 
   async updateProfile(

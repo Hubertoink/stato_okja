@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { acceptInviteApi } from '@/lib/orgs';
 import { setAuthToken } from '@/lib/api';
-import { storeAuthToken } from '@/lib/authStorage';
+import { storeAuthToken, storeRefreshCsrfToken } from '@/lib/authStorage';
 import { isStrongPassword, PASSWORD_REQUIREMENTS_SHORT } from '@/lib/passwordPolicy';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 
@@ -65,6 +65,7 @@ export default function AcceptInvite() {
                 const res = await acceptInviteApi(token, password);
                 if (res?.access_token) {
                   storeAuthToken(res.access_token);
+                  storeRefreshCsrfToken(res.refresh_csrf_token);
                   setAuthToken(res.access_token);
                 }
                 navigate('/');

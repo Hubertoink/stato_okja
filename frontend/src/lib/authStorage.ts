@@ -1,4 +1,5 @@
 const AUTH_TOKEN_KEY = 'auth_token';
+const REFRESH_CSRF_TOKEN_KEY = 'refresh_csrf_token';
 const PENDING_TWO_FACTOR_KEY = 'pending_two_factor_challenge';
 
 type PendingTwoFactorChallenge = {
@@ -59,6 +60,34 @@ export function clearStoredAuthToken() {
   try {
     sessionStorage?.removeItem(AUTH_TOKEN_KEY);
     localStorage?.removeItem(AUTH_TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function getStoredRefreshCsrfToken(): string {
+  const sessionStorage = getSessionStorage();
+  try {
+    return sessionStorage?.getItem(REFRESH_CSRF_TOKEN_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function storeRefreshCsrfToken(token: string) {
+  const sessionStorage = getSessionStorage();
+  try {
+    if (token) sessionStorage?.setItem(REFRESH_CSRF_TOKEN_KEY, token);
+    else sessionStorage?.removeItem(REFRESH_CSRF_TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function clearStoredRefreshCsrfToken() {
+  const sessionStorage = getSessionStorage();
+  try {
+    sessionStorage?.removeItem(REFRESH_CSRF_TOKEN_KEY);
   } catch {
     // ignore
   }

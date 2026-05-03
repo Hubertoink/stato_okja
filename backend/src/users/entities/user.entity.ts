@@ -59,4 +59,16 @@ export class User {
 
   @Column({ type: 'timestamp', nullable: true })
   twoFactorCodeExpiresAt!: Date | null;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  refreshTokenId!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  refreshTokenHash!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  refreshTokenCsrfHash!: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  refreshTokenExpiresAt!: Date | null;
 }

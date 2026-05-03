@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-stato_prod}
       POSTGRES_USER: ${POSTGRES_USER:-stato_user}
@@ -18,9 +20,16 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       APP_ENV: ${APP_ENV:-production}
@@ -50,7 +59,9 @@ services:
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
 
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
-      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-12h}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      AUTH_REFRESH_COOKIE_SAMESITE: ${AUTH_REFRESH_COOKIE_SAMESITE:-lax}
       PASSWORD_RESET_MODE: ${PASSWORD_RESET_MODE:-email}
       PUBLIC_APP_NAME: ${PUBLIC_APP_NAME:-StatO}
       PUBLIC_ORG_NAME: "${PUBLIC_ORG_NAME:-}"
@@ -77,11 +88,17 @@ services:
       # Persistiert /uploads (u.a. /uploads/images)
       - backend-uploads:/app/uploads
     networks: [frontend-backend, backend-db]
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         # Wichtig für On‑Prem: Proxy auf den Backend‑Service
         NGINX_MODE: proxy
@@ -90,13 +107,59 @@ services:
         # Optional (nur wenn ihr Option B wollt):
         # VITE_API_BASE_URL: https://<eure-domain>/api
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       TZ: ${TZ:-Europe/Berlin}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "80:80"
+      - "80:8080"
     networks: [frontend-backend]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backup:
+    build:
+      context: .
+      dockerfile: backup/Dockerfile
+    image: ${BACKUP_IMAGE:-stato-backup:local}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:-stato_user}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGDATABASE: ${POSTGRES_DB:-stato_prod}
+      BACKUP_OUTPUT_DIR: /backups
+      BACKUP_UPLOADS_DIR: /mnt/uploads
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backend-uploads:/mnt/uploads:ro
+      - backup-data:/backups
+    networks: [backend-db]
 
   # Optional: lokale SMTP-Testbox (Mailpit)
   # mailpit:
@@ -112,6 +175,8 @@ volumes:
     name: stato-onprem-postgres-data
   backend-uploads:
     name: stato-onprem-backend-uploads
+  backup-data:
+    name: stato-onprem-backup-data
 
 networks:
   frontend-backend:

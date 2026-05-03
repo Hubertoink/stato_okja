@@ -59,7 +59,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and (optionally) push backend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./backend/Dockerfile
@@ -107,7 +107,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and (optionally) push frontend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./frontend/Dockerfile
@@ -160,7 +160,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and (optionally) push backup
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./backup/Dockerfile
@@ -186,7 +186,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build backend image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./backend/Dockerfile
@@ -195,7 +195,7 @@ jobs:
           cache-from: type=gha
 
       - name: Build frontend image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./frontend/Dockerfile
@@ -208,7 +208,7 @@ jobs:
             NGINX_MODE=proxy
 
       - name: Build backup image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./backup/Dockerfile

@@ -166,6 +166,7 @@ export default function Settings() {
       <DemoHoverHint
         title={activeTabMeta.label}
         description={SETTINGS_DEMO_DESCRIPTION_BY_TAB[activeTab]}
+        placement="bottom"
       >
         {activeTab === 'categories' && <SettingsCategories />}
 

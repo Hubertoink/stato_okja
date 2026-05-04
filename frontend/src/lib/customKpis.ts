@@ -1,0 +1,123 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from './api';
+import { useOrgScope, useOrgScopeKey } from './orgScope';
+
+export type CustomKpiSurface = 'dashboard' | 'statistics' | 'both';
+export type CustomKpiDateMode = 'inherit' | 'current_month' | 'current_year' | 'rolling_weeks';
+export type CustomKpiMetric =
+  | 'activity_count'
+  | 'participant_total'
+  | 'duration_hours'
+  | 'duration_hours_per_week'
+  | 'avg_participants_per_activity'
+  | 'participants_per_hour'
+  | 'female_total'
+  | 'female_share_percent'
+  | 'male_total'
+  | 'diverse_total';
+
+export type CustomKpiFilters = {
+  projectId?: string;
+  type?: string;
+  executionStatuses?: string[];
+  weekdays?: number[];
+};
+
+export type CustomKpiDefinition = {
+  id: string;
+  title: string;
+  surface: CustomKpiSurface;
+  position: number;
+  enabled: boolean;
+  backgroundColor?: string;
+  metric: CustomKpiMetric;
+  dateMode: CustomKpiDateMode;
+  rollingWeeks?: number | null;
+  filters?: CustomKpiFilters | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type CustomKpiPayload = Omit<CustomKpiDefinition, 'id' | 'createdAt' | 'updatedAt'>;
+
+export type CustomKpiResult = {
+  definition: CustomKpiDefinition;
+  value: number | null;
+  unit: 'count' | 'hours' | 'percent' | 'ratio';
+  precision: number;
+  range: { from?: string; to?: string };
+};
+
+type CustomKpiResultsParams = {
+  surface: Exclude<CustomKpiSurface, 'both'>;
+  from?: string;
+  to?: string;
+};
+
+function invalidateCustomKpis(queryClient: ReturnType<typeof useQueryClient>, scopeKey: string) {
+  void queryClient.invalidateQueries({ queryKey: ['custom-kpis', scopeKey] });
+  void queryClient.invalidateQueries({ queryKey: ['custom-kpi-results', scopeKey] });
+}
+
+export function useCustomKpis() {
+  const { scope } = useOrgScope();
+  const scopeKey = useOrgScopeKey();
+  return useQuery({
+    queryKey: ['custom-kpis', scopeKey],
+    queryFn: async () => {
+      const res = await api.get('/stats/custom-kpis');
+      return res.data as CustomKpiDefinition[];
+    },
+    enabled: typeof scope !== 'undefined',
+  });
+}
+
+export function useCustomKpiResults(params: CustomKpiResultsParams) {
+  const { scope } = useOrgScope();
+  const scopeKey = useOrgScopeKey();
+  return useQuery({
+    queryKey: ['custom-kpi-results', scopeKey, params.surface, params.from ?? '', params.to ?? ''],
+    queryFn: async () => {
+      const res = await api.get('/stats/custom-kpis/results', { params });
+      return res.data as CustomKpiResult[];
+    },
+    enabled: typeof scope !== 'undefined',
+    refetchOnWindowFocus: 'always',
+  });
+}
+
+export function useCreateCustomKpi() {
+  const queryClient = useQueryClient();
+  const scopeKey = useOrgScopeKey();
+  return useMutation({
+    mutationFn: async (payload: CustomKpiPayload) => {
+      const res = await api.post('/stats/custom-kpis', payload);
+      return res.data as CustomKpiDefinition;
+    },
+    onSuccess: () => invalidateCustomKpis(queryClient, scopeKey),
+  });
+}
+
+export function useUpdateCustomKpi() {
+  const queryClient = useQueryClient();
+  const scopeKey = useOrgScopeKey();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: Partial<CustomKpiPayload> }) => {
+      const res = await api.patch(`/stats/custom-kpis/${id}`, payload);
+      return res.data as CustomKpiDefinition;
+    },
+    onSuccess: () => invalidateCustomKpis(queryClient, scopeKey),
+  });
+}
+
+export function useDeleteCustomKpi() {
+  const queryClient = useQueryClient();
+  const scopeKey = useOrgScopeKey();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/stats/custom-kpis/${id}`);
+      return true;
+    },
+    onSuccess: () => invalidateCustomKpis(queryClient, scopeKey),
+  });
+}

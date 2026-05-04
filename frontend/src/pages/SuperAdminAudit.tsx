@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { Building2, Users, CalendarDays, FolderKanban, LogIn, UserCheck, RefreshCw, HardDrive } from 'lucide-react';
+import { Building2, Users, CalendarDays, FolderKanban, LogIn, UserCheck, HardDrive } from 'lucide-react';
 
 type AuditMetricsResponse = {
   global: {
@@ -63,7 +63,7 @@ function KpiCard({ icon: Icon, label, value, accent }: { icon: React.ElementType
 export default function SuperAdminAudit() {
   const { user } = useAuth();
 
-  const { data, isLoading, error, refetch, isFetching } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['audit:metrics'],
     queryFn: async () => {
       const res = await api.get<AuditMetricsResponse>('/audit/metrics');
@@ -92,20 +92,11 @@ export default function SuperAdminAudit() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div>
         <div>
           <h2 className="text-3xl font-bold text-viridian">Audit & Metriken</h2>
           <p className="text-gray-600 mt-1">Plattformweite Kennzahlen für die Systemübersicht.</p>
         </div>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm transition-colors disabled:opacity-60"
-          onClick={() => void refetch()}
-          disabled={isFetching}
-        >
-          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-          {isFetching ? 'Lädt…' : 'Aktualisieren'}
-        </button>
       </div>
 
       {isLoading && (

@@ -57,6 +57,7 @@ import {
 import { StatisticsBarChartCard } from './StatisticsBarChartCard';
 import { StatisticsExportActions } from './StatisticsExportActions';
 import { StatisticsPieChartCard } from './StatisticsPieChartCard';
+import CustomKpiCards from '@/components/CustomKpiCards';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -2456,6 +2457,13 @@ export default function Statistics() {
             </div>
           )}
         </div>
+
+        <CustomKpiCards
+          surface="statistics"
+          from={from || undefined}
+          to={to || undefined}
+          showManager={!pdfMode}
+        />
 
         {/* Charts */}
         <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>

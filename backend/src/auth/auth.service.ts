@@ -57,7 +57,6 @@ export type RefreshSessionMetadata = {
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
 const DEFAULT_REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
-  'hubertoink@outlook.com',
   'admin@example.org',
   'admin@example.com',
   'admin@example.net',

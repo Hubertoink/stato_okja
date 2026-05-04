@@ -193,10 +193,41 @@ function formatKpiValue(value: number | null, unit: string, precision: number) {
   return formatted;
 }
 
+const KPI_DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+function parseIsoDate(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+
+  return date;
+}
+
+function formatKpiDate(value?: string) {
+  if (!value) return undefined;
+  const date = parseIsoDate(value);
+  return date ? KPI_DATE_FORMATTER.format(date) : value;
+}
+
 function rangeLabel(range: { from?: string; to?: string }) {
-  if (!range.from && !range.to) return 'Gesamter Zeitraum';
-  if (range.from && range.to) return `${range.from} bis ${range.to}`;
-  return range.from ? `ab ${range.from}` : `bis ${range.to}`;
+  const from = formatKpiDate(range.from);
+  const to = formatKpiDate(range.to);
+
+  if (!from && !to) return 'Gesamter Zeitraum';
+  if (from && to) return `${from} bis ${to}`;
+  return from ? `ab ${from}` : `bis ${to}`;
 }
 
 export default function CustomKpiCards({

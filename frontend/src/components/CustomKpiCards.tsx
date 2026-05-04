@@ -322,6 +322,7 @@ export default function CustomKpiCards({
           setEditorOpen(false);
         }}
         maxWidth="xl"
+        blur={false}
       >
         <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
@@ -401,6 +402,7 @@ export default function CustomKpiCards({
         title={form.id ? 'KPI bearbeiten' : 'KPI anlegen'}
         onClose={() => setEditorOpen(false)}
         maxWidth="lg"
+        blur={false}
       >
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <h4 className="mb-4 font-semibold text-gray-800">

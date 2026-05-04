@@ -13,10 +13,11 @@ function invalidateStatsQueries(qc: QueryClient, scopeKey: string) {
       return (
         Array.isArray(k) &&
         typeof k[0] === 'string' &&
-        (k[0] as string).startsWith('stats:') &&
+        ((k[0] as string).startsWith('stats:') || k[0] === 'custom-kpi-results') &&
         k[1] === scopeKey
       );
     },
+    refetchType: 'active',
   });
 }
 

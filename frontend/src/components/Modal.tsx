@@ -8,12 +8,14 @@ export default function Modal({
   children,
   onClose,
   maxWidth = 'md',
+  blur = true,
 }: {
   open: boolean;
   title?: string;
   children: React.ReactNode;
   onClose: () => void;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl';
+  blur?: boolean;
 }) {
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
@@ -31,11 +33,11 @@ export default function Modal({
   }[maxWidth];
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
+      className={`fixed inset-0 z-[70] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? 'backdrop-blur-sm' : ''}`}
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className={`backdrop-blur-xl w-full ${maxW} rounded-t-3xl md:rounded-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto bottom-sheet-animate shadow-2xl modal-panel-roomy`}
+        className={`w-full ${maxW} rounded-t-3xl md:rounded-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto bottom-sheet-animate shadow-2xl modal-panel-roomy ${blur ? 'backdrop-blur-xl' : ''}`}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold gradient-text">{title}</h3>

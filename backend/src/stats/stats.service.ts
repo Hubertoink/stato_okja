@@ -5,6 +5,7 @@ import { Activity } from '../activities/entities/activity.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { ActivityExecutionStatus, ActivityType } from '../common/enums';
 import { OrgsService } from '../orgs/orgs.service';
+import type { CustomKpiMetric } from './entities/custom-kpi.entity';
 
 type StatsScope = {
   from?: string;
@@ -33,6 +34,16 @@ type StatsProjectRow = {
   id: string;
   name: string;
   count: string;
+};
+
+export type CustomKpiCalculationScope = StatsScope & {
+  metric: CustomKpiMetric;
+};
+
+export type CustomKpiCalculationResult = {
+  value: number | null;
+  unit: 'count' | 'hours' | 'percent' | 'ratio';
+  precision: number;
 };
 
 @Injectable()
@@ -139,6 +150,15 @@ export class StatsService {
     if (typeof value === 'number') return value;
     if (typeof value === 'string') return Number(value) || 0;
     return 0;
+  }
+
+  private getInclusiveWeekSpan(from?: string, to?: string): number {
+    if (!from || !to) return 1;
+    const start = new Date(`${from.slice(0, 10)}T00:00:00Z`);
+    const end = new Date(`${to.slice(0, 10)}T00:00:00Z`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 1;
+    const days = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+    return Math.max(1, Math.ceil(days / 7));
   }
 
   private toCalendarDateString(value: string | Date | null | undefined): string {
@@ -272,6 +292,58 @@ export class StatsService {
       averageParticipants: totalActivities > 0 ? +(totalParticipants / totalActivities).toFixed(1) : 0,
       closureDaysCount,
     };
+  }
+
+  async calculateCustomKpi(scope: CustomKpiCalculationScope): Promise<CustomKpiCalculationResult> {
+    const summary = await this.getSummary(
+      scope.from,
+      scope.to,
+      scope.orgId,
+      scope.orgIds,
+      scope.projectId,
+      scope.type,
+      scope.weekdays,
+      scope.executionStatuses,
+      scope.closureState,
+    );
+    const durationHours = summary.totalDurationMinutes / 60;
+    const weekSpan = this.getInclusiveWeekSpan(scope.from, scope.to);
+
+    switch (scope.metric) {
+      case 'activity_count':
+        return { value: summary.totalActivities, unit: 'count', precision: 0 };
+      case 'participant_total':
+        return { value: summary.totalParticipants, unit: 'count', precision: 0 };
+      case 'duration_hours':
+        return { value: summary.totalHours, unit: 'hours', precision: 1 };
+      case 'duration_hours_per_week':
+        return { value: +(durationHours / weekSpan).toFixed(1), unit: 'hours', precision: 1 };
+      case 'avg_participants_per_activity':
+        return { value: summary.averageParticipants, unit: 'ratio', precision: 1 };
+      case 'participants_per_hour':
+        return {
+          value: durationHours > 0 ? +(summary.totalParticipants / durationHours).toFixed(1) : null,
+          unit: 'ratio',
+          precision: 1,
+        };
+      case 'female_total':
+        return { value: summary.totalFemale, unit: 'count', precision: 0 };
+      case 'female_share_percent':
+        return {
+          value:
+            summary.totalParticipants > 0
+              ? +((summary.totalFemale / summary.totalParticipants) * 100).toFixed(1)
+              : null,
+          unit: 'percent',
+          precision: 1,
+        };
+      case 'male_total':
+        return { value: summary.totalMale, unit: 'count', precision: 0 };
+      case 'diverse_total':
+        return { value: summary.totalDiverse, unit: 'count', precision: 0 };
+      default:
+        return { value: null, unit: 'count', precision: 0 };
+    }
   }
 
   async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {

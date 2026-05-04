@@ -272,8 +272,7 @@ export default function SuperAdminSystemData() {
             <SummaryCard icon={ShieldCheck} label="Superadmins" value={summary.superadmins.length} accent="bg-violet-100 text-violet-600" />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6">
-            <div className="space-y-6">
+          <div className="space-y-6">
               <section className="system-data-panel bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="system-data-panel-header px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-start justify-between gap-4 flex-wrap">
                   <div>
@@ -568,7 +567,6 @@ export default function SuperAdminSystemData() {
                   </div>
                 )}
               </section>
-            </div>
 
             <section className="system-data-panel system-data-panel-danger bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
               <button

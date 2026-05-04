@@ -58,6 +58,7 @@ import { StatisticsBarChartCard } from './StatisticsBarChartCard';
 import { StatisticsExportActions } from './StatisticsExportActions';
 import { StatisticsPieChartCard } from './StatisticsPieChartCard';
 import DemoHoverHint from '@/demo/DemoHoverHint';
+import CustomKpiCards from '@/components/CustomKpiCards';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -2468,6 +2469,13 @@ export default function Statistics() {
             )}
           </div>
         </DemoHoverHint>
+
+        <CustomKpiCards
+          surface="statistics"
+          from={from || undefined}
+          to={to || undefined}
+          showManager={!pdfMode}
+        />
 
         {/* Charts */}
         <DemoHoverHint

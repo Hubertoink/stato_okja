@@ -31,6 +31,7 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 import { usePublicConfig } from '@/lib/publicConfig';
 import DemoHoverHint from '@/demo/DemoHoverHint';
+import CustomKpiCards from '@/components/CustomKpiCards';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
 
@@ -533,6 +534,8 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
+
+      <CustomKpiCards surface="dashboard" from={from} to={to} className="mb-8" />
 
       {/* Quick Tally - Daily Attendance Counter */}
       {/* Show start button only when no active session */}

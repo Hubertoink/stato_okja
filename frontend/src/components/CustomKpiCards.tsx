@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import Modal from './Modal';
 import { useProjects } from '@/lib/projects';
@@ -177,6 +177,15 @@ function normalizeHexColor(value?: string) {
   return /^#[0-9A-Fa-f]{6}$/.test(color) ? color.toLowerCase() : '#ffffff';
 }
 
+function getKpiColorForTheme(value: string | undefined, isDarkTheme: boolean) {
+  const color = normalizeHexColor(value);
+  const sourcePalette = isDarkTheme ? LIGHT_KPI_COLOR_OPTIONS : DARK_KPI_COLOR_OPTIONS;
+  const targetPalette = isDarkTheme ? DARK_KPI_COLOR_OPTIONS : LIGHT_KPI_COLOR_OPTIONS;
+  const pairedIndex = sourcePalette.indexOf(color);
+
+  return pairedIndex >= 0 ? targetPalette[pairedIndex] : color;
+}
+
 function getTextColorForBackground(backgroundColor?: string) {
   const color = normalizeHexColor(backgroundColor).slice(1);
   const red = parseInt(color.slice(0, 2), 16) / 255;
@@ -256,6 +265,7 @@ export default function CustomKpiCards({
   const [isDarkTheme, setIsDarkTheme] = useState(() => isDarkKpiTheme());
   const colorOptions = isDarkTheme ? DARK_KPI_COLOR_OPTIONS : LIGHT_KPI_COLOR_OPTIONS;
   const defaultBackgroundColor = colorOptions[0];
+  const previousIsDarkThemeRef = useRef(isDarkTheme);
   const [managerOpen, setManagerOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [form, setForm] = useState<KpiFormState>({
@@ -297,6 +307,16 @@ export default function CustomKpiCards({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (previousIsDarkThemeRef.current === isDarkTheme) return;
+
+    previousIsDarkThemeRef.current = isDarkTheme;
+    setForm((current) => ({
+      ...current,
+      backgroundColor: getKpiColorForTheme(current.backgroundColor, isDarkTheme),
+    }));
+  }, [isDarkTheme]);
+
   const beginCreate = () => {
     setError(null);
     setForm({ ...emptyForm, surface, backgroundColor: defaultBackgroundColor });
@@ -305,7 +325,11 @@ export default function CustomKpiCards({
 
   const beginEdit = (definition: CustomKpiDefinition) => {
     setError(null);
-    setForm(toFormState(definition, defaultBackgroundColor));
+    const nextForm = toFormState(definition, defaultBackgroundColor);
+    setForm({
+      ...nextForm,
+      backgroundColor: getKpiColorForTheme(nextForm.backgroundColor, isDarkTheme),
+    });
     setEditorOpen(true);
   };
 
@@ -355,7 +379,7 @@ export default function CustomKpiCards({
       {results.length > 0 && (
         <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {results.map((item) => {
-            const backgroundColor = normalizeHexColor(item.definition.backgroundColor);
+            const backgroundColor = getKpiColorForTheme(item.definition.backgroundColor, isDarkTheme);
             const textColor = getTextColorForBackground(backgroundColor);
             const mutedColor = getMutedTextColor(textColor);
             return (
@@ -409,7 +433,7 @@ export default function CustomKpiCards({
             ) : (
               <div className="space-y-2">
                 {definitions.map((definition) => {
-                  const backgroundColor = normalizeHexColor(definition.backgroundColor);
+                  const backgroundColor = getKpiColorForTheme(definition.backgroundColor, isDarkTheme);
                   const textColor = getTextColorForBackground(backgroundColor);
                   const mutedColor = getMutedTextColor(textColor);
                   const borderColor =

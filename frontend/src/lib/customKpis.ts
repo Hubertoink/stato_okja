@@ -60,8 +60,17 @@ type CustomKpiQueryOptions = {
 };
 
 function invalidateCustomKpis(queryClient: ReturnType<typeof useQueryClient>, scopeKey: string) {
-  void queryClient.invalidateQueries({ queryKey: ['custom-kpis', scopeKey] });
-  void queryClient.invalidateQueries({ queryKey: ['custom-kpi-results', scopeKey] });
+  return queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = query.queryKey;
+      return (
+        Array.isArray(key) &&
+        key[1] === scopeKey &&
+        (key[0] === 'custom-kpis' || key[0] === 'custom-kpi-results')
+      );
+    },
+    refetchType: 'active',
+  });
 }
 
 export function useCustomKpis(options?: CustomKpiQueryOptions) {

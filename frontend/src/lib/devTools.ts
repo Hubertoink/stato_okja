@@ -52,9 +52,11 @@ function invalidateRelevantQueries(qc: ReturnType<typeof useQueryClient>, scopeK
           root === 'cohorts' ||
           root === 'locations' ||
           root === 'staff' ||
+          root === 'custom-kpi-results' ||
           (typeof root === 'string' && root.startsWith('stats:')))
       );
     },
+    refetchType: 'active',
   });
 }
 

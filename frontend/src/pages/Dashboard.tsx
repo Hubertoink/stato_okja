@@ -534,7 +534,16 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <CustomKpiCards surface="dashboard" from={from} to={to} className="mb-8" />
+      <CustomKpiCards
+        surface="dashboard"
+        from={from}
+        to={to}
+        className="mb-8"
+        refreshOptions={{
+          refetchOnWindowFocus: 'always',
+          refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+        }}
+      />
 
       {/* Quick Tally - Daily Attendance Counter */}
       {/* Show start button only when no active session */}

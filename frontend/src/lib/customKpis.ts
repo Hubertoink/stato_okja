@@ -54,12 +54,17 @@ type CustomKpiResultsParams = {
   to?: string;
 };
 
+type CustomKpiQueryOptions = {
+  refetchOnWindowFocus?: boolean | 'always';
+  refetchIntervalMs?: number;
+};
+
 function invalidateCustomKpis(queryClient: ReturnType<typeof useQueryClient>, scopeKey: string) {
   void queryClient.invalidateQueries({ queryKey: ['custom-kpis', scopeKey] });
   void queryClient.invalidateQueries({ queryKey: ['custom-kpi-results', scopeKey] });
 }
 
-export function useCustomKpis() {
+export function useCustomKpis(options?: CustomKpiQueryOptions) {
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   return useQuery({
@@ -69,10 +74,15 @@ export function useCustomKpis() {
       return res.data as CustomKpiDefinition[];
     },
     enabled: typeof scope !== 'undefined',
+    refetchOnWindowFocus: options?.refetchOnWindowFocus,
+    refetchInterval: options?.refetchIntervalMs,
   });
 }
 
-export function useCustomKpiResults(params: CustomKpiResultsParams) {
+export function useCustomKpiResults(
+  params: CustomKpiResultsParams,
+  options?: CustomKpiQueryOptions,
+) {
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   return useQuery({
@@ -82,7 +92,8 @@ export function useCustomKpiResults(params: CustomKpiResultsParams) {
       return res.data as CustomKpiResult[];
     },
     enabled: typeof scope !== 'undefined',
-    refetchOnWindowFocus: 'always',
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? 'always',
+    refetchInterval: options?.refetchIntervalMs,
   });
 }
 

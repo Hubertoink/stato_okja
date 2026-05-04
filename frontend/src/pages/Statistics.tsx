@@ -2463,6 +2463,10 @@ export default function Statistics() {
           from={from || undefined}
           to={to || undefined}
           showManager={!pdfMode}
+          refreshOptions={{
+            refetchOnWindowFocus: 'always',
+            refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+          }}
         />
 
         {/* Charts */}

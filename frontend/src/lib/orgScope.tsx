@@ -170,6 +170,8 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
             const k0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
             return (
               k0 === 'activities' ||
+              k0 === 'custom-kpis' ||
+              k0 === 'custom-kpi-results' ||
               k0 === 'projects' ||
               k0 === 'locations' ||
               k0 === 'users' ||

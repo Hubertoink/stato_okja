@@ -21,6 +21,10 @@ type CustomKpiCardsProps = {
   title?: string;
   className?: string;
   showManager?: boolean;
+  refreshOptions?: {
+    refetchOnWindowFocus?: boolean | 'always';
+    refetchIntervalMs?: number;
+  };
 };
 
 type KpiFormState = {
@@ -94,7 +98,9 @@ const WEEKDAY_OPTIONS = [
   { value: 0, label: 'So' },
 ];
 
-const KPI_COLOR_OPTIONS = ['#ffffff', '#eff6ff', '#ecfdf5', '#fff7ed', '#fdf2f8', '#eef2ff', '#1f2937', '#0f766e'];
+const LIGHT_KPI_COLOR_OPTIONS = ['#ffffff', '#eff6ff', '#ecfdf5', '#fff7ed', '#fdf2f8', '#eef2ff', '#1f2937', '#0f766e'];
+const DARK_KPI_COLOR_OPTIONS = ['#0d1422', '#111a2b', '#1c2740', '#17303a', '#2b2d42', '#3a2747', '#4a2f24', '#0f766e'];
+const DARK_KPI_THEMES = new Set(['Midnight', 'Coastal Vibes']);
 
 const emptyForm: KpiFormState = {
   title: '',
@@ -119,8 +125,11 @@ function getExecutionStatusMode(
   return 'completed';
 }
 
-function toFormState(definition?: CustomKpiDefinition): KpiFormState {
-  if (!definition) return { ...emptyForm };
+function toFormState(
+  definition?: CustomKpiDefinition,
+  fallbackBackgroundColor = '#ffffff',
+): KpiFormState {
+  if (!definition) return { ...emptyForm, backgroundColor: fallbackBackgroundColor };
   return {
     id: definition.id,
     title: definition.title,
@@ -129,7 +138,7 @@ function toFormState(definition?: CustomKpiDefinition): KpiFormState {
     dateMode: definition.dateMode,
     rollingWeeks: definition.rollingWeeks || 4,
     enabled: definition.enabled,
-    backgroundColor: definition.backgroundColor || '#ffffff',
+    backgroundColor: definition.backgroundColor || fallbackBackgroundColor,
     projectId: definition.filters?.projectId || '',
     type: definition.filters?.type || '',
     executionStatusMode: getExecutionStatusMode(definition),
@@ -221,6 +230,11 @@ function formatKpiDate(value?: string) {
   return date ? KPI_DATE_FORMATTER.format(date) : value;
 }
 
+function isDarkKpiTheme() {
+  if (typeof document === 'undefined') return false;
+  return DARK_KPI_THEMES.has(document.documentElement.getAttribute('data-theme') || '');
+}
+
 function rangeLabel(range: { from?: string; to?: string }) {
   const from = formatKpiDate(range.from);
   const to = formatKpiDate(range.to);
@@ -237,13 +251,20 @@ export default function CustomKpiCards({
   title = 'Eigene KPIs',
   className = '',
   showManager = true,
+  refreshOptions,
 }: CustomKpiCardsProps) {
+  const [isDarkTheme, setIsDarkTheme] = useState(() => isDarkKpiTheme());
+  const colorOptions = isDarkTheme ? DARK_KPI_COLOR_OPTIONS : LIGHT_KPI_COLOR_OPTIONS;
+  const defaultBackgroundColor = colorOptions[0];
   const [managerOpen, setManagerOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [form, setForm] = useState<KpiFormState>(emptyForm);
+  const [form, setForm] = useState<KpiFormState>({
+    ...emptyForm,
+    backgroundColor: defaultBackgroundColor,
+  });
   const [error, setError] = useState<string | null>(null);
-  const definitionsQ = useCustomKpis();
-  const resultsQ = useCustomKpiResults({ surface, from, to });
+  const definitionsQ = useCustomKpis(refreshOptions);
+  const resultsQ = useCustomKpiResults({ surface, from, to }, refreshOptions);
   const createKpi = useCreateCustomKpi();
   const updateKpi = useUpdateCustomKpi();
   const deleteKpi = useDeleteCustomKpi();
@@ -263,15 +284,28 @@ export default function CustomKpiCards({
     }
   }, [filteredProjects, form.projectId]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+
+    const root = document.documentElement;
+    const syncTheme = () => setIsDarkTheme(isDarkKpiTheme());
+    const observer = new MutationObserver(syncTheme);
+
+    syncTheme();
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+
+    return () => observer.disconnect();
+  }, []);
+
   const beginCreate = () => {
     setError(null);
-    setForm({ ...emptyForm, surface });
+    setForm({ ...emptyForm, surface, backgroundColor: defaultBackgroundColor });
     setEditorOpen(true);
   };
 
   const beginEdit = (definition: CustomKpiDefinition) => {
     setError(null);
-    setForm(toFormState(definition));
+    setForm(toFormState(definition, defaultBackgroundColor));
     setEditorOpen(true);
   };
 
@@ -287,7 +321,7 @@ export default function CustomKpiCards({
     } else {
       await createKpi.mutateAsync(payload);
     }
-    setForm({ ...emptyForm, surface });
+    setForm({ ...emptyForm, surface, backgroundColor: defaultBackgroundColor });
     setEditorOpen(false);
   };
 
@@ -491,7 +525,7 @@ export default function CustomKpiCards({
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {KPI_COLOR_OPTIONS.map((color) => {
+                  {colorOptions.map((color) => {
                     const active = normalizeHexColor(form.backgroundColor) === color;
                     return (
                       <button

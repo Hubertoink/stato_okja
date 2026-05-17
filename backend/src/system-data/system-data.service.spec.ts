@@ -13,6 +13,17 @@ describe('SystemDataService', () => {
   function createService() {
     const queryLog: string[] = [];
     const queryCalls: Array<{ sql: string; params?: unknown[] }> = [];
+    const projectImageRows: Array<{ id: string; title: string; orgId: string | null; imageUrl: string | null }> = [
+      { id: 'project-1', title: 'Projekt Shared', orgId: 'org-1', imageUrl: '/uploads/images/shared.jpg' },
+      { id: 'project-2', title: 'Nur Projekt', orgId: 'org-1', imageUrl: '/uploads/images/only-project.jpg' },
+    ];
+    const templateImageRows: Array<{ id: string; title: string; orgId: string | null; imageUrl: string | null }> = [
+      { id: 'template-1', title: 'Vorlage Shared', orgId: 'org-1', imageUrl: '/uploads/images/shared.jpg' },
+    ];
+    const userAvatarRows: Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null; avatarUrl: string | null }> = [
+      { id: 'user-1', name: 'Org Admin', email: 'user@example.com', role: 'org_admin', orgId: 'org-1', avatarUrl: '/uploads/images/shared.jpg' },
+      { id: 'user-2', name: 'Legacy Avatar', email: 'legacy@example.com', role: 'user', orgId: 'org-1', avatarUrl: 'avatar-legacy.jpg' },
+    ];
     const queryRunner = {
       connect: jest.fn(async () => undefined),
       release: jest.fn(async () => undefined),
@@ -27,6 +38,48 @@ describe('SystemDataService', () => {
       query: jest.fn(async (sql: string, params?: unknown[]) => {
         queryLog.push(sql);
         queryCalls.push({ sql, params });
+        if (sql === 'SELECT "id", "title", "orgId", "imageUrl" FROM "projects" WHERE "imageUrl" IS NOT NULL AND "imageUrl" != \'\'') {
+          return projectImageRows.filter((row) => row.imageUrl);
+        }
+        if (sql === 'SELECT "id", "title", "orgId", "imageUrl" FROM "project_templates" WHERE "imageUrl" IS NOT NULL AND "imageUrl" != \'\'') {
+          return templateImageRows.filter((row) => row.imageUrl);
+        }
+        if (sql === 'SELECT "id", "name", "email", "role", "orgId", "avatarUrl" FROM "users" WHERE "avatarUrl" IS NOT NULL AND "avatarUrl" != \'\'') {
+          return userAvatarRows.filter((row) => row.avatarUrl);
+        }
+        if (sql.startsWith('SELECT COUNT(*) AS count FROM "projects" WHERE "imageUrl" IN ')) {
+          const matches = new Set((params || []).map((value) => String(value)));
+          return [{ count: String(projectImageRows.filter((row) => row.imageUrl && matches.has(String(row.imageUrl))).length) }];
+        }
+        if (sql.startsWith('SELECT COUNT(*) AS count FROM "project_templates" WHERE "imageUrl" IN ')) {
+          const matches = new Set((params || []).map((value) => String(value)));
+          return [{ count: String(templateImageRows.filter((row) => row.imageUrl && matches.has(String(row.imageUrl))).length) }];
+        }
+        if (sql.startsWith('SELECT COUNT(*) AS count FROM "users" WHERE "avatarUrl" IN ')) {
+          const matches = new Set((params || []).map((value) => String(value)));
+          return [{ count: String(userAvatarRows.filter((row) => row.avatarUrl && matches.has(String(row.avatarUrl))).length) }];
+        }
+        if (sql.startsWith('UPDATE "projects" SET "imageUrl" = ') && Array.isArray(params)) {
+          const matches = new Set(params.slice(2).map((value) => String(value)));
+          projectImageRows.forEach((row) => {
+            if (row.imageUrl && matches.has(String(row.imageUrl))) row.imageUrl = null;
+          });
+          return [];
+        }
+        if (sql.startsWith('UPDATE "project_templates" SET "imageUrl" = ') && Array.isArray(params)) {
+          const matches = new Set(params.slice(1).map((value) => String(value)));
+          templateImageRows.forEach((row) => {
+            if (row.imageUrl && matches.has(String(row.imageUrl))) row.imageUrl = null;
+          });
+          return [];
+        }
+        if (sql.startsWith('UPDATE "users" SET "avatarUrl" = ') && Array.isArray(params)) {
+          const matches = new Set(params.slice(1).map((value) => String(value)));
+          userAvatarRows.forEach((row) => {
+            if (row.avatarUrl && matches.has(String(row.avatarUrl))) row.avatarUrl = null;
+          });
+          return [];
+        }
         if (sql === 'SELECT * FROM "organizations"') {
           return [{ id: 'org-1', name: 'Beispielstadt', parentId: null, openingHours: null, closureDays: [{ date: '2026-04-17' }], taxonomySettings: null, childTaxonomyDefaults: null }];
         }
@@ -52,6 +105,7 @@ describe('SystemDataService', () => {
     };
 
     const dataSource = {
+      options: { type: 'sqlite' },
       entityMetadatas: [
         { tableName: 'users', tablePath: 'users', relations: [], columns: [] },
         { tableName: 'organizations', tablePath: 'organizations', relations: [], columns: [{ databaseName: 'closureDays', type: 'simple-json' }] },
@@ -254,5 +308,111 @@ describe('SystemDataService', () => {
     expect(queryRunner.commitTransaction).toHaveBeenCalled();
     expect(result.importedTables).toHaveLength(3);
     expect(auditService.log).toHaveBeenCalled();
+  });
+
+  it('lists uploads with aggregated reference counts', async () => {
+    const { service } = createService();
+    jest.spyOn(service as never, 'scanUploads' as never).mockResolvedValue({
+      files: [
+        { absolutePath: 'C:/uploads/images/shared.jpg', relativePath: 'images/shared.jpg', size: 1234 },
+        { absolutePath: 'C:/uploads/images/unused.jpg', relativePath: 'images/unused.jpg', size: 567 },
+      ],
+      fileCount: 2,
+      totalBytes: 1801,
+      warnings: [],
+    } as never);
+
+    const result = await service.listUploads(actor);
+
+    expect(result.uploads[0]).toMatchObject({
+      relativePath: 'images/shared.jpg',
+      referenceCount: 3,
+      referenceBreakdown: { projects: 1, projectTemplates: 1, userAvatars: 1 },
+      referenceDetails: {
+        projects: [{ id: 'project-1', title: 'Projekt Shared', orgId: 'org-1' }],
+        projectTemplates: [{ id: 'template-1', title: 'Vorlage Shared', orgId: 'org-1' }],
+        userAvatars: [{ id: 'user-1', name: 'Org Admin', email: 'user@example.com', role: 'org_admin', orgId: 'org-1' }],
+      },
+    });
+    expect(result.uploads[1]).toMatchObject({
+      relativePath: 'images/unused.jpg',
+      referenceCount: 0,
+    });
+  });
+
+  it('deletes an upload and clears known references before unlinking the file', async () => {
+    const { service, auditService, queryLog } = createService();
+    const unlinkSpy = jest.spyOn(require('fs/promises'), 'unlink').mockResolvedValue(undefined);
+    const statSpy = jest.spyOn(require('fs/promises'), 'stat').mockResolvedValue({
+      isFile: () => true,
+      size: 2048,
+    } as any);
+
+    try {
+      const result = await service.deleteUpload(actor, 'images/shared.jpg');
+
+      expect(result).toMatchObject({
+        relativePath: 'images/shared.jpg',
+        deleted: true,
+        deletedBytes: 2048,
+        clearedReferences: 3,
+        referenceBreakdown: { projects: 1, projectTemplates: 1, userAvatars: 1 },
+      });
+      expect(queryLog).toContain('UPDATE "projects" SET "imageUrl" = ?, "imageSize" = ? WHERE "imageUrl" IN (?, ?, ?)');
+      expect(queryLog).toContain('UPDATE "project_templates" SET "imageUrl" = ? WHERE "imageUrl" IN (?, ?, ?)');
+      expect(queryLog).toContain('UPDATE "users" SET "avatarUrl" = ? WHERE "avatarUrl" IN (?, ?, ?)');
+      expect(unlinkSpy).toHaveBeenCalledWith(expect.stringContaining('images'));
+      expect(auditService.log).toHaveBeenCalled();
+    } finally {
+      unlinkSpy.mockRestore();
+      statSpy.mockRestore();
+    }
+  });
+
+  it('deletes an unreferenced upload without failing reference cleanup', async () => {
+    const { service, auditService } = createService();
+    const unlinkSpy = jest.spyOn(require('fs/promises'), 'unlink').mockResolvedValue(undefined);
+    const statSpy = jest.spyOn(require('fs/promises'), 'stat').mockResolvedValue({
+      isFile: () => true,
+      size: 512,
+    } as any);
+
+    try {
+      const result = await service.deleteUpload(actor, 'images/unused.jpg');
+
+      expect(result).toMatchObject({
+        relativePath: 'images/unused.jpg',
+        deleted: true,
+        deletedBytes: 512,
+        clearedReferences: 0,
+        referenceBreakdown: { projects: 0, projectTemplates: 0, userAvatars: 0 },
+      });
+      expect(unlinkSpy).toHaveBeenCalledWith(expect.stringContaining('images'));
+      expect(auditService.log).toHaveBeenCalled();
+    } finally {
+      unlinkSpy.mockRestore();
+      statSpy.mockRestore();
+    }
+  });
+
+  it('retries transient Windows-style file lock errors when deleting uploads', async () => {
+    const { service } = createService();
+    const unlinkSpy = jest.spyOn(require('fs/promises'), 'unlink')
+      .mockRejectedValueOnce(Object.assign(new Error('busy'), { code: 'EPERM' }))
+      .mockResolvedValue(undefined);
+    const statSpy = jest.spyOn(require('fs/promises'), 'stat').mockResolvedValue({
+      isFile: () => true,
+      size: 1024,
+    } as any);
+
+    try {
+      const result = await service.deleteUpload(actor, 'images/unused.jpg');
+
+      expect(result.deleted).toBe(true);
+      expect(unlinkSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      unlinkSpy.mockRestore();
+      statSpy.mockRestore();
+    }
   });
 });

@@ -16,6 +16,50 @@ type SystemDataSummary = {
   tables: Array<{ tableName: string; rowCount: number }>;
 };
 
+export type SystemDataUploadItem = {
+  relativePath: string;
+  filename: string;
+  size: number;
+  url: string;
+  isImage: boolean;
+  referenceCount: number;
+  referenceBreakdown: {
+    projects: number;
+    projectTemplates: number;
+    userAvatars: number;
+  };
+  referenceDetails: {
+    projects: Array<{ id: string; title: string; orgId: string | null }>;
+    projectTemplates: Array<{ id: string; title: string; orgId: string | null }>;
+    userAvatars: Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null }>;
+  };
+};
+
+type SystemDataUploadsResponse = {
+  generatedAt: string;
+  uploads: SystemDataUploadItem[];
+};
+
+type DeleteSystemDataUploadResult = {
+  relativePath: string;
+  deleted: boolean;
+  deletedBytes: number;
+  clearedReferences: number;
+  referenceBreakdown: {
+    projects: number;
+    projectTemplates: number;
+    userAvatars: number;
+  };
+};
+
+type DeleteSystemDataUploadsResult = {
+  deleted: Array<DeleteSystemDataUploadResult>;
+  failures: Array<{ relativePath: string; message: string }>;
+  deletedCount: number;
+  deletedBytes: number;
+  clearedReferences: number;
+};
+
 type SystemDataExport = {
   blob: Blob;
   filename: string;
@@ -115,6 +159,44 @@ export function useExportSystemData() {
       const filename = parseFilename(res.headers['content-disposition']);
       const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'application/zip' });
       return { blob, filename } as SystemDataExport;
+    },
+  });
+}
+
+export function useSystemDataUploads(enabled: boolean) {
+  return useQuery({
+    queryKey: ['system-data-uploads'],
+    queryFn: async () => {
+      const res = await api.get<SystemDataUploadsResponse>('/admin/system-data/uploads');
+      return res.data;
+    },
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useDeleteSystemDataUpload() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (relativePath: string) => {
+      const res = await api.post<DeleteSystemDataUploadResult>('/admin/system-data/uploads/delete', { relativePath });
+      return res.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ predicate: () => true });
+    },
+  });
+}
+
+export function useDeleteSystemDataUploads() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (relativePaths: string[]) => {
+      const res = await api.post<DeleteSystemDataUploadsResult>('/admin/system-data/uploads/delete-many', { relativePaths });
+      return res.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ predicate: () => true });
     },
   });
 }

@@ -533,7 +533,7 @@ export class AuthService {
         user.lockoutUntil = new Date(now.getTime() + this.LOGIN_LOCKOUT_MS);
       }
       await this.users.save(user);
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Ungültige Zugangsdaten');
     }
 
     if (user.failedLoginAttempts || user.lockoutUntil || user.lastFailedLoginAt) {

@@ -229,22 +229,6 @@ Produktive ENV-Beispielwerte:
 Zentrale Referenz fuer alle Umgebungsvariablen:
 - docs/ENVIRONMENT_VARIABLES.md
 
-## 🗓️ Roadmap
-
-Aktueller Stand:
-
-- [x] Projektsetup & Architektur
-- [x] Backend Core mit Auth, Rollen und CRUD-Modulen
-- [x] Frontend fuer Erfassung, Uebersichten und Administration
-- [x] Statistik-Dashboard und Exporte
-- [x] Attachments, Uploads und selbst gehostete Deployments
-
-Naechste Ausbaupunkte:
-
-- [ ] PWA- und Offline-Unterstuetzung
-- [ ] Weitere Accessibility- und Mobile-Optimierungen
-- [ ] Erweiterte Reporting- und Import/Export-Workflows
-- [ ] Betriebs- und Rollout-Haertung fuer weitere Produktivumgebungen
 
 ## 📄 Lizenz
 

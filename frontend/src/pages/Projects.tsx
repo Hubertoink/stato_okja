@@ -1592,6 +1592,69 @@ function ProjectForm({
     </div>
   );
 
+  const renderImageManager = () => (
+    <div>
+      <label className="block text-sm font-medium mb-1">Bild</label>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onFileChange}
+      />
+      {form.imageUrl ? (
+        <div className="space-y-2">
+          <ProtectedImage
+            src={form.imageUrl}
+            alt="Projektbild"
+            className="w-full h-40 object-cover rounded border"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, imageUrl: '', imageSize: null }))}
+              className="px-3 py-1 rounded bg-gray-200 text-gray-700"
+            >
+              Entfernen
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1 rounded bg-viridian text-white"
+            >
+              Ersetzen…
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="rounded border-2 border-dashed p-3 text-sm"
+          style={{
+            background: 'color-mix(in srgb, var(--surface-2) 78%, var(--surface-3))',
+            borderColor: 'var(--border-strong)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <div className="mb-2">
+            Bild hierher ziehen, klicken zum Auswählen oder per Strg+V einfügen
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="project-form-field rounded px-3 py-1"
+            >
+              Datei wählen…
+            </button>
+          </div>
+          <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+            Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
       <div
@@ -1732,8 +1795,9 @@ function ProjectForm({
           </div>
         )}
 
-        <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 lg:items-start">
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
+            <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Titel *</label>
@@ -1787,66 +1851,39 @@ function ProjectForm({
                 className={projectFieldClassName}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Bild</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={onFileChange}
-              />
-              {form.imageUrl ? (
-                <div className="space-y-2">
-                  <ProtectedImage
-                    src={form.imageUrl}
-                    alt="Projektbild"
-                    className="w-full h-40 object-cover rounded border"
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Standard Startzeit</label>
+                  <input
+                    type="time"
+                    value={form.defaultStartTime || ''}
+                    onChange={(e) => update('defaultStartTime', e.target.value)}
+                    className={projectFieldClassName}
                   />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, imageUrl: '', imageSize: null }))}
-                      className="px-3 py-1 rounded bg-gray-200 text-gray-700"
-                    >
-                      Entfernen
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1 rounded bg-viridian text-white"
-                    >
-                      Ersetzen…
-                    </button>
-                  </div>
                 </div>
-              ) : (
-                <div
-                  className="rounded border-2 border-dashed p-3 text-sm"
-                  style={{
-                    background: 'color-mix(in srgb, var(--surface-2) 78%, var(--surface-3))',
-                    borderColor: 'var(--border-strong)',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  <div className="mb-2">
-                    Bild hierher ziehen, klicken zum Auswählen oder per Strg+V einfügen
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="project-form-field rounded px-3 py-1"
-                    >
-                      Datei wählen…
-                    </button>
-                  </div>
-                  <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Standard Endzeit</label>
+                  <input
+                    type="time"
+                    value={form.defaultEndTime || ''}
+                    onChange={(e) => update('defaultEndTime', e.target.value)}
+                    className={projectFieldClassName}
+                  />
                 </div>
-              )}
-              <div className="mt-3">
+              </div>
+              <div className="lg:hidden">{renderTagSelector()}</div>
+              {form.type !== 'open_door' && renderCategorySelector()}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
+            {renderImageManager()}
+            {renderDocumentManager()}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
+            <div className="space-y-4">
+              <div>
                 <label className="block text-sm font-medium mb-1">Farbe</label>
                 <input
                   type="color"
@@ -1857,32 +1894,8 @@ function ProjectForm({
               </div>
               <div className="hidden lg:block lg:pt-2">{renderTagSelector()}</div>
             </div>
-          </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Standard Startzeit</label>
-                <input
-                  type="time"
-                  value={form.defaultStartTime || ''}
-                  onChange={(e) => update('defaultStartTime', e.target.value)}
-                  className={projectFieldClassName}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Standard Endzeit</label>
-                <input
-                  type="time"
-                  value={form.defaultEndTime || ''}
-                  onChange={(e) => update('defaultEndTime', e.target.value)}
-                  className={projectFieldClassName}
-                />
-              </div>
-            </div>
-            <div className="lg:hidden">{renderTagSelector()}</div>
-            {form.type !== 'open_door' && renderCategorySelector()}
-            {renderDocumentManager()}
-            <div>
               <label className="block text-sm font-medium mb-1">
                 Mitarbeitende (mehrfach, Standard)
               </label>
@@ -1919,8 +1932,8 @@ function ProjectForm({
                     );
                   })}
               </div>
-            </div>
-            <div>
+              </div>
+              <div>
               <label className="block text-sm font-medium mb-1">
                 Ehrenamtliche (mehrfach, aktiv)
               </label>
@@ -1957,8 +1970,8 @@ function ProjectForm({
                     );
                   })}
               </div>
-            </div>
-            <div>
+              </div>
+              <div>
               <label className="block text-sm font-medium mb-1">Beschreibung</label>
               <textarea
                 value={form.description || ''}
@@ -1966,6 +1979,7 @@ function ProjectForm({
                 rows={4}
                 className={projectFieldClassName}
               />
+              </div>
             </div>
           </div>
         </div>

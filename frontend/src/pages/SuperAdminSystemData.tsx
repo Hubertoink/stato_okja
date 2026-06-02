@@ -64,6 +64,7 @@ function formatUploadReferenceLabel(upload: SystemDataUploadItem) {
   if (!upload.referenceCount) return 'Keine Verknüpfung';
   const parts: string[] = [];
   if (upload.referenceBreakdown.projects) parts.push(`${upload.referenceBreakdown.projects} Projekte`);
+  if (upload.referenceBreakdown.projectDocuments) parts.push(`${upload.referenceBreakdown.projectDocuments} Projektdokumente`);
   if (upload.referenceBreakdown.projectTemplates) parts.push(`${upload.referenceBreakdown.projectTemplates} Vorlagen`);
   if (upload.referenceBreakdown.userAvatars) parts.push(`${upload.referenceBreakdown.userAvatars} Avatare`);
   return parts.join(' · ');
@@ -80,6 +81,21 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
           <div key={project.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
             <div className="font-medium text-gray-900">{project.title}</div>
             <div className="text-gray-500 break-all">ID: {project.id}</div>
+          </div>
+        ))}
+      </div>,
+    );
+  }
+
+  if (upload.referenceDetails.projectDocuments.length) {
+    blocks.push(
+      <div key="project-documents" className="space-y-1">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Projektdokumente</div>
+        {upload.referenceDetails.projectDocuments.map((document) => (
+          <div key={document.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
+            <div className="font-medium text-gray-900">{document.filename}</div>
+            <div className="text-gray-500">{document.projectTitle || 'Ohne Projekt'}</div>
+            <div className="text-gray-500 break-all">Projekt-ID: {document.projectId}</div>
           </div>
         ))}
       </div>,

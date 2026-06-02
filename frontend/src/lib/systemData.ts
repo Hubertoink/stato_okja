@@ -25,11 +25,13 @@ export type SystemDataUploadItem = {
   referenceCount: number;
   referenceBreakdown: {
     projects: number;
+    projectDocuments: number;
     projectTemplates: number;
     userAvatars: number;
   };
   referenceDetails: {
     projects: Array<{ id: string; title: string; orgId: string | null }>;
+    projectDocuments: Array<{ id: string; filename: string; projectId: string; projectTitle: string | null; orgId: string | null }>;
     projectTemplates: Array<{ id: string; title: string; orgId: string | null }>;
     userAvatars: Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null }>;
   };
@@ -47,6 +49,7 @@ type DeleteSystemDataUploadResult = {
   clearedReferences: number;
   referenceBreakdown: {
     projects: number;
+    projectDocuments: number;
     projectTemplates: number;
     userAvatars: number;
   };

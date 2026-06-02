@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import Toggle from '@/components/Toggle';
 import {
   Project,
+  ProjectDocument,
+  downloadProjectDocument,
+  removeProjectDocument,
+  uploadProjectDocument,
   useCreateProject,
   useProjects,
   useUpdateProject,
@@ -22,6 +26,9 @@ import {
   CalendarRange,
   LayoutGrid,
   List,
+  Download,
+  FileText,
+  Paperclip,
 } from 'lucide-react';
 import { Star, StarOff } from 'lucide-react';
 import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
@@ -68,6 +75,9 @@ const PROJECT_CARD_PALETTE = [
   '#a855f7',
 ];
 
+const PROJECT_DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.odt,.rtf,.txt';
+const MAX_PROJECT_DOCUMENT_BYTES = 15 * 1024 * 1024;
+
 type ProjectsDesktopView = 'grid' | 'list';
 
 type ProjectBadgeCategory = {
@@ -80,6 +90,12 @@ type ProjectBadgeTag = {
   id: string;
   name: string;
   color?: string | null;
+};
+
+type ProjectFormSubmission = {
+  values: Partial<Project>;
+  pendingDocuments: File[];
+  removedDocumentIds: string[];
 };
 
 type NamedTaxonomyItem = {
@@ -180,6 +196,26 @@ const truncateWords = (text?: string | null, words = 20) => {
   const parts = text.trim().split(/\s+/);
   if (parts.length <= words) return text;
   return parts.slice(0, words).join(' ') + '…';
+};
+
+const formatDocumentSize = (bytes?: number | null) => {
+  const value = Number(bytes) || 0;
+  if (value < 1024) return `${value} B`;
+  const kb = value / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+};
+
+const formatDocumentDate = (value?: string | Date | null) => {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('de-DE');
+};
+
+const isAllowedProjectDocumentFile = (file: File) => {
+  const extension = file.name.includes('.') ? `.${file.name.split('.').pop()?.toLowerCase() || ''}` : '';
+  return ['.pdf', '.doc', '.docx', '.odt', '.rtf', '.txt'].includes(extension);
 };
 
 const splitProjectStaffNames = (value?: string | null): string[] =>
@@ -513,6 +549,12 @@ function ProjectGridCard({
               {project.title}
             </div>
             <div className="text-sm opacity-90">{prettyType}</div>
+            {Array.isArray(project.documents) && project.documents.length > 0 && (
+              <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+                <Paperclip className="w-3 h-3" />
+                {project.documents.length} Unterlagen
+              </div>
+            )}
             {(category || staffNames.length > 0) && (
               <div className="mt-1 flex items-center flex-wrap gap-2">
                 {category && (
@@ -704,6 +746,12 @@ function ProjectListRow({
                 Zielgruppe: <span className="font-normal text-gray-800">{project.targetGroup}</span>
               </div>
             )}
+            {Array.isArray(project.documents) && project.documents.length > 0 && (
+              <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700">
+                <Paperclip className="w-3.5 h-3.5 text-viridian" />
+                {project.documents.length} Unterlagen
+              </div>
+            )}
           </div>
 
           <div className="flex items-start gap-2 shrink-0">
@@ -817,7 +865,7 @@ function ProjectForm({
   saving = false,
 }: {
   initial?: Partial<Project>;
-  onSubmit: (data: Partial<Project>) => void;
+  onSubmit: (submission: ProjectFormSubmission) => void | Promise<void>;
   onCancel: () => void;
   saving?: boolean;
 }) {
@@ -845,6 +893,7 @@ function ProjectForm({
     return base;
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const documentInputRef = useRef<HTMLInputElement | null>(null);
   const templateRunIdRef = useRef(0);
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('');
   const [applyingTemplate, setApplyingTemplate] = useState(false);
@@ -854,6 +903,11 @@ function ProjectForm({
   const [imageIssue, setImageIssue] = useState<{ open: boolean; title: string; message: string }>(
     { open: false, title: '', message: '' },
   );
+  const [documentIssue, setDocumentIssue] = useState<{ open: boolean; title: string; message: string }>(
+    { open: false, title: '', message: '' },
+  );
+  const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
+  const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
   const [showTitleValidation, setShowTitleValidation] = useState(false);
   const { data: categories } = useCategories({ active: true });
   const { data: allCategories } = useCategories();
@@ -863,6 +917,10 @@ function ProjectForm({
   const qc = useQueryClient();
   const { data: tags } = useTags({ active: true });
   const { data: staff } = useStaff({ active: true });
+  const existingDocuments = Array.isArray(initial?.documents)
+    ? (initial.documents as ProjectDocument[])
+    : [];
+  const removedDocumentIdSet = new Set(removedDocumentIds);
 
   const uploadImage = useCallback(async (file: File) => {
     try {
@@ -1078,6 +1136,53 @@ function ProjectForm({
     [uploadImage],
   );
 
+  const addDocuments = useCallback((files: FileList | File[]) => {
+    const nextFiles = Array.from(files || []);
+    if (!nextFiles.length) return;
+
+    const invalidType = nextFiles.find((file) => !isAllowedProjectDocumentFile(file));
+    if (invalidType) {
+      setDocumentIssue({
+        open: true,
+        title: 'Dateityp nicht unterstützt',
+        message: 'Erlaubt sind PDF, DOC, DOCX, ODT, RTF und TXT.',
+      });
+      return;
+    }
+
+    const tooLarge = nextFiles.find((file) => file.size > MAX_PROJECT_DOCUMENT_BYTES);
+    if (tooLarge) {
+      setDocumentIssue({
+        open: true,
+        title: 'Datei zu groß',
+        message: `${tooLarge.name} ist größer als ${Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB.`,
+      });
+      return;
+    }
+
+    setPendingDocuments((current) => {
+      const known = new Set(current.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+      const merged = [...current];
+      for (const file of nextFiles) {
+        const key = `${file.name}:${file.size}:${file.lastModified}`;
+        if (!known.has(key)) {
+          merged.push(file);
+          known.add(key);
+        }
+      }
+      return merged;
+    });
+  }, []);
+
+  const onDocumentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) addDocuments(e.target.files);
+    e.target.value = '';
+  }, [addDocuments]);
+
+  const visibleExistingDocuments = existingDocuments.filter(
+    (document) => !removedDocumentIdSet.has(document.id),
+  );
+
   const update = <K extends keyof Project>(k: K, v: Project[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
   const isTitleMissing = String(form.title || '').trim().length === 0;
@@ -1093,8 +1198,12 @@ function ProjectForm({
       setImageIssue((state) => ({ ...state, open: false }));
       return;
     }
+    if (documentIssue.open) {
+      setDocumentIssue((state) => ({ ...state, open: false }));
+      return;
+    }
     onCancel();
-  }, [imageIssue.open, onCancel]);
+  }, [documentIssue.open, imageIssue.open, onCancel]);
 
   const handleSave = useCallback(() => {
     if (saving || submitLockedRef.current) return;
@@ -1174,8 +1283,12 @@ function ProjectForm({
     }
 
     submitLockedRef.current = true;
-    onSubmit(normalized);
-  }, [form, isTitleMissing, onSubmit, saving, staff]);
+    void onSubmit({
+      values: normalized,
+      pendingDocuments,
+      removedDocumentIds,
+    });
+  }, [form, isTitleMissing, onSubmit, pendingDocuments, removedDocumentIds, saving, staff]);
 
   useEffect(() => {
     if (!staff?.length) return;
@@ -1189,7 +1302,7 @@ function ProjectForm({
   useEditorShortcuts({
     onClose: handleClose,
     onSave:
-      applyingTemplate || archiving || deleting || imageIssue.open || saving ? undefined : handleSave,
+      applyingTemplate || archiving || deleting || imageIssue.open || documentIssue.open || saving ? undefined : handleSave,
   });
 
   const renderTagSelector = () => (
@@ -1621,6 +1734,130 @@ function ProjectForm({
                 className="w-full border rounded px-3 py-2"
               />
             </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                    <Paperclip className="w-4 h-4 text-viridian" />
+                    Konzeption / Unterlagen
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => documentInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded bg-white border border-gray-300 text-sm text-gray-700"
+                >
+                  Dateien wählen…
+                </button>
+                <input
+                  ref={documentInputRef}
+                  type="file"
+                  accept={PROJECT_DOCUMENT_ACCEPT}
+                  multiple
+                  className="hidden"
+                  onChange={onDocumentChange}
+                />
+              </div>
+
+              {visibleExistingDocuments.length === 0 && pendingDocuments.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
+                  Noch keine Unterlagen hinterlegt.
+                  {!initial?.id ? ' Ausgewählte Dateien werden nach dem ersten Speichern hochgeladen.' : ''}
+                </div>
+              ) : null}
+
+              {existingDocuments.length > 0 && (
+                <div className="space-y-2">
+                  {existingDocuments.map((document) => {
+                    const markedForRemoval = removedDocumentIdSet.has(document.id);
+                    return (
+                      <div
+                        key={document.id}
+                        className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+                          markedForRemoval
+                            ? 'border-red-200 bg-red-50 text-red-700'
+                            : 'border-gray-200 bg-white text-gray-800'
+                        }`}
+                      >
+                        <div className="min-w-0 flex items-center gap-3">
+                          <FileText className="w-4 h-4 shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{document.filename}</div>
+                            <div className="text-xs text-gray-500">
+                              {formatDocumentSize(document.size)}
+                              {formatDocumentDate(document.createdAt) ? ` · ${formatDocumentDate(document.createdAt)}` : ''}
+                              {markedForRemoval ? ' · Wird beim Speichern entfernt' : ''}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {!markedForRemoval && (
+                            <button
+                              type="button"
+                              onClick={() => void downloadProjectDocument(initial?.id as string, document)}
+                              className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Download
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setRemovedDocumentIds((current) =>
+                                current.includes(document.id)
+                                  ? current.filter((id) => id !== document.id)
+                                  : [...current, document.id],
+                              )
+                            }
+                            className={`inline-flex items-center rounded px-2 py-1 text-xs ${
+                              markedForRemoval
+                                ? 'bg-white border border-red-200 text-red-700'
+                                : 'bg-red-50 border border-red-200 text-red-700'
+                            }`}
+                          >
+                            {markedForRemoval ? 'Behalten' : 'Entfernen'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {pendingDocuments.length > 0 && (
+                <div className="space-y-2">
+                  {pendingDocuments.map((document, index) => (
+                    <div
+                      key={`${document.name}:${document.size}:${document.lastModified}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900"
+                    >
+                      <div className="min-w-0 flex items-center gap-3">
+                        <FileText className="w-4 h-4 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{document.name}</div>
+                          <div className="text-xs text-amber-700">
+                            {formatDocumentSize(document.size)} · Wird beim Speichern hochgeladen
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPendingDocuments((current) => current.filter((_, currentIndex) => currentIndex !== index))
+                        }
+                        className="inline-flex items-center rounded border border-amber-300 bg-white px-2 py-1 text-xs text-amber-800"
+                      >
+                        Entfernen
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         </div>
@@ -1687,6 +1924,26 @@ function ProjectForm({
           </div>
         </div>
       </Modal>
+
+      <Modal
+        open={documentIssue.open}
+        onClose={() => setDocumentIssue((s) => ({ ...s, open: false }))}
+        title={documentIssue.title}
+        maxWidth="sm"
+      >
+        <div className="text-sm text-gray-700 space-y-4">
+          <div>{documentIssue.message}</div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="px-3 py-2 rounded bg-viridian text-white"
+              onClick={() => setDocumentIssue((s) => ({ ...s, open: false }))}
+            >
+              Ok
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -1739,6 +1996,7 @@ function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<P
 
 export default function Projects() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   // Debounce the search to prevent firing a request for every keystroke on first usage
   const [debounced, setDebounced] = useState('');
@@ -1766,6 +2024,7 @@ export default function Projects() {
     project?: Project;
     requestId?: string;
   } | null>(null);
+  const [modalBusy, setModalBusy] = useState(false);
   const { showToast } = useToast();
   const [starredFirst, setStarredFirst] = useState<boolean>(() => {
     try {
@@ -1824,6 +2083,27 @@ export default function Projects() {
       navigate(`/activities?projectId=${encodeURIComponent(projectId)}`);
     },
     [navigate],
+  );
+
+  const syncProjectDocuments = useCallback(
+    async (projectId: string, submission: Pick<ProjectFormSubmission, 'pendingDocuments' | 'removedDocumentIds'>) => {
+      const removedResults = await Promise.allSettled(
+        submission.removedDocumentIds.map((documentId) => removeProjectDocument(projectId, documentId)),
+      );
+      const uploadResults = await Promise.allSettled(
+        submission.pendingDocuments.map((file) => uploadProjectDocument(projectId, file)),
+      );
+
+      await qc.invalidateQueries({ queryKey: ['projects'] });
+
+      const removedSuccess = removedResults.filter((result) => result.status === 'fulfilled').length;
+      const removedFailed = removedResults.length - removedSuccess;
+      const uploadedSuccess = uploadResults.filter((result) => result.status === 'fulfilled').length;
+      const uploadedFailed = uploadResults.length - uploadedSuccess;
+
+      return { removedSuccess, removedFailed, uploadedSuccess, uploadedFailed };
+    },
+    [qc],
   );
 
   return (
@@ -1996,35 +2276,54 @@ export default function Projects() {
       {modal && (
         <ProjectForm
           initial={modal.mode === 'edit' ? modal.project : undefined}
-          saving={create.isPending || update.isPending}
-          onSubmit={(values) => {
-            if (modal.mode === 'create') {
-              create.mutate(
-                {
-                  ...toProjectUpsertPayload(values),
+          saving={modalBusy || create.isPending || update.isPending}
+          onSubmit={async (submission) => {
+            setModalBusy(true);
+            try {
+              let savedProject: Project | null = null;
+
+              if (modal.mode === 'create') {
+                savedProject = await create.mutateAsync({
+                  ...toProjectUpsertPayload(submission.values),
                   clientRequestId: modal.requestId || createClientRequestId(),
-                },
-                {
-                onSuccess: () => {
-                  setModal(null);
-                  showToast('Projekt erstellt');
-                },
-              });
-            } else if (modal.project?.id) {
-              // Only send DTO-allowed fields; the loaded project includes read-only fields like `categories`.
-              const data = toProjectUpsertPayload(values);
-              update.mutate(
-                { id: modal.project.id, data },
-                {
-                  onSuccess: () => {
-                    setModal(null);
-                    showToast('Projekt aktualisiert');
-                  },
-                },
-              );
+                });
+              } else if (modal.project?.id) {
+                savedProject = await update.mutateAsync({
+                  id: modal.project.id,
+                  data: toProjectUpsertPayload(submission.values),
+                });
+              }
+
+              if (!savedProject?.id) {
+                throw new Error('Projekt konnte nicht gespeichert werden.');
+              }
+
+              const documentResult = await syncProjectDocuments(savedProject.id, submission);
+              setModal(null);
+
+              if (documentResult.removedFailed || documentResult.uploadedFailed) {
+                showToast(
+                  `${modal.mode === 'create' ? 'Projekt erstellt' : 'Projekt aktualisiert'}. ${documentResult.uploadedSuccess} Dateien hochgeladen, ${documentResult.removedSuccess} entfernt. Einige Dokumentaktionen sind fehlgeschlagen.`,
+                  { type: 'error', durationMs: 5500 },
+                );
+              } else if (documentResult.uploadedSuccess || documentResult.removedSuccess) {
+                showToast(
+                  `${modal.mode === 'create' ? 'Projekt erstellt' : 'Projekt aktualisiert'}. ${documentResult.uploadedSuccess} Dateien hochgeladen, ${documentResult.removedSuccess} entfernt.`,
+                  { type: 'success' },
+                );
+              } else {
+                showToast(modal.mode === 'create' ? 'Projekt erstellt' : 'Projekt aktualisiert');
+              }
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Projekt konnte nicht gespeichert werden.';
+              showToast(message, { type: 'error', durationMs: 5000 });
+            } finally {
+              setModalBusy(false);
             }
           }}
-          onCancel={() => setModal(null)}
+          onCancel={() => {
+            if (!modalBusy) setModal(null);
+          }}
         />
       )}
     </div>

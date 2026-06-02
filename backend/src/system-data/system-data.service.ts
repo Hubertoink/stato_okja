@@ -40,6 +40,7 @@ type UploadFileEntry = {
 
 type UploadReferenceBreakdown = {
   projects: number;
+  projectDocuments: number;
   projectTemplates: number;
   userAvatars: number;
 };
@@ -48,6 +49,7 @@ type UploadReferenceKey = keyof UploadReferenceBreakdown;
 
 type UploadReferenceDetails = {
   projects: Array<{ id: string; title: string; orgId: string | null }>;
+  projectDocuments: Array<{ id: string; filename: string; projectId: string; projectTitle: string | null; orgId: string | null }>;
   projectTemplates: Array<{ id: string; title: string; orgId: string | null }>;
   userAvatars: Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null }>;
 };
@@ -111,6 +113,7 @@ const SYSTEM_DATA_EXPORT_FORMAT = 'stato-system-data-export';
 const SYSTEM_DATA_EXPORT_SCHEMA_VERSION = 2;
 const EMPTY_UPLOAD_REFERENCE_BREAKDOWN: UploadReferenceBreakdown = {
   projects: 0,
+  projectDocuments: 0,
   projectTemplates: 0,
   userAvatars: 0,
 };
@@ -918,7 +921,7 @@ export class SystemDataService {
     );
 
     const uploads = Object.values(zip.files)
-      .filter((entry) => !entry.dir && entry.name.startsWith('uploads/'))
+      .filter((entry): entry is JSZip.JSZipObject => Boolean(entry) && !entry.dir && entry.name.startsWith('uploads/'))
       .map((entry) => {
         const relativePath = entry.name.slice('uploads/'.length);
         return {
@@ -1032,6 +1035,7 @@ export class SystemDataService {
     }
 
     await mkdir(join(uploadsRoot, 'images'), { recursive: true });
+    await mkdir(join(uploadsRoot, 'project-documents'), { recursive: true });
   }
 
   private async copyDirectoryContents(sourceDir: string, targetDir: string) {
@@ -1097,6 +1101,17 @@ export class SystemDataService {
       orgId: row.orgId ?? null,
     }));
 
+    const projectDocumentRows = await queryRunner.query(
+      `SELECT pd."id", pd."filename", pd."projectId", pd."storageRef", p."title" AS "projectTitle", p."orgId" FROM ${this.escapeTablePath('project_documents')} pd LEFT JOIN ${this.escapeTablePath('projects')} p ON p."id" = pd."projectId" WHERE pd."storageRef" IS NOT NULL AND pd."storageRef" != ''`,
+    ) as Array<{ id: string; filename: string; projectId: string; storageRef?: string | null; projectTitle?: string | null; orgId: string | null }>;
+    projectDocumentRows.forEach((row) => addReference(this.getUploadUrl(String(row.storageRef || '')), 'projectDocuments', {
+      id: row.id,
+      filename: row.filename,
+      projectId: row.projectId,
+      projectTitle: row.projectTitle ?? null,
+      orgId: row.orgId ?? null,
+    }));
+
     const templateRows = await queryRunner.query(
       `SELECT "id", "title", "orgId", "imageUrl" FROM ${this.escapeTablePath('project_templates')} WHERE "imageUrl" IS NOT NULL AND "imageUrl" != ''`,
     ) as Array<{ id: string; title: string; orgId: string | null; imageUrl?: string | null }>;
@@ -1124,11 +1139,13 @@ export class SystemDataService {
     const candidates = this.buildUploadPathCandidates(relativePath);
     const referenceBreakdown = {
       projects: await this.countUploadFieldMatches(queryRunner, 'projects', 'imageUrl', candidates),
+      projectDocuments: await this.countUploadFieldMatches(queryRunner, 'project_documents', 'storageRef', candidates),
       projectTemplates: await this.countUploadFieldMatches(queryRunner, 'project_templates', 'imageUrl', candidates),
       userAvatars: await this.countUploadFieldMatches(queryRunner, 'users', 'avatarUrl', candidates),
     } satisfies UploadReferenceBreakdown;
 
     await this.clearUploadField(queryRunner, 'projects', { imageUrl: null, imageSize: null }, 'imageUrl', candidates);
+    await this.deleteUploadRows(queryRunner, 'project_documents', 'storageRef', candidates);
     await this.clearUploadField(queryRunner, 'project_templates', { imageUrl: null }, 'imageUrl', candidates);
     await this.clearUploadField(queryRunner, 'users', { avatarUrl: null }, 'avatarUrl', candidates);
 
@@ -1177,6 +1194,21 @@ export class SystemDataService {
     await queryRunner.query(
       `UPDATE ${this.escapeTablePath(tablePath)} SET ${setSql} WHERE ${this.escapeIdentifier(field)} IN (${whereSql})`,
       params,
+    );
+  }
+
+  private async deleteUploadRows(
+    queryRunner: QueryRunner,
+    tablePath: string,
+    field: string,
+    candidates: string[],
+  ) {
+    if (!candidates.length) return;
+
+    const placeholders = candidates.map((_candidate, index) => this.getParameterPlaceholder(index + 1)).join(', ');
+    await queryRunner.query(
+      `DELETE FROM ${this.escapeTablePath(tablePath)} WHERE ${this.escapeIdentifier(field)} IN (${placeholders})`,
+      candidates,
     );
   }
 
@@ -1236,6 +1268,7 @@ export class SystemDataService {
       breakdown: { ...EMPTY_UPLOAD_REFERENCE_BREAKDOWN },
       details: {
         projects: [],
+        projectDocuments: [],
         projectTemplates: [],
         userAvatars: [],
       },
@@ -1271,7 +1304,7 @@ export class SystemDataService {
   private buildUploadPathCandidates(relativePath: string) {
     const normalized = relativePath.replace(/^\/+/, '').replace(/\\/g, '/');
     const publicPath = this.getUploadUrl(normalized);
-    const candidates = new Set<string>([publicPath, publicPath.slice(1)]);
+    const candidates = new Set<string>([normalized, publicPath, publicPath.slice(1)]);
     if (normalized.startsWith('images/')) {
       const filename = normalized.slice('images/'.length);
       if (filename) candidates.add(filename);
@@ -1466,6 +1499,7 @@ export class SystemDataService {
     try {
       await rm(uploadsRoot, { recursive: true, force: true });
       await mkdir(join(uploadsRoot, 'images'), { recursive: true });
+      await mkdir(join(uploadsRoot, 'project-documents'), { recursive: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown upload cleanup error';
       warnings.push(message);

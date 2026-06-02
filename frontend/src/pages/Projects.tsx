@@ -29,6 +29,8 @@ import {
   Download,
   FileText,
   Paperclip,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { Star, StarOff } from 'lucide-react';
 import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
@@ -906,6 +908,7 @@ function ProjectForm({
   const [documentIssue, setDocumentIssue] = useState<{ open: boolean; title: string; message: string }>(
     { open: false, title: '', message: '' },
   );
+  const [documentsExpanded, setDocumentsExpanded] = useState(false);
   const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
   const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
   const [showTitleValidation, setShowTitleValidation] = useState(false);
@@ -1172,6 +1175,7 @@ function ProjectForm({
       }
       return merged;
     });
+    setDocumentsExpanded(true);
   }, []);
 
   const onDocumentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1182,6 +1186,16 @@ function ProjectForm({
   const visibleExistingDocuments = existingDocuments.filter(
     (document) => !removedDocumentIdSet.has(document.id),
   );
+  const visibleDocumentCount = visibleExistingDocuments.length;
+  const pendingDocumentCount = pendingDocuments.length;
+  const removedDocumentCount = removedDocumentIds.length;
+  const documentSummary = [
+    visibleDocumentCount > 0 ? `${visibleDocumentCount} hinterlegt` : null,
+    pendingDocumentCount > 0 ? `${pendingDocumentCount} neu` : null,
+    removedDocumentCount > 0 ? `${removedDocumentCount} entfernt` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const update = <K extends keyof Project>(k: K, v: Project[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -1306,21 +1320,58 @@ function ProjectForm({
   });
 
   const renderDocumentManager = () => (
-    <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3">
+    <div
+      className="rounded-xl border p-4"
+      style={{
+        background: 'color-mix(in srgb, var(--surface-2) 86%, transparent)',
+        borderColor: 'var(--border-subtle)',
+      }}
+    >
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-            <Paperclip className="w-4 h-4 text-viridian" />
-            Konzeption / Unterlagen
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
-          </div>
-        </div>
         <button
           type="button"
-          onClick={() => documentInputRef.current?.click()}
-          className="px-3 py-1.5 rounded bg-white border border-gray-300 text-sm text-gray-700"
+          onClick={() => setDocumentsExpanded((current) => !current)}
+          className="min-w-0 flex flex-1 items-start gap-3 text-left"
+          aria-expanded={documentsExpanded}
+          aria-label={documentsExpanded ? 'Unterlagen einklappen' : 'Unterlagen ausklappen'}
+        >
+          <span
+            className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
+            style={{
+              borderColor: 'var(--border-subtle)',
+              background: 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+              color: 'var(--viridian)',
+            }}
+          >
+            {documentsExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </span>
+          <span className="min-w-0">
+            <span className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              <Paperclip className="w-4 h-4" style={{ color: 'var(--viridian)' }} />
+              Konzeption / Unterlagen
+            </span>
+            <span className="mt-1 block text-xs" style={{ color: 'var(--text-muted)' }}>
+              {documentSummary || 'Noch keine Unterlagen hinterlegt.'}
+            </span>
+            {!documentsExpanded && (
+              <span className="mt-1 block text-xs" style={{ color: 'var(--text-faint)' }}>
+                PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
+              </span>
+            )}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDocumentsExpanded(true);
+            documentInputRef.current?.click();
+          }}
+          className="shrink-0 rounded border px-3 py-1.5 text-sm"
+          style={{
+            background: 'var(--surface-1)',
+            borderColor: 'var(--border-subtle)',
+            color: 'var(--text-primary)',
+          }}
         >
           Dateien wählen…
         </button>
@@ -1334,99 +1385,150 @@ function ProjectForm({
         />
       </div>
 
-      {visibleExistingDocuments.length === 0 && pendingDocuments.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
-          Noch keine Unterlagen hinterlegt.
-          {!initial?.id ? ' Ausgewählte Dateien werden nach dem ersten Speichern hochgeladen.' : ''}
-        </div>
-      ) : null}
+      {documentsExpanded && (
+        <div className="mt-3 space-y-3">
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
+          </div>
 
-      {existingDocuments.length > 0 && (
-        <div className="space-y-2">
-          {existingDocuments.map((document) => {
-            const markedForRemoval = removedDocumentIdSet.has(document.id);
-            return (
-              <div
-                key={document.id}
-                className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
-                  markedForRemoval
-                    ? 'border-red-200 bg-red-50 text-red-700'
-                    : 'border-gray-200 bg-white text-gray-800'
-                }`}
-              >
-                <div className="min-w-0 flex items-center gap-3">
-                  <FileText className="w-4 h-4 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{document.filename}</div>
-                    <div className="text-xs text-gray-500">
-                      {formatDocumentSize(document.size)}
-                      {formatDocumentDate(document.createdAt) ? ` · ${formatDocumentDate(document.createdAt)}` : ''}
-                      {markedForRemoval ? ' · Wird beim Speichern entfernt' : ''}
+          {visibleExistingDocuments.length === 0 && pendingDocuments.length === 0 ? (
+            <div
+              className="rounded-lg border border-dashed px-3 py-4 text-sm"
+              style={{
+                background: 'var(--surface-1)',
+                borderColor: 'var(--border-subtle)',
+                color: 'var(--text-muted)',
+              }}
+            >
+              Noch keine Unterlagen hinterlegt.
+              {!initial?.id ? ' Ausgewählte Dateien werden nach dem ersten Speichern hochgeladen.' : ''}
+            </div>
+          ) : null}
+
+          {existingDocuments.length > 0 && (
+            <div className="space-y-2">
+              {existingDocuments.map((document) => {
+                const markedForRemoval = removedDocumentIdSet.has(document.id);
+                return (
+                  <div
+                    key={document.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
+                    style={
+                      markedForRemoval
+                        ? {
+                            borderColor: 'color-mix(in srgb, var(--accent-pink) 42%, var(--border-subtle))',
+                            background: 'color-mix(in srgb, var(--accent-pink) 10%, var(--surface-1))',
+                            color: 'color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary))',
+                          }
+                        : {
+                            borderColor: 'var(--border-subtle)',
+                            background: 'var(--surface-1)',
+                            color: 'var(--text-primary)',
+                          }
+                    }
+                  >
+                    <div className="min-w-0 flex items-center gap-3">
+                      <FileText className="w-4 h-4 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{document.filename}</div>
+                        <div
+                          className="text-xs"
+                          style={{ color: markedForRemoval ? 'inherit' : 'var(--text-muted)' }}
+                        >
+                          {formatDocumentSize(document.size)}
+                          {formatDocumentDate(document.createdAt) ? ` · ${formatDocumentDate(document.createdAt)}` : ''}
+                          {markedForRemoval ? ' · Wird beim Speichern entfernt' : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!markedForRemoval && (
+                        <button
+                          type="button"
+                          onClick={() => void downloadProjectDocument(initial?.id as string, document)}
+                          className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs"
+                          style={{
+                            borderColor: 'var(--border-subtle)',
+                            background: 'var(--surface-1)',
+                            color: 'var(--text-primary)',
+                          }}
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRemovedDocumentIds((current) =>
+                            current.includes(document.id)
+                              ? current.filter((id) => id !== document.id)
+                              : [...current, document.id],
+                          )
+                        }
+                        className="inline-flex items-center rounded border px-2 py-1 text-xs"
+                        style={
+                          markedForRemoval
+                            ? {
+                                background: 'var(--surface-1)',
+                                borderColor: 'color-mix(in srgb, var(--accent-pink) 42%, var(--border-subtle))',
+                                color: 'color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary))',
+                              }
+                            : {
+                                background: 'color-mix(in srgb, var(--accent-pink) 10%, var(--surface-1))',
+                                borderColor: 'color-mix(in srgb, var(--accent-pink) 32%, var(--border-subtle))',
+                                color: 'color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary))',
+                              }
+                        }
+                      >
+                        {markedForRemoval ? 'Behalten' : 'Entfernen'}
+                      </button>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {!markedForRemoval && (
-                    <button
-                      type="button"
-                      onClick={() => void downloadProjectDocument(initial?.id as string, document)}
-                      className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      Download
-                    </button>
-                  )}
+                );
+              })}
+            </div>
+          )}
+
+          {pendingDocuments.length > 0 && (
+            <div className="space-y-2">
+              {pendingDocuments.map((document, index) => (
+                <div
+                  key={`${document.name}:${document.size}:${document.lastModified}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
+                  style={{
+                    borderColor: 'color-mix(in srgb, var(--accent-orange) 32%, var(--border-subtle))',
+                    background: 'color-mix(in srgb, var(--accent-orange) 10%, var(--surface-1))',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  <div className="min-w-0 flex items-center gap-3">
+                    <FileText className="w-4 h-4 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{document.name}</div>
+                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {formatDocumentSize(document.size)} · Wird beim Speichern hochgeladen
+                      </div>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() =>
-                      setRemovedDocumentIds((current) =>
-                        current.includes(document.id)
-                          ? current.filter((id) => id !== document.id)
-                          : [...current, document.id],
-                      )
+                      setPendingDocuments((current) => current.filter((_, currentIndex) => currentIndex !== index))
                     }
-                    className={`inline-flex items-center rounded px-2 py-1 text-xs ${
-                      markedForRemoval
-                        ? 'bg-white border border-red-200 text-red-700'
-                        : 'bg-red-50 border border-red-200 text-red-700'
-                    }`}
+                    className="inline-flex items-center rounded border px-2 py-1 text-xs"
+                    style={{
+                      borderColor: 'color-mix(in srgb, var(--accent-orange) 32%, var(--border-subtle))',
+                      background: 'var(--surface-1)',
+                      color: 'var(--text-primary)',
+                    }}
                   >
-                    {markedForRemoval ? 'Behalten' : 'Entfernen'}
+                    Entfernen
                   </button>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {pendingDocuments.length > 0 && (
-        <div className="space-y-2">
-          {pendingDocuments.map((document, index) => (
-            <div
-              key={`${document.name}:${document.size}:${document.lastModified}`}
-              className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900"
-            >
-              <div className="min-w-0 flex items-center gap-3">
-                <FileText className="w-4 h-4 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">{document.name}</div>
-                  <div className="text-xs text-amber-700">
-                    {formatDocumentSize(document.size)} · Wird beim Speichern hochgeladen
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  setPendingDocuments((current) => current.filter((_, currentIndex) => currentIndex !== index))
-                }
-                className="inline-flex items-center rounded border border-amber-300 bg-white px-2 py-1 text-xs text-amber-800"
-              >
-                Entfernen
-              </button>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

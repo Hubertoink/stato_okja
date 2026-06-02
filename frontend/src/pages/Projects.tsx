@@ -924,6 +924,7 @@ function ProjectForm({
     ? (initial.documents as ProjectDocument[])
     : [];
   const removedDocumentIdSet = new Set(removedDocumentIds);
+  const projectFieldClassName = 'project-form-field w-full rounded px-3 py-2';
 
   const uploadImage = useCallback(async (file: File) => {
     try {
@@ -1321,22 +1322,22 @@ function ProjectForm({
 
   const renderDocumentManager = () => (
     <div
-      className="rounded-xl border p-4"
+      className={`rounded-xl border ${documentsExpanded ? 'p-4' : 'px-3 py-2'}`}
       style={{
         background: 'color-mix(in srgb, var(--surface-2) 86%, transparent)',
         borderColor: 'var(--border-subtle)',
       }}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className={`flex justify-between gap-3 ${documentsExpanded ? 'items-start' : 'items-center'}`}>
         <button
           type="button"
           onClick={() => setDocumentsExpanded((current) => !current)}
-          className="min-w-0 flex flex-1 items-start gap-3 text-left"
+          className={`min-w-0 flex flex-1 text-left ${documentsExpanded ? 'items-start gap-3' : 'items-center gap-2'}`}
           aria-expanded={documentsExpanded}
           aria-label={documentsExpanded ? 'Unterlagen einklappen' : 'Unterlagen ausklappen'}
         >
           <span
-            className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
+            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${documentsExpanded ? 'mt-0.5' : ''}`}
             style={{
               borderColor: 'var(--border-subtle)',
               background: 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
@@ -1350,12 +1351,9 @@ function ProjectForm({
               <Paperclip className="w-4 h-4" style={{ color: 'var(--viridian)' }} />
               Konzeption / Unterlagen
             </span>
-            <span className="mt-1 block text-xs" style={{ color: 'var(--text-muted)' }}>
-              {documentSummary || 'Noch keine Unterlagen hinterlegt.'}
-            </span>
-            {!documentsExpanded && (
-              <span className="mt-1 block text-xs" style={{ color: 'var(--text-faint)' }}>
-                PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
+            {documentsExpanded && (
+              <span className="mt-1 block text-xs" style={{ color: 'var(--text-muted)' }}>
+                {documentSummary || 'Noch keine Unterlagen hinterlegt.'}
               </span>
             )}
           </span>
@@ -1750,10 +1748,8 @@ function ProjectForm({
                     if (String(form.title || '').trim().length === 0) setShowTitleValidation(true);
                   }}
                   required
-                  className={`w-full border rounded px-3 py-2 ${
-                    showTitleValidation && isTitleMissing
-                      ? 'border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-200'
-                      : ''
+                  className={`${projectFieldClassName} ${
+                    showTitleValidation && isTitleMissing ? 'project-form-field-invalid' : ''
                   }`}
                 />
                 {showTitleValidation && isTitleMissing ? (
@@ -1773,7 +1769,7 @@ function ProjectForm({
                     }));
                   }}
                   required
-                  className="w-full border rounded px-3 py-2"
+                  className={projectFieldClassName}
                 >
                   <option value="open_door">Offene Tür</option>
                   <option value="project_open">Projekt (offen)</option>
@@ -1788,7 +1784,7 @@ function ProjectForm({
               <input
                 value={form.targetGroup || ''}
                 onChange={(e) => update('targetGroup', e.target.value)}
-                className="w-full border rounded px-3 py-2"
+                className={projectFieldClassName}
               />
             </div>
             <div>
@@ -1825,7 +1821,14 @@ function ProjectForm({
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed rounded p-3 text-sm text-gray-600 bg-azure-web/30">
+                <div
+                  className="rounded border-2 border-dashed p-3 text-sm"
+                  style={{
+                    background: 'color-mix(in srgb, var(--surface-2) 78%, var(--surface-3))',
+                    borderColor: 'var(--border-strong)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
                   <div className="mb-2">
                     Bild hierher ziehen, klicken zum Auswählen oder per Strg+V einfügen
                   </div>
@@ -1833,12 +1836,12 @@ function ProjectForm({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1 rounded bg-white border"
+                      className="project-form-field rounded px-3 py-1"
                     >
                       Datei wählen…
                     </button>
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">
+                  <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
                     Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
                   </div>
                 </div>
@@ -1849,7 +1852,7 @@ function ProjectForm({
                   type="color"
                   value={(form.color as string) || '#7aa39a'}
                   onChange={(e) => update('color', e.target.value)}
-                  className="w-20 h-10 p-1 border rounded bg-white"
+                  className="project-form-field w-20 h-10 p-1 rounded"
                 />
               </div>
               <div className="hidden lg:block lg:pt-2">{renderTagSelector()}</div>
@@ -1863,7 +1866,7 @@ function ProjectForm({
                   type="time"
                   value={form.defaultStartTime || ''}
                   onChange={(e) => update('defaultStartTime', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className={projectFieldClassName}
                 />
               </div>
               <div>
@@ -1872,7 +1875,7 @@ function ProjectForm({
                   type="time"
                   value={form.defaultEndTime || ''}
                   onChange={(e) => update('defaultEndTime', e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className={projectFieldClassName}
                 />
               </div>
             </div>
@@ -1961,7 +1964,7 @@ function ProjectForm({
                 value={form.description || ''}
                 onChange={(e) => update('description', e.target.value)}
                 rows={4}
-                className="w-full border rounded px-3 py-2"
+                className={projectFieldClassName}
               />
             </div>
           </div>

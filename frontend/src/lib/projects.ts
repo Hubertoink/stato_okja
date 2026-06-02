@@ -2,6 +2,17 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { api } from './api';
 import { useOrgScopeKey } from './orgScope';
 
+export interface ProjectDocument {
+  id: string;
+  projectId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  storageRef: string;
+  createdAt: string;
+  downloadUrl?: string;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -23,6 +34,41 @@ export interface Project {
   description?: string | null;
   clientRequestId?: string | null;
   archived?: boolean;
+  documents?: ProjectDocument[];
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+export async function uploadProjectDocument(projectId: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post(`/projects/${projectId}/documents`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data as ProjectDocument;
+}
+
+export async function removeProjectDocument(projectId: string, documentId: string) {
+  await api.delete(`/projects/${projectId}/documents/${documentId}`);
+}
+
+export async function downloadProjectDocument(projectId: string, document: Pick<ProjectDocument, 'id' | 'filename'>) {
+  const res = await api.get(`/projects/${projectId}/documents/${document.id}/download`, {
+    responseType: 'blob',
+  });
+  const blob = res.data instanceof Blob
+    ? res.data
+    : new Blob([res.data], { type: 'application/octet-stream' });
+  downloadBlob(blob, document.filename || 'projekt-dokument');
 }
 
 export function useProjects(params?: { search?: string; archived?: boolean }) {

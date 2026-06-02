@@ -4,15 +4,18 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import JSZip from 'jszip';
 import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, unlink, writeFile } from 'fs/promises';
-import { dirname, join, relative } from 'path';
+import { dirname, join, relative, resolve as resolvePath, sep } from 'path';
+import { setTimeout as delay } from 'timers/promises';
 import { DataSource, QueryRunner } from 'typeorm';
 import { AuthService } from '../auth/auth.service';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
+import { normalizeUploadPath } from '../common/upload-paths';
 import { buildReadableWorkbook } from './system-data-workbook';
 
 export type SystemDataActor = {
@@ -33,6 +36,27 @@ type UploadFileEntry = {
   absolutePath: string;
   relativePath: string;
   size: number;
+};
+
+type UploadReferenceBreakdown = {
+  projects: number;
+  projectDocuments: number;
+  projectTemplates: number;
+  userAvatars: number;
+};
+
+type UploadReferenceKey = keyof UploadReferenceBreakdown;
+
+type UploadReferenceDetails = {
+  projects: Array<{ id: string; title: string; orgId: string | null }>;
+  projectDocuments: Array<{ id: string; filename: string; projectId: string; projectTitle: string | null; orgId: string | null }>;
+  projectTemplates: Array<{ id: string; title: string; orgId: string | null }>;
+  userAvatars: Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null }>;
+};
+
+type UploadReferenceSummary = {
+  breakdown: UploadReferenceBreakdown;
+  details: UploadReferenceDetails;
 };
 
 type SystemDataManifest = {
@@ -87,6 +111,12 @@ const PURGE_CONFIRMATION_TEXT = 'ALLE DATEN LOESCHEN';
 const IMPORT_CONFIRMATION_TEXT = 'BACKUP IMPORTIEREN';
 const SYSTEM_DATA_EXPORT_FORMAT = 'stato-system-data-export';
 const SYSTEM_DATA_EXPORT_SCHEMA_VERSION = 2;
+const EMPTY_UPLOAD_REFERENCE_BREAKDOWN: UploadReferenceBreakdown = {
+  projects: 0,
+  projectDocuments: 0,
+  projectTemplates: 0,
+  userAvatars: 0,
+};
 
 @Injectable()
 export class SystemDataService {
@@ -134,6 +164,152 @@ export class SystemDataService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async listUploads(actor: SystemDataActor) {
+    this.assertSuperadmin(actor);
+
+    const uploads = await this.scanUploads();
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    try {
+      const references = await this.buildUploadReferenceIndex(queryRunner);
+      const items = uploads.files
+        .map((file) => {
+          const url = this.getUploadUrl(file.relativePath);
+          const referenceSummary = references.get(url) ?? this.createEmptyUploadReferenceSummary();
+          const referenceBreakdown = referenceSummary.breakdown;
+          const referenceCount = this.getUploadReferenceCount(referenceBreakdown);
+          return {
+            relativePath: file.relativePath,
+            filename: file.relativePath.split('/').pop() || file.relativePath,
+            size: file.size,
+            url,
+            isImage: this.isImagePath(file.relativePath),
+            referenceCount,
+            referenceBreakdown,
+            referenceDetails: referenceSummary.details,
+          };
+        })
+        .sort((left, right) => {
+          if (right.referenceCount !== left.referenceCount) return right.referenceCount - left.referenceCount;
+          if (right.size !== left.size) return right.size - left.size;
+          return left.relativePath.localeCompare(right.relativePath);
+        });
+
+      return {
+        generatedAt: new Date().toISOString(),
+        uploads: items,
+      };
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async deleteUpload(actor: SystemDataActor, inputRelativePath: string) {
+    this.assertSuperadmin(actor);
+
+    const { relativePath, absolutePath } = this.resolveUploadPath(inputRelativePath);
+    let fileInfo;
+    try {
+      fileInfo = await stat(absolutePath);
+    } catch {
+      throw new NotFoundException('Upload-Datei wurde nicht gefunden.');
+    }
+
+    if (!fileInfo.isFile()) {
+      throw new BadRequestException('Nur Dateien können gelöscht werden.');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    let referenceBreakdown = { ...EMPTY_UPLOAD_REFERENCE_BREAKDOWN };
+    try {
+      await queryRunner.startTransaction();
+      referenceBreakdown = await this.clearUploadReferences(queryRunner, relativePath);
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+
+    try {
+      await this.unlinkUploadWithRetry(absolutePath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown upload delete error';
+      throw new InternalServerErrorException(`Upload-Datei konnte nicht gelöscht werden: ${message}`);
+    }
+
+    const clearedReferences = this.getUploadReferenceCount(referenceBreakdown);
+    await this.auditService.log({
+      action: AuditAction.DELETE,
+      entityType: 'system-upload',
+      entityId: relativePath,
+      entityTitle: relativePath,
+      orgId: null,
+      user: actor,
+      details: {
+        size: fileInfo.size,
+        clearedReferences,
+        referenceBreakdown,
+      },
+    });
+
+    return {
+      relativePath,
+      deleted: true,
+      deletedBytes: fileInfo.size,
+      clearedReferences,
+      referenceBreakdown,
+    };
+  }
+
+  async deleteUploads(actor: SystemDataActor, inputRelativePaths: string[]) {
+    this.assertSuperadmin(actor);
+
+    const uniquePaths = Array.from(new Set(
+      (inputRelativePaths || [])
+        .map((path) => String(path || '').trim())
+        .filter(Boolean),
+    ));
+    if (!uniquePaths.length) {
+      throw new BadRequestException('Mindestens eine Upload-Datei ist erforderlich.');
+    }
+
+    const deleted: Array<{
+      relativePath: string;
+      deletedBytes: number;
+      clearedReferences: number;
+      referenceBreakdown: UploadReferenceBreakdown;
+    }> = [];
+    const failures: Array<{ relativePath: string; message: string }> = [];
+
+    for (const relativePath of uniquePaths) {
+      try {
+        const result = await this.deleteUpload(actor, relativePath);
+        deleted.push({
+          relativePath: result.relativePath,
+          deletedBytes: result.deletedBytes,
+          clearedReferences: result.clearedReferences,
+          referenceBreakdown: result.referenceBreakdown,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unbekannter Löschfehler';
+        failures.push({ relativePath, message });
+      }
+    }
+
+    return {
+      deleted,
+      failures,
+      deletedCount: deleted.length,
+      deletedBytes: deleted.reduce((sum, item) => sum + item.deletedBytes, 0),
+      clearedReferences: deleted.reduce((sum, item) => sum + item.clearedReferences, 0),
+    };
   }
 
   async exportAllData(actor: SystemDataActor) {
@@ -745,7 +921,7 @@ export class SystemDataService {
     );
 
     const uploads = Object.values(zip.files)
-      .filter((entry) => !entry.dir && entry.name.startsWith('uploads/'))
+      .filter((entry): entry is JSZip.JSZipObject => Boolean(entry) && !entry.dir && entry.name.startsWith('uploads/'))
       .map((entry) => {
         const relativePath = entry.name.slice('uploads/'.length);
         return {
@@ -859,6 +1035,7 @@ export class SystemDataService {
     }
 
     await mkdir(join(uploadsRoot, 'images'), { recursive: true });
+    await mkdir(join(uploadsRoot, 'project-documents'), { recursive: true });
   }
 
   private async copyDirectoryContents(sourceDir: string, targetDir: string) {
@@ -897,6 +1074,142 @@ export class SystemDataService {
     for (const entry of entries) {
       await rm(join(directory, entry.name), { recursive: true, force: true });
     }
+  }
+
+  private async buildUploadReferenceIndex(queryRunner: QueryRunner) {
+    const references = new Map<string, UploadReferenceSummary>();
+
+    const addReference = (
+      rawPath: unknown,
+      key: UploadReferenceKey,
+      detail: UploadReferenceDetails[UploadReferenceKey][number],
+    ) => {
+      const normalizedPath = normalizeUploadPath(typeof rawPath === 'string' ? rawPath : null);
+      if (!normalizedPath || !normalizedPath.startsWith('/uploads/')) return;
+      const current = references.get(normalizedPath) ?? this.createEmptyUploadReferenceSummary();
+      current.breakdown[key] += 1;
+      current.details[key].push(detail as never);
+      references.set(normalizedPath, current);
+    };
+
+    const projectRows = await queryRunner.query(
+      `SELECT "id", "title", "orgId", "imageUrl" FROM ${this.escapeTablePath('projects')} WHERE "imageUrl" IS NOT NULL AND "imageUrl" != ''`,
+    ) as Array<{ id: string; title: string; orgId: string | null; imageUrl?: string | null }>;
+    projectRows.forEach((row) => addReference(row.imageUrl, 'projects', {
+      id: row.id,
+      title: row.title,
+      orgId: row.orgId ?? null,
+    }));
+
+    const projectDocumentRows = await queryRunner.query(
+      `SELECT pd."id", pd."filename", pd."projectId", pd."storageRef", p."title" AS "projectTitle", p."orgId" FROM ${this.escapeTablePath('project_documents')} pd LEFT JOIN ${this.escapeTablePath('projects')} p ON p."id" = pd."projectId" WHERE pd."storageRef" IS NOT NULL AND pd."storageRef" != ''`,
+    ) as Array<{ id: string; filename: string; projectId: string; storageRef?: string | null; projectTitle?: string | null; orgId: string | null }>;
+    projectDocumentRows.forEach((row) => addReference(this.getUploadUrl(String(row.storageRef || '')), 'projectDocuments', {
+      id: row.id,
+      filename: row.filename,
+      projectId: row.projectId,
+      projectTitle: row.projectTitle ?? null,
+      orgId: row.orgId ?? null,
+    }));
+
+    const templateRows = await queryRunner.query(
+      `SELECT "id", "title", "orgId", "imageUrl" FROM ${this.escapeTablePath('project_templates')} WHERE "imageUrl" IS NOT NULL AND "imageUrl" != ''`,
+    ) as Array<{ id: string; title: string; orgId: string | null; imageUrl?: string | null }>;
+    templateRows.forEach((row) => addReference(row.imageUrl, 'projectTemplates', {
+      id: row.id,
+      title: row.title,
+      orgId: row.orgId ?? null,
+    }));
+
+    const userRows = await queryRunner.query(
+      `SELECT "id", "name", "email", "role", "orgId", "avatarUrl" FROM ${this.escapeTablePath('users')} WHERE "avatarUrl" IS NOT NULL AND "avatarUrl" != ''`,
+    ) as Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null; avatarUrl?: string | null }>;
+    userRows.forEach((row) => addReference(row.avatarUrl, 'userAvatars', {
+      id: row.id,
+      name: row.name ?? null,
+      email: row.email,
+      role: row.role,
+      orgId: row.orgId ?? null,
+    }));
+
+    return references;
+  }
+
+  private async clearUploadReferences(queryRunner: QueryRunner, relativePath: string) {
+    const candidates = this.buildUploadPathCandidates(relativePath);
+    const referenceBreakdown = {
+      projects: await this.countUploadFieldMatches(queryRunner, 'projects', 'imageUrl', candidates),
+      projectDocuments: await this.countUploadFieldMatches(queryRunner, 'project_documents', 'storageRef', candidates),
+      projectTemplates: await this.countUploadFieldMatches(queryRunner, 'project_templates', 'imageUrl', candidates),
+      userAvatars: await this.countUploadFieldMatches(queryRunner, 'users', 'avatarUrl', candidates),
+    } satisfies UploadReferenceBreakdown;
+
+    await this.clearUploadField(queryRunner, 'projects', { imageUrl: null, imageSize: null }, 'imageUrl', candidates);
+    await this.deleteUploadRows(queryRunner, 'project_documents', 'storageRef', candidates);
+    await this.clearUploadField(queryRunner, 'project_templates', { imageUrl: null }, 'imageUrl', candidates);
+    await this.clearUploadField(queryRunner, 'users', { avatarUrl: null }, 'avatarUrl', candidates);
+
+    return referenceBreakdown;
+  }
+
+  private async countUploadFieldMatches(
+    queryRunner: QueryRunner,
+    tablePath: string,
+    field: string,
+    candidates: string[],
+  ) {
+    if (!candidates.length) return 0;
+    const placeholders = candidates.map((_value, index) => this.getParameterPlaceholder(index + 1)).join(', ');
+    const rows = await queryRunner.query(
+      `SELECT COUNT(*) AS count FROM ${this.escapeTablePath(tablePath)} WHERE ${this.escapeIdentifier(field)} IN (${placeholders})`,
+      candidates,
+    ) as Array<{ count?: string | number }>;
+    return Number(rows[0]?.count || 0) || 0;
+  }
+
+  private async clearUploadField(
+    queryRunner: QueryRunner,
+    tablePath: string,
+    values: Record<string, unknown>,
+    field: string,
+    candidates: string[],
+  ) {
+    if (!candidates.length) return;
+
+    const params: unknown[] = [];
+    const setSql = Object.entries(values)
+      .map(([column, value]) => {
+        params.push(value);
+        return `${this.escapeIdentifier(column)} = ${this.getParameterPlaceholder(params.length)}`;
+      })
+      .join(', ');
+
+    const whereSql = candidates
+      .map((candidate) => {
+        params.push(candidate);
+        return this.getParameterPlaceholder(params.length);
+      })
+      .join(', ');
+
+    await queryRunner.query(
+      `UPDATE ${this.escapeTablePath(tablePath)} SET ${setSql} WHERE ${this.escapeIdentifier(field)} IN (${whereSql})`,
+      params,
+    );
+  }
+
+  private async deleteUploadRows(
+    queryRunner: QueryRunner,
+    tablePath: string,
+    field: string,
+    candidates: string[],
+  ) {
+    if (!candidates.length) return;
+
+    const placeholders = candidates.map((_candidate, index) => this.getParameterPlaceholder(index + 1)).join(', ');
+    await queryRunner.query(
+      `DELETE FROM ${this.escapeTablePath(tablePath)} WHERE ${this.escapeIdentifier(field)} IN (${placeholders})`,
+      candidates,
+    );
   }
 
   private async insertRows(queryRunner: QueryRunner, tablePath: string, rows: Array<Record<string, unknown>>) {
@@ -946,6 +1259,59 @@ export class SystemDataService {
     }
   }
 
+  private getUploadReferenceCount(referenceBreakdown: UploadReferenceBreakdown) {
+    return Object.values(referenceBreakdown).reduce((sum, count) => sum + count, 0);
+  }
+
+  private createEmptyUploadReferenceSummary(): UploadReferenceSummary {
+    return {
+      breakdown: { ...EMPTY_UPLOAD_REFERENCE_BREAKDOWN },
+      details: {
+        projects: [],
+        projectDocuments: [],
+        projectTemplates: [],
+        userAvatars: [],
+      },
+    };
+  }
+
+  private getUploadUrl(relativePath: string) {
+    return `/uploads/${String(relativePath || '').replace(/^\/+/, '').replace(/\\/g, '/')}`;
+  }
+
+  private isImagePath(relativePath: string) {
+    return /\.(png|jpe?g|webp|gif)$/i.test(relativePath);
+  }
+
+  private resolveUploadPath(inputRelativePath: string) {
+    const raw = String(inputRelativePath || '').trim();
+    if (!raw) throw new BadRequestException('Upload-Pfad ist erforderlich.');
+
+    const normalized = raw.replace(/\\/g, '/').replace(/^\/+/, '').replace(/^uploads\//, '');
+    const uploadsRoot = resolvePath(join(process.cwd(), 'uploads'));
+    const absolutePath = resolvePath(uploadsRoot, normalized);
+
+    if (!absolutePath.startsWith(`${uploadsRoot}${sep}`)) {
+      throw new BadRequestException('Ungültiger Upload-Pfad.');
+    }
+
+    return {
+      relativePath: relative(uploadsRoot, absolutePath).replace(/\\/g, '/'),
+      absolutePath,
+    };
+  }
+
+  private buildUploadPathCandidates(relativePath: string) {
+    const normalized = relativePath.replace(/^\/+/, '').replace(/\\/g, '/');
+    const publicPath = this.getUploadUrl(normalized);
+    const candidates = new Set<string>([normalized, publicPath, publicPath.slice(1)]);
+    if (normalized.startsWith('images/')) {
+      const filename = normalized.slice('images/'.length);
+      if (filename) candidates.add(filename);
+    }
+    return Array.from(candidates);
+  }
+
   private async removePath(path: string) {
     if (!path) return;
     try {
@@ -957,6 +1323,28 @@ export class SystemDataService {
         /* ignore cleanup errors */
       }
     }
+  }
+
+  private async unlinkUploadWithRetry(absolutePath: string) {
+    const maxAttempts = 4;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        await unlink(absolutePath);
+        return;
+      } catch (error) {
+        if (!this.isTransientUploadDeleteError(error) || attempt === maxAttempts) {
+          throw error;
+        }
+        await delay(75 * attempt);
+      }
+    }
+  }
+
+  private isTransientUploadDeleteError(error: unknown) {
+    const code = typeof error === 'object' && error && 'code' in error
+      ? String((error as { code?: string }).code || '')
+      : '';
+    return code === 'EPERM' || code === 'EBUSY' || code === 'EMFILE' || code === 'ENFILE';
   }
 
   private serializeCsvValue(value: unknown) {
@@ -1111,6 +1499,7 @@ export class SystemDataService {
     try {
       await rm(uploadsRoot, { recursive: true, force: true });
       await mkdir(join(uploadsRoot, 'images'), { recursive: true });
+      await mkdir(join(uploadsRoot, 'project-documents'), { recursive: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown upload cleanup error';
       warnings.push(message);

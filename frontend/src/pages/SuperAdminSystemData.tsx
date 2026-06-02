@@ -1,14 +1,19 @@
-import { useMemo, useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp, Clock, Copy, Database, Download, FileArchive, HardDrive, Server, ShieldAlert, ShieldCheck, Trash2, Upload } from 'lucide-react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, CheckSquare, ChevronDown, ChevronUp, Clock, Copy, Database, Download, FileArchive, HardDrive, Image as ImageIcon, Search, Server, ShieldAlert, ShieldCheck, Square, Trash2, Upload } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
+import Modal from '@/components/Modal';
+import ProtectedImage from '@/components/ProtectedImage';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import {
   downloadSystemDataExport,
   getApiErrorMessage,
+  type SystemDataUploadItem,
+  useDeleteSystemDataUploads,
   useImportSystemData,
   useInspectSystemDataImport,
+  useSystemDataUploads,
   useExportSystemData,
   usePurgeSystemData,
   useSystemDataSummary,
@@ -51,6 +56,102 @@ function SummaryCard({
         <div className="system-data-summary-label text-sm text-gray-500 font-medium">{label}</div>
         <div className="system-data-summary-value text-2xl font-bold text-gray-900 mt-0.5">{value}</div>
       </div>
+    </div>
+  );
+}
+
+function formatUploadReferenceLabel(upload: SystemDataUploadItem) {
+  if (!upload.referenceCount) return 'Keine Verknüpfung';
+  const parts: string[] = [];
+  if (upload.referenceBreakdown.projects) parts.push(`${upload.referenceBreakdown.projects} Projekte`);
+  if (upload.referenceBreakdown.projectDocuments) parts.push(`${upload.referenceBreakdown.projectDocuments} Projektdokumente`);
+  if (upload.referenceBreakdown.projectTemplates) parts.push(`${upload.referenceBreakdown.projectTemplates} Vorlagen`);
+  if (upload.referenceBreakdown.userAvatars) parts.push(`${upload.referenceBreakdown.userAvatars} Avatare`);
+  return parts.join(' · ');
+}
+
+function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
+  const blocks: React.ReactNode[] = [];
+
+  if (upload.referenceDetails.projects.length) {
+    blocks.push(
+      <div key="projects" className="space-y-1">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Projekte</div>
+        {upload.referenceDetails.projects.map((project) => (
+          <div key={project.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
+            <div className="font-medium text-gray-900">{project.title}</div>
+            <div className="text-gray-500 break-all">ID: {project.id}</div>
+          </div>
+        ))}
+      </div>,
+    );
+  }
+
+  if (upload.referenceDetails.projectDocuments.length) {
+    blocks.push(
+      <div key="project-documents" className="space-y-1">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Projektdokumente</div>
+        {upload.referenceDetails.projectDocuments.map((document) => (
+          <div key={document.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
+            <div className="font-medium text-gray-900">{document.filename}</div>
+            <div className="text-gray-500">{document.projectTitle || 'Ohne Projekt'}</div>
+            <div className="text-gray-500 break-all">Projekt-ID: {document.projectId}</div>
+          </div>
+        ))}
+      </div>,
+    );
+  }
+
+  if (upload.referenceDetails.projectTemplates.length) {
+    blocks.push(
+      <div key="templates" className="space-y-1">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Vorlagen</div>
+        {upload.referenceDetails.projectTemplates.map((template) => (
+          <div key={template.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
+            <div className="font-medium text-gray-900">{template.title}</div>
+            <div className="text-gray-500 break-all">ID: {template.id}</div>
+          </div>
+        ))}
+      </div>,
+    );
+  }
+
+  if (upload.referenceDetails.userAvatars.length) {
+    blocks.push(
+      <div key="avatars" className="space-y-1">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Benutzer-Avatare</div>
+        {upload.referenceDetails.userAvatars.map((user) => (
+          <div key={user.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
+            <div className="font-medium text-gray-900">{user.name || user.email}</div>
+            <div className="text-gray-500 break-all">{user.email}</div>
+          </div>
+        ))}
+      </div>,
+    );
+  }
+
+  return blocks;
+}
+
+function AuthorizedUploadThumbnail({ upload }: { upload: SystemDataUploadItem }) {
+  if (!upload.isImage) {
+    return (
+      <div className="w-full h-28 rounded-lg border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-gray-400">
+        <FileArchive className="w-7 h-7" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-28 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+        <ImageIcon className="w-7 h-7" />
+      </div>
+      <ProtectedImage
+        src={upload.url}
+        alt={upload.filename}
+        className="relative z-[1] w-full h-full object-cover"
+      />
     </div>
   );
 }
@@ -99,6 +200,7 @@ export default function SuperAdminSystemData() {
   const inspectImportMutation = useInspectSystemDataImport();
   const importMutation = useImportSystemData();
   const purgeMutation = usePurgeSystemData();
+  const deleteUploadsMutation = useDeleteSystemDataUploads();
 
   const [password, setPassword] = useState('');
   const [confirmationText, setConfirmationText] = useState('');
@@ -108,6 +210,12 @@ export default function SuperAdminSystemData() {
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isPurgeOpen, setIsPurgeOpen] = useState(false);
+  const [isUploadsOpen, setIsUploadsOpen] = useState(false);
+  const [uploadSearch, setUploadSearch] = useState('');
+  const [showOrphanedOnly, setShowOrphanedOnly] = useState(false);
+  const [selectedUploadPaths, setSelectedUploadPaths] = useState<string[]>([]);
+  const [expandedUploadPaths, setExpandedUploadPaths] = useState<string[]>([]);
+  const [uploadsToDelete, setUploadsToDelete] = useState<SystemDataUploadItem[]>([]);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
   const [purgeConfirmOpen, setPurgeConfirmOpen] = useState(false);
   const [lastImportSummary, setLastImportSummary] = useState<null | {
@@ -124,13 +232,46 @@ export default function SuperAdminSystemData() {
   }>(null);
 
   const summary = summaryQuery.data;
+  const uploadsQuery = useSystemDataUploads(isUploadsOpen);
   const tablePreview = useMemo(() => (summary?.tables ?? []).slice().sort((left, right) => right.rowCount - left.rowCount), [summary?.tables]);
+  const deferredUploadSearch = useDeferredValue(uploadSearch.trim().toLowerCase());
+  const uploads = uploadsQuery.data?.uploads ?? [];
+  const selectedUploadPathSet = useMemo(() => new Set(selectedUploadPaths), [selectedUploadPaths]);
+  const expandedUploadPathSet = useMemo(() => new Set(expandedUploadPaths), [expandedUploadPaths]);
+  const filteredUploads = useMemo(() => {
+    return uploads.filter((upload) => {
+      if (showOrphanedOnly && upload.referenceCount > 0) return false;
+      if (!deferredUploadSearch) return true;
+      const haystack = `${upload.filename} ${upload.relativePath}`.toLowerCase();
+      return haystack.includes(deferredUploadSearch);
+    });
+  }, [deferredUploadSearch, showOrphanedOnly, uploads]);
+  const selectedUploads = useMemo(
+    () => uploads.filter((upload) => selectedUploadPathSet.has(upload.relativePath)),
+    [selectedUploadPathSet, uploads],
+  );
+  const allFilteredSelected = filteredUploads.length > 0 && filteredUploads.every((upload) => selectedUploadPathSet.has(upload.relativePath));
+  const uploadStats = useMemo(() => {
+    return filteredUploads.reduce((acc, upload) => {
+      acc.bytes += upload.size;
+      if (upload.referenceCount > 0) acc.referenced += 1;
+      else acc.orphaned += 1;
+      return acc;
+    }, { bytes: 0, referenced: 0, orphaned: 0 });
+  }, [filteredUploads]);
   const isConfirmationValid = summary ? confirmationText.trim().toUpperCase() === summary.confirmationText : false;
   const importPreview = inspectImportMutation.data;
   const restoreConfirmationTarget = importPreview?.confirmationText || summary?.restoreConfirmationText || '';
   const isRestoreConfirmationValid = restoreConfirmationTarget
     ? restoreConfirmationText.trim().toUpperCase() === restoreConfirmationTarget
     : false;
+
+  useEffect(() => {
+    const validPaths = new Set(uploads.map((upload) => upload.relativePath));
+    setSelectedUploadPaths((current) => current.filter((path) => validPaths.has(path)));
+    setExpandedUploadPaths((current) => current.filter((path) => validPaths.has(path)));
+    setUploadsToDelete((current) => current.filter((upload) => validPaths.has(upload.relativePath)));
+  }, [uploads]);
 
   if (!user) return null;
   if (user.role !== 'superadmin') {
@@ -234,6 +375,60 @@ export default function SuperAdminSystemData() {
     }
   };
 
+  const handleDeleteUploads = async () => {
+    if (!uploadsToDelete.length) return;
+
+    try {
+      const result = await deleteUploadsMutation.mutateAsync(uploadsToDelete.map((upload) => upload.relativePath));
+      if (result.deleted.length) {
+        const deletedSet = new Set(result.deleted.map((item) => item.relativePath));
+        setSelectedUploadPaths((current) => current.filter((path) => !deletedSet.has(path)));
+      }
+      setUploadsToDelete([]);
+
+      if (result.failures.length) {
+        showToast(
+          `${result.deletedCount} Uploads gelöscht, ${result.failures.length} fehlgeschlagen.`,
+          { type: 'error', durationMs: 5500 },
+        );
+        return;
+      }
+
+      const referenceSuffix = result.clearedReferences > 0 ? ` ${result.clearedReferences} Verknüpfungen entfernt.` : '';
+      showToast(`${result.deletedCount} Uploads gelöscht.${referenceSuffix}`, { type: 'success', durationMs: 4500 });
+    } catch (error) {
+      showToast(getApiErrorMessage(error, 'Uploads konnten nicht gelöscht werden.'), { type: 'error', durationMs: 4500 });
+    }
+  };
+
+  const toggleUploadSelection = (relativePath: string) => {
+    setSelectedUploadPaths((current) => (
+      current.includes(relativePath)
+        ? current.filter((path) => path !== relativePath)
+        : [...current, relativePath]
+    ));
+  };
+
+  const toggleAllFilteredUploads = () => {
+    setSelectedUploadPaths((current) => {
+      const next = new Set(current);
+      if (allFilteredSelected) {
+        filteredUploads.forEach((upload) => next.delete(upload.relativePath));
+      } else {
+        filteredUploads.forEach((upload) => next.add(upload.relativePath));
+      }
+      return Array.from(next);
+    });
+  };
+
+  const toggleExpandedUpload = (relativePath: string) => {
+    setExpandedUploadPaths((current) => (
+      current.includes(relativePath)
+        ? current.filter((path) => path !== relativePath)
+        : [...current, relativePath]
+    ));
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -281,15 +476,25 @@ export default function SuperAdminSystemData() {
                       ZIP mit bereinigter Excel-Arbeitsmappe, manifest.json, JSON- und CSV-Dateien je Tabelle sowie allen Upload-Dateien.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-viridian text-white hover:bg-viridian/90 transition-colors disabled:opacity-60"
-                    onClick={() => void handleExport()}
-                    disabled={exportMutation.isPending}
-                  >
-                    <Download className="w-4 h-4" />
-                    {exportMutation.isPending ? 'Export läuft…' : 'ZIP herunterladen'}
-                  </button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
+                      onClick={() => setIsUploadsOpen(true)}
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      Uploads verwalten
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-viridian text-white hover:bg-viridian/90 transition-colors disabled:opacity-60"
+                      onClick={() => void handleExport()}
+                      disabled={exportMutation.isPending}
+                    >
+                      <Download className="w-4 h-4" />
+                      {exportMutation.isPending ? 'Export läuft…' : 'ZIP herunterladen'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -662,6 +867,38 @@ export default function SuperAdminSystemData() {
       )}
 
       <ConfirmModal
+        open={uploadsToDelete.length > 0}
+        title={uploadsToDelete.length > 1 ? 'Ausgewählte Uploads wirklich löschen?' : 'Upload wirklich löschen?'}
+        message={
+          <div className="space-y-3">
+            <p>
+              {uploadsToDelete.length > 1
+                ? `${uploadsToDelete.length} Dateien werden dauerhaft aus dem Upload-Speicher entfernt.`
+                : `${uploadsToDelete[0]?.filename || 'Datei'} wird dauerhaft aus dem Upload-Speicher entfernt.`}
+            </p>
+            {uploadsToDelete.length === 1 && uploadsToDelete[0] && (
+              <p className="text-sm text-gray-700">
+                Aktuelle Verknüpfungen: <span className="font-medium">{formatUploadReferenceLabel(uploadsToDelete[0])}</span>
+              </p>
+            )}
+            {uploadsToDelete.some((upload) => upload.referenceCount > 0) ? (
+              <p className="text-amber-700 font-medium">Bekannte Referenzen in Projekten, Vorlagen und Avataren werden dabei automatisch entfernt.</p>
+            ) : (
+              <p className="text-gray-600">Es liegen derzeit keine bekannten Verknüpfungen vor.</p>
+            )}
+          </div>
+        }
+        confirmLabel={deleteUploadsMutation.isPending ? 'Lösche…' : uploadsToDelete.length > 1 ? 'Auswahl löschen' : 'Upload löschen'}
+        cancelLabel="Abbrechen"
+        onConfirm={() => {
+          void handleDeleteUploads();
+        }}
+        onCancel={() => {
+          if (!deleteUploadsMutation.isPending) setUploadsToDelete([]);
+        }}
+      />
+
+      <ConfirmModal
         open={restoreConfirmOpen}
         title="Vollständigen Restore bestätigen"
         message={
@@ -698,6 +935,175 @@ export default function SuperAdminSystemData() {
           if (!purgeMutation.isPending) setPurgeConfirmOpen(false);
         }}
       />
+
+      <Modal
+        open={isUploadsOpen}
+        onClose={() => {
+          if (!deleteUploadsMutation.isPending) setIsUploadsOpen(false);
+        }}
+        title="Upload-Verwaltung"
+        maxWidth="6xl"
+      >
+        <div className="space-y-5">
+          <div className="system-data-banner system-data-banner-info rounded-xl px-4 py-3 text-sm flex gap-3">
+            <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
+            <div>
+              Sichtbar sind alle Dateien aus dem Upload-Speicher. Die Referenzzahl zählt bekannte Verknüpfungen aus Projekten, Projektvorlagen und Benutzer-Avataren.
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="rounded-xl bg-gray-50 px-4 py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Dateien</div>
+              <div className="mt-1 text-xl font-semibold text-gray-800">{filteredUploads.length}</div>
+            </div>
+            <div className="rounded-xl bg-gray-50 px-4 py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Mit Verknüpfung</div>
+              <div className="mt-1 text-xl font-semibold text-gray-800">{uploadStats.referenced}</div>
+            </div>
+            <div className="rounded-xl bg-gray-50 px-4 py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Ohne Verknüpfung</div>
+              <div className="mt-1 text-xl font-semibold text-gray-800">{uploadStats.orphaned}</div>
+            </div>
+            <div className="rounded-xl bg-gray-50 px-4 py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Gefilterter Speicher</div>
+              <div className="mt-1 text-xl font-semibold text-gray-800">{formatBytes(uploadStats.bytes)}</div>
+            </div>
+          </div>
+
+          <label className="block text-sm text-gray-700">
+            <span className="font-medium">Dateien filtern</span>
+            <div className="mt-2 relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={uploadSearch}
+                onChange={(event) => setUploadSearch(event.target.value)}
+                className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-viridian/20 focus:border-viridian/40"
+                placeholder="Dateiname oder Pfad suchen"
+              />
+            </div>
+          </label>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${showOrphanedOnly ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}
+              onClick={() => setShowOrphanedOnly((current) => !current)}
+            >
+              {showOrphanedOnly ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+              Nur unverknüpfte Uploads
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={toggleAllFilteredUploads}
+              disabled={!filteredUploads.length}
+            >
+              {allFilteredSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+              {allFilteredSelected ? 'Gefilterte Auswahl aufheben' : 'Gefilterte auswählen'}
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+              onClick={() => setUploadsToDelete(selectedUploads)}
+              disabled={!selectedUploads.length || deleteUploadsMutation.isPending}
+            >
+              <Trash2 className="w-4 h-4" />
+              Ausgewählte löschen ({selectedUploads.length})
+            </button>
+          </div>
+
+          {uploadsQuery.isLoading && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-gray-500">
+              Upload-Liste wird geladen…
+            </div>
+          )}
+
+          {uploadsQuery.error && (
+            <div className="system-data-banner system-data-banner-danger rounded-xl px-4 py-3 text-sm">
+              {getApiErrorMessage(uploadsQuery.error, 'Upload-Liste konnte nicht geladen werden.')}
+            </div>
+          )}
+
+          {!uploadsQuery.isLoading && !uploadsQuery.error && filteredUploads.length === 0 && (
+            <div className="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-gray-500">
+              Keine Upload-Dateien für den aktuellen Filter gefunden.
+            </div>
+          )}
+
+          {filteredUploads.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+              {filteredUploads.map((upload) => {
+                const isSelected = selectedUploadPathSet.has(upload.relativePath);
+                const isExpanded = expandedUploadPathSet.has(upload.relativePath);
+                const details = renderUploadReferenceDetails(upload);
+                return (
+                  <div key={upload.relativePath} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm space-y-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-viridian focus:ring-viridian/30"
+                          checked={isSelected}
+                          onChange={() => toggleUploadSelection(upload.relativePath)}
+                        />
+                        Markieren
+                      </label>
+                      {upload.referenceCount > 0 && (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-viridian hover:text-viridian/80"
+                          onClick={() => toggleExpandedUpload(upload.relativePath)}
+                        >
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          {isExpanded ? 'Details ausblenden' : 'Details anzeigen'}
+                        </button>
+                      )}
+                    </div>
+
+                    <AuthorizedUploadThumbnail upload={upload} />
+
+                    <div className="space-y-1">
+                      <div className="text-[13px] font-semibold text-gray-900 break-all leading-5">{upload.filename}</div>
+                      <div className="text-xs text-gray-500 break-all">{upload.relativePath}</div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-gray-100 text-gray-700 font-medium text-xs">
+                        {formatBytes(upload.size)}
+                      </span>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${upload.referenceCount ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {upload.referenceCount ? `${upload.referenceCount} Verknüpfungen` : 'Unverknüpft'}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-gray-600 min-h-[2rem]">
+                      {formatUploadReferenceLabel(upload)}
+                    </div>
+
+                    {isExpanded && details.length > 0 && (
+                      <div className="rounded-lg border border-gray-200 bg-white p-2.5 space-y-3 max-h-48 overflow-y-auto">
+                        {details}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center gap-2 w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+                      onClick={() => setUploadsToDelete([upload])}
+                      disabled={deleteUploadsMutation.isPending}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Datei löschen
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

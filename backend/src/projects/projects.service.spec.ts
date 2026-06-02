@@ -21,6 +21,7 @@ describe('ProjectsService idempotent create', () => {
       projectRepository as never,
       {} as never,
       {} as never,
+      {} as never,
       audit as never,
     );
 
@@ -63,6 +64,7 @@ describe('ProjectsService idempotent create', () => {
     const audit = { log: jest.fn().mockResolvedValue(undefined) };
     const service = new ProjectsService(
       projectRepository as never,
+      {} as never,
       {} as never,
       {} as never,
       audit as never,

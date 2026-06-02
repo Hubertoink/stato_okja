@@ -1,6 +1,11 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
+const refreshSessionTimestampColumnType =
+  (process.env.DB_TYPE || 'postgres').toLowerCase() === 'postgres'
+    ? 'timestamptz'
+    : 'datetime';
+
 @Entity('auth_refresh_sessions')
 export class RefreshSession {
   @PrimaryGeneratedColumn('uuid')
@@ -24,13 +29,13 @@ export class RefreshSession {
   @Column({ type: 'varchar', length: 255 })
   csrfHash!: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: refreshSessionTimestampColumnType })
   expiresAt!: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: refreshSessionTimestampColumnType })
   createdAt!: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: refreshSessionTimestampColumnType })
   lastUsedAt!: Date;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

@@ -1305,6 +1305,133 @@ function ProjectForm({
       applyingTemplate || archiving || deleting || imageIssue.open || documentIssue.open || saving ? undefined : handleSave,
   });
 
+  const renderDocumentManager = () => (
+    <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+            <Paperclip className="w-4 h-4 text-viridian" />
+            Konzeption / Unterlagen
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => documentInputRef.current?.click()}
+          className="px-3 py-1.5 rounded bg-white border border-gray-300 text-sm text-gray-700"
+        >
+          Dateien wählen…
+        </button>
+        <input
+          ref={documentInputRef}
+          type="file"
+          accept={PROJECT_DOCUMENT_ACCEPT}
+          multiple
+          className="hidden"
+          onChange={onDocumentChange}
+        />
+      </div>
+
+      {visibleExistingDocuments.length === 0 && pendingDocuments.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
+          Noch keine Unterlagen hinterlegt.
+          {!initial?.id ? ' Ausgewählte Dateien werden nach dem ersten Speichern hochgeladen.' : ''}
+        </div>
+      ) : null}
+
+      {existingDocuments.length > 0 && (
+        <div className="space-y-2">
+          {existingDocuments.map((document) => {
+            const markedForRemoval = removedDocumentIdSet.has(document.id);
+            return (
+              <div
+                key={document.id}
+                className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+                  markedForRemoval
+                    ? 'border-red-200 bg-red-50 text-red-700'
+                    : 'border-gray-200 bg-white text-gray-800'
+                }`}
+              >
+                <div className="min-w-0 flex items-center gap-3">
+                  <FileText className="w-4 h-4 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{document.filename}</div>
+                    <div className="text-xs text-gray-500">
+                      {formatDocumentSize(document.size)}
+                      {formatDocumentDate(document.createdAt) ? ` · ${formatDocumentDate(document.createdAt)}` : ''}
+                      {markedForRemoval ? ' · Wird beim Speichern entfernt' : ''}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {!markedForRemoval && (
+                    <button
+                      type="button"
+                      onClick={() => void downloadProjectDocument(initial?.id as string, document)}
+                      className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRemovedDocumentIds((current) =>
+                        current.includes(document.id)
+                          ? current.filter((id) => id !== document.id)
+                          : [...current, document.id],
+                      )
+                    }
+                    className={`inline-flex items-center rounded px-2 py-1 text-xs ${
+                      markedForRemoval
+                        ? 'bg-white border border-red-200 text-red-700'
+                        : 'bg-red-50 border border-red-200 text-red-700'
+                    }`}
+                  >
+                    {markedForRemoval ? 'Behalten' : 'Entfernen'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {pendingDocuments.length > 0 && (
+        <div className="space-y-2">
+          {pendingDocuments.map((document, index) => (
+            <div
+              key={`${document.name}:${document.size}:${document.lastModified}`}
+              className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900"
+            >
+              <div className="min-w-0 flex items-center gap-3">
+                <FileText className="w-4 h-4 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{document.name}</div>
+                  <div className="text-xs text-amber-700">
+                    {formatDocumentSize(document.size)} · Wird beim Speichern hochgeladen
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setPendingDocuments((current) => current.filter((_, currentIndex) => currentIndex !== index))
+                }
+                className="inline-flex items-center rounded border border-amber-300 bg-white px-2 py-1 text-xs text-amber-800"
+              >
+                Entfernen
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const renderTagSelector = () => (
     <div>
       <label className="block text-sm font-medium mb-1">Tags (mehrfach)</label>
@@ -1649,6 +1776,7 @@ function ProjectForm({
             </div>
             <div className="lg:hidden">{renderTagSelector()}</div>
             {form.type !== 'open_door' && renderCategorySelector()}
+            {renderDocumentManager()}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Mitarbeitende (mehrfach, Standard)
@@ -1733,130 +1861,6 @@ function ProjectForm({
                 rows={4}
                 className="w-full border rounded px-3 py-2"
               />
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    <Paperclip className="w-4 h-4 text-viridian" />
-                    Konzeption / Unterlagen
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => documentInputRef.current?.click()}
-                  className="px-3 py-1.5 rounded bg-white border border-gray-300 text-sm text-gray-700"
-                >
-                  Dateien wählen…
-                </button>
-                <input
-                  ref={documentInputRef}
-                  type="file"
-                  accept={PROJECT_DOCUMENT_ACCEPT}
-                  multiple
-                  className="hidden"
-                  onChange={onDocumentChange}
-                />
-              </div>
-
-              {visibleExistingDocuments.length === 0 && pendingDocuments.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
-                  Noch keine Unterlagen hinterlegt.
-                  {!initial?.id ? ' Ausgewählte Dateien werden nach dem ersten Speichern hochgeladen.' : ''}
-                </div>
-              ) : null}
-
-              {existingDocuments.length > 0 && (
-                <div className="space-y-2">
-                  {existingDocuments.map((document) => {
-                    const markedForRemoval = removedDocumentIdSet.has(document.id);
-                    return (
-                      <div
-                        key={document.id}
-                        className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
-                          markedForRemoval
-                            ? 'border-red-200 bg-red-50 text-red-700'
-                            : 'border-gray-200 bg-white text-gray-800'
-                        }`}
-                      >
-                        <div className="min-w-0 flex items-center gap-3">
-                          <FileText className="w-4 h-4 shrink-0" />
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{document.filename}</div>
-                            <div className="text-xs text-gray-500">
-                              {formatDocumentSize(document.size)}
-                              {formatDocumentDate(document.createdAt) ? ` · ${formatDocumentDate(document.createdAt)}` : ''}
-                              {markedForRemoval ? ' · Wird beim Speichern entfernt' : ''}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {!markedForRemoval && (
-                            <button
-                              type="button"
-                              onClick={() => void downloadProjectDocument(initial?.id as string, document)}
-                              className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              Download
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setRemovedDocumentIds((current) =>
-                                current.includes(document.id)
-                                  ? current.filter((id) => id !== document.id)
-                                  : [...current, document.id],
-                              )
-                            }
-                            className={`inline-flex items-center rounded px-2 py-1 text-xs ${
-                              markedForRemoval
-                                ? 'bg-white border border-red-200 text-red-700'
-                                : 'bg-red-50 border border-red-200 text-red-700'
-                            }`}
-                          >
-                            {markedForRemoval ? 'Behalten' : 'Entfernen'}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {pendingDocuments.length > 0 && (
-                <div className="space-y-2">
-                  {pendingDocuments.map((document, index) => (
-                    <div
-                      key={`${document.name}:${document.size}:${document.lastModified}`}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900"
-                    >
-                      <div className="min-w-0 flex items-center gap-3">
-                        <FileText className="w-4 h-4 shrink-0" />
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate">{document.name}</div>
-                          <div className="text-xs text-amber-700">
-                            {formatDocumentSize(document.size)} · Wird beim Speichern hochgeladen
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPendingDocuments((current) => current.filter((_, currentIndex) => currentIndex !== index))
-                        }
-                        className="inline-flex items-center rounded border border-amber-300 bg-white px-2 py-1 text-xs text-amber-800"
-                      >
-                        Entfernen
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>

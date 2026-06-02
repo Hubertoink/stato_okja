@@ -66,6 +66,7 @@ export async function buildReadableWorkbook(input: WorkbookInput): Promise<{
   const tags = getRows(input.tableRows, 'tags');
   const cohorts = getRows(input.tableRows, 'cohorts');
   const projects = getRows(input.tableRows, 'projects');
+  const projectDocuments = getRows(input.tableRows, 'project_documents');
   const activities = getRows(input.tableRows, 'activities');
   const attachments = getRows(input.tableRows, 'attachments');
   const auditLogs = getRows(input.tableRows, 'audit_logs');
@@ -236,6 +237,24 @@ export async function buildReadableWorkbook(input: WorkbookInput): Promise<{
         Archiviert: booleanLabel(row.archived),
         Bild: booleanLabel(hasValue(row.imageUrl)),
         Beschreibung: valueOrEmpty(row.description),
+      };
+    }),
+  );
+
+  addSheet(
+    workbook,
+    sheetNames,
+    'Projektdokumente',
+    projectDocuments.map((row) => {
+      const project = projectById.get(stringValue(row.projectId));
+      return {
+        Datei: valueOrEmpty(row.filename),
+        Projekt: project ? valueOrEmpty(project.title) : '',
+        Organisation: getOrganizationLabel(orgById, project?.orgId),
+        'Mime-Type': valueOrEmpty(row.mimeType),
+        'Groesse (KB)': sizeInKb(row.size),
+        Speicher: valueOrEmpty(row.storageRef),
+        Erstellt: formatDateTime(row.createdAt),
       };
     }),
   );

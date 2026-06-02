@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { ActivityType } from '../../common/enums';
 import { Category } from '../../taxonomy/entities/category.entity';
 import { Organization } from '../../orgs/entities/organization.entity';
+import { ProjectDocument } from './project-document.entity';
 
 @Entity('projects')
 export class Project {
@@ -75,6 +76,9 @@ export class Project {
 
   @Column({ default: false })
   archived: boolean;
+
+  @OneToMany(() => ProjectDocument, (document) => document.project)
+  documents?: ProjectDocument[];
 
   @CreateDateColumn()
   createdAt: Date;

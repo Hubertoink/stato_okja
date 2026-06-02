@@ -90,8 +90,10 @@ async function bootstrap() {
   // Ensure uploads directories exist (volume might start empty)
   const uploadsBase = join(process.cwd(), 'uploads');
   const uploadsImages = join(uploadsBase, 'images');
+  const uploadsProjectDocuments = join(uploadsBase, 'project-documents');
   try {
     if (!existsSync(uploadsImages)) mkdirSync(uploadsImages, { recursive: true });
+    if (!existsSync(uploadsProjectDocuments)) mkdirSync(uploadsProjectDocuments, { recursive: true });
   } catch (e) {
     console.warn('Could not ensure uploads directory exists:', e);
   }

@@ -1,7 +1,8 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, FindOptionsWhere, Equal, IsNull, In } from 'typeorm';
 import { Project } from './entities/project.entity';
+import { ProjectDocument } from './entities/project-document.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
@@ -16,14 +17,40 @@ export class ProjectsService {
   constructor(
     @InjectRepository(Project)
     private projectRepository: Repository<Project>,
+    @InjectRepository(ProjectDocument)
+    private projectDocumentRepository: Repository<ProjectDocument>,
     @InjectRepository(Category)
     private categoryRepository: Repository<Category>,
     private readonly orgs: OrgsService,
     private readonly audit: AuditService,
   ) {}
 
+  private withDocumentUrl(document: ProjectDocument): ProjectDocument {
+    document.downloadUrl = `/projects/${document.projectId}/documents/${document.id}/download`;
+    return document;
+  }
+
+  private normalizeProjectDocuments<T extends Pick<Project, 'documents'>>(project: T): T {
+    if (Array.isArray(project.documents)) {
+      project.documents = [...project.documents]
+        .sort((left, right) => {
+          const leftTime = new Date(left.createdAt).getTime();
+          const rightTime = new Date(right.createdAt).getTime();
+          return rightTime - leftTime;
+        })
+        .map((document) => this.withDocumentUrl(document));
+    }
+    return project;
+  }
+
   private normalizeProjectImage<T extends Pick<Project, 'imageUrl'>>(project: T): T {
     project.imageUrl = normalizeUploadPath(project.imageUrl);
+    return project;
+  }
+
+  private hydrateProject<T extends Project>(project: T): T {
+    this.normalizeProjectImage(project);
+    this.normalizeProjectDocuments(project);
     return project;
   }
 
@@ -91,17 +118,26 @@ export class ProjectsService {
   }
 
   private async findByClientRequestId(clientRequestId: string): Promise<Project | null> {
-    const existing = await this.projectRepository.findOne({ where: { clientRequestId } });
-    return existing ? this.normalizeProjectImage(existing) : null;
+    const existing = await this.projectRepository.findOne({
+      where: { clientRequestId },
+      relations: ['documents'],
+    });
+    return existing ? this.hydrateProject(existing) : null;
   }
 
-  private async saveProjectIdempotently(project: Project, clientRequestId: string | null): Promise<Project> {
+  private async saveProjectIdempotently(
+    project: Project,
+    clientRequestId: string | null,
+  ): Promise<{ project: Project; reusedExisting: boolean }> {
     try {
-      return await this.projectRepository.save(project);
+      return {
+        project: await this.projectRepository.save(project),
+        reusedExisting: false,
+      };
     } catch (error) {
       if (clientRequestId && this.isDuplicateClientRequestError(error, clientRequestId)) {
         const existing = await this.findByClientRequestId(clientRequestId);
-        if (existing) return existing;
+        if (existing) return { project: existing, reusedExisting: true };
       }
 
       throw error;
@@ -118,14 +154,14 @@ export class ProjectsService {
     } else if (typeof orgId !== 'undefined') {
       Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
     }
-    return this.projectRepository.find({ where, order: { title: 'ASC' } }).then((projects) =>
-      projects.map((project) => this.normalizeProjectImage(project)),
+    return this.projectRepository.find({ where, order: { title: 'ASC' }, relations: ['documents'] }).then((projects) =>
+      projects.map((project) => this.hydrateProject(project)),
     );
   }
 
   findOne(id: string): Promise<Project | null> {
-    return this.projectRepository.findOne({ where: { id } }).then((project) =>
-      project ? this.normalizeProjectImage(project) : null,
+    return this.projectRepository.findOne({ where: { id }, relations: ['documents'] }).then((project) =>
+      project ? this.hydrateProject(project) : null,
     );
   }
 
@@ -152,10 +188,13 @@ export class ProjectsService {
       clearWhenEmpty: !categoryId && Array.isArray(categoryIds) && categoryIds.length > 0,
     });
 
-    let saved = await this.saveProjectIdempotently(project, clientRequestId);
+    const saveResult = await this.saveProjectIdempotently(project, clientRequestId);
+    let saved = saveResult.project;
 
-    saved = this.normalizeProjectImage(saved);
-    await this.audit.log({ action: AuditAction.CREATE, entityType: 'project', entityId: saved.id, entityTitle: saved.title || null, orgId: saved.orgId ?? null, user });
+    saved = this.hydrateProject(saved);
+    if (!saveResult.reusedExisting) {
+      await this.audit.log({ action: AuditAction.CREATE, entityType: 'project', entityId: saved.id, entityTitle: saved.title || null, orgId: saved.orgId ?? null, user });
+    }
     return saved;
   }
 
@@ -177,14 +216,14 @@ export class ProjectsService {
     }
     const updated = await this.findOne(id);
     if (updated) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: updated.id, entityTitle: updated.title || null, orgId: updated.orgId ?? null });
-    return updated ? this.normalizeProjectImage(updated) : null;
+    return updated ? this.hydrateProject(updated) : null;
   }
 
   async remove(
     id: string,
     user?: { id?: string; name?: string | null; orgId?: string | null },
   ): Promise<void> {
-    const existing = await this.projectRepository.findOne({ where: { id } });
+    const existing = await this.projectRepository.findOne({ where: { id }, relations: ['documents'] });
     await this.projectRepository.delete(id);
     await this.audit.log({
       action: AuditAction.DELETE,
@@ -194,13 +233,19 @@ export class ProjectsService {
       user,
       orgId: existing?.orgId ?? null,
     });
+
+    if (existing?.documents?.length) {
+      await Promise.all(
+        existing.documents.map((document) => this.removeStoredDocument(document.storageRef)),
+      );
+    }
   }
 
   async archive(id: string, archived: boolean = true): Promise<Project | null> {
     await this.projectRepository.update(id, { archived });
     const p = await this.findOne(id);
     if (p) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: p.id, entityTitle: p.title || null, orgId: p.orgId ?? null, details: { archived } });
-    return p ? this.normalizeProjectImage(p) : null;
+    return p ? this.hydrateProject(p) : null;
   }
 
   async findOneScoped(id: string, user: { role: string; orgId?: string|null }) {
@@ -208,6 +253,105 @@ export class ProjectsService {
     if (!p) return null;
     if (user.role !== 'superadmin' && (p.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
     return p;
+  }
+
+  private async getProjectForDocumentScope(projectId: string, user: { role: string; orgId?: string | null }) {
+    const project = await this.findOneScoped(projectId, user);
+    if (!project) throw new NotFoundException('Project not found');
+    return project;
+  }
+
+  private async removeStoredDocument(storageRef?: string | null) {
+    if (!storageRef) return;
+    const normalized = String(storageRef).replace(/\\/g, '/').trim();
+    if (!normalized || normalized.includes('..')) return;
+
+    const { unlink } = await import('fs/promises');
+    const { join } = await import('path');
+    const absolutePath = join(process.cwd(), 'uploads', normalized);
+    try {
+      await unlink(absolutePath);
+    } catch {
+      // File may already be gone; removing the DB reference is still the important part.
+    }
+  }
+
+  async addDocument(
+    projectId: string,
+    document: Pick<ProjectDocument, 'filename' | 'mimeType' | 'size' | 'storageRef'>,
+    user: { id?: string; role: string; orgId?: string | null; name?: string | null },
+  ): Promise<ProjectDocument> {
+    const project = await this.getProjectForDocumentScope(projectId, user);
+    const created = await this.projectDocumentRepository.save(
+      this.projectDocumentRepository.create({
+        projectId: project.id,
+        filename: document.filename,
+        mimeType: document.mimeType,
+        size: document.size,
+        storageRef: document.storageRef,
+      }),
+    );
+
+    await this.audit.log({
+      action: AuditAction.UPDATE,
+      entityType: 'project',
+      entityId: project.id,
+      entityTitle: project.title || null,
+      orgId: project.orgId ?? null,
+      user,
+      details: {
+        documentAdded: {
+          id: created.id,
+          filename: created.filename,
+          size: created.size,
+        },
+      },
+    });
+
+    return this.withDocumentUrl(created);
+  }
+
+  async removeDocument(
+    projectId: string,
+    documentId: string,
+    user: { id?: string; role: string; orgId?: string | null; name?: string | null },
+  ): Promise<void> {
+    const project = await this.getProjectForDocumentScope(projectId, user);
+    const existing = await this.projectDocumentRepository.findOne({
+      where: { id: documentId, projectId: project.id },
+    });
+    if (!existing) throw new NotFoundException('Document not found');
+
+    await this.projectDocumentRepository.delete({ id: existing.id, projectId: project.id });
+    await this.removeStoredDocument(existing.storageRef);
+
+    await this.audit.log({
+      action: AuditAction.UPDATE,
+      entityType: 'project',
+      entityId: project.id,
+      entityTitle: project.title || null,
+      orgId: project.orgId ?? null,
+      user,
+      details: {
+        documentRemoved: {
+          id: existing.id,
+          filename: existing.filename,
+        },
+      },
+    });
+  }
+
+  async getDocumentScoped(
+    projectId: string,
+    documentId: string,
+    user: { role: string; orgId?: string | null },
+  ): Promise<ProjectDocument> {
+    const project = await this.getProjectForDocumentScope(projectId, user);
+    const document = await this.projectDocumentRepository.findOne({
+      where: { id: documentId, projectId: project.id },
+    });
+    if (!document) throw new NotFoundException('Document not found');
+    return this.withDocumentUrl(document);
   }
 
   async updateScoped(id: string, data: Partial<Project>, user: { id?: string; role: string; orgId?: string|null }) {

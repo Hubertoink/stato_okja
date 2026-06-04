@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toggle from '@/components/Toggle';
+import { FIXED_PALETTE, TAG_PALETTE, isInFixedPalette, isInTagPalette } from '@/lib/colorPalette';
 import {
   Project,
   ProjectDocument,
@@ -42,6 +43,7 @@ import { type StaffMember, type StaffRole, useCreateStaff, useStaff } from '@/li
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import Modal from '@/components/Modal';
+import { CategoryFormModal, StaffFormModal, TagFormModal } from '@/components/settings/EntityFormModals';
 import { useQueryClient } from '@tanstack/react-query';
 import { PROJECT_TEMPLATES, type ProjectTemplate } from '@/lib/projectTemplates';
 import { defaultCategoryByName } from '@/lib/defaultCategories';
@@ -918,15 +920,12 @@ function ProjectForm({
   const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
   const [showTitleValidation, setShowTitleValidation] = useState(false);
   const [tagCreateOpen, setTagCreateOpen] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
-  const [newTagColor, setNewTagColor] = useState('#7aa39a');
+  const [categoryCreateOpen, setCategoryCreateOpen] = useState(false);
   const [staffCreateState, setStaffCreateState] = useState<{
     open: boolean;
     field: 'defaultStaff' | 'defaultVolunteers';
     role: StaffRole;
-    title: string;
-  }>({ open: false, field: 'defaultStaff', role: 'employee', title: '' });
-  const [newStaffName, setNewStaffName] = useState('');
+  }>({ open: false, field: 'defaultStaff', role: 'employee' });
   const { data: categories } = useCategories({ active: true });
   const { data: allCategories } = useCategories();
   const { data: allTags } = useTags();
@@ -954,6 +953,7 @@ function ProjectForm({
   } as const;
   const projectSecondaryButtonClassName = 'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';
   const canCreateOwnTags = Boolean(taxonomyAccess?.tags.canCreateOwn);
+  const canCreateOwnCategories = Boolean(taxonomyAccess?.categories.canCreateOwn);
   const canManageStaff = Boolean(user && (user.role === 'superadmin' || user.role === 'org_admin'));
 
   const uploadImage = useCallback(async (file: File) => {
@@ -979,8 +979,9 @@ function ProjectForm({
   }, []);
 
   const ensureCategoryByName = useCallback(
-    async (name: string): Promise<{ id: string } | null> => {
+    async (name: string, overrides?: Record<string, unknown>): Promise<{ id: string } | null> => {
       const def = defaultCategoryByName(name);
+      const color = typeof overrides?.color === 'string' ? overrides.color : def?.color;
       return ensureNamedTaxonomyItem({
         items: allCategories,
         name,
@@ -989,12 +990,13 @@ function ProjectForm({
         createPayload: {
           name,
           active: true,
-          ...(def?.color ? { color: def.color } : {}),
+          ...overrides,
+          ...(color ? { color } : {}),
         },
         reactivate: async (id) => {
           await updateCategory.mutateAsync({
             id,
-            data: { active: true, ...(def?.color ? { color: def.color } : {}) },
+            data: { active: true, ...overrides, ...(color ? { color } : {}) },
           });
           await qc.invalidateQueries({ queryKey: ['categories'] });
         },
@@ -1005,7 +1007,8 @@ function ProjectForm({
   );
 
   const ensureTagByName = useCallback(
-    async (name: string, color?: string): Promise<{ id: string } | null> => {
+    async (name: string, overrides?: Record<string, unknown>): Promise<{ id: string } | null> => {
+      const color = typeof overrides?.color === 'string' ? overrides.color : undefined;
       return ensureNamedTaxonomyItem({
         items: allTags,
         name,
@@ -1014,10 +1017,11 @@ function ProjectForm({
         createPayload: {
           name,
           active: true,
+          ...overrides,
           ...(color ? { color } : {}),
         },
         reactivate: async (id) => {
-          await api.patch(`/taxonomy/tags/${id}`, { active: true, ...(color ? { color } : {}) });
+          await api.patch(`/taxonomy/tags/${id}`, { active: true, ...overrides, ...(color ? { color } : {}) });
           await qc.invalidateQueries({ queryKey: ['tags'] });
         },
         refresh: () => qc.invalidateQueries({ queryKey: ['tags'] }),
@@ -1103,7 +1107,7 @@ function ProjectForm({
 
             // Ensure each tag exists in org (create if missing)
             for (const tag of tagPairs) {
-              await ensureTagByName(tag.name, tag.color);
+              await ensureTagByName(tag.name, { color: tag.color });
             }
 
             // Set tags on form
@@ -1623,24 +1627,7 @@ function ProjectForm({
 
   const renderTagSelector = () => (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-3">
-        <label className="block text-sm font-medium">Tags (mehrfach)</label>
-        {canCreateOwnTags ? (
-          <button
-            type="button"
-            onClick={() => {
-              setNewTagName('');
-              setNewTagColor('#7aa39a');
-              setTagCreateOpen(true);
-            }}
-            className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs"
-            style={projectInnerCardStyle}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Hinzufuegen
-          </button>
-        ) : null}
-      </div>
+      <label className="block text-sm font-medium mb-1">Tags (mehrfach)</label>
       <div className="flex flex-wrap gap-2">
         {(tags || []).map((t) => {
           const active = selectedTags.has(t.name);
@@ -1663,6 +1650,19 @@ function ProjectForm({
           );
         })}
       </div>
+      {canCreateOwnTags ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setTagCreateOpen(true)}
+            className={projectSecondaryButtonClassName}
+            style={projectInnerCardStyle}
+          >
+            <Plus className="h-4 w-4" />
+            Hinzufügen
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 
@@ -1688,6 +1688,19 @@ function ProjectForm({
           );
         })}
       </div>
+      {canCreateOwnCategories ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setCategoryCreateOpen(true)}
+            className={projectSecondaryButtonClassName}
+            style={projectInnerCardStyle}
+          >
+            <Plus className="h-4 w-4" />
+            Hinzufügen
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 
@@ -1805,27 +1818,8 @@ function ProjectForm({
 
     return (
       <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium">{label}</label>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {selectedNames.size} ausgewaehlt
-            </span>
-          </div>
-          {canManageStaff ? (
-            <button
-              type="button"
-              onClick={() => {
-                setNewStaffName('');
-                setStaffCreateState({ open: true, field, role: createRole, title: label });
-              }}
-              className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs"
-              style={projectInnerCardStyle}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Hinzufuegen
-            </button>
-          ) : null}
+        <div className="mb-3">
+          <label className="text-sm font-medium">{label}</label>
         </div>
         {availablePeople.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -1855,6 +1849,21 @@ function ProjectForm({
             {emptyLabel}
           </div>
         )}
+        {canManageStaff ? (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => {
+                setStaffCreateState({ open: true, field, role: createRole });
+              }}
+              className={projectSecondaryButtonClassName}
+              style={projectInnerCardStyle}
+            >
+              <Plus className="h-4 w-4" />
+              Hinzufügen
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   };
@@ -2115,14 +2124,6 @@ function ProjectForm({
                     onChange={(e) => update('color', e.target.value)}
                     className="project-form-field h-12 w-full rounded"
                   />
-                  <div className="mt-3 rounded-lg px-3 py-2 text-sm font-medium"
-                    style={{
-                      background: (form.color as string) || '#7aa39a',
-                      color: '#fff',
-                    }}
-                  >
-                    Farbakzent f fcr Projektkarten
-                  </div>
                 </div>
               </div>
             </section>
@@ -2211,128 +2212,98 @@ function ProjectForm({
         </div>
       </div>
 
-      <Modal
-        open={tagCreateOpen}
-        onClose={() => setTagCreateOpen(false)}
-        title="Tag hinzufuegen"
-        maxWidth="sm"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
-            <input
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
-              className={projectFieldClassName}
-              placeholder="Neuer Tag"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Farbe</label>
-            <input
-              type="color"
-              value={newTagColor}
-              onChange={(e) => setNewTagColor(e.target.value)}
-              className="project-form-field h-12 w-full rounded"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="rounded border px-3 py-2 text-sm"
-              style={projectInnerCardStyle}
-              onClick={() => setTagCreateOpen(false)}
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              className="rounded bg-viridian px-3 py-2 text-sm text-white disabled:opacity-60"
-              disabled={!newTagName.trim()}
-              onClick={async () => {
-                const name = newTagName.trim();
-                if (!name) return;
-                try {
-                  await ensureTagByName(name, newTagColor);
-                  const next = new Set(selectedTags);
-                  next.add(name);
-                  update('tag', Array.from(next).join(', '));
-                  showToast(`Tag \"${name}\" hinzugefuegt.`);
-                  setTagCreateOpen(false);
-                  setNewTagName('');
-                  setNewTagColor('#7aa39a');
-                } catch {
-                  showToast('Tag konnte nicht angelegt werden.', { type: 'error' });
-                }
-              }}
-            >
-              Speichern
-            </button>
-          </div>
-        </div>
-      </Modal>
+      {tagCreateOpen ? (
+        <TagFormModal
+          initial={{ color: TAG_PALETTE[0] }}
+          onCancel={() => setTagCreateOpen(false)}
+          onSubmit={async (values) => {
+            const name = String(values.name || '').trim();
+            if (!name) return;
+            const existing = findNamedTaxonomyItem(allTags, name);
+            try {
+              await ensureTagByName(name, {
+                description: values.description,
+                color: isInTagPalette(values.color as string) ? values.color : TAG_PALETTE[0],
+              });
+              const next = new Set(selectedTags);
+              next.add(name);
+              update('tag', Array.from(next).join(', '));
+              showToast(
+                existing?.id ? `Tag "${name}" wurde zugeordnet.` : `Tag "${name}" hinzugefügt.`,
+                existing?.id ? { type: 'info' } : undefined,
+              );
+              setTagCreateOpen(false);
+            } catch {
+              showToast('Tag konnte nicht angelegt werden.', { type: 'error' });
+            }
+          }}
+        />
+      ) : null}
 
-      <Modal
-        open={staffCreateState.open}
-        onClose={() => setStaffCreateState((current) => ({ ...current, open: false }))}
-        title={staffCreateState.title ? `${staffCreateState.title}: Person hinzufuegen` : 'Teammitglied hinzufuegen'}
-        maxWidth="sm"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
-            <input
-              value={newStaffName}
-              onChange={(e) => setNewStaffName(e.target.value)}
-              className={projectFieldClassName}
-              placeholder="Name des Teammitglieds"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="rounded border px-3 py-2 text-sm"
-              style={projectInnerCardStyle}
-              onClick={() => setStaffCreateState((current) => ({ ...current, open: false }))}
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              className="rounded bg-viridian px-3 py-2 text-sm text-white disabled:opacity-60"
-              disabled={!newStaffName.trim() || createStaff.isPending}
-              onClick={async () => {
-                const name = newStaffName.trim();
-                if (!name) return;
-                const existing = (staff || []).find(
-                  (person) => person.name.trim().toLowerCase() === name.toLowerCase(),
-                );
-                if (existing) {
-                  mergeNameIntoField(staffCreateState.field, existing.name);
-                  showToast(`Teammitglied \"${existing.name}\" wurde zugeordnet.`, { type: 'info' });
-                  setStaffCreateState((current) => ({ ...current, open: false }));
-                  setNewStaffName('');
-                  return;
-                }
-                try {
-                  const created = await createStaff.mutateAsync({
-                    name,
-                    roles: [staffCreateState.role],
-                  });
-                  mergeNameIntoField(staffCreateState.field, created.name);
-                  showToast(`Teammitglied \"${created.name}\" hinzugefuegt.`);
-                  setStaffCreateState((current) => ({ ...current, open: false }));
-                  setNewStaffName('');
-                } catch {
-                  showToast('Teammitglied konnte nicht angelegt werden.', { type: 'error' });
-                }
-              }}
-            >
-              Speichern
-            </button>
-          </div>
-        </div>
-      </Modal>
+      {categoryCreateOpen ? (
+        <CategoryFormModal
+          initial={{ color: FIXED_PALETTE[0] }}
+          onCancel={() => setCategoryCreateOpen(false)}
+          onSubmit={async (values) => {
+            const name = String(values.name || '').trim();
+            if (!name) return;
+            const existing = findNamedTaxonomyItem(allCategories, name);
+            try {
+              const ensured = await ensureCategoryByName(name, {
+                description: values.description,
+                standardRef: values.standardRef,
+                color: isInFixedPalette(values.color as string) ? values.color : FIXED_PALETTE[0],
+              });
+              if (!ensured?.id) throw new Error('missing-category-id');
+              update('categoryId', ensured.id);
+              showToast(
+                existing?.id
+                  ? `Kategorie "${name}" wurde zugeordnet.`
+                  : `Kategorie "${name}" hinzugefügt.`,
+                existing?.id ? { type: 'info' } : undefined,
+              );
+              setCategoryCreateOpen(false);
+            } catch {
+              showToast('Kategorie konnte nicht angelegt werden.', { type: 'error' });
+            }
+          }}
+        />
+      ) : null}
+
+      {staffCreateState.open ? (
+        <StaffFormModal
+          initial={{ roles: [staffCreateState.role] }}
+          onCancel={() => setStaffCreateState((current) => ({ ...current, open: false }))}
+          onSubmit={async (values) => {
+            const name = String(values.name || '').trim();
+            if (!name) return;
+            const existing = (staff || []).find(
+              (person) => person.name.trim().toLowerCase() === name.toLowerCase(),
+            );
+            if (existing) {
+              mergeNameIntoField(staffCreateState.field, existing.name);
+              showToast(`Teammitglied "${existing.name}" wurde zugeordnet.`, { type: 'info' });
+              setStaffCreateState((current) => ({ ...current, open: false }));
+              return;
+            }
+
+            try {
+              const created = await createStaff.mutateAsync({
+                ...values,
+                roles:
+                  Array.isArray(values.roles) && values.roles.length > 0
+                    ? values.roles
+                    : [staffCreateState.role],
+              });
+              mergeNameIntoField(staffCreateState.field, created.name);
+              showToast(`Teammitglied "${created.name}" hinzugefügt.`);
+              setStaffCreateState((current) => ({ ...current, open: false }));
+            } catch {
+              showToast('Teammitglied konnte nicht angelegt werden.', { type: 'error' });
+            }
+          }}
+        />
+      ) : null}
 
       <Modal
         open={imageIssue.open}

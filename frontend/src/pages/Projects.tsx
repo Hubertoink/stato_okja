@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import Toggle from '@/components/Toggle';
 import { FIXED_PALETTE, TAG_PALETTE, isInFixedPalette, isInTagPalette } from '@/lib/colorPalette';
 import {
@@ -55,6 +56,18 @@ import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useAuth } from '@/lib/auth';
+import RichTextEditor, {
+  BtnBold,
+  BtnBulletList,
+  BtnClearFormatting,
+  BtnItalic,
+  BtnNumberedList,
+  BtnRedo,
+  BtnUndo,
+  Separator,
+  Toolbar,
+  type ContentEditableEvent,
+} from 'react-simple-wysiwyg';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
 const PROJECTS_STARRED_FIRST_STORAGE_KEY = 'projects:starred-first';
@@ -205,67 +218,56 @@ const truncateWords = (text?: string | null, words = 20) => {
   return parts.slice(0, words).join(' ') + '…';
 };
 
-const stripProjectDescriptionFormatting = (text?: string | null) =>
-  (text || '')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/_(.*?)_/g, '$1')
-    .replace(/^\s*-\s+/gm, '')
-    .replace(/\r?\n+/g, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+const PROJECT_DESCRIPTION_ALLOWED_TAGS = [
+  'a',
+  'b',
+  'br',
+  'div',
+  'em',
+  'i',
+  'li',
+  'ol',
+  'p',
+  'strong',
+  'u',
+  'ul',
+];
 
-const renderProjectDescriptionInline = (text: string, keyPrefix: string) => {
-  const parts = text.split(/(\*\*[^*]+\*\*|_[^_]+_)/g).filter(Boolean);
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={`${keyPrefix}-bold-${index}`}>{part.slice(2, -2)}</strong>;
-    }
-    if (part.startsWith('_') && part.endsWith('_')) {
-      return <em key={`${keyPrefix}-italic-${index}`}>{part.slice(1, -1)}</em>;
-    }
-    return <Fragment key={`${keyPrefix}-text-${index}`}>{part}</Fragment>;
+const PROJECT_DESCRIPTION_ALLOWED_ATTR = ['href', 'target', 'rel'];
+const PROJECT_DESCRIPTION_HTML_PATTERN = /<\/?[a-z][\s\S]*>/i;
+
+const escapeProjectDescriptionText = (text: string) =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const sanitizeProjectDescriptionHtml = (html?: string | null) =>
+  DOMPurify.sanitize(String(html || ''), {
+    ALLOWED_TAGS: PROJECT_DESCRIPTION_ALLOWED_TAGS,
+    ALLOWED_ATTR: PROJECT_DESCRIPTION_ALLOWED_ATTR,
+    ALLOW_DATA_ATTR: false,
   });
+
+const normalizeProjectDescriptionHtml = (value?: string | null) => {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const html = PROJECT_DESCRIPTION_HTML_PATTERN.test(text)
+    ? text
+    : escapeProjectDescriptionText(text).replace(/\r?\n/g, '<br>');
+  return sanitizeProjectDescriptionHtml(html);
 };
 
-const renderProjectDescriptionPreview = (text?: string | null) => {
-  const lines = String(text || '').split(/\r?\n/);
-  const nodes: React.ReactNode[] = [];
-  let listItems: string[] = [];
-
-  const flushList = () => {
-    if (!listItems.length) return;
-    nodes.push(
-      <ul key={`list-${nodes.length}`} className="list-disc space-y-1 pl-5">
-        {listItems.map((item, index) => (
-          <li key={`item-${index}`}>{renderProjectDescriptionInline(item, `list-${nodes.length}-${index}`)}</li>
-        ))}
-      </ul>,
-    );
-    listItems = [];
-  };
-
-  lines.forEach((line, index) => {
-    if (!line.trim()) {
-      flushList();
-      nodes.push(<div key={`space-${index}`} className="h-3" aria-hidden="true" />);
-      return;
-    }
-
-    if (/^\s*-\s+/.test(line)) {
-      listItems.push(line.replace(/^\s*-\s+/, ''));
-      return;
-    }
-
-    flushList();
-    nodes.push(
-      <p key={`paragraph-${index}`} className="whitespace-pre-wrap">
-        {renderProjectDescriptionInline(line, `paragraph-${index}`)}
-      </p>,
-    );
-  });
-
-  flushList();
-  return nodes;
+const projectDescriptionToPlainText = (value?: string | null) => {
+  const html = normalizeProjectDescriptionHtml(value);
+  if (!html) return '';
+  if (typeof DOMParser !== 'undefined') {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
 const formatDocumentSize = (bytes?: number | null) => {
@@ -700,7 +702,9 @@ function ProjectGridCard({
         </div>
 
         {project.description && (
-          <div className="text-sm opacity-95">{truncateWords(project.description, 20)}</div>
+          <div className="text-sm opacity-95">
+            {truncateWords(projectDescriptionToPlainText(project.description), 20)}
+          </div>
         )}
 
         {tagList.length > 0 && (
@@ -922,7 +926,7 @@ function ProjectListRow({
 
         {project.description && (
           <p className="text-sm leading-5 text-gray-700">
-            {truncateWords(stripProjectDescriptionFormatting(project.description), 24)}
+            {truncateWords(projectDescriptionToPlainText(project.description), 24)}
           </p>
         )}
       </div>
@@ -945,7 +949,6 @@ function ProjectForm({
   const { user } = useAuth();
   const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
-  const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const submitLockedRef = useRef(false);
   const [form, setForm] = useState<Partial<Project>>(() => {
     const base: Partial<Project> = {
@@ -1306,61 +1309,9 @@ function ProjectForm({
 
   const update = <K extends keyof Project>(k: K, v: Project[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
-  const applyDescriptionFormatting = useCallback(
-    (mode: 'bold' | 'italic' | 'list' | 'paragraph') => {
-      const textarea = descriptionTextareaRef.current;
-      const currentValue = String(form.description || '');
-      const selectionStart = textarea?.selectionStart ?? currentValue.length;
-      const selectionEnd = textarea?.selectionEnd ?? currentValue.length;
-      const selectedText = currentValue.slice(selectionStart, selectionEnd);
-      let replacement = '';
-      let nextSelectionStart = selectionStart;
-      let nextSelectionEnd = selectionEnd;
-
-      switch (mode) {
-        case 'bold': {
-          const baseText = selectedText || 'fetter Text';
-          replacement = `**${baseText}**`;
-          nextSelectionStart = selectionStart + 2;
-          nextSelectionEnd = nextSelectionStart + baseText.length;
-          break;
-        }
-        case 'italic': {
-          const baseText = selectedText || 'kursiver Text';
-          replacement = `_${baseText}_`;
-          nextSelectionStart = selectionStart + 1;
-          nextSelectionEnd = nextSelectionStart + baseText.length;
-          break;
-        }
-        case 'list': {
-          const lines = (selectedText || 'Listeneintrag')
-            .split(/\r?\n/)
-            .map((line) => line.trim())
-            .filter(Boolean);
-          replacement = lines.map((line) => (line.startsWith('- ') ? line : `- ${line}`)).join('\n');
-          nextSelectionStart = selectionStart;
-          nextSelectionEnd = selectionStart + replacement.length;
-          break;
-        }
-        case 'paragraph': {
-          replacement = selectedText ? `${selectedText}\n\n` : '\n\n';
-          nextSelectionStart = selectionStart + replacement.length;
-          nextSelectionEnd = nextSelectionStart;
-          break;
-        }
-      }
-
-      const nextValue =
-        currentValue.slice(0, selectionStart) + replacement + currentValue.slice(selectionEnd);
-
-      update('description', nextValue as Project['description']);
-      requestAnimationFrame(() => {
-        descriptionTextareaRef.current?.focus();
-        descriptionTextareaRef.current?.setSelectionRange(nextSelectionStart, nextSelectionEnd);
-      });
-    },
-    [form.description],
-  );
+  const handleDescriptionChange = useCallback((event: ContentEditableEvent) => {
+    update('description', sanitizeProjectDescriptionHtml(event.target.value) as Project['description']);
+  }, []);
   const isTitleMissing = String(form.title || '').trim().length === 0;
   const selectedTags = new Set(
     (form.tag || '')
@@ -1441,6 +1392,11 @@ function ProjectForm({
       } else if (v !== undefined) {
         if (k === 'imageUrl' && typeof v === 'string') {
           (acc as Record<string, unknown>)[k as string] = normalizeUploadPath(v) ?? null;
+        } else if (k === 'description' && typeof v === 'string') {
+          const descriptionHtml = normalizeProjectDescriptionHtml(v);
+          (acc as Record<string, unknown>)[k as string] = projectDescriptionToPlainText(descriptionHtml)
+            ? descriptionHtml
+            : null;
         } else if (k === 'imageSize' && typeof v === 'string' && v.trim() !== '') {
           const n = Number(v);
           if (Number.isFinite(n)) (acc as Record<string, unknown>)[k as string] = n;
@@ -2279,65 +2235,25 @@ function ProjectForm({
             {renderSectionHeader('Beschreibung')}
             <div>
               <label className="block text-sm font-medium mb-1">Beschreibung</label>
-              <div className="mb-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => applyDescriptionFormatting('bold')}
-                  className="inline-flex items-center rounded border px-2.5 py-1 text-xs font-medium"
-                  style={projectInnerCardStyle}
-                >
-                  Fett
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyDescriptionFormatting('italic')}
-                  className="inline-flex items-center rounded border px-2.5 py-1 text-xs font-medium"
-                  style={projectInnerCardStyle}
-                >
-                  Kursiv
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyDescriptionFormatting('list')}
-                  className="inline-flex items-center rounded border px-2.5 py-1 text-xs font-medium"
-                  style={projectInnerCardStyle}
-                >
-                  Liste
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyDescriptionFormatting('paragraph')}
-                  className="inline-flex items-center rounded border px-2.5 py-1 text-xs font-medium"
-                  style={projectInnerCardStyle}
-                >
-                  Absatz
-                </button>
-              </div>
-              <textarea
-                ref={descriptionTextareaRef}
-                value={form.description || ''}
-                onChange={(e) => update('description', e.target.value)}
-                rows={6}
-                className={projectFieldClassName}
-              />
-              <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                Einfache Formatierung mit `**Fett**`, `_Kursiv_` und `- Listenpunkten`.
-              </div>
-              {String(form.description || '').trim() ? (
-                <div
-                  className="mt-3 rounded-xl border px-3 py-3 text-sm"
-                  style={{
-                    background: 'var(--surface-1)',
-                    borderColor: 'var(--border-subtle)',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  <div className="mb-2 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>
-                    Vorschau
-                  </div>
-                  <div className="space-y-2">{renderProjectDescriptionPreview(form.description)}</div>
-                </div>
-              ) : null}
+              <RichTextEditor
+                value={normalizeProjectDescriptionHtml(form.description)}
+                onChange={handleDescriptionChange}
+                placeholder="Beschreibung eingeben..."
+                containerProps={{ className: 'project-rich-text-editor' }}
+              >
+                <Toolbar>
+                  <BtnUndo title="Rückgängig" />
+                  <BtnRedo title="Wiederholen" />
+                  <Separator />
+                  <BtnBold title="Fett" />
+                  <BtnItalic title="Kursiv" />
+                  <Separator />
+                  <BtnBulletList title="Liste" />
+                  <BtnNumberedList title="Nummerierte Liste" />
+                  <Separator />
+                  <BtnClearFormatting title="Formatierung entfernen" />
+                </Toolbar>
+              </RichTextEditor>
             </div>
           </section>
         </div>

@@ -205,6 +205,69 @@ const truncateWords = (text?: string | null, words = 20) => {
   return parts.slice(0, words).join(' ') + '…';
 };
 
+const stripProjectDescriptionFormatting = (text?: string | null) =>
+  (text || '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/^\s*-\s+/gm, '')
+    .replace(/\r?\n+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+const renderProjectDescriptionInline = (text: string, keyPrefix: string) => {
+  const parts = text.split(/(\*\*[^*]+\*\*|_[^_]+_)/g).filter(Boolean);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={`${keyPrefix}-bold-${index}`}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('_') && part.endsWith('_')) {
+      return <em key={`${keyPrefix}-italic-${index}`}>{part.slice(1, -1)}</em>;
+    }
+    return <Fragment key={`${keyPrefix}-text-${index}`}>{part}</Fragment>;
+  });
+};
+
+const renderProjectDescriptionPreview = (text?: string | null) => {
+  const lines = String(text || '').split(/\r?\n/);
+  const nodes: React.ReactNode[] = [];
+  let listItems: string[] = [];
+
+  const flushList = () => {
+    if (!listItems.length) return;
+    nodes.push(
+      <ul key={`list-${nodes.length}`} className="list-disc space-y-1 pl-5">
+        {listItems.map((item, index) => (
+          <li key={`item-${index}`}>{renderProjectDescriptionInline(item, `list-${nodes.length}-${index}`)}</li>
+        ))}
+      </ul>,
+    );
+    listItems = [];
+  };
+
+  lines.forEach((line, index) => {
+    if (!line.trim()) {
+      flushList();
+      nodes.push(<div key={`space-${index}`} className="h-3" aria-hidden="true" />);
+      return;
+    }
+
+    if (/^\s*-\s+/.test(line)) {
+      listItems.push(line.replace(/^\s*-\s+/, ''));
+      return;
+    }
+
+    flushList();
+    nodes.push(
+      <p key={`paragraph-${index}`} className="whitespace-pre-wrap">
+        {renderProjectDescriptionInline(line, `paragraph-${index}`)}
+      </p>,
+    );
+  });
+
+  flushList();
+  return nodes;
+};
+
 const formatDocumentSize = (bytes?: number | null) => {
   const value = Number(bytes) || 0;
   if (value < 1024) return `${value} B`;
@@ -858,7 +921,9 @@ function ProjectListRow({
         )}
 
         {project.description && (
-          <p className="text-sm leading-5 text-gray-700">{truncateWords(project.description, 24)}</p>
+          <p className="text-sm leading-5 text-gray-700">
+            {truncateWords(stripProjectDescriptionFormatting(project.description), 24)}
+          </p>
         )}
       </div>
     </div>
@@ -880,6 +945,7 @@ function ProjectForm({
   const { user } = useAuth();
   const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const submitLockedRef = useRef(false);
   const [form, setForm] = useState<Partial<Project>>(() => {
     const base: Partial<Project> = {
@@ -1240,6 +1306,61 @@ function ProjectForm({
 
   const update = <K extends keyof Project>(k: K, v: Project[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+  const applyDescriptionFormatting = useCallback(
+    (mode: 'bold' | 'italic' | 'list' | 'paragraph') => {
+      const textarea = descriptionTextareaRef.current;
+      const currentValue = String(form.description || '');
+      const selectionStart = textarea?.selectionStart ?? currentValue.length;
+      const selectionEnd = textarea?.selectionEnd ?? currentValue.length;
+      const selectedText = currentValue.slice(selectionStart, selectionEnd);
+      let replacement = '';
+      let nextSelectionStart = selectionStart;
+      let nextSelectionEnd = selectionEnd;
+
+      switch (mode) {
+        case 'bold': {
+          const baseText = selectedText || 'fetter Text';
+          replacement = `**${baseText}**`;
+          nextSelectionStart = selectionStart + 2;
+          nextSelectionEnd = nextSelectionStart + baseText.length;
+          break;
+        }
+        case 'italic': {
+          const baseText = selectedText || 'kursiver Text';
+          replacement = `_${baseText}_`;
+          nextSelectionStart = selectionStart + 1;
+          nextSelectionEnd = nextSelectionStart + baseText.length;
+          break;
+        }
+        case 'list': {
+          const lines = (selectedText || 'Listeneintrag')
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter(Boolean);
+          replacement = lines.map((line) => (line.startsWith('- ') ? line : `- ${line}`)).join('\n');
+          nextSelectionStart = selectionStart;
+          nextSelectionEnd = selectionStart + replacement.length;
+          break;
+        }
+        case 'paragraph': {
+          replacement = selectedText ? `${selectedText}\n\n` : '\n\n';
+          nextSelectionStart = selectionStart + replacement.length;
+          nextSelectionEnd = nextSelectionStart;
+          break;
+        }
+      }
+
+      const nextValue =
+        currentValue.slice(0, selectionStart) + replacement + currentValue.slice(selectionEnd);
+
+      update('description', nextValue as Project['description']);
+      requestAnimationFrame(() => {
+        descriptionTextareaRef.current?.focus();
+        descriptionTextareaRef.current?.setSelectionRange(nextSelectionStart, nextSelectionEnd);
+      });
+    },
+    [form.description],
+  );
   const isTitleMissing = String(form.title || '').trim().length === 0;
   const selectedTags = new Set(
     (form.tag || '')
@@ -2132,17 +2253,17 @@ function ProjectForm({
               {renderSectionHeader('Team & Rollen')}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {renderStaffSelectorCard({
-                  label: 'Mitarbeitende (Standard)',
+                  label: 'Mitarbeitende',
                   field: 'defaultStaff',
                   roles: ['lead', 'employee'],
-                  emptyLabel: 'Keine Mitarbeitenden verf fcgbar.',
+                  emptyLabel: 'Keine Mitarbeitenden verfügbar.',
                   createRole: 'employee',
                 })}
                 {renderStaffSelectorCard({
-                  label: 'Ehrenamtliche (aktiv)',
+                  label: 'Ehrenamtliche & Helfer',
                   field: 'defaultVolunteers',
                   roles: ['volunteer', 'helper'],
-                  emptyLabel: 'Keine Ehrenamtlichen verf fcgbar.',
+                  emptyLabel: 'Keine Ehrenamtlichen oder Helfer verfügbar.',
                   createRole: 'volunteer',
                 })}
               </div>
@@ -2158,12 +2279,65 @@ function ProjectForm({
             {renderSectionHeader('Beschreibung')}
             <div>
               <label className="block text-sm font-medium mb-1">Beschreibung</label>
+              <div className="mb-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyDescriptionFormatting('bold')}
+                  className="inline-flex items-center rounded border px-2.5 py-1 text-xs font-medium"
+                  style={projectInnerCardStyle}
+                >
+                  Fett
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyDescriptionFormatting('italic')}
+                  className="inline-flex items-center rounded border px-2.5 py-1 text-xs font-medium"
+                  style={projectInnerCardStyle}
+                >
+                  Kursiv
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyDescriptionFormatting('list')}
+                  className="inline-flex items-center rounded border px-2.5 py-1 text-xs font-medium"
+                  style={projectInnerCardStyle}
+                >
+                  Liste
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyDescriptionFormatting('paragraph')}
+                  className="inline-flex items-center rounded border px-2.5 py-1 text-xs font-medium"
+                  style={projectInnerCardStyle}
+                >
+                  Absatz
+                </button>
+              </div>
               <textarea
+                ref={descriptionTextareaRef}
                 value={form.description || ''}
                 onChange={(e) => update('description', e.target.value)}
                 rows={6}
                 className={projectFieldClassName}
               />
+              <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                Einfache Formatierung mit `**Fett**`, `_Kursiv_` und `- Listenpunkten`.
+              </div>
+              {String(form.description || '').trim() ? (
+                <div
+                  className="mt-3 rounded-xl border px-3 py-3 text-sm"
+                  style={{
+                    background: 'var(--surface-1)',
+                    borderColor: 'var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  <div className="mb-2 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>
+                    Vorschau
+                  </div>
+                  <div className="space-y-2">{renderProjectDescriptionPreview(form.description)}</div>
+                </div>
+              ) : null}
             </div>
           </section>
         </div>

@@ -31,6 +31,7 @@ import {
   Paperclip,
   ChevronDown,
   ChevronRight,
+  ImagePlus,
 } from 'lucide-react';
 import { Star, StarOff } from 'lucide-react';
 import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
@@ -925,6 +926,17 @@ function ProjectForm({
     : [];
   const removedDocumentIdSet = new Set(removedDocumentIds);
   const projectFieldClassName = 'project-form-field w-full rounded px-3 py-2';
+  const projectSectionClassName = 'rounded-xl border p-4 md:p-5';
+  const projectInnerCardClassName = 'rounded-xl border p-4';
+  const projectSectionStyle = {
+    background: 'color-mix(in srgb, var(--surface-2) 88%, transparent)',
+    borderColor: 'var(--border-subtle)',
+  } as const;
+  const projectInnerCardStyle = {
+    background: 'var(--surface-1)',
+    borderColor: 'var(--border-subtle)',
+  } as const;
+  const projectSecondaryButtonClassName = 'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';
 
   const uploadImage = useCallback(async (file: File) => {
     try {
@@ -1184,6 +1196,12 @@ function ProjectForm({
     e.target.value = '';
   }, [addDocuments]);
 
+  const onDocumentDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.files?.length) addDocuments(e.dataTransfer.files);
+  }, [addDocuments]);
+
   const visibleExistingDocuments = existingDocuments.filter(
     (document) => !removedDocumentIdSet.has(document.id),
   );
@@ -1385,8 +1403,52 @@ function ProjectForm({
 
       {documentsExpanded && (
         <div className="mt-3 space-y-3">
-          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
+          <div
+            className="rounded-xl border border-dashed p-4"
+            style={{
+              background: 'var(--surface-1)',
+              borderColor: 'var(--border-subtle)',
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={onDocumentDrop}
+          >
+            <div className="flex items-start gap-3">
+              <span
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                style={{
+                  background: 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+                  color: 'var(--viridian)',
+                }}
+              >
+                <Paperclip className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1 space-y-3">
+                <div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    Unterlagen hier ablegen oder direkt ausw e4hlen
+                  </div>
+                  <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => documentInputRef.current?.click()}
+                  className={projectSecondaryButtonClassName}
+                  style={{
+                    background: 'var(--surface-1)',
+                    borderColor: 'var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  <Paperclip className="h-4 w-4" />
+                  Dateien ausw e4hlen
+                </button>
+              </div>
+            </div>
           </div>
 
           {visibleExistingDocuments.length === 0 && pendingDocuments.length === 0 ? (
@@ -1550,6 +1612,7 @@ function ProjectForm({
               }}
               className="px-2 py-1 rounded-full text-xs border"
               style={getSelectableTaxonomyChipStyle(active, t.color)}
+              aria-pressed={active}
             >
               {t.name}
             </button>
@@ -1572,15 +1635,7 @@ function ProjectForm({
               type="button"
               onClick={() => update('categoryId', active ? null : c.id)}
               className="px-2 py-1 rounded-full text-xs border"
-              style={
-                active
-                  ? { backgroundColor: color, color: '#fff', borderColor: color }
-                  : {
-                      backgroundColor: 'var(--surface-1)',
-                      color: 'var(--text-primary)',
-                      borderColor: color,
-                    }
-              }
+              style={getSelectableTaxonomyChipStyle(active, color)}
               title={c.name}
               aria-pressed={active}
             >
@@ -1622,38 +1677,128 @@ function ProjectForm({
               onClick={() => fileInputRef.current?.click()}
               className="px-3 py-1 rounded bg-viridian text-white"
             >
-              Ersetzen…
+              Ersetzen...
             </button>
           </div>
         </div>
       ) : (
         <div
-          className="rounded border-2 border-dashed p-3 text-sm"
+          className="rounded-xl border-2 border-dashed p-4 text-sm"
           style={{
             background: 'color-mix(in srgb, var(--surface-2) 78%, var(--surface-3))',
             borderColor: 'var(--border-strong)',
             color: 'var(--text-secondary)',
           }}
         >
-          <div className="mb-2">
-            Bild hierher ziehen, klicken zum Auswählen oder per Strg+V einfügen
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="project-form-field rounded px-3 py-1"
+          <div className="flex items-start gap-3">
+            <span
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+                color: 'var(--viridian)',
+              }}
             >
-              Datei wählen…
-            </button>
+              <ImagePlus className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 font-medium" style={{ color: 'var(--text-primary)' }}>
+                Bild hierher ziehen, klicken oder per Strg+V einfuegen
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`${projectSecondaryButtonClassName} project-form-field`}
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  Datei waehlen
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-            Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
+          <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+            Unterstuetzt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
           </div>
         </div>
       )}
     </div>
   );
+
+  const renderSectionHeader = (title: string, description: string) => (
+    <div className="mb-4 space-y-1">
+      <h4 className="text-sm font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--viridian)' }}>
+        {title}
+      </h4>
+      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+        {description}
+      </p>
+    </div>
+  );
+
+  const renderStaffSelectorCard = ({
+    label,
+    field,
+    roles,
+    emptyLabel,
+  }: {
+    label: string;
+    field: 'defaultStaff' | 'defaultVolunteers';
+    roles: StaffRole[];
+    emptyLabel: string;
+  }) => {
+    const selectedNames = new Set(
+      String(form[field] || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+    );
+    const availablePeople = (staff || []).filter((person) =>
+      Array.isArray(person.roles)
+        ? person.roles.some((role) => roles.includes(role))
+        : person.role
+          ? roles.includes(person.role)
+          : false,
+    );
+
+    return (
+      <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <label className="text-sm font-medium">{label}</label>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {selectedNames.size} ausgewaehlt
+          </span>
+        </div>
+        {availablePeople.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {availablePeople.map((person) => {
+              const active = selectedNames.has(person.name);
+              return (
+                <button
+                  key={person.id}
+                  type="button"
+                  onClick={() => {
+                    const next = new Set(selectedNames);
+                    if (active) next.delete(person.name);
+                    else next.add(person.name);
+                    update(field, Array.from(next).join(', ') as Project[typeof field]);
+                  }}
+                  className="px-2 py-1 rounded-full text-xs border"
+                  style={getSelectableTaxonomyChipStyle(active, '#7aa39a')}
+                  aria-pressed={active}
+                >
+                  {person.name}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {emptyLabel}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
@@ -1663,9 +1808,24 @@ function ProjectForm({
         onDrop={onDrop}
       >
         <div className="shrink-0 flex items-start justify-between gap-3 mb-4">
-          <h3 className="text-xl font-semibold text-viridian">
-            {initial?.id ? 'Projekt bearbeiten' : 'Neues Projekt'}
-          </h3>
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold text-viridian">
+              {initial?.id ? 'Projekt bearbeiten' : 'Neues Projekt'}
+            </h3>
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
+              style={{
+                background: initial?.archived
+                  ? 'color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))'
+                  : 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+                color: initial?.archived
+                  ? 'color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))'
+                  : 'var(--viridian)',
+              }}
+            >
+              Status: {initial?.archived ? 'Archiviert' : 'Aktiv'}
+            </span>
+          </div>
           <button
             type="button"
             onClick={handleClose}
@@ -1795,67 +1955,89 @@ function ProjectForm({
           </div>
         )}
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
-            <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Titel *</label>
-                <input
-                  ref={titleInputRef}
-                  value={form.title || ''}
-                  onChange={(e) => {
-                    update('title', e.target.value);
-                    if (showTitleValidation && e.target.value.trim()) setShowTitleValidation(false);
-                  }}
-                  onBlur={() => {
-                    if (String(form.title || '').trim().length === 0) setShowTitleValidation(true);
-                  }}
-                  required
-                  className={`${projectFieldClassName} ${
-                    showTitleValidation && isTitleMissing ? 'project-form-field-invalid' : ''
-                  }`}
-                />
-                {showTitleValidation && isTitleMissing ? (
-                  <p className="mt-1 text-xs text-red-600">Bitte einen Projekttitel eingeben.</p>
-                ) : null}
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.25fr),minmax(280px,0.75fr)] gap-5 items-start">
+            <section className={projectSectionClassName} style={projectSectionStyle}>
+              {renderSectionHeader(
+                'Basisinformationen',
+                'Erst die fachliche Einordnung, dann Taxonomie und Filtermerkmale.',
+              )}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Titel *</label>
+                    <input
+                      ref={titleInputRef}
+                      value={form.title || ''}
+                      onChange={(e) => {
+                        update('title', e.target.value);
+                        if (showTitleValidation && e.target.value.trim()) setShowTitleValidation(false);
+                      }}
+                      onBlur={() => {
+                        if (String(form.title || '').trim().length === 0) setShowTitleValidation(true);
+                      }}
+                      required
+                      className={`${projectFieldClassName} ${
+                        showTitleValidation && isTitleMissing ? 'project-form-field-invalid' : ''
+                      }`}
+                    />
+                    {showTitleValidation && isTitleMissing ? (
+                      <p className="mt-1 text-xs text-red-600">Bitte einen Projekttitel eingeben.</p>
+                    ) : null}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Typ *</label>
+                    <select
+                      value={form.type || 'project_open'}
+                      onChange={(e) => {
+                        const val = e.target.value as Project['type'];
+                        setForm((f) => ({
+                          ...f,
+                          type: val,
+                          ...(val === 'open_door' ? { categoryId: null } : {}),
+                        }));
+                      }}
+                      required
+                      className={projectFieldClassName}
+                    >
+                      <option value="open_door">Offene Tür</option>
+                      <option value="project_open">Projekt (offen)</option>
+                      <option value="project_closed">Projekt (geschlossen)</option>
+                      <option value="event">Veranstaltung</option>
+                      <option value="outreach">Aufsuchend</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Zielgruppe</label>
+                  <input
+                    value={form.targetGroup || ''}
+                    onChange={(e) => update('targetGroup', e.target.value)}
+                    className={projectFieldClassName}
+                  />
+                </div>
+                {form.type !== 'open_door' ? renderCategorySelector() : null}
+                {renderTagSelector()}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Typ *</label>
-                <select
-                  value={form.type || 'project_open'}
-                  onChange={(e) => {
-                    const val = e.target.value as Project['type'];
-                    setForm((f) => ({
-                      ...f,
-                      type: val,
-                      ...(val === 'open_door' ? { categoryId: null } : {}),
-                    }));
-                  }}
-                  required
-                  className={projectFieldClassName}
-                >
-                  <option value="open_door">Offene Tür</option>
-                  <option value="project_open">Projekt (offen)</option>
-                  <option value="project_closed">Projekt (geschlossen)</option>
-                  <option value="event">Veranstaltung</option>
-                  <option value="outreach">Aufsuchend</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Zielgruppe</label>
-              <input
-                value={form.targetGroup || ''}
-                onChange={(e) => update('targetGroup', e.target.value)}
-                className={projectFieldClassName}
-              />
-            </div>
-            </div>
-            <div className="space-y-4">
+            </section>
+
+            <section className={projectSectionClassName} style={projectSectionStyle}>
+              {renderSectionHeader(
+                'Zeit & Rhythmus',
+                'Datumsfenster und Standardzeiten liegen in einem gemeinsamen Zeitkontext.',
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Standard Startzeit</label>
+                  <label className="block text-sm font-medium mb-1">Startdatum</label>
+                  <input
+                    type="date"
+                    value={String(form.dateFrom || '').slice(0, 10)}
+                    onChange={(e) => update('dateFrom', e.target.value || null)}
+                    className={projectFieldClassName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Startzeit</label>
                   <input
                     type="time"
                     value={form.defaultStartTime || ''}
@@ -1864,7 +2046,16 @@ function ProjectForm({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Standard Endzeit</label>
+                  <label className="block text-sm font-medium mb-1">Enddatum</label>
+                  <input
+                    type="date"
+                    value={String(form.dateTo || '').slice(0, 10)}
+                    onChange={(e) => update('dateTo', e.target.value || null)}
+                    className={projectFieldClassName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Endzeit</label>
                   <input
                     type="time"
                     value={form.defaultEndTime || ''}
@@ -1873,115 +2064,85 @@ function ProjectForm({
                   />
                 </div>
               </div>
-              <div className="lg:hidden">{renderTagSelector()}</div>
-              {form.type !== 'open_door' && renderCategorySelector()}
-            </div>
+              <p className="mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+                Wiederholungen werden weiterhin in den sp e4teren Aktivit e4ten geplant; hier definierst du das zeitliche Grundfenster des Projekts.
+              </p>
+            </section>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
-            {renderImageManager()}
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+            <section className={projectSectionClassName} style={projectSectionStyle}>
+              {renderSectionHeader(
+                'Bild & Farbe',
+                'Visuelle Kennzeichen bleiben zusammen und sind direkt im Kontext bearbeitbar.',
+              )}
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr),160px] gap-4 items-start">
+                {renderImageManager()}
+                <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
+                  <label className="block text-sm font-medium mb-2">Farbe</label>
+                  <input
+                    type="color"
+                    value={(form.color as string) || '#7aa39a'}
+                    onChange={(e) => update('color', e.target.value)}
+                    className="project-form-field h-12 w-full rounded"
+                  />
+                  <div className="mt-3 rounded-lg px-3 py-2 text-sm font-medium"
+                    style={{
+                      background: (form.color as string) || '#7aa39a',
+                      color: '#fff',
+                    }}
+                  >
+                    Farbakzent f fcr Projektkarten
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className={projectSectionClassName} style={projectSectionStyle}>
+              {renderSectionHeader(
+                'Team & Rollen',
+                'Standardbesetzung und aktive Ehrenamtliche werden gleichartig gepflegt.',
+              )}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {renderStaffSelectorCard({
+                  label: 'Mitarbeitende (Standard)',
+                  field: 'defaultStaff',
+                  roles: ['lead', 'employee'],
+                  emptyLabel: 'Keine Mitarbeitenden verf fcgbar.',
+                })}
+                {renderStaffSelectorCard({
+                  label: 'Ehrenamtliche (aktiv)',
+                  field: 'defaultVolunteers',
+                  roles: ['volunteer', 'helper'],
+                  emptyLabel: 'Keine Ehrenamtlichen verf fcgbar.',
+                })}
+              </div>
+            </section>
+          </div>
+
+          <section className={projectSectionClassName} style={projectSectionStyle}>
+            {renderSectionHeader(
+              'Dokumente',
+              'Konzeption und Unterlagen liegen nach dem Team als eigenst e4ndige Ressource.',
+            )}
             {renderDocumentManager()}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Farbe</label>
-                <input
-                  type="color"
-                  value={(form.color as string) || '#7aa39a'}
-                  onChange={(e) => update('color', e.target.value)}
-                  className="project-form-field w-20 h-10 p-1 rounded"
-                />
-              </div>
-              <div className="hidden lg:block lg:pt-2">{renderTagSelector()}</div>
-            </div>
-            <div className="space-y-4">
-              <div>
-              <label className="block text-sm font-medium mb-1">
-                Mitarbeitende (mehrfach, Standard)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {(staff || [])
-                  .filter((s) =>
-                    Array.isArray(s.roles)
-                      ? s.roles.includes('lead') || s.roles.includes('employee')
-                      : s.role === 'lead' || s.role === 'employee',
-                  )
-                  .map((s) => {
-                    const set = new Set(
-                      (form.defaultStaff || '')
-                        .split(',')
-                        .map((v) => v.trim())
-                        .filter(Boolean),
-                    );
-                    const active = set.has(s.name);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          if (active) set.delete(s.name);
-                          else set.add(s.name);
-                          update('defaultStaff', Array.from(set).join(', '));
-                        }}
-                        className={`px-2 py-1 rounded-full text-xs border ${
-                          active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
-                        }`}
-                      >
-                        {s.name}
-                      </button>
-                    );
-                  })}
-              </div>
-              </div>
-              <div>
-              <label className="block text-sm font-medium mb-1">
-                Ehrenamtliche (mehrfach, aktiv)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {(staff || [])
-                  .filter((s) =>
-                    Array.isArray(s.roles)
-                      ? s.roles.includes('volunteer') || s.roles.includes('helper')
-                      : s.role === 'volunteer' || s.role === 'helper',
-                  )
-                  .map((s) => {
-                    const set = new Set(
-                      (form.defaultVolunteers || '')
-                        .split(',')
-                        .map((v) => v.trim())
-                        .filter(Boolean),
-                    );
-                    const active = set.has(s.name);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          if (active) set.delete(s.name);
-                          else set.add(s.name);
-                          update('defaultVolunteers', Array.from(set).join(', '));
-                        }}
-                        className={`px-2 py-1 rounded-full text-xs border ${
-                          active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
-                        }`}
-                      >
-                        {s.name}
-                      </button>
-                    );
-                  })}
-              </div>
-              </div>
-              <div>
+          </section>
+
+          <section className={projectSectionClassName} style={projectSectionStyle}>
+            {renderSectionHeader(
+              'Beschreibung',
+              'Die fachliche Beschreibung kommt bewusst zuletzt und bekommt volle Breite.',
+            )}
+            <div>
               <label className="block text-sm font-medium mb-1">Beschreibung</label>
               <textarea
                 value={form.description || ''}
                 onChange={(e) => update('description', e.target.value)}
-                rows={4}
+                rows={6}
                 className={projectFieldClassName}
               />
-              </div>
             </div>
-          </div>
+          </section>
         </div>
         </div>
 

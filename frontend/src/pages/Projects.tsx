@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import Toggle from '@/components/Toggle';
+import { FIXED_PALETTE, TAG_PALETTE, isInFixedPalette, isInTagPalette } from '@/lib/colorPalette';
 import {
   Project,
   ProjectDocument,
@@ -16,6 +18,7 @@ import {
 import {
   Layers,
   Pencil,
+  Plus,
   Search,
   Save as SaveIcon,
   X as XIcon,
@@ -31,15 +34,17 @@ import {
   Paperclip,
   ChevronDown,
   ChevronRight,
+  ImagePlus,
 } from 'lucide-react';
 import { Star, StarOff } from 'lucide-react';
 import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
 import { api } from '@/lib/api';
-import { useCategories, useTags, useUpdateCategory } from '@/lib/taxonomy';
-import { type StaffMember, type StaffRole, useStaff } from '@/lib/staff';
+import { useCategories, useTags, useTaxonomyAccess, useUpdateCategory } from '@/lib/taxonomy';
+import { type StaffMember, type StaffRole, useCreateStaff, useStaff } from '@/lib/staff';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import Modal from '@/components/Modal';
+import { CategoryFormModal, StaffFormModal, TagFormModal } from '@/components/settings/EntityFormModals';
 import { useQueryClient } from '@tanstack/react-query';
 import { PROJECT_TEMPLATES, type ProjectTemplate } from '@/lib/projectTemplates';
 import { defaultCategoryByName } from '@/lib/defaultCategories';
@@ -50,6 +55,19 @@ import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
+import { useAuth } from '@/lib/auth';
+import RichTextEditor, {
+  BtnBold,
+  BtnBulletList,
+  BtnClearFormatting,
+  BtnItalic,
+  BtnNumberedList,
+  BtnRedo,
+  BtnUndo,
+  Separator,
+  Toolbar,
+  type ContentEditableEvent,
+} from 'react-simple-wysiwyg';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
 const PROJECTS_STARRED_FIRST_STORAGE_KEY = 'projects:starred-first';
@@ -198,6 +216,58 @@ const truncateWords = (text?: string | null, words = 20) => {
   const parts = text.trim().split(/\s+/);
   if (parts.length <= words) return text;
   return parts.slice(0, words).join(' ') + '…';
+};
+
+const PROJECT_DESCRIPTION_ALLOWED_TAGS = [
+  'a',
+  'b',
+  'br',
+  'div',
+  'em',
+  'i',
+  'li',
+  'ol',
+  'p',
+  'strong',
+  'u',
+  'ul',
+];
+
+const PROJECT_DESCRIPTION_ALLOWED_ATTR = ['href', 'target', 'rel'];
+const PROJECT_DESCRIPTION_HTML_PATTERN = /<\/?[a-z][\s\S]*>/i;
+
+const escapeProjectDescriptionText = (text: string) =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const sanitizeProjectDescriptionHtml = (html?: string | null) =>
+  DOMPurify.sanitize(String(html || ''), {
+    ALLOWED_TAGS: PROJECT_DESCRIPTION_ALLOWED_TAGS,
+    ALLOWED_ATTR: PROJECT_DESCRIPTION_ALLOWED_ATTR,
+    ALLOW_DATA_ATTR: false,
+  });
+
+const normalizeProjectDescriptionHtml = (value?: string | null) => {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const html = PROJECT_DESCRIPTION_HTML_PATTERN.test(text)
+    ? text
+    : escapeProjectDescriptionText(text).replace(/\r?\n/g, '<br>');
+  return sanitizeProjectDescriptionHtml(html);
+};
+
+const projectDescriptionToPlainText = (value?: string | null) => {
+  const html = normalizeProjectDescriptionHtml(value);
+  if (!html) return '';
+  if (typeof DOMParser !== 'undefined') {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
 const formatDocumentSize = (bytes?: number | null) => {
@@ -632,7 +702,9 @@ function ProjectGridCard({
         </div>
 
         {project.description && (
-          <div className="text-sm opacity-95">{truncateWords(project.description, 20)}</div>
+          <div className="text-sm opacity-95">
+            {truncateWords(projectDescriptionToPlainText(project.description), 20)}
+          </div>
         )}
 
         {tagList.length > 0 && (
@@ -853,7 +925,9 @@ function ProjectListRow({
         )}
 
         {project.description && (
-          <p className="text-sm leading-5 text-gray-700">{truncateWords(project.description, 24)}</p>
+          <p className="text-sm leading-5 text-gray-700">
+            {truncateWords(projectDescriptionToPlainText(project.description), 24)}
+          </p>
         )}
       </div>
     </div>
@@ -872,6 +946,8 @@ function ProjectForm({
   saving?: boolean;
 }) {
   useBodyScrollLock(true);
+  const { user } = useAuth();
+  const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
   const submitLockedRef = useRef(false);
   const [form, setForm] = useState<Partial<Project>>(() => {
@@ -912,10 +988,19 @@ function ProjectForm({
   const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
   const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
   const [showTitleValidation, setShowTitleValidation] = useState(false);
+  const [tagCreateOpen, setTagCreateOpen] = useState(false);
+  const [categoryCreateOpen, setCategoryCreateOpen] = useState(false);
+  const [staffCreateState, setStaffCreateState] = useState<{
+    open: boolean;
+    field: 'defaultStaff' | 'defaultVolunteers';
+    role: StaffRole;
+  }>({ open: false, field: 'defaultStaff', role: 'employee' });
   const { data: categories } = useCategories({ active: true });
   const { data: allCategories } = useCategories();
   const { data: allTags } = useTags();
+  const { data: taxonomyAccess } = useTaxonomyAccess();
   const { data: orgTemplates } = useProjectTemplates();
+  const createStaff = useCreateStaff();
   const updateCategory = useUpdateCategory();
   const qc = useQueryClient();
   const { data: tags } = useTags({ active: true });
@@ -925,6 +1010,20 @@ function ProjectForm({
     : [];
   const removedDocumentIdSet = new Set(removedDocumentIds);
   const projectFieldClassName = 'project-form-field w-full rounded px-3 py-2';
+  const projectSectionClassName = 'rounded-xl border p-4 md:p-5';
+  const projectInnerCardClassName = 'rounded-xl border p-4';
+  const projectSectionStyle = {
+    background: 'color-mix(in srgb, var(--surface-2) 88%, transparent)',
+    borderColor: 'var(--border-subtle)',
+  } as const;
+  const projectInnerCardStyle = {
+    background: 'var(--surface-1)',
+    borderColor: 'var(--border-subtle)',
+  } as const;
+  const projectSecondaryButtonClassName = 'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';
+  const canCreateOwnTags = Boolean(taxonomyAccess?.tags.canCreateOwn);
+  const canCreateOwnCategories = Boolean(taxonomyAccess?.categories.canCreateOwn);
+  const canManageStaff = Boolean(user && (user.role === 'superadmin' || user.role === 'org_admin'));
 
   const uploadImage = useCallback(async (file: File) => {
     try {
@@ -949,8 +1048,9 @@ function ProjectForm({
   }, []);
 
   const ensureCategoryByName = useCallback(
-    async (name: string): Promise<{ id: string } | null> => {
+    async (name: string, overrides?: Record<string, unknown>): Promise<{ id: string } | null> => {
       const def = defaultCategoryByName(name);
+      const color = typeof overrides?.color === 'string' ? overrides.color : def?.color;
       return ensureNamedTaxonomyItem({
         items: allCategories,
         name,
@@ -959,12 +1059,13 @@ function ProjectForm({
         createPayload: {
           name,
           active: true,
-          ...(def?.color ? { color: def.color } : {}),
+          ...overrides,
+          ...(color ? { color } : {}),
         },
         reactivate: async (id) => {
           await updateCategory.mutateAsync({
             id,
-            data: { active: true, ...(def?.color ? { color: def.color } : {}) },
+            data: { active: true, ...overrides, ...(color ? { color } : {}) },
           });
           await qc.invalidateQueries({ queryKey: ['categories'] });
         },
@@ -975,7 +1076,8 @@ function ProjectForm({
   );
 
   const ensureTagByName = useCallback(
-    async (name: string, color?: string): Promise<{ id: string } | null> => {
+    async (name: string, overrides?: Record<string, unknown>): Promise<{ id: string } | null> => {
+      const color = typeof overrides?.color === 'string' ? overrides.color : undefined;
       return ensureNamedTaxonomyItem({
         items: allTags,
         name,
@@ -984,10 +1086,11 @@ function ProjectForm({
         createPayload: {
           name,
           active: true,
+          ...overrides,
           ...(color ? { color } : {}),
         },
         reactivate: async (id) => {
-          await api.patch(`/taxonomy/tags/${id}`, { active: true, ...(color ? { color } : {}) });
+          await api.patch(`/taxonomy/tags/${id}`, { active: true, ...overrides, ...(color ? { color } : {}) });
           await qc.invalidateQueries({ queryKey: ['tags'] });
         },
         refresh: () => qc.invalidateQueries({ queryKey: ['tags'] }),
@@ -1073,7 +1176,7 @@ function ProjectForm({
 
             // Ensure each tag exists in org (create if missing)
             for (const tag of tagPairs) {
-              await ensureTagByName(tag.name, tag.color);
+              await ensureTagByName(tag.name, { color: tag.color });
             }
 
             // Set tags on form
@@ -1184,6 +1287,12 @@ function ProjectForm({
     e.target.value = '';
   }, [addDocuments]);
 
+  const onDocumentDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.files?.length) addDocuments(e.dataTransfer.files);
+  }, [addDocuments]);
+
   const visibleExistingDocuments = existingDocuments.filter(
     (document) => !removedDocumentIdSet.has(document.id),
   );
@@ -1200,12 +1309,28 @@ function ProjectForm({
 
   const update = <K extends keyof Project>(k: K, v: Project[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+  const handleDescriptionChange = useCallback((event: ContentEditableEvent) => {
+    update('description', sanitizeProjectDescriptionHtml(event.target.value) as Project['description']);
+  }, []);
   const isTitleMissing = String(form.title || '').trim().length === 0;
   const selectedTags = new Set(
     (form.tag || '')
       .split(',')
       .map((value) => value.trim())
       .filter(Boolean),
+  );
+  const mergeNameIntoField = useCallback(
+    (field: 'defaultStaff' | 'defaultVolunteers', name: string) => {
+      const next = new Set(
+        String(form[field] || '')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
+      );
+      next.add(name);
+      update(field, Array.from(next).join(', ') as Project[typeof field]);
+    },
+    [form],
   );
 
   const handleClose = useCallback(() => {
@@ -1237,8 +1362,6 @@ function ProjectForm({
       'imageUrl',
       'imageSize',
       'color',
-      'dateFrom',
-      'dateTo',
       'defaultStartTime',
       'defaultEndTime',
       'defaultStaff',
@@ -1254,8 +1377,6 @@ function ProjectForm({
       'imageUrl',
       'imageSize',
       'color',
-      'dateFrom',
-      'dateTo',
       'defaultStartTime',
       'defaultEndTime',
       'defaultStaff',
@@ -1271,6 +1392,11 @@ function ProjectForm({
       } else if (v !== undefined) {
         if (k === 'imageUrl' && typeof v === 'string') {
           (acc as Record<string, unknown>)[k as string] = normalizeUploadPath(v) ?? null;
+        } else if (k === 'description' && typeof v === 'string') {
+          const descriptionHtml = normalizeProjectDescriptionHtml(v);
+          (acc as Record<string, unknown>)[k as string] = projectDescriptionToPlainText(descriptionHtml)
+            ? descriptionHtml
+            : null;
         } else if (k === 'imageSize' && typeof v === 'string' && v.trim() !== '') {
           const n = Number(v);
           if (Number.isFinite(n)) (acc as Record<string, unknown>)[k as string] = n;
@@ -1385,8 +1511,52 @@ function ProjectForm({
 
       {documentsExpanded && (
         <div className="mt-3 space-y-3">
-          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
+          <div
+            className="rounded-xl border border-dashed p-4"
+            style={{
+              background: 'var(--surface-1)',
+              borderColor: 'var(--border-subtle)',
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={onDocumentDrop}
+          >
+            <div className="flex items-start gap-3">
+              <span
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                style={{
+                  background: 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+                  color: 'var(--viridian)',
+                }}
+              >
+                <Paperclip className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1 space-y-3">
+                <div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    Unterlagen hier ablegen oder direkt ausw e4hlen
+                  </div>
+                  <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => documentInputRef.current?.click()}
+                  className={projectSecondaryButtonClassName}
+                  style={{
+                    background: 'var(--surface-1)',
+                    borderColor: 'var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  <Paperclip className="h-4 w-4" />
+                  Dateien ausw e4hlen
+                </button>
+              </div>
+            </div>
           </div>
 
           {visibleExistingDocuments.length === 0 && pendingDocuments.length === 0 ? (
@@ -1550,12 +1720,26 @@ function ProjectForm({
               }}
               className="px-2 py-1 rounded-full text-xs border"
               style={getSelectableTaxonomyChipStyle(active, t.color)}
+              aria-pressed={active}
             >
               {t.name}
             </button>
           );
         })}
       </div>
+      {canCreateOwnTags ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setTagCreateOpen(true)}
+            className={projectSecondaryButtonClassName}
+            style={projectInnerCardStyle}
+          >
+            <Plus className="h-4 w-4" />
+            Hinzufügen
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 
@@ -1572,15 +1756,7 @@ function ProjectForm({
               type="button"
               onClick={() => update('categoryId', active ? null : c.id)}
               className="px-2 py-1 rounded-full text-xs border"
-              style={
-                active
-                  ? { backgroundColor: color, color: '#fff', borderColor: color }
-                  : {
-                      backgroundColor: 'var(--surface-1)',
-                      color: 'var(--text-primary)',
-                      borderColor: color,
-                    }
-              }
+              style={getSelectableTaxonomyChipStyle(active, color)}
               title={c.name}
               aria-pressed={active}
             >
@@ -1589,6 +1765,19 @@ function ProjectForm({
           );
         })}
       </div>
+      {canCreateOwnCategories ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setCategoryCreateOpen(true)}
+            className={projectSecondaryButtonClassName}
+            style={projectInnerCardStyle}
+          >
+            <Plus className="h-4 w-4" />
+            Hinzufügen
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 
@@ -1622,38 +1811,139 @@ function ProjectForm({
               onClick={() => fileInputRef.current?.click()}
               className="px-3 py-1 rounded bg-viridian text-white"
             >
-              Ersetzen…
+              Ersetzen...
             </button>
           </div>
         </div>
       ) : (
         <div
-          className="rounded border-2 border-dashed p-3 text-sm"
+          className="rounded-xl border-2 border-dashed p-4 text-sm"
           style={{
             background: 'color-mix(in srgb, var(--surface-2) 78%, var(--surface-3))',
             borderColor: 'var(--border-strong)',
             color: 'var(--text-secondary)',
           }}
         >
-          <div className="mb-2">
-            Bild hierher ziehen, klicken zum Auswählen oder per Strg+V einfügen
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="project-form-field rounded px-3 py-1"
+          <div className="flex items-start gap-3">
+            <span
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+                color: 'var(--viridian)',
+              }}
             >
-              Datei wählen…
-            </button>
+              <ImagePlus className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 font-medium" style={{ color: 'var(--text-primary)' }}>
+                Bild hierher ziehen, klicken oder per Strg+V einfuegen
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`${projectSecondaryButtonClassName} project-form-field`}
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  Datei waehlen
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-            Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
+          <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+            Unterstuetzt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
           </div>
         </div>
       )}
     </div>
   );
+
+  const renderSectionHeader = (title: string) => (
+    <div className="mb-4">
+      <h4 className="text-sm font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--viridian)' }}>
+        {title}
+      </h4>
+    </div>
+  );
+
+  const renderStaffSelectorCard = ({
+    label,
+    field,
+    roles,
+    emptyLabel,
+    createRole,
+  }: {
+    label: string;
+    field: 'defaultStaff' | 'defaultVolunteers';
+    roles: StaffRole[];
+    emptyLabel: string;
+    createRole: StaffRole;
+  }) => {
+    const selectedNames = new Set(
+      String(form[field] || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+    );
+    const availablePeople = (staff || []).filter((person) =>
+      Array.isArray(person.roles)
+        ? person.roles.some((role) => roles.includes(role))
+        : person.role
+          ? roles.includes(person.role)
+          : false,
+    );
+
+    return (
+      <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
+        <div className="mb-3">
+          <label className="text-sm font-medium">{label}</label>
+        </div>
+        {availablePeople.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {availablePeople.map((person) => {
+              const active = selectedNames.has(person.name);
+              return (
+                <button
+                  key={person.id}
+                  type="button"
+                  onClick={() => {
+                    const next = new Set(selectedNames);
+                    if (active) next.delete(person.name);
+                    else next.add(person.name);
+                    update(field, Array.from(next).join(', ') as Project[typeof field]);
+                  }}
+                  className="px-2 py-1 rounded-full text-xs border"
+                  style={getSelectableTaxonomyChipStyle(active, '#7aa39a')}
+                  aria-pressed={active}
+                >
+                  {person.name}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {emptyLabel}
+          </div>
+        )}
+        {canManageStaff ? (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => {
+                setStaffCreateState({ open: true, field, role: createRole });
+              }}
+              className={projectSecondaryButtonClassName}
+              style={projectInnerCardStyle}
+            >
+              <Plus className="h-4 w-4" />
+              Hinzufügen
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
@@ -1663,9 +1953,24 @@ function ProjectForm({
         onDrop={onDrop}
       >
         <div className="shrink-0 flex items-start justify-between gap-3 mb-4">
-          <h3 className="text-xl font-semibold text-viridian">
-            {initial?.id ? 'Projekt bearbeiten' : 'Neues Projekt'}
-          </h3>
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold text-viridian">
+              {initial?.id ? 'Projekt bearbeiten' : 'Neues Projekt'}
+            </h3>
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
+              style={{
+                background: initial?.archived
+                  ? 'color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))'
+                  : 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+                color: initial?.archived
+                  ? 'color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))'
+                  : 'var(--viridian)',
+              }}
+            >
+              Status: {initial?.archived ? 'Archiviert' : 'Aktiv'}
+            </span>
+          </div>
           <button
             type="button"
             onClick={handleClose}
@@ -1795,67 +2100,74 @@ function ProjectForm({
           </div>
         )}
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
-            <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Titel *</label>
-                <input
-                  ref={titleInputRef}
-                  value={form.title || ''}
-                  onChange={(e) => {
-                    update('title', e.target.value);
-                    if (showTitleValidation && e.target.value.trim()) setShowTitleValidation(false);
-                  }}
-                  onBlur={() => {
-                    if (String(form.title || '').trim().length === 0) setShowTitleValidation(true);
-                  }}
-                  required
-                  className={`${projectFieldClassName} ${
-                    showTitleValidation && isTitleMissing ? 'project-form-field-invalid' : ''
-                  }`}
-                />
-                {showTitleValidation && isTitleMissing ? (
-                  <p className="mt-1 text-xs text-red-600">Bitte einen Projekttitel eingeben.</p>
-                ) : null}
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.25fr),minmax(280px,0.75fr)] gap-5 items-start">
+            <section className={projectSectionClassName} style={projectSectionStyle}>
+              {renderSectionHeader('Basisinformationen')}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Titel *</label>
+                    <input
+                      ref={titleInputRef}
+                      value={form.title || ''}
+                      onChange={(e) => {
+                        update('title', e.target.value);
+                        if (showTitleValidation && e.target.value.trim()) setShowTitleValidation(false);
+                      }}
+                      onBlur={() => {
+                        if (String(form.title || '').trim().length === 0) setShowTitleValidation(true);
+                      }}
+                      required
+                      className={`${projectFieldClassName} ${
+                        showTitleValidation && isTitleMissing ? 'project-form-field-invalid' : ''
+                      }`}
+                    />
+                    {showTitleValidation && isTitleMissing ? (
+                      <p className="mt-1 text-xs text-red-600">Bitte einen Projekttitel eingeben.</p>
+                    ) : null}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Typ *</label>
+                    <select
+                      value={form.type || 'project_open'}
+                      onChange={(e) => {
+                        const val = e.target.value as Project['type'];
+                        setForm((f) => ({
+                          ...f,
+                          type: val,
+                          ...(val === 'open_door' ? { categoryId: null } : {}),
+                        }));
+                      }}
+                      required
+                      className={projectFieldClassName}
+                    >
+                      <option value="open_door">Offene Tür</option>
+                      <option value="project_open">Projekt (offen)</option>
+                      <option value="project_closed">Projekt (geschlossen)</option>
+                      <option value="event">Veranstaltung</option>
+                      <option value="outreach">Aufsuchend</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Zielgruppe</label>
+                  <input
+                    value={form.targetGroup || ''}
+                    onChange={(e) => update('targetGroup', e.target.value)}
+                    className={projectFieldClassName}
+                  />
+                </div>
+                {form.type !== 'open_door' ? renderCategorySelector() : null}
+                {renderTagSelector()}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Typ *</label>
-                <select
-                  value={form.type || 'project_open'}
-                  onChange={(e) => {
-                    const val = e.target.value as Project['type'];
-                    setForm((f) => ({
-                      ...f,
-                      type: val,
-                      ...(val === 'open_door' ? { categoryId: null } : {}),
-                    }));
-                  }}
-                  required
-                  className={projectFieldClassName}
-                >
-                  <option value="open_door">Offene Tür</option>
-                  <option value="project_open">Projekt (offen)</option>
-                  <option value="project_closed">Projekt (geschlossen)</option>
-                  <option value="event">Veranstaltung</option>
-                  <option value="outreach">Aufsuchend</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Zielgruppe</label>
-              <input
-                value={form.targetGroup || ''}
-                onChange={(e) => update('targetGroup', e.target.value)}
-                className={projectFieldClassName}
-              />
-            </div>
-            </div>
-            <div className="space-y-4">
+            </section>
+
+            <section className={projectSectionClassName} style={projectSectionStyle}>
+              {renderSectionHeader('Zeit')}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Standard Startzeit</label>
+                  <label className="block text-sm font-medium mb-1">Startzeit</label>
                   <input
                     type="time"
                     value={form.defaultStartTime || ''}
@@ -1864,7 +2176,7 @@ function ProjectForm({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Standard Endzeit</label>
+                  <label className="block text-sm font-medium mb-1">Endzeit</label>
                   <input
                     type="time"
                     value={form.defaultEndTime || ''}
@@ -1873,115 +2185,77 @@ function ProjectForm({
                   />
                 </div>
               </div>
-              <div className="lg:hidden">{renderTagSelector()}</div>
-              {form.type !== 'open_door' && renderCategorySelector()}
-            </div>
+            </section>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
-            {renderImageManager()}
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+            <section className={projectSectionClassName} style={projectSectionStyle}>
+              {renderSectionHeader('Bild & Farbe')}
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr),160px] gap-4 items-start">
+                {renderImageManager()}
+                <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
+                  <label className="block text-sm font-medium mb-2">Farbe</label>
+                  <input
+                    type="color"
+                    value={(form.color as string) || '#7aa39a'}
+                    onChange={(e) => update('color', e.target.value)}
+                    className="project-form-field h-12 w-full rounded"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className={projectSectionClassName} style={projectSectionStyle}>
+              {renderSectionHeader('Team & Rollen')}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {renderStaffSelectorCard({
+                  label: 'Mitarbeitende',
+                  field: 'defaultStaff',
+                  roles: ['lead', 'employee'],
+                  emptyLabel: 'Keine Mitarbeitenden verfügbar.',
+                  createRole: 'employee',
+                })}
+                {renderStaffSelectorCard({
+                  label: 'Ehrenamtliche & Helfer',
+                  field: 'defaultVolunteers',
+                  roles: ['volunteer', 'helper'],
+                  emptyLabel: 'Keine Ehrenamtlichen oder Helfer verfügbar.',
+                  createRole: 'volunteer',
+                })}
+              </div>
+            </section>
+          </div>
+
+          <section className={projectSectionClassName} style={projectSectionStyle}>
+            {renderSectionHeader('Dokumente')}
             {renderDocumentManager()}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Farbe</label>
-                <input
-                  type="color"
-                  value={(form.color as string) || '#7aa39a'}
-                  onChange={(e) => update('color', e.target.value)}
-                  className="project-form-field w-20 h-10 p-1 rounded"
-                />
-              </div>
-              <div className="hidden lg:block lg:pt-2">{renderTagSelector()}</div>
-            </div>
-            <div className="space-y-4">
-              <div>
-              <label className="block text-sm font-medium mb-1">
-                Mitarbeitende (mehrfach, Standard)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {(staff || [])
-                  .filter((s) =>
-                    Array.isArray(s.roles)
-                      ? s.roles.includes('lead') || s.roles.includes('employee')
-                      : s.role === 'lead' || s.role === 'employee',
-                  )
-                  .map((s) => {
-                    const set = new Set(
-                      (form.defaultStaff || '')
-                        .split(',')
-                        .map((v) => v.trim())
-                        .filter(Boolean),
-                    );
-                    const active = set.has(s.name);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          if (active) set.delete(s.name);
-                          else set.add(s.name);
-                          update('defaultStaff', Array.from(set).join(', '));
-                        }}
-                        className={`px-2 py-1 rounded-full text-xs border ${
-                          active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
-                        }`}
-                      >
-                        {s.name}
-                      </button>
-                    );
-                  })}
-              </div>
-              </div>
-              <div>
-              <label className="block text-sm font-medium mb-1">
-                Ehrenamtliche (mehrfach, aktiv)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {(staff || [])
-                  .filter((s) =>
-                    Array.isArray(s.roles)
-                      ? s.roles.includes('volunteer') || s.roles.includes('helper')
-                      : s.role === 'volunteer' || s.role === 'helper',
-                  )
-                  .map((s) => {
-                    const set = new Set(
-                      (form.defaultVolunteers || '')
-                        .split(',')
-                        .map((v) => v.trim())
-                        .filter(Boolean),
-                    );
-                    const active = set.has(s.name);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          if (active) set.delete(s.name);
-                          else set.add(s.name);
-                          update('defaultVolunteers', Array.from(set).join(', '));
-                        }}
-                        className={`px-2 py-1 rounded-full text-xs border ${
-                          active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
-                        }`}
-                      >
-                        {s.name}
-                      </button>
-                    );
-                  })}
-              </div>
-              </div>
-              <div>
+          </section>
+
+          <section className={projectSectionClassName} style={projectSectionStyle}>
+            {renderSectionHeader('Beschreibung')}
+            <div>
               <label className="block text-sm font-medium mb-1">Beschreibung</label>
-              <textarea
-                value={form.description || ''}
-                onChange={(e) => update('description', e.target.value)}
-                rows={4}
-                className={projectFieldClassName}
-              />
-              </div>
+              <RichTextEditor
+                value={normalizeProjectDescriptionHtml(form.description)}
+                onChange={handleDescriptionChange}
+                placeholder="Beschreibung eingeben..."
+                containerProps={{ className: 'project-rich-text-editor' }}
+              >
+                <Toolbar>
+                  <BtnUndo title="Rückgängig" />
+                  <BtnRedo title="Wiederholen" />
+                  <Separator />
+                  <BtnBold title="Fett" />
+                  <BtnItalic title="Kursiv" />
+                  <Separator />
+                  <BtnBulletList title="Liste" />
+                  <BtnNumberedList title="Nummerierte Liste" />
+                  <Separator />
+                  <BtnClearFormatting title="Formatierung entfernen" />
+                </Toolbar>
+              </RichTextEditor>
             </div>
-          </div>
+          </section>
         </div>
         </div>
 
@@ -2027,6 +2301,99 @@ function ProjectForm({
           </div>
         </div>
       </div>
+
+      {tagCreateOpen ? (
+        <TagFormModal
+          initial={{ color: TAG_PALETTE[0] }}
+          onCancel={() => setTagCreateOpen(false)}
+          onSubmit={async (values) => {
+            const name = String(values.name || '').trim();
+            if (!name) return;
+            const existing = findNamedTaxonomyItem(allTags, name);
+            try {
+              await ensureTagByName(name, {
+                description: values.description,
+                color: isInTagPalette(values.color as string) ? values.color : TAG_PALETTE[0],
+              });
+              const next = new Set(selectedTags);
+              next.add(name);
+              update('tag', Array.from(next).join(', '));
+              showToast(
+                existing?.id ? `Tag "${name}" wurde zugeordnet.` : `Tag "${name}" hinzugefügt.`,
+                existing?.id ? { type: 'info' } : undefined,
+              );
+              setTagCreateOpen(false);
+            } catch {
+              showToast('Tag konnte nicht angelegt werden.', { type: 'error' });
+            }
+          }}
+        />
+      ) : null}
+
+      {categoryCreateOpen ? (
+        <CategoryFormModal
+          initial={{ color: FIXED_PALETTE[0] }}
+          onCancel={() => setCategoryCreateOpen(false)}
+          onSubmit={async (values) => {
+            const name = String(values.name || '').trim();
+            if (!name) return;
+            const existing = findNamedTaxonomyItem(allCategories, name);
+            try {
+              const ensured = await ensureCategoryByName(name, {
+                description: values.description,
+                standardRef: values.standardRef,
+                color: isInFixedPalette(values.color as string) ? values.color : FIXED_PALETTE[0],
+              });
+              if (!ensured?.id) throw new Error('missing-category-id');
+              update('categoryId', ensured.id);
+              showToast(
+                existing?.id
+                  ? `Kategorie "${name}" wurde zugeordnet.`
+                  : `Kategorie "${name}" hinzugefügt.`,
+                existing?.id ? { type: 'info' } : undefined,
+              );
+              setCategoryCreateOpen(false);
+            } catch {
+              showToast('Kategorie konnte nicht angelegt werden.', { type: 'error' });
+            }
+          }}
+        />
+      ) : null}
+
+      {staffCreateState.open ? (
+        <StaffFormModal
+          initial={{ roles: [staffCreateState.role] }}
+          onCancel={() => setStaffCreateState((current) => ({ ...current, open: false }))}
+          onSubmit={async (values) => {
+            const name = String(values.name || '').trim();
+            if (!name) return;
+            const existing = (staff || []).find(
+              (person) => person.name.trim().toLowerCase() === name.toLowerCase(),
+            );
+            if (existing) {
+              mergeNameIntoField(staffCreateState.field, existing.name);
+              showToast(`Teammitglied "${existing.name}" wurde zugeordnet.`, { type: 'info' });
+              setStaffCreateState((current) => ({ ...current, open: false }));
+              return;
+            }
+
+            try {
+              const created = await createStaff.mutateAsync({
+                ...values,
+                roles:
+                  Array.isArray(values.roles) && values.roles.length > 0
+                    ? values.roles
+                    : [staffCreateState.role],
+              });
+              mergeNameIntoField(staffCreateState.field, created.name);
+              showToast(`Teammitglied "${created.name}" hinzugefügt.`);
+              setStaffCreateState((current) => ({ ...current, open: false }));
+            } catch {
+              showToast('Teammitglied konnte nicht angelegt werden.', { type: 'error' });
+            }
+          }}
+        />
+      ) : null}
 
       <Modal
         open={imageIssue.open}
@@ -2082,8 +2449,6 @@ function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<P
     'imageUrl',
     'imageSize',
     'color',
-    'dateFrom',
-    'dateTo',
     'defaultStartTime',
     'defaultEndTime',
     'defaultStaff',

@@ -8,158 +8,10 @@ import {
   useStaff,
   useUpdateStaff,
 } from '@/lib/staff';
-import { Pencil, Save as SaveIcon, X as XIcon, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
-
-// Statistikrelevante Rollen (UI-Auswahl auf diese beschränkt)
-const ROLE_LABEL: Partial<Record<StaffRole, string>> = {
-  employee: 'Mitarbeitende',
-  volunteer: 'Ehrenamtliche',
-  helper: 'Helfer',
-};
-
-function StaffForm({
-  initial,
-  onCancel,
-  onSubmit,
-}: {
-  initial?: Partial<StaffMember>;
-  onCancel: () => void;
-  onSubmit: (data: Partial<StaffMember>) => void;
-}) {
-  const [form, setForm] = useState<Partial<StaffMember>>({
-    name: '',
-    roles: initial?.role ? [initial.role] : initial?.roles || ['employee'],
-    ...initial,
-  });
-
-  const update = <K extends keyof StaffMember>(k: K, v: StaffMember[K]) =>
-    setForm((f) => ({ ...f, [k]: v }));
-
-  return (
-    <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
-      <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
-        <h3 className="text-xl font-semibold text-viridian mb-4">
-          {initial?.id ? 'Teammitglied bearbeiten' : 'Neues Teammitglied'}
-        </h3>
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="staff-name" className="block text-sm font-medium mb-1">
-              Name *
-            </label>
-            <input
-              id="staff-name"
-              placeholder="Vollständiger Name"
-              value={form.name || ''}
-              onChange={(e) => update('name', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="staff-email" className="block text-sm font-medium mb-1">
-                E-Mail
-              </label>
-              <input
-                id="staff-email"
-                type="email"
-                placeholder="name@example.org"
-                value={form.email || ''}
-                onChange={(e) => update('email', e.target.value)}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label htmlFor="staff-phone" className="block text-sm font-medium mb-1">
-                Telefon
-              </label>
-              <input
-                id="staff-phone"
-                type="tel"
-                placeholder="z. B. 01234 567890"
-                value={form.phone || ''}
-                onChange={(e) => update('phone', e.target.value)}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="staff-role" className="block text-sm font-medium mb-1">
-              Rolle
-            </label>
-            <select
-              id="staff-role"
-              value={
-                Array.isArray(form.roles)
-                  ? form.roles[0]
-                  : form.role && ROLE_LABEL[form.role]
-                    ? form.role
-                    : 'employee'
-              }
-              onChange={(e) => update('roles', [e.target.value as StaffRole])}
-              className="w-full border rounded px-3 py-2"
-            >
-              {(['employee', 'volunteer', 'helper'] as StaffRole[]).map((key) => (
-                <option key={key} value={key}>
-                  {ROLE_LABEL[key]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="staff-notes" className="block text-sm font-medium mb-1">
-              Notizen
-            </label>
-            <textarea
-              id="staff-notes"
-              placeholder="Interne Hinweise, Verfügbarkeit…"
-              value={form.notes || ''}
-              onChange={(e) => update('notes', e.target.value)}
-              rows={3}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          {/* "Aktiv" wird nicht mehr umgeschaltet; Teammitglieder sind immer aktiv. */}
-        </div>
-        <div className="modal-sticky-actions md:-mx-6 md:px-6">
-          <span className="tooltip-wrapper">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-              onClick={onCancel}
-              title="Abbrechen"
-              aria-label="Abbrechen"
-            >
-              <XIcon className="w-5 h-5" />
-            </button>
-            <span className="tooltip-bubble">Abbrechen</span>
-          </span>
-          <span className="tooltip-wrapper">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-              onClick={() => {
-                const cleaned = Object.fromEntries(
-                  Object.entries(form).filter(
-                    ([k, v]) => k !== 'active' && v !== '' && v !== null && v !== undefined,
-                  ),
-                ) as Partial<StaffMember>;
-                onSubmit(cleaned);
-              }}
-              title="Speichern"
-              aria-label="Speichern"
-            >
-              <SaveIcon className="w-5 h-5" />
-            </button>
-            <span className="tooltip-bubble">Speichern</span>
-          </span>
-          {/* Archivieren erfolgt in der Liste über den roten Mülleimer-Button */}
-        </div>
-      </div>
-    </div>
-  );
-}
+import { STAFF_ROLE_LABEL, StaffFormModal } from '@/components/settings/EntityFormModals';
 
 export default function SettingsTeam() {
   const [showArchived, setShowArchived] = useState(false);
@@ -253,7 +105,7 @@ export default function SettingsTeam() {
                     (m.role || (Array.isArray(m.roles) ? m.roles[0] : 'employee')) as StaffRole,
                   )}`}
                 >
-                  {ROLE_LABEL[
+                  {STAFF_ROLE_LABEL[
                     (m.role || (Array.isArray(m.roles) ? m.roles[0] : 'employee')) as StaffRole
                   ] || '–'}
                 </span>
@@ -316,7 +168,7 @@ export default function SettingsTeam() {
       </div>
 
       {modal && (
-        <StaffForm
+        <StaffFormModal
           initial={modal.mode === 'edit' ? modal.member : undefined}
           onSubmit={(values) => {
             if (modal.mode === 'create') {

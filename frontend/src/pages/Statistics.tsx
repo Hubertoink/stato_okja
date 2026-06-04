@@ -57,7 +57,6 @@ import {
 import { StatisticsBarChartCard } from './StatisticsBarChartCard';
 import { StatisticsExportActions } from './StatisticsExportActions';
 import { StatisticsPieChartCard } from './StatisticsPieChartCard';
-import DemoHoverHint from '@/demo/DemoHoverHint';
 import CustomKpiCards from '@/components/CustomKpiCards';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -1620,12 +1619,7 @@ export default function Statistics() {
       <h2 className="text-3xl font-bold text-viridian mb-6">Statistiken & Auswertungen</h2>
 
       {/* Time Range Selector */}
-      <DemoHoverHint
-        title="Zeitraum & Filter"
-        description="Grenzt die Auswertung nach Jahr, Monat, individuellem Zeitraum, Typ, Projekt, Wochentagen und Status ein. Alle Diagramme und Tabellen reagieren auf diese Auswahl."
-        placement="bottom"
-      >
-        <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
+      <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
         {(() => {
           const openAdvancedFilters = () => {
             setTempFrom(isCustomRange ? from : '');
@@ -2389,86 +2383,80 @@ export default function Statistics() {
             </>
           );
         })()}
-        </div>
-      </DemoHoverHint>
+      </div>
 
       <div ref={reportRef} className="">
         {/* KPI Summary with Toggle */}
-        <DemoHoverHint
-          title="Kennzahlen"
-          description="Schaltet zwischen absoluten Summen und Durchschnittswerten um. Die Karten geben einen schnellen Ueberblick ueber Aktivitaeten, Teilnehmende und Stunden."
-        >
-          <div className="flex items-center justify-end mb-4" data-pdf-section>
-            <div className="stats-kpi-toggle flex items-center gap-2 rounded-lg p-1">
-              <button
-                type="button"
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  !showAverage ? 'stats-kpi-toggle-button-active font-medium' : 'stats-kpi-toggle-button'
-                }`}
-                onClick={() => setShowAverage(false)}
-              >
-                Absolut
-              </button>
-              <button
-                type="button"
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  showAverage ? 'stats-kpi-toggle-button-active font-medium' : 'stats-kpi-toggle-button'
-                }`}
-                onClick={() => setShowAverage(true)}
-              >
-                Ø Werte
-              </button>
-            </div>
+        <div className="flex items-center justify-end mb-4" data-pdf-section>
+          <div className="stats-kpi-toggle flex items-center gap-2 rounded-lg p-1">
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                !showAverage ? 'stats-kpi-toggle-button-active font-medium' : 'stats-kpi-toggle-button'
+              }`}
+              onClick={() => setShowAverage(false)}
+            >
+              Absolut
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                showAverage ? 'stats-kpi-toggle-button-active font-medium' : 'stats-kpi-toggle-button'
+              }`}
+              onClick={() => setShowAverage(true)}
+            >
+              Ø Werte
+            </button>
           </div>
-          <div className={`grid grid-cols-1 gap-6 mb-8 ${selectedClosureState === 'closed' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`} data-pdf-section>
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <p className="text-4xl font-bold text-viridian">
-                {showAverage
-                  ? averageActivitiesPerWeek.toLocaleString('de-DE', { maximumFractionDigits: 1 })
-                  : fmtNumber(summary?.totalActivities)}
-              </p>
-              <p className="text-sm text-gray-600 mt-2">
-                {showAverage ? 'Ø Aktivitäten / Woche' : 'Aktivitäten'}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <p className="text-4xl font-bold text-cambridge-blue">
-                {showAverage
-                  ? summary?.averageParticipants?.toLocaleString('de-DE', { maximumFractionDigits: 1 })
-                  : fmtNumber(summary?.totalParticipants)}
-              </p>
-              <p className="text-sm text-gray-600 mt-2">
-                {showAverage ? 'Ø Teilnehmende / Aktivität' : 'Teilnehmende'}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <p className="text-4xl font-bold text-cambridge-blue">
-                {totalParticipantsPerHour.toLocaleString('de-DE', { maximumFractionDigits: 1 })}
-              </p>
-              <p className="text-sm text-gray-600 mt-2">
-                {showAverage ? 'Ø Teilnehmende / Stunde' : 'Teilnehmende / Stunde'}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <p className="text-4xl font-bold text-viridian">
-                {showAverage
-                  ? averageHoursPerActivity.toLocaleString('de-DE', { maximumFractionDigits: 1 })
-                  : summary?.totalHours?.toLocaleString('de-DE')}
-              </p>
-              <p className="text-sm text-gray-600 mt-2">
-                {showAverage ? 'Ø Stunden / Aktivität' : 'Gesamt-Stunden'}
-              </p>
-            </div>
-            {selectedClosureState === 'closed' && (
-              <div className="bg-white rounded-lg shadow p-6 text-center">
-                <p className="text-4xl font-bold text-amber-500">
-                  {fmtNumber(summary?.closureDaysCount ?? 0)}
-                </p>
-                <p className="text-sm text-gray-600 mt-2">Schließtage</p>
-              </div>
-            )}
+        </div>
+        <div className={`grid grid-cols-1 gap-6 mb-8 ${selectedClosureState === 'closed' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`} data-pdf-section>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-4xl font-bold text-viridian">
+              {showAverage
+                ? averageActivitiesPerWeek.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                : fmtNumber(summary?.totalActivities)}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              {showAverage ? 'Ø Aktivitäten / Woche' : 'Aktivitäten'}
+            </p>
           </div>
-        </DemoHoverHint>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-4xl font-bold text-cambridge-blue">
+              {showAverage
+                ? summary?.averageParticipants?.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                : fmtNumber(summary?.totalParticipants)}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              {showAverage ? 'Ø Teilnehmende / Aktivität' : 'Teilnehmende'}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-4xl font-bold text-cambridge-blue">
+              {totalParticipantsPerHour.toLocaleString('de-DE', { maximumFractionDigits: 1 })}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              {showAverage ? 'Ø Teilnehmende / Stunde' : 'Teilnehmende / Stunde'}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-4xl font-bold text-viridian">
+              {showAverage
+                ? averageHoursPerActivity.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                : summary?.totalHours?.toLocaleString('de-DE')}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              {showAverage ? 'Ø Stunden / Aktivität' : 'Gesamt-Stunden'}
+            </p>
+          </div>
+          {selectedClosureState === 'closed' && (
+            <div className="bg-white rounded-lg shadow p-6 text-center">
+              <p className="text-4xl font-bold text-amber-500">
+                {fmtNumber(summary?.closureDaysCount ?? 0)}
+              </p>
+              <p className="text-sm text-gray-600 mt-2">Schließtage</p>
+            </div>
+          )}
+        </div>
 
         <CustomKpiCards
           surface="statistics"
@@ -2482,11 +2470,7 @@ export default function Statistics() {
         />
 
         {/* Charts */}
-        <DemoHoverHint
-          title="Diagramme"
-          description="Visualisiert Verteilungen, Zeitverlauf, Kategorien, Tags und Projekte. Jedes Diagramm kann einzeln als PNG oder PDF exportiert werden."
-        >
-          <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
+        <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
           <StatisticsPieChartCard
             title="Verteilung nach Tätigkeitstyp"
             exportActions={renderChartExportActions('activity-types', 'Verteilung nach Tätigkeitstyp')}
@@ -2761,15 +2745,10 @@ export default function Statistics() {
               getCellKey={(item) => `tp-${item.id}`}
             />
           )}
-          </div>
-        </DemoHoverHint>
+        </div>
 
         {/* Aktivitäten-Tabelle (nach Diagrammen) */}
-        <DemoHoverHint
-          title="Gefilterte Aktivitaeten"
-          description="Listet alle Aktivitaeten zur aktuellen Auswertung tabellarisch. Die Tabelle laesst sich komplett als PDF oder Excel exportieren."
-        >
-          <div className="group/chart-card bg-white rounded-lg shadow p-6 mt-8" data-pdf-section>
+        <div className="group/chart-card bg-white rounded-lg shadow p-6 mt-8" data-pdf-section>
           <div className="flex items-center justify-between mb-4 gap-3">
             <h3 className="text-lg font-semibold text-viridian">
               Alle Aktivitäten (gefiltert)
@@ -2995,7 +2974,6 @@ export default function Statistics() {
             </div>
           </div>
         </div>
-        </DemoHoverHint>
       </div>
 
       <Modal

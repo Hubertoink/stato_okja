@@ -1,140 +1,11 @@
 import { useState } from 'react';
-import { TAG_PALETTE, isInTagPalette, getBgClass } from '@/lib/colorPalette';
+import { TAG_PALETTE, getBgClass, isInTagPalette } from '@/lib/colorPalette';
 import Toggle from '@/components/Toggle';
 import { Tag, useCreateTag, useDeleteTag, useTags, useTaxonomyAccess, useUpdateTag } from '@/lib/taxonomy';
-import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
-import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
-
-function TagForm({
-  initial,
-  onSubmit,
-  onCancel,
-  onArchive,
-}: {
-  initial?: Partial<Tag>;
-  onSubmit: (d: Partial<Tag>) => void;
-  onCancel: () => void;
-  onArchive?: () => void;
-}) {
-  const [form, setForm] = useState<Partial<Tag>>({ active: true, ...initial });
-  const update = <K extends keyof Tag>(k: K, v: Tag[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const swatches = TAG_PALETTE;
-  const handleSave = () => {
-    const cleaned = Object.fromEntries(
-      Object.entries(form).filter(([, v]) => v !== '' && v !== null && v !== undefined),
-    ) as Partial<Tag>;
-    onSubmit(cleaned);
-  };
-
-  useEditorShortcuts({
-    onClose: onCancel,
-    onSave: handleSave,
-  });
-
-  return (
-    <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 pb-safe md:items-center md:p-6">
-      <div className="mb-safe bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
-        <h3 className="text-xl font-semibold text-viridian mb-4">
-          {initial?.id ? 'Tag bearbeiten' : 'Neues Tag'}
-        </h3>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="tag-name">
-              Name *
-            </label>
-            <input
-              id="tag-name"
-              placeholder="z. B. Ferienprogramm"
-              value={form.name || ''}
-              onChange={(e) => update('name', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Farbe</label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {swatches.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => update('color', c as unknown as string)}
-                  className={`w-8 h-8 rounded-full border ${getBgClass(c)} ${form.color === c ? 'ring-2 ring-offset-2 ring-viridian' : ''}`}
-                  aria-label={`Farbe ${c}`}
-                />
-              ))}
-            </div>
-            {!isInTagPalette(form.color as string) && (
-              <p className="text-xs text-gray-500">
-                Hinweis: Farben sind auf die feste Palette begrenzt.
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="tag-desc">
-              Beschreibung
-            </label>
-            <textarea
-              id="tag-desc"
-              placeholder="Optional: kurze Beschreibung…"
-              value={form.description || ''}
-              onChange={(e) => update('description', e.target.value)}
-              rows={3}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-        </div>
-        <div className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 py-2 pb-safe flex items-center justify-between gap-3">
-          <div className="flex-1 flex items-center">
-            <span className="tooltip-wrapper">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-                onClick={onCancel}
-                title="Abbrechen"
-                aria-label="Abbrechen"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-              <span className="tooltip-bubble">Abbrechen</span>
-            </span>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            {initial?.id && onArchive ? (
-              <span className="tooltip-wrapper">
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 bg-white"
-                  onClick={onArchive}
-                  title="Archivieren"
-                  aria-label="Archivieren"
-                >
-                  <ArchiveIcon className="w-5 h-5" />
-                </button>
-                <span className="tooltip-bubble">Archivieren</span>
-              </span>
-            ) : null}
-          </div>
-          <div className="flex-1 flex items-center justify-end">
-            <span className="tooltip-wrapper">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-                onClick={handleSave}
-                title="Speichern"
-                aria-label="Speichern"
-              >
-                <SaveIcon className="w-5 h-5" />
-              </button>
-              <span className="tooltip-bubble">Speichern</span>
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { TagFormModal } from '@/components/settings/EntityFormModals';
 
 export default function SettingsTags() {
   const [showArchived, setShowArchived] = useState(false);
@@ -275,7 +146,7 @@ export default function SettingsTags() {
         {tags.length === 0 && <div className="text-gray-500 py-6">Keine sichtbaren Tags in diesem Org-Kontext.</div>}
       </div>
       {modal && (
-        <TagForm
+        <TagFormModal
           initial={modal.mode === 'edit' ? modal.tag : undefined}
           onSubmit={(values) => {
             if (modal.mode === 'create') {

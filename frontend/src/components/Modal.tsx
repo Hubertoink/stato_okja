@@ -1,5 +1,6 @@
 import { X as XIcon } from 'lucide-react';
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 export default function Modal({
@@ -31,7 +32,7 @@ export default function Modal({
     '5xl': 'md:max-w-5xl',
     '6xl': 'md:max-w-6xl',
   }[maxWidth];
-  return (
+  const content = (
     <div
       className={`fixed inset-0 z-[70] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? 'backdrop-blur-sm' : ''}`}
       onWheel={(e) => e.stopPropagation()}
@@ -53,4 +54,7 @@ export default function Modal({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') return createPortal(content, document.body);
+  return content;
 }

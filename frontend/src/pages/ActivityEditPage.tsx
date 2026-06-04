@@ -1,12 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { X as XIcon, Save as SaveIcon, Trash2 as TrashIcon, Boxes } from 'lucide-react';
+import { X as XIcon, Save as SaveIcon, Trash2 as TrashIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import { useActivity, useUpdateActivity, useRemoveActivity, type Activity } from '@/lib/activities';
 import { useProjects, type Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
-import { useTags, useCohorts as useCohortsQuery, useCategories, type Cohort } from '@/lib/taxonomy';
-import { useStaff } from '@/lib/staff';
+import {
+  useTags,
+  useCohorts as useCohortsQuery,
+  useCategories,
+  useCreateCategory,
+  useCreateTag,
+  useTaxonomyAccess,
+  useUpdateCategory,
+  useUpdateTag,
+  type Cohort,
+} from '@/lib/taxonomy';
+import { type StaffRole, useCreateStaff, useStaff } from '@/lib/staff';
 import ActivityCohortCountField from '@/components/ActivityCohortCountField';
 import ActivityCohortTotalsRow from '@/components/ActivityCohortTotalsRow';
 import ActivityTapModeIcon from '@/components/ActivityTapModeIcon';
@@ -20,9 +30,14 @@ import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
+import { CategoryFormModal, StaffFormModal, TagFormModal } from '@/components/settings/EntityFormModals';
+import { FIXED_PALETTE, TAG_PALETTE, isInFixedPalette, isInTagPalette } from '@/lib/colorPalette';
+import { useAuth } from '@/lib/auth';
 import {
   type ActivityFormState,
+  appendUniqueId,
   buildActivitySavePayload,
+  findNamedEntity,
   getActivityFormStateFromActivity,
   getCohortSums,
   type GenderKey,
@@ -40,14 +55,30 @@ export default function ActivityEditPage() {
   const { data: projects } = useProjects({ archived: false });
   const { data: locations } = useLocations({ active: true });
   const { data: tags } = useTags({ active: true });
+  const { data: allTags } = useTags();
   const { data: cohorts } = useCohortsQuery({ active: true });
   const { data: categories } = useCategories({ active: true });
+  const { data: allCategories } = useCategories();
   const { data: staff } = useStaff({ active: true });
+  const { data: allStaff } = useStaff();
+  const { data: taxonomyAccess } = useTaxonomyAccess();
+  const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
+  const createTag = useCreateTag();
+  const updateTag = useUpdateTag();
+  const createStaff = useCreateStaff();
   const update = useUpdateActivity();
   const remove = useRemoveActivity();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [picker, setPicker] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [tagCreateOpen, setTagCreateOpen] = useState(false);
+  const [categoryCreateOpen, setCategoryCreateOpen] = useState(false);
+  const [staffCreateState, setStaffCreateState] = useState<{ open: boolean; role: StaffRole }>({
+    open: false,
+    role: 'employee',
+  });
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
   const keyboardOpen = useKeyboardOpen();
 
@@ -74,6 +105,11 @@ export default function ActivityEditPage() {
   const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
   const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
   const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
+  const canCreateOwnTags = Boolean(taxonomyAccess?.tags.canCreateOwn);
+  const canCreateOwnCategories = Boolean(taxonomyAccess?.categories.canCreateOwn);
+  const canManageStaff = Boolean(user && (user.role === 'superadmin' || user.role === 'org_admin'));
+  const addActionButtonClassName =
+    'inline-flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-viridian hover:border-viridian/40';
 
   // Prefill tags from project's default tag names if none chosen yet
   useEffect(() => {
@@ -148,6 +184,111 @@ export default function ActivityEditPage() {
     onClose: handleClose,
     onSave: update.isPending || picker || deleteOpen ? undefined : handleSave,
   });
+
+  const addStaffId = (staffId: string) => {
+    setForm((current) => ({ ...current, staffIds: appendUniqueId(current.staffIds, staffId) }));
+  };
+
+  const handleCategoryCreate = async (values: { name?: string; description?: string | null; standardRef?: string | null; color?: string | null }) => {
+    const name = String(values.name || '').trim();
+    if (!name) return;
+    const existing = findNamedEntity(allCategories, name);
+
+    try {
+      let categoryId = existing?.id;
+      const color = isInFixedPalette(values.color as string) ? values.color : FIXED_PALETTE[0];
+
+      if (existing?.id && existing.active === false) {
+        await updateCategory.mutateAsync({
+          id: existing.id,
+          data: { active: true, description: values.description, standardRef: values.standardRef, color },
+        });
+      } else if (!existing?.id) {
+        const created = await createCategory.mutateAsync({
+          name,
+          active: true,
+          description: values.description,
+          standardRef: values.standardRef,
+          color,
+        });
+        categoryId = created.id;
+      }
+
+      if (!categoryId) throw new Error('missing-category-id');
+      setForm((current) => ({ ...current, categoryIds: appendUniqueId(current.categoryIds, categoryId) }));
+      showToast(
+        existing?.id ? `Kategorie "${name}" wurde zugeordnet.` : `Kategorie "${name}" hinzugefügt.`,
+        existing?.id ? { type: 'info' } : undefined,
+      );
+      setCategoryCreateOpen(false);
+    } catch {
+      showToast('Kategorie konnte nicht angelegt werden.', { type: 'error' });
+    }
+  };
+
+  const handleTagCreate = async (values: { name?: string; description?: string | null; color?: string | null }) => {
+    const name = String(values.name || '').trim();
+    if (!name) return;
+    const existing = findNamedEntity(allTags, name);
+
+    try {
+      let tagId = existing?.id;
+      const color = isInTagPalette(values.color as string) ? values.color : TAG_PALETTE[0];
+
+      if (existing?.id && existing.active === false) {
+        await updateTag.mutateAsync({
+          id: existing.id,
+          data: { active: true, description: values.description, color },
+        });
+      } else if (!existing?.id) {
+        const created = await createTag.mutateAsync({
+          name,
+          active: true,
+          description: values.description,
+          color,
+        });
+        tagId = created.id;
+      }
+
+      if (!tagId) throw new Error('missing-tag-id');
+      setForm((current) => ({ ...current, tagIds: appendUniqueId(current.tagIds, tagId) }));
+      showToast(
+        existing?.id ? `Tag "${name}" wurde zugeordnet.` : `Tag "${name}" hinzugefügt.`,
+        existing?.id ? { type: 'info' } : undefined,
+      );
+      setTagCreateOpen(false);
+    } catch {
+      showToast('Tag konnte nicht angelegt werden.', { type: 'error' });
+    }
+  };
+
+  const handleStaffCreate = async (values: { name?: string; roles?: StaffRole[] | StaffRole }) => {
+    const name = String(values.name || '').trim();
+    if (!name) return;
+    const existing = findNamedEntity(allStaff, name);
+
+    if (existing?.id) {
+      addStaffId(existing.id);
+      showToast(`Teammitglied "${existing.name}" wurde zugeordnet.`, { type: 'info' });
+      setStaffCreateState((current) => ({ ...current, open: false }));
+      return;
+    }
+
+    try {
+      const created = await createStaff.mutateAsync({
+        ...values,
+        roles:
+          Array.isArray(values.roles) && values.roles.length > 0
+            ? values.roles
+            : [staffCreateState.role],
+      });
+      addStaffId(created.id);
+      showToast(`Teammitglied "${created.name}" hinzugefügt.`);
+      setStaffCreateState((current) => ({ ...current, open: false }));
+    } catch {
+      showToast('Teammitglied konnte nicht angelegt werden.', { type: 'error' });
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4">
@@ -437,7 +578,19 @@ export default function ActivityEditPage() {
         {/* Kategorien */}
         {selectedProject?.type !== 'open_door' && (
           <div>
-            <label className="block text-sm font-medium mb-1">Kategorien</label>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <label className="block text-sm font-medium">Kategorien</label>
+              {canCreateOwnCategories ? (
+                <button
+                  type="button"
+                  onClick={() => setCategoryCreateOpen(true)}
+                  className={addActionButtonClassName}
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Hinzufügen
+                </button>
+              ) : null}
+            </div>
             <div className="flex flex-wrap gap-2">
               {(categories || []).map((c) => {
                 const active = (form.categoryIds || []).includes(c.id);
@@ -464,7 +617,19 @@ export default function ActivityEditPage() {
 
         {/* Tags */}
         <div>
-          <label className="block text-sm font-medium mb-1">Tags</label>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <label className="block text-sm font-medium">Tags</label>
+            {canCreateOwnTags ? (
+              <button
+                type="button"
+                onClick={() => setTagCreateOpen(true)}
+                className={addActionButtonClassName}
+              >
+                <PlusIcon className="h-4 w-4" />
+                Hinzufügen
+              </button>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {(tags || []).map((t) => {
               const active = form.tagIds?.includes(t.id);
@@ -491,7 +656,19 @@ export default function ActivityEditPage() {
         {/* Staff */}
         {employeeStaff.length > 0 && (
         <div>
-          <label className="block text-sm font-medium mb-1">Mitarbeitende</label>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <label className="block text-sm font-medium">Mitarbeitende</label>
+            {canManageStaff ? (
+              <button
+                type="button"
+                onClick={() => setStaffCreateState({ open: true, role: 'employee' })}
+                className={addActionButtonClassName}
+              >
+                <PlusIcon className="h-4 w-4" />
+                Hinzufügen
+              </button>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {employeeStaff.map((s) => {
                 const active = form.staffIds?.includes(s.id);
@@ -518,7 +695,19 @@ export default function ActivityEditPage() {
         )}
         {volunteerStaff.length > 0 && (
         <div>
-          <label className="block text-sm font-medium mb-1">Ehrenamtliche</label>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <label className="block text-sm font-medium">Ehrenamtliche</label>
+            {canManageStaff ? (
+              <button
+                type="button"
+                onClick={() => setStaffCreateState({ open: true, role: 'volunteer' })}
+                className={addActionButtonClassName}
+              >
+                <PlusIcon className="h-4 w-4" />
+                Hinzufügen
+              </button>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {volunteerStaff.map((s) => {
                 const active = form.staffIds?.includes(s.id);
@@ -545,7 +734,19 @@ export default function ActivityEditPage() {
         )}
         {helperStaff.length > 0 && (
         <div>
-          <label className="block text-sm font-medium mb-1">Helfer</label>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <label className="block text-sm font-medium">Helfer</label>
+            {canManageStaff ? (
+              <button
+                type="button"
+                onClick={() => setStaffCreateState({ open: true, role: 'helper' })}
+                className={addActionButtonClassName}
+              >
+                <PlusIcon className="h-4 w-4" />
+                Hinzufügen
+              </button>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {helperStaff.map((s) => {
                 const active = form.staffIds?.includes(s.id);
@@ -652,6 +853,30 @@ export default function ActivityEditPage() {
           onClose={() => setPicker(false)}
         />
       )}
+
+      {tagCreateOpen ? (
+        <TagFormModal
+          initial={{ color: TAG_PALETTE[0] }}
+          onCancel={() => setTagCreateOpen(false)}
+          onSubmit={handleTagCreate}
+        />
+      ) : null}
+
+      {categoryCreateOpen ? (
+        <CategoryFormModal
+          initial={{ color: FIXED_PALETTE[0] }}
+          onCancel={() => setCategoryCreateOpen(false)}
+          onSubmit={handleCategoryCreate}
+        />
+      ) : null}
+
+      {staffCreateState.open ? (
+        <StaffFormModal
+          initial={{ roles: [staffCreateState.role] }}
+          onCancel={() => setStaffCreateState((current) => ({ ...current, open: false }))}
+          onSubmit={handleStaffCreate}
+        />
+      ) : null}
 
       {activity && (
         <ConfirmModal

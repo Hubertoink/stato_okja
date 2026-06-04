@@ -1,10 +1,14 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import type { Activity } from '@/lib/activities';
 import type { ActivityExecutionStatus } from '@/lib/activityExecutionStatus';
 import type { Project } from '@/lib/projects';
 import type { StaffMember, StaffRole } from '@/lib/staff';
 import type { Tag } from '@/lib/taxonomy';
+
+type NamedEntity = {
+  id: string;
+  name: string;
+  active?: boolean | null;
+};
 
 export type GenderKey = 'm' | 'w' | 'd';
 
@@ -23,36 +27,16 @@ export type ActivityFormState = {
   cohortCounts?: Record<string, { m: number; w: number; d: number }>;
 };
 
-export function FieldInfoHint({ label, settingsTab }: { label: string; settingsTab: string }) {
-  const [open, setOpen] = useState(false);
+export function findNamedEntity<T extends NamedEntity>(items: T[] | undefined, name: string): T | undefined {
+  const needle = name.trim().toLowerCase();
+  if (!needle) return undefined;
+  return (items || []).find((item) => item.name.trim().toLowerCase() === needle);
+}
 
-  return (
-    <span className="relative inline-flex">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-normal leading-none text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors"
-        aria-label="Info"
-      >
-        i
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-[80]" onClick={() => setOpen(false)} />
-          <div className="absolute left-1/2 top-full z-[81] mt-2 w-56 -translate-x-1/2 rounded-xl border border-gray-200 bg-white p-3 text-xs text-gray-600 shadow-lg space-y-2">
-            <p>{label} können Sie in den Einstellungen anlegen und verwalten.</p>
-            <Link
-              to={`/settings?tab=${settingsTab}`}
-              className="inline-flex items-center gap-1 text-viridian font-medium hover:underline"
-              onClick={() => setOpen(false)}
-            >
-              Zu Einstellungen {'→'}
-            </Link>
-          </div>
-        </>
-      )}
-    </span>
-  );
+export function appendUniqueId(currentIds: string[] | undefined, id: string): string[] {
+  const next = new Set(currentIds || []);
+  next.add(id);
+  return Array.from(next);
 }
 
 export function getWeekdayLabel(value?: string): string {

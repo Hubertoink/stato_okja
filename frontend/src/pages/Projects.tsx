@@ -16,6 +16,7 @@ import {
 import {
   Layers,
   Pencil,
+  Plus,
   Search,
   Save as SaveIcon,
   X as XIcon,
@@ -36,8 +37,8 @@ import {
 import { Star, StarOff } from 'lucide-react';
 import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
 import { api } from '@/lib/api';
-import { useCategories, useTags, useUpdateCategory } from '@/lib/taxonomy';
-import { type StaffMember, type StaffRole, useStaff } from '@/lib/staff';
+import { useCategories, useTags, useTaxonomyAccess, useUpdateCategory } from '@/lib/taxonomy';
+import { type StaffMember, type StaffRole, useCreateStaff, useStaff } from '@/lib/staff';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import Modal from '@/components/Modal';
@@ -51,6 +52,7 @@ import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
+import { useAuth } from '@/lib/auth';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
 const PROJECTS_STARRED_FIRST_STORAGE_KEY = 'projects:starred-first';
@@ -873,6 +875,8 @@ function ProjectForm({
   saving?: boolean;
 }) {
   useBodyScrollLock(true);
+  const { user } = useAuth();
+  const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
   const submitLockedRef = useRef(false);
   const [form, setForm] = useState<Partial<Project>>(() => {
@@ -913,10 +917,22 @@ function ProjectForm({
   const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
   const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
   const [showTitleValidation, setShowTitleValidation] = useState(false);
+  const [tagCreateOpen, setTagCreateOpen] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#7aa39a');
+  const [staffCreateState, setStaffCreateState] = useState<{
+    open: boolean;
+    field: 'defaultStaff' | 'defaultVolunteers';
+    role: StaffRole;
+    title: string;
+  }>({ open: false, field: 'defaultStaff', role: 'employee', title: '' });
+  const [newStaffName, setNewStaffName] = useState('');
   const { data: categories } = useCategories({ active: true });
   const { data: allCategories } = useCategories();
   const { data: allTags } = useTags();
+  const { data: taxonomyAccess } = useTaxonomyAccess();
   const { data: orgTemplates } = useProjectTemplates();
+  const createStaff = useCreateStaff();
   const updateCategory = useUpdateCategory();
   const qc = useQueryClient();
   const { data: tags } = useTags({ active: true });
@@ -937,6 +953,8 @@ function ProjectForm({
     borderColor: 'var(--border-subtle)',
   } as const;
   const projectSecondaryButtonClassName = 'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';
+  const canCreateOwnTags = Boolean(taxonomyAccess?.tags.canCreateOwn);
+  const canManageStaff = Boolean(user && (user.role === 'superadmin' || user.role === 'org_admin'));
 
   const uploadImage = useCallback(async (file: File) => {
     try {
@@ -1225,6 +1243,19 @@ function ProjectForm({
       .map((value) => value.trim())
       .filter(Boolean),
   );
+  const mergeNameIntoField = useCallback(
+    (field: 'defaultStaff' | 'defaultVolunteers', name: string) => {
+      const next = new Set(
+        String(form[field] || '')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
+      );
+      next.add(name);
+      update(field, Array.from(next).join(', ') as Project[typeof field]);
+    },
+    [form],
+  );
 
   const handleClose = useCallback(() => {
     if (imageIssue.open) {
@@ -1255,8 +1286,6 @@ function ProjectForm({
       'imageUrl',
       'imageSize',
       'color',
-      'dateFrom',
-      'dateTo',
       'defaultStartTime',
       'defaultEndTime',
       'defaultStaff',
@@ -1272,8 +1301,6 @@ function ProjectForm({
       'imageUrl',
       'imageSize',
       'color',
-      'dateFrom',
-      'dateTo',
       'defaultStartTime',
       'defaultEndTime',
       'defaultStaff',
@@ -1596,7 +1623,24 @@ function ProjectForm({
 
   const renderTagSelector = () => (
     <div>
-      <label className="block text-sm font-medium mb-1">Tags (mehrfach)</label>
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <label className="block text-sm font-medium">Tags (mehrfach)</label>
+        {canCreateOwnTags ? (
+          <button
+            type="button"
+            onClick={() => {
+              setNewTagName('');
+              setNewTagColor('#7aa39a');
+              setTagCreateOpen(true);
+            }}
+            className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs"
+            style={projectInnerCardStyle}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Hinzufuegen
+          </button>
+        ) : null}
+      </div>
       <div className="flex flex-wrap gap-2">
         {(tags || []).map((t) => {
           const active = selectedTags.has(t.name);
@@ -1724,14 +1768,11 @@ function ProjectForm({
     </div>
   );
 
-  const renderSectionHeader = (title: string, description: string) => (
-    <div className="mb-4 space-y-1">
+  const renderSectionHeader = (title: string) => (
+    <div className="mb-4">
       <h4 className="text-sm font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--viridian)' }}>
         {title}
       </h4>
-      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-        {description}
-      </p>
     </div>
   );
 
@@ -1740,11 +1781,13 @@ function ProjectForm({
     field,
     roles,
     emptyLabel,
+    createRole,
   }: {
     label: string;
     field: 'defaultStaff' | 'defaultVolunteers';
     roles: StaffRole[];
     emptyLabel: string;
+    createRole: StaffRole;
   }) => {
     const selectedNames = new Set(
       String(form[field] || '')
@@ -1763,10 +1806,26 @@ function ProjectForm({
     return (
       <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
         <div className="mb-3 flex items-center justify-between gap-3">
-          <label className="text-sm font-medium">{label}</label>
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {selectedNames.size} ausgewaehlt
-          </span>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium">{label}</label>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {selectedNames.size} ausgewaehlt
+            </span>
+          </div>
+          {canManageStaff ? (
+            <button
+              type="button"
+              onClick={() => {
+                setNewStaffName('');
+                setStaffCreateState({ open: true, field, role: createRole, title: label });
+              }}
+              className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs"
+              style={projectInnerCardStyle}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Hinzufuegen
+            </button>
+          ) : null}
         </div>
         {availablePeople.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -1958,10 +2017,7 @@ function ProjectForm({
         <div className="space-y-5">
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.25fr),minmax(280px,0.75fr)] gap-5 items-start">
             <section className={projectSectionClassName} style={projectSectionStyle}>
-              {renderSectionHeader(
-                'Basisinformationen',
-                'Erst die fachliche Einordnung, dann Taxonomie und Filtermerkmale.',
-              )}
+              {renderSectionHeader('Basisinformationen')}
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -2022,35 +2078,14 @@ function ProjectForm({
             </section>
 
             <section className={projectSectionClassName} style={projectSectionStyle}>
-              {renderSectionHeader(
-                'Zeit & Rhythmus',
-                'Datumsfenster und Standardzeiten liegen in einem gemeinsamen Zeitkontext.',
-              )}
+              {renderSectionHeader('Zeit')}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Startdatum</label>
-                  <input
-                    type="date"
-                    value={String(form.dateFrom || '').slice(0, 10)}
-                    onChange={(e) => update('dateFrom', e.target.value || null)}
-                    className={projectFieldClassName}
-                  />
-                </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Startzeit</label>
                   <input
                     type="time"
                     value={form.defaultStartTime || ''}
                     onChange={(e) => update('defaultStartTime', e.target.value)}
-                    className={projectFieldClassName}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Enddatum</label>
-                  <input
-                    type="date"
-                    value={String(form.dateTo || '').slice(0, 10)}
-                    onChange={(e) => update('dateTo', e.target.value || null)}
                     className={projectFieldClassName}
                   />
                 </div>
@@ -2064,18 +2099,12 @@ function ProjectForm({
                   />
                 </div>
               </div>
-              <p className="mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-                Wiederholungen werden weiterhin in den sp e4teren Aktivit e4ten geplant; hier definierst du das zeitliche Grundfenster des Projekts.
-              </p>
             </section>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
             <section className={projectSectionClassName} style={projectSectionStyle}>
-              {renderSectionHeader(
-                'Bild & Farbe',
-                'Visuelle Kennzeichen bleiben zusammen und sind direkt im Kontext bearbeitbar.',
-              )}
+              {renderSectionHeader('Bild & Farbe')}
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr),160px] gap-4 items-start">
                 {renderImageManager()}
                 <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
@@ -2099,40 +2128,33 @@ function ProjectForm({
             </section>
 
             <section className={projectSectionClassName} style={projectSectionStyle}>
-              {renderSectionHeader(
-                'Team & Rollen',
-                'Standardbesetzung und aktive Ehrenamtliche werden gleichartig gepflegt.',
-              )}
+              {renderSectionHeader('Team & Rollen')}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {renderStaffSelectorCard({
                   label: 'Mitarbeitende (Standard)',
                   field: 'defaultStaff',
                   roles: ['lead', 'employee'],
                   emptyLabel: 'Keine Mitarbeitenden verf fcgbar.',
+                  createRole: 'employee',
                 })}
                 {renderStaffSelectorCard({
                   label: 'Ehrenamtliche (aktiv)',
                   field: 'defaultVolunteers',
                   roles: ['volunteer', 'helper'],
                   emptyLabel: 'Keine Ehrenamtlichen verf fcgbar.',
+                  createRole: 'volunteer',
                 })}
               </div>
             </section>
           </div>
 
           <section className={projectSectionClassName} style={projectSectionStyle}>
-            {renderSectionHeader(
-              'Dokumente',
-              'Konzeption und Unterlagen liegen nach dem Team als eigenst e4ndige Ressource.',
-            )}
+            {renderSectionHeader('Dokumente')}
             {renderDocumentManager()}
           </section>
 
           <section className={projectSectionClassName} style={projectSectionStyle}>
-            {renderSectionHeader(
-              'Beschreibung',
-              'Die fachliche Beschreibung kommt bewusst zuletzt und bekommt volle Breite.',
-            )}
+            {renderSectionHeader('Beschreibung')}
             <div>
               <label className="block text-sm font-medium mb-1">Beschreibung</label>
               <textarea
@@ -2190,6 +2212,129 @@ function ProjectForm({
       </div>
 
       <Modal
+        open={tagCreateOpen}
+        onClose={() => setTagCreateOpen(false)}
+        title="Tag hinzufuegen"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Name</label>
+            <input
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              className={projectFieldClassName}
+              placeholder="Neuer Tag"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Farbe</label>
+            <input
+              type="color"
+              value={newTagColor}
+              onChange={(e) => setNewTagColor(e.target.value)}
+              className="project-form-field h-12 w-full rounded"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm"
+              style={projectInnerCardStyle}
+              onClick={() => setTagCreateOpen(false)}
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              className="rounded bg-viridian px-3 py-2 text-sm text-white disabled:opacity-60"
+              disabled={!newTagName.trim()}
+              onClick={async () => {
+                const name = newTagName.trim();
+                if (!name) return;
+                try {
+                  await ensureTagByName(name, newTagColor);
+                  const next = new Set(selectedTags);
+                  next.add(name);
+                  update('tag', Array.from(next).join(', '));
+                  showToast(`Tag \"${name}\" hinzugefuegt.`);
+                  setTagCreateOpen(false);
+                  setNewTagName('');
+                  setNewTagColor('#7aa39a');
+                } catch {
+                  showToast('Tag konnte nicht angelegt werden.', { type: 'error' });
+                }
+              }}
+            >
+              Speichern
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={staffCreateState.open}
+        onClose={() => setStaffCreateState((current) => ({ ...current, open: false }))}
+        title={staffCreateState.title ? `${staffCreateState.title}: Person hinzufuegen` : 'Teammitglied hinzufuegen'}
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Name</label>
+            <input
+              value={newStaffName}
+              onChange={(e) => setNewStaffName(e.target.value)}
+              className={projectFieldClassName}
+              placeholder="Name des Teammitglieds"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm"
+              style={projectInnerCardStyle}
+              onClick={() => setStaffCreateState((current) => ({ ...current, open: false }))}
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              className="rounded bg-viridian px-3 py-2 text-sm text-white disabled:opacity-60"
+              disabled={!newStaffName.trim() || createStaff.isPending}
+              onClick={async () => {
+                const name = newStaffName.trim();
+                if (!name) return;
+                const existing = (staff || []).find(
+                  (person) => person.name.trim().toLowerCase() === name.toLowerCase(),
+                );
+                if (existing) {
+                  mergeNameIntoField(staffCreateState.field, existing.name);
+                  showToast(`Teammitglied \"${existing.name}\" wurde zugeordnet.`, { type: 'info' });
+                  setStaffCreateState((current) => ({ ...current, open: false }));
+                  setNewStaffName('');
+                  return;
+                }
+                try {
+                  const created = await createStaff.mutateAsync({
+                    name,
+                    roles: [staffCreateState.role],
+                  });
+                  mergeNameIntoField(staffCreateState.field, created.name);
+                  showToast(`Teammitglied \"${created.name}\" hinzugefuegt.`);
+                  setStaffCreateState((current) => ({ ...current, open: false }));
+                  setNewStaffName('');
+                } catch {
+                  showToast('Teammitglied konnte nicht angelegt werden.', { type: 'error' });
+                }
+              }}
+            >
+              Speichern
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         open={imageIssue.open}
         onClose={() => setImageIssue((s) => ({ ...s, open: false }))}
         title={imageIssue.title}
@@ -2243,8 +2388,6 @@ function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<P
     'imageUrl',
     'imageSize',
     'color',
-    'dateFrom',
-    'dateTo',
     'defaultStartTime',
     'defaultEndTime',
     'defaultStaff',

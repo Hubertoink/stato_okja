@@ -105,7 +105,7 @@ export default function ActivityCreatePage() {
   const canCreateOwnCategories = Boolean(taxonomyAccess?.categories.canCreateOwn);
   const canManageStaff = Boolean(user && (user.role === 'superadmin' || user.role === 'org_admin'));
   const addActionButtonClassName =
-    'inline-flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-viridian hover:border-viridian/40';
+    'inline-flex items-center gap-1 text-sm font-medium text-viridian transition-colors hover:text-viridian/80';
 
   // Default times; if project provided, prefill from defaults
   useEffect(() => {
@@ -628,7 +628,7 @@ export default function ActivityCreatePage() {
         {/* Kategorien: ausblenden bei "Offene Tür" */}
         {selectedProject?.type !== 'open_door' && (
           <div>
-            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
               <label className="block text-sm font-medium">Kategorien</label>
               {canCreateOwnCategories ? (
                 <button
@@ -669,7 +669,7 @@ export default function ActivityCreatePage() {
         )}
 
         <div>
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <label className="block text-sm font-medium">Tags</label>
             {canCreateOwnTags ? (
               <button
@@ -708,7 +708,7 @@ export default function ActivityCreatePage() {
         {/* Staff multi-select split by roles */}
         {employeeStaff.length > 0 && (
         <div>
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <label className="block text-sm font-medium">Mitarbeitende</label>
             {canManageStaff ? (
               <button
@@ -748,7 +748,7 @@ export default function ActivityCreatePage() {
 
         {volunteerStaff.length > 0 && (
         <div>
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <label className="block text-sm font-medium">Ehrenamtliche</label>
             {canManageStaff ? (
               <button
@@ -788,7 +788,7 @@ export default function ActivityCreatePage() {
 
         {helperStaff.length > 0 && (
         <div>
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <label className="block text-sm font-medium">Helfer</label>
             {canManageStaff ? (
               <button

@@ -113,7 +113,7 @@ export default function ActivityQuickAdd({
   const canCreateOwnCategories = Boolean(taxonomyAccess?.categories.canCreateOwn);
   const canManageStaff = Boolean(user && (user.role === 'superadmin' || user.role === 'org_admin'));
   const addActionButtonClassName =
-    'inline-flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-viridian hover:border-viridian/40';
+    'inline-flex items-center gap-1 text-sm font-medium text-viridian transition-colors hover:text-viridian/80';
 
   useEffect(() => {
     // Default times; if project provided, prefill from defaults
@@ -712,7 +712,7 @@ export default function ActivityQuickAdd({
           <div className="space-y-3">
             {(!selectedProject || selectedProject.type !== 'open_door') && (
               <div>
-                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                   <label className="block text-sm font-medium">Kategorien</label>
                   {canCreateOwnCategories ? (
                     <button
@@ -752,7 +752,7 @@ export default function ActivityQuickAdd({
               </div>
             )}
             <div>
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <label className="block text-sm font-medium">Tags</label>
                 {canCreateOwnTags ? (
                   <button
@@ -789,7 +789,7 @@ export default function ActivityQuickAdd({
             </div>
             {employeeStaff.length > 0 && (
             <div>
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <label className="block text-sm font-medium">Mitarbeitende</label>
                 {canManageStaff ? (
                   <button
@@ -828,7 +828,7 @@ export default function ActivityQuickAdd({
             )}
             {volunteerStaff.length > 0 && (
             <div>
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <label className="block text-sm font-medium">Ehrenamtliche</label>
                 {canManageStaff ? (
                   <button
@@ -867,7 +867,7 @@ export default function ActivityQuickAdd({
             )}
             {helperStaff.length > 0 && (
             <div>
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <label className="block text-sm font-medium">Helfer</label>
                 {canManageStaff ? (
                   <button

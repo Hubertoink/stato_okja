@@ -1021,6 +1021,8 @@ function ProjectForm({
     borderColor: 'var(--border-subtle)',
   } as const;
   const projectSecondaryButtonClassName = 'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';
+  const projectAddActionButtonClassName =
+    'inline-flex items-center gap-1 text-sm font-medium text-viridian transition-colors hover:text-viridian/80';
   const canCreateOwnTags = Boolean(taxonomyAccess?.tags.canCreateOwn);
   const canCreateOwnCategories = Boolean(taxonomyAccess?.categories.canCreateOwn);
   const canManageStaff = Boolean(user && (user.role === 'superadmin' || user.role === 'org_admin'));
@@ -1732,8 +1734,7 @@ function ProjectForm({
           <button
             type="button"
             onClick={() => setTagCreateOpen(true)}
-            className={projectSecondaryButtonClassName}
-            style={projectInnerCardStyle}
+            className={projectAddActionButtonClassName}
           >
             <Plus className="h-4 w-4" />
             Hinzufügen
@@ -1770,8 +1771,7 @@ function ProjectForm({
           <button
             type="button"
             onClick={() => setCategoryCreateOpen(true)}
-            className={projectSecondaryButtonClassName}
-            style={projectInnerCardStyle}
+            className={projectAddActionButtonClassName}
           >
             <Plus className="h-4 w-4" />
             Hinzufügen
@@ -1933,8 +1933,7 @@ function ProjectForm({
               onClick={() => {
                 setStaffCreateState({ open: true, field, role: createRole });
               }}
-              className={projectSecondaryButtonClassName}
-              style={projectInnerCardStyle}
+              className={projectAddActionButtonClassName}
             >
               <Plus className="h-4 w-4" />
               Hinzufügen

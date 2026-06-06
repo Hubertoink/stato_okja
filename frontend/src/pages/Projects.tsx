@@ -63,6 +63,7 @@ import RichTextEditor, {
   BtnItalic,
   BtnNumberedList,
   BtnRedo,
+  BtnStyles,
   BtnUndo,
   Separator,
   Toolbar,
@@ -224,6 +225,8 @@ const PROJECT_DESCRIPTION_ALLOWED_TAGS = [
   'br',
   'div',
   'em',
+  'h1',
+  'h2',
   'i',
   'li',
   'ol',
@@ -2243,6 +2246,8 @@ function ProjectForm({
                 <Toolbar>
                   <BtnUndo title="Rückgängig" />
                   <BtnRedo title="Wiederholen" />
+                  <Separator />
+                  <BtnStyles title="Format" />
                   <Separator />
                   <BtnBold title="Fett" />
                   <BtnItalic title="Kursiv" />

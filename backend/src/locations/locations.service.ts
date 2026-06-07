@@ -1,7 +1,8 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Equal, IsNull, FindOptionsWhere, In } from 'typeorm';
 import { Location } from './entities/location.entity';
+import { assertOrgScopedEntityAccess, removeOrgIdForNonSuperadmin } from '../auth/org-scope-access';
 
 @Injectable()
 export class LocationsService {
@@ -42,34 +43,27 @@ export class LocationsService {
   async findOneScoped(id: string, user: { role: string; orgId?: string|null }) {
     const loc = await this.findOne(id);
     if (!loc) return null;
-    if (user.role !== 'superadmin' && (loc.orgId ?? null) !== (user.orgId ?? null)) {
-      throw new ForbiddenException('Not allowed');
-    }
+    assertOrgScopedEntityAccess(loc, user);
     return loc;
   }
 
   async updateScoped(id: string, data: Partial<Location>, user: { role: string; orgId?: string|null }) {
     const existing = await this.locationRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
-      throw new ForbiddenException('Not allowed');
-    }
-    // prevent moving to another org unless superadmin
-    // also strip 'active' – locations are always active
+    assertOrgScopedEntityAccess(existing, user);
+    let sanitized = removeOrgIdForNonSuperadmin(data, user);
     if (user.role !== 'superadmin') {
-      const d = data as Partial<Location> & { orgId?: string | null; active?: boolean };
-      if ('orgId' in d) delete d.orgId;
+      const d = sanitized as Partial<Location> & { active?: boolean };
       if ('active' in d) delete d.active;
+      sanitized = d;
     }
-    return this.update(id, data);
+    return this.update(id, sanitized);
   }
 
   async removeScoped(id: string, user: { role: string; orgId?: string|null }) {
     const existing = await this.locationRepository.findOne({ where: { id } });
     if (!existing) return;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) {
-      throw new ForbiddenException('Not allowed');
-    }
+    assertOrgScopedEntityAccess(existing, user);
     await this.remove(id);
   }
 }

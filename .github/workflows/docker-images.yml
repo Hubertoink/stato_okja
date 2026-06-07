@@ -2,10 +2,10 @@ name: Build and publish Docker images (backend, frontend, backup)
 
 on:
   push:
-    branches: [dev, main]
+    branches: [dev, main, demo]
     tags: ['v*']
   pull_request:
-    branches: [dev, main]
+    branches: [dev, main, demo]
   workflow_dispatch:
 
 permissions:
@@ -25,6 +25,7 @@ env:
 jobs:
   backend:
     name: Backend image
+    if: github.ref != 'refs/heads/demo' && github.base_ref != 'demo'
     runs-on: ubuntu-latest
     concurrency:
       group: docker-backend-${{ github.ref }}
@@ -100,6 +101,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=demo,enable=${{ github.ref == 'refs/heads/demo' }}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -119,8 +121,9 @@ jobs:
           sbom: true
           provenance: true
           build-args: |
-            VITE_API_BASE_URL=${{ github.ref == 'refs/heads/dev' && 'https://devapi.stato-okja.de/api' || env.FRONTEND_API_BASE_URL }}
+            VITE_API_BASE_URL=${{ github.ref == 'refs/heads/demo' && '/api' || (github.ref == 'refs/heads/dev' && 'https://devapi.stato-okja.de/api' || env.FRONTEND_API_BASE_URL) }}
             VITE_ENABLE_DEV_TOOLS=${{ github.ref == 'refs/heads/dev' && 'true' || 'false' }}
+            VITE_DEMO_MODE=${{ github.ref == 'refs/heads/demo' && 'true' || 'false' }}
             VITE_COMMIT_SHA=${{ github.sha }}
             NGINX_MODE=${{ github.ref == 'refs/heads/dev' && 'direct-dev' || 'direct' }}
 

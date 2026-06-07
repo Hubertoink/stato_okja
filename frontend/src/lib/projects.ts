@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import { useOrgScopeKey } from './orgScope';
+import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
 
 export interface ProjectDocument {
   id: string;
@@ -72,7 +72,7 @@ export async function downloadProjectDocument(projectId: string, document: Pick<
 }
 
 export function useProjects(params?: { search?: string; archived?: boolean }) {
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   const key = ['projects', scopeKey, params];
   const query = useQuery({
     queryKey: key,
@@ -85,6 +85,7 @@ export function useProjects(params?: { search?: string; archived?: boolean }) {
     // Avoid instant trashing of cached results so quick toggles don't flicker
     gcTime: 1000 * 60 * 5,
     staleTime: 1000 * 5,
+    enabled: ready,
   });
   return query;
 }

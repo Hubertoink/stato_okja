@@ -6,32 +6,10 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import type { ActivitiesFilter, PagedActivitiesResult } from '@/lib/activities';
 import type { Project } from '@/lib/projects';
 import LoadingOverlay from '@/components/LoadingOverlay';
+import DemoSplashScreen from '@/demo/DemoSplashScreen';
+import { demoModeEnabled } from '@/demo/config';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
-
-function readActivitiesPrefetchParams(): { params: ActivitiesFilter; page: number; limit: number } {
-  const page = 1;
-  const limit = 50;
-
-  let advanced: ActivitiesFilter = {};
-  let order: 'asc' | 'desc' = 'desc';
-
-  try {
-    const raw = localStorage.getItem('activities:advancedFilters:v1');
-    const parsed = raw ? (JSON.parse(raw) as unknown) : undefined;
-    if (parsed && typeof parsed === 'object') advanced = parsed as ActivitiesFilter;
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const raw = localStorage.getItem('activities:order:v1');
-    if (raw === 'asc' || raw === 'desc') order = raw;
-  } catch {
-    /* ignore */
-  }
-
-  return { params: { ...advanced, order }, page, limit };
-}
+import { getActivitiesPrefetchParams } from '@/lib/activitiesFilterStorage';
 
 async function fetchProjects(params?: { search?: string; archived?: boolean }) {
   const res = await api.get('/projects', { params });
@@ -73,7 +51,7 @@ async function fetchStats<T>(path: string, params: { from?: string; to?: string;
 
 export default function PostLoginPrefetch({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { scope, switching } = useOrgScope();
+  const { scope, ready, switching } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const qc = useQueryClient();
   const isRestoring = useIsRestoring();
@@ -124,7 +102,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
     if (isRestoring) return;
     // Wait until the org scope has been hydrated so we do not warm up the
     // temporary legacy/global cache and immediately repeat the same work.
-    if (typeof scope === 'undefined') return;
+    if (!ready) return;
     // Wait for org switching to complete before running prefetch,
     // but keep the overlay open while switching.
     if (switching) return;
@@ -155,7 +133,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
     ] as const;
 
     const { params: activitiesParams, page: activitiesPage, limit: activitiesLimit } =
-      readActivitiesPrefetchParams();
+      getActivitiesPrefetchParams();
     const activitiesFirstPageKey = [
       'activities',
       scopeKey,
@@ -325,12 +303,16 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
         setProgress(undefined);
       }
     };
-  }, [user?.id, isRestoring, qc, scope, scopeKey, switching]);
+  }, [user?.id, isRestoring, qc, scope, scopeKey, ready, switching]);
 
   return (
     <>
       {children}
-      <LoadingOverlay open={open} title="Initialisiere StatO…" message={message} progress={progress} />
+      {demoModeEnabled ? (
+        <DemoSplashScreen open={open} message={message} progress={progress} />
+      ) : (
+        <LoadingOverlay open={open} title="Initialisiere StatO…" message={message} progress={progress} />
+      )}
     </>
   );
 }

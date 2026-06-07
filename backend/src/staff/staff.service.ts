@@ -1,9 +1,10 @@
-import { Injectable, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, Equal, IsNull } from 'typeorm';
 import { Staff } from './entities/staff.entity';
 import * as bcrypt from 'bcryptjs';
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../auth/password-policy';
+import { assertOrgScopedEntityAccess, removeOrgIdForNonSuperadmin } from '../auth/org-scope-access';
 
 @Injectable()
 export class StaffService {
@@ -59,8 +60,7 @@ export class StaffService {
   async findOneScoped(id: string, user: { role: string; orgId?: string | null }) {
     const s = await this.findOne(id);
     if (!s) return null;
-    if (user.role !== 'superadmin' && (s.orgId ?? null) !== (user.orgId ?? null))
-      throw new ForbiddenException('Not allowed');
+    assertOrgScopedEntityAccess(s, user);
     return s;
   }
 
@@ -71,22 +71,14 @@ export class StaffService {
   ) {
     const existing = await this.staffRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null))
-      throw new ForbiddenException('Not allowed');
-    if (user.role !== 'superadmin') {
-      const d = data as Partial<Staff> & { orgId?: string | null };
-      if ('orgId' in d) delete d.orgId;
-      // Ensure sanitized object is used for update
-      data = d;
-    }
-    return this.update(id, data);
+    assertOrgScopedEntityAccess(existing, user);
+    return this.update(id, removeOrgIdForNonSuperadmin(data, user));
   }
 
   async removeScoped(id: string, user: { role: string; orgId?: string | null }) {
     const existing = await this.staffRepository.findOne({ where: { id } });
     if (!existing) return;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null))
-      throw new ForbiddenException('Not allowed');
+    assertOrgScopedEntityAccess(existing, user);
     await this.remove(id);
   }
 }

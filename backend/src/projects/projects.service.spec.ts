@@ -1,7 +1,18 @@
+import { ForbiddenException } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { ActivityType, AuditAction } from '../common/enums';
 
 describe('ProjectsService idempotent create', () => {
+  function createService(projectRepository: Record<string, unknown>) {
+    return new ProjectsService(
+      projectRepository as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { log: jest.fn().mockResolvedValue(undefined) } as never,
+    );
+  }
+
   it('returns an existing project for the same clientRequestId without creating a second one', async () => {
     const existingProject = {
       id: 'project-1',
@@ -84,5 +95,41 @@ describe('ProjectsService idempotent create', () => {
     expect(projectRepository.save).toHaveBeenCalledTimes(1);
     expect(audit.log).not.toHaveBeenCalled();
     expect(result).toEqual(savedProject);
+  });
+
+  it('rejects direct updates outside the effective project org scope', async () => {
+    const projectRepository = {
+      findOne: jest.fn().mockResolvedValue({ id: 'project-1', orgId: 'child-1' }),
+      update: jest.fn(),
+    };
+    const service = createService(projectRepository);
+
+    await expect(
+      service.updateScoped(
+        'project-1',
+        { title: 'Parent edit' },
+        { role: 'superadmin', orgId: null, effectiveOrgId: 'parent-1' },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(projectRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('allows direct updates inside the effective project org scope', async () => {
+    const projectRepository = {
+      findOne: jest.fn()
+        .mockResolvedValueOnce({ id: 'project-1', orgId: 'child-1' })
+        .mockResolvedValueOnce({ id: 'project-1', title: 'Child edit', orgId: 'child-1', imageUrl: null }),
+      update: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = createService(projectRepository);
+
+    const result = await service.updateScoped(
+      'project-1',
+      { title: 'Child edit' },
+      { role: 'superadmin', orgId: null, effectiveOrgId: 'child-1' },
+    );
+
+    expect(projectRepository.update).toHaveBeenCalledWith('project-1', expect.objectContaining({ title: 'Child edit' }));
+    expect(result).toMatchObject({ id: 'project-1', orgId: 'child-1' });
   });
 });

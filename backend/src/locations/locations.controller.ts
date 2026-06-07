@@ -16,6 +16,7 @@ import { OrgsService } from '../orgs/orgs.service';
 import { Location } from './entities/location.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { resolveOrgScope } from '../auth/org-scope-access';
 
 @ApiTags('locations')
 @Controller('locations')
@@ -27,10 +28,7 @@ export class LocationsController {
   @ApiOperation({ summary: 'Alle Standorte/Räume abrufen' })
   async findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string) {
     const isActive = active === 'true' ? true : active === 'false' ? false : undefined;
-    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
-    const orgIdRaw = req.user.role === 'superadmin'
-      ? superAdminScoped
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const orgIdRaw = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
     let orgId: string | null | undefined = orgIdRaw;
     let orgIds: string[] | undefined;
     if (typeof orgIdRaw === 'string') {
@@ -49,9 +47,7 @@ export class LocationsController {
   @Post()
   @ApiOperation({ summary: 'Neuen Standort anlegen' })
   create(@Body() data: Partial<Location>, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
-    const orgId = req.user.role === 'superadmin'
-      ? ((typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId)
-      : ((typeof req.effectiveOrgId === 'undefined') ? (req.user.orgId || null) : req.effectiveOrgId);
+    const orgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
     return this.locationsService.create({ ...data, orgId });
   }
 

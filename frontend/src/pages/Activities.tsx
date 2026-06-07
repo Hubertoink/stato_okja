@@ -35,6 +35,12 @@ import {
   formatActivityExecutionStatusList,
   isCancelledActivity,
 } from '@/lib/activityExecutionStatus';
+import DemoHoverHint from '@/demo/DemoHoverHint';
+import {
+  clearActivitiesFilters,
+  loadActivitiesFilters,
+  saveActivitiesFilters,
+} from '@/lib/activitiesFilterStorage';
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -122,31 +128,15 @@ export default function Activities() {
   const location = useLocation();
   const [params] = useSearchParams();
   const isMobile = useIsMobile();
-  const STORAGE_KEY = 'activities:advancedFilters:v1';
-  const STORAGE_ORDER_KEY = 'activities:order:v1';
+  const [initialActivitiesFilters] = useState(loadActivitiesFilters);
   // Basic filter UI removed; we keep only advanced filter state
   const [filterDrawer, setFilterDrawer] = useState(false);
-  const [advanced, setAdvanced] = useState<ActivitiesFilter>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? (JSON.parse(raw) as unknown) : undefined;
-      return parsed && typeof parsed === 'object' ? (parsed as ActivitiesFilter) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [advanced, setAdvanced] = useState<ActivitiesFilter>(() => initialActivitiesFilters.advanced);
   const [picker, setPicker] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [order, setOrder] = useState<'asc' | 'desc'>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_ORDER_KEY);
-      return raw === 'asc' ? 'asc' : 'desc';
-    } catch {
-      return 'desc';
-    }
-  });
+  const [searchTerm, setSearchTerm] = useState(initialActivitiesFilters.search);
+  const [order, setOrder] = useState<'asc' | 'desc'>(() => initialActivitiesFilters.order);
   const pageSize = 50;
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const { data: cohorts = [] } = useCohorts({ active: true });
@@ -159,35 +149,8 @@ export default function Activities() {
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const todayIso = toLocalIsoDate(new Date());
-  // Persist filters across route/tab changes; reset only via the explicit reset button.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('activitiesFilters_v1');
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        advanced?: ActivitiesFilter;
-        order?: 'asc' | 'desc';
-        search?: string;
-      };
-      if (parsed?.advanced && typeof parsed.advanced === 'object') setAdvanced(parsed.advanced);
-      if (parsed?.order === 'asc' || parsed?.order === 'desc') setOrder(parsed.order);
-      if (typeof parsed?.search === 'string') {
-        setSearchTerm(parsed.search);
-        setSearchOpen(false);
-      }
-    } catch {
-      /* ignore */
-    }
-    // run once
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('activitiesFilters_v1', JSON.stringify({ advanced, order, search: searchTerm }));
-    } catch {
-      /* ignore */
-    }
+    saveActivitiesFilters({ advanced, order, search: searchTerm });
   }, [advanced, order, searchTerm]);
   const filters = {
     search: searchTerm.trim() || undefined,
@@ -267,15 +230,6 @@ export default function Activities() {
     setPage(1);
   }, [params]);
 
-  // Persist filters across navigation/tab switches (only reset when user explicitly clicks "Zurücksetzen")
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(advanced));
-      localStorage.setItem(STORAGE_ORDER_KEY, order);
-    } catch {
-      /* ignore */
-    }
-  }, [advanced, order]);
   const {
     data: paged,
     isLoading: activitiesLoading,
@@ -664,8 +618,14 @@ export default function Activities() {
     <div>
       <div className="mb-6 mt-1 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <h2 className="text-3xl font-bold text-viridian">Aktivitäten</h2>
-        <div className="flex justify-end mt-1">
-          <div className="flex gap-2 flex-wrap justify-end">
+        <DemoHoverHint
+          title="Aktivitaeten-Werkzeuge"
+          description="Hier suchst, exportierst, filterst und erstellst du Aktivitaeten. Der erweiterte Filter kombiniert Zeitraum, Typen, Projekte, Tags und Status."
+          placement="bottom"
+          align="end"
+        >
+          <div className="flex justify-end mt-1">
+            <div className="flex gap-2 flex-wrap justify-end">
             <div className="relative">
               {searchOpen && (
                 <div
@@ -758,16 +718,22 @@ export default function Activities() {
           >
             + Neue Aktivität
           </button>
+            </div>
           </div>
-        </div>
+        </DemoHoverHint>
       </div>
 
       {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-700">
-            {activitiesLoading ? 'Treffer werden geladen…' : `Treffer: ${exportCountLabel}`}
-          </span>
+      <DemoHoverHint
+        title="Filteruebersicht"
+        description="Diese Leiste zeigt Trefferzahl und aktive Filter. Einzelne Filterchips lassen sich entfernen, der Reset-Knopf setzt die Ansicht zurueck."
+        placement="bottom"
+      >
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-700">
+              {activitiesLoading ? 'Treffer werden geladen…' : `Treffer: ${exportCountLabel}`}
+            </span>
           {searchTerm.trim() ? (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-azure-web text-viridian">
               <span>Suche: {searchTerm.trim()}</span>
@@ -839,33 +805,35 @@ export default function Activities() {
                 setOrder('desc');
                 clearSearch();
                 setPage(1);
-                try {
-                  localStorage.removeItem(STORAGE_KEY);
-                  localStorage.removeItem(STORAGE_ORDER_KEY);
-                } catch {
-                  /* ignore */
-                }
+                clearActivitiesFilters();
               }}
             >
               <X className="h-3.5 w-3.5" />
             </button>
           )}
-        </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="hidden md:block">
-            <ActivitiesPaginationControls
-              page={page}
-              pageCount={pageCount}
-              onPrevious={goToPreviousPage}
-              onNext={goToNextPage}
-            />
+          </div>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="hidden md:block">
+              <ActivitiesPaginationControls
+                page={page}
+                pageCount={pageCount}
+                onPrevious={goToPreviousPage}
+                onNext={goToNextPage}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </DemoHoverHint>
 
       {/* Activity List */}
       {/* Desktop Table */}
-      <div className="activities-desktop-table-shell bg-white rounded-lg shadow hidden md:block overflow-x-auto">
+      <DemoHoverHint
+        title="Aktivitaetenliste"
+        description="Die Tabelle zeigt die gefilterten Eintraege mit Datum, Typ, Teilnehmenden und Status. Ueber das Stift-Symbol oeffnest du die Bearbeitung."
+        placement="bottom"
+        className="demo-hover-hint-anchor-top"
+      >
+        <div className="activities-desktop-table-shell bg-white rounded-lg shadow hidden md:block overflow-x-auto">
         <table className="activities-desktop-table w-full min-w-[700px]">
           <thead className="bg-azure-web">
             <tr>
@@ -1063,7 +1031,8 @@ export default function Activities() {
             )}
           </tbody>
         </table>
-      </div>
+        </div>
+      </DemoHoverHint>
       {/* Pagination Controls */}
       <div className="mt-4 mb-4 md:mb-0 flex items-center justify-between gap-3">
         <div className="text-sm text-gray-600">
@@ -1096,7 +1065,11 @@ export default function Activities() {
       )}
 
       {/* Mobile Cards */}
-      <div className="relative min-h-[12rem] pt-2 md:hidden">
+      <DemoHoverHint
+        title="Aktivitaetenliste"
+        description="Auf kleinen Bildschirmen oeffnet ein Tipp auf die Karte die Aktivitaet. Die Demo-Hinweise erscheinen bei Mausbedienung."
+      >
+        <div className="relative min-h-[12rem] pt-2 md:hidden">
         <div className="space-y-3">
           {activities.map((a) => (
             <div
@@ -1252,7 +1225,8 @@ export default function Activities() {
             <div className="text-gray-500 py-6 text-center">Keine Aktivitäten im Zeitraum.</div>
           )}
         </div>
-      </div>
+        </div>
+      </DemoHoverHint>
       <div className="mt-4 flex items-center justify-between gap-3 md:hidden">
         <div className="text-sm text-gray-600">
           {total > 0 ? `Seite ${page} von ${pageCount} · ${total} Einträge` : 'Keine Einträge'}
@@ -1351,12 +1325,7 @@ export default function Activities() {
         onClose={() => setFilterDrawer(false)}
         onApply={(f) => {
           setAdvanced(f);
-                setOrder('desc');
-                try {
-                  localStorage.removeItem('activitiesFilters_v1');
-                } catch {
-                  /* ignore */
-                }
+          setOrder('desc');
           setFilterDrawer(false);
         }}
       />

@@ -25,6 +25,7 @@ import { Link as LinkIcon, Shield, User as UserIcon, Trash2, Plus, Building2, Ch
 import DeleteOrgModal from '@/components/DeleteOrgModal';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
+import DemoHoverHint from '@/demo/DemoHoverHint';
 
 /** Instant hover tooltip with optional user list */
 function Tooltip({ label, names, children }: { label: string; names?: string[]; children: React.ReactNode }) {
@@ -915,81 +916,91 @@ export default function AdminOrgSetup() {
   return (
     <div className="mx-auto max-w-6xl px-3 sm:px-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-viridian flex items-center gap-2">
-            <Building2 className="w-6 h-6" />
-            Organisationen
-          </h2>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">Hierarchie, Benutzer und Vererbungsregeln an einem Ort</p>
+      <DemoHoverHint
+        title="Organisationen"
+        description="Verwaltet die Organisationsstruktur der Demo. Neue Organisationen koennen mit oder ohne Admin-Einladung angelegt werden."
+        placement="bottom"
+      >
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-viridian flex items-center gap-2">
+              <Building2 className="w-6 h-6" />
+              Organisationen
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">Hierarchie, Benutzer und Vererbungsregeln an einem Ort</p>
+          </div>
+          <button
+            className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
+            onClick={()=> {
+              resetCreateForm();
+              setCreateModalOpen(true);
+            }}
+          >
+            <Plus className="w-5 h-5" />
+            <span className="hidden sm:inline">Neue Organisation</span>
+          </button>
         </div>
-        <button
-          className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
-          onClick={()=> { 
-            resetCreateForm(); 
-            setCreateModalOpen(true); 
-          }}
-        >
-          <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">Neue Organisation</span>
-        </button>
-      </div>
+      </DemoHoverHint>
 
-      <div className="grid grid-cols-1 gap-4">
-        {/* Organisations-Liste */}
-        <div className="org-admin-card rounded-lg shadow">
-          <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-semibold text-[var(--text-primary)]">Bestehende Organisationen</h3>
-              <span className="text-xs text-[var(--text-muted)]">{orgs.length} Organisation{orgs.length !== 1 ? 'en' : ''}</span>
+      <DemoHoverHint
+        title="Organisationsbaum"
+        description="Zeigt Unterorganisationen, direkte Benutzerzahlen und Admins. Ueber die Aktionsbuttons lassen sich Mitglieder, Vererbungsregeln und Verschiebungen pruefen."
+      >
+        <div className="grid grid-cols-1 gap-4">
+          {/* Organisations-Liste */}
+          <div className="org-admin-card rounded-lg shadow">
+            <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-semibold text-[var(--text-primary)]">Bestehende Organisationen</h3>
+                <span className="text-xs text-[var(--text-muted)]">{orgs.length} Organisation{orgs.length !== 1 ? 'en' : ''}</span>
+              </div>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Wähle eine Organisation im Baum, um Benutzer zu öffnen oder Vererbungsregeln direkt zu bearbeiten.</p>
             </div>
-            <p className="text-xs text-[var(--text-muted)] mt-1">Wähle eine Organisation im Baum, um Benutzer zu öffnen oder Vererbungsregeln direkt zu bearbeiten.</p>
-          </div>
-          
-          <div className="p-2">
-            {loading && (
-              <div className="flex items-center justify-center py-8 text-[var(--text-muted)]">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-viridian mr-2"></div>
-                Lade Organisationen…
-              </div>
-            )}
-            
-            {!loading && orgs.length === 0 && (
-              <div className="text-center py-12">
-                <Building2 className="w-12 h-12 text-[var(--text-faint)] mx-auto mb-3" />
-                <p className="text-[var(--text-muted)] mb-4">Noch keine Organisationen vorhanden</p>
-                <button
-                  className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg"
-                  onClick={()=> { resetCreateForm(); setCreateModalOpen(true); }}
-                >
-                  <Plus className="w-4 h-4" />
-                  Erste Organisation anlegen
-                </button>
-              </div>
-            )}
-            
-            {!loading && orgs.length > 0 && (
-              <ul className="space-y-2">
-                {tree.map((n) => (
-                  <OrgTree
-                    key={n.org.id}
-                    node={n}
-                    depth={0}
-                    allOrgs={orgs}
-                    selectedOrgId={highlightedOrgId}
-                    onSelectOrg={(nextOrg) => setSelectedOrgId(nextOrg.id)}
-                    onMoved={reloadOrgs}
-                    onOpenSettings={(nextOrg) => {
-                      setSelectedOrgId(nextOrg.id);
-                      setSettingsOrg(nextOrg);
-                    }}
-                  />
-                ))}
-              </ul>
-            )}
+
+            <div className="p-2">
+              {loading && (
+                <div className="flex items-center justify-center py-8 text-[var(--text-muted)]">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-viridian mr-2"></div>
+                  Lade Organisationen…
+                </div>
+              )}
+
+              {!loading && orgs.length === 0 && (
+                <div className="text-center py-12">
+                  <Building2 className="w-12 h-12 text-[var(--text-faint)] mx-auto mb-3" />
+                  <p className="text-[var(--text-muted)] mb-4">Noch keine Organisationen vorhanden</p>
+                  <button
+                    className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg"
+                    onClick={()=> { resetCreateForm(); setCreateModalOpen(true); }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Erste Organisation anlegen
+                  </button>
+                </div>
+              )}
+              {!loading && orgs.length > 0 && (
+                <ul className="space-y-2">
+                  {tree.map((n) => (
+                    <OrgTree
+                      key={n.org.id}
+                      node={n}
+                      depth={0}
+                      allOrgs={orgs}
+                      selectedOrgId={highlightedOrgId}
+                      onSelectOrg={(nextOrg) => setSelectedOrgId(nextOrg.id)}
+                      onMoved={reloadOrgs}
+                      onOpenSettings={(nextOrg) => {
+                        setSelectedOrgId(nextOrg.id);
+                        setSettingsOrg(nextOrg);
+                      }}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </DemoHoverHint>
 
       {/* Neues einheitliches Create Modal */}
       <Modal open={createModalOpen} onClose={()=> setCreateModalOpen(false)} title="Neue Organisation anlegen" maxWidth="md">

@@ -7,6 +7,7 @@ import { getStoredAuthToken } from './authStorage';
 type OrgScopeValue = string | null | undefined;
 interface OrgScopeState {
   scope: OrgScopeValue; // undefined=legacy/none (treated as null for superadmin), null=no-org, string=orgId
+  ready: boolean;
   switching: boolean;
   setScope: (v: OrgScopeValue) => void;
   clear: () => void;
@@ -203,6 +204,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<OrgScopeState>(() => ({
     scope,
+    ready: typeof scope !== 'undefined',
     switching,
     setScope,
     clear: () => setScope(undefined),
@@ -224,4 +226,15 @@ export function useOrgScope() {
 export function useOrgScopeKey(): string {
   const { scope } = useOrgScope();
   return typeof scope === 'undefined' ? '__GLOBAL__' : scope === null ? '__NULL__' : scope;
+}
+
+export function useOrgScopeReady(): boolean {
+  const { ready } = useOrgScope();
+  return ready;
+}
+
+export function useOrgScopedQueryState() {
+  const { scope, ready, switching } = useOrgScope();
+  const scopeKey = useOrgScopeKey();
+  return { scope, scopeKey, ready, switching };
 }

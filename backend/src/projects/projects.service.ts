@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, FindOptionsWhere, Equal, IsNull, In } from 'typeorm';
 import { Project } from './entities/project.entity';
@@ -8,6 +8,7 @@ import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { OrgsService } from '../orgs/orgs.service';
+import { assertOrgScopedEntityAccess, removeOrgIdForNonSuperadmin } from '../auth/org-scope-access';
 
 type ProjectWriteData = Partial<Project> & { categoryIds?: string[]; categoryId?: string | null };
 type ProjectAuditUser = { id?: string; name?: string | null; orgId?: string | null };
@@ -251,7 +252,7 @@ export class ProjectsService {
   async findOneScoped(id: string, user: { role: string; orgId?: string|null }) {
     const p = await this.findOne(id);
     if (!p) return null;
-    if (user.role !== 'superadmin' && (p.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    assertOrgScopedEntityAccess(p, user);
     return p;
   }
 
@@ -357,13 +358,9 @@ export class ProjectsService {
   async updateScoped(id: string, data: Partial<Project>, user: { id?: string; role: string; orgId?: string|null }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
-    // prevent moving orgId unless superadmin
-    if (user.role !== 'superadmin') {
-      const d = data as Partial<Project> & { orgId?: string | null };
-      if ('orgId' in d) delete d.orgId;
-    }
-    const updated = await this.update(id, data);
+    assertOrgScopedEntityAccess(existing, user);
+    const sanitized = removeOrgIdForNonSuperadmin(data, user);
+    const updated = await this.update(id, sanitized);
     if (updated) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: updated.id, entityTitle: updated.title || null, orgId: updated.orgId ?? null, details: { scoped: true }, user });
     return updated;
   }
@@ -371,14 +368,14 @@ export class ProjectsService {
   async removeScoped(id: string, user: { id?: string; role: string; orgId?: string|null }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    assertOrgScopedEntityAccess(existing, user);
     await this.remove(id, user);
   }
 
   async archiveScoped(id: string, archived: boolean, user: { id?: string; role: string; orgId?: string|null }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    assertOrgScopedEntityAccess(existing, user);
     const p = await this.archive(id, archived);
     if (p) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: p.id, entityTitle: p.title || null, orgId: p.orgId ?? null, details: { archived }, user });
     return p;

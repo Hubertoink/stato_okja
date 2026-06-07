@@ -7,6 +7,7 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { ArchiveProjectDto } from './dto/archive-project.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { resolveOrgScope } from '../auth/org-scope-access';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { basename, extname, join } from 'path';
@@ -75,10 +76,7 @@ export class ProjectsController {
   @ApiQuery({ name: 'archived', required: false })
   async findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('search') search?: string, @Query('archived') archived?: string) {
     const archivedBool = archived === 'true' ? true : archived === 'false' ? false : undefined;
-    const superAdminScoped = (typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId;
-    const orgIdRaw = req.user.role === 'superadmin'
-      ? superAdminScoped
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const orgIdRaw = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
     let orgId: string | null | undefined = orgIdRaw;
     let orgIds: string[] | undefined;
     if (typeof orgIdRaw === 'string') {
@@ -100,9 +98,7 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Projekt anlegen' })
   create(@Body() data: CreateProjectDto, @Req() req: { user: { id: string; role: string; orgId?: string|null; name?: string|null }; effectiveOrgId?: string|null|undefined }) {
     // Enforce orgId from scope only; ignore body
-    const orgId = req.user.role === 'superadmin'
-      ? ((typeof req.effectiveOrgId === 'undefined') ? null : req.effectiveOrgId)
-      : ((typeof req.effectiveOrgId === 'undefined') ? (req.user.orgId || null) : req.effectiveOrgId);
+    const orgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
     return this.projectsService.create({ ...data, orgId }, { id: req.user.id, name: req.user.name || null, orgId });
   }
 

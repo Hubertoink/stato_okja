@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import { useOrgScopeKey } from './orgScope';
+import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
 
 export type ProjectTemplateDto = {
   id: string;
@@ -19,24 +19,26 @@ export type ProjectTemplateDto = {
 };
 
 export function useProjectTemplates() {
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['project-templates', scopeKey],
     queryFn: async () => {
       const res = await api.get('/project-templates');
       return res.data as ProjectTemplateDto[];
     },
+    enabled: ready,
   });
 }
 
 export function useOwnedProjectTemplates() {
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['project-templates', scopeKey, 'owned'],
     queryFn: async () => {
       const res = await api.get('/project-templates/owned');
       return res.data as ProjectTemplateDto[];
     },
+    enabled: ready,
   });
 }
 

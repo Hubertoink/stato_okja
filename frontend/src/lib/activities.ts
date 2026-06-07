@@ -1,6 +1,6 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import { useOrgScope, useOrgScopeKey } from './orgScope';
+import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
 import type { Location } from './locations';
 import type { Project } from './projects';
 import type { ActivityExecutionStatus } from './activityExecutionStatus';
@@ -87,8 +87,7 @@ type ActivitiesQueryOptions = {
 };
 
 export function useActivities(params?: ActivitiesFilter, options?: ActivitiesQueryOptions) {
-  const { scope } = useOrgScope();
-  const scopeKey = useOrgScopeKey();
+  const { scope, scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['activities', scopeKey, params],
     queryFn: async () => {
@@ -107,7 +106,7 @@ export function useActivities(params?: ActivitiesFilter, options?: ActivitiesQue
       const res = await api.get('/activities', { params: qp });
       return res.data as Activity[];
     },
-    enabled: typeof scope !== 'undefined',
+    enabled: ready,
     refetchOnMount: 'always',
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: true,
@@ -131,8 +130,7 @@ export function useActivitiesPaged(
   limit: number = 50,
   options?: ActivitiesQueryOptions,
 ) {
-  const { scope } = useOrgScope();
-  const scopeKey = useOrgScopeKey();
+  const { scope, scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['activities', scopeKey, 'paged', params, page, limit],
     queryFn: async () => {
@@ -152,7 +150,7 @@ export function useActivitiesPaged(
       const res = await api.get('/activities', { params: qp });
       return res.data as PagedActivitiesResult;
     },
-    enabled: typeof scope !== 'undefined',
+    enabled: ready,
     refetchOnMount: 'always',
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: true,
@@ -165,8 +163,7 @@ export function useActivitiesPaged(
 }
 
 export function useActivity(id?: string) {
-  const { scope } = useOrgScope();
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['activity', scopeKey, id],
     queryFn: async () => {
@@ -174,7 +171,7 @@ export function useActivity(id?: string) {
       const res = await api.get(`/activities/${id}`);
       return res.data as Activity;
     },
-    enabled: !!id && typeof scope !== 'undefined',
+    enabled: !!id && ready,
   });
 }
 

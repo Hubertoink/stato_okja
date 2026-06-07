@@ -15,6 +15,7 @@ import { StaffService } from './staff.service';
 import { Staff } from './entities/staff.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { resolveOrgScope } from '../auth/org-scope-access';
 
 @ApiTags('staff')
 @Controller('staff')
@@ -26,7 +27,7 @@ export class StaffController {
   @ApiOperation({ summary: 'Alle Mitarbeitende abrufen' })
   findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string) {
     const isActive = active === 'true' ? true : active === 'false' ? false : undefined;
-    const orgId = req.user.role === 'superadmin' ? (typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const orgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
     return this.staffService.findAll(isActive, orgId);
   }
 
@@ -40,9 +41,9 @@ export class StaffController {
   @ApiOperation({ summary: 'Neue Mitarbeitende anlegen' })
   create(@Body() data: Partial<Staff>, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
     const bodyOrgId = (data as Partial<Staff> & { orgId?: string | null }).orgId ?? null;
-    const orgId = req.user.role === 'superadmin'
-      ? (typeof req.effectiveOrgId === 'undefined' ? bodyOrgId : req.effectiveOrgId)
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
+    const orgId = req.user.role === 'superadmin' && typeof req.effectiveOrgId === 'undefined'
+      ? bodyOrgId
+      : resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
     return this.staffService.create({ ...data, orgId });
   }
 

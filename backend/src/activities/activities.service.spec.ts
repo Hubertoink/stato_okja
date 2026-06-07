@@ -1,8 +1,9 @@
 import { ActivitiesService } from './activities.service';
+import { ActivityListQuery } from './activity-list-query';
 import { ActivityType, AuditAction } from '../common/enums';
 
 describe('ActivitiesService audit diff', () => {
-  it('joins staff for paged staff filters without selecting the relation', () => {
+  it('joins staff for paged staff filters without selecting the relation', async () => {
     const queryBuilder = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoin: jest.fn().mockReturnThis(),
@@ -14,19 +15,16 @@ describe('ActivitiesService audit diff', () => {
     const activityRepository = {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
     };
+    const orgs = {
+      getClosedDatesForOrganizations: jest.fn(),
+    };
 
-    const service = new ActivitiesService(
+    const activityListQuery = new ActivityListQuery(
       activityRepository as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
+      orgs as never,
     );
 
-    (service as any).buildListQuery(
+    await activityListQuery.build(
       { staffIds: ['staff-1'] },
       { includeStaff: false },
     );

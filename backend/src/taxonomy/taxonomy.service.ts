@@ -7,6 +7,7 @@ import { Cohort } from './entities/cohort.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { OrgsService, VisibleTaxonomyMeta } from '../orgs/orgs.service';
+import { removeOrgIdForNonSuperadmin, resolveOrgScope } from '../auth/org-scope-access';
 
 type TaxonomyKind = 'categories' | 'tags' | 'cohorts';
 type TaxonomyEntityType = 'category' | 'tag' | 'cohort';
@@ -41,10 +42,7 @@ export class TaxonomyService {
   ) {}
 
   private getScopedOrgId(user: { role: string; orgId?: string | null; effectiveOrgId?: string | null | undefined }) {
-    if (user.role === 'superadmin') {
-      return typeof user.effectiveOrgId === 'undefined' ? null : user.effectiveOrgId;
-    }
-    return typeof user.effectiveOrgId === 'undefined' ? (user.orgId || null) : user.effectiveOrgId;
+    return resolveOrgScope(user);
   }
 
   private getTaxonomyLockedMessage(kind: 'categories' | 'tags' | 'cohorts') {
@@ -130,7 +128,11 @@ export class TaxonomyService {
     if ((existing.orgId ?? null) === scopeOrgId) {
       await this.assertScopedTaxonomyManagementAllowed(kind, scopeOrgId);
     }
-    if (user.role !== 'superadmin' && 'orgId' in data) delete data.orgId;
+    if (user.role !== 'superadmin') {
+      const sanitized = removeOrgIdForNonSuperadmin(data, user);
+      Object.keys(data).forEach((key) => delete (data as Record<string, unknown>)[key]);
+      Object.assign(data, sanitized);
+    }
     return scopeOrgId;
   }
 

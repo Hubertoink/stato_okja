@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import { useOrgScope, useOrgScopeKey } from './orgScope';
+import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
 
 export type CustomKpiSurface = 'dashboard' | 'statistics' | 'both';
 export type CustomKpiDateMode = 'inherit' | 'current_month' | 'current_year' | 'rolling_weeks';
@@ -74,15 +74,14 @@ function invalidateCustomKpis(queryClient: ReturnType<typeof useQueryClient>, sc
 }
 
 export function useCustomKpis(options?: CustomKpiQueryOptions) {
-  const { scope } = useOrgScope();
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['custom-kpis', scopeKey],
     queryFn: async () => {
       const res = await api.get('/stats/custom-kpis');
       return res.data as CustomKpiDefinition[];
     },
-    enabled: typeof scope !== 'undefined',
+    enabled: ready,
     refetchOnWindowFocus: options?.refetchOnWindowFocus,
     refetchInterval: options?.refetchIntervalMs,
   });
@@ -92,15 +91,14 @@ export function useCustomKpiResults(
   params: CustomKpiResultsParams,
   options?: CustomKpiQueryOptions,
 ) {
-  const { scope } = useOrgScope();
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['custom-kpi-results', scopeKey, params.surface, params.from ?? '', params.to ?? ''],
     queryFn: async () => {
       const res = await api.get('/stats/custom-kpis/results', { params });
       return res.data as CustomKpiResult[];
     },
-    enabled: typeof scope !== 'undefined',
+    enabled: ready,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? 'always',
     refetchInterval: options?.refetchIntervalMs,
   });

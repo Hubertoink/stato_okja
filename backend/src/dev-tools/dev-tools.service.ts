@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from '../projects/entities/project.entity';
 import { Activity } from '../activities/entities/activity.entity';
+import { applyActivityRelationJoins } from '../activities/activity-list-query';
 import { Category } from '../taxonomy/entities/category.entity';
 import { Tag } from '../taxonomy/entities/tag.entity';
 import { Location } from '../locations/entities/location.entity';
@@ -555,12 +556,11 @@ export class DevToolsService {
     this.assertEnabled();
     if (!orgId) throw new BadRequestException('Bitte zuerst einen Organisations-Scope auswählen.');
 
-    const generatedActivities = await this.activityRepository
-      .createQueryBuilder('activity')
-      .leftJoinAndSelect('activity.tags', 'tags')
-      .leftJoinAndSelect('activity.categories', 'categories')
-      .leftJoinAndSelect('activity.staff', 'staff')
-      .leftJoinAndSelect('activity.attachments', 'attachments')
+    const generatedActivities = await applyActivityRelationJoins(
+      this.activityRepository.createQueryBuilder('activity'),
+      'activity',
+      ['tags', 'categories', 'staff', 'attachments'],
+    )
       .where('activity.orgId = :orgId', { orgId })
       .andWhere('activity.goals LIKE :marker', { marker: `%${TESTDATA_MARKER}%` })
       .getMany();

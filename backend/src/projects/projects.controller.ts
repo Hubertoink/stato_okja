@@ -1,7 +1,6 @@
 import { BadRequestException, Controller, Get, Post, Patch, Delete, Param, Body, Query, NotFoundException, UseGuards, Req, Res, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ApiConsumes, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
-import { OrgsService } from '../orgs/orgs.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ArchiveProjectDto } from './dto/archive-project.dto';
@@ -68,7 +67,7 @@ function isAllowedProjectDocument(
 @Controller('projects')
 @UseGuards(JwtAuthGuard, OrgScopeGuard)
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService, private readonly orgs: OrgsService) {}
+  constructor(private readonly projectsService: ProjectsService) {}
 
   @Get()
   @ApiOperation({ summary: 'Alle Projekte abrufen' })
@@ -76,20 +75,14 @@ export class ProjectsController {
   @ApiQuery({ name: 'archived', required: false })
   async findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('search') search?: string, @Query('archived') archived?: string) {
     const archivedBool = archived === 'true' ? true : archived === 'false' ? false : undefined;
-    const orgIdRaw = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
-    let orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined;
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-      orgId = undefined;
-    }
-    return this.projectsService.findAll(search, archivedBool, orgId, orgIds);
+    const orgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
+    return this.projectsService.findAll(search, archivedBool, orgId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Projekt per ID abrufen' })
-  async findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null } }) {
-    const p = await this.projectsService.findOneScoped(id, req.user);
+  async findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
+    const p = await this.projectsService.findOneScoped(id, { ...req.user, effectiveOrgId: req.effectiveOrgId });
     if (!p) throw new NotFoundException('Project not found');
     return p;
   }
@@ -104,11 +97,11 @@ export class ProjectsController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Projekt bearbeiten' })
-  update(@Param('id') id: string, @Body() data: UpdateProjectDto, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  update(@Param('id') id: string, @Body() data: UpdateProjectDto, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
     // Never allow changing orgId via update
     const rest: UpdateProjectDto = { ...(data as UpdateProjectDto) };
     delete (rest as UpdateProjectDto & { orgId?: string | null }).orgId;
-    return this.projectsService.updateScoped(id, rest, req.user);
+    return this.projectsService.updateScoped(id, rest, { ...req.user, effectiveOrgId: req.effectiveOrgId });
   }
 
   @Post(':id/documents')
@@ -131,7 +124,7 @@ export class ProjectsController {
   async uploadDocument(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File | undefined,
-    @Req() req: { user: { id?: string; role: string; orgId?: string | null; name?: string | null } },
+    @Req() req: { user: { id?: string; role: string; orgId?: string | null; name?: string | null }; effectiveOrgId?: string|null|undefined },
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
     if (!isAllowedProjectDocument(file)) {
@@ -152,7 +145,7 @@ export class ProjectsController {
           size: file.size,
           storageRef: `project-documents/${storedFilename}`,
         },
-        req.user,
+        { ...req.user, effectiveOrgId: req.effectiveOrgId },
       );
     } catch (error) {
       try {
@@ -169,10 +162,10 @@ export class ProjectsController {
   async downloadDocument(
     @Param('id') id: string,
     @Param('documentId') documentId: string,
-    @Req() req: { user: { role: string; orgId?: string | null } },
+    @Req() req: { user: { role: string; orgId?: string | null }; effectiveOrgId?: string|null|undefined },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const document = await this.projectsService.getDocumentScoped(id, documentId, req.user);
+    const document = await this.projectsService.getDocumentScoped(id, documentId, { ...req.user, effectiveOrgId: req.effectiveOrgId });
     const relativeStorageRef = String(document.storageRef || '').replace(/\\/g, '/').trim();
     const absolutePath = join(process.cwd(), 'uploads', relativeStorageRef);
     if (!relativeStorageRef || relativeStorageRef.includes('..') || !existsSync(absolutePath)) {
@@ -194,20 +187,20 @@ export class ProjectsController {
   removeDocument(
     @Param('id') id: string,
     @Param('documentId') documentId: string,
-    @Req() req: { user: { id?: string; role: string; orgId?: string | null; name?: string | null } },
+    @Req() req: { user: { id?: string; role: string; orgId?: string | null; name?: string | null }; effectiveOrgId?: string|null|undefined },
   ) {
-    return this.projectsService.removeDocument(id, documentId, req.user);
+    return this.projectsService.removeDocument(id, documentId, { ...req.user, effectiveOrgId: req.effectiveOrgId });
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Projekt löschen' })
-  remove(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null } }) {
-    return this.projectsService.removeScoped(id, req.user);
+  remove(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
+    return this.projectsService.removeScoped(id, { ...req.user, effectiveOrgId: req.effectiveOrgId });
   }
 
   @Patch(':id/archive')
   @ApiOperation({ summary: 'Projekt archivieren / wiederherstellen' })
-  setArchived(@Param('id') id: string, @Body() body: ArchiveProjectDto, @Req() req: { user: { role: string; orgId?: string|null } }) {
-    return this.projectsService.archiveScoped(id, body.archived ?? true, req.user);
+  setArchived(@Param('id') id: string, @Body() body: ArchiveProjectDto, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
+    return this.projectsService.archiveScoped(id, body.archived ?? true, { ...req.user, effectiveOrgId: req.effectiveOrgId });
   }
 }

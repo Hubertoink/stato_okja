@@ -27,6 +27,16 @@ export function assertOrgScopedEntityAccess(entity: OrgScopedEntity, user: OrgSc
   }
 }
 
+export function canAccessExactOrgScopedEntity(entity: OrgScopedEntity, user: OrgScopedUser): boolean {
+  return (entity.orgId ?? null) === resolveOrgScope(user);
+}
+
+export function assertExactOrgScopedEntityAccess(entity: OrgScopedEntity, user: OrgScopedUser): void {
+  if (!canAccessExactOrgScopedEntity(entity, user)) {
+    throw new ForbiddenException('Not allowed');
+  }
+}
+
 export function removeOrgIdForNonSuperadmin<T extends object>(data: T, user: OrgScopedUser): T {
   if (user.role === 'superadmin') return data;
   const sanitized = { ...data } as T & { orgId?: string | null };

@@ -1,5 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import {
+  assertExactOrgScopedEntityAccess,
   assertOrgScopedEntityAccess,
   preserveOrgIdForNonSuperadmin,
   removeOrgIdForNonSuperadmin,
@@ -30,6 +31,18 @@ describe('org-scope-access', () => {
     expect(() =>
       assertOrgScopedEntityAccess({ orgId: 'org-2' }, { role: 'superadmin', orgId: null }),
     ).not.toThrow();
+  });
+
+  it('requires exact effective org scope when requested', () => {
+    expect(() =>
+      assertExactOrgScopedEntityAccess({ orgId: 'org-1' }, { role: 'superadmin', orgId: null, effectiveOrgId: 'org-1' }),
+    ).not.toThrow();
+    expect(() =>
+      assertExactOrgScopedEntityAccess({ orgId: 'child-1' }, { role: 'superadmin', orgId: null, effectiveOrgId: 'org-1' }),
+    ).toThrow(ForbiddenException);
+    expect(() =>
+      assertExactOrgScopedEntityAccess({ orgId: 'org-1' }, { role: 'superadmin', orgId: null }),
+    ).toThrow(ForbiddenException);
   });
 
   it('removes orgId from non-superadmin patches', () => {

@@ -17,6 +17,8 @@ import {
   Circle,
   CheckCircle2,
   Clock,
+  BookOpen,
+  MessageCircle,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -31,6 +33,7 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 import { usePublicConfig } from '@/lib/publicConfig';
 import CustomKpiCards from '@/components/CustomKpiCards';
+import { useLogbookEntries } from '@/lib/logbook';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
 
@@ -124,6 +127,8 @@ const AUDIT_ENTITY_LABELS: Record<string, string> = {
   location: 'Einrichtung',
   organization: 'Organisation',
   project_template: 'Vorlage',
+  logbook_entry: 'Logbucheintrag',
+  logbook_comment: 'Logbuch-Kommentar',
 };
 
 const RECENT_ACTIONS_PER_GROUP = 10;
@@ -340,6 +345,8 @@ export default function Dashboard() {
       refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
     },
   );
+  const { data: logbookData } = useLogbookEntries({}, 1, 4);
+  const recentLogbookEntries = logbookData?.data || [];
   const activityAuditRefreshKey = useMemo(
     () =>
       (audit || [])
@@ -602,6 +609,30 @@ export default function Dashboard() {
             Daten exportieren
           </button>
         </div>
+      </div>
+
+      <div className="modern-card p-5 sm:p-6 mb-8">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800"><BookOpen className="h-5 w-5 text-viridian" />Logbuch</h3>
+            <p className="mt-0.5 text-sm text-gray-500">Neueste Beobachtungen, Übergaben und Debriefings.</p>
+          </div>
+          <button type="button" onClick={() => navigate('/logbook/new')} className="rounded-xl bg-viridian px-3 py-2 text-sm font-semibold text-white">Eintrag</button>
+        </div>
+        {recentLogbookEntries.length === 0 ? (
+          <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">Noch keine Logbucheinträge. Halte wichtige Beobachtungen direkt für das Team fest.</div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {recentLogbookEntries.map((entry) => (
+              <button key={entry.id} type="button" onClick={() => navigate(`/logbook/${entry.id}`)} className="rounded-xl border border-gray-100 bg-white p-4 text-left transition hover:border-viridian/30 hover:bg-viridian/5">
+                <div className="mb-1 flex items-center justify-between gap-2"><span className="truncate font-semibold text-gray-800">{entry.title}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${entry.status === 'discussed' ? 'bg-green-100 text-green-700' : entry.status === 'follow_up' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-700'}`}>{entry.status === 'discussed' ? 'Besprochen' : entry.status === 'follow_up' ? 'Nachverfolgung' : 'Offen'}</span></div>
+                <p className="line-clamp-2 text-sm text-gray-600">{entry.body}</p>
+                <div className="mt-3 flex items-center justify-between text-xs text-gray-500"><span>{entry.createdByName}</span><span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{entry.commentCount || 0}</span></div>
+              </button>
+            ))}
+          </div>
+        )}
+        <button type="button" onClick={() => navigate('/logbook')} className="mt-4 text-sm font-semibold text-viridian hover:underline">Alle Logbucheinträge anzeigen</button>
       </div>
 
       {/* Daily Log */}

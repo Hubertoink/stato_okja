@@ -1,0 +1,18 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Activity } from '../activities/entities/activity.entity';
+import { AuditModule } from '../common/audit.module';
+import { Project } from '../projects/entities/project.entity';
+import { User } from '../users/entities/user.entity';
+import { LogbookController } from './logbook.controller';
+import { LogbookService } from './logbook.service';
+import { LogbookComment } from './entities/logbook-comment.entity';
+import { LogbookEntry } from './entities/logbook-entry.entity';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([LogbookEntry, LogbookComment, Activity, Project, User]), AuditModule],
+  controllers: [LogbookController],
+  providers: [LogbookService],
+  exports: [LogbookService],
+})
+export class LogbookModule {}

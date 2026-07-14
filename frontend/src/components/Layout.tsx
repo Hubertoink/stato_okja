@@ -10,6 +10,8 @@ import {
   Building2,
   GitBranch,
   Lightbulb,
+  BookOpen,
+  Menu,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
@@ -108,6 +110,7 @@ export default function Layout() {
     user: 'Benutzer',
   };
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
   const [hoverable, setHoverable] = useState(false);
   useEffect(() => {
@@ -549,6 +552,20 @@ export default function Layout() {
             </li>
             <li>
               <Link
+                to="/logbook"
+                data-tooltip="Logbuch"
+                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                  isActive('/logbook')
+                    ? 'theme-nav-item-active'
+                    : ''
+                }`}
+              >
+                <BookOpen className="w-5 h-5 lg:mr-2 flex-shrink-0" />
+                <span className={`nav-label ${isActive('/logbook') ? 'nav-label-active' : ''}`} data-text="Logbuch">Logbuch</span>
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/calendar"
                 data-tooltip="Kalender"
                 className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
@@ -629,7 +646,7 @@ export default function Layout() {
       {!restrictToPasswordChange && <nav
         className={`mobile-bottom-nav fixed inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-lg md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
       >
-        <ul className="grid grid-cols-6 text-xs pb-[max(env(safe-area-inset-bottom,0px),0.25rem)]">
+        <ul className="grid grid-cols-5 text-xs pb-[max(env(safe-area-inset-bottom,0px),0.25rem)]">
           <li>
             <Link
               to="/dashboard"
@@ -650,6 +667,15 @@ export default function Layout() {
           </li>
           <li>
             <Link
+              to="/logbook"
+              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/logbook') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+            >
+              <BookOpen className="w-5 h-5" />
+              <span>Logbuch</span>
+            </Link>
+          </li>
+          <li>
+            <Link
               to="/calendar"
               className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/calendar') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
@@ -658,33 +684,23 @@ export default function Layout() {
             </Link>
           </li>
           <li>
-            <Link
-              to="/projects"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/projects') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+            <button
+              type="button"
+              onClick={() => setMobileMoreOpen((value) => !value)}
+              className={`flex w-full flex-col items-center py-2.5 transition-all duration-200 ${(isActive('/projects') || isActive('/statistics') || isActive('/settings')) ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
-              <Boxes className="w-5 h-5" />
-              <span>Projekte</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/statistics"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/statistics') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <BarChart3 className="w-5 h-5" />
-              <span>Stats</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/settings"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/settings') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <Settings className="w-5 h-5" />
-              <span>Einst.</span>
-            </Link>
+              <Menu className="w-5 h-5" />
+              <span>Mehr</span>
+            </button>
           </li>
         </ul>
+        {mobileMoreOpen && (
+          <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3.9rem)] right-2 w-52 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
+            <Link to="/projects" onClick={() => setMobileMoreOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"><Boxes className="h-5 w-5 text-viridian" />Projekte</Link>
+            <Link to="/statistics" onClick={() => setMobileMoreOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"><BarChart3 className="h-5 w-5 text-viridian" />Statistiken</Link>
+            <Link to="/settings" onClick={() => setMobileMoreOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"><Settings className="h-5 w-5 text-viridian" />Einstellungen</Link>
+          </div>
+        )}
       </nav>}
 
       {!restrictToPasswordChange && !hideBottomNav && <DemoMobilePageGuide />}

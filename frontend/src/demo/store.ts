@@ -6,6 +6,7 @@ import type { Location } from '../lib/locations';
 import type { OpeningHours, OrganizationClosureDay, OrgDto, OrgTaxonomySettingsSnapshot } from '../lib/orgs';
 import type { ProjectTemplateDto } from '../lib/projectTemplatesApi';
 import type { Project } from '../lib/projects';
+import type { LogbookComment, LogbookEntry, LogbookEntryInput, LogbookEntryStatus, LogbookEntryType } from '../lib/logbook';
 import type { StaffMember, StaffRole } from '../lib/staff';
 import type { Category, Cohort, Tag } from '../lib/taxonomy';
 
@@ -18,6 +19,7 @@ type DemoActivityRecord = Omit<Activity, 'project' | 'location' | 'categories' |
 
 type DemoProject = Project & { orgId: string };
 type DemoProjectTemplate = ProjectTemplateDto & { orgId: string | null };
+type DemoLogbookEntry = LogbookEntry;
 
 type DemoStore = {
   generatedAt: string;
@@ -38,6 +40,7 @@ type DemoStore = {
   closureDays: OrganizationClosureDay[];
   acks: Record<string, boolean>;
   auditLogs: AuditLog[];
+  logbookEntries: DemoLogbookEntry[];
 };
 
 type StatsOverviewResponse = {
@@ -669,6 +672,7 @@ function createDemoStore(now = new Date()): DemoStore {
     closureDays: closureDaySeed(windowStart, windowEnd),
     acks: {},
     auditLogs: createInitialAuditLogs(activities, projects),
+    logbookEntries: logbookSeed(activities, projects),
   };
 }
 
@@ -1418,4 +1422,125 @@ export function deleteDemoGeneratedTestData() {
   store.activities = [];
   store.projects = [];
   return { deletedActivities, deletedProjects };
+}
+
+function hydrateLogbookEntry(entry: DemoLogbookEntry): LogbookEntry {
+  const activity = entry.activityId ? store.activities.find((item) => item.id === entry.activityId) : undefined;
+  const project = entry.projectId ? store.projects.find((item) => item.id === entry.projectId) : undefined;
+  return clone({
+    ...entry,
+    activity: activity ? hydrateActivity(activity) : null,
+    project: project ? hydrateProject(project) : null,
+    comments: entry.comments || [],
+    commentCount: entry.comments?.length || 0,
+  });
+}
+
+export function listDemoLogbookEntries(params: DemoQueryParams) {
+  const search = String(params.search || '').trim().toLowerCase();
+  const filtered = store.logbookEntries
+    .filter((entry) => {
+      if (params.includeArchived !== true && params.includeArchived !== 'true' && entry.status === 'archived') return false;
+      if (params.type && entry.type !== params.type) return false;
+      if (params.status && entry.status !== params.status) return false;
+      if (params.activityId && entry.activityId !== params.activityId) return false;
+      if (params.projectId && entry.projectId !== params.projectId) return false;
+      if (params.from && entry.occurredAt.slice(0, 10) < String(params.from)) return false;
+      if (params.to && entry.occurredAt.slice(0, 10) > String(params.to)) return false;
+      return !search || `${entry.title} ${entry.body}`.toLowerCase().includes(search);
+    })
+    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+  const page = Math.max(Number(params.page) || 1, 1);
+  const pageSize = Math.min(Math.max(Number(params.limit) || 30, 1), 100);
+  return clone({ data: filtered.slice((page - 1) * pageSize, page * pageSize).map(hydrateLogbookEntry), total: filtered.length, page, pageSize });
+}
+
+export function getDemoLogbookEntry(id: string) {
+  const entry = store.logbookEntries.find((item) => item.id === id);
+  return entry ? hydrateLogbookEntry(entry) : undefined;
+}
+
+export function createDemoLogbookEntry(data: Record<string, unknown>) {
+  const now = new Date().toISOString();
+  const status = (data.status === 'follow_up' || data.status === 'discussed' ? data.status : 'open') as LogbookEntryStatus;
+  const entry: DemoLogbookEntry = {
+    id: nextId('logbook'), orgId: DEMO_ORG_ID, occurredAt: typeof data.occurredAt === 'string' ? data.occurredAt : now,
+    type: (typeof data.type === 'string' ? data.type : 'observation') as LogbookEntryType,
+    title: String(data.title || 'Ohne Titel'), body: String(data.body || ''), highlights: typeof data.highlights === 'string' ? data.highlights : null, challenges: typeof data.challenges === 'string' ? data.challenges : null, nextSteps: typeof data.nextSteps === 'string' ? data.nextSteps : null,
+    status, visibility: data.visibility === 'admins' ? 'admins' : 'team', activityId: typeof data.activityId === 'string' ? data.activityId : null, projectId: typeof data.projectId === 'string' ? data.projectId : null,
+    createdByUserId: store.user.id, createdByName: store.user.name, updatedByUserId: store.user.id, updatedByName: store.user.name,
+    discussedByUserId: status === 'discussed' ? store.user.id : null, discussedByName: status === 'discussed' ? store.user.name : null, discussedAt: status === 'discussed' ? now : null, archivedAt: null, createdAt: now, updatedAt: now, comments: [], commentCount: 0,
+  };
+  store.logbookEntries.unshift(entry);
+  addAudit('logbook_entry', entry.id, 'create', entry.title);
+  return hydrateLogbookEntry(entry);
+}
+
+export function updateDemoLogbookEntry(id: string, data: LogbookEntryInput) {
+  const entry = store.logbookEntries.find((item) => item.id === id);
+  if (!entry) throw new Error('Logbucheintrag nicht gefunden');
+  Object.assign(entry, data, { updatedByUserId: store.user.id, updatedByName: store.user.name, updatedAt: new Date().toISOString() });
+  if (entry.status === 'discussed' && !entry.discussedAt) {
+    entry.discussedAt = new Date().toISOString(); entry.discussedByUserId = store.user.id; entry.discussedByName = store.user.name;
+  }
+  addAudit('logbook_entry', entry.id, 'update', entry.title);
+  return hydrateLogbookEntry(entry);
+}
+
+export function setDemoLogbookStatus(id: string, status: LogbookEntryStatus) {
+  const entry = store.logbookEntries.find((item) => item.id === id);
+  if (!entry) throw new Error('Logbucheintrag nicht gefunden');
+  entry.status = status; entry.updatedAt = new Date().toISOString();
+  if (status === 'discussed') { entry.discussedAt = entry.updatedAt; entry.discussedByUserId = store.user.id; entry.discussedByName = store.user.name; }
+  else { entry.discussedAt = null; entry.discussedByUserId = null; entry.discussedByName = null; }
+  addAudit('logbook_entry', entry.id, 'update', entry.title);
+  return hydrateLogbookEntry(entry);
+}
+
+export function archiveDemoLogbookEntry(id: string) {
+  const entry = store.logbookEntries.find((item) => item.id === id);
+  if (!entry) throw new Error('Logbucheintrag nicht gefunden');
+  entry.status = 'archived'; entry.archivedAt = new Date().toISOString(); entry.updatedAt = entry.archivedAt;
+  addAudit('logbook_entry', entry.id, 'delete', entry.title);
+  return { id, archived: true };
+}
+
+export function createDemoLogbookComment(entryId: string, body: string): LogbookComment {
+  const entry = store.logbookEntries.find((item) => item.id === entryId);
+  if (!entry) throw new Error('Logbucheintrag nicht gefunden');
+  const comment: LogbookComment = { id: nextId('logbook-comment'), entryId, body, createdByUserId: store.user.id, createdByName: store.user.name, createdAt: new Date().toISOString() };
+  entry.comments = [...(entry.comments || []), comment]; entry.commentCount = entry.comments.length;
+  addAudit('logbook_comment', comment.id, 'create', entry.title);
+  return clone(comment);
+}
+
+export function removeDemoLogbookComment(entryId: string, commentId: string) {
+  const entry = store.logbookEntries.find((item) => item.id === entryId);
+  if (!entry) throw new Error('Logbucheintrag nicht gefunden');
+  entry.comments = (entry.comments || []).filter((comment) => comment.id !== commentId); entry.commentCount = entry.comments.length;
+  addAudit('logbook_comment', commentId, 'delete', entry.title);
+  return { id: commentId, deleted: true };
+}
+
+function logbookSeed(activities: DemoActivityRecord[], projects: DemoProject[]): DemoLogbookEntry[] {
+  const firstActivity = activities[0];
+  const project = projects.find((item) => item.id === firstActivity?.projectId) || projects[0];
+  const now = new Date();
+  return [
+    {
+      id: 'logbook-demo-1', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(), type: 'handover', title: 'Übergabe am Nachmittag',
+      body: 'Der offene Treff war gut besucht. Im Medienraum bitte vor dem nächsten Termin die Kopfhörer prüfen.', highlights: 'Neue Besucher:innen haben schnell Anschluss gefunden.', challenges: null, nextSteps: 'Kopfhörerbestand prüfen und bei Bedarf nachbestellen.',
+      status: 'follow_up', visibility: 'team', activityId: firstActivity?.id || null, projectId: project?.id || null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: null, discussedByName: null, discussedAt: null, archivedAt: null,
+      createdAt: new Date(now.getTime() - 90 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
+      comments: [{ id: 'logbook-comment-demo-1', entryId: 'logbook-demo-1', body: 'Ich kümmere mich morgen um die Bestandsaufnahme.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 30 * 60 * 1000).toISOString() }], commentCount: 1,
+    },
+    {
+      id: 'logbook-demo-2', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString(), type: 'success', title: 'Gelungener Projektabschluss',
+      body: 'Die Abschlusspräsentation wurde von Jugendlichen und Eltern sehr positiv aufgenommen.', highlights: 'Gute Rollenverteilung und starke Beteiligung.', challenges: null, nextSteps: null,
+      status: 'discussed', visibility: 'team', activityId: null, projectId: project?.id || null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: demoUser.id, discussedByName: demoUser.name, discussedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), archivedAt: null,
+      createdAt: new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), comments: [], commentCount: 0,
+    },
+  ];
 }

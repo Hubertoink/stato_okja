@@ -28,6 +28,8 @@ const AcceptInvite = lazy(() => import('./pages/AcceptInvite'));
 const ResetRequest = lazy(() => import('./pages/ResetRequest'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const ProjectPickerPage = lazy(() => import('@/pages/ProjectPickerPage'));
+const Logbook = lazy(() => import('@/pages/Logbook'));
+const LogbookEntryPage = lazy(() => import('@/pages/LogbookEntryPage'));
 
 function LazyRouteFallback({ label }: { label: string }) {
   return <div className="p-6 text-sm text-gray-500">{label} wird geladen…</div>;
@@ -184,6 +186,38 @@ function AuthedRoutes() {
             element={
               <RouteBoundary label="Aktivität bearbeiten">
                 <ActivityEditPage />
+              </RouteBoundary>
+            }
+          />
+          <Route
+            path="logbook"
+            element={
+              <RouteBoundary label="Logbuch">
+                <Logbook />
+              </RouteBoundary>
+            }
+          />
+          <Route
+            path="logbook/new"
+            element={
+              <RouteBoundary label="Neuer Logbucheintrag">
+                <LogbookEntryPage />
+              </RouteBoundary>
+            }
+          />
+          <Route
+            path="logbook/:id"
+            element={
+              <RouteBoundary label="Logbucheintrag">
+                <LogbookEntryPage />
+              </RouteBoundary>
+            }
+          />
+          <Route
+            path="logbook/:id/edit"
+            element={
+              <RouteBoundary label="Logbucheintrag bearbeiten">
+                <LogbookEntryPage />
               </RouteBoundary>
             }
           />

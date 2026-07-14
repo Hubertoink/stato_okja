@@ -154,7 +154,7 @@ export class AuthController {
     const loginTitle = orgName ? `${appName} - ${orgName}` : appName;
     const liveRefreshIntervalMs = parseNonNegativeIntEnv(
       process.env.PUBLIC_LIVE_REFRESH_INTERVAL_MS,
-      15000,
+      30000,
     );
     return {
       appName,

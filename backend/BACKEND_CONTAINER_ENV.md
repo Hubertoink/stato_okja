@@ -114,7 +114,7 @@ Hinweis: Postgres-Sessions werden vom Backend auf UTC gesetzt. `TZ=Europe/Berlin
 | `JWT_REFRESH_EXPIRATION` | `7d` | Gueltigkeit der serverseitigen Refresh Session, z. B. `12h`, `7d`, `30d`. |
 | `AUTH_REFRESH_COOKIE_SAMESITE` | `lax` | SameSite-Policy fuer das HttpOnly-Refresh-Cookie: `lax`, `strict` oder `none`. |
 | `AUTH_REFRESH_COOKIE_SECURE` | abgeleitet aus Strict Mode | Optionaler Override fuer das Secure-Flag des Refresh-Cookies. In Produktion normalerweise `true`. |
-| `INVITE_TOKEN_EXPIRATION` | `7d` | Gueltigkeit von Einladungslinks. |
+| `INVITE_TOKEN_EXPIRATION` | `24h` | Gueltigkeit von Einladungslinks (maximal 24 Stunden). |
 | `RESET_TOKEN_EXPIRATION` | `1h` | Gueltigkeit von Passwort-Reset-Links. |
 | `PASSWORD_RESET_MODE` | `email` | `email`, `admin_temp_password` oder `hybrid`. |
 | `AUTH_2FA_ENABLED` | `false` | Aktiviert E-Mail-2FA fuer Login. Erfordert funktionierendes SMTP, mindestens `SMTP_HOST`. |
@@ -160,7 +160,8 @@ Diese Werte liefert das Backend ueber `GET /auth/public-config` an das Frontend.
 | `PUBLIC_APP_NAME` | `StatO` | Anzeigename der App. |
 | `PUBLIC_ORG_NAME` | leer | Optionaler Organisationsname auf der Login-Seite. |
 | `PUBLIC_LOGIN_SUBTITLE` | `OKJA Statistik & Dokumentation` | Untertitel auf der Login-Seite. |
-| `PUBLIC_LIVE_REFRESH_INTERVAL_MS` | `15000` | Polling fuer Dashboard, Aktivitaeten und Statistik. `0` deaktiviert Polling, Fokus-Refetch bleibt aktiv. |
+| `PUBLIC_LIVE_REFRESH_INTERVAL_MS` | `30000` | Polling fuer Dashboard, Aktivitaeten und Statistik. `0` deaktiviert Polling, Fokus-Refetch bleibt aktiv. |
+| `STATS_OVERVIEW_CACHE_TTL_MS` | `30000` | Cache-Dauer fuer zusammengefasste Statistikabfragen; `0` deaktiviert den Cache. |
 
 ## Rate Limiting
 

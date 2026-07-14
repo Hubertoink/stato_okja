@@ -130,8 +130,20 @@ export async function createOrgApi(name: string, parentId?: string | null): Prom
   return res.data;
 }
 
-export async function inviteUserApi(payload: { email: string; name?: string; role?: 'org_admin'|'user'; orgId?: string|null }): Promise<{ token: string }> {
-  const res = await api.post<{ token: string }>('/auth/invite', payload);
+export type InviteUserResult = {
+  invitationSent: true;
+  emailQueued: boolean;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'superadmin' | 'org_admin' | 'user';
+    orgId: string | null;
+  };
+};
+
+export async function inviteUserApi(payload: { email: string; name?: string; role?: 'org_admin'|'user'; orgId?: string|null }): Promise<InviteUserResult> {
+  const res = await api.post<InviteUserResult>('/auth/invite', payload);
   return res.data;
 }
 

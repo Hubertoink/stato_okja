@@ -36,6 +36,28 @@ type StatsProjectRow = {
   count: string;
 };
 
+type StatsOverviewResult = {
+  summary: {
+    totalActivities: number;
+    totalParticipants: number;
+    totalMale: number;
+    totalFemale: number;
+    totalDiverse: number;
+    totalDurationMinutes: number;
+    totalHours: number;
+    averageParticipants: number;
+    closureDaysCount: number;
+  };
+  byType: Array<{ type: string; count: number; totalParticipants: number }>;
+  gender: { male: number; female: number; diverse: number };
+  participantsTimeseries: Array<{ date: string; totalParticipants: number; activityCount: number }>;
+  byCategory: Array<{ id: string; name: string; count: number }>;
+  byCohort: Array<{ cohortId: string; name: string; total: number; male: number; female: number; diverse: number }>;
+  topTags: Array<{ id: string; name: string; count: number }>;
+  topProjects: Array<{ id: string; name: string; count: number }>;
+  availableYears: string[];
+};
+
 export type CustomKpiCalculationScope = StatsScope & {
   metric: CustomKpiMetric;
 };
@@ -48,6 +70,11 @@ export type CustomKpiCalculationResult = {
 
 @Injectable()
 export class StatsService {
+  private readonly overviewCache = new Map<
+    string,
+    { expiresAt: number; value?: StatsOverviewResult; inFlight?: Promise<StatsOverviewResult> }
+  >();
+
   constructor(
     @InjectDataSource()
     private readonly dataSource: DataSource,
@@ -152,6 +179,32 @@ export class StatsService {
     return 0;
   }
 
+  private getOverviewCacheTtlMs() {
+    const configured = Number.parseInt(process.env.STATS_OVERVIEW_CACHE_TTL_MS || '30000', 10);
+    if (!Number.isFinite(configured) || configured < 0) return 30000;
+    return Math.min(configured, 300000);
+  }
+
+  private getOverviewCacheKey(scope: StatsScope) {
+    return JSON.stringify({
+      ...scope,
+      orgIds: scope.orgIds ? [...scope.orgIds].sort() : undefined,
+      executionStatuses: scope.executionStatuses ? [...scope.executionStatuses].sort() : undefined,
+      weekdays: scope.weekdays ? [...scope.weekdays].sort((left, right) => left - right) : undefined,
+    });
+  }
+
+  private pruneOverviewCache(now: number) {
+    for (const [key, entry] of this.overviewCache) {
+      if (!entry.inFlight && entry.expiresAt <= now) this.overviewCache.delete(key);
+    }
+    while (this.overviewCache.size > 100) {
+      const oldestKey = this.overviewCache.keys().next().value;
+      if (!oldestKey) break;
+      this.overviewCache.delete(oldestKey);
+    }
+  }
+
   private getInclusiveWeekSpan(from?: string, to?: string): number {
     if (!from || !to) return 1;
     const start = new Date(`${from.slice(0, 10)}T00:00:00Z`);
@@ -225,12 +278,11 @@ export class StatsService {
     return Array.from(years).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   }
 
-  async getOverview(scope: StatsScope) {
+  private async buildOverview(scope: StatsScope): Promise<StatsOverviewResult> {
     const { from, to, orgId, orgIds, projectId, type, executionStatuses, closureState, weekdays } = scope;
-    const [summary, byType, gender, participantsTimeseries, byCategory, byCohort, topTags, topProjects, availableYears] = await Promise.all([
+    const [summary, byType, participantsTimeseries, byCategory, byCohort, topTags, topProjects, availableYears] = await Promise.all([
       this.getSummary(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
       this.getByType(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
-      this.getGender(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
       this.getParticipantsTimeseries(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
       this.getByCategory(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
       this.getByCohort(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
@@ -242,7 +294,11 @@ export class StatsService {
     return {
       summary,
       byType,
-      gender,
+      gender: {
+        male: summary.totalMale,
+        female: summary.totalFemale,
+        diverse: summary.totalDiverse,
+      },
       participantsTimeseries,
       byCategory,
       byCohort,
@@ -250,6 +306,29 @@ export class StatsService {
       topProjects,
       availableYears,
     };
+  }
+
+  async getOverview(scope: StatsScope): Promise<StatsOverviewResult> {
+    const now = Date.now();
+    this.pruneOverviewCache(now);
+    const key = this.getOverviewCacheKey(scope);
+    const existing = this.overviewCache.get(key);
+    if (existing?.value && existing.expiresAt > now) return existing.value;
+    if (existing?.inFlight) return existing.inFlight;
+
+    const inFlight = this.buildOverview(scope);
+    this.overviewCache.set(key, { expiresAt: 0, inFlight });
+    try {
+      const value = await inFlight;
+      this.overviewCache.set(key, {
+        value,
+        expiresAt: Date.now() + this.getOverviewCacheTtlMs(),
+      });
+      return value;
+    } catch (error) {
+      this.overviewCache.delete(key);
+      throw error;
+    }
   }
 
   async getSummary(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {

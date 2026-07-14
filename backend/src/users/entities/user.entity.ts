@@ -48,6 +48,10 @@ export class User {
   @Column({ type: 'int', default: 0 })
   passwordResetTokenVersion!: number;
 
+  // Invalidates previously issued invite links whenever an invitation is resent.
+  @Column({ type: 'int', default: 0 })
+  inviteTokenVersion!: number;
+
   @Column({ type: 'boolean', default: false })
   mustChangePassword!: boolean;
 

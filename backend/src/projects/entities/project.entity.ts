@@ -1,10 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
 import { ActivityType } from '../../common/enums';
 import { Category } from '../../taxonomy/entities/category.entity';
 import { Organization } from '../../orgs/entities/organization.entity';
 import { ProjectDocument } from './project-document.entity';
 
 @Entity('projects')
+@Index('IDX_projects_orgId_clientRequestId_unique', ['orgId', 'clientRequestId'], { unique: true })
 export class Project {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -71,7 +72,7 @@ export class Project {
   @Column({ type: 'text', nullable: true })
   description?: string | null;
 
-  @Column({ type: 'varchar', length: 64, nullable: true, unique: true })
+  @Column({ type: 'varchar', length: 64, nullable: true })
   clientRequestId?: string | null;
 
   @Column({ default: false })

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes, randomInt } from 'crypto';
@@ -38,6 +38,12 @@ export type AuthUserResponse = {
   mustChangePassword: boolean;
 };
 
+export type InviteUserResponse = {
+  invitationSent: true;
+  emailQueued: boolean;
+  user: Pick<AuthUserResponse, 'id' | 'email' | 'name' | 'role' | 'orgId'>;
+};
+
 export type PublicAuthSessionResponse = {
   access_token: string;
   refresh_csrf_token: string;
@@ -56,6 +62,7 @@ export type RefreshSessionMetadata = {
 
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
 const DEFAULT_REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_INVITE_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
   'admin@example.org',
   'admin@example.com',
@@ -127,6 +134,15 @@ export class AuthService {
 
   getRefreshTokenMaxAgeMs() {
     return parseDurationToMs(process.env.JWT_REFRESH_EXPIRATION, DEFAULT_REFRESH_TOKEN_TTL_MS);
+  }
+
+  private getInviteTokenExpirationSeconds() {
+    return Math.floor(
+      Math.min(
+        parseDurationToMs(process.env.INVITE_TOKEN_EXPIRATION, MAX_INVITE_TOKEN_TTL_MS),
+        MAX_INVITE_TOKEN_TTL_MS,
+      ) / 1000,
+    );
   }
 
   private createRefreshTokenParts() {
@@ -608,10 +624,17 @@ export class AuthService {
     role?: 'org_admin' | 'user' | 'superadmin';
     orgId?: string | null;
     orgName?: string;
-  }) {
+  }): Promise<InviteUserResponse> {
     const email = payload.email.toLowerCase();
     let user = await this.users.findOne({ where: { email } });
     let resolvedOrgId: string | null | undefined = payload.orgId;
+
+    // Invites must never repurpose an active account. This prevents an admin in one
+    // organization from changing the role, password state, or organization of a
+    // known email address from another organization.
+    if (user?.passwordHash) {
+      throw new ConflictException('Zu dieser E-Mail-Adresse existiert bereits ein aktives Konto.');
+    }
 
     if (!resolvedOrgId && payload.orgName) {
       const existingOrg = await this.orgs.findOne({ where: { name: payload.orgName } });
@@ -630,56 +653,76 @@ export class AuthService {
       }
     }
 
+    const targetOrgId = (typeof resolvedOrgId !== 'undefined' ? resolvedOrgId : payload.orgId) ?? null;
+    const targetRole: UserRole = (payload.role ?? 'user') as UserRole;
+    const isPendingInvite = !!user;
+    const previousInviteTokenVersion = user?.inviteTokenVersion ?? 0;
+
     if (!user) {
-      const role: UserRole = (payload.role ?? 'user') as UserRole;
       user = this.users.create({
         email,
         name: payload.name || email,
-        role,
-        orgId: (typeof resolvedOrgId !== 'undefined' ? resolvedOrgId : payload.orgId) ?? null,
+        role: targetRole,
+        orgId: targetOrgId,
         passwordHash: null,
         mustChangePassword: false,
       });
     } else {
-      user.name = payload.name || user.name;
-      if (payload.role) user.role = payload.role as UserRole;
-      if (typeof resolvedOrgId !== 'undefined') user.orgId = resolvedOrgId ?? null;
-      user.passwordHash = null;
-      user.mustChangePassword = false;
+      // Resending is only valid for the same still-pending account. Role and org
+      // changes belong to the dedicated user-management flow.
+      if (user.orgId !== targetOrgId || user.role !== targetRole) {
+        throw new ConflictException('Die ausstehende Einladung gehört zu einer anderen Organisation oder Rolle.');
+      }
     }
 
+    user.inviteTokenVersion = previousInviteTokenVersion + 1;
     await this.users.save(user);
     const token = await this.jwt.signAsync(
-      { sub: user.id, purpose: 'invite' },
-      { expiresIn: process.env.INVITE_TOKEN_EXPIRATION || '7d' },
+      { sub: user.id, purpose: 'invite', version: user.inviteTokenVersion },
+      { expiresIn: this.getInviteTokenExpirationSeconds() },
     );
     const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
     const link = `${origin}/accept-invite?token=${token}`;
     try {
-      await this.email.sendInviteEmail(user.email, user.name || user.email, link);
-    } catch {
-      /* ignore email errors */
+      const emailResult = await this.email.sendInviteEmail(user.email, user.name || user.email, link);
+      if (!emailResult.queued) {
+        throw new Error('Invite email was not delivered. Configure SMTP before inviting users.');
+      }
+      return {
+        invitationSent: true,
+        emailQueued: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          orgId: user.orgId,
+        },
+      };
+    } catch (error) {
+      // Do not leave a newly created, unusable account behind. For a resend, keep
+      // the previously valid link active when the new delivery failed.
+      if (isPendingInvite) {
+        user.inviteTokenVersion = previousInviteTokenVersion;
+        await this.users.save(user);
+      } else {
+        await this.users.delete({ id: user.id });
+      }
+      throw error;
     }
-    return {
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        orgId: user.orgId,
-      },
-    };
   }
 
   async acceptInvite(token: string, password: string, metadata?: RefreshSessionMetadata) {
-    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string }>(token, {
+    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(token, {
       secret: getJwtSecret(),
     });
     if (!decoded || decoded.purpose !== 'invite') throw new Error('Invalid invite token');
     const user = await this.users.findOne({ where: { id: decoded.sub } });
     if (!user) throw new Error('User not found');
     if (user.passwordHash) throw new Error('Invite already accepted');
+    if ((decoded.version ?? 0) !== (user.inviteTokenVersion ?? 0)) {
+      throw new Error('Invite token wurde ersetzt oder ist nicht mehr gültig');
+    }
     await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
     return this.login(user, metadata);
   }

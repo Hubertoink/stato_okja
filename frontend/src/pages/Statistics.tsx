@@ -392,7 +392,7 @@ function useStatsOverview(
     },
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 30,
-    refetchOnMount: 'always',
+    refetchOnMount: true,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchInterval:
       typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
@@ -490,7 +490,7 @@ export default function Statistics() {
     [executionStatusFilterParam, from, to, projectId, selectedClosureState, selectedType, selectedWeekdays],
   );
   const overviewQ = useStatsOverview(statsParams, scopeKey, {
-    refetchOnWindowFocus: 'always',
+    refetchOnWindowFocus: true,
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
   const overview = overviewQ.data;
@@ -504,7 +504,7 @@ export default function Statistics() {
   const topProjects = overview?.topProjects ?? [];
   const activityYears = overview?.availableYears ?? [];
   const activitiesPageQ = useActivitiesPaged(activitiesParams, activitiesPage, ACTIVITIES_PER_PAGE, {
-    refetchOnWindowFocus: 'always',
+    refetchOnWindowFocus: true,
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
   const pagedActivities = activitiesPageQ.data?.data ?? [];
@@ -2464,7 +2464,7 @@ export default function Statistics() {
           to={to || undefined}
           showManager={!pdfMode}
           refreshOptions={{
-            refetchOnWindowFocus: 'always',
+            refetchOnWindowFocus: true,
             refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
           }}
         />

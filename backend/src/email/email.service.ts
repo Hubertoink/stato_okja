@@ -58,7 +58,9 @@ export class EmailService {
       throw new Error(`${kind} email cannot be sent because SMTP is not configured.`);
     }
 
-    this.logger.log(`${kind} for ${recipient}: ${link}`);
+    // Links contain bearer credentials and must not be written to application logs.
+    void link;
+    this.logger.warn(`${kind} email for ${recipient} was not sent because SMTP is not configured.`);
     return { queued: false, logged: true };
   }
 

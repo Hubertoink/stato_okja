@@ -155,8 +155,9 @@ export default function Layout() {
   const keyboardOpen = useKeyboardOpen();
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
-  const hideBottomNav = isActivityFull || keyboardOpen;
-  const hideFooter = isActivityFull || keyboardOpen;
+  const isLogbookDetail = location.pathname.startsWith('/logbook/');
+  const hideBottomNav = isActivityFull || isLogbookDetail || keyboardOpen;
+  const hideFooter = isActivityFull || isLogbookDetail || keyboardOpen;
   const showDemoGuideRestore = demoModeEnabled && demoGuidesMutedForPageLoad && hasDemoMobileGuideForPath(location.pathname);
   const restoreDemoGuides = () => {
     setDemoMobileGuideMuted(false);

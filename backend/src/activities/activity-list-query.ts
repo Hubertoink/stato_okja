@@ -175,8 +175,7 @@ export class ActivityListQuery {
     if (filters?.executionStatuses?.length) {
       const executionStatuses = this.normalizeExecutionStatuses(filters.executionStatuses);
       if (executionStatuses?.length) {
-        qb.andWhere('COALESCE(a.executionStatus, :defaultExecutionStatus) IN (:...executionStatuses)', {
-          defaultExecutionStatus: ActivityExecutionStatus.COMPLETED,
+        qb.andWhere('a.executionStatus IN (:...executionStatuses)', {
           executionStatuses,
         });
       }

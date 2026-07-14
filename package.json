@@ -25,7 +25,16 @@
     "test:frontend": "cd frontend && npm run test"
   },
   "devDependencies": {
+    "@nestjs/common": "11.1.28",
+    "@nestjs/core": "11.1.28",
     "concurrently": "^8.2.2"
+  },
+  "overrides": {
+    "@nestjs/common": "11.1.28",
+    "@nestjs/core": "11.1.28",
+    "form-data": "4.0.6",
+    "lodash": "4.18.1",
+    "qs": "6.15.3"
   },
   "engines": {
     "node": ">=20.0.0",

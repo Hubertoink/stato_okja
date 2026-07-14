@@ -410,7 +410,7 @@ export class AuthService {
     await this.users.save(user);
     return this.jwt.signAsync(
       { sub: user.id, purpose: 'reset', version: user.passwordResetTokenVersion },
-      { expiresIn: process.env.RESET_TOKEN_EXPIRATION || '1h' },
+      { expiresIn: Math.floor(parseDurationToMs(process.env.RESET_TOKEN_EXPIRATION, 60 * 60 * 1000) / 1000) },
     );
   }
 

@@ -149,8 +149,9 @@ export class StatsService {
       qb.andWhere('activity.type = :type', { type });
     }
 
-    qb.andWhere('COALESCE(activity.executionStatus, :defaultExecutionStatus) IN (:...executionStatuses)', {
-      defaultExecutionStatus: ActivityExecutionStatus.COMPLETED,
+    // executionStatus is NOT NULL since the status migration. Keeping the column
+    // unwrapped lets PostgreSQL use the composite statistics index.
+    qb.andWhere('activity.executionStatus IN (:...executionStatuses)', {
       executionStatuses: this.normalizeExecutionStatuses(executionStatuses),
     });
 

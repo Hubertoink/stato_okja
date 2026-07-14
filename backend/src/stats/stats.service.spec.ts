@@ -165,9 +165,8 @@ describe('StatsService execution status filtering', () => {
     await service.getSummary();
 
     expect(qb.andWhere).toHaveBeenCalledWith(
-      'COALESCE(activity.executionStatus, :defaultExecutionStatus) IN (:...executionStatuses)',
+      'activity.executionStatus IN (:...executionStatuses)',
       {
-        defaultExecutionStatus: ActivityExecutionStatus.COMPLETED,
         executionStatuses: [ActivityExecutionStatus.COMPLETED],
       },
     );

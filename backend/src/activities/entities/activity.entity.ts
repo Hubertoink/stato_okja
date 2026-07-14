@@ -1,5 +1,6 @@
 import {
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
@@ -19,6 +20,9 @@ import type { Attachment } from './attachment.entity';
 import { Project } from '../../projects/entities/project.entity';
 
 @Entity('activities')
+@Index('IDX_activities_orgId_date_startTime', ['orgId', 'date', 'startTime'])
+@Index('IDX_activities_orgId_executionStatus_date', ['orgId', 'executionStatus', 'date'])
+@Index('IDX_activities_orgId_projectId_date', ['orgId', 'projectId', 'date'])
 export class Activity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

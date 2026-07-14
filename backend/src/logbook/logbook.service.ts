@@ -127,7 +127,16 @@ export class LogbookService {
       .leftJoinAndSelect('entry.activity', 'activity')
       .leftJoinAndSelect('entry.project', 'project')
       .loadRelationCountAndMap('entry.commentCount', 'entry.comments')
-      .orderBy('entry.occurredAt', 'DESC')
+      .orderBy(
+        `CASE entry.status
+          WHEN '${LogbookEntryStatus.OPEN}' THEN 0
+          WHEN '${LogbookEntryStatus.FOLLOW_UP}' THEN 1
+          WHEN '${LogbookEntryStatus.DISCUSSED}' THEN 2
+          ELSE 3
+        END`,
+        'ASC',
+      )
+      .addOrderBy('entry.occurredAt', 'DESC')
       .addOrderBy('entry.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);

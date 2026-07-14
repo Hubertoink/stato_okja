@@ -1449,7 +1449,11 @@ export function listDemoLogbookEntries(params: DemoQueryParams) {
       if (params.to && entry.occurredAt.slice(0, 10) > String(params.to)) return false;
       return !search || `${entry.title} ${entry.body}`.toLowerCase().includes(search);
     })
-    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+    .sort((left, right) => {
+      const priority: Record<string, number> = { open: 0, follow_up: 1, discussed: 2, archived: 3 };
+      const statusDiff = (priority[left.status] ?? 3) - (priority[right.status] ?? 3);
+      return statusDiff || right.occurredAt.localeCompare(left.occurredAt);
+    });
   const page = Math.max(Number(params.page) || 1, 1);
   const pageSize = Math.min(Math.max(Number(params.limit) || 30, 1), 100);
   return clone({ data: filtered.slice((page - 1) * pageSize, page * pageSize).map(hydrateLogbookEntry), total: filtered.length, page, pageSize });

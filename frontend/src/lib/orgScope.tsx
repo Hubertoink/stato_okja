@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuth } from './auth';
 import { getStoredAuthToken } from './authStorage';
+import type { OrgDto } from './orgs';
 
 type OrgScopeValue = string | null | undefined;
 interface OrgScopeState {
@@ -16,7 +17,19 @@ interface OrgScopeState {
 const OrgScopeCtx = createContext<OrgScopeState | undefined>(undefined);
 
 const LEGACY_KEY = 'x_org_scope';
+const ORG_NAME_CACHE_KEY = 'org_name_cache';
 const storageKeyFor = (userId?: string | null) => userId ? `x_org_scope:${userId}` : LEGACY_KEY;
+
+function removeCachedOrgName(orgId: string) {
+  try {
+    const cached = JSON.parse(localStorage.getItem(ORG_NAME_CACHE_KEY) || '{}') as Record<string, string>;
+    if (!(orgId in cached)) return;
+    delete cached[orgId];
+    localStorage.setItem(ORG_NAME_CACHE_KEY, JSON.stringify(cached));
+  } catch {
+    /* ignore unavailable or malformed storage */
+  }
+}
 
 function applyOrgScopeHeader(nextScope: OrgScopeValue) {
   if (typeof nextScope === 'undefined') {
@@ -135,13 +148,49 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
       previousUser.orgId !== (user.orgId ?? null)
     );
 
-    // org_admin/user: allow persisted selection within subtree; sanitize null/undefined to own orgId
-    const next = roleOrOrgChangedForSameUser
-      ? (user.orgId ?? null)
-      : (typeof parsed === 'string' ? parsed : (user.orgId ?? null));
-    setScopeState(next);
-    try { localStorage.setItem(key, next === null ? 'null' : String(next)); } catch { /* ignore */ }
+    // org_admin/user: never trust a scope restored from local storage. Use the
+    // direct organization until the persisted child scope has been validated.
+    const ownScope = user.orgId ?? null;
+    const requestedScope = !roleOrOrgChangedForSameUser && typeof parsed === 'string'
+      ? parsed
+      : null;
+    setScopeState(ownScope);
     previousUserRef.current = { id: user.id, orgId: user.orgId ?? null, role: user.role };
+
+    if (!requestedScope || requestedScope === ownScope) {
+      try { localStorage.setItem(key, ownScope === null ? 'null' : ownScope); } catch { /* ignore */ }
+      return;
+    }
+
+    // Users without an organization cannot have a child scope. For organization
+    // users, verify the stored value against the subtree before restoring it.
+    if (ownScope === null) {
+      removeCachedOrgName(requestedScope);
+      try { localStorage.setItem(key, 'null'); } catch { /* ignore */ }
+      return;
+    }
+
+    let cancelled = false;
+    void api.get<OrgDto[]>('/orgs/subtree')
+      .then((res) => {
+        if (cancelled) return;
+        if (res.data.some((org) => org.id === requestedScope)) {
+          setScopeState(requestedScope);
+          try { localStorage.setItem(key, requestedScope); } catch { /* ignore */ }
+          return;
+        }
+
+        removeCachedOrgName(requestedScope);
+        try { localStorage.setItem(key, ownScope); } catch { /* ignore */ }
+      })
+      .catch(() => {
+        // Keep the direct organization as the safe fallback. Do not overwrite a
+        // potentially valid child selection when its validation request failed.
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, user?.role, user?.orgId, loading]);
 
   // Apply the org scope header before regular query effects run.

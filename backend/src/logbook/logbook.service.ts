@@ -127,15 +127,19 @@ export class LogbookService {
       .leftJoinAndSelect('entry.activity', 'activity')
       .leftJoinAndSelect('entry.project', 'project')
       .loadRelationCountAndMap('entry.commentCount', 'entry.comments')
-      .orderBy(
+      // The list uses joins and pagination, so TypeORM wraps it in SELECT DISTINCT.
+      // Select the priority explicitly; ordering by a raw expression alone breaks the
+      // outer DISTINCT query on PostgreSQL (and results in a 500 response).
+      .addSelect(
         `CASE entry.status
           WHEN '${LogbookEntryStatus.OPEN}' THEN 0
           WHEN '${LogbookEntryStatus.FOLLOW_UP}' THEN 1
           WHEN '${LogbookEntryStatus.DISCUSSED}' THEN 2
           ELSE 3
         END`,
-        'ASC',
+        'logbook_status_priority',
       )
+      .orderBy('logbook_status_priority', 'ASC')
       .addOrderBy('entry.occurredAt', 'DESC')
       .addOrderBy('entry.createdAt', 'DESC')
       .skip((page - 1) * limit)

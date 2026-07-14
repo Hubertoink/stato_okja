@@ -5,9 +5,10 @@ import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId 
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
-import { Camera, ChevronDown, ChevronUp, Eye, EyeOff, ShieldCheck, Trash2 } from 'lucide-react';
+import { Camera, ChevronDown, ChevronUp, Eye, EyeOff, GripVertical, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
+import { getMobileNavLayout, MOBILE_NAV_ITEM_IDS, resetMobileNavLayout, saveMobileNavLayout, type MobileNavItemId } from '@/lib/mobileNavigation';
 
 export default function MyProfile() {
   const { user, refresh } = useAuth();
@@ -24,11 +25,73 @@ export default function MyProfile() {
         {!mustChangePassword && (
           <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} />
         )}
+        {!mustChangePassword && <MobileNavigationSettings userId={user?.id} />}
         <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={refresh} />
         {!mustChangePassword && <SessionsSection />}
       </div>
     </div>
   );
+}
+
+const mobileNavLabels: Record<MobileNavItemId, string> = {
+  dashboard: 'Home', activities: 'Aktivitäten', logbook: 'Logbuch', calendar: 'Kalender',
+  projects: 'Projekte', statistics: 'Statistiken', settings: 'Einstellungen',
+};
+
+function MobileNavigationSettings({ userId }: { userId?: string }) {
+  const [bottom, setBottom] = useState<MobileNavItemId[]>(() => getMobileNavLayout(userId).bottom);
+  const [dragged, setDragged] = useState<MobileNavItemId | null>(null);
+  useEffect(() => setBottom(getMobileNavLayout(userId).bottom), [userId]);
+  const more = MOBILE_NAV_ITEM_IDS.filter((id) => !bottom.includes(id));
+  const persist = (next: MobileNavItemId[]) => {
+    setBottom(next);
+    saveMobileNavLayout({ bottom: next }, userId);
+  };
+  const swapWithBottom = (id: MobileNavItemId, target: MobileNavItemId) => {
+    if (id === target) return;
+    const sourceIsBottom = bottom.includes(id);
+    const targetIsBottom = bottom.includes(target);
+    if (sourceIsBottom && targetIsBottom) {
+      const next = [...bottom];
+      const from = next.indexOf(id);
+      const to = next.indexOf(target);
+      next.splice(from, 1);
+      next.splice(to, 0, id);
+      persist(next);
+      return;
+    }
+    if (sourceIsBottom) persist(bottom.map((item) => item === id ? target : item));
+    else if (targetIsBottom) persist(bottom.map((item) => item === target ? id : item));
+  };
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-viridian">Mobile Navigation</h3>
+          <p className="mt-1 text-sm text-gray-600">Lege fest, welche vier Punkte unten sichtbar sind. Alles andere erscheint unter „Mehr“.</p>
+        </div>
+        <button type="button" onClick={() => { resetMobileNavLayout(userId); setBottom(getMobileNavLayout(userId).bottom); }} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100">
+          <RotateCcw className="h-4 w-4" />Zurücksetzen
+        </button>
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <MobileNavigationList title="Unten angezeigt" ids={bottom} dragged={dragged} setDragged={setDragged} onDrop={swapWithBottom} onMove={(id) => {
+          const replacement = more[0];
+          if (replacement) persist(bottom.map((item) => item === id ? replacement : item));
+        }} actionLabel="Zu Mehr" emphasis />
+        <MobileNavigationList title="Unter „Mehr“" ids={more} dragged={dragged} setDragged={setDragged} onDrop={swapWithBottom} onMove={(id) => persist([...bottom.slice(0, 3), id])} actionLabel="Nach unten" />
+      </div>
+      <p className="mt-3 text-xs text-gray-500">Tipp: Ziehe einen Punkt auf einen Platz in der unteren Leiste, um beide auszutauschen. Die Buttons funktionieren auch bequem auf Touch-Geräten.</p>
+    </div>
+  );
+}
+
+function MobileNavigationList({ title, ids, dragged, setDragged, onDrop, onMove, actionLabel, emphasis = false }: {
+  title: string; ids: MobileNavItemId[]; dragged: MobileNavItemId | null; setDragged: (id: MobileNavItemId | null) => void;
+  onDrop: (source: MobileNavItemId, target: MobileNavItemId) => void; onMove: (id: MobileNavItemId) => void;
+  actionLabel: string; emphasis?: boolean;
+}) {
+  return <section><h4 className="mb-2 text-sm font-semibold text-gray-700">{title}</h4><div className={`space-y-2 rounded-xl border p-2 ${emphasis ? 'border-viridian/30 bg-viridian/5' : 'border-gray-200 bg-gray-50'}`}>{ids.map((id) => <div key={id} draggable onDragStart={() => setDragged(id)} onDragEnd={() => setDragged(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (dragged) onDrop(dragged, id); setDragged(null); }} className="flex min-h-11 items-center gap-2 rounded-lg bg-white px-3 text-sm font-medium text-gray-800 shadow-sm"><GripVertical className="h-4 w-4 text-gray-400" /><span className="flex-1">{mobileNavLabels[id]}</span><button type="button" onClick={() => onMove(id)} className={`text-xs font-semibold ${emphasis ? 'text-gray-500 hover:text-viridian' : 'text-viridian'}`}>{actionLabel}</button></div>)}</div></section>;
 }
 
 type AuthSession = {

@@ -31,6 +31,7 @@ import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
 import DemoMobilePageGuide, { hasDemoMobileGuideForPath } from '@/demo/DemoMobilePageGuide';
 import { demoModeEnabled } from '@/demo/config';
 import { setDemoMobileGuideMuted, useDemoMobileGuideMuted } from '@/demo/mobileGuideState';
+import { getMobileNavLayout, MOBILE_NAV_ITEM_IDS, type MobileNavItemId } from '@/lib/mobileNavigation';
 
 type OrgScopeTreeNode = { org: OrgDto; children: OrgScopeTreeNode[] };
 
@@ -111,6 +112,7 @@ export default function Layout() {
   };
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [mobileNavLayout, setMobileNavLayout] = useState(() => getMobileNavLayout(user?.id));
   const closeTimer = useRef<number | null>(null);
   const [hoverable, setHoverable] = useState(false);
   useEffect(() => {
@@ -137,6 +139,27 @@ export default function Layout() {
   const isActive = (path: string) => {
     return location.pathname.startsWith(path);
   };
+
+  const mobileNavItems: Record<MobileNavItemId, { to: string; label: string; icon: typeof Home }> = {
+    dashboard: { to: '/dashboard', label: 'Home', icon: Home },
+    activities: { to: '/activities', label: 'Aktiv.', icon: Activity },
+    logbook: { to: '/logbook', label: 'Logbuch', icon: BookOpen },
+    calendar: { to: '/calendar', label: 'Kalender', icon: CalendarIcon },
+    projects: { to: '/projects', label: 'Projekte', icon: Boxes },
+    statistics: { to: '/statistics', label: 'Statistik', icon: BarChart3 },
+    settings: { to: '/settings', label: 'Einstell.', icon: Settings },
+  };
+  const mobileBottomItems = mobileNavLayout.bottom.map((id) => mobileNavItems[id]);
+  const mobileMoreItems = MOBILE_NAV_ITEM_IDS
+    .filter((id) => !mobileNavLayout.bottom.includes(id))
+    .map((id) => mobileNavItems[id]);
+
+  useEffect(() => {
+    const syncMobileLayout = () => setMobileNavLayout(getMobileNavLayout(user?.id));
+    syncMobileLayout();
+    window.addEventListener('stato:mobile-nav-layout', syncMobileLayout);
+    return () => window.removeEventListener('stato:mobile-nav-layout', syncMobileLayout);
+  }, [user?.id]);
 
   // Org scope switcher
   const [scopeModalOpen, setScopeModalOpen] = useState(false);
@@ -648,47 +671,26 @@ export default function Layout() {
         className={`mobile-bottom-nav fixed inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-lg md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
       >
         <ul className="grid grid-cols-5 text-xs pb-[max(env(safe-area-inset-bottom,0px),0.25rem)]">
-          <li>
-            <Link
-              to="/dashboard"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/dashboard') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <Home className="w-5 h-5" />
-              <span>Home</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/activities"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/activities') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <Activity className="w-5 h-5" />
-              <span>Aktiv.</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/logbook"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/logbook') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <BookOpen className="w-5 h-5" />
-              <span>Logbuch</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/calendar"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/calendar') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <CalendarIcon className="w-5 h-5" />
-              <span>Kalender</span>
-            </Link>
-          </li>
+          {mobileBottomItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  onClick={() => setMobileMoreOpen(false)}
+                  className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive(item.to) ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </Link>
+              </li>
+            );
+          })}
           <li>
             <button
               type="button"
               onClick={() => setMobileMoreOpen((value) => !value)}
-              className={`flex w-full flex-col items-center py-2.5 transition-all duration-200 ${(isActive('/projects') || isActive('/statistics') || isActive('/settings')) ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+              className={`flex w-full flex-col items-center py-2.5 transition-all duration-200 ${mobileMoreItems.some((item) => isActive(item.to)) ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
               <Menu className="w-5 h-5" />
               <span>Mehr</span>
@@ -697,9 +699,14 @@ export default function Layout() {
         </ul>
         {mobileMoreOpen && (
           <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3.9rem)] right-2 w-52 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
-            <Link to="/projects" onClick={() => setMobileMoreOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"><Boxes className="h-5 w-5 text-viridian" />Projekte</Link>
-            <Link to="/statistics" onClick={() => setMobileMoreOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"><BarChart3 className="h-5 w-5 text-viridian" />Statistiken</Link>
-            <Link to="/settings" onClick={() => setMobileMoreOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"><Settings className="h-5 w-5 text-viridian" />Einstellungen</Link>
+            {mobileMoreItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link key={item.to} to={item.to} onClick={() => setMobileMoreOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <Icon className="h-5 w-5 text-viridian" />{item.label}
+                </Link>
+              );
+            })}
           </div>
         )}
       </nav>}

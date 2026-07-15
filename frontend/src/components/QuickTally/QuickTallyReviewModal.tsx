@@ -73,7 +73,7 @@ export default function QuickTallyReviewModal({
   useEffect(() => {
     if (!project || isOpenDoor) return;
     const set = new Set<string>();
-    (project.categories || []).forEach((c: any) => set.add(c.id));
+    (project.categories || []).forEach((category) => set.add(category.id));
     if (project.categoryId) set.add(project.categoryId);
     if (set.size > 0) setSelectedCategoryIds(Array.from(set));
   }, [project, isOpenDoor]);

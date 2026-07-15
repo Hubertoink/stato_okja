@@ -44,6 +44,12 @@ function formatDate(value?: string | null) {
   return new Date(value).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+  if (Array.isArray(message)) return message.join(', ');
+  return typeof message === 'string' ? message : fallback;
+}
+
 function UserAvatar({ name, avatarUrl, className = 'h-8 w-8' }: { name: string; avatarUrl?: string | null; className?: string }) {
   return <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-viridian/10 font-semibold text-viridian ${className}`}>{avatarUrl ? <ProtectedImage src={avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(name)}</span>;
 }
@@ -122,8 +128,8 @@ export default function LogbookEntryPage() {
         showToast('Änderungen gespeichert.', { type: 'success' });
         navigate(`/logbook/${id}`, { replace: true });
       }
-    } catch (error: any) {
-      showToast(error?.response?.data?.message || 'Der Eintrag konnte nicht gespeichert werden.', { type: 'error' });
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error, 'Der Eintrag konnte nicht gespeichert werden.'), { type: 'error' });
     }
   };
 
@@ -133,8 +139,8 @@ export default function LogbookEntryPage() {
     try {
       await createComment.mutateAsync({ entryId: id, body: comment });
       setComment('');
-    } catch (error: any) {
-      showToast(error?.response?.data?.message || 'Kommentar konnte nicht gespeichert werden.', { type: 'error' });
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error, 'Kommentar konnte nicht gespeichert werden.'), { type: 'error' });
     }
   };
 

@@ -57,8 +57,7 @@ export default function OrgUserManagement() {
       const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Fehler beim Laden der Benutzer';
       setError(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg));
     } finally {
-      if (reloadRequestRef.current !== requestId) return;
-      setLoading(false);
+      if (reloadRequestRef.current === requestId) setLoading(false);
     }
   }
 

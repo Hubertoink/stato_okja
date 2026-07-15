@@ -24,7 +24,7 @@ import { api } from '@/lib/api';
 import { canAccessDevTools } from '@/lib/devToolsConfig';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
-import { ImprintModal } from '@/components/LegalModals';
+import { ImprintModal, PrivacyNoticeModal } from '@/components/LegalModals';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
@@ -164,6 +164,7 @@ export default function Layout() {
   // Org scope switcher
   const [scopeModalOpen, setScopeModalOpen] = useState(false);
   const [imprintModalOpen, setImprintModalOpen] = useState(false);
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [orgList, setOrgList] = useState<OrgDto[]>([]);
   const [pendingScope, setPendingScope] = useState<string | null | undefined>(undefined);
   const [activeOrgName, setActiveOrgName] = useState<string | null>(null);
@@ -740,11 +741,20 @@ export default function Layout() {
               >
                 Impressum
               </button>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => setPrivacyModalOpen(true)}
+                className="text-sm font-medium underline underline-offset-2 hover:text-viridian"
+              >
+                Datenschutz & Datenverwendung
+              </button>
             </div>
           </div>
         </footer>
       )}
       <ImprintModal open={imprintModalOpen} onClose={() => setImprintModalOpen(false)} />
+      <PrivacyNoticeModal open={privacyModalOpen} onClose={() => setPrivacyModalOpen(false)} />
       {/* Quick Create Organisation Modal (org_admin) */}
       <Modal
         open={createModalOpen}

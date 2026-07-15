@@ -34,6 +34,7 @@ import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 import { usePublicConfig } from '@/lib/publicConfig';
 import CustomKpiCards from '@/components/CustomKpiCards';
 import { useLogbookEntries } from '@/lib/logbook';
+import ProtectedImage from '@/components/ProtectedImage';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
 
@@ -627,7 +628,7 @@ export default function Dashboard() {
               <button key={entry.id} type="button" onClick={() => navigate(`/logbook/${entry.id}`)} className="rounded-xl border border-gray-100 bg-white p-4 text-left transition hover:border-viridian/30 hover:bg-viridian/5">
                 <div className="mb-1 flex items-center justify-between gap-2"><span className="truncate font-semibold text-gray-800">{entry.title}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${entry.status === 'discussed' ? 'bg-green-100 text-green-700' : entry.status === 'follow_up' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-700'}`}>{entry.status === 'discussed' ? 'Besprochen' : entry.status === 'follow_up' ? 'Nachverfolgung' : 'Offen'}</span></div>
                 <p className="line-clamp-2 text-sm text-gray-600">{entry.body}</p>
-                <div className="mt-3 flex items-center justify-between text-xs text-gray-500"><span>{entry.createdByName}</span><span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{entry.commentCount || 0}</span></div>
+                <div className="mt-3 flex items-center justify-between text-xs text-gray-500"><span className="flex min-w-0 items-center gap-1.5">{entry.createdByUser?.avatarUrl && <span className="flex h-5 w-5 shrink-0 overflow-hidden rounded-full bg-viridian/10"><ProtectedImage src={entry.createdByUser.avatarUrl} alt="" className="h-full w-full object-cover" /></span>}<span className="truncate">{entry.createdByName}</span></span><span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{entry.commentCount || 0}</span></div>
               </button>
             ))}
           </div>

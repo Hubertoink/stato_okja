@@ -19,8 +19,6 @@ export default function DemoSplashScreen({
   useBodyScrollLock(visible);
 
   useEffect(() => {
-    let timeoutId: number | undefined;
-
     if (open) {
       visibleSinceRef.current = Date.now();
       setVisible(true);
@@ -28,7 +26,7 @@ export default function DemoSplashScreen({
     }
 
     const elapsed = Date.now() - visibleSinceRef.current;
-    timeoutId = window.setTimeout(
+    const timeoutId = window.setTimeout(
       () => setVisible(false),
       Math.max(0, MIN_VISIBLE_MS - elapsed),
     );

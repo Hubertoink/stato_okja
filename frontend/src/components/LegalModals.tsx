@@ -119,3 +119,73 @@ export function CookieNoticeModal({
     </Modal>
   );
 }
+
+export function PrivacyNoticeModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Modal open={open} onClose={onClose} title="Datenschutz & Datenverwendung" maxWidth="lg">
+      <div className="space-y-5 text-sm text-gray-700">
+        <section className="space-y-2">
+          <h3 className="text-base font-semibold text-gray-900">Verantwortliche Stelle</h3>
+          <p>
+            Verantwortlich für die Verarbeitung ist die Organisation, die diese StatO-Instanz betreibt.
+            Die vollständigen Kontaktdaten und eine Ansprechperson finden Sie im Impressum oder erhalten
+            Sie bei Ihrer Organisationsleitung bzw. Administration.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="text-base font-semibold text-gray-900">Wofür verwenden wir Daten?</h3>
+          <p>
+            StatO verarbeitet Daten zur Anmeldung und Rechteverwaltung, zur Dokumentation der OKJA-Arbeit,
+            für Auswertungen und Berichte sowie zur Gewährleistung von Betrieb, Sicherheit und Fehleranalyse.
+            Die Daten werden nicht für Werbung, Profiling oder Tracking verwendet.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="text-base font-semibold text-gray-900">Welche Daten können betroffen sein?</h3>
+          <ul className="list-disc space-y-1 pl-5 text-gray-600">
+            <li>Kontodaten wie Name, E-Mail-Adresse, Rolle und optionales Profilbild</li>
+            <li>Fachliche Eingaben wie Aktivitäten, Projekte, Logbuch- und Statistikdaten</li>
+            <li>Technische Sicherheits- und Protokolldaten, etwa Anmelde- und Änderungsereignisse</li>
+          </ul>
+          <p className="text-gray-600">
+            Bitte tragen Sie keine besonderen Kategorien personenbezogener Daten oder andere unnötig sensible
+            Angaben ein, sofern dies nicht ausdrücklich erforderlich und organisatorisch freigegeben ist.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="text-base font-semibold text-gray-900">Zugriff, Weitergabe und Speicherdauer</h3>
+          <p>
+            Zugriff erhalten nur berechtigte Personen entsprechend ihrer Rolle und Organisationszuordnung.
+            Eine Weitergabe erfolgt nur, soweit sie für Betrieb, Hosting oder gesetzliche Aufgaben erforderlich
+            ist. Inhalte werden nach den Vorgaben der verantwortlichen Organisation und gesetzlichen
+            Aufbewahrungsfristen gespeichert bzw. gelöscht.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="text-base font-semibold text-gray-900">Ihre Rechte</h3>
+          <p>
+            Sie können sich an die verantwortliche Stelle wenden, um Auskunft, Berichtigung, Löschung,
+            Einschränkung der Verarbeitung, Datenübertragbarkeit oder – soweit anwendbar – Widerspruch zu
+            verlangen. Außerdem besteht ein Beschwerderecht bei der zuständigen Datenschutzaufsichtsbehörde.
+          </p>
+        </section>
+
+        <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          Dieser Hinweis beschreibt die Standardfunktionen von StatO. Die betreibende Organisation muss ihn
+          vor dem Produktiveinsatz um ihre konkrete Rechtsgrundlage, Empfänger, Fristen und Kontaktdaten
+          ergänzen.
+        </p>
+      </div>
+    </Modal>
+  );
+}

@@ -5,6 +5,8 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { OrgsService } from '../orgs/orgs.service';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 type ManageableUserRole = 'superadmin' | 'org_admin' | 'user';
 
@@ -128,7 +130,7 @@ export class UsersController {
 
   @Roles('org_admin','superadmin')
   @Post()
-  async create(@Body() body: { email: string; name: string; role?: 'superadmin'|'org_admin'|'user'; orgId?: string|null }, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  async create(@Body() body: CreateUserDto, @Req() req: { user: { role: string; orgId?: string|null } }) {
     const requestedRole = this.parseRole(body?.role);
     // Require an organization for all users
     const requestedOrgId = typeof body.orgId === 'undefined' ? (req.user.orgId || null) : (body.orgId ?? null);
@@ -149,7 +151,7 @@ export class UsersController {
 
   @Roles('org_admin','superadmin')
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() patch: { role?: 'org_admin'|'user'; orgId?: string | null }, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  async update(@Param('id') id: string, @Body() patch: UpdateUserDto, @Req() req: { user: { role: string; orgId?: string|null } }) {
     const target = await this.service.findById(id);
     if (!target) throw new BadRequestException('User not found');
     const requestedRole = typeof patch.role === 'undefined' ? undefined : this.parseRole(patch.role, target.role as ManageableUserRole);

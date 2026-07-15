@@ -165,9 +165,8 @@ describe('StatsService execution status filtering', () => {
     await service.getSummary();
 
     expect(qb.andWhere).toHaveBeenCalledWith(
-      'COALESCE(activity.executionStatus, :defaultExecutionStatus) IN (:...executionStatuses)',
+      'activity.executionStatus IN (:...executionStatuses)',
       {
-        defaultExecutionStatus: ActivityExecutionStatus.COMPLETED,
         executionStatuses: [ActivityExecutionStatus.COMPLETED],
       },
     );
@@ -219,5 +218,46 @@ describe('StatsService execution status filtering', () => {
     await expect(
       service.getSummary('2026-04-01', '2026-04-30', undefined, ['org-1'], undefined, undefined, undefined, undefined, 'closed'),
     ).resolves.toMatchObject({ closureDaysCount: 2 });
+  });
+});
+
+describe('StatsService overview cache', () => {
+  it('deduplicates equivalent concurrent overview requests and derives gender from the summary', async () => {
+    const service = new StatsService(
+      { options: { type: 'postgres' } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const summary = {
+      totalActivities: 2,
+      totalParticipants: 10,
+      totalMale: 4,
+      totalFemale: 5,
+      totalDiverse: 1,
+      totalDurationMinutes: 120,
+      totalHours: 2,
+      averageParticipants: 5,
+      closureDaysCount: 0,
+    };
+    const getSummary = jest.spyOn(service, 'getSummary').mockResolvedValue(summary);
+    jest.spyOn(service, 'getByType').mockResolvedValue([]);
+    const getGender = jest.spyOn(service, 'getGender');
+    jest.spyOn(service, 'getParticipantsTimeseries').mockResolvedValue([]);
+    jest.spyOn(service, 'getByCategory').mockResolvedValue([]);
+    jest.spyOn(service, 'getByCohort').mockResolvedValue([]);
+    jest.spyOn(service, 'getTopTags').mockResolvedValue([]);
+    jest.spyOn(service, 'getTopProjects').mockResolvedValue([]);
+    jest.spyOn(service, 'getAvailableYears').mockResolvedValue([]);
+
+    const [first, second] = await Promise.all([
+      service.getOverview({ orgIds: ['org-b', 'org-a'] }),
+      service.getOverview({ orgIds: ['org-a', 'org-b'] }),
+    ]);
+
+    expect(getSummary).toHaveBeenCalledTimes(1);
+    expect(getGender).not.toHaveBeenCalled();
+    expect(first.gender).toEqual({ male: 4, female: 5, diverse: 1 });
+    expect(second).toEqual(first);
   });
 });

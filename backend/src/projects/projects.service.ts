@@ -118,9 +118,12 @@ export class ProjectsService {
     );
   }
 
-  private async findByClientRequestId(clientRequestId: string): Promise<Project | null> {
+  private async findByClientRequestId(clientRequestId: string, orgId: string | null): Promise<Project | null> {
     const existing = await this.projectRepository.findOne({
-      where: { clientRequestId },
+      where: {
+        clientRequestId,
+        orgId: orgId === null ? IsNull() : Equal(orgId),
+      },
       relations: ['documents'],
     });
     return existing ? this.hydrateProject(existing) : null;
@@ -137,7 +140,7 @@ export class ProjectsService {
       };
     } catch (error) {
       if (clientRequestId && this.isDuplicateClientRequestError(error, clientRequestId)) {
-        const existing = await this.findByClientRequestId(clientRequestId);
+        const existing = await this.findByClientRequestId(clientRequestId, project.orgId ?? null);
         if (existing) return { project: existing, reusedExisting: true };
       }
 
@@ -172,7 +175,7 @@ export class ProjectsService {
     const clientRequestId = this.normalizeClientRequestId(rest.clientRequestId);
 
     if (clientRequestId) {
-      const existing = await this.findByClientRequestId(clientRequestId);
+      const existing = await this.findByClientRequestId(clientRequestId, rest.orgId ?? null);
       if (existing) return existing;
     }
 

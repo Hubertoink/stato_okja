@@ -28,3 +28,24 @@ export enum AuditAction {
   EXPORT = 'export',
   PURGE = 'purge',
 }
+
+export enum LogbookEntryType {
+  OBSERVATION = 'observation',
+  INCIDENT = 'incident',
+  SUCCESS = 'success',
+  HANDOVER = 'handover',
+  DEBRIEF = 'debrief',
+  OTHER = 'other',
+}
+
+export enum LogbookEntryStatus {
+  OPEN = 'open',
+  FOLLOW_UP = 'follow_up',
+  DISCUSSED = 'discussed',
+  ARCHIVED = 'archived',
+}
+
+export enum LogbookVisibility {
+  TEAM = 'team',
+  ADMINS = 'admins',
+}

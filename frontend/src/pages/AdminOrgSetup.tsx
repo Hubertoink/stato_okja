@@ -6,7 +6,6 @@ import {
   createOrgApi,
   inviteUserApi,
   listOrgs,
-  acceptInviteApi,
   type OrgDto,
   type OrgMoveImpactItem,
   type OrgMovePreview,
@@ -21,10 +20,8 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import { canAccessOrgMove } from '@/lib/orgMoveConfig';
-import { Link as LinkIcon, Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users, Settings2, ArrowRightLeft, CheckCircle2, Ban, GitBranch, Save as SaveIcon, X as XIcon } from 'lucide-react';
+import { Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users, Settings2, ArrowRightLeft, CheckCircle2, Ban, GitBranch, Save as SaveIcon, X as XIcon, Mail } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
-import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
-import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import DemoHoverHint from '@/demo/DemoHoverHint';
 
 /** Instant hover tooltip with optional user list */
@@ -776,11 +773,6 @@ export default function AdminOrgSetup() {
   const [adminName, setAdminName] = useState('');
   const [creating, setCreating] = useState(false);
 
-  // Invite accept modal
-  const [inviteToken, setInviteToken] = useState<string | null>(null);
-  const [invitePassword, setInvitePassword] = useState('');
-  const [inviteBusy, setInviteBusy] = useState(false);
-
   async function reloadOrgs() {
     setLoading(true);
     try {
@@ -890,21 +882,29 @@ export default function AdminOrgSetup() {
     try {
       const effectiveParentId = isSuperadmin ? (parentId === 'root' ? null : parentId || null) : (user?.orgId ?? null);
       const org = await createOrgApi(orgName.trim(), effectiveParentId);
+      let invitationEmailQueued = true;
       
       if (withAdmin && adminEmail.trim()) {
-        const { token } = await inviteUserApi({ 
+        const invitation = await inviteUserApi({
           email: adminEmail.trim(), 
           name: adminName.trim() || adminEmail.split('@')[0], 
           role: 'org_admin', 
           orgId: org.id 
         });
-        setInviteToken(token);
+        invitationEmailQueued = invitation.emailQueued;
       }
       
       resetCreateForm();
       setCreateModalOpen(false);
       await reloadOrgs();
-      showToast(`Organisation „${org.name}" erfolgreich angelegt.`, { type: 'success' });
+      showToast(
+        withAdmin
+          ? invitationEmailQueued
+            ? `Organisation „${org.name}" angelegt und Einladung per E-Mail versendet.`
+            : `Organisation „${org.name}" angelegt, aber SMTP ist nicht konfiguriert; die Einladung wurde nicht zugestellt.`
+          : `Organisation „${org.name}" erfolgreich angelegt.`,
+        { type: 'success' },
+      );
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Fehler beim Anlegen';
       showToast(String(msg), { type: 'error' });
@@ -1103,67 +1103,6 @@ export default function AdminOrgSetup() {
               {withAdmin ? 'Organisation + Admin anlegen' : 'Organisation anlegen'}
             </button>
           </div>
-        </div>
-      </Modal>
-
-      {/* Einladung annehmen Modal */}
-      <Modal open={!!inviteToken} onClose={()=>{ setInviteToken(null); setInvitePassword(''); }} title="Admin-Passwort setzen" maxWidth="sm">
-        <p className="text-sm text-gray-700 mb-3">Setze ein Passwort für den eingeladenen Admin oder teile den Einladungslink.</p>
-        {inviteToken && (
-          <div className="mb-3 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
-            <span className="truncate flex-1 font-mono">{`${window.location.origin}/accept-invite?token=${inviteToken.substring(0, 20)}...`}</span>
-            <button 
-              className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 transition-colors text-xs whitespace-nowrap" 
-              onClick={async()=>{ 
-                try { 
-                  await navigator.clipboard.writeText(`${window.location.origin}/accept-invite?token=${inviteToken}`);
-                  showToast('Link kopiert!', { type: 'success' });
-                } catch { /* ignore */ } 
-              }}
-            >
-              Link kopieren
-            </button>
-          </div>
-        )}
-        <div className="border-t pt-3">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Oder Passwort jetzt setzen:</label>
-          <input 
-            type="password" 
-            value={invitePassword} 
-            onChange={(e)=>setInvitePassword(e.target.value)} 
-            className="border rounded-lg px-3 py-2 w-full" 
-            placeholder="Neues Passwort"
-          />
-          <PasswordRequirementsHint password={invitePassword} className="mt-2" />
-        </div>
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <button 
-            className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300" 
-            onClick={()=>{ setInviteToken(null); setInvitePassword(''); }}
-          >
-            Später
-          </button>
-          <button
-            className="px-3 py-1.5 rounded-lg bg-viridian text-white disabled:opacity-60"
-            disabled={!invitePassword || inviteBusy || Boolean(getPasswordValidationMessage(invitePassword))}
-            onClick={async()=>{
-              if (!inviteToken) return;
-              const validationMessage = getPasswordValidationMessage(invitePassword);
-              if (validationMessage) {
-                showToast(validationMessage, { type: 'error', durationMs: 3500 });
-                return;
-              }
-              try {
-                setInviteBusy(true);
-                await acceptInviteApi(inviteToken, invitePassword);
-                setInviteToken(null); setInvitePassword('');
-                showToast('Passwort gesetzt – Admin kann sich jetzt einloggen.', { type: 'success' });
-              } catch (e: unknown) {
-                const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Aktivierung fehlgeschlagen';
-                showToast(String(msg), { type: 'error', durationMs: 3500 });
-              } finally { setInviteBusy(false); }
-            }}
-          >Passwort speichern</button>
         </div>
       </Modal>
 
@@ -1554,17 +1493,18 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
             />
             <button
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-viridian text-white disabled:opacity-60 text-sm"
-              title="Einladungslink kopieren"
+              title="Einladung per E-Mail senden"
               disabled={inviteBusy || !/[^\s@]+@[^\s@]+\.[^\s@]+/.test(inviteEmail)}
               onClick={async()=>{
                 try {
                   setInviteBusy(true);
-                  const { token } = await inviteUserApi({ email: inviteEmail.trim(), role: 'user', orgId: org.id });
-                  const link = `${window.location.origin}/accept-invite?token=${token}`;
-                  await navigator.clipboard.writeText(link);
-                  setCopyMsg('Einladungslink kopiert');
+                  const invitation = await inviteUserApi({ email: inviteEmail.trim(), role: 'user', orgId: org.id });
+                  const message = invitation.emailQueued
+                    ? 'Einladung per E-Mail versendet'
+                    : 'SMTP ist nicht konfiguriert; Einladung wurde nicht zugestellt';
+                  setCopyMsg(message);
                   setTimeout(()=>setCopyMsg(null), 1500);
-                  showToast('Einladungslink kopiert.', { type: 'success' });
+                  showToast(`${message}.`, { type: invitation.emailQueued ? 'success' : 'error' });
                 } catch {
                   showToast('Einladung fehlgeschlagen.', { type: 'error' });
                 } finally {
@@ -1572,8 +1512,8 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
                 }
               }}
             >
-              <LinkIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Link kopieren</span>
+              <Mail className="w-4 h-4" />
+              <span className="hidden sm:inline">Einladung senden</span>
             </button>
           </div>
           {copyMsg && <div className="text-xs text-viridian mt-1">{copyMsg}</div>}

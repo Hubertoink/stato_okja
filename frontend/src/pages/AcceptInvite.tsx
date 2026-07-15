@@ -5,6 +5,7 @@ import { setAuthToken } from '@/lib/api';
 import { storeAuthToken, storeRefreshCsrfToken } from '@/lib/authStorage';
 import { isStrongPassword, PASSWORD_REQUIREMENTS_SHORT } from '@/lib/passwordPolicy';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
+import { TermsOfUseModal } from '@/components/LegalModals';
 
 export default function AcceptInvite() {
   const [params] = useSearchParams();
@@ -13,6 +14,8 @@ export default function AcceptInvite() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
 
   useEffect(() => {
     setError(null);
@@ -49,10 +52,24 @@ export default function AcceptInvite() {
             />
             <PasswordRequirementsHint password={password} className="mt-2" />
           </div>
+          <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(event) => setTermsAccepted(event.target.checked)}
+              className="mt-0.5 h-4 w-4"
+              aria-label="Nutzungsbedingungen akzeptieren"
+            />
+            <span>
+              Ich habe die{' '}
+              <button type="button" onClick={() => setTermsOpen(true)} className="font-semibold text-viridian underline">Nutzungsbedingungen</button>{' '}
+              gelesen und stimme ihnen zu.
+            </span>
+          </div>
           {error && <div className="text-red-600 text-sm">{error}</div>}
           <button
             className="w-full bg-viridian text-white py-2 rounded disabled:opacity-60"
-            disabled={!token || !password || busy}
+            disabled={!token || !password || !termsAccepted || busy}
             onClick={async () => {
               try {
                 setBusy(true);
@@ -62,7 +79,7 @@ export default function AcceptInvite() {
                   setBusy(false);
                   return;
                 }
-                const res = await acceptInviteApi(token, password);
+                const res = await acceptInviteApi(token, password, termsAccepted);
                 if (res?.access_token) {
                   storeAuthToken(res.access_token);
                   storeRefreshCsrfToken(res.refresh_csrf_token);
@@ -82,6 +99,7 @@ export default function AcceptInvite() {
           </button>
         </div>
       </div>
+      <TermsOfUseModal open={termsOpen} onClose={() => setTermsOpen(false)} />
     </div>
   );
 }

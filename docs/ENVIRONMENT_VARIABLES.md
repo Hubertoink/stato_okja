@@ -67,7 +67,7 @@ Wichtig:
 | `JWT_REFRESH_EXPIRATION` | Zeitangabe wie `7d`, `30d` | Gueltigkeit der Refresh-Session. |
 | `AUTH_REFRESH_COOKIE_SAMESITE` | `lax`, `strict`, `none` | SameSite-Attribut fuer das HttpOnly-Refresh-Cookie. |
 | `AUTH_REFRESH_COOKIE_SECURE` | `true`, `false` | Optionaler Override fuer das Secure-Flag des Refresh-Cookies. Unter HTTPS in Produktion typischerweise `true`. |
-| `INVITE_TOKEN_EXPIRATION` | Zeitangabe wie `7d` | Gueltigkeit von Einladungslinks. |
+| `INVITE_TOKEN_EXPIRATION` | Zeitangabe wie `24h` | Gueltigkeit von Einladungslinks (maximal 24 Stunden). |
 | `RESET_TOKEN_EXPIRATION` | Zeitangabe wie `1h` | Gueltigkeit von Passwort-Reset-Links. |
 | `PASSWORD_RESET_MODE` | `email`, `admin_temp_password`, `hybrid` | Legt fest, ob Passwort-Resets per Mail, nur durch Admins oder in beiden Modi moeglich sind. |
 | `AUTH_2FA_ENABLED` | `true`, `false` | Aktiviert E-Mail-basierte Zwei-Faktor-Anmeldung. Benoetigt funktionierendes SMTP. |
@@ -95,7 +95,8 @@ Wichtig:
 | `PUBLIC_APP_NAME` | Freitext | Anzeigename der Anwendung. |
 | `PUBLIC_ORG_NAME` | Freitext | Optionaler Organisationsname, z. B. fuer die Login-Seite. |
 | `PUBLIC_LOGIN_SUBTITLE` | Freitext | Untertitel auf der Login-Seite. |
-| `PUBLIC_LIVE_REFRESH_INTERVAL_MS` | Millisekunden, z. B. `15000`, `0` | Polling-Intervall fuer Dashboard, Aktivitaeten und Statistik. `0` deaktiviert Polling. |
+| `PUBLIC_LIVE_REFRESH_INTERVAL_MS` | Millisekunden, z. B. `30000`, `0` | Polling-Intervall fuer Dashboard, Aktivitaeten und Statistik. `0` deaktiviert Polling. |
+| `STATS_OVERVIEW_CACHE_TTL_MS` | Millisekunden, z. B. `30000`, `0` | Cache-Dauer fuer zusammengefasste Statistikabfragen. `0` deaktiviert den Cache. |
 
 ## SMTP und E-Mail
 

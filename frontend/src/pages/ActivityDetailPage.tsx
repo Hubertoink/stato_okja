@@ -10,6 +10,7 @@ import {
   Tag as TagIcon,
   Boxes,
   Pencil,
+  BookOpen,
 } from 'lucide-react';
 import { getBgClass } from '@/lib/colorPalette';
 import { isCancelledActivity } from '@/lib/activityExecutionStatus';
@@ -92,6 +93,16 @@ export default function ActivityDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!!activity.id && (
+            <button
+              onClick={() => navigate(`/logbook/new?activityId=${encodeURIComponent(activity.id)}${activity.projectId ? `&projectId=${encodeURIComponent(activity.projectId)}` : ''}`)}
+              aria-label="Im Logbuch dokumentieren"
+              title="Im Logbuch dokumentieren"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-white border text-viridian"
+            >
+              <BookOpen className="w-5 h-5" />
+            </button>
+          )}
           {!!activity.id && (
             <button
               onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from } })}

@@ -154,7 +154,7 @@ export class AuthController {
     const loginTitle = orgName ? `${appName} - ${orgName}` : appName;
     const liveRefreshIntervalMs = parseNonNegativeIntEnv(
       process.env.PUBLIC_LIVE_REFRESH_INTERVAL_MS,
-      15000,
+      30000,
     );
     return {
       appName,
@@ -296,7 +296,7 @@ export class AuthController {
     @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const session = await this.auth.acceptInvite(body.token, body.password, getSessionMetadata(req));
+    const session = await this.auth.acceptInvite(body.token, body.password, body.termsAccepted, getSessionMetadata(req));
     return this.finalizeAuthSession(res, session);
   }
 
@@ -345,5 +345,11 @@ export class AuthController {
     @Body() body: UpdateMeDto,
   ) {
     return this.auth.updateProfile(req.user.id, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('accept-terms')
+  acceptTerms(@Req() req: { user: { id: string } }) {
+    return this.auth.acceptTerms(req.user.id);
   }
 }

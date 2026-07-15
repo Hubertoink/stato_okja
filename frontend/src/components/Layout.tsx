@@ -10,6 +10,8 @@ import {
   Building2,
   GitBranch,
   Lightbulb,
+  BookOpen,
+  Menu,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
@@ -22,13 +24,14 @@ import { api } from '@/lib/api';
 import { canAccessDevTools } from '@/lib/devToolsConfig';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
-import { ImprintModal } from '@/components/LegalModals';
+import { ImprintModal, PrivacyNoticeModal, TermsOfUseModal } from '@/components/LegalModals';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
 import DemoMobilePageGuide, { hasDemoMobileGuideForPath } from '@/demo/DemoMobilePageGuide';
 import { demoModeEnabled } from '@/demo/config';
 import { setDemoMobileGuideMuted, useDemoMobileGuideMuted } from '@/demo/mobileGuideState';
+import { getMobileNavLayout, MOBILE_NAV_ITEM_IDS, type MobileNavItemId } from '@/lib/mobileNavigation';
 
 type OrgScopeTreeNode = { org: OrgDto; children: OrgScopeTreeNode[] };
 
@@ -108,6 +111,8 @@ export default function Layout() {
     user: 'Benutzer',
   };
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [mobileNavLayout, setMobileNavLayout] = useState(() => getMobileNavLayout(user?.id));
   const closeTimer = useRef<number | null>(null);
   const [hoverable, setHoverable] = useState(false);
   useEffect(() => {
@@ -135,9 +140,32 @@ export default function Layout() {
     return location.pathname.startsWith(path);
   };
 
+  const mobileNavItems: Record<MobileNavItemId, { to: string; label: string; icon: typeof Home }> = {
+    dashboard: { to: '/dashboard', label: 'Home', icon: Home },
+    activities: { to: '/activities', label: 'Aktiv.', icon: Activity },
+    logbook: { to: '/logbook', label: 'Logbuch', icon: BookOpen },
+    calendar: { to: '/calendar', label: 'Kalender', icon: CalendarIcon },
+    projects: { to: '/projects', label: 'Projekte', icon: Boxes },
+    statistics: { to: '/statistics', label: 'Statistik', icon: BarChart3 },
+    settings: { to: '/settings', label: 'Einstell.', icon: Settings },
+  };
+  const mobileBottomItems = mobileNavLayout.bottom.map((id) => mobileNavItems[id]);
+  const mobileMoreItems = MOBILE_NAV_ITEM_IDS
+    .filter((id) => !mobileNavLayout.bottom.includes(id))
+    .map((id) => mobileNavItems[id]);
+
+  useEffect(() => {
+    const syncMobileLayout = () => setMobileNavLayout(getMobileNavLayout(user?.id));
+    syncMobileLayout();
+    window.addEventListener('stato:mobile-nav-layout', syncMobileLayout);
+    return () => window.removeEventListener('stato:mobile-nav-layout', syncMobileLayout);
+  }, [user?.id]);
+
   // Org scope switcher
   const [scopeModalOpen, setScopeModalOpen] = useState(false);
   const [imprintModalOpen, setImprintModalOpen] = useState(false);
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [orgList, setOrgList] = useState<OrgDto[]>([]);
   const [pendingScope, setPendingScope] = useState<string | null | undefined>(undefined);
   const [activeOrgName, setActiveOrgName] = useState<string | null>(null);
@@ -152,8 +180,9 @@ export default function Layout() {
   const keyboardOpen = useKeyboardOpen();
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
-  const hideBottomNav = isActivityFull || keyboardOpen;
-  const hideFooter = isActivityFull || keyboardOpen;
+  const isLogbookDetail = location.pathname.startsWith('/logbook/');
+  const hideBottomNav = isActivityFull || isLogbookDetail || keyboardOpen;
+  const hideFooter = isActivityFull || isLogbookDetail || keyboardOpen;
   const showDemoGuideRestore = demoModeEnabled && demoGuidesMutedForPageLoad && hasDemoMobileGuideForPath(location.pathname);
   const restoreDemoGuides = () => {
     setDemoMobileGuideMuted(false);
@@ -549,6 +578,20 @@ export default function Layout() {
             </li>
             <li>
               <Link
+                to="/logbook"
+                data-tooltip="Logbuch"
+                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                  isActive('/logbook')
+                    ? 'theme-nav-item-active'
+                    : ''
+                }`}
+              >
+                <BookOpen className="w-5 h-5 lg:mr-2 flex-shrink-0" />
+                <span className={`nav-label ${isActive('/logbook') ? 'nav-label-active' : ''}`} data-text="Logbuch">Logbuch</span>
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/calendar"
                 data-tooltip="Kalender"
                 className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
@@ -629,70 +672,53 @@ export default function Layout() {
       {!restrictToPasswordChange && <nav
         className={`mobile-bottom-nav fixed inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-lg md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
       >
-        <ul className="grid grid-cols-6 text-xs pb-[max(env(safe-area-inset-bottom,0px),0.25rem)]">
+        <ul className="grid grid-cols-5 text-xs pb-[max(env(safe-area-inset-bottom,0px),0.25rem)]">
+          {mobileBottomItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  onClick={() => setMobileMoreOpen(false)}
+                  className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive(item.to) ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </Link>
+              </li>
+            );
+          })}
           <li>
-            <Link
-              to="/dashboard"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/dashboard') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+            <button
+              type="button"
+              onClick={() => setMobileMoreOpen((value) => !value)}
+              className={`flex w-full flex-col items-center py-2.5 transition-all duration-200 ${mobileMoreItems.some((item) => isActive(item.to)) ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
             >
-              <Home className="w-5 h-5" />
-              <span>Home</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/activities"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/activities') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <Activity className="w-5 h-5" />
-              <span>Aktiv.</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/calendar"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/calendar') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <CalendarIcon className="w-5 h-5" />
-              <span>Kalender</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/projects"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/projects') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <Boxes className="w-5 h-5" />
-              <span>Projekte</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/statistics"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/statistics') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <BarChart3 className="w-5 h-5" />
-              <span>Stats</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/settings"
-              className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive('/settings') ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
-            >
-              <Settings className="w-5 h-5" />
-              <span>Einst.</span>
-            </Link>
+              <Menu className="w-5 h-5" />
+              <span>Mehr</span>
+            </button>
           </li>
         </ul>
+        {mobileMoreOpen && (
+          <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3.9rem)] right-2 w-52 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
+            {mobileMoreItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link key={item.to} to={item.to} onClick={() => setMobileMoreOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <Icon className="h-5 w-5 text-viridian" />{item.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </nav>}
 
       {!restrictToPasswordChange && !hideBottomNav && <DemoMobilePageGuide />}
 
       {/* Footer (hidden on full activity views or while keyboard open) */}
       {!hideFooter && !restrictToPasswordChange && (
-        <footer className={`mt-12 ${hideBottomNav ? '' : 'mb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:mb-0'}`}>
-          <div className="footer-surface w-full px-4 py-6 text-center text-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/45">
+        <footer className="mt-12">
+          <div className={`footer-surface w-full px-4 py-6 text-center text-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/45 ${hideBottomNav ? '' : 'pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] md:pb-6'}`}>
             <div className="flex items-center justify-center gap-1 flex-wrap">
               <p>
                 © {new Date().getFullYear()} StatO · Version{' '}
@@ -716,11 +742,29 @@ export default function Layout() {
               >
                 Impressum
               </button>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => setPrivacyModalOpen(true)}
+                className="text-sm font-medium underline underline-offset-2 hover:text-viridian"
+              >
+                Datenschutz & Datenverwendung
+              </button>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => setTermsModalOpen(true)}
+                className="text-sm font-medium underline underline-offset-2 hover:text-viridian"
+              >
+                Nutzungsbedingungen
+              </button>
             </div>
           </div>
         </footer>
       )}
       <ImprintModal open={imprintModalOpen} onClose={() => setImprintModalOpen(false)} />
+      <PrivacyNoticeModal open={privacyModalOpen} onClose={() => setPrivacyModalOpen(false)} />
+      <TermsOfUseModal open={termsModalOpen} onClose={() => setTermsModalOpen(false)} />
       {/* Quick Create Organisation Modal (org_admin) */}
       <Modal
         open={createModalOpen}

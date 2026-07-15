@@ -48,6 +48,11 @@ describe('ProjectsService idempotent create', () => {
 
     expect(projectRepository.create).not.toHaveBeenCalled();
     expect(projectRepository.save).not.toHaveBeenCalled();
+    expect(projectRepository.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ clientRequestId: 'req-1', orgId: expect.anything() }),
+      }),
+    );
     expect(audit.log).not.toHaveBeenCalledWith(
       expect.objectContaining({ action: AuditAction.CREATE }),
     );

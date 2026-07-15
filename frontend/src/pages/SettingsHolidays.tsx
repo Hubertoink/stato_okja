@@ -15,7 +15,9 @@ export default function SettingsHolidays() {
         if (obj?.state) setSelected(obj.state as StateCode);
         if (typeof obj?.school === 'boolean') setShowSchool(obj.school);
       }
-    } catch {}
+    } catch {
+      // Local storage may be unavailable or contain malformed legacy data.
+    }
   }, []);
 
   // save to localStorage

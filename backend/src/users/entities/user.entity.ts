@@ -55,6 +55,12 @@ export class User {
   @Column({ type: 'boolean', default: false })
   mustChangePassword!: boolean;
 
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  termsAcceptedVersion!: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  termsAcceptedAt!: Date | null;
+
   @Column({ type: 'int', default: 0 })
   twoFactorTokenVersion!: number;
 

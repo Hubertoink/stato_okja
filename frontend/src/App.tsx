@@ -13,6 +13,7 @@ const ActivityEditPage = lazy(() => import('@/pages/ActivityEditPage'));
 const ActivityCreatePage = lazy(() => import('@/pages/ActivityCreatePage'));
 import PostLoginPrefetch from '@/components/PostLoginPrefetch';
 import { canAccessDevTools } from './lib/devToolsConfig';
+import TermsAcceptanceGate from '@/components/TermsAcceptanceGate';
 
 const Statistics = lazy(() => import('./pages/Statistics'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -134,6 +135,8 @@ function AuthedRoutes() {
       </Routes>
     );
   }
+
+  if (user.termsAcceptanceRequired) return <TermsAcceptanceGate />;
 
   return (
     <PostLoginPrefetch>

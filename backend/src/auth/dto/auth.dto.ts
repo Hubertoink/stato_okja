@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength, MinLength } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
@@ -58,6 +58,9 @@ export class AcceptInviteDto {
   @IsString()
   @MinLength(1)
   password!: string;
+
+  @IsBoolean()
+  termsAccepted!: boolean;
 }
 
 export class RequestPasswordResetDto {

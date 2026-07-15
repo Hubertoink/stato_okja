@@ -147,8 +147,8 @@ export async function inviteUserApi(payload: { email: string; name?: string; rol
   return res.data;
 }
 
-export async function acceptInviteApi(token: string, password: string) {
-  const res = await api.post('/auth/accept-invite', { token, password });
+export async function acceptInviteApi(token: string, password: string, termsAccepted: boolean) {
+  const res = await api.post('/auth/accept-invite', { token, password, termsAccepted });
   return res.data as { access_token: string; refresh_csrf_token: string };
 }
 

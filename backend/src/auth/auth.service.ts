@@ -36,6 +36,7 @@ export type AuthUserResponse = {
   avatarUrl: string | null;
   theme: string;
   mustChangePassword: boolean;
+  termsAcceptanceRequired: boolean;
 };
 
 export type InviteUserResponse = {
@@ -63,6 +64,7 @@ export type RefreshSessionMetadata = {
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
 const DEFAULT_REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_INVITE_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const TERMS_OF_USE_VERSION = '2026-07-15';
 const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
   'admin@example.org',
   'admin@example.com',
@@ -213,6 +215,7 @@ export class AuthService {
       avatarUrl,
       theme,
       mustChangePassword: user.mustChangePassword === true,
+      termsAcceptanceRequired: user.termsAcceptedVersion !== TERMS_OF_USE_VERSION,
     };
   }
 
@@ -712,7 +715,8 @@ export class AuthService {
     }
   }
 
-  async acceptInvite(token: string, password: string, metadata?: RefreshSessionMetadata) {
+  async acceptInvite(token: string, password: string, termsAccepted: boolean, metadata?: RefreshSessionMetadata) {
+    if (termsAccepted !== true) throw new BadRequestException('Bitte stimme den Nutzungsbedingungen zu.');
     const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(token, {
       secret: getJwtSecret(),
     });
@@ -724,7 +728,19 @@ export class AuthService {
       throw new Error('Invite token wurde ersetzt oder ist nicht mehr gültig');
     }
     await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
+    user.termsAcceptedVersion = TERMS_OF_USE_VERSION;
+    user.termsAcceptedAt = new Date();
+    await this.users.save(user);
     return this.login(user, metadata);
+  }
+
+  async acceptTerms(userId: string) {
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+    user.termsAcceptedVersion = TERMS_OF_USE_VERSION;
+    user.termsAcceptedAt = new Date();
+    await this.users.save(user);
+    return this.getProfile(user.id);
   }
 
   async getProfile(userId: string) {

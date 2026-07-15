@@ -24,7 +24,7 @@ import { api } from '@/lib/api';
 import { canAccessDevTools } from '@/lib/devToolsConfig';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
-import { ImprintModal, PrivacyNoticeModal } from '@/components/LegalModals';
+import { ImprintModal, PrivacyNoticeModal, TermsOfUseModal } from '@/components/LegalModals';
 import { QuickTally, QuickTallyMinimizedPill, useQuickTallySession } from '@/components/QuickTally';
 import { useSessionTimeout } from '@/lib/sessionTimeout';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
@@ -165,6 +165,7 @@ export default function Layout() {
   const [scopeModalOpen, setScopeModalOpen] = useState(false);
   const [imprintModalOpen, setImprintModalOpen] = useState(false);
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [orgList, setOrgList] = useState<OrgDto[]>([]);
   const [pendingScope, setPendingScope] = useState<string | null | undefined>(undefined);
   const [activeOrgName, setActiveOrgName] = useState<string | null>(null);
@@ -716,8 +717,8 @@ export default function Layout() {
 
       {/* Footer (hidden on full activity views or while keyboard open) */}
       {!hideFooter && !restrictToPasswordChange && (
-        <footer className={`mt-12 ${hideBottomNav ? '' : 'mb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:mb-0'}`}>
-          <div className="footer-surface w-full px-4 py-6 text-center text-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/45">
+        <footer className="mt-12">
+          <div className={`footer-surface w-full px-4 py-6 text-center text-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/45 ${hideBottomNav ? '' : 'pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] md:pb-6'}`}>
             <div className="flex items-center justify-center gap-1 flex-wrap">
               <p>
                 © {new Date().getFullYear()} StatO · Version{' '}
@@ -749,12 +750,21 @@ export default function Layout() {
               >
                 Datenschutz & Datenverwendung
               </button>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => setTermsModalOpen(true)}
+                className="text-sm font-medium underline underline-offset-2 hover:text-viridian"
+              >
+                Nutzungsbedingungen
+              </button>
             </div>
           </div>
         </footer>
       )}
       <ImprintModal open={imprintModalOpen} onClose={() => setImprintModalOpen(false)} />
       <PrivacyNoticeModal open={privacyModalOpen} onClose={() => setPrivacyModalOpen(false)} />
+      <TermsOfUseModal open={termsModalOpen} onClose={() => setTermsModalOpen(false)} />
       {/* Quick Create Organisation Modal (org_admin) */}
       <Modal
         open={createModalOpen}

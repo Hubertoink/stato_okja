@@ -8,12 +8,18 @@ export type LogbookEntryType = 'observation' | 'incident' | 'success' | 'handove
 export type LogbookEntryStatus = 'open' | 'follow_up' | 'discussed' | 'archived';
 export type LogbookVisibility = 'team' | 'admins';
 
+export type LogbookAuthor = {
+  id: string;
+  avatarUrl: string | null;
+};
+
 export interface LogbookComment {
   id: string;
   entryId: string;
   body: string;
   createdByUserId: string | null;
   createdByName: string;
+  createdByUser?: LogbookAuthor | null;
   createdAt: string;
 }
 
@@ -35,6 +41,7 @@ export interface LogbookEntry {
   project?: Project | null;
   createdByUserId: string | null;
   createdByName: string;
+  createdByUser?: LogbookAuthor | null;
   updatedByUserId?: string | null;
   updatedByName?: string | null;
   discussedByUserId?: string | null;

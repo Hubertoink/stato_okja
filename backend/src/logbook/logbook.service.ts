@@ -5,6 +5,7 @@ import { Activity } from '../activities/entities/activity.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction, LogbookEntryStatus, LogbookEntryType, LogbookVisibility } from '../common/enums';
 import { Project } from '../projects/entities/project.entity';
+import { User } from '../users/entities/user.entity';
 import { LogbookComment } from './entities/logbook-comment.entity';
 import { LogbookEntry } from './entities/logbook-entry.entity';
 
@@ -87,13 +88,29 @@ export class LogbookService {
       .createQueryBuilder('entry')
       .leftJoinAndSelect('entry.activity', 'activity')
       .leftJoinAndSelect('entry.project', 'project')
+      .leftJoinAndSelect('entry.createdByUser', 'createdByUser')
       .where('entry.id = :id', { id })
       .andWhere(orgId === null ? 'entry.orgId IS NULL' : 'entry.orgId = :orgId', { orgId });
     if (includeComments) {
-      query.leftJoinAndSelect('entry.comments', 'comment').orderBy('comment.createdAt', 'ASC');
+      query
+        .leftJoinAndSelect('entry.comments', 'comment')
+        .leftJoinAndSelect('comment.createdByUser', 'commentCreatedByUser')
+        .orderBy('comment.createdAt', 'ASC');
     }
     const entry = await query.getOne();
     if (!entry) throw new NotFoundException('Logbucheintrag nicht gefunden.');
+    return entry;
+  }
+
+  /** Only expose the author data that is needed to render an avatar. */
+  private withPublicAuthors(entry: LogbookEntry) {
+    const toPublicAuthor = (author: User | null) => author
+      ? ({ id: author.id, avatarUrl: author.avatarUrl } as User)
+      : null;
+    entry.createdByUser = toPublicAuthor(entry.createdByUser);
+    entry.comments?.forEach((comment) => {
+      comment.createdByUser = toPublicAuthor(comment.createdByUser);
+    });
     return entry;
   }
 
@@ -126,6 +143,7 @@ export class LogbookService {
       .createQueryBuilder('entry')
       .leftJoinAndSelect('entry.activity', 'activity')
       .leftJoinAndSelect('entry.project', 'project')
+      .leftJoinAndSelect('entry.createdByUser', 'createdByUser')
       .loadRelationCountAndMap('entry.commentCount', 'entry.comments')
       // The list uses joins and pagination, so TypeORM wraps it in SELECT DISTINCT.
       // Select the priority explicitly; ordering by a raw expression alone breaks the
@@ -167,13 +185,13 @@ export class LogbookService {
     if (filters.projectId) qb.andWhere('entry.projectId = :projectId', { projectId: filters.projectId });
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, total, page, pageSize: limit };
+    return { data: data.map((entry) => this.withPublicAuthors(entry)), total, page, pageSize: limit };
   }
 
   async findOne(id: string, orgId: string | null, user: RequestUser) {
     const entry = await this.getEntry(id, orgId, true);
     this.assertVisible(entry, user);
-    return entry;
+    return this.withPublicAuthors(entry);
   }
 
   async create(input: EntryInput, orgId: string | null, user: RequestUser) {
@@ -244,7 +262,10 @@ export class LogbookService {
       const value = this.parseOccurredAt(input.occurredAt)!;
       if (entry.occurredAt.getTime() !== value.getTime()) { entry.occurredAt = value; changed.push('occurredAt'); }
     }
-    if (typeof input.type !== 'undefined') { entry.type = this.assertEnum(input.type, allowedTypes, 'Eintragsart') as LogbookEntryType; changed.push('type'); }
+    if (typeof input.type !== 'undefined') {
+      const type = this.assertEnum(input.type, allowedTypes, 'Eintragsart') as LogbookEntryType;
+      if (entry.type !== type) { entry.type = type; changed.push('type'); }
+    }
     if (typeof input.status !== 'undefined') {
       const status = this.assertEnum(input.status, allowedStatuses, 'Status') as LogbookEntryStatus;
       if (status !== LogbookEntryStatus.ARCHIVED && entry.status !== status) {
@@ -261,13 +282,20 @@ export class LogbookService {
         changed.push('status');
       }
     }
-    if (typeof input.activityId !== 'undefined') { entry.activityId = input.activityId || null; changed.push('activityId'); }
-    if (typeof input.projectId !== 'undefined') { entry.projectId = input.projectId || null; changed.push('projectId'); }
+    if (typeof input.activityId !== 'undefined') {
+      const activityId = input.activityId || null;
+      if (entry.activityId !== activityId) { entry.activityId = activityId; changed.push('activityId'); }
+    }
+    if (typeof input.projectId !== 'undefined') {
+      const projectId = input.projectId || null;
+      if (entry.projectId !== projectId) { entry.projectId = projectId; changed.push('projectId'); }
+    }
     if (typeof input.visibility !== 'undefined') {
       if (!this.isAdmin(user)) throw new ForbiddenException('Nur Admins können die Sichtbarkeit ändern.');
-      entry.visibility = this.assertEnum(input.visibility, allowedVisibility, 'Sichtbarkeit') as LogbookVisibility;
-      changed.push('visibility');
+      const visibility = this.assertEnum(input.visibility, allowedVisibility, 'Sichtbarkeit') as LogbookVisibility;
+      if (entry.visibility !== visibility) { entry.visibility = visibility; changed.push('visibility'); }
     }
+    if (changed.length === 0) return this.findOne(id, orgId, user);
     entry.updatedByUserId = user.id;
     entry.updatedByName = user.name?.trim() || 'Unbekannt';
     const saved = await this.entries.save(entry);

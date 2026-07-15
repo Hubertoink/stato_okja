@@ -31,6 +31,7 @@ function LogbookCard({ entry }: { entry: LogbookEntry }) {
   const { user } = useAuth();
   const status = useSetLogbookStatus();
   const canManage = user?.role === 'superadmin' || user?.role === 'org_admin' || user?.id === entry.createdByUserId;
+  const wasUpdated = new Date(entry.updatedAt).getTime() > new Date(entry.createdAt).getTime();
   return (
     <article
       className="modern-card cursor-pointer p-4 transition-transform hover:-translate-y-0.5 sm:p-5"
@@ -55,7 +56,10 @@ function LogbookCard({ entry }: { entry: LogbookEntry }) {
         </div>
       )}
       <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
-        <AuthorBadge name={entry.createdByName} avatarUrl={entry.createdByUserId === user?.id ? user?.avatarUrl : null} />
+        <div className="min-w-0">
+          <AuthorBadge name={entry.createdByName} avatarUrl={entry.createdByUser?.avatarUrl ?? (entry.createdByUserId === user?.id ? user?.avatarUrl : null)} />
+          {wasUpdated && <span className="mt-1 block text-[11px] text-gray-400">Geändert am {formatDate(entry.updatedAt)}</span>}
+        </div>
         <div className="flex shrink-0 items-center gap-3">
           <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{entry.commentCount || 0}</span>
           {canManage && entry.status !== 'discussed' && entry.status !== 'archived' && (

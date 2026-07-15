@@ -206,30 +206,11 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
 
     const runId = ++switchRunIdRef.current;
     setSwitching(true);
-    // Keep org switching lightweight:
-    // - cancel in-flight requests from the previous scope
-    // - do NOT reset/refetch everything (slow, and causes late "initializing" overlays)
-    // New queries will naturally run under the new scope-aware query keys.
-    void qc
-      .cancelQueries({ predicate: () => true })
+    // Queries use the scope as part of their key, so changing the scope is enough to
+    // start fresh requests.  Cancelling every query here raced those new requests and
+    // could leave the currently visible dashboard with data from the previous scope.
+    void qc.invalidateQueries({ predicate: () => true, refetchType: 'active' })
       .finally(() => {
-        // Ensure mounted screens immediately refresh (e.g. Calendar activities) after a scope switch.
-        // Cancellation alone can leave a query in a non-refetching state until params change.
-        void qc.invalidateQueries({
-          predicate: (q) => {
-            const k0 = Array.isArray(q.queryKey) ? q.queryKey[0] : undefined;
-            return (
-              k0 === 'activities' ||
-              k0 === 'custom-kpis' ||
-              k0 === 'custom-kpi-results' ||
-              k0 === 'projects' ||
-              k0 === 'locations' ||
-              k0 === 'users' ||
-              (typeof k0 === 'string' && k0.startsWith('stats:'))
-            );
-          },
-          refetchType: 'active',
-        });
         if (switchRunIdRef.current === runId) setSwitching(false);
       });
   }, [scope, qc]);

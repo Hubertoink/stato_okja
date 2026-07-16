@@ -86,26 +86,30 @@ type ActivitiesQueryOptions = {
   refetchIntervalMs?: number;
 };
 
+export function buildActivityQueryParams(
+  params?: ActivitiesFilter,
+  scope?: string | null | undefined,
+) {
+  const qp: Record<string, unknown> = { ...params };
+  applyOrgScopeParam(qp, scope);
+  const arrayKeys: (keyof ActivitiesFilter)[] = [
+    'types', 'locationIds', 'projectIds', 'categoryIds', 'tagIds', 'staffIds', 'cohortIds', 'executionStatuses',
+  ];
+  for (const key of arrayKeys) {
+    const value = params?.[key];
+    if (Array.isArray(value) && value.length) qp[key] = value.join(',');
+    else if (Array.isArray(value)) delete qp[key];
+  }
+  if (Array.isArray(params?.weekdays) && params.weekdays.length) qp.weekdays = params.weekdays.join(',');
+  else if (Array.isArray(params?.weekdays)) delete qp.weekdays;
+  return qp;
+}
+
 export function useActivities(params?: ActivitiesFilter, options?: ActivitiesQueryOptions) {
   const { scope, scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['activities', scopeKey, params],
-    queryFn: async () => {
-      // Encode arrays as comma-separated strings for simple query parsing
-      const qp: Record<string, unknown> = { ...params };
-      applyOrgScopeParam(qp, scope);
-      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','staffIds','cohortIds','executionStatuses'];
-      for (const k of arrayKeys) {
-        const v = params?.[k];
-        if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
-        else if (Array.isArray(v)) delete qp[k as string];
-      }
-      if (Array.isArray(params?.weekdays) && params.weekdays.length) qp.weekdays = params.weekdays.join(',');
-      else if (Array.isArray(params?.weekdays)) delete qp.weekdays;
-      // Legacy fields stay as-is
-      const res = await api.get('/activities', { params: qp });
-      return res.data as Activity[];
-    },
+    queryFn: () => fetchAllActivities(params, scope),
     enabled: ready,
     refetchOnMount: 'always',
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
@@ -124,6 +128,32 @@ export interface PagedActivitiesResult {
   pageSize: number; // limit
 }
 
+/** Load all items only through bounded, paginated API requests. */
+export async function fetchAllActivities(
+  params?: ActivitiesFilter,
+  scope?: string | null | undefined,
+): Promise<Activity[]> {
+  const qp = buildActivityQueryParams(params, scope);
+  const limit = 50;
+  const data: Activity[] = [];
+  let page = 1;
+  let total = 0;
+
+  do {
+    const response = await api.get<PagedActivitiesResult>('/activities', {
+      params: { ...qp, page, limit },
+    });
+    const payload = response.data;
+    const rows = Array.isArray(payload.data) ? payload.data : [];
+    data.push(...rows);
+    total = Number.isFinite(payload.total) ? payload.total : data.length;
+    if (rows.length === 0) break;
+    page += 1;
+  } while (data.length < total);
+
+  return data;
+}
+
 export function useActivitiesPaged(
   params: ActivitiesFilter | undefined,
   page: number,
@@ -134,20 +164,10 @@ export function useActivitiesPaged(
   return useQuery({
     queryKey: ['activities', scopeKey, 'paged', params, page, limit],
     queryFn: async () => {
-      const qp: Record<string, unknown> = { ...params };
-      applyOrgScopeParam(qp, scope);
-      const arrayKeys: (keyof ActivitiesFilter)[] = ['types','locationIds','projectIds','categoryIds','tagIds','staffIds','cohortIds','executionStatuses'];
-      for (const k of arrayKeys) {
-        const v = params?.[k];
-        if (Array.isArray(v) && v.length) qp[k as string] = (v as string[]).join(',');
-        else if (Array.isArray(v)) delete qp[k as string];
-      }
-      if (Array.isArray(params?.weekdays) && params.weekdays.length) qp.weekdays = params.weekdays.join(',');
-      else if (Array.isArray(params?.weekdays)) delete qp.weekdays;
-      // order is a simple string param if provided
-      qp.page = page;
-      qp.limit = Math.min(Math.max(limit, 1), 50);
-      const res = await api.get('/activities', { params: qp });
+      const qp = buildActivityQueryParams(params, scope);
+      const res = await api.get('/activities', {
+        params: { ...qp, page, limit: Math.min(Math.max(limit, 1), 50) },
+      });
       return res.data as PagedActivitiesResult;
     },
     enabled: ready,

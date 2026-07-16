@@ -7,6 +7,7 @@ import { OrgsService } from '../orgs/orgs.service';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { toPublicUser } from '../common/public-response';
 
 type ManageableUserRole = 'superadmin' | 'org_admin' | 'user';
 
@@ -74,7 +75,7 @@ export class UsersController {
           totalUsersInDb: allUsers?.length ?? undefined,
           allUsersPreview: allUsers ? this.summarizeUsers(allUsers) : undefined,
         });
-        return visibleUsers;
+        return visibleUsers.map(toPublicUser);
       }
       const subtree = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
       const users = await this.service.findByOrgIds(subtree);
@@ -91,7 +92,7 @@ export class UsersController {
         visibleCount: users.length,
         visibleUsers: this.summarizeUsers(users),
       });
-      return users;
+      return users.map(toPublicUser);
     }
     const myOrgId = (typeof req.effectiveOrgId === 'undefined') ? (req.user.orgId || null) : req.effectiveOrgId;
     if (!myOrgId) {
@@ -108,7 +109,7 @@ export class UsersController {
         visibleCount: users.length,
         visibleUsers: this.summarizeUsers(users),
       });
-      return users;
+      return users.map(toPublicUser);
     }
     const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
     const users = await this.service.findByOrgIds(subtree);
@@ -125,7 +126,7 @@ export class UsersController {
       visibleCount: users.length,
       visibleUsers: this.summarizeUsers(users),
     });
-    return users;
+    return users.map(toPublicUser);
   }
 
   @Roles('org_admin','superadmin')
@@ -144,9 +145,9 @@ export class UsersController {
       if (requestedRole === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
       const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
       if (!(requestedOrgId && subtree.includes(requestedOrgId))) throw new ForbiddenException('Nicht erlaubt');
-      return this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId });
+      return toPublicUser(await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }));
     }
-    return this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId });
+    return toPublicUser(await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }));
   }
 
   @Roles('org_admin','superadmin')

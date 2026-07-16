@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
+import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
 import { Download, Plus, Search, SlidersHorizontal } from 'lucide-react';
 // switched to xlsx-js-style inside the export handler to support cell styling
-import { api } from '@/lib/api';
 // basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
@@ -352,28 +351,8 @@ export default function Activities() {
     cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
   };
   const loadExportRows = async () => {
-    const qp: Record<string, unknown> = { ...filters };
-    const arrayKeys: (keyof ActivitiesFilter)[] = [
-      'types',
-      'locationIds',
-      'projectIds',
-      'categoryIds',
-      'tagIds',
-      'staffIds',
-      'cohortIds',
-      'executionStatuses',
-    ];
-    for (const key of arrayKeys) {
-      const value = (filters as ActivitiesFilter)[key];
-      if (Array.isArray(value) && value.length) qp[key as string] = (value as string[]).join(',');
-      else if (Array.isArray(value)) delete qp[key as string];
-    }
-    const res = await api.get('/activities', { params: qp });
-    return (Array.isArray(res.data?.data)
-      ? res.data.data
-      : Array.isArray(res.data)
-        ? res.data
-        : []) as Array<ExportRow>;
+    const rows = await fetchAllActivities(filters);
+    return rows as Array<ExportRow>;
   };
   const buildExportSheet = (list: ExportRow[]) => {
     const cohortOrder = (cohorts as Cohort[])

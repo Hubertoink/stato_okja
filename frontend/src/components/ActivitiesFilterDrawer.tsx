@@ -1,13 +1,12 @@
 import Modal from './Modal';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { ActivitiesFilter } from '@/lib/activities';
+import { fetchAllActivities, type ActivitiesFilter } from '@/lib/activities';
 import { useOrgScopeKey } from '@/lib/orgScope';
 import { useTags, useCategories, useCohorts } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import { useStaff } from '@/lib/staff';
-import { api } from '@/lib/api';
 import {
   ACTIVITY_EXECUTION_STATUS_LABELS,
   ACTIVITY_EXECUTION_STATUS_OPTIONS,
@@ -48,16 +47,11 @@ export default function ActivitiesFilterDrawer({
   const availabilityQuery = useQuery({
     queryKey: ['activities-filter-taxonomy-availability', scopeKey],
     queryFn: async () => {
-      const res = await api.get('/activities');
       const list: Array<{
         tags?: Array<{ id: string }>;
         categories?: Array<{ id: string }>;
         executionStatus?: string | null;
-      }> = Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-          ? res.data
-          : [];
+      }> = await fetchAllActivities();
 
       const categoryIds = new Set<string>();
       const tagIds = new Set<string>();

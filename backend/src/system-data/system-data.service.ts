@@ -1042,21 +1042,15 @@ export class SystemDataService {
 
     try {
       for (const table of managedTables) {
-        archive.append(this.createJsonExportStream(queryRunner, table), {
-          name: `database/${table.filename}.json`,
-        });
-        archive.append(this.createCsvExportStream(queryRunner, table), {
-          name: `database/${table.filename}.csv`,
-        });
+        this.appendExportStream(archive, this.createJsonExportStream(queryRunner, table), `database/${table.filename}.json`);
+        this.appendExportStream(archive, this.createCsvExportStream(queryRunner, table), `database/${table.filename}.csv`);
       }
 
       for (const file of uploads.files) {
-        archive.append(this.createUploadExportStream(file, uploads.warnings), {
-          name: `uploads/${file.relativePath}`,
-        });
+        this.appendExportStream(archive, this.createUploadExportStream(file, uploads.warnings), `uploads/${file.relativePath}`);
       }
 
-      archive.append(this.createManifestExportStream(() => JSON.stringify({
+      this.appendExportStream(archive, this.createManifestExportStream(() => JSON.stringify({
         format: SYSTEM_DATA_EXPORT_FORMAT,
         schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
         generatedAt,
@@ -1072,7 +1066,7 @@ export class SystemDataService {
           files: uploads.files.map((file) => ({ path: file.relativePath, size: file.size })),
           warnings: uploads.warnings,
         },
-      }, null, 2)), { name: 'manifest.json' });
+      }, null, 2)), 'manifest.json');
 
       await archive.finalize();
 
@@ -1106,6 +1100,11 @@ export class SystemDataService {
 
   private createJsonExportStream(queryRunner: QueryRunner, table: ManagedTable) {
     return Readable.from(this.iterateJsonExportRows(queryRunner, table));
+  }
+
+  private appendExportStream(archive: archiver.Archiver, stream: Readable, name: string) {
+    stream.once('error', (error) => archive.destroy(error));
+    archive.append(stream, { name });
   }
 
   private async *iterateJsonExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<string> {

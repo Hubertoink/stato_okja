@@ -1042,15 +1042,15 @@ export class SystemDataService {
 
     try {
       for (const table of managedTables) {
-        this.appendExportStream(archive, this.createJsonExportStream(queryRunner, table), `database/${table.filename}.json`);
-        this.appendExportStream(archive, this.createCsvExportStream(queryRunner, table), `database/${table.filename}.csv`);
+        await this.appendExportStream(archive, this.createJsonExportStream(queryRunner, table), `database/${table.filename}.json`);
+        await this.appendExportStream(archive, this.createCsvExportStream(queryRunner, table), `database/${table.filename}.csv`);
       }
 
       for (const file of uploads.files) {
-        this.appendExportStream(archive, this.createUploadExportStream(file, uploads.warnings), `uploads/${file.relativePath}`);
+        await this.appendExportStream(archive, this.createUploadExportStream(file, uploads.warnings), `uploads/${file.relativePath}`);
       }
 
-      this.appendExportStream(archive, this.createManifestExportStream(() => JSON.stringify({
+      await this.appendExportStream(archive, this.createManifestExportStream(() => JSON.stringify({
         format: SYSTEM_DATA_EXPORT_FORMAT,
         schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
         generatedAt,
@@ -1102,9 +1102,31 @@ export class SystemDataService {
     return Readable.from(this.iterateJsonExportRows(queryRunner, table));
   }
 
-  private appendExportStream(archive: archiver.Archiver, stream: Readable, name: string) {
-    stream.once('error', (error) => archive.destroy(error));
-    archive.append(stream, { name });
+  private appendExportStream(archive: archiver.Archiver, stream: Readable, name: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        archive.off('entry', onEntry);
+        archive.off('error', onArchiveError);
+        stream.off('error', onStreamError);
+        callback();
+      };
+      const onEntry = (entry: archiver.EntryData) => {
+        if (entry.name === name) finish(resolve);
+      };
+      const onStreamError = (error: Error) => {
+        archive.destroy(error);
+        finish(() => reject(error));
+      };
+      const onArchiveError = (error: Error) => finish(() => reject(error));
+
+      archive.once('entry', onEntry);
+      archive.once('error', onArchiveError);
+      stream.once('error', onStreamError);
+      archive.append(stream, { name });
+    });
   }
 
   private async *iterateJsonExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<string> {

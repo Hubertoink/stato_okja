@@ -7,16 +7,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import JSZip from 'jszip';
-import { readFile, stat, unlink } from 'fs/promises';
+import archiver = require('archiver');
+import { createReadStream } from 'fs';
+import { stat, unlink } from 'fs/promises';
 import { join, relative, resolve as resolvePath, sep } from 'path';
+import { PassThrough, Readable } from 'stream';
 import { setTimeout as delay } from 'timers/promises';
 import { DataSource, QueryRunner } from 'typeorm';
 import { AuthService } from '../auth/auth.service';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
-import { buildReadableWorkbook } from './system-data-workbook';
 import {
   SystemDataUploadStore,
   type AppliedImportUploads,
@@ -276,120 +277,48 @@ export class SystemDataService {
 
     try {
       const managedTables = this.getManagedTables();
-      const zip = new JSZip();
       const tableManifest: Array<{ tableName: string; rowCount: number; files: string[] }> = [];
-      const tableRowsByKey: Record<string, Array<Record<string, unknown>>> = {};
       let totalDatabaseRows = 0;
       const generatedAt = new Date().toISOString();
 
       for (const table of managedTables) {
-        const rawRows = await queryRunner.query(`SELECT * FROM ${this.escapeTablePath(table.path)}`) as Array<Record<string, unknown>>;
-        const rows = this.normalizeRowsForExport(table, rawRows);
-        tableRowsByKey[table.key] = rows;
-        totalDatabaseRows += rows.length;
-
+        const rowCount = await this.countRows(queryRunner, table.path);
+        totalDatabaseRows += rowCount;
         const jsonPath = `database/${table.filename}.json`;
         const csvPath = `database/${table.filename}.csv`;
-        zip.file(jsonPath, JSON.stringify(rows, null, 2));
-        zip.file(csvPath, this.buildCsv(rows));
-
         tableManifest.push({
           tableName: table.filename,
-          rowCount: rows.length,
+          rowCount,
           files: [jsonPath, csvPath],
         });
       }
 
       const uploads = await this.uploadStore.scanUploads();
-      for (const file of uploads.files) {
-        try {
-          const buffer = await readFile(file.absolutePath);
-          zip.file(`uploads/${file.relativePath}`, buffer);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'unknown upload read error';
-          uploads.warnings.push(`${file.relativePath}: ${message}`);
-          this.logger.warn(`Could not add upload file ${file.absolutePath} to system export: ${message}`);
-        }
-      }
-
-      const readableWorkbookPath = 'readable/stato-system-data-readable.xlsx';
-      const readableWorkbook = await buildReadableWorkbook({
-        generatedAt,
-        actor: {
-          id: actor.id,
-          name: actor.name ?? null,
-          role: actor.role,
-        },
-        tableRows: tableRowsByKey,
-        tableCounts: tableManifest.map((table) => ({ tableName: table.tableName, rowCount: table.rowCount })),
-        uploads: {
-          fileCount: uploads.fileCount,
-          totalBytes: uploads.totalBytes,
-          files: uploads.files.map((file) => ({ path: file.relativePath, size: file.size })),
-          warnings: uploads.warnings,
-        },
-      });
-      zip.file(readableWorkbookPath, readableWorkbook.buffer);
-
-      const manifest = {
-        format: SYSTEM_DATA_EXPORT_FORMAT,
-        schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
-        generatedAt,
-        generatedBy: {
-          id: actor.id,
-          name: actor.name ?? null,
-          role: actor.role,
-        },
-        totals: {
-          managedTables: managedTables.length,
-          databaseRows: totalDatabaseRows,
-          uploadFiles: uploads.fileCount,
-          uploadBytes: uploads.totalBytes,
-        },
-        tables: tableManifest,
-        uploads: {
-          files: uploads.files.map((file) => ({ path: file.relativePath, size: file.size })),
-          warnings: uploads.warnings,
-        },
-        readableWorkbook: {
-          path: readableWorkbookPath,
-          sheets: readableWorkbook.sheetNames,
-        },
-      };
-
-      zip.file('manifest.json', JSON.stringify(manifest, null, 2));
-
-      const buffer = await zip.generateAsync({
-        type: 'nodebuffer',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 },
-      });
-
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `stato-system-data-export-${timestamp}.zip`;
+      const output = new PassThrough();
+      const archive = archiver('zip', { zlib: { level: 6 } });
+      archive.on('warning', (error) => this.logger.warn(`System export ZIP warning: ${error.message}`));
+      archive.on('error', (error) => output.destroy(error));
+      archive.pipe(output);
 
-      try {
-        await this.auditService.log({
-          action: AuditAction.EXPORT,
-          entityType: 'system-data',
-          entityId: 'global',
-          entityTitle: filename,
-          user: { id: actor.id, name: actor.name ?? null, orgId: null },
-          orgId: null,
-          details: {
-            managedTables: managedTables.length,
-            databaseRows: totalDatabaseRows,
-            uploadFiles: uploads.fileCount,
-            uploadBytes: uploads.totalBytes,
-          },
-        });
-      } catch {
-        /* ignore audit errors */
-      }
+      void this.writeExportArchive({
+        archive,
+        output,
+        queryRunner,
+        managedTables,
+        tableManifest,
+        totalDatabaseRows,
+        uploads,
+        generatedAt,
+        actor,
+        filename,
+      });
 
-      return { buffer, filename };
-    } finally {
+      return { stream: output, filename };
+    } catch (error) {
       await queryRunner.release();
+      throw error;
     }
   }
 
@@ -1086,15 +1015,167 @@ export class SystemDataService {
     return code === 'EPERM' || code === 'EBUSY' || code === 'EMFILE' || code === 'ENFILE';
   }
 
+  private async writeExportArchive(input: {
+    archive: archiver.Archiver;
+    output: PassThrough;
+    queryRunner: QueryRunner;
+    managedTables: ManagedTable[];
+    tableManifest: Array<{ tableName: string; rowCount: number; files: string[] }>;
+    totalDatabaseRows: number;
+    uploads: { files: UploadFileEntry[]; fileCount: number; totalBytes: number; warnings: string[] };
+    generatedAt: string;
+    actor: SystemDataActor;
+    filename: string;
+  }) {
+    const {
+      archive,
+      output,
+      queryRunner,
+      managedTables,
+      tableManifest,
+      totalDatabaseRows,
+      uploads,
+      generatedAt,
+      actor,
+      filename,
+    } = input;
+
+    try {
+      for (const table of managedTables) {
+        archive.append(this.createJsonExportStream(queryRunner, table), {
+          name: `database/${table.filename}.json`,
+        });
+        archive.append(this.createCsvExportStream(queryRunner, table), {
+          name: `database/${table.filename}.csv`,
+        });
+      }
+
+      for (const file of uploads.files) {
+        archive.append(this.createUploadExportStream(file, uploads.warnings), {
+          name: `uploads/${file.relativePath}`,
+        });
+      }
+
+      archive.append(this.createManifestExportStream(() => JSON.stringify({
+        format: SYSTEM_DATA_EXPORT_FORMAT,
+        schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
+        generatedAt,
+        generatedBy: { id: actor.id, name: actor.name ?? null, role: actor.role },
+        totals: {
+          managedTables: managedTables.length,
+          databaseRows: totalDatabaseRows,
+          uploadFiles: uploads.fileCount,
+          uploadBytes: uploads.totalBytes,
+        },
+        tables: tableManifest,
+        uploads: {
+          files: uploads.files.map((file) => ({ path: file.relativePath, size: file.size })),
+          warnings: uploads.warnings,
+        },
+      }, null, 2)), { name: 'manifest.json' });
+
+      await archive.finalize();
+
+      try {
+        await this.auditService.log({
+          action: AuditAction.EXPORT,
+          entityType: 'system-data',
+          entityId: 'global',
+          entityTitle: filename,
+          user: { id: actor.id, name: actor.name ?? null, orgId: null },
+          orgId: null,
+          details: {
+            managedTables: managedTables.length,
+            databaseRows: totalDatabaseRows,
+            uploadFiles: uploads.fileCount,
+            uploadBytes: uploads.totalBytes,
+          },
+        });
+      } catch {
+        /* ignore audit errors */
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown export error';
+      this.logger.error(`System export failed: ${message}`);
+      archive.destroy(error instanceof Error ? error : new Error(message));
+      output.destroy(error instanceof Error ? error : new Error(message));
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private createJsonExportStream(queryRunner: QueryRunner, table: ManagedTable) {
+    return Readable.from(this.iterateJsonExportRows(queryRunner, table));
+  }
+
+  private async *iterateJsonExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<string> {
+    yield '[\n';
+    let first = true;
+    for await (const row of this.iterateExportRows(queryRunner, table)) {
+      yield `${first ? '' : ',\n'}${JSON.stringify(row)}`;
+      first = false;
+    }
+    yield '\n]\n';
+  }
+
+  private createCsvExportStream(queryRunner: QueryRunner, table: ManagedTable) {
+    return Readable.from(this.iterateCsvExportRows(queryRunner, table));
+  }
+
+  private async *iterateCsvExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<string> {
+    let columns: string[] | null = null;
+    for await (const row of this.iterateExportRows(queryRunner, table)) {
+      if (!columns) {
+        columns = Object.keys(row);
+        yield `${columns.map((column) => this.escapeCsvValue(column)).join(',')}\n`;
+      }
+      yield `${columns.map((column) => this.escapeCsvValue(this.serializeCsvValue(row[column]))).join(',')}\n`;
+    }
+  }
+
+  private async *iterateExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<Record<string, unknown>> {
+    const sql = `SELECT * FROM ${this.escapeTablePath(table.path)}`;
+    if (this.dataSource.options.type === 'postgres') {
+      const rowStream = await queryRunner.stream(sql);
+      for await (const row of rowStream as AsyncIterable<Record<string, unknown>>) {
+        yield this.normalizeDateOnlyColumns(table, row);
+      }
+      return;
+    }
+
+    const chunkSize = 1_000;
+    for (let offset = 0; ; offset += chunkSize) {
+      const rows = await queryRunner.query(`${sql} LIMIT ${chunkSize} OFFSET ${offset}`) as Array<Record<string, unknown>>;
+      if (!rows.length) return;
+      for (const row of rows) yield this.normalizeDateOnlyColumns(table, row);
+      if (rows.length < chunkSize) return;
+    }
+  }
+
+  private createUploadExportStream(file: UploadFileEntry, warnings: string[]) {
+    const logger = this.logger;
+    return Readable.from((async function* () {
+      try {
+        for await (const chunk of createReadStream(file.absolutePath)) yield chunk;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'unknown upload read error';
+        warnings.push(`${file.relativePath}: ${message}`);
+        logger.warn(`Could not add upload file ${file.absolutePath} to system export: ${message}`);
+      }
+    })());
+  }
+
+  private createManifestExportStream(createManifest: () => string) {
+    return Readable.from((async function* () {
+      yield createManifest();
+    })());
+  }
+
   private serializeCsvValue(value: unknown) {
     if (value === null || typeof value === 'undefined') return '';
     if (value instanceof Date) return value.toISOString();
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
-  }
-
-  private normalizeRowsForExport(table: ManagedTable, rows: Array<Record<string, unknown>>) {
-    return rows.map((row) => this.normalizeDateOnlyColumns(table, row));
   }
 
   private normalizeRowsForImport(table: ManagedTable, rows: Array<Record<string, unknown>>) {
@@ -1155,23 +1236,6 @@ export class SystemDataService {
       return `"${value.replace(/"/g, '""')}"`;
     }
     return value;
-  }
-
-  private buildCsv(rows: Array<Record<string, unknown>>) {
-    if (!rows.length) return '';
-    const columns = Array.from(
-      rows.reduce((set, row) => {
-        Object.keys(row || {}).forEach((key) => set.add(key));
-        return set;
-      }, new Set<string>()),
-    );
-    const header = columns.map((column) => this.escapeCsvValue(column)).join(',');
-    const body = rows.map((row) =>
-      columns
-        .map((column) => this.escapeCsvValue(this.serializeCsvValue(row[column])))
-        .join(','),
-    );
-    return [header, ...body].join('\n');
   }
 
 }

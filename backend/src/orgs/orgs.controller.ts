@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import type { OpeningHours, OrganizationClosureDay, OrganizationTaxonomySettingsUpdatePayload } from './entities/organization.entity';
+import { toPublicUser } from '../common/public-response';
 
 function orgMoveFeatureEnabled() {
   return ['1', 'true', 'yes', 'on'].includes(String(process.env.ENABLE_ORG_MOVE || '').toLowerCase());
@@ -91,7 +92,7 @@ export class OrgsController {
 
   // List users for an org (optionally include subtree)
   @Get(':id/users')
-  usersByOrg(
+  async usersByOrg(
     @Param('id') id: string,
     @Req() req: { user: { role: string; orgId?: string | null } },
     @Query('includeSubtree') includeSubtree?: string,
@@ -99,24 +100,20 @@ export class OrgsController {
     const include = includeSubtree === 'true';
     if (req.user.role === 'superadmin') {
       if (include) {
-        return (async () => {
-          const ids = await this.service.getSubtreeOrgIds(id);
-          return this.service.findUsersByOrgIds(ids);
-        })();
+        const ids = await this.service.getSubtreeOrgIds(id);
+        return (await this.service.findUsersByOrgIds(ids)).map(toPublicUser);
       }
-      return this.service.findUsersByOrg(id || null);
+      return (await this.service.findUsersByOrg(id || null)).map(toPublicUser);
     }
     const myOrgId = req.user.orgId || null;
     if (!myOrgId) return [];
-    return (async () => {
-      const ids = await this.service.getSubtreeOrgIds(myOrgId);
-      if (!ids.includes(id)) return [];
-      if (include) {
-        const subtree = await this.service.getSubtreeOrgIds(id);
-        return this.service.findUsersByOrgIds(subtree);
-      }
-      return this.service.findUsersByOrg(id || null);
-    })();
+    const ids = await this.service.getSubtreeOrgIds(myOrgId);
+    if (!ids.includes(id)) return [];
+    if (include) {
+      const subtree = await this.service.getSubtreeOrgIds(id);
+      return (await this.service.findUsersByOrgIds(subtree)).map(toPublicUser);
+    }
+    return (await this.service.findUsersByOrg(id || null)).map(toPublicUser);
   }
 
   // Return the list of Organization DTOs in the caller's subtree.

@@ -124,12 +124,11 @@ export default function SettingsTags() {
                   onClick={async () => {
                     setConfirm({ open: true, tag: t, loading: true });
                     try {
-                      const res = await api.get('/activities', { params: { tagIds: t.id } });
-                      const list = res.data as unknown[];
+                      const res = await api.get('/activities', { params: { tagIds: t.id, page: 1, limit: 1 } });
                       setConfirm({
                         open: true,
                         tag: t,
-                        count: Array.isArray(list) ? list.length : 0,
+                        count: Number(res.data?.total || 0),
                         loading: false,
                       });
                     } catch {

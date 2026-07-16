@@ -16,6 +16,7 @@ import { OrgsService } from '../orgs/orgs.service';
 import { Activity } from './entities/activity.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { toPublicActivity } from '../common/public-response';
 
 function csvToWeekdays(value?: string): number[] | undefined {
   if (!value) return undefined;
@@ -85,7 +86,7 @@ export class ActivitiesController {
     required: false,
     description: "Sortierreihenfolge für Datum (asc|desc); Standard 'desc'",
   })
-  @ApiQuery({ name: 'page', required: false, description: '1-basierte Seite für Paginierung' })
+  @ApiQuery({ name: 'page', required: false, description: '1-basierte Seite für Paginierung (Standard: 1)' })
   @ApiQuery({
     name: 'limit',
     required: false,
@@ -199,11 +200,14 @@ export class ActivitiesController {
           : undefined,
     } as const;
 
-    // Wenn page gesetzt ist, paginierte Antwort liefern, sonst alle (bestehendes Verhalten)
-    if (typeof page !== 'undefined') {
-      return this.activitiesService.findAllPaged({ ...filters, page, limit });
-    }
-    return this.activitiesService.findAll(filters);
+    // Activity lists are always paginated. Statistics use their dedicated
+    // aggregate endpoints and therefore do not depend on this response shape.
+    const result = await this.activitiesService.findAllPaged({
+      ...filters,
+      page: page ?? 1,
+      limit,
+    });
+    return { ...result, data: result.data.map(toPublicActivity) };
   }
 
   // Acknowledgments (Daily Log "done" flag)
@@ -247,8 +251,8 @@ export class ActivitiesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Aktivität nach ID abrufen' })
-  findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string | null } }) {
-    return this.activitiesService.findOneScoped(id, req.user);
+  async findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string | null } }) {
+    return toPublicActivity(await this.activitiesService.findOneScoped(id, req.user));
   }
 
   @Patch(':id/ack')
@@ -271,7 +275,7 @@ export class ActivitiesController {
 
   @Post()
   @ApiOperation({ summary: 'Neue Aktivität anlegen' })
-  create(
+  async create(
     @Body() data: Partial<Activity>,
     @Req()
     req: {
@@ -289,15 +293,15 @@ export class ActivitiesController {
           ? req.user.orgId || null
           : req.effectiveOrgId;
     const orgId = scopeOrgId ?? null;
-    return this.activitiesService.create(
+    return toPublicActivity(await this.activitiesService.create(
       { ...data, orgId },
       { id: req.user.id, name: req.user.name || undefined, orgId },
-    );
+    ));
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Aktivität bearbeiten' })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() data: Partial<Activity>,
     @Req()
@@ -310,10 +314,10 @@ export class ActivitiesController {
     // Drop orgId from payload and let service enforce scoping rules
     const rest: Partial<Activity> = { ...(data as Partial<Activity>) };
     delete (rest as Partial<Activity> & { orgId?: string | null }).orgId;
-    return this.activitiesService.updateScoped(id, rest, {
+    return toPublicActivity(await this.activitiesService.updateScoped(id, rest, {
       ...req.user,
       name: req.user.name || undefined,
-    });
+    }));
   }
 
   @Delete(':id')

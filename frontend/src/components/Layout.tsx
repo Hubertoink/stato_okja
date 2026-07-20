@@ -586,6 +586,7 @@ export default function Layout() {
                     : ''
                 }`}
               >
+                <BookOpen className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/logbook') ? 'nav-label-active' : ''}`} data-text="Logbuch">Logbuch</span>
               </Link>
             </li>

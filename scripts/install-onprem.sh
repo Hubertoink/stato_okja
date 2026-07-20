@@ -31,9 +31,12 @@ require_command() {
 
 show_compose_diagnostics() {
   say "Docker-Diagnose"
-  docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" ps --all || true
-  docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" \
-    logs --no-color --tail 120 postgres backend || true
+  compose ps --all || true
+  if [ "$TLS_ENABLED" = true ]; then
+    compose logs --no-color --tail 120 postgres backend caddy || true
+  else
+    compose logs --no-color --tail 120 postgres backend || true
+  fi
 }
 
 random_hex() {
@@ -47,6 +50,30 @@ replace_env_value() {
   escaped_value=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
   sed "s|^${key}=.*$|${key}=${escaped_value}|" "$ENV_FILE" > "$ENV_FILE.tmp"
   mv "$ENV_FILE.tmp" "$ENV_FILE"
+}
+
+get_env_value() {
+  key=$1
+  value=$(sed -n "s|^${key}=||p" "$ENV_FILE" | tail -n 1)
+  [ -n "$value" ] || fail "Variable '$key' fehlt oder ist leer in $ENV_FILE."
+  printf '%s' "$value"
+}
+
+ensure_env_value() {
+  key=$1
+  default_value=$2
+  if grep -q "^${key}=" "$ENV_FILE"; then
+    return
+  fi
+  printf '\n%s=%s\n' "$key" "$default_value" >> "$ENV_FILE"
+}
+
+compose() {
+  if [ "$TLS_ENABLED" = true ]; then
+    docker compose --profile internal-tls -f docker-compose.onprem.yml --env-file "$ENV_FILE" "$@"
+  else
+    docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" "$@"
+  fi
 }
 
 require_command git Git
@@ -98,12 +125,70 @@ else
   ENV_CREATED=false
 fi
 
+# Add TLS defaults to installations created before the optional Caddy mode.
+ensure_env_value HTTP_BIND_ADDRESS 0.0.0.0
+ensure_env_value STATO_TLS_MODE off
+ensure_env_value STATO_PUBLIC_HOST ''
+ensure_env_value HTTPS_BIND_ADDRESS 0.0.0.0
+ensure_env_value HTTPS_PORT 443
+
+# One-command opt-in for internal HTTPS, e.g.
+# curl ... | STATO_INTERNAL_TLS_HOST=stato.intern.example.de sh
+if [ -n "${STATO_INTERNAL_TLS_HOST:-}" ]; then
+  replace_env_value STATO_TLS_MODE internal
+  replace_env_value STATO_PUBLIC_HOST "$STATO_INTERNAL_TLS_HOST"
+fi
+
+TLS_MODE=$(get_env_value STATO_TLS_MODE | tr '[:upper:]' '[:lower:]')
+TLS_ENABLED=false
+PUBLIC_URL=
+
+case "$TLS_MODE" in
+  off)
+    ;;
+  internal)
+    PUBLIC_HOST=$(get_env_value STATO_PUBLIC_HOST)
+    case "$PUBLIC_HOST" in
+      *://*|*/*|*:*|*' '*|.*|*..*|*.)
+        fail "STATO_PUBLIC_HOST muss ein DNS-Name ohne Protokoll, Pfad oder Port sein, z. B. stato.intern.example.de."
+        ;;
+      *.*)
+        ;;
+      *)
+        fail "STATO_PUBLIC_HOST muss ein DNS-Name mit mindestens einem Punkt sein, z. B. stato.intern.example.de."
+        ;;
+    esac
+
+    HTTPS_PORT_VALUE=$(get_env_value HTTPS_PORT)
+    case "$HTTPS_PORT_VALUE" in
+      ''|*[!0-9]*) fail "HTTPS_PORT muss eine Portnummer zwischen 1 und 65535 sein." ;;
+    esac
+    if [ "$HTTPS_PORT_VALUE" -lt 1 ] || [ "$HTTPS_PORT_VALUE" -gt 65535 ]; then
+      fail "HTTPS_PORT muss eine Portnummer zwischen 1 und 65535 sein."
+    fi
+
+    if [ "$HTTPS_PORT_VALUE" -eq 443 ]; then
+      PUBLIC_URL="https://$PUBLIC_HOST"
+    else
+      PUBLIC_URL="https://$PUBLIC_HOST:$HTTPS_PORT_VALUE"
+    fi
+    say "Internes HTTPS mit Caddy fuer $PUBLIC_URL aktivieren"
+    replace_env_value HTTP_BIND_ADDRESS 127.0.0.1
+    replace_env_value APP_ORIGIN "$PUBLIC_URL"
+    replace_env_value CORS_ORIGINS "$PUBLIC_URL"
+    replace_env_value AUTH_REFRESH_COOKIE_SECURE true
+    TLS_ENABLED=true
+    ;;
+  *)
+    fail "STATO_TLS_MODE muss 'off' oder 'internal' sein (aktueller Wert: '$TLS_MODE')."
+    ;;
+esac
+
 say "Compose-Konfiguration pruefen"
-docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" config --quiet
+compose config --quiet
 
 say "PostgreSQL starten und Datenbankzugang synchronisieren"
-if ! docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" \
-  up -d --wait --wait-timeout 120 postgres; then
+if ! compose up -d --wait --wait-timeout 120 postgres; then
   show_compose_diagnostics
   fail "PostgreSQL konnte nicht gestartet werden."
 fi
@@ -112,15 +197,14 @@ fi
 # volume. Keep an existing database usable when .env.onprem changes later.
 SYNC_SQL="SELECT format('ALTER ROLE %I PASSWORD %L', current_user, :'password') \gexec"
 if ! printf '%s\n' "$SYNC_SQL" | \
-  docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" \
-    exec -T postgres sh -c \
-      'exec psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1 --set "password=$POSTGRES_PASSWORD"'; then
+  compose exec -T postgres sh -c \
+    'exec psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1 --set "password=$POSTGRES_PASSWORD"'; then
   show_compose_diagnostics
   fail "Das PostgreSQL-Passwort aus .env.onprem konnte nicht synchronisiert werden."
 fi
 
 say "StatO-Images bauen"
-if ! docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" build; then
+if ! compose build; then
   show_compose_diagnostics
   fail "Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung."
 fi
@@ -128,25 +212,29 @@ fi
 # Volumes created by older images can still belong to root. Repair ownership
 # before the unprivileged backend starts; existing uploaded files stay intact.
 say "Berechtigungen des persistenten Upload-Verzeichnisses pruefen"
-if ! docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" \
-  run --rm --no-deps --user 0 --cap-add CHOWN --entrypoint sh backend -c \
+if ! compose run --rm --no-deps --user 0 --cap-add CHOWN --entrypoint sh backend -c \
     'mkdir -p /app/uploads/images /app/uploads/project-documents && chown -R node:node /app/uploads'; then
   show_compose_diagnostics
   fail "Die Berechtigungen des Upload-Verzeichnisses konnten nicht repariert werden."
 fi
 
 say "StatO starten"
-if ! docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" up -d; then
+if ! compose up -d; then
   show_compose_diagnostics
   fail "StatO konnte nicht vollstaendig gestartet werden. Die Diagnose steht oberhalb dieser Meldung."
 fi
 
 say "StatO wurde gestartet"
-docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" ps
+compose ps
 
 printf '\nInstallation: %s\n' "$INSTALL_DIR"
 printf 'Konfiguration: %s/%s\n' "$INSTALL_DIR" "$ENV_FILE"
-printf 'Aufruf:        http://localhost (bzw. http://<server-ip>)\n'
+if [ "$TLS_ENABLED" = true ]; then
+  printf 'Aufruf:        %s\n' "$PUBLIC_URL"
+  printf 'Caddy-CA:      ./scripts/export-onprem-caddy-root.sh\n'
+else
+  printf 'Aufruf:        http://localhost (bzw. http://<server-ip>)\n'
+fi
 printf 'Superadmin:    admin@stato.local\n'
 if [ "$ENV_CREATED" = true ]; then
   printf 'Startpasswort: %s\n' "$ADMIN_PASSWORD"

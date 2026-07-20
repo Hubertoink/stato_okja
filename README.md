@@ -35,6 +35,10 @@ Servers erreichbar. Domain, SMTP und Branding koennen anschliessend in
 der Installation ausgegeben. Details und manuelle Alternative:
 [Docker-On-Prem-Anleitung](docs/DOCKER_ONPREM_SETUP.md).
 
+Für einen zentralen Server im internen Netzwerk mit HTTPS, Caddy und einer
+kurzen Anleitung zum Verteilen des Stammzertifikats auf Windows-PCs:
+[Caddy internes TLS](docs/CADDY_INTERNAL_TLS_ONPREM.md).
+
 ## 🧭 Betriebsarten (Hosted vs. On‑Prem)
 
 StatO kann grundsätzlich auf zwei Arten genutzt werden:

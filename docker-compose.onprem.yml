@@ -129,7 +129,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "${HTTP_PORT:-80}:8080"
+      - "${HTTP_BIND_ADDRESS:-0.0.0.0}:${HTTP_PORT:-80}:8080"
     networks: [frontend-backend]
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/healthz || exit 1"]
@@ -137,6 +137,36 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Optionaler interner HTTPS-Einstieg. Der Installer aktiviert dieses Profil
+  # bei STATO_TLS_MODE=internal und bindet den HTTP-Frontend-Port dann nur an
+  # 127.0.0.1. Caddy spricht den Frontend-Service direkt im Docker-Netz an.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["internal-tls"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      STATO_PUBLIC_HOST: ${STATO_PUBLIC_HOST:-}
+      TZ: ${TZ:-Europe/Berlin}
+    depends_on:
+      frontend:
+        condition: service_healthy
+    ports:
+      - "${HTTPS_BIND_ADDRESS:-0.0.0.0}:${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [frontend-backend]
 
   backup:
     build:
@@ -184,6 +214,10 @@ volumes:
     name: stato-onprem-backend-uploads
   backup-data:
     name: stato-onprem-backup-data
+  caddy-data:
+    name: stato-onprem-caddy-data
+  caddy-config:
+    name: stato-onprem-caddy-config
 
 networks:
   frontend-backend:

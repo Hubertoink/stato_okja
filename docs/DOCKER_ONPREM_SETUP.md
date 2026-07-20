@@ -438,6 +438,10 @@ Dann sollten diese Variablen exakt zur finalen URL passen:
 - `APP_ORIGIN=https://stato.eure-domain.de`
 - `CORS_ORIGINS=https://stato.eure-domain.de`
 
+Für interne DNS-Namen enthält das Repository einen optionalen Caddy-Modus mit
+interner PKI, Zertifikatsexport und Anleitung für Windows-Client-PCs bzw. AD-
+Gruppenrichtlinien: [Caddy internes TLS](CADDY_INTERNAL_TLS_ONPREM.md).
+
 ## SMTP einrichten
 
 Wenn Einladungs- oder Passwort-Reset-Mails funktionieren sollen, SMTP konfigurieren:

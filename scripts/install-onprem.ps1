@@ -31,7 +31,11 @@ function Show-ComposeDiagnostics([string[]]$ComposeArguments) {
     $statusArguments = $ComposeArguments + @('ps', '--all')
     & docker @statusArguments 2>&1 | Out-Host
 
-    $logArguments = $ComposeArguments + @('logs', '--no-color', '--tail', '120', 'postgres', 'backend')
+    $logServices = @('postgres', 'backend')
+    if ($ComposeArguments -contains 'internal-tls') {
+        $logServices += 'caddy'
+    }
+    $logArguments = $ComposeArguments + @('logs', '--no-color', '--tail', '120') + $logServices
     & docker @logArguments 2>&1 | Out-Host
 }
 
@@ -54,6 +58,30 @@ function Set-EnvValue([string]$Path, [string]$Key, [string]$Value) {
         throw "Variable '$Key' fehlt in $Path."
     }
     $content = [regex]::Replace($content, $pattern, "$Key=$Value")
+    $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $content, $utf8WithoutBom)
+}
+
+function Get-EnvValue([string]$Path, [string]$Key) {
+    $content = [System.IO.File]::ReadAllText($Path)
+    $pattern = '(?m)^' + [regex]::Escape($Key) + '=(.*)$'
+    $match = [regex]::Match($content, $pattern)
+    if (-not $match.Success) {
+        throw "Variable '$Key' fehlt in $Path."
+    }
+    return $match.Groups[1].Value.Trim()
+}
+
+function Ensure-EnvValue([string]$Path, [string]$Key, [string]$DefaultValue) {
+    $content = [System.IO.File]::ReadAllText($Path)
+    $pattern = '(?m)^' + [regex]::Escape($Key) + '='
+    if ([regex]::IsMatch($content, $pattern)) {
+        return
+    }
+    if ($content.Length -gt 0 -and -not $content.EndsWith("`n")) {
+        $content += "`n"
+    }
+    $content += "$Key=$DefaultValue`n"
     $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($Path, $content, $utf8WithoutBom)
 }
@@ -126,7 +154,57 @@ else {
     Write-Step 'Vorhandene .env.onprem beibehalten'
 }
 
-$composeArguments = @('compose', '-f', 'docker-compose.onprem.yml', '--env-file', '.env.onprem')
+# Add TLS defaults to installations created before the optional Caddy mode.
+Ensure-EnvValue $envFile 'HTTP_BIND_ADDRESS' '0.0.0.0'
+Ensure-EnvValue $envFile 'STATO_TLS_MODE' 'off'
+Ensure-EnvValue $envFile 'STATO_PUBLIC_HOST' ''
+Ensure-EnvValue $envFile 'HTTPS_BIND_ADDRESS' '0.0.0.0'
+Ensure-EnvValue $envFile 'HTTPS_PORT' '443'
+
+# One-command opt-in for internal HTTPS, e.g.
+# $env:STATO_INTERNAL_TLS_HOST='stato.intern.example.de'; irm ... | iex
+if ($env:STATO_INTERNAL_TLS_HOST) {
+    Set-EnvValue $envFile 'STATO_TLS_MODE' 'internal'
+    Set-EnvValue $envFile 'STATO_PUBLIC_HOST' $env:STATO_INTERNAL_TLS_HOST.Trim()
+}
+
+$tlsMode = (Get-EnvValue $envFile 'STATO_TLS_MODE').ToLowerInvariant()
+$tlsEnabled = $false
+$publicUrl = $null
+
+switch ($tlsMode) {
+    'off' { }
+    'internal' {
+        $publicHost = Get-EnvValue $envFile 'STATO_PUBLIC_HOST'
+        if ($publicHost -notmatch '^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$' -or
+            $publicHost -notlike '*.*' -or $publicHost.Contains('..')) {
+            throw 'STATO_PUBLIC_HOST muss ein DNS-Name ohne Protokoll, Pfad oder Port sein, z. B. stato.intern.example.de.'
+        }
+
+        $httpsPort = 0
+        $httpsPortValue = Get-EnvValue $envFile 'HTTPS_PORT'
+        if (-not [int]::TryParse($httpsPortValue, [ref]$httpsPort) -or $httpsPort -lt 1 -or $httpsPort -gt 65535) {
+            throw 'HTTPS_PORT muss eine Portnummer zwischen 1 und 65535 sein.'
+        }
+
+        $publicUrl = if ($httpsPort -eq 443) { "https://$publicHost" } else { "https://$publicHost`:$httpsPort" }
+        Write-Step "Internes HTTPS mit Caddy fuer $publicUrl aktivieren"
+        Set-EnvValue $envFile 'HTTP_BIND_ADDRESS' '127.0.0.1'
+        Set-EnvValue $envFile 'APP_ORIGIN' $publicUrl
+        Set-EnvValue $envFile 'CORS_ORIGINS' $publicUrl
+        Set-EnvValue $envFile 'AUTH_REFRESH_COOKIE_SECURE' 'true'
+        $tlsEnabled = $true
+    }
+    default {
+        throw "STATO_TLS_MODE muss 'off' oder 'internal' sein (aktueller Wert: '$tlsMode')."
+    }
+}
+
+$composeArguments = @('compose')
+if ($tlsEnabled) {
+    $composeArguments += @('--profile', 'internal-tls')
+}
+$composeArguments += @('-f', 'docker-compose.onprem.yml', '--env-file', '.env.onprem')
 
 Write-Step 'Compose-Konfiguration pruefen'
 Invoke-Native docker ($composeArguments + @('config', '--quiet'))
@@ -187,7 +265,13 @@ Invoke-Native docker ($composeArguments + @('ps'))
 
 Write-Host "`nInstallation: $InstallDirectory"
 Write-Host "Konfiguration: $envFile"
-Write-Host 'Aufruf:        http://localhost (bzw. http://<server-ip>)'
+if ($tlsEnabled) {
+    Write-Host "Aufruf:        $publicUrl"
+    Write-Host 'Caddy-CA:      .\scripts\export-onprem-caddy-root.ps1'
+}
+else {
+    Write-Host 'Aufruf:        http://localhost (bzw. http://<server-ip>)'
+}
 Write-Host 'Superadmin:    admin@stato.local'
 if ($envCreated) {
     Write-Host "Startpasswort: $adminPassword" -ForegroundColor Yellow

@@ -577,7 +577,23 @@ Prüfen:
 - zeigen die Postgres-Logs `database "stato_prod" does not exist`?
 - lief vorher bereits das Dev-Compose im selben Checkout?
 
-Wenn ja, wurde meist ein alter Dev-Postgres-Volume wiederverwendet. Das On-Prem-Compose nutzt dafür jetzt eigene Docker-Ressourcen; den Stack danach einmal mit `docker compose -f docker-compose.onprem.yml --env-file .env.onprem down` und anschließend wieder mit `up -d --build` neu starten.
+Bei `password authentication failed` passt meist das Passwort im vorhandenen
+Postgres-Volume nicht mehr zu `.env.onprem`. Ein normales `down`/`up` ändert das
+gespeicherte Datenbankpasswort nicht. Den Installer erneut ausführen; er gleicht
+das Passwort ohne Löschen der Daten ab, korrigiert bei älteren Upload-Volumes die
+Berechtigungen und startet den Stack neu:
+
+```powershell
+.\scripts\install-onprem.ps1
+```
+
+```bash
+sh ./scripts/install-onprem.sh
+```
+
+Bei `database "stato_prod" does not exist` prüfen, ob `POSTGRES_DB` oder
+`POSTGRES_USER` nach der ersten Initialisierung geändert wurden. Diese Namen
+werden bei einem bestehenden Volume nicht automatisch umbenannt.
 
 ### Nach Neustart sind Logins ungültig
 
@@ -592,7 +608,7 @@ Für einen eigenen On-Prem-Rechner ist der einfachste und sauberste Weg:
 
 1. [docker-compose.onprem.yml](../docker-compose.onprem.yml) nutzen
 2. `.env.onprem` sauber ausfüllen
-3. mit `docker compose ... up -d --build` starten
+3. mit dem On-Prem-Installer bauen und starten
 4. Backend-Logs prüfen, damit automatische Migrationen erfolgreich gelaufen sind
 5. nur das Frontend nach außen freigeben
 6. HTTPS davor setzen

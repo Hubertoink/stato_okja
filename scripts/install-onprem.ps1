@@ -25,6 +25,16 @@ function Invoke-Native([string]$Command, [string[]]$Arguments) {
     }
 }
 
+function Show-ComposeDiagnostics([string[]]$ComposeArguments) {
+    Write-Host "`n==> Docker-Diagnose" -ForegroundColor Yellow
+
+    $statusArguments = $ComposeArguments + @('ps', '--all')
+    & docker @statusArguments 2>&1 | Out-Host
+
+    $logArguments = $ComposeArguments + @('logs', '--no-color', '--tail', '120', 'postgres', 'backend')
+    & docker @logArguments 2>&1 | Out-Host
+}
+
 function New-RandomHex([int]$ByteCount) {
     $bytes = New-Object byte[] $ByteCount
     $generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
@@ -116,12 +126,64 @@ else {
     Write-Step 'Vorhandene .env.onprem beibehalten'
 }
 
-Write-Step 'Compose-Konfiguration pruefen und StatO starten'
-Invoke-Native docker @('compose', '-f', 'docker-compose.onprem.yml', '--env-file', '.env.onprem', 'config', '--quiet')
-Invoke-Native docker @('compose', '-f', 'docker-compose.onprem.yml', '--env-file', '.env.onprem', 'up', '-d', '--build')
+$composeArguments = @('compose', '-f', 'docker-compose.onprem.yml', '--env-file', '.env.onprem')
+
+Write-Step 'Compose-Konfiguration pruefen'
+Invoke-Native docker ($composeArguments + @('config', '--quiet'))
+
+Write-Step 'PostgreSQL starten und Datenbankzugang synchronisieren'
+$postgresArguments = $composeArguments + @('up', '-d', '--wait', '--wait-timeout', '120', 'postgres')
+& docker @postgresArguments
+if ($LASTEXITCODE -ne 0) {
+    Show-ComposeDiagnostics $composeArguments
+    throw 'PostgreSQL konnte nicht gestartet werden.'
+}
+
+# POSTGRES_PASSWORD is only applied while PostgreSQL initializes an empty
+# volume. Keep an existing database usable when .env.onprem changes later.
+$syncSql = "SELECT format('ALTER ROLE %I PASSWORD %L', current_user, :'password') \gexec"
+$syncArguments = $composeArguments + @(
+    'exec', '-T', 'postgres', 'sh', '-c',
+    'exec psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1 --set "password=$POSTGRES_PASSWORD"'
+)
+$syncSql | & docker @syncArguments
+if ($LASTEXITCODE -ne 0) {
+    Show-ComposeDiagnostics $composeArguments
+    throw 'Das PostgreSQL-Passwort aus .env.onprem konnte nicht synchronisiert werden.'
+}
+
+Write-Step 'StatO-Images bauen'
+$buildArguments = $composeArguments + @('build')
+& docker @buildArguments
+if ($LASTEXITCODE -ne 0) {
+    Show-ComposeDiagnostics $composeArguments
+    throw 'Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung.'
+}
+
+# Volumes created by older images can still belong to root. Repair ownership
+# before the unprivileged backend starts; existing uploaded files stay intact.
+Write-Step 'Berechtigungen des persistenten Upload-Verzeichnisses pruefen'
+$uploadsArguments = $composeArguments + @(
+    'run', '--rm', '--no-deps', '--user', '0', '--cap-add', 'CHOWN',
+    '--entrypoint', 'sh', 'backend', '-c',
+    'mkdir -p /app/uploads/images /app/uploads/project-documents && chown -R node:node /app/uploads'
+)
+& docker @uploadsArguments
+if ($LASTEXITCODE -ne 0) {
+    Show-ComposeDiagnostics $composeArguments
+    throw 'Die Berechtigungen des Upload-Verzeichnisses konnten nicht repariert werden.'
+}
+
+Write-Step 'StatO starten'
+$upArguments = $composeArguments + @('up', '-d')
+& docker @upArguments
+if ($LASTEXITCODE -ne 0) {
+    Show-ComposeDiagnostics $composeArguments
+    throw 'StatO konnte nicht vollstaendig gestartet werden. Die Diagnose steht oberhalb dieser Meldung.'
+}
 
 Write-Step 'StatO wurde gestartet'
-Invoke-Native docker @('compose', '-f', 'docker-compose.onprem.yml', '--env-file', '.env.onprem', 'ps')
+Invoke-Native docker ($composeArguments + @('ps'))
 
 Write-Host "`nInstallation: $InstallDirectory"
 Write-Host "Konfiguration: $envFile"
@@ -131,5 +193,5 @@ if ($envCreated) {
     Write-Host "Startpasswort: $adminPassword" -ForegroundColor Yellow
     Write-Host "`nBitte das Startpasswort sicher notieren und nach dem ersten Login aendern." -ForegroundColor Yellow
 }
-Write-Host "`nNach Aenderungen an .env.onprem neu bauen/starten mit:"
-Write-Host "  cd `"$InstallDirectory`"; docker compose -f docker-compose.onprem.yml --env-file .env.onprem up -d --build"
+Write-Host "`nNach Aenderungen an .env.onprem den Installer erneut ausfuehren mit:"
+Write-Host "  cd `"$InstallDirectory`"; .\scripts\install-onprem.ps1"

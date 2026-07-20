@@ -29,6 +29,13 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "'$1' wurde nicht gefunden. Bitte zuerst $2 installieren."
 }
 
+show_compose_diagnostics() {
+  say "Docker-Diagnose"
+  docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" ps --all || true
+  docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" \
+    logs --no-color --tail 120 postgres backend || true
+}
+
 random_hex() {
   byte_count=$1
   od -An -N "$byte_count" -tx1 /dev/urandom | tr -d ' \n'
@@ -91,9 +98,48 @@ else
   ENV_CREATED=false
 fi
 
-say "Compose-Konfiguration pruefen und StatO starten"
+say "Compose-Konfiguration pruefen"
 docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" config --quiet
-docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" up -d --build
+
+say "PostgreSQL starten und Datenbankzugang synchronisieren"
+if ! docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" \
+  up -d --wait --wait-timeout 120 postgres; then
+  show_compose_diagnostics
+  fail "PostgreSQL konnte nicht gestartet werden."
+fi
+
+# POSTGRES_PASSWORD is only applied while PostgreSQL initializes an empty
+# volume. Keep an existing database usable when .env.onprem changes later.
+SYNC_SQL="SELECT format('ALTER ROLE %I PASSWORD %L', current_user, :'password') \gexec"
+if ! printf '%s\n' "$SYNC_SQL" | \
+  docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" \
+    exec -T postgres sh -c \
+      'exec psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1 --set "password=$POSTGRES_PASSWORD"'; then
+  show_compose_diagnostics
+  fail "Das PostgreSQL-Passwort aus .env.onprem konnte nicht synchronisiert werden."
+fi
+
+say "StatO-Images bauen"
+if ! docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" build; then
+  show_compose_diagnostics
+  fail "Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung."
+fi
+
+# Volumes created by older images can still belong to root. Repair ownership
+# before the unprivileged backend starts; existing uploaded files stay intact.
+say "Berechtigungen des persistenten Upload-Verzeichnisses pruefen"
+if ! docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" \
+  run --rm --no-deps --user 0 --cap-add CHOWN --entrypoint sh backend -c \
+    'mkdir -p /app/uploads/images /app/uploads/project-documents && chown -R node:node /app/uploads'; then
+  show_compose_diagnostics
+  fail "Die Berechtigungen des Upload-Verzeichnisses konnten nicht repariert werden."
+fi
+
+say "StatO starten"
+if ! docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" up -d; then
+  show_compose_diagnostics
+  fail "StatO konnte nicht vollstaendig gestartet werden. Die Diagnose steht oberhalb dieser Meldung."
+fi
 
 say "StatO wurde gestartet"
 docker compose -f docker-compose.onprem.yml --env-file "$ENV_FILE" ps
@@ -106,5 +152,5 @@ if [ "$ENV_CREATED" = true ]; then
   printf 'Startpasswort: %s\n' "$ADMIN_PASSWORD"
   printf '\nBitte das Startpasswort sicher notieren und nach dem ersten Login aendern.\n'
 fi
-printf '\nNach Aenderungen an .env.onprem neu bauen/starten mit:\n'
-printf '  cd "%s" && docker compose -f docker-compose.onprem.yml --env-file .env.onprem up -d --build\n' "$INSTALL_DIR"
+printf '\nNach Aenderungen an .env.onprem den Installer erneut ausfuehren mit:\n'
+printf '  cd "%s" && sh ./scripts/install-onprem.sh\n' "$INSTALL_DIR"

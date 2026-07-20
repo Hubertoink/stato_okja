@@ -13,7 +13,7 @@ import {
   LabelList,
 } from 'recharts';
 import { useAuth } from '@/lib/auth';
-import { useActivitiesPaged, type Activity } from '@/lib/activities';
+import { fetchAllActivities, useActivitiesPaged, type Activity } from '@/lib/activities';
 import { useTags } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
@@ -392,7 +392,7 @@ function useStatsOverview(
     },
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 30,
-    refetchOnMount: 'always',
+    refetchOnMount: true,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchInterval:
       typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
@@ -490,7 +490,7 @@ export default function Statistics() {
     [executionStatusFilterParam, from, to, projectId, selectedClosureState, selectedType, selectedWeekdays],
   );
   const overviewQ = useStatsOverview(statsParams, scopeKey, {
-    refetchOnWindowFocus: 'always',
+    refetchOnWindowFocus: true,
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
   const overview = overviewQ.data;
@@ -504,7 +504,7 @@ export default function Statistics() {
   const topProjects = overview?.topProjects ?? [];
   const activityYears = overview?.availableYears ?? [];
   const activitiesPageQ = useActivitiesPaged(activitiesParams, activitiesPage, ACTIVITIES_PER_PAGE, {
-    refetchOnWindowFocus: 'always',
+    refetchOnWindowFocus: true,
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
   const pagedActivities = activitiesPageQ.data?.data ?? [];
@@ -1212,38 +1212,7 @@ export default function Statistics() {
   };
 
   const fetchAllFilteredActivities = async () => {
-    const queryParams: Record<string, unknown> = { ...activitiesParams };
-
-    if (typeof scope === 'string') {
-      queryParams.orgId = scope;
-    } else if (scope === null) {
-      queryParams.orgId = '';
-    }
-
-    if (Array.isArray(activitiesParams.projectIds) && activitiesParams.projectIds.length > 0) {
-      queryParams.projectIds = activitiesParams.projectIds.join(',');
-    } else {
-      delete queryParams.projectIds;
-    }
-
-    if (Array.isArray(activitiesParams.weekdays) && activitiesParams.weekdays.length > 0) {
-      queryParams.weekdays = activitiesParams.weekdays.join(',');
-    } else {
-      delete queryParams.weekdays;
-    }
-
-    if (
-      Array.isArray(activitiesParams.executionStatuses) &&
-      activitiesParams.executionStatuses.length > 0
-    ) {
-      queryParams.executionStatuses = activitiesParams.executionStatuses.join(',');
-    } else {
-      delete queryParams.executionStatuses;
-    }
-    const response = await api.get('/activities', { params: queryParams });
-    const payload = response.data;
-    if (Array.isArray(payload?.data)) return payload.data as Activity[];
-    return (Array.isArray(payload) ? payload : []) as Activity[];
+    return fetchAllActivities(activitiesParams, scope);
   };
 
   const exportActivitiesAsExcel = async (activities: Activity[]) => {
@@ -2464,7 +2433,7 @@ export default function Statistics() {
           to={to || undefined}
           showManager={!pdfMode}
           refreshOptions={{
-            refetchOnWindowFocus: 'always',
+            refetchOnWindowFocus: true,
             refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
           }}
         />

@@ -4,7 +4,7 @@ import type { KeyboardEvent } from 'react';
 import { Save as SaveIcon, X as XIcon, Boxes, Plus as PlusIcon, Trash2 as TrashIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import ProjectPickerModal from './ProjectPickerModal';
-import { type StaffRole, useCreateStaff, useStaff } from '@/lib/staff';
+import { useCreateStaff, useStaff } from '@/lib/staff';
 import {
   useTags,
   useCohorts,
@@ -31,14 +31,11 @@ import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
-import { CategoryFormModal, StaffFormModal, TagFormModal } from '@/components/settings/EntityFormModals';
-import { FIXED_PALETTE, TAG_PALETTE, isInFixedPalette, isInTagPalette } from '@/lib/colorPalette';
 import { useAuth } from '@/lib/auth';
+import { useActivityInlineCreation } from './useActivityInlineCreation';
 import {
   type ActivityFormState,
-  appendUniqueId,
   buildActivitySavePayload,
-  findNamedEntity,
   getActivityCohortCounts,
   getActivityFormStateFromActivity,
   getCohortSums,
@@ -82,12 +79,6 @@ export default function ActivityQuickAdd({
   const [picker, setPicker] = useState(false);
   // mismatch confirm removed; totals derive from cohort columns now
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
-  const [tagCreateOpen, setTagCreateOpen] = useState(false);
-  const [categoryCreateOpen, setCategoryCreateOpen] = useState(false);
-  const [staffCreateState, setStaffCreateState] = useState<{ open: boolean; role: StaffRole }>({
-    open: false,
-    role: 'employee',
-  });
   const { showToast } = useToast();
   const { user } = useAuth();
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
@@ -109,11 +100,29 @@ export default function ActivityQuickAdd({
   const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
   const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
   const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
-  const canCreateOwnTags = Boolean(taxonomyAccess?.tags.canCreateOwn);
-  const canCreateOwnCategories = Boolean(taxonomyAccess?.categories.canCreateOwn);
-  const canManageStaff = Boolean(user && (user.role === 'superadmin' || user.role === 'org_admin'));
-  const addActionButtonClassName =
-    'inline-flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-viridian hover:border-viridian/40';
+  const activityInlineCreation = useActivityInlineCreation({
+    allCategories,
+    allTags,
+    allStaff,
+    taxonomyAccess,
+    user,
+    setForm,
+    showToast,
+    createCategory,
+    updateCategory,
+    createTag,
+    updateTag,
+    createStaff,
+  });
+  const {
+    addActionButtonClassName,
+    canCreateOwnCategories,
+    canCreateOwnTags,
+    canManageStaff,
+    openCategoryCreate,
+    openTagCreate,
+    openStaffCreate,
+  } = activityInlineCreation;
 
   useEffect(() => {
     // Default times; if project provided, prefill from defaults
@@ -278,111 +287,6 @@ export default function ActivityQuickAdd({
   useEffect(() => {
     if (!create.isPending && !update.isPending) submitLockedRef.current = false;
   }, [create.isPending, update.isPending]);
-
-  const addStaffId = (staffId: string) => {
-    setForm((current) => ({ ...current, staffIds: appendUniqueId(current.staffIds, staffId) }));
-  };
-
-  const handleCategoryCreate = async (values: { name?: string; description?: string | null; standardRef?: string | null; color?: string | null }) => {
-    const name = String(values.name || '').trim();
-    if (!name) return;
-    const existing = findNamedEntity(allCategories, name);
-
-    try {
-      let categoryId = existing?.id;
-      const color = isInFixedPalette(values.color as string) ? values.color : FIXED_PALETTE[0];
-
-      if (existing?.id && existing.active === false) {
-        await updateCategory.mutateAsync({
-          id: existing.id,
-          data: { active: true, description: values.description, standardRef: values.standardRef, color },
-        });
-      } else if (!existing?.id) {
-        const created = await createCategory.mutateAsync({
-          name,
-          active: true,
-          description: values.description,
-          standardRef: values.standardRef,
-          color,
-        });
-        categoryId = created.id;
-      }
-
-      if (!categoryId) throw new Error('missing-category-id');
-      setForm((current) => ({ ...current, categoryIds: appendUniqueId(current.categoryIds, categoryId) }));
-      showToast(
-        existing?.id ? `Kategorie "${name}" wurde zugeordnet.` : `Kategorie "${name}" hinzugefügt.`,
-        existing?.id ? { type: 'info' } : undefined,
-      );
-      setCategoryCreateOpen(false);
-    } catch {
-      showToast('Kategorie konnte nicht angelegt werden.', { type: 'error' });
-    }
-  };
-
-  const handleTagCreate = async (values: { name?: string; description?: string | null; color?: string | null }) => {
-    const name = String(values.name || '').trim();
-    if (!name) return;
-    const existing = findNamedEntity(allTags, name);
-
-    try {
-      let tagId = existing?.id;
-      const color = isInTagPalette(values.color as string) ? values.color : TAG_PALETTE[0];
-
-      if (existing?.id && existing.active === false) {
-        await updateTag.mutateAsync({
-          id: existing.id,
-          data: { active: true, description: values.description, color },
-        });
-      } else if (!existing?.id) {
-        const created = await createTag.mutateAsync({
-          name,
-          active: true,
-          description: values.description,
-          color,
-        });
-        tagId = created.id;
-      }
-
-      if (!tagId) throw new Error('missing-tag-id');
-      setForm((current) => ({ ...current, tagIds: appendUniqueId(current.tagIds, tagId) }));
-      showToast(
-        existing?.id ? `Tag "${name}" wurde zugeordnet.` : `Tag "${name}" hinzugefügt.`,
-        existing?.id ? { type: 'info' } : undefined,
-      );
-      setTagCreateOpen(false);
-    } catch {
-      showToast('Tag konnte nicht angelegt werden.', { type: 'error' });
-    }
-  };
-
-  const handleStaffCreate = async (values: { name?: string; roles?: StaffRole[] | StaffRole }) => {
-    const name = String(values.name || '').trim();
-    if (!name) return;
-    const existing = findNamedEntity(allStaff, name);
-
-    if (existing?.id) {
-      addStaffId(existing.id);
-      showToast(`Teammitglied "${existing.name}" wurde zugeordnet.`, { type: 'info' });
-      setStaffCreateState((current) => ({ ...current, open: false }));
-      return;
-    }
-
-    try {
-      const created = await createStaff.mutateAsync({
-        ...values,
-        roles:
-          Array.isArray(values.roles) && values.roles.length > 0
-            ? values.roles
-            : [staffCreateState.role],
-      });
-      addStaffId(created.id);
-      showToast(`Teammitglied "${created.name}" hinzugefügt.`);
-      setStaffCreateState((current) => ({ ...current, open: false }));
-    } catch {
-      showToast('Teammitglied konnte nicht angelegt werden.', { type: 'error' });
-    }
-  };
 
   useEditorShortcuts({
     onClose: handleClose,
@@ -712,12 +616,12 @@ export default function ActivityQuickAdd({
           <div className="space-y-3">
             {(!selectedProject || selectedProject.type !== 'open_door') && (
               <div>
-                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                   <label className="block text-sm font-medium">Kategorien</label>
                   {canCreateOwnCategories ? (
                     <button
                       type="button"
-                      onClick={() => setCategoryCreateOpen(true)}
+                      onClick={openCategoryCreate}
                       className={addActionButtonClassName}
                     >
                       <PlusIcon className="h-4 w-4" />
@@ -752,12 +656,12 @@ export default function ActivityQuickAdd({
               </div>
             )}
             <div>
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <label className="block text-sm font-medium">Tags</label>
                 {canCreateOwnTags ? (
                   <button
                     type="button"
-                    onClick={() => setTagCreateOpen(true)}
+                    onClick={openTagCreate}
                     className={addActionButtonClassName}
                   >
                     <PlusIcon className="h-4 w-4" />
@@ -789,12 +693,12 @@ export default function ActivityQuickAdd({
             </div>
             {employeeStaff.length > 0 && (
             <div>
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <label className="block text-sm font-medium">Mitarbeitende</label>
                 {canManageStaff ? (
                   <button
                     type="button"
-                    onClick={() => setStaffCreateState({ open: true, role: 'employee' })}
+                    onClick={() => openStaffCreate('employee')}
                     className={addActionButtonClassName}
                   >
                     <PlusIcon className="h-4 w-4" />
@@ -828,12 +732,12 @@ export default function ActivityQuickAdd({
             )}
             {volunteerStaff.length > 0 && (
             <div>
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <label className="block text-sm font-medium">Ehrenamtliche</label>
                 {canManageStaff ? (
                   <button
                     type="button"
-                    onClick={() => setStaffCreateState({ open: true, role: 'volunteer' })}
+                    onClick={() => openStaffCreate('volunteer')}
                     className={addActionButtonClassName}
                   >
                     <PlusIcon className="h-4 w-4" />
@@ -867,12 +771,12 @@ export default function ActivityQuickAdd({
             )}
             {helperStaff.length > 0 && (
             <div>
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <label className="block text-sm font-medium">Helfer</label>
                 {canManageStaff ? (
                   <button
                     type="button"
-                    onClick={() => setStaffCreateState({ open: true, role: 'helper' })}
+                    onClick={() => openStaffCreate('helper')}
                     className={addActionButtonClassName}
                   >
                     <PlusIcon className="h-4 w-4" />
@@ -993,27 +897,7 @@ export default function ActivityQuickAdd({
             onClose={() => setPicker(false)}
           />
         )}
-        {tagCreateOpen ? (
-          <TagFormModal
-            initial={{ color: TAG_PALETTE[0] }}
-            onCancel={() => setTagCreateOpen(false)}
-            onSubmit={handleTagCreate}
-          />
-        ) : null}
-        {categoryCreateOpen ? (
-          <CategoryFormModal
-            initial={{ color: FIXED_PALETTE[0] }}
-            onCancel={() => setCategoryCreateOpen(false)}
-            onSubmit={handleCategoryCreate}
-          />
-        ) : null}
-        {staffCreateState.open ? (
-          <StaffFormModal
-            initial={{ roles: [staffCreateState.role] }}
-            onCancel={() => setStaffCreateState((current) => ({ ...current, open: false }))}
-            onSubmit={handleStaffCreate}
-          />
-        ) : null}
+        {activityInlineCreation.modals}
         <ConfirmModal
           open={Boolean(errorOpen)}
           title="Fehler"

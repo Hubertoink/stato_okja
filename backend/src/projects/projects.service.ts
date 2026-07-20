@@ -1,6 +1,6 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, FindOptionsWhere, Equal, IsNull, In } from 'typeorm';
+import { Repository, ILike, FindOptionsWhere, Equal, IsNull } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectDocument } from './entities/project-document.entity';
 import { Category } from '../taxonomy/entities/category.entity';
@@ -8,6 +8,7 @@ import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { OrgsService } from '../orgs/orgs.service';
+import { assertExactOrgScopedEntityAccess, removeOrgIdForNonSuperadmin, type OrgScopedUser } from '../auth/org-scope-access';
 
 type ProjectWriteData = Partial<Project> & { categoryIds?: string[]; categoryId?: string | null };
 type ProjectAuditUser = { id?: string; name?: string | null; orgId?: string | null };
@@ -117,9 +118,12 @@ export class ProjectsService {
     );
   }
 
-  private async findByClientRequestId(clientRequestId: string): Promise<Project | null> {
+  private async findByClientRequestId(clientRequestId: string, orgId: string | null): Promise<Project | null> {
     const existing = await this.projectRepository.findOne({
-      where: { clientRequestId },
+      where: {
+        clientRequestId,
+        orgId: orgId === null ? IsNull() : Equal(orgId),
+      },
       relations: ['documents'],
     });
     return existing ? this.hydrateProject(existing) : null;
@@ -136,7 +140,7 @@ export class ProjectsService {
       };
     } catch (error) {
       if (clientRequestId && this.isDuplicateClientRequestError(error, clientRequestId)) {
-        const existing = await this.findByClientRequestId(clientRequestId);
+        const existing = await this.findByClientRequestId(clientRequestId, project.orgId ?? null);
         if (existing) return { project: existing, reusedExisting: true };
       }
 
@@ -144,14 +148,12 @@ export class ProjectsService {
     }
   }
 
-  findAll(search?: string, archived?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Project[]> {
+  findAll(search?: string, archived?: boolean, orgId?: string|null): Promise<Project[]> {
     const where: FindOptionsWhere<Project> = {};
     if (typeof archived === 'boolean') where.archived = archived;
     // Use ILike for case-insensitive search (PostgreSQL)
     if (search) (where as unknown as Record<string, unknown>).title = ILike(`%${search}%`);
-    if (Array.isArray(orgIds) && orgIds.length) {
-      Object.assign(where, { orgId: In(orgIds) });
-    } else if (typeof orgId !== 'undefined') {
+    if (typeof orgId !== 'undefined') {
       Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
     }
     return this.projectRepository.find({ where, order: { title: 'ASC' }, relations: ['documents'] }).then((projects) =>
@@ -173,7 +175,7 @@ export class ProjectsService {
     const clientRequestId = this.normalizeClientRequestId(rest.clientRequestId);
 
     if (clientRequestId) {
-      const existing = await this.findByClientRequestId(clientRequestId);
+      const existing = await this.findByClientRequestId(clientRequestId, rest.orgId ?? null);
       if (existing) return existing;
     }
 
@@ -248,14 +250,14 @@ export class ProjectsService {
     return p ? this.hydrateProject(p) : null;
   }
 
-  async findOneScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async findOneScoped(id: string, user: OrgScopedUser) {
     const p = await this.findOne(id);
     if (!p) return null;
-    if (user.role !== 'superadmin' && (p.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    assertExactOrgScopedEntityAccess(p, user);
     return p;
   }
 
-  private async getProjectForDocumentScope(projectId: string, user: { role: string; orgId?: string | null }) {
+  private async getProjectForDocumentScope(projectId: string, user: OrgScopedUser) {
     const project = await this.findOneScoped(projectId, user);
     if (!project) throw new NotFoundException('Project not found');
     return project;
@@ -279,7 +281,7 @@ export class ProjectsService {
   async addDocument(
     projectId: string,
     document: Pick<ProjectDocument, 'filename' | 'mimeType' | 'size' | 'storageRef'>,
-    user: { id?: string; role: string; orgId?: string | null; name?: string | null },
+    user: OrgScopedUser & { id?: string; name?: string | null },
   ): Promise<ProjectDocument> {
     const project = await this.getProjectForDocumentScope(projectId, user);
     const created = await this.projectDocumentRepository.save(
@@ -314,7 +316,7 @@ export class ProjectsService {
   async removeDocument(
     projectId: string,
     documentId: string,
-    user: { id?: string; role: string; orgId?: string | null; name?: string | null },
+    user: OrgScopedUser & { id?: string; name?: string | null },
   ): Promise<void> {
     const project = await this.getProjectForDocumentScope(projectId, user);
     const existing = await this.projectDocumentRepository.findOne({
@@ -344,7 +346,7 @@ export class ProjectsService {
   async getDocumentScoped(
     projectId: string,
     documentId: string,
-    user: { role: string; orgId?: string | null },
+    user: OrgScopedUser,
   ): Promise<ProjectDocument> {
     const project = await this.getProjectForDocumentScope(projectId, user);
     const document = await this.projectDocumentRepository.findOne({
@@ -354,31 +356,27 @@ export class ProjectsService {
     return this.withDocumentUrl(document);
   }
 
-  async updateScoped(id: string, data: Partial<Project>, user: { id?: string; role: string; orgId?: string|null }) {
+  async updateScoped(id: string, data: Partial<Project>, user: OrgScopedUser & { id?: string }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
-    // prevent moving orgId unless superadmin
-    if (user.role !== 'superadmin') {
-      const d = data as Partial<Project> & { orgId?: string | null };
-      if ('orgId' in d) delete d.orgId;
-    }
-    const updated = await this.update(id, data);
+    assertExactOrgScopedEntityAccess(existing, user);
+    const sanitized = removeOrgIdForNonSuperadmin(data, user);
+    const updated = await this.update(id, sanitized);
     if (updated) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: updated.id, entityTitle: updated.title || null, orgId: updated.orgId ?? null, details: { scoped: true }, user });
     return updated;
   }
 
-  async removeScoped(id: string, user: { id?: string; role: string; orgId?: string|null }) {
+  async removeScoped(id: string, user: OrgScopedUser & { id?: string }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    assertExactOrgScopedEntityAccess(existing, user);
     await this.remove(id, user);
   }
 
-  async archiveScoped(id: string, archived: boolean, user: { id?: string; role: string; orgId?: string|null }) {
+  async archiveScoped(id: string, archived: boolean, user: OrgScopedUser & { id?: string }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return null;
-    if (user.role !== 'superadmin' && (existing.orgId ?? null) !== (user.orgId ?? null)) throw new ForbiddenException('Not allowed');
+    assertExactOrgScopedEntityAccess(existing, user);
     const p = await this.archive(id, archived);
     if (p) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: p.id, entityTitle: p.title || null, orgId: p.orgId ?? null, details: { archived }, user });
     return p;

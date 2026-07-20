@@ -14,6 +14,20 @@ import { AuditModule } from '../common/audit.module';
 import { getJwtSecret } from '../config/security.config';
 import { OrgsModule } from '../orgs/orgs.module';
 
+function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: number) {
+	const value = String(raw || '').trim().toLowerCase();
+	if (!value) return fallbackSeconds;
+	const match = value.match(/^(\d+)(s|m|h|d)?$/);
+	if (!match) return fallbackSeconds;
+	const amount = Number.parseInt(match[1], 10);
+	if (!Number.isFinite(amount) || amount < 1) return fallbackSeconds;
+	const unit = match[2] || 's';
+	if (unit === 's') return amount;
+	if (unit === 'm') return amount * 60;
+	if (unit === 'h') return amount * 60 * 60;
+	return amount * 24 * 60 * 60;
+}
+
 @Module({
 	imports: [
 	TypeOrmModule.forFeature([User, Organization, Location, RefreshSession]),
@@ -22,7 +36,7 @@ import { OrgsModule } from '../orgs/orgs.module';
 		OrgsModule,
 		JwtModule.register({
 			secret: getJwtSecret(),
-			signOptions: { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '15m' },
+			signOptions: { expiresIn: parseJwtExpirationSeconds(process.env.JWT_ACCESS_EXPIRATION, 15 * 60) },
 		}),
 	],
 	controllers: [AuthController],

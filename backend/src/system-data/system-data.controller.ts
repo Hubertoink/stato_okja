@@ -92,8 +92,7 @@ export class SystemDataController {
     const result = await this.systemDataService.exportAllData(req.user);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
-    res.setHeader('Content-Length', String(result.buffer.length));
-    return new StreamableFile(result.buffer);
+    return new StreamableFile(result.stream);
   }
 
   @Post('import')

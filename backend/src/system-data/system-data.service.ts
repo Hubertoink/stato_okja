@@ -7,16 +7,30 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import JSZip from 'jszip';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, unlink, writeFile } from 'fs/promises';
-import { dirname, join, relative, resolve as resolvePath, sep } from 'path';
+import archiver = require('archiver');
+import { createReadStream } from 'fs';
+import { stat, unlink } from 'fs/promises';
+import { join, relative, resolve as resolvePath, sep } from 'path';
+import { PassThrough, Readable } from 'stream';
 import { setTimeout as delay } from 'timers/promises';
 import { DataSource, QueryRunner } from 'typeorm';
 import { AuthService } from '../auth/auth.service';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
-import { buildReadableWorkbook } from './system-data-workbook';
+import {
+  SystemDataUploadStore,
+  type AppliedImportUploads,
+  type StagedImportUploads,
+  type UploadFileEntry,
+} from './system-data-upload-store';
+import {
+  SystemDataImportArchiveReader,
+  type ImportedTableData,
+  type ParsedImportArchive,
+  type SystemDataManagedTable,
+  type SystemDataManifest,
+} from './system-data-import-archive-reader';
 
 export type SystemDataActor = {
   id: string;
@@ -25,18 +39,7 @@ export type SystemDataActor = {
   name?: string | null;
 };
 
-type ManagedTable = {
-  key: string;
-  path: string;
-  filename: string;
-  columnTypes: Record<string, string>;
-};
-
-type UploadFileEntry = {
-  absolutePath: string;
-  relativePath: string;
-  size: number;
-};
+type ManagedTable = SystemDataManagedTable;
 
 type UploadReferenceBreakdown = {
   projects: number;
@@ -59,54 +62,6 @@ type UploadReferenceSummary = {
   details: UploadReferenceDetails;
 };
 
-type SystemDataManifest = {
-  format?: string;
-  schemaVersion?: number;
-  generatedAt?: string;
-  generatedBy?: { id?: string; name?: string | null; role?: string } | null;
-  totals?: {
-    managedTables?: number;
-    databaseRows?: number;
-    uploadFiles?: number;
-    uploadBytes?: number;
-  };
-  tables?: Array<{ tableName?: string; rowCount?: number; files?: string[] }>;
-  uploads?: {
-    files?: Array<{ path?: string; size?: number }>;
-    warnings?: string[];
-  };
-};
-
-type ImportedTableData = ManagedTable & {
-  rows: Array<Record<string, unknown>>;
-};
-
-type ImportedUploadEntry = {
-  relativePath: string;
-  size: number;
-  entry: JSZip.JSZipObject;
-};
-
-type ParsedImportArchive = {
-  originalFilename: string;
-  manifest: SystemDataManifest;
-  tables: ImportedTableData[];
-  uploads: ImportedUploadEntry[];
-  warnings: string[];
-};
-
-type StagedImportUploads = {
-  sessionRoot: string;
-  uploadsRoot: string;
-  fileCount: number;
-  totalBytes: number;
-};
-
-type AppliedImportUploads = {
-  backupRoot: string | null;
-  uploadsRoot: string;
-};
-
 const PURGE_CONFIRMATION_TEXT = 'ALLE DATEN LOESCHEN';
 const IMPORT_CONFIRMATION_TEXT = 'BACKUP IMPORTIEREN';
 const SYSTEM_DATA_EXPORT_FORMAT = 'stato-system-data-export';
@@ -121,6 +76,8 @@ const EMPTY_UPLOAD_REFERENCE_BREAKDOWN: UploadReferenceBreakdown = {
 @Injectable()
 export class SystemDataService {
   private readonly logger = new Logger(SystemDataService.name);
+  private readonly uploadStore = new SystemDataUploadStore();
+  private readonly importArchiveReader = new SystemDataImportArchiveReader();
 
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
@@ -143,7 +100,7 @@ export class SystemDataService {
         tableSummaries.push({ tableName: table.filename, rowCount });
       }
 
-      const uploads = await this.scanUploads();
+      const uploads = await this.uploadStore.scanUploads();
       const superadmins = await queryRunner.query(
         `SELECT id, email, name FROM ${this.escapeTablePath('users')} WHERE role = 'superadmin' ORDER BY email ASC`,
       ) as Array<{ id: string; email: string; name: string | null }>;
@@ -169,7 +126,7 @@ export class SystemDataService {
   async listUploads(actor: SystemDataActor) {
     this.assertSuperadmin(actor);
 
-    const uploads = await this.scanUploads();
+    const uploads = await this.uploadStore.scanUploads();
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
 
@@ -320,120 +277,48 @@ export class SystemDataService {
 
     try {
       const managedTables = this.getManagedTables();
-      const zip = new JSZip();
       const tableManifest: Array<{ tableName: string; rowCount: number; files: string[] }> = [];
-      const tableRowsByKey: Record<string, Array<Record<string, unknown>>> = {};
       let totalDatabaseRows = 0;
       const generatedAt = new Date().toISOString();
 
       for (const table of managedTables) {
-        const rawRows = await queryRunner.query(`SELECT * FROM ${this.escapeTablePath(table.path)}`) as Array<Record<string, unknown>>;
-        const rows = this.normalizeRowsForExport(table, rawRows);
-        tableRowsByKey[table.key] = rows;
-        totalDatabaseRows += rows.length;
-
+        const rowCount = await this.countRows(queryRunner, table.path);
+        totalDatabaseRows += rowCount;
         const jsonPath = `database/${table.filename}.json`;
         const csvPath = `database/${table.filename}.csv`;
-        zip.file(jsonPath, JSON.stringify(rows, null, 2));
-        zip.file(csvPath, this.buildCsv(rows));
-
         tableManifest.push({
           tableName: table.filename,
-          rowCount: rows.length,
+          rowCount,
           files: [jsonPath, csvPath],
         });
       }
 
-      const uploads = await this.scanUploads();
-      for (const file of uploads.files) {
-        try {
-          const buffer = await readFile(file.absolutePath);
-          zip.file(`uploads/${file.relativePath}`, buffer);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'unknown upload read error';
-          uploads.warnings.push(`${file.relativePath}: ${message}`);
-          this.logger.warn(`Could not add upload file ${file.absolutePath} to system export: ${message}`);
-        }
-      }
-
-      const readableWorkbookPath = 'readable/stato-system-data-readable.xlsx';
-      const readableWorkbook = await buildReadableWorkbook({
-        generatedAt,
-        actor: {
-          id: actor.id,
-          name: actor.name ?? null,
-          role: actor.role,
-        },
-        tableRows: tableRowsByKey,
-        tableCounts: tableManifest.map((table) => ({ tableName: table.tableName, rowCount: table.rowCount })),
-        uploads: {
-          fileCount: uploads.fileCount,
-          totalBytes: uploads.totalBytes,
-          files: uploads.files.map((file) => ({ path: file.relativePath, size: file.size })),
-          warnings: uploads.warnings,
-        },
-      });
-      zip.file(readableWorkbookPath, readableWorkbook.buffer);
-
-      const manifest = {
-        format: SYSTEM_DATA_EXPORT_FORMAT,
-        schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
-        generatedAt,
-        generatedBy: {
-          id: actor.id,
-          name: actor.name ?? null,
-          role: actor.role,
-        },
-        totals: {
-          managedTables: managedTables.length,
-          databaseRows: totalDatabaseRows,
-          uploadFiles: uploads.fileCount,
-          uploadBytes: uploads.totalBytes,
-        },
-        tables: tableManifest,
-        uploads: {
-          files: uploads.files.map((file) => ({ path: file.relativePath, size: file.size })),
-          warnings: uploads.warnings,
-        },
-        readableWorkbook: {
-          path: readableWorkbookPath,
-          sheets: readableWorkbook.sheetNames,
-        },
-      };
-
-      zip.file('manifest.json', JSON.stringify(manifest, null, 2));
-
-      const buffer = await zip.generateAsync({
-        type: 'nodebuffer',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 },
-      });
-
+      const uploads = await this.uploadStore.scanUploads();
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `stato-system-data-export-${timestamp}.zip`;
+      const output = new PassThrough();
+      const archive = archiver('zip', { zlib: { level: 6 } });
+      archive.on('warning', (error) => this.logger.warn(`System export ZIP warning: ${error.message}`));
+      archive.on('error', (error) => output.destroy(error));
+      archive.pipe(output);
 
-      try {
-        await this.auditService.log({
-          action: AuditAction.EXPORT,
-          entityType: 'system-data',
-          entityId: 'global',
-          entityTitle: filename,
-          user: { id: actor.id, name: actor.name ?? null, orgId: null },
-          orgId: null,
-          details: {
-            managedTables: managedTables.length,
-            databaseRows: totalDatabaseRows,
-            uploadFiles: uploads.fileCount,
-            uploadBytes: uploads.totalBytes,
-          },
-        });
-      } catch {
-        /* ignore audit errors */
-      }
+      void this.writeExportArchive({
+        archive,
+        output,
+        queryRunner,
+        managedTables,
+        tableManifest,
+        totalDatabaseRows,
+        uploads,
+        generatedAt,
+        actor,
+        filename,
+      });
 
-      return { buffer, filename };
-    } finally {
+      return { stream: output, filename };
+    } catch (error) {
       await queryRunner.release();
+      throw error;
     }
   }
 
@@ -441,10 +326,17 @@ export class SystemDataService {
     this.assertSuperadmin(actor);
 
     try {
-      const archive = await this.readImportArchive(filePath, originalFilename);
+      const archive = await this.importArchiveReader.read({
+        filePath,
+        originalFilename,
+        managedTables: this.getManagedTables(),
+        exportFormat: SYSTEM_DATA_EXPORT_FORMAT,
+        schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
+        normalizeRowsForImport: (table, rows) => this.normalizeRowsForImport(table, rows),
+      });
       return this.buildImportPreview(archive);
     } finally {
-      await this.removePath(filePath);
+      await this.uploadStore.removePath(filePath);
     }
   }
 
@@ -464,8 +356,15 @@ export class SystemDataService {
     await queryRunner.connect();
 
     try {
-      archive = await this.readImportArchive(filePath, payload.originalFilename);
-      stagedUploads = await this.stageImportedUploads(archive.uploads);
+      archive = await this.importArchiveReader.read({
+        filePath,
+        originalFilename: payload.originalFilename,
+        managedTables: this.getManagedTables(),
+        exportFormat: SYSTEM_DATA_EXPORT_FORMAT,
+        schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
+        normalizeRowsForImport: (table, rows) => this.normalizeRowsForImport(table, rows),
+      });
+      stagedUploads = await this.uploadStore.stageImportedUploads(archive.uploads);
 
       await queryRunner.startTransaction();
 
@@ -489,13 +388,13 @@ export class SystemDataService {
         importedTables.push({ tableName: table.filename, importedRows: importedTable.rows.length });
       }
 
-      appliedUploads = await this.applyImportedUploads(stagedUploads);
+      appliedUploads = await this.uploadStore.applyImportedUploads(stagedUploads);
       await queryRunner.commitTransaction();
 
       if (appliedUploads.backupRoot) {
-        await this.removePath(appliedUploads.backupRoot);
+        await this.uploadStore.removePath(appliedUploads.backupRoot);
       }
-      await this.removePath(stagedUploads.sessionRoot);
+      await this.uploadStore.removePath(stagedUploads.sessionRoot);
 
       try {
         await this.auditService.log({
@@ -536,17 +435,17 @@ export class SystemDataService {
       }
 
       if (appliedUploads) {
-        await this.restorePreviousUploads(appliedUploads);
+        await this.uploadStore.restorePreviousUploads(appliedUploads);
       }
 
       if (stagedUploads) {
-        await this.removePath(stagedUploads.sessionRoot);
+        await this.uploadStore.removePath(stagedUploads.sessionRoot);
       }
 
       throw error;
     } finally {
       await queryRunner.release();
-      await this.removePath(filePath);
+      await this.uploadStore.removePath(filePath);
     }
   }
 
@@ -615,7 +514,7 @@ export class SystemDataService {
 
       await queryRunner.commitTransaction();
 
-      const uploadsDeleted = await this.clearUploads();
+      const uploadsDeleted = await this.uploadStore.clearUploads();
 
       result = {
         deletedTables,
@@ -843,108 +742,6 @@ export class SystemDataService {
       .filter((table): table is ManagedTable => Boolean(table));
   }
 
-  private async readImportArchive(filePath: string, originalFilename: string): Promise<ParsedImportArchive> {
-    let zip: JSZip;
-    try {
-      zip = await JSZip.loadAsync(await readFile(filePath));
-    } catch {
-      throw new BadRequestException('Die ZIP-Datei konnte nicht gelesen werden.');
-    }
-
-    const manifestEntry = zip.file('manifest.json');
-    if (!manifestEntry) {
-      throw new BadRequestException('manifest.json fehlt im Archiv.');
-    }
-
-    let manifest: SystemDataManifest;
-    try {
-      manifest = JSON.parse(await manifestEntry.async('string')) as SystemDataManifest;
-    } catch {
-      throw new BadRequestException('manifest.json ist ungültig.');
-    }
-
-    const warnings: string[] = [];
-    if (manifest.format && manifest.format !== SYSTEM_DATA_EXPORT_FORMAT) {
-      warnings.push(`Unbekanntes Exportformat: ${manifest.format}`);
-    }
-    if (typeof manifest.schemaVersion === 'number' && manifest.schemaVersion > SYSTEM_DATA_EXPORT_SCHEMA_VERSION) {
-      throw new BadRequestException(`Archiv verwendet eine neuere Schema-Version (${manifest.schemaVersion}).`);
-    }
-    if (!manifest.format) {
-      warnings.push('Archiv ohne Exportformat erkannt. Es wird als Legacy-Export behandelt.');
-    }
-    if (!manifest.schemaVersion) {
-      warnings.push('Archiv ohne Schema-Version erkannt. Es wird als Legacy-Export behandelt.');
-    }
-
-    const managedTables = this.getManagedTables();
-    const manifestTableByName = new Map((manifest.tables || []).map((table) => [String(table.tableName || '').toLowerCase(), table]));
-    const importedTables: ImportedTableData[] = [];
-
-    for (const table of managedTables) {
-      const manifestTable = manifestTableByName.get(table.filename);
-      const jsonPath = manifestTable?.files?.find((file) => file.endsWith('.json')) || `database/${table.filename}.json`;
-      const jsonEntry = zip.file(jsonPath);
-      if (!jsonEntry) {
-        throw new BadRequestException(`Archiv enthält keine JSON-Daten für Tabelle ${table.filename}.`);
-      }
-
-      let rows: Array<Record<string, unknown>>;
-      try {
-        const raw = JSON.parse(await jsonEntry.async('string'));
-        if (!Array.isArray(raw)) {
-          throw new Error('not-an-array');
-        }
-        rows = raw as Array<Record<string, unknown>>;
-      } catch {
-        throw new BadRequestException(`JSON-Daten für Tabelle ${table.filename} sind ungültig.`);
-      }
-
-      if (typeof manifestTable?.rowCount === 'number' && manifestTable.rowCount !== rows.length) {
-        throw new BadRequestException(`Row-Count-Abweichung in Tabelle ${table.filename}.`);
-      }
-
-      importedTables.push({ ...table, rows: this.normalizeRowsForImport(table, rows) });
-    }
-
-    const knownTableJsonPaths = new Set(importedTables.map((table) => `database/${table.filename}.json`));
-    for (const path of Object.keys(zip.files)) {
-      if (path.startsWith('database/') && path.endsWith('.json') && !knownTableJsonPaths.has(path)) {
-        warnings.push(`Zusätzliche Archivdatei wird ignoriert: ${path}`);
-      }
-    }
-
-    const manifestUploadSizes = new Map(
-      (manifest.uploads?.files || [])
-        .filter((file): file is { path: string; size?: number } => typeof file?.path === 'string' && file.path.trim().length > 0)
-        .map((file) => [file.path, Number(file.size || 0)]),
-    );
-
-    const uploads = Object.values(zip.files)
-      .filter((entry): entry is JSZip.JSZipObject => Boolean(entry) && !entry.dir && entry.name.startsWith('uploads/'))
-      .map((entry) => {
-        const relativePath = entry.name.slice('uploads/'.length);
-        return {
-          relativePath,
-          size: manifestUploadSizes.get(relativePath) || 0,
-          entry,
-        } satisfies ImportedUploadEntry;
-      })
-      .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
-
-    if (manifest.uploads?.warnings?.length) {
-      warnings.push(...manifest.uploads.warnings.map((warning) => `Export-Hinweis: ${warning}`));
-    }
-
-    return {
-      originalFilename,
-      manifest,
-      tables: importedTables,
-      uploads,
-      warnings,
-    };
-  }
-
   private buildImportPreview(archive: ParsedImportArchive) {
     const databaseRows = archive.tables.reduce((sum, table) => sum + table.rows.length, 0);
     const uploadBytes = archive.uploads.reduce((sum, file) => sum + file.size, 0);
@@ -967,113 +764,6 @@ export class SystemDataService {
         .sort((left, right) => right.rowCount - left.rowCount),
       warnings: archive.warnings,
     };
-  }
-
-  private async stageImportedUploads(uploads: ImportedUploadEntry[]): Promise<StagedImportUploads> {
-    const tempRoot = join(process.cwd(), '.tmp');
-    await mkdir(tempRoot, { recursive: true });
-    const sessionRoot = await mkdtemp(join(tempRoot, 'system-data-restore-'));
-    const uploadsRoot = join(sessionRoot, 'uploads');
-    await mkdir(join(uploadsRoot, 'images'), { recursive: true });
-
-    let totalBytes = 0;
-    for (const upload of uploads) {
-      const targetPath = join(uploadsRoot, upload.relativePath);
-      await mkdir(dirname(targetPath), { recursive: true });
-      const buffer = await upload.entry.async('nodebuffer');
-      totalBytes += buffer.length;
-      await writeFile(targetPath, buffer);
-    }
-
-    return {
-      sessionRoot,
-      uploadsRoot,
-      fileCount: uploads.length,
-      totalBytes,
-    };
-  }
-
-  private async applyImportedUploads(stagedUploads: StagedImportUploads): Promise<AppliedImportUploads> {
-    const uploadsRoot = join(process.cwd(), 'uploads');
-    const backupRoot = `${stagedUploads.sessionRoot}-uploads-backup`;
-
-    try {
-      await mkdir(uploadsRoot, { recursive: true });
-      await rm(backupRoot, { recursive: true, force: true });
-
-      if (await this.pathExists(uploadsRoot)) {
-        await mkdir(backupRoot, { recursive: true });
-        await this.copyDirectoryContents(uploadsRoot, backupRoot);
-      }
-
-      await this.clearDirectoryContents(uploadsRoot);
-      await this.copyDirectoryContents(stagedUploads.uploadsRoot, uploadsRoot);
-
-      return {
-        backupRoot: (await this.pathExists(backupRoot)) ? backupRoot : null,
-        uploadsRoot,
-      };
-    } catch (error) {
-      if (await this.pathExists(backupRoot)) {
-        await this.restorePreviousUploads({ backupRoot, uploadsRoot });
-      }
-
-      const message = error instanceof Error ? error.message : 'unbekannter Upload-Fehler';
-      throw new InternalServerErrorException(`Upload-Dateien konnten nicht wiederhergestellt werden: ${message}`);
-    }
-  }
-
-  private async restorePreviousUploads(appliedUploads: AppliedImportUploads) {
-    const { uploadsRoot, backupRoot } = appliedUploads;
-
-    await mkdir(uploadsRoot, { recursive: true });
-    await this.clearDirectoryContents(uploadsRoot);
-
-    if (backupRoot && await this.pathExists(backupRoot)) {
-      await this.copyDirectoryContents(backupRoot, uploadsRoot);
-      return;
-    }
-
-    await mkdir(join(uploadsRoot, 'images'), { recursive: true });
-    await mkdir(join(uploadsRoot, 'project-documents'), { recursive: true });
-  }
-
-  private async copyDirectoryContents(sourceDir: string, targetDir: string) {
-    await mkdir(targetDir, { recursive: true });
-    let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }> = [];
-    try {
-      entries = await readdir(sourceDir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-
-    for (const entry of entries) {
-      const sourcePath = join(sourceDir, entry.name);
-      const targetPath = join(targetDir, entry.name);
-
-      if (entry.isDirectory()) {
-        await this.copyDirectoryContents(sourcePath, targetPath);
-        continue;
-      }
-
-      if (entry.isFile()) {
-        await mkdir(dirname(targetPath), { recursive: true });
-        await copyFile(sourcePath, targetPath);
-      }
-    }
-  }
-
-  private async clearDirectoryContents(directory: string) {
-    let entries: Array<{ name: string }> = [];
-    try {
-      entries = await readdir(directory, { withFileTypes: true });
-    } catch {
-      return;
-    }
-
-    for (const entry of entries) {
-      await rm(join(directory, entry.name), { recursive: true, force: true });
-    }
   }
 
   private async buildUploadReferenceIndex(queryRunner: QueryRunner) {
@@ -1250,15 +940,6 @@ export class SystemDataService {
     return dataSourceType === 'postgres' ? `$${index}` : '?';
   }
 
-  private async pathExists(path: string) {
-    try {
-      await stat(path);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   private getUploadReferenceCount(referenceBreakdown: UploadReferenceBreakdown) {
     return Object.values(referenceBreakdown).reduce((sum, count) => sum + count, 0);
   }
@@ -1312,19 +993,6 @@ export class SystemDataService {
     return Array.from(candidates);
   }
 
-  private async removePath(path: string) {
-    if (!path) return;
-    try {
-      await rm(path, { recursive: true, force: true });
-    } catch {
-      try {
-        await unlink(path);
-      } catch {
-        /* ignore cleanup errors */
-      }
-    }
-  }
-
   private async unlinkUploadWithRetry(absolutePath: string) {
     const maxAttempts = 4;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -1347,15 +1015,188 @@ export class SystemDataService {
     return code === 'EPERM' || code === 'EBUSY' || code === 'EMFILE' || code === 'ENFILE';
   }
 
+  private async writeExportArchive(input: {
+    archive: archiver.Archiver;
+    output: PassThrough;
+    queryRunner: QueryRunner;
+    managedTables: ManagedTable[];
+    tableManifest: Array<{ tableName: string; rowCount: number; files: string[] }>;
+    totalDatabaseRows: number;
+    uploads: { files: UploadFileEntry[]; fileCount: number; totalBytes: number; warnings: string[] };
+    generatedAt: string;
+    actor: SystemDataActor;
+    filename: string;
+  }) {
+    const {
+      archive,
+      output,
+      queryRunner,
+      managedTables,
+      tableManifest,
+      totalDatabaseRows,
+      uploads,
+      generatedAt,
+      actor,
+      filename,
+    } = input;
+
+    try {
+      for (const table of managedTables) {
+        await this.appendExportStream(archive, this.createJsonExportStream(queryRunner, table), `database/${table.filename}.json`);
+        await this.appendExportStream(archive, this.createCsvExportStream(queryRunner, table), `database/${table.filename}.csv`);
+      }
+
+      for (const file of uploads.files) {
+        await this.appendExportStream(archive, this.createUploadExportStream(file, uploads.warnings), `uploads/${file.relativePath}`);
+      }
+
+      await this.appendExportStream(archive, this.createManifestExportStream(() => JSON.stringify({
+        format: SYSTEM_DATA_EXPORT_FORMAT,
+        schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
+        generatedAt,
+        generatedBy: { id: actor.id, name: actor.name ?? null, role: actor.role },
+        totals: {
+          managedTables: managedTables.length,
+          databaseRows: totalDatabaseRows,
+          uploadFiles: uploads.fileCount,
+          uploadBytes: uploads.totalBytes,
+        },
+        tables: tableManifest,
+        uploads: {
+          files: uploads.files.map((file) => ({ path: file.relativePath, size: file.size })),
+          warnings: uploads.warnings,
+        },
+      }, null, 2)), 'manifest.json');
+
+      await archive.finalize();
+
+      try {
+        await this.auditService.log({
+          action: AuditAction.EXPORT,
+          entityType: 'system-data',
+          entityId: 'global',
+          entityTitle: filename,
+          user: { id: actor.id, name: actor.name ?? null, orgId: null },
+          orgId: null,
+          details: {
+            managedTables: managedTables.length,
+            databaseRows: totalDatabaseRows,
+            uploadFiles: uploads.fileCount,
+            uploadBytes: uploads.totalBytes,
+          },
+        });
+      } catch {
+        /* ignore audit errors */
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown export error';
+      this.logger.error(`System export failed: ${message}`);
+      archive.destroy(error instanceof Error ? error : new Error(message));
+      output.destroy(error instanceof Error ? error : new Error(message));
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private createJsonExportStream(queryRunner: QueryRunner, table: ManagedTable) {
+    return Readable.from(this.iterateJsonExportRows(queryRunner, table));
+  }
+
+  private appendExportStream(archive: archiver.Archiver, stream: Readable, name: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        archive.off('entry', onEntry);
+        archive.off('error', onArchiveError);
+        stream.off('error', onStreamError);
+        callback();
+      };
+      const onEntry = (entry: archiver.EntryData) => {
+        if (entry.name === name) finish(resolve);
+      };
+      const onStreamError = (error: Error) => {
+        archive.destroy(error);
+        finish(() => reject(error));
+      };
+      const onArchiveError = (error: Error) => finish(() => reject(error));
+
+      archive.once('entry', onEntry);
+      archive.once('error', onArchiveError);
+      stream.once('error', onStreamError);
+      archive.append(stream, { name });
+    });
+  }
+
+  private async *iterateJsonExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<string> {
+    yield '[\n';
+    let first = true;
+    for await (const row of this.iterateExportRows(queryRunner, table)) {
+      yield `${first ? '' : ',\n'}${JSON.stringify(row)}`;
+      first = false;
+    }
+    yield '\n]\n';
+  }
+
+  private createCsvExportStream(queryRunner: QueryRunner, table: ManagedTable) {
+    return Readable.from(this.iterateCsvExportRows(queryRunner, table));
+  }
+
+  private async *iterateCsvExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<string> {
+    let columns: string[] | null = null;
+    for await (const row of this.iterateExportRows(queryRunner, table)) {
+      if (!columns) {
+        columns = Object.keys(row);
+        yield `${columns.map((column) => this.escapeCsvValue(column)).join(',')}\n`;
+      }
+      yield `${columns.map((column) => this.escapeCsvValue(this.serializeCsvValue(row[column]))).join(',')}\n`;
+    }
+  }
+
+  private async *iterateExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<Record<string, unknown>> {
+    const sql = `SELECT * FROM ${this.escapeTablePath(table.path)}`;
+    if (this.dataSource.options.type === 'postgres') {
+      const rowStream = await queryRunner.stream(sql);
+      for await (const row of rowStream as AsyncIterable<Record<string, unknown>>) {
+        yield this.normalizeDateOnlyColumns(table, row);
+      }
+      return;
+    }
+
+    const chunkSize = 1_000;
+    for (let offset = 0; ; offset += chunkSize) {
+      const rows = await queryRunner.query(`${sql} LIMIT ${chunkSize} OFFSET ${offset}`) as Array<Record<string, unknown>>;
+      if (!rows.length) return;
+      for (const row of rows) yield this.normalizeDateOnlyColumns(table, row);
+      if (rows.length < chunkSize) return;
+    }
+  }
+
+  private createUploadExportStream(file: UploadFileEntry, warnings: string[]) {
+    const logger = this.logger;
+    return Readable.from((async function* () {
+      try {
+        for await (const chunk of createReadStream(file.absolutePath)) yield chunk;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'unknown upload read error';
+        warnings.push(`${file.relativePath}: ${message}`);
+        logger.warn(`Could not add upload file ${file.absolutePath} to system export: ${message}`);
+      }
+    })());
+  }
+
+  private createManifestExportStream(createManifest: () => string) {
+    return Readable.from((async function* () {
+      yield createManifest();
+    })());
+  }
+
   private serializeCsvValue(value: unknown) {
     if (value === null || typeof value === 'undefined') return '';
     if (value instanceof Date) return value.toISOString();
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
-  }
-
-  private normalizeRowsForExport(table: ManagedTable, rows: Array<Record<string, unknown>>) {
-    return rows.map((row) => this.normalizeDateOnlyColumns(table, row));
   }
 
   private normalizeRowsForImport(table: ManagedTable, rows: Array<Record<string, unknown>>) {
@@ -1418,98 +1259,4 @@ export class SystemDataService {
     return value;
   }
 
-  private buildCsv(rows: Array<Record<string, unknown>>) {
-    if (!rows.length) return '';
-    const columns = Array.from(
-      rows.reduce((set, row) => {
-        Object.keys(row || {}).forEach((key) => set.add(key));
-        return set;
-      }, new Set<string>()),
-    );
-    const header = columns.map((column) => this.escapeCsvValue(column)).join(',');
-    const body = rows.map((row) =>
-      columns
-        .map((column) => this.escapeCsvValue(this.serializeCsvValue(row[column])))
-        .join(','),
-    );
-    return [header, ...body].join('\n');
-  }
-
-  private async scanUploads(): Promise<{
-    files: UploadFileEntry[];
-    fileCount: number;
-    totalBytes: number;
-    warnings: string[];
-  }> {
-    const uploadsRoot = join(process.cwd(), 'uploads');
-    const warnings: string[] = [];
-    const files: UploadFileEntry[] = [];
-
-    const walk = async (dir: string) => {
-      let entries;
-      try {
-        entries = await readdir(dir, { withFileTypes: true });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'unknown directory read error';
-        warnings.push(`${relative(uploadsRoot, dir) || '.'}: ${message}`);
-        return;
-      }
-
-      for (const entry of entries) {
-        const fullPath = join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await walk(fullPath);
-          continue;
-        }
-        if (!entry.isFile()) continue;
-        try {
-          const info = await stat(fullPath);
-          files.push({
-            absolutePath: fullPath,
-            relativePath: relative(uploadsRoot, fullPath).replace(/\\/g, '/'),
-            size: info.size,
-          });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'unknown file stat error';
-          warnings.push(`${relative(uploadsRoot, fullPath).replace(/\\/g, '/')}: ${message}`);
-        }
-      }
-    };
-
-    try {
-      await stat(uploadsRoot);
-      await walk(uploadsRoot);
-    } catch {
-      return { files: [], fileCount: 0, totalBytes: 0, warnings: [] };
-    }
-
-    return {
-      files,
-      fileCount: files.length,
-      totalBytes: files.reduce((sum, file) => sum + file.size, 0),
-      warnings,
-    };
-  }
-
-  private async clearUploads() {
-    const uploadsRoot = join(process.cwd(), 'uploads');
-    const scan = await this.scanUploads();
-    const warnings = [...scan.warnings];
-
-    try {
-      await rm(uploadsRoot, { recursive: true, force: true });
-      await mkdir(join(uploadsRoot, 'images'), { recursive: true });
-      await mkdir(join(uploadsRoot, 'project-documents'), { recursive: true });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'unknown upload cleanup error';
-      warnings.push(message);
-      this.logger.warn(`Upload cleanup completed with warning: ${message}`);
-    }
-
-    return {
-      deletedFiles: scan.fileCount,
-      deletedBytes: scan.totalBytes,
-      warnings,
-    };
-  }
 }

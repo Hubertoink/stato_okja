@@ -19,6 +19,7 @@ import { Tag } from './entities/tag.entity';
 import { Cohort } from './entities/cohort.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { resolveOrgScope } from '../auth/org-scope-access';
 
 function pickDefined<T extends object>(data: Partial<T>, keys: Array<keyof T>): Partial<T> {
   const result: Partial<T> = {};
@@ -65,10 +66,7 @@ export class TaxonomyController {
   constructor(private readonly taxonomyService: TaxonomyService, private readonly orgs: OrgsService) {}
 
   private resolveScopedOrgId(req: TaxonomyRequest): string | null {
-    if (req.user.role === 'superadmin') {
-      return typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId;
-    }
-    return typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId;
+    return resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
   }
 
   private getScopedUser(req: TaxonomyRequest) {

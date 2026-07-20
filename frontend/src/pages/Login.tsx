@@ -5,7 +5,7 @@ import {
   getStoredPendingTwoFactorChallenge,
 } from '@/lib/authStorage';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
-import { CookieNoticeModal, ImprintModal } from '@/components/LegalModals';
+import { CookieNoticeModal, ImprintModal, PrivacyNoticeModal, TermsOfUseModal } from '@/components/LegalModals';
 import { useNavigate } from 'react-router-dom';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 
@@ -23,6 +23,8 @@ export default function Login() {
   const [branding, setBranding] = useState(DEFAULT_PUBLIC_CONFIG);
   const [imprintModalOpen, setImprintModalOpen] = useState(false);
   const [cookieModalOpen, setCookieModalOpen] = useState(false);
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -233,6 +235,22 @@ export default function Login() {
           <span aria-hidden="true">·</span>
           <button
             type="button"
+            onClick={() => setPrivacyModalOpen(true)}
+            className="font-medium underline underline-offset-2 hover:text-viridian transition-colors"
+          >
+            Datenschutz
+          </button>
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            onClick={() => setTermsModalOpen(true)}
+            className="font-medium underline underline-offset-2 hover:text-viridian transition-colors"
+          >
+            Nutzungsbedingungen
+          </button>
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
             onClick={() => setCookieModalOpen(true)}
             className="font-medium underline underline-offset-2 hover:text-viridian transition-colors"
           >
@@ -246,6 +264,8 @@ export default function Login() {
       </div>
 
       <ImprintModal open={imprintModalOpen} onClose={() => setImprintModalOpen(false)} />
+      <PrivacyNoticeModal open={privacyModalOpen} onClose={() => setPrivacyModalOpen(false)} />
+      <TermsOfUseModal open={termsModalOpen} onClose={() => setTermsModalOpen(false)} />
       <CookieNoticeModal open={cookieModalOpen} onClose={() => setCookieModalOpen(false)} />
     </div>
   );

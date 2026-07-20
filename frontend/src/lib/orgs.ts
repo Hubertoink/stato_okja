@@ -130,13 +130,25 @@ export async function createOrgApi(name: string, parentId?: string | null): Prom
   return res.data;
 }
 
-export async function inviteUserApi(payload: { email: string; name?: string; role?: 'org_admin'|'user'; orgId?: string|null }): Promise<{ token: string }> {
-  const res = await api.post<{ token: string }>('/auth/invite', payload);
+export type InviteUserResult = {
+  invitationSent: true;
+  emailQueued: boolean;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'superadmin' | 'org_admin' | 'user';
+    orgId: string | null;
+  };
+};
+
+export async function inviteUserApi(payload: { email: string; name?: string; role?: 'org_admin'|'user'; orgId?: string|null }): Promise<InviteUserResult> {
+  const res = await api.post<InviteUserResult>('/auth/invite', payload);
   return res.data;
 }
 
-export async function acceptInviteApi(token: string, password: string) {
-  const res = await api.post('/auth/accept-invite', { token, password });
+export async function acceptInviteApi(token: string, password: string, termsAccepted: boolean) {
+  const res = await api.post('/auth/accept-invite', { token, password, termsAccepted });
   return res.data as { access_token: string; refresh_csrf_token: string };
 }
 

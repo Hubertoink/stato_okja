@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
-import { useOrgScopeKey } from './orgScope';
+import { useOrgScopedQueryState } from './orgScope';
 
 export interface AuditLog {
   id: string;
@@ -26,7 +26,7 @@ type AuditQueryOptions = {
 };
 
 export function useAuditLogs(limit = 10, options?: AuditQueryOptions) {
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   const actionsKey = options?.actions?.join(',') || 'all';
   return useQuery<AuditLog[]>({
     queryKey: ['audit', scopeKey, { limit, actions: actionsKey }],
@@ -40,6 +40,7 @@ export function useAuditLogs(limit = 10, options?: AuditQueryOptions) {
       return res.data as AuditLog[];
     },
     staleTime: 5000,
+    enabled: ready,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchInterval:
       typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0

@@ -15,6 +15,8 @@ import { StaffService } from './staff.service';
 import { Staff } from './entities/staff.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { resolveOrgScope } from '../auth/org-scope-access';
+import { toPublicStaff } from '../common/public-response';
 
 @ApiTags('staff')
 @Controller('staff')
@@ -24,32 +26,34 @@ export class StaffController {
 
   @Get()
   @ApiOperation({ summary: 'Alle Mitarbeitende abrufen' })
-  findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string) {
+  async findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string) {
     const isActive = active === 'true' ? true : active === 'false' ? false : undefined;
-    const orgId = req.user.role === 'superadmin' ? (typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId) : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
-    return this.staffService.findAll(isActive, orgId);
+    const orgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
+    return (await this.staffService.findAll(isActive, orgId)).map(toPublicStaff);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Mitarbeitende nach ID abrufen' })
-  findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null } }) {
-    return this.staffService.findOneScoped(id, req.user);
+  async findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    const staff = await this.staffService.findOneScoped(id, req.user);
+    return staff ? toPublicStaff(staff) : null;
   }
 
   @Post()
   @ApiOperation({ summary: 'Neue Mitarbeitende anlegen' })
-  create(@Body() data: Partial<Staff>, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
+  async create(@Body() data: Partial<Staff>, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
     const bodyOrgId = (data as Partial<Staff> & { orgId?: string | null }).orgId ?? null;
-    const orgId = req.user.role === 'superadmin'
-      ? (typeof req.effectiveOrgId === 'undefined' ? bodyOrgId : req.effectiveOrgId)
-      : (typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId);
-    return this.staffService.create({ ...data, orgId });
+    const orgId = req.user.role === 'superadmin' && typeof req.effectiveOrgId === 'undefined'
+      ? bodyOrgId
+      : resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
+    return toPublicStaff(await this.staffService.create({ ...data, orgId }));
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Mitarbeitende bearbeiten' })
-  update(@Param('id') id: string, @Body() data: Partial<Staff>, @Req() req: { user: { role: string; orgId?: string|null } }) {
-    return this.staffService.updateScoped(id, data, req.user);
+  async update(@Param('id') id: string, @Body() data: Partial<Staff>, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    const staff = await this.staffService.updateScoped(id, data, req.user);
+    return staff ? toPublicStaff(staff) : null;
   }
 
   @Delete(':id')

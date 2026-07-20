@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import { useOrgScopeKey } from './orgScope';
+import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
 
 export type StaffRole = 'admin' | 'lead' | 'employee' | 'volunteer' | 'helper' | 'analyst';
 
@@ -16,13 +16,14 @@ export interface StaffMember {
 }
 
 export function useStaff(params?: { active?: boolean }) {
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['staff', scopeKey, params],
     queryFn: async () => {
       const res = await api.get('/staff', { params });
       return res.data as StaffMember[];
     },
+    enabled: ready,
   });
 }
 

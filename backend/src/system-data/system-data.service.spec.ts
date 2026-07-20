@@ -3,7 +3,9 @@ import { ForbiddenException } from '@nestjs/common';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { rm, writeFile } from 'fs/promises';
+import { Readable } from 'stream';
 import { SystemDataService } from './system-data.service';
+import { SystemDataImportArchiveReader } from './system-data-import-archive-reader';
 import type { AuthService } from '../auth/auth.service';
 import type { AuditService } from '../common/audit.service';
 
@@ -13,12 +15,13 @@ describe('SystemDataService', () => {
   function createService() {
     const queryLog: string[] = [];
     const queryCalls: Array<{ sql: string; params?: unknown[] }> = [];
+    const streamMetrics = { active: 0, maxActive: 0 };
     const projectImageRows: Array<{ id: string; title: string; orgId: string | null; imageUrl: string | null }> = [
       { id: 'project-1', title: 'Projekt Shared', orgId: 'org-1', imageUrl: '/uploads/images/shared.jpg' },
       { id: 'project-2', title: 'Nur Projekt', orgId: 'org-1', imageUrl: '/uploads/images/only-project.jpg' },
     ];
     const projectDocumentRows: Array<{ id: string; filename: string; projectId: string; projectTitle: string | null; orgId: string | null; storageRef: string | null }> = [
-      { id: 'project-doc-1', filename: 'Konzeption Shared.pdf', projectId: 'project-1', projectTitle: 'Projekt Shared', orgId: 'org-1', storageRef: 'project-documents/shared.pdf' },
+      { id: 'project-doc-1', filename: 'Konzeption Shared.pdf', projectId: 'project-1', projectTitle: 'Projekt Shared', orgId: 'org-1', storageRef: 'images/shared.jpg' },
     ];
     const templateImageRows: Array<{ id: string; title: string; orgId: string | null; imageUrl: string | null }> = [
       { id: 'template-1', title: 'Vorlage Shared', orgId: 'org-1', imageUrl: '/uploads/images/shared.jpg' },
@@ -121,6 +124,21 @@ describe('SystemDataService', () => {
         if (sql.includes('COUNT(*)')) return [{ count: '0' }];
         return [];
       }),
+      stream: jest.fn(async (sql: string) => {
+        const rows = await queryRunner.query(sql) as Array<Record<string, unknown>>;
+        return Readable.from((async function* () {
+          streamMetrics.active += 1;
+          streamMetrics.maxActive = Math.max(streamMetrics.maxActive, streamMetrics.active);
+          try {
+            for (const row of rows) {
+              await new Promise<void>((resolve) => setTimeout(resolve, 1));
+              yield row;
+            }
+          } finally {
+            streamMetrics.active -= 1;
+          }
+        })());
+      }),
     };
 
     const dataSource = {
@@ -150,7 +168,9 @@ describe('SystemDataService', () => {
     } as unknown as AuditService;
 
     const service = new SystemDataService(dataSource as any, authService, auditService);
-    return { service, queryRunner, queryLog, queryCalls, authService, auditService };
+    const uploadStore = (service as any).uploadStore;
+    const importArchiveReader = (service as any).importArchiveReader;
+    return { service, dataSource, queryRunner, queryLog, queryCalls, streamMetrics, authService, auditService, uploadStore, importArchiveReader };
   }
 
   it('rejects purge when password verification fails', async () => {
@@ -166,12 +186,12 @@ describe('SystemDataService', () => {
   });
 
   it('deletes dependent tables before parents and preserves superadmins', async () => {
-    const { service, queryLog, auditService } = createService();
-    jest.spyOn(service as never, 'clearUploads' as never).mockResolvedValue({
+    const { service, queryLog, auditService, uploadStore } = createService();
+    jest.spyOn(uploadStore, 'clearUploads').mockResolvedValue({
       deletedFiles: 0,
       deletedBytes: 0,
       warnings: [],
-    } as never);
+    });
 
     const result = await service.purgeAllData(actor, {
       password: 'correct',
@@ -194,23 +214,28 @@ describe('SystemDataService', () => {
     expect(auditService.log).toHaveBeenCalled();
   });
 
-  it('includes a readable workbook in the export zip', async () => {
-    const { service, auditService } = createService();
-    jest.spyOn(service as never, 'scanUploads' as never).mockResolvedValue({
+  it('streams database rows into the export zip', async () => {
+    const { service, dataSource, auditService, uploadStore, queryRunner, streamMetrics } = createService();
+    jest.spyOn(uploadStore, 'scanUploads').mockResolvedValue({
       files: [],
       fileCount: 0,
       totalBytes: 0,
       warnings: [],
-    } as never);
+    });
+    dataSource.options.type = 'postgres';
 
     const result = await service.exportAllData(actor);
-    const zip = await JSZip.loadAsync(result.buffer);
+    const chunks: Buffer[] = [];
+    for await (const chunk of result.stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const zip = await JSZip.loadAsync(Buffer.concat(chunks));
     const manifest = JSON.parse(await zip.file('manifest.json')!.async('string')) as { format?: string; schemaVersion?: number };
     const activities = JSON.parse(await zip.file('database/activities.json')!.async('string')) as Array<{ date: string; executionStatus?: string }>;
     const organizations = JSON.parse(await zip.file('database/organizations.json')!.async('string')) as Array<{ closureDays?: unknown }>;
 
-    expect(Object.keys(zip.files)).toContain('readable/stato-system-data-readable.xlsx');
     expect(Object.keys(zip.files)).toContain('manifest.json');
+    expect(result).not.toHaveProperty('buffer');
+    expect(queryRunner.stream).toHaveBeenCalled();
+    expect(streamMetrics.maxActive).toBe(1);
     expect(manifest.format).toBe('stato-system-data-export');
     expect(manifest.schemaVersion).toBe(2);
     expect(activities[0]?.date).toBe('2026-04-17');
@@ -220,8 +245,8 @@ describe('SystemDataService', () => {
   });
 
   it('returns an import preview for a valid backup archive', async () => {
-    const { service } = createService();
-    jest.spyOn(service as never, 'readImportArchive' as never).mockResolvedValue({
+    const { service, importArchiveReader, uploadStore } = createService();
+    jest.spyOn(importArchiveReader, 'read').mockResolvedValue({
       originalFilename: 'backup.zip',
       manifest: { generatedAt: '2026-04-17T10:00:00.000Z', generatedBy: { id: 'super-1', name: 'Super Admin', role: 'superadmin' } },
       warnings: ['Archiv ohne Schema-Version erkannt. Es wird als Legacy-Export behandelt.'],
@@ -230,8 +255,8 @@ describe('SystemDataService', () => {
         { key: 'users', path: 'users', filename: 'users', rows: [{ id: 'super-1' }, { id: 'user-1' }] },
       ],
       uploads: [],
-    } as never);
-    jest.spyOn(service as never, 'removePath' as never).mockResolvedValue(undefined as never);
+    });
+    jest.spyOn(uploadStore, 'removePath').mockResolvedValue(undefined);
 
     const result = await service.inspectImportArchive(actor, 'C:/temp/backup.zip', 'backup.zip');
 
@@ -255,9 +280,17 @@ describe('SystemDataService', () => {
     await writeFile(tempZipPath, await zip.generateAsync({ type: 'nodebuffer' }));
 
     try {
-      const archive = await (service as any).readImportArchive(tempZipPath, 'legacy.zip');
+      const archive = await new SystemDataImportArchiveReader().read({
+        filePath: tempZipPath,
+        originalFilename: 'legacy.zip',
+        managedTables: (service as any).getManagedTables(),
+        exportFormat: 'stato-system-data-export',
+        schemaVersion: 2,
+        normalizeRowsForImport: (table, rows) => (service as any).normalizeRowsForImport(table, rows),
+      });
       const activities = archive.tables.find((table: { key: string }) => table.key === 'activities');
 
+      if (!activities) throw new Error('activities table missing from archive');
       expect(activities.rows[0]?.date).toBe('2026-04-17');
       expect(activities.rows[0]?.executionStatus).toBe('completed');
     } finally {
@@ -266,8 +299,8 @@ describe('SystemDataService', () => {
   });
 
   it('restores backup data in dependency-safe order', async () => {
-    const { service, queryLog, queryCalls, auditService, queryRunner } = createService();
-    jest.spyOn(service as never, 'readImportArchive' as never).mockResolvedValue({
+    const { service, queryLog, queryCalls, auditService, queryRunner, uploadStore, importArchiveReader } = createService();
+    jest.spyOn(importArchiveReader, 'read').mockResolvedValue({
       originalFilename: 'backup.zip',
       manifest: {},
       warnings: [],
@@ -293,19 +326,19 @@ describe('SystemDataService', () => {
         },
       ],
       uploads: [],
-    } as never);
-    jest.spyOn(service as never, 'stageImportedUploads' as never).mockResolvedValue({
+    });
+    jest.spyOn(uploadStore, 'stageImportedUploads').mockResolvedValue({
       sessionRoot: 'C:/temp/import-session',
       uploadsRoot: 'C:/temp/import-session/uploads',
       fileCount: 0,
       totalBytes: 0,
-    } as never);
-    jest.spyOn(service as never, 'applyImportedUploads' as never).mockResolvedValue({
+    });
+    jest.spyOn(uploadStore, 'applyImportedUploads').mockResolvedValue({
       backupRoot: null,
       uploadsRoot: 'C:/uploads',
-    } as never);
-    jest.spyOn(service as never, 'removePath' as never).mockResolvedValue(undefined as never);
-    jest.spyOn(service as never, 'restorePreviousUploads' as never).mockResolvedValue(undefined as never);
+    });
+    jest.spyOn(uploadStore, 'removePath').mockResolvedValue(undefined);
+    jest.spyOn(uploadStore, 'restorePreviousUploads').mockResolvedValue(undefined);
 
     const result = await service.importAllData(actor, 'C:/temp/backup.zip', {
       originalFilename: 'backup.zip',
@@ -330,8 +363,8 @@ describe('SystemDataService', () => {
   });
 
   it('lists uploads with aggregated reference counts', async () => {
-    const { service } = createService();
-    jest.spyOn(service as never, 'scanUploads' as never).mockResolvedValue({
+    const { service, uploadStore } = createService();
+    jest.spyOn(uploadStore, 'scanUploads').mockResolvedValue({
       files: [
         { absolutePath: 'C:/uploads/images/shared.jpg', relativePath: 'images/shared.jpg', size: 1234 },
         { absolutePath: 'C:/uploads/images/unused.jpg', relativePath: 'images/unused.jpg', size: 567 },
@@ -339,7 +372,7 @@ describe('SystemDataService', () => {
       fileCount: 2,
       totalBytes: 1801,
       warnings: [],
-    } as never);
+    });
 
     const result = await service.listUploads(actor);
 
@@ -378,10 +411,10 @@ describe('SystemDataService', () => {
         clearedReferences: 4,
         referenceBreakdown: { projects: 1, projectDocuments: 1, projectTemplates: 1, userAvatars: 1 },
       });
-      expect(queryLog).toContain('UPDATE "projects" SET "imageUrl" = ?, "imageSize" = ? WHERE "imageUrl" IN (?, ?, ?)');
-      expect(queryLog).toContain('DELETE FROM "project_documents" WHERE "storageRef" IN (?, ?, ?)');
-      expect(queryLog).toContain('UPDATE "project_templates" SET "imageUrl" = ? WHERE "imageUrl" IN (?, ?, ?)');
-      expect(queryLog).toContain('UPDATE "users" SET "avatarUrl" = ? WHERE "avatarUrl" IN (?, ?, ?)');
+      expect(queryLog).toContain('UPDATE "projects" SET "imageUrl" = ?, "imageSize" = ? WHERE "imageUrl" IN (?, ?, ?, ?)');
+      expect(queryLog).toContain('DELETE FROM "project_documents" WHERE "storageRef" IN (?, ?, ?, ?)');
+      expect(queryLog).toContain('UPDATE "project_templates" SET "imageUrl" = ? WHERE "imageUrl" IN (?, ?, ?, ?)');
+      expect(queryLog).toContain('UPDATE "users" SET "avatarUrl" = ? WHERE "avatarUrl" IN (?, ?, ?, ?)');
       expect(unlinkSpy).toHaveBeenCalledWith(expect.stringContaining('images'));
       expect(auditService.log).toHaveBeenCalled();
     } finally {

@@ -182,6 +182,24 @@ function handleProjects(method: string, segments: string[], params: Record<strin
   return undefined;
 }
 
+function handleLogbook(method: string, segments: string[], params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult | undefined {
+  if (segments[0] !== 'logbook') return undefined;
+  if (method === 'get' && segments.length === 1) return ok(demo.listDemoLogbookEntries(params));
+  if (method === 'post' && segments.length === 1) return ok(demo.createDemoLogbookEntry(body), 201);
+  const entryId = segments[1] ? decodeURIComponent(segments[1]) : '';
+  if (method === 'get' && entryId && segments.length === 2) {
+    const entry = demo.getDemoLogbookEntry(entryId);
+    if (!entry) throw new DemoHttpError(404, 'Logbucheintrag nicht gefunden');
+    return ok(entry);
+  }
+  if (method === 'patch' && entryId && segments[2] === 'status') return ok(demo.setDemoLogbookStatus(entryId, body.status as never));
+  if (method === 'patch' && entryId && segments.length === 2) return ok(demo.updateDemoLogbookEntry(entryId, body));
+  if (method === 'delete' && entryId && segments.length === 2) return ok(demo.archiveDemoLogbookEntry(entryId));
+  if (method === 'post' && entryId && segments[2] === 'comments') return ok(demo.createDemoLogbookComment(entryId, String(body.body || '')), 201);
+  if (method === 'delete' && entryId && segments[2] === 'comments' && segments[3]) return ok(demo.removeDemoLogbookComment(entryId, decodeURIComponent(segments[3])));
+  return undefined;
+}
+
 function handleProjectTemplates(method: string, segments: string[], body: Record<string, unknown>): HandlerResult | undefined {
   if (segments[0] !== 'project-templates') return undefined;
   if (method === 'get' && segments[1] === 'owned') return ok(demo.listDemoProjectTemplates(true));
@@ -205,6 +223,8 @@ function handleRequest(method: string, path: string, params: Record<string, unkn
   if (activityResult) return activityResult;
   const projectResult = handleProjects(method, segments, params, body);
   if (projectResult) return projectResult;
+  const logbookResult = handleLogbook(method, segments, params, body);
+  if (logbookResult) return logbookResult;
   const templateResult = handleProjectTemplates(method, segments, body);
   if (templateResult) return templateResult;
 

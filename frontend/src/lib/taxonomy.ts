@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import { useOrgScopeKey } from './orgScope';
+import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
 
 function stripTaxonomyMutationMeta<T extends object>(data: Partial<T>): Partial<T> {
   const sanitized = { ...data } as Record<string, unknown>;
@@ -67,13 +67,14 @@ interface TaxonomyAccess {
 
 // Categories
 export function useCategories(params?: { active?: boolean }) {
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['categories', scopeKey, params],
     queryFn: async () => {
       const res = await api.get('/taxonomy/categories', { params });
       return res.data as Category[];
     },
+    enabled: ready,
   });
 }
 
@@ -114,25 +115,27 @@ export function useDeleteCategory() {
 }
 
 export function useTaxonomyAccess() {
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['taxonomy-access', scopeKey],
     queryFn: async () => {
       const res = await api.get('/taxonomy/access');
       return res.data as TaxonomyAccess;
     },
+    enabled: ready,
   });
 }
 
 // Tags
 export function useTags(params?: { active?: boolean; search?: string }) {
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['tags', scopeKey, params],
     queryFn: async () => {
       const res = await api.get('/taxonomy/tags', { params });
       return res.data as Tag[];
     },
+    enabled: ready,
   });
 }
 
@@ -174,13 +177,14 @@ export function useDeleteTag() {
 
 // Cohorts
 export function useCohorts(params?: { active?: boolean }) {
-  const scopeKey = useOrgScopeKey();
+  const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['cohorts', scopeKey, params],
     queryFn: async () => {
       const res = await api.get('/taxonomy/cohorts', { params });
       return res.data as Cohort[];
     },
+    enabled: ready,
   });
 }
 

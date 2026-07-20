@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
+import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
-import { Download, Plus, Search, SlidersHorizontal } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
+  Plus,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react';
 // switched to xlsx-js-style inside the export handler to support cell styling
-import { api } from '@/lib/api';
 // basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
@@ -36,6 +44,11 @@ import {
   isCancelledActivity,
 } from '@/lib/activityExecutionStatus';
 import DemoHoverHint from '@/demo/DemoHoverHint';
+import {
+  clearActivitiesFilters,
+  loadActivitiesFilters,
+  saveActivitiesFilters,
+} from '@/lib/activitiesFilterStorage';
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -81,18 +94,31 @@ function toLocalIsoDate(date: Date) {
 function ActivitiesPaginationControls({
   page,
   pageCount,
+  onFirst,
   onPrevious,
   onNext,
+  onLast,
   compact = false,
 }: {
   page: number;
   pageCount: number;
+  onFirst: () => void;
   onPrevious: () => void;
   onNext: () => void;
+  onLast: () => void;
   compact?: boolean;
 }) {
   return (
     <div className={`flex items-center ${compact ? 'gap-1.5' : 'gap-2'}`}>
+      <button
+        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+        onClick={onFirst}
+        disabled={page <= 1}
+        title="Erste Seite"
+        aria-label="Erste Seite"
+      >
+        <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
+      </button>
       <button
         className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
         onClick={onPrevious}
@@ -100,7 +126,7 @@ function ActivitiesPaginationControls({
         title="Vorherige Seite"
         aria-label="Vorherige Seite"
       >
-        «
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
       </button>
       <span className={`${compact ? 'text-xs' : 'text-sm'} text-gray-700`}>
         {page} / {pageCount}
@@ -112,7 +138,16 @@ function ActivitiesPaginationControls({
         title="Nächste Seite"
         aria-label="Nächste Seite"
       >
-        »
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <button
+        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+        onClick={onLast}
+        disabled={page >= pageCount}
+        title="Letzte Seite"
+        aria-label="Letzte Seite"
+      >
+        <ChevronsRight className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   );
@@ -123,31 +158,15 @@ export default function Activities() {
   const location = useLocation();
   const [params] = useSearchParams();
   const isMobile = useIsMobile();
-  const STORAGE_KEY = 'activities:advancedFilters:v1';
-  const STORAGE_ORDER_KEY = 'activities:order:v1';
+  const [initialActivitiesFilters] = useState(loadActivitiesFilters);
   // Basic filter UI removed; we keep only advanced filter state
   const [filterDrawer, setFilterDrawer] = useState(false);
-  const [advanced, setAdvanced] = useState<ActivitiesFilter>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? (JSON.parse(raw) as unknown) : undefined;
-      return parsed && typeof parsed === 'object' ? (parsed as ActivitiesFilter) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [advanced, setAdvanced] = useState<ActivitiesFilter>(() => initialActivitiesFilters.advanced);
   const [picker, setPicker] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [order, setOrder] = useState<'asc' | 'desc'>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_ORDER_KEY);
-      return raw === 'asc' ? 'asc' : 'desc';
-    } catch {
-      return 'desc';
-    }
-  });
+  const [searchTerm, setSearchTerm] = useState(initialActivitiesFilters.search);
+  const [order, setOrder] = useState<'asc' | 'desc'>(() => initialActivitiesFilters.order);
   const pageSize = 50;
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const { data: cohorts = [] } = useCohorts({ active: true });
@@ -160,35 +179,8 @@ export default function Activities() {
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const todayIso = toLocalIsoDate(new Date());
-  // Persist filters across route/tab changes; reset only via the explicit reset button.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('activitiesFilters_v1');
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        advanced?: ActivitiesFilter;
-        order?: 'asc' | 'desc';
-        search?: string;
-      };
-      if (parsed?.advanced && typeof parsed.advanced === 'object') setAdvanced(parsed.advanced);
-      if (parsed?.order === 'asc' || parsed?.order === 'desc') setOrder(parsed.order);
-      if (typeof parsed?.search === 'string') {
-        setSearchTerm(parsed.search);
-        setSearchOpen(false);
-      }
-    } catch {
-      /* ignore */
-    }
-    // run once
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('activitiesFilters_v1', JSON.stringify({ advanced, order, search: searchTerm }));
-    } catch {
-      /* ignore */
-    }
+    saveActivitiesFilters({ advanced, order, search: searchTerm });
   }, [advanced, order, searchTerm]);
   const filters = {
     search: searchTerm.trim() || undefined,
@@ -268,15 +260,6 @@ export default function Activities() {
     setPage(1);
   }, [params]);
 
-  // Persist filters across navigation/tab switches (only reset when user explicitly clicks "Zurücksetzen")
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(advanced));
-      localStorage.setItem(STORAGE_ORDER_KEY, order);
-    } catch {
-      /* ignore */
-    }
-  }, [advanced, order]);
   const {
     data: paged,
     isLoading: activitiesLoading,
@@ -377,8 +360,10 @@ export default function Activities() {
     () => Object.values(advanced).some((value) => (Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '')),
     [advanced],
   );
+  const goToFirstPage = () => setPage(1);
   const goToPreviousPage = () => setPage((currentPage) => Math.max(currentPage - 1, 1));
   const goToNextPage = () => setPage((currentPage) => Math.min(currentPage + 1, pageCount));
+  const goToLastPage = () => setPage(pageCount);
   type ExportRow = {
     id: string;
     date: string;
@@ -399,28 +384,8 @@ export default function Activities() {
     cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
   };
   const loadExportRows = async () => {
-    const qp: Record<string, unknown> = { ...filters };
-    const arrayKeys: (keyof ActivitiesFilter)[] = [
-      'types',
-      'locationIds',
-      'projectIds',
-      'categoryIds',
-      'tagIds',
-      'staffIds',
-      'cohortIds',
-      'executionStatuses',
-    ];
-    for (const key of arrayKeys) {
-      const value = (filters as ActivitiesFilter)[key];
-      if (Array.isArray(value) && value.length) qp[key as string] = (value as string[]).join(',');
-      else if (Array.isArray(value)) delete qp[key as string];
-    }
-    const res = await api.get('/activities', { params: qp });
-    return (Array.isArray(res.data?.data)
-      ? res.data.data
-      : Array.isArray(res.data)
-        ? res.data
-        : []) as Array<ExportRow>;
+    const rows = await fetchAllActivities(filters);
+    return rows as Array<ExportRow>;
   };
   const buildExportSheet = (list: ExportRow[]) => {
     const cohortOrder = (cohorts as Cohort[])
@@ -852,12 +817,7 @@ export default function Activities() {
                 setOrder('desc');
                 clearSearch();
                 setPage(1);
-                try {
-                  localStorage.removeItem(STORAGE_KEY);
-                  localStorage.removeItem(STORAGE_ORDER_KEY);
-                } catch {
-                  /* ignore */
-                }
+                clearActivitiesFilters();
               }}
             >
               <X className="h-3.5 w-3.5" />
@@ -869,8 +829,10 @@ export default function Activities() {
               <ActivitiesPaginationControls
                 page={page}
                 pageCount={pageCount}
+                onFirst={goToFirstPage}
                 onPrevious={goToPreviousPage}
                 onNext={goToNextPage}
+                onLast={goToLastPage}
               />
             </div>
           </div>
@@ -1093,8 +1055,10 @@ export default function Activities() {
         <ActivitiesPaginationControls
           page={page}
           pageCount={pageCount}
+          onFirst={goToFirstPage}
           onPrevious={goToPreviousPage}
           onNext={goToNextPage}
+          onLast={goToLastPage}
           compact={isMobile}
         />
       </div>
@@ -1286,8 +1250,10 @@ export default function Activities() {
         <ActivitiesPaginationControls
           page={page}
           pageCount={pageCount}
+          onFirst={goToFirstPage}
           onPrevious={goToPreviousPage}
           onNext={goToNextPage}
+          onLast={goToLastPage}
           compact
         />
       </div>
@@ -1377,12 +1343,7 @@ export default function Activities() {
         onClose={() => setFilterDrawer(false)}
         onApply={(f) => {
           setAdvanced(f);
-                setOrder('desc');
-                try {
-                  localStorage.removeItem('activitiesFilters_v1');
-                } catch {
-                  /* ignore */
-                }
+          setOrder('desc');
           setFilterDrawer(false);
         }}
       />

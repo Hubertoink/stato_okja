@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 function getLegacySessionTimezone() {
   const configured = String(process.env.TZ || '').trim();
-  if (/^[A-Za-z0-9_+\-\/]+$/.test(configured)) return configured;
+  if (/^[A-Za-z0-9_+\u002F-]+$/.test(configured)) return configured;
   return 'Europe/Berlin';
 }
 

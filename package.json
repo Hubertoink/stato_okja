@@ -25,9 +25,14 @@
     "test:frontend": "cd frontend && npm run test"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@nestjs/common": "11.1.28",
     "@nestjs/core": "11.1.28",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
+    "typescript-eslint": "^8.65.0"
   },
   "overrides": {
     "@nestjs/common": "11.1.28",

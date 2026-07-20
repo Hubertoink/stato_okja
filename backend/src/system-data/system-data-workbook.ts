@@ -562,7 +562,7 @@ function escapeXml(value: string) {
 }
 
 function getSafeSheetName(name: string, existing: string[]) {
-  const sanitized = name.replace(/[\\/*?:\[\]]/g, ' ').trim() || 'Tabelle';
+  const sanitized = name.replace(/[\\/*?:\u005B\u005D]/g, ' ').trim() || 'Tabelle';
   let candidate = sanitized.slice(0, 31);
   let index = 2;
   while (existing.includes(candidate)) {

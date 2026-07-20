@@ -1,4 +1,4 @@
-import { Suspense, lazy, useLayoutEffect, type ReactNode } from 'react';
+import { Suspense, lazy, useEffect, useLayoutEffect, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom';
 import Layout from './components/Layout';
 import { ToastProvider } from './components/Toast';
@@ -6,42 +6,98 @@ import { ToastProvider } from './components/Toast';
 import Login from './pages/Login';
 import { AuthProvider, useAuth } from './lib/auth';
 import { OrgScopeProvider } from './lib/orgScope';
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Activities = lazy(() => import('./pages/Activities'));
-const ActivityDetailPage = lazy(() => import('@/pages/ActivityDetailPage'));
-const ActivityEditPage = lazy(() => import('@/pages/ActivityEditPage'));
-const ActivityCreatePage = lazy(() => import('@/pages/ActivityCreatePage'));
 import PostLoginPrefetch from '@/components/PostLoginPrefetch';
 import { canAccessDevTools } from './lib/devToolsConfig';
 import TermsAcceptanceGate from '@/components/TermsAcceptanceGate';
 
-const Statistics = lazy(() => import('./pages/Statistics'));
-const Settings = lazy(() => import('./pages/Settings'));
-const MyProfile = lazy(() => import('./pages/MyProfile'));
-const Projects = lazy(() => import('./pages/Projects'));
-const Calendar = lazy(() => import('./pages/Calendar'));
-const AdminOrgSetup = lazy(() => import('./pages/AdminOrgSetup'));
-const OrgUserManagement = lazy(() => import('./pages/OrgUserManagement'));
-const SuperAdminAudit = lazy(() => import('./pages/SuperAdminAudit'));
-const SuperAdminSystemData = lazy(() => import('./pages/SuperAdminSystemData'));
-const SettingsTestData = lazy(() => import('./pages/SettingsTestData'));
-const AcceptInvite = lazy(() => import('./pages/AcceptInvite'));
-const ResetRequest = lazy(() => import('./pages/ResetRequest'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const ProjectPickerPage = lazy(() => import('@/pages/ProjectPickerPage'));
-const Logbook = lazy(() => import('@/pages/Logbook'));
-const LogbookEntryPage = lazy(() => import('@/pages/LogbookEntryPage'));
+function isChunkLoadError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk \d+ failed|error loading dynamically imported module/i.test(message);
+}
+
+function reloadOnceAfterChunkError() {
+  try {
+    const key = 'stato_chunk_reload_once';
+    const marker = `${window.location.pathname}${window.location.search}`;
+    if (window.sessionStorage.getItem(key) === marker) return false;
+    window.sessionStorage.setItem(key, marker);
+    window.location.reload();
+    return true;
+  } catch {
+    window.location.reload();
+    return true;
+  }
+}
+
+function lazyWithReload<T extends React.ComponentType<unknown>>(factory: () => Promise<{ default: T }>) {
+  return lazy(() =>
+    factory().catch((error) => {
+      if (isChunkLoadError(error) && reloadOnceAfterChunkError()) {
+        return new Promise<{ default: T }>(() => undefined);
+      }
+      throw error;
+    }),
+  );
+}
+
+const Dashboard = lazyWithReload(() => import('./pages/Dashboard'));
+const Activities = lazyWithReload(() => import('./pages/Activities'));
+const ActivityDetailPage = lazyWithReload(() => import('@/pages/ActivityDetailPage'));
+const ActivityEditPage = lazyWithReload(() => import('@/pages/ActivityEditPage'));
+const ActivityCreatePage = lazyWithReload(() => import('@/pages/ActivityCreatePage'));
+const Statistics = lazyWithReload(() => import('./pages/Statistics'));
+const Settings = lazyWithReload(() => import('./pages/Settings'));
+const MyProfile = lazyWithReload(() => import('./pages/MyProfile'));
+const Projects = lazyWithReload(() => import('./pages/Projects'));
+const Calendar = lazyWithReload(() => import('./pages/Calendar'));
+const AdminOrgSetup = lazyWithReload(() => import('./pages/AdminOrgSetup'));
+const OrgUserManagement = lazyWithReload(() => import('./pages/OrgUserManagement'));
+const SuperAdminAudit = lazyWithReload(() => import('./pages/SuperAdminAudit'));
+const SuperAdminSystemData = lazyWithReload(() => import('./pages/SuperAdminSystemData'));
+const SettingsTestData = lazyWithReload(() => import('./pages/SettingsTestData'));
+const AcceptInvite = lazyWithReload(() => import('./pages/AcceptInvite'));
+const ResetRequest = lazyWithReload(() => import('./pages/ResetRequest'));
+const ResetPassword = lazyWithReload(() => import('./pages/ResetPassword'));
+const ProjectPickerPage = lazyWithReload(() => import('@/pages/ProjectPickerPage'));
+const Logbook = lazyWithReload(() => import('@/pages/Logbook'));
+const LogbookEntryPage = lazyWithReload(() => import('@/pages/LogbookEntryPage'));
 
 function LazyRouteFallback({ label }: { label: string }) {
-  return <div className="p-6 text-sm text-gray-500">{label} wird geladen…</div>;
+  return <AppLoading label={label} />;
 }
 
 function RouteBoundary({ children, label }: { children: ReactNode; label: string }) {
   return <Suspense fallback={<LazyRouteFallback label={label} />}>{children}</Suspense>;
 }
 
+function AppLoading({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-screen items-start justify-center px-4 pt-24">
+      <div className="modern-card flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600">
+        <span className="h-3 w-3 animate-pulse rounded-full bg-viridian" aria-hidden="true" />
+        <span>{label} wird geladen...</span>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   // App-level providers
+  useEffect(() => {
+    const handleChunkError = (event: ErrorEvent | PromiseRejectionEvent) => {
+      const error = 'reason' in event ? event.reason : event.error;
+      if (isChunkLoadError(error) && reloadOnceAfterChunkError()) {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener('error', handleChunkError);
+    window.addEventListener('unhandledrejection', handleChunkError);
+    return () => {
+      window.removeEventListener('error', handleChunkError);
+      window.removeEventListener('unhandledrejection', handleChunkError);
+    };
+  }, []);
 
   return (
     <BrowserRouter>
@@ -113,7 +169,7 @@ function ScrollToTopOnPathChange() {
 function AuthedRoutes() {
   const { user, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <AppLoading label="Stato" />;
 
   if (!user) return <Login />;
 

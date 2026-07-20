@@ -10,7 +10,7 @@ Pfad im Frontend:
 
 Der Export erzeugt ein einzelnes ZIP-Archiv mit:
 
-- `readable/stato-system-data-readable.xlsx` als bereinigte Arbeitsmappe mit mehreren Reitern ohne technische IDs
+- Tabellen werden als JSON und CSV direkt in das ZIP gestreamt; für große Installationen wird keine zusätzliche Excel-Arbeitsmappe erzeugt, damit die Daten nicht erneut vollständig im RAM liegen.
 - `manifest.json` mit Zeitstempel und Summen
 - `database/<tabelle>.json` für jede verwaltete TypeORM-Tabelle
 - `database/<tabelle>.csv` für jede verwaltete TypeORM-Tabelle

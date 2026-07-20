@@ -144,12 +144,11 @@ export default function SettingsTeam() {
                 onClick={async () => {
                   setConfirm({ open: true, member: m, loading: true });
                   try {
-                    const res = await api.get('/activities', { params: { staffIds: m.id } });
-                    const list = res.data as unknown[];
+                    const res = await api.get('/activities', { params: { staffIds: m.id, page: 1, limit: 1 } });
                     setConfirm({
                       open: true,
                       member: m,
-                      count: Array.isArray(list) ? list.length : 0,
+                      count: Number(res.data?.total || 0),
                       loading: false,
                     });
                   } catch {

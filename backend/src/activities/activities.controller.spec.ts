@@ -6,8 +6,7 @@ import { Activity } from './entities/activity.entity';
 
 describe('ActivitiesController org scoping', () => {
   let controller: ActivitiesController;
-  const service: Pick<ActivitiesService, 'findAll'|'findAllPaged'|'create'|'updateScoped'> = {
-    findAll: jest.fn(async () => [] as Activity[]),
+  const service: Pick<ActivitiesService, 'findAllPaged'|'create'|'updateScoped'> = {
     findAllPaged: jest.fn(async () => ({ data: [] as Activity[], total: 0, page: 1, pageSize: 50 })),
     create: jest.fn(async () => ({} as unknown as Activity)),
     updateScoped: jest.fn(async () => ({} as unknown as Activity | null)),
@@ -36,7 +35,7 @@ describe('ActivitiesController org scoping', () => {
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
-    expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ orgId: null }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgId: null, page: 1, limit: 50 }));
   });
 
   it('superadmin scoped to org expands to subtree', async () => {
@@ -47,7 +46,7 @@ describe('ActivitiesController org scoping', () => {
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
     expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['org-1', 'child-1'], orgId: undefined }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['org-1', 'child-1'], orgId: undefined, page: 1, limit: 50 }));
   });
 
   it('non-superadmin without explicit scope uses own org subtree', async () => {
@@ -57,7 +56,19 @@ describe('ActivitiesController org scoping', () => {
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
-    expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['own-org', 'child-1'], orgId: undefined }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['own-org', 'child-1'], orgId: undefined, page: 1, limit: 50 }));
+  });
+
+  it('uses the requested bounded page', async () => {
+    const args = [
+      { user: { role: 'user', orgId: 'own-org' }, effectiveOrgId: undefined },
+      ...Array.from({ length: 23 }, () => undefined),
+      '3',
+      '999',
+    ] as unknown as Parameters<typeof controller.findAll>;
+    await controller.findAll(...args);
+
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ page: 3, limit: 50 }));
   });
 
   it('create sets orgId from scope and ignores body orgId', async () => {

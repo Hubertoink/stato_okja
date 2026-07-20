@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
+import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
-import { Download, Plus, Search, SlidersHorizontal } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
+  Plus,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react';
 // switched to xlsx-js-style inside the export handler to support cell styling
-import { api } from '@/lib/api';
 // basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
@@ -86,18 +94,31 @@ function toLocalIsoDate(date: Date) {
 function ActivitiesPaginationControls({
   page,
   pageCount,
+  onFirst,
   onPrevious,
   onNext,
+  onLast,
   compact = false,
 }: {
   page: number;
   pageCount: number;
+  onFirst: () => void;
   onPrevious: () => void;
   onNext: () => void;
+  onLast: () => void;
   compact?: boolean;
 }) {
   return (
     <div className={`flex items-center ${compact ? 'gap-1.5' : 'gap-2'}`}>
+      <button
+        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+        onClick={onFirst}
+        disabled={page <= 1}
+        title="Erste Seite"
+        aria-label="Erste Seite"
+      >
+        <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
+      </button>
       <button
         className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
         onClick={onPrevious}
@@ -105,7 +126,7 @@ function ActivitiesPaginationControls({
         title="Vorherige Seite"
         aria-label="Vorherige Seite"
       >
-        «
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
       </button>
       <span className={`${compact ? 'text-xs' : 'text-sm'} text-gray-700`}>
         {page} / {pageCount}
@@ -117,7 +138,16 @@ function ActivitiesPaginationControls({
         title="Nächste Seite"
         aria-label="Nächste Seite"
       >
-        »
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <button
+        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+        onClick={onLast}
+        disabled={page >= pageCount}
+        title="Letzte Seite"
+        aria-label="Letzte Seite"
+      >
+        <ChevronsRight className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   );
@@ -330,8 +360,10 @@ export default function Activities() {
     () => Object.values(advanced).some((value) => (Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '')),
     [advanced],
   );
+  const goToFirstPage = () => setPage(1);
   const goToPreviousPage = () => setPage((currentPage) => Math.max(currentPage - 1, 1));
   const goToNextPage = () => setPage((currentPage) => Math.min(currentPage + 1, pageCount));
+  const goToLastPage = () => setPage(pageCount);
   type ExportRow = {
     id: string;
     date: string;
@@ -352,28 +384,8 @@ export default function Activities() {
     cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
   };
   const loadExportRows = async () => {
-    const qp: Record<string, unknown> = { ...filters };
-    const arrayKeys: (keyof ActivitiesFilter)[] = [
-      'types',
-      'locationIds',
-      'projectIds',
-      'categoryIds',
-      'tagIds',
-      'staffIds',
-      'cohortIds',
-      'executionStatuses',
-    ];
-    for (const key of arrayKeys) {
-      const value = (filters as ActivitiesFilter)[key];
-      if (Array.isArray(value) && value.length) qp[key as string] = (value as string[]).join(',');
-      else if (Array.isArray(value)) delete qp[key as string];
-    }
-    const res = await api.get('/activities', { params: qp });
-    return (Array.isArray(res.data?.data)
-      ? res.data.data
-      : Array.isArray(res.data)
-        ? res.data
-        : []) as Array<ExportRow>;
+    const rows = await fetchAllActivities(filters);
+    return rows as Array<ExportRow>;
   };
   const buildExportSheet = (list: ExportRow[]) => {
     const cohortOrder = (cohorts as Cohort[])
@@ -817,8 +829,10 @@ export default function Activities() {
               <ActivitiesPaginationControls
                 page={page}
                 pageCount={pageCount}
+                onFirst={goToFirstPage}
                 onPrevious={goToPreviousPage}
                 onNext={goToNextPage}
+                onLast={goToLastPage}
               />
             </div>
           </div>
@@ -1041,8 +1055,10 @@ export default function Activities() {
         <ActivitiesPaginationControls
           page={page}
           pageCount={pageCount}
+          onFirst={goToFirstPage}
           onPrevious={goToPreviousPage}
           onNext={goToNextPage}
+          onLast={goToLastPage}
           compact={isMobile}
         />
       </div>
@@ -1234,8 +1250,10 @@ export default function Activities() {
         <ActivitiesPaginationControls
           page={page}
           pageCount={pageCount}
+          onFirst={goToFirstPage}
           onPrevious={goToPreviousPage}
           onNext={goToNextPage}
+          onLast={goToLastPage}
           compact
         />
       </div>

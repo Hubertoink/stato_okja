@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, CheckCircle2, ChevronRight, Filter, MessageCircle, Plus, RotateCcw, Search, UserRound } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Filter, MessageCircle, Plus, RotateCcw, Search, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { type LogbookEntry, type LogbookEntryStatus, type LogbookEntryType, useLogbookEntries, useSetLogbookStatus } from '@/lib/logbook';
@@ -107,12 +107,9 @@ export default function Logbook() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2"><BookOpen className="h-7 w-7 text-viridian" /><h2 className="text-3xl font-bold text-gray-800">Logbuch</h2></div>
-          <p className="mt-1 text-sm text-gray-600">Beobachtungen, Übergaben und Debriefings im Team festhalten.</p>
-        </div>
+    <div>
+      <div className="mb-6 mt-1 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <h2 className="text-3xl font-bold text-viridian">Logbuch</h2>
         <button type="button" onClick={() => navigate('/logbook/new')} className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold"><Plus className="h-5 w-5" />Eintrag erstellen</button>
       </div>
 

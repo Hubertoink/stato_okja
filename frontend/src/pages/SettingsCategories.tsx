@@ -185,12 +185,11 @@ export default function SettingsCategories() {
                   onClick={async () => {
                     setConfirm({ open: true, category: c, loading: true });
                     try {
-                      const res = await api.get('/activities', { params: { categoryIds: c.id } });
-                      const list = res.data as unknown[];
+                      const res = await api.get('/activities', { params: { categoryIds: c.id, page: 1, limit: 1 } });
                       setConfirm({
                         open: true,
                         category: c,
-                        count: Array.isArray(list) ? list.length : 0,
+                        count: Number(res.data?.total || 0),
                         loading: false,
                       });
                     } catch {

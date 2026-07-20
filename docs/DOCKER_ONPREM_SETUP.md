@@ -63,7 +63,44 @@ Für den On-Prem-Betrieb werden primär diese Dateien genutzt:
 
 Wichtig: Im On-Prem-Compose ist der Frontend-Build bereits auf `NGINX_MODE=proxy` gesetzt. Das Frontend spricht also standardmäßig nicht gegen eine öffentliche API, sondern gegen den internen Backend-Service.
 
-## Schritt 1: Repo auf den Zielserver bringen
+## Schnellinstallation mit einem Befehl
+
+Die Installer pruefen Git, Docker und Docker Compose, holen den Branch `main`,
+erzeugen beim ersten Lauf eine lokale `.env.onprem` mit individuellen
+Zufalls-Secrets und starten alle Container. Eine bereits vorhandene
+`.env.onprem` wird bei erneuter Ausfuehrung nicht ueberschrieben.
+
+Linux/macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.ps1 | iex
+```
+
+Standardmaessig wird in ein Unterverzeichnis `stato_okja` des aktuellen
+Verzeichnisses installiert. Das Ziel kann vorgegeben werden:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.sh | STATO_INSTALL_DIR=/opt/stato sh
+```
+
+```powershell
+$env:STATO_INSTALL_DIR = 'C:\Stato'; irm https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.ps1 | iex
+```
+
+Der Installer zeigt das initial generierte Superadmin-Passwort am Ende einmal
+an. Es steht ausserdem in `.env.onprem` und sollte nach dem ersten Login
+geaendert werden. Fuer den produktiven Betrieb danach mindestens Domain, E-Mail,
+Branding und HTTPS-Einstellungen pruefen.
+
+## Manuelle Installation
+
+### Schritt 1: Repo auf den Zielserver bringen
 
 Beispiel:
 
@@ -74,7 +111,7 @@ cd stato_okja
 
 Wenn das Repo nicht per Git kommt, reicht auch ein vollständiges Verzeichnis auf dem Server, solange alle Compose-, Backend- und Frontend-Dateien enthalten sind.
 
-## Schritt 2: ENV-Datei anlegen
+### Schritt 2: ENV-Datei anlegen
 
 Aus der Vorlage eine produktive On-Prem-Datei erzeugen:
 
@@ -88,7 +125,7 @@ Unter Windows PowerShell alternativ:
 Copy-Item .env.onprem.example .env.onprem
 ```
 
-## Schritt 3: Variablen in `.env.onprem` setzen
+### Schritt 3: Variablen in `.env.onprem` setzen
 
 Mindestens diese Variablen müssen sauber gesetzt sein:
 
@@ -204,20 +241,28 @@ Zusätzlich bei `ENABLE_ORG_MOVE`:
 
 ## Vollständiges Beispiel für `.env.onprem`
 
+Die gepflegte, kommentierte Vorlage ist
+[`.env.onprem.example`](../.env.onprem.example). Die drei Werte
+`GENERATED_BY_INSTALLER` werden von den Schnellinstallern automatisch ersetzt;
+bei der manuellen Installation muessen dort eigene sichere Werte eingetragen
+werden.
+
 ```env
 POSTGRES_DB=stato_prod
 POSTGRES_USER=stato_user
-POSTGRES_PASSWORD=CHANGE_ME_DB_PASSWORD_2026!
+POSTGRES_PASSWORD=GENERATED_BY_INSTALLER
 
-APP_ORIGIN=https://stato.kommune.local
-CORS_ORIGINS=https://stato.kommune.local
+HTTP_PORT=80
+APP_ORIGIN=http://localhost
+CORS_ORIGINS=http://localhost
 API_PREFIX=api
 TRUST_PROXY=true
 
-JWT_SECRET=CHANGE_ME_SUPER_LONG_RANDOM_STRING
+JWT_SECRET=GENERATED_BY_INSTALLER
 JWT_ACCESS_EXPIRATION=15m
 JWT_REFRESH_EXPIRATION=7d
 AUTH_REFRESH_COOKIE_SAMESITE=lax
+AUTH_REFRESH_COOKIE_SECURE=false
 INVITE_TOKEN_EXPIRATION=7d
 RESET_TOKEN_EXPIRATION=1h
 AUTH_2FA_ENABLED=false
@@ -237,8 +282,8 @@ DB_SSL_REJECT_UNAUTHORIZED=false
 ENABLE_ORG_MOVE=false
 PASSWORD_RESET_MODE=admin_temp_password
 
-SUPERADMIN_EMAIL=admin@kommune.local
-SUPERADMIN_PASSWORD=CHANGE_ME_STRONG_2026!
+SUPERADMIN_EMAIL=admin@stato.local
+SUPERADMIN_PASSWORD=GENERATED_BY_INSTALLER
 SUPERADMIN_EMAIL_FORCE=false
 SUPERADMIN_PASSWORD_FORCE=false
 
@@ -261,7 +306,7 @@ APP_ENV=production
 NODE_ENV=production
 ```
 
-## Schritt 4: Container starten
+### Schritt 4: Container starten
 
 Der On-Prem-Stack wird mit der vorhandenen Compose-Datei gestartet:
 
@@ -275,7 +320,7 @@ Dadurch werden gebaut bzw. gestartet:
 - `backend`
 - `frontend`
 
-## Schritt 5: Start prüfen
+### Schritt 5: Start prüfen
 
 Status prüfen:
 
@@ -300,7 +345,7 @@ Beispiel:
 - `http://<server-ip>` oder
 - `https://<eure-domain>` wenn davor ein TLS-Proxy oder Load Balancer läuft
 
-## Schritt 6: Datenbank-Migrationen prüfen
+### Schritt 6: Datenbank-Migrationen prüfen
 
 Im On-Prem-Compose ist der empfohlene Produktionspfad bereits voreingestellt:
 
@@ -311,7 +356,7 @@ Damit führt der Backend-Container Migrationen beim Start automatisch aus. Prüf
 
 Manuelle Migrationen sind nur für Sonderfälle nötig, etwa wenn ein separates Deployment-System die Datenbank vor dem Backend-Start aktualisiert. Dann muss dieselbe Datenbank-Konfiguration aus `.env.onprem` verwendet werden.
 
-## Schritt 7: Login testen
+### Schritt 7: Login testen
 
 Nach erfolgreichem Start:
 
@@ -372,7 +417,7 @@ Das ist die empfohlene Betriebsart für einen einzelnen On-Prem-Host.
 
 Standardmäßig im On-Prem-Compose:
 
-- Frontend: `80:80`
+- Frontend: Host-Port `${HTTP_PORT:-80}` auf Container-Port `8080`
 - Backend: nicht nach außen exposed
 - Postgres: nicht nach außen exposed
 

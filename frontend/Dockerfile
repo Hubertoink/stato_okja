@@ -1,7 +1,7 @@
 # Frontend production Dockerfile (React + Vite) with unprivileged Nginx
 # Build context must be the repository root so npm can use the workspace lockfile.
 
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -24,7 +24,7 @@ ARG VITE_COMMIT_SHA
 ENV VITE_COMMIT_SHA=${VITE_COMMIT_SHA}
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runner
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS runner
 USER root
 WORKDIR /usr/share/nginx/html
 

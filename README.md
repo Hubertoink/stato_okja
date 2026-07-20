@@ -11,6 +11,30 @@ Statistik- und Dokumentationssystem für offene Kinder- und Jugendarbeit (OKJA).
 
 ## 🚀 Quick Start
 
+### On-Prem mit einem Befehl
+
+Voraussetzung sind Git, Docker und das Docker-Compose-Plugin. Der Installer holt
+den Branch `main`, erzeugt `.env.onprem` mit individuellen Zufalls-Secrets und
+baut/startet anschliessend den kompletten Stack.
+
+Linux/macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.ps1 | iex
+```
+
+Danach ist StatO standardmaessig unter `http://localhost` bzw. unter der IP des
+Servers erreichbar. Domain, SMTP und Branding koennen anschliessend in
+`.env.onprem` angepasst werden; der dafuer noetige Rebuild-Befehl wird am Ende
+der Installation ausgegeben. Details und manuelle Alternative:
+[Docker-On-Prem-Anleitung](docs/DOCKER_ONPREM_SETUP.md).
+
 ## 🧭 Betriebsarten (Hosted vs. On‑Prem)
 
 StatO kann grundsätzlich auf zwei Arten genutzt werden:

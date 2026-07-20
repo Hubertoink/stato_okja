@@ -1528,7 +1528,10 @@ export function removeDemoLogbookComment(entryId: string, commentId: string) {
 
 function logbookSeed(activities: DemoActivityRecord[], projects: DemoProject[]): DemoLogbookEntry[] {
   const firstActivity = activities[0];
+  const secondActivity = activities[1] || firstActivity;
+  const thirdActivity = activities[2] || secondActivity;
   const project = projects.find((item) => item.id === firstActivity?.projectId) || projects[0];
+  const secondProject = projects.find((item) => item.id !== project?.id) || project;
   const now = new Date();
   return [
     {
@@ -1545,6 +1548,36 @@ function logbookSeed(activities: DemoActivityRecord[], projects: DemoProject[]):
       status: 'discussed', visibility: 'team', activityId: null, projectId: project?.id || null,
       createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: demoUser.id, discussedByName: demoUser.name, discussedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), archivedAt: null,
       createdAt: new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), comments: [], commentCount: 0,
+    },
+    {
+      id: 'logbook-demo-3', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 50 * 60 * 60 * 1000).toISOString(), type: 'observation', title: 'Neue Clique nutzt den Kreativraum',
+      body: 'Vier Jugendliche kamen ohne Anmeldung vorbei und haben den Kreativraum eigenständig für Sticker-Entwürfe genutzt. Die Gruppe wirkte neugierig, aber noch zurückhaltend gegenüber dem Team.',
+      highlights: 'Gute Gelegenheit, das offene Kreativangebot als niedrigschwelligen Einstieg zu zeigen.', challenges: 'Material wurde teilweise offen liegen gelassen.', nextSteps: 'Beim nächsten Besuch kurz Materialregeln erklären und eine feste Box für angefangene Entwürfe anbieten.',
+      status: 'open', visibility: 'team', activityId: secondActivity?.id || null, projectId: secondProject?.id || null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: null, discussedByName: null, discussedAt: null, archivedAt: null,
+      createdAt: new Date(now.getTime() - 49 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 49 * 60 * 60 * 1000).toISOString(),
+      comments: [{ id: 'logbook-comment-demo-3', entryId: 'logbook-demo-3', body: 'Ich lege morgen eine beschriftete Materialbox bereit.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 47 * 60 * 60 * 1000).toISOString() }], commentCount: 1,
+    },
+    {
+      id: 'logbook-demo-4', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 74 * 60 * 60 * 1000).toISOString(), type: 'incident', title: 'Konflikt beim Kochabend',
+      body: 'Beim gemeinsamen Kochen gab es eine kurze verbale Auseinandersetzung zwischen zwei Teilnehmenden. Das Team konnte die Situation im Nebenraum beruhigen.',
+      highlights: 'Beide Jugendlichen konnten danach wieder in die Gruppe zurückkehren.', challenges: 'Auslöser war vermutlich die Rollenverteilung in der Küche.', nextSteps: 'Beim nächsten Kochabend Aufgaben vorab sichtbar verteilen und kurz nachfragen, ob die Rollen passen.',
+      status: 'follow_up', visibility: 'admins', activityId: thirdActivity?.id || null, projectId: project?.id || null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: null, discussedByName: null, discussedAt: null, archivedAt: null,
+      createdAt: new Date(now.getTime() - 73 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString(),
+      comments: [
+        { id: 'logbook-comment-demo-4a', entryId: 'logbook-demo-4', body: 'Bitte im Teammeeting kurz aufnehmen, damit alle dieselbe Ansprache nutzen.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 71 * 60 * 60 * 1000).toISOString() },
+        { id: 'logbook-comment-demo-4b', entryId: 'logbook-demo-4', body: 'Rollenkarte für Küche ist vorbereitet.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 68 * 60 * 60 * 1000).toISOString() },
+      ], commentCount: 2,
+    },
+    {
+      id: 'logbook-demo-5', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), type: 'debrief', title: 'Debriefing zur Ferienaktion',
+      body: 'Die Ferienaktion lief stabil, die spontanen Tagesgäste konnten gut integriert werden. Für das nächste Mal sollte die Materialplanung früher abgeschlossen sein.',
+      highlights: 'Hohe Beteiligung am Abschlusstag und mehrere neue Kontakte für Folgeangebote.', challenges: 'Zu wenig Puffer beim Aufbau und bei der Ausgabe von Material.', nextSteps: 'Checkliste für Aufbau, Material und Zuständigkeiten in die Projektvorlage übernehmen.',
+      status: 'discussed', visibility: 'team', activityId: null, projectId: secondProject?.id || null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: demoUser.id, discussedByName: demoUser.name, discussedAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(), archivedAt: null,
+      createdAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+      comments: [{ id: 'logbook-comment-demo-5', entryId: 'logbook-demo-5', body: 'Checkliste passt gut als Vorlage für Herbstferien.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString() }], commentCount: 1,
     },
   ];
 }

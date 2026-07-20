@@ -3,6 +3,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { rm, writeFile } from 'fs/promises';
+import { Readable } from 'stream';
 import { SystemDataService } from './system-data.service';
 import { SystemDataImportArchiveReader } from './system-data-import-archive-reader';
 import type { AuthService } from '../auth/auth.service';
@@ -14,6 +15,7 @@ describe('SystemDataService', () => {
   function createService() {
     const queryLog: string[] = [];
     const queryCalls: Array<{ sql: string; params?: unknown[] }> = [];
+    const streamMetrics = { active: 0, maxActive: 0 };
     const projectImageRows: Array<{ id: string; title: string; orgId: string | null; imageUrl: string | null }> = [
       { id: 'project-1', title: 'Projekt Shared', orgId: 'org-1', imageUrl: '/uploads/images/shared.jpg' },
       { id: 'project-2', title: 'Nur Projekt', orgId: 'org-1', imageUrl: '/uploads/images/only-project.jpg' },
@@ -122,6 +124,21 @@ describe('SystemDataService', () => {
         if (sql.includes('COUNT(*)')) return [{ count: '0' }];
         return [];
       }),
+      stream: jest.fn(async (sql: string) => {
+        const rows = await queryRunner.query(sql) as Array<Record<string, unknown>>;
+        return Readable.from((async function* () {
+          streamMetrics.active += 1;
+          streamMetrics.maxActive = Math.max(streamMetrics.maxActive, streamMetrics.active);
+          try {
+            for (const row of rows) {
+              await new Promise<void>((resolve) => setTimeout(resolve, 1));
+              yield row;
+            }
+          } finally {
+            streamMetrics.active -= 1;
+          }
+        })());
+      }),
     };
 
     const dataSource = {
@@ -153,7 +170,7 @@ describe('SystemDataService', () => {
     const service = new SystemDataService(dataSource as any, authService, auditService);
     const uploadStore = (service as any).uploadStore;
     const importArchiveReader = (service as any).importArchiveReader;
-    return { service, queryRunner, queryLog, queryCalls, authService, auditService, uploadStore, importArchiveReader };
+    return { service, dataSource, queryRunner, queryLog, queryCalls, streamMetrics, authService, auditService, uploadStore, importArchiveReader };
   }
 
   it('rejects purge when password verification fails', async () => {
@@ -197,23 +214,28 @@ describe('SystemDataService', () => {
     expect(auditService.log).toHaveBeenCalled();
   });
 
-  it('includes a readable workbook in the export zip', async () => {
-    const { service, auditService, uploadStore } = createService();
+  it('streams database rows into the export zip', async () => {
+    const { service, dataSource, auditService, uploadStore, queryRunner, streamMetrics } = createService();
     jest.spyOn(uploadStore, 'scanUploads').mockResolvedValue({
       files: [],
       fileCount: 0,
       totalBytes: 0,
       warnings: [],
     });
+    dataSource.options.type = 'postgres';
 
     const result = await service.exportAllData(actor);
-    const zip = await JSZip.loadAsync(result.buffer);
+    const chunks: Buffer[] = [];
+    for await (const chunk of result.stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const zip = await JSZip.loadAsync(Buffer.concat(chunks));
     const manifest = JSON.parse(await zip.file('manifest.json')!.async('string')) as { format?: string; schemaVersion?: number };
     const activities = JSON.parse(await zip.file('database/activities.json')!.async('string')) as Array<{ date: string; executionStatus?: string }>;
     const organizations = JSON.parse(await zip.file('database/organizations.json')!.async('string')) as Array<{ closureDays?: unknown }>;
 
-    expect(Object.keys(zip.files)).toContain('readable/stato-system-data-readable.xlsx');
     expect(Object.keys(zip.files)).toContain('manifest.json');
+    expect(result).not.toHaveProperty('buffer');
+    expect(queryRunner.stream).toHaveBeenCalled();
+    expect(streamMetrics.maxActive).toBe(1);
     expect(manifest.format).toBe('stato-system-data-export');
     expect(manifest.schemaVersion).toBe(2);
     expect(activities[0]?.date).toBe('2026-04-17');

@@ -1,7 +1,7 @@
 # Backend production Dockerfile (NestJS)
 # Build context must be the repository root so npm can use the workspace lockfile.
 
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -13,7 +13,7 @@ COPY backend ./backend
 WORKDIR /app/backend
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 # npm installs workspace dependencies below /app/backend/node_modules. The

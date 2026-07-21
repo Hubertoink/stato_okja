@@ -6,32 +6,8 @@ import { getStarredProjectIds } from '@/lib/starred';
 import { colorFromStringHash } from '@/lib/colors';
 import ProtectedImage from '@/components/ProtectedImage';
 
-// Reuse the same color bucketing as modal
-function bgClassForProject(p: Project) {
-  const colors = [
-    'bg-rose-200',
-    'bg-pink-200',
-    'bg-fuchsia-200',
-    'bg-purple-200',
-    'bg-violet-200',
-    'bg-indigo-200',
-    'bg-blue-200',
-    'bg-sky-200',
-    'bg-cyan-200',
-    'bg-teal-200',
-    'bg-emerald-200',
-    'bg-green-200',
-    'bg-lime-200',
-    'bg-yellow-200',
-    'bg-amber-200',
-    'bg-orange-200',
-    'bg-red-200',
-    'bg-stone-200',
-  ];
-  const key = p.color || colorFromStringHash(p.title);
-  let h = 0;
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
-  return colors[h % colors.length];
+function backgroundColorForProject(project: Project) {
+  return project.color || colorFromStringHash(project.title);
 }
 
 export default function ProjectPickerPage() {
@@ -140,7 +116,7 @@ export default function ProjectPickerPage() {
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                   ) : (
-                    <div className={`absolute inset-0 ${bgClassForProject(p)}`} />
+                    <div className="absolute inset-0" style={{ backgroundColor: backgroundColorForProject(p) }} />
                   )}
                   <div className="absolute top-1 left-1 z-10">
                     <span
@@ -180,7 +156,7 @@ export default function ProjectPickerPage() {
                     {p.imageUrl ? (
                       <ProtectedImage src={p.imageUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className={`${bgClassForProject(p)} w-full h-full`} />
+                      <div className="h-full w-full" style={{ backgroundColor: backgroundColorForProject(p) }} />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">

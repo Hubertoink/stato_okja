@@ -1,5 +1,12 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, type ReactNode } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigationType,
+} from 'react-router-dom';
 import Layout from './components/Layout';
 import { ToastProvider } from './components/Toast';
 // import ActivityForm from './pages/ActivityForm';
@@ -12,7 +19,9 @@ import TermsAcceptanceGate from '@/components/TermsAcceptanceGate';
 
 function isChunkLoadError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  return /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk \d+ failed|error loading dynamically imported module/i.test(message);
+  return /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk \d+ failed|error loading dynamically imported module/i.test(
+    message,
+  );
 }
 
 function reloadOnceAfterChunkError() {
@@ -29,7 +38,9 @@ function reloadOnceAfterChunkError() {
   }
 }
 
-function lazyWithReload<T extends React.ComponentType<unknown>>(factory: () => Promise<{ default: T }>) {
+function lazyWithReload<T extends React.ComponentType<unknown>>(
+  factory: () => Promise<{ default: T }>,
+) {
   return lazy(() =>
     factory().catch((error) => {
       if (isChunkLoadError(error) && reloadOnceAfterChunkError()) {
@@ -61,6 +72,15 @@ const ResetPassword = lazyWithReload(() => import('./pages/ResetPassword'));
 const ProjectPickerPage = lazyWithReload(() => import('@/pages/ProjectPickerPage'));
 const Logbook = lazyWithReload(() => import('@/pages/Logbook'));
 const LogbookEntryPage = lazyWithReload(() => import('@/pages/LogbookEntryPage'));
+
+function LogbookEditorRoute() {
+  return (
+    <>
+      <Logbook />
+      <LogbookEntryPage />
+    </>
+  );
+}
 
 function LazyRouteFallback({ label }: { label: string }) {
   return <AppLoading label={label} />;
@@ -260,7 +280,7 @@ function AuthedRoutes() {
             path="logbook/new"
             element={
               <RouteBoundary label="Neuer Logbucheintrag">
-                <LogbookEntryPage />
+                <LogbookEditorRoute />
               </RouteBoundary>
             }
           />
@@ -276,7 +296,7 @@ function AuthedRoutes() {
             path="logbook/:id/edit"
             element={
               <RouteBoundary label="Logbucheintrag bearbeiten">
-                <LogbookEntryPage />
+                <LogbookEditorRoute />
               </RouteBoundary>
             }
           />

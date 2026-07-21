@@ -296,8 +296,14 @@ export class LogbookService {
       if (entry.visibility !== visibility) { entry.visibility = visibility; changed.push('visibility'); }
     }
     if (changed.length === 0) return this.findOne(id, orgId, user);
+    const documentationChanged = changed.some((field) => field !== 'status');
     entry.updatedByUserId = user.id;
     entry.updatedByName = user.name?.trim() || 'Unbekannt';
+    if (documentationChanged) {
+      entry.documentationUpdatedByUserId = user.id;
+      entry.documentationUpdatedByName = user.name?.trim() || 'Unbekannt';
+      entry.documentationUpdatedAt = new Date();
+    }
     const saved = await this.entries.save(entry);
     if (changed.length > 0) {
       await this.audit.log({ action: AuditAction.UPDATE, entityType: 'logbook_entry', entityId: id, entityTitle: saved.title, user, orgId, details: { fields: changed } });

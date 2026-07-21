@@ -69,7 +69,7 @@ function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; onOpen: (id: stri
   const status = useSetLogbookStatus();
   const canManage =
     user?.role === 'superadmin' || user?.role === 'org_admin' || user?.id === entry.createdByUserId;
-  const wasUpdated = new Date(entry.updatedAt).getTime() > new Date(entry.createdAt).getTime();
+  const wasUpdated = Boolean(entry.documentationUpdatedAt);
   return (
     <article
       role="button"
@@ -132,7 +132,7 @@ function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; onOpen: (id: stri
           />
           {wasUpdated && (
             <span className="mt-1 block text-[11px] text-gray-400">
-              Geändert am {formatDate(entry.updatedAt)}
+              Geändert am {formatDate(entry.documentationUpdatedAt!)}
             </span>
           )}
         </div>

@@ -33,6 +33,7 @@ import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 function formatDate(value?: string | null) {
   if (!value) return '—';
   return new Date(value).toLocaleString('de-DE', {
+    weekday: 'short',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -271,7 +272,21 @@ export default function LogbookEntryFlyout({
                     {entry.createdByName}
                   </span>
                   <span>{formatDate(entry.occurredAt)}</span>
+                  {entry.documentationUpdatedAt && (
+                    <span>
+                      Geändert am {formatDate(entry.documentationUpdatedAt)}
+                      {entry.documentationUpdatedByName
+                        ? ` von ${entry.documentationUpdatedByName}`
+                        : ''}
+                    </span>
+                  )}
                 </div>
+                {entry.status === 'discussed' && (
+                  <p className="mt-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
+                    <CheckCircle2 className="h-5 w-5" />
+                    Besprochen von {entry.discussedByName || '—'} am {formatDate(entry.discussedAt)}.
+                  </p>
+                )}
               </section>
               <section className="border-t border-gray-100 pt-5">
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
@@ -325,12 +340,6 @@ export default function LogbookEntryFlyout({
                     )}
                   </div>
                 </section>
-              )}
-              {entry.status === 'discussed' && (
-                <p className="flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-                  <CheckCircle2 className="h-5 w-5" />
-                  Besprochen von {entry.discussedByName || '—'} am {formatDate(entry.discussedAt)}.
-                </p>
               )}
               <section className="border-t border-gray-100 pt-5">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">

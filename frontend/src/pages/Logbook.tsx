@@ -10,7 +10,7 @@ import {
   UserRound,
   XCircle,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import {
   type LogbookEntry,
@@ -170,6 +170,7 @@ function dateBadge(from?: string, to?: string) {
 
 export default function Logbook() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [initialFilters] = useState(loadLogbookFilters);
   const [search, setSearch] = useState(initialFilters.search);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -213,6 +214,11 @@ export default function Logbook() {
   useEffect(() => {
     saveLogbookFilters({ search, advanced });
   }, [advanced, search]);
+
+  useEffect(() => {
+    const entryId = (params.get('entry') || '').trim();
+    setSelectedEntryId(entryId || null);
+  }, [params]);
 
   const resetFilters = () => {
     setSearch('');
@@ -352,7 +358,11 @@ export default function Logbook() {
           {currentEntries.length > 0 && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {currentEntries.map((entry) => (
-                <LogbookCard key={entry.id} entry={entry} onOpen={setSelectedEntryId} />
+                <LogbookCard
+                  key={entry.id}
+                  entry={entry}
+                  onOpen={(entryId) => navigate(`/logbook?entry=${encodeURIComponent(entryId)}`)}
+                />
               ))}
             </div>
           )}
@@ -399,7 +409,10 @@ export default function Logbook() {
           setFilterDrawer(false);
         }}
       />
-      <LogbookEntryFlyout entryId={selectedEntryId} onClose={() => setSelectedEntryId(null)} />
+      <LogbookEntryFlyout
+        entryId={selectedEntryId}
+        onClose={() => navigate('/logbook', { replace: true })}
+      />
     </div>
   );
 }

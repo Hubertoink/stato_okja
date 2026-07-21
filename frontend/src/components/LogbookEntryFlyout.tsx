@@ -1,7 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import {
+  AlertTriangle,
   Archive,
   CheckCircle2,
+  ChevronDown,
+  Circle,
   Edit3,
   Link2,
   LockKeyhole,
@@ -15,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import {
+  type LogbookEntryStatus,
   useArchiveLogbookEntry,
   useCreateLogbookComment,
   useLogbookEntry,
@@ -96,6 +100,7 @@ export default function LogbookEntryFlyout({
   const removeComment = useRemoveLogbookComment();
   const [comment, setComment] = useState('');
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   useBodyScrollLock(open);
 
   useEffect(() => {
@@ -133,7 +138,10 @@ export default function LogbookEntryFlyout({
   };
 
   const content = (
-    <div className="fixed inset-0 z-[60]" role="presentation">
+    <div
+      className="fixed inset-0 z-[60] flex items-stretch justify-center md:items-center md:p-6"
+      role="presentation"
+    >
       <button
         type="button"
         aria-label="Detailansicht schließen"
@@ -144,7 +152,7 @@ export default function LogbookEntryFlyout({
         role="dialog"
         aria-modal="true"
         aria-label="Logbucheintrag"
-        className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l border-gray-200 bg-white shadow-2xl"
+        className="logbook-detail-modal relative flex h-full w-full flex-col bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl"
       >
         <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
           <div className="min-w-0">
@@ -152,6 +160,49 @@ export default function LogbookEntryFlyout({
             <h2 className="truncate text-lg font-bold text-gray-800">Eintragsdetails</h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {canManage && !archived && entry && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setStatusMenuOpen((value) => !value)}
+                  className="logbook-status-pill inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold"
+                >
+                  <LogbookStatusIcon status={entry.status} />
+                  <span>Status</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {statusMenuOpen && (
+                  <div className="absolute right-0 top-full z-10 mt-2 min-w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-xl">
+                    <StatusMenuItem
+                      status="open"
+                      active={entry.status === 'open'}
+                      onSelect={() => {
+                        setStatus.mutate({ id: entry.id, status: 'open' });
+                        setStatusMenuOpen(false);
+                      }}
+                    />
+                    <StatusMenuItem
+                      status="discussed"
+                      active={entry.status === 'discussed'}
+                      onSelect={() => {
+                        setStatus.mutate({ id: entry.id, status: 'discussed' });
+                        setStatusMenuOpen(false);
+                      }}
+                    />
+                    <StatusMenuItem
+                      status="follow_up"
+                      active={entry.status === 'follow_up'}
+                      onSelect={() => {
+                        setStatus.mutate({ id: entry.id, status: 'follow_up' });
+                        setStatusMenuOpen(false);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             {canManage && !archived && entry && (
               <button
                 type="button"
@@ -281,38 +332,6 @@ export default function LogbookEntryFlyout({
                   Besprochen von {entry.discussedByName || '—'} am {formatDate(entry.discussedAt)}.
                 </p>
               )}
-              {canManage && !archived && (
-                <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-5">
-                  {entry.status !== 'discussed' && (
-                    <button
-                      type="button"
-                      onClick={() => setStatus.mutate({ id: entry.id, status: 'discussed' })}
-                      className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white"
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      Als besprochen markieren
-                    </button>
-                  )}
-                  {entry.status === 'discussed' && (
-                    <button
-                      type="button"
-                      onClick={() => setStatus.mutate({ id: entry.id, status: 'open' })}
-                      className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700"
-                    >
-                      Wieder öffnen
-                    </button>
-                  )}
-                  {entry.status !== 'follow_up' && (
-                    <button
-                      type="button"
-                      onClick={() => setStatus.mutate({ id: entry.id, status: 'follow_up' })}
-                      className="min-h-11 rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-800"
-                    >
-                      Nachverfolgung nötig
-                    </button>
-                  )}
-                </div>
-              )}
               <section className="border-t border-gray-100 pt-5">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
                   <MessageCircle className="h-5 w-5 text-viridian" />
@@ -411,6 +430,34 @@ export default function LogbookEntryFlyout({
   );
 
   return createPortal(content, document.body);
+}
+
+function LogbookStatusIcon({ status }: { status: LogbookEntryStatus }) {
+  if (status === 'discussed') return <CheckCircle2 className="h-4 w-4" />;
+  if (status === 'follow_up') return <AlertTriangle className="h-4 w-4" />;
+  return <Circle className="h-4 w-4" />;
+}
+
+function StatusMenuItem({
+  status,
+  active,
+  onSelect,
+}: {
+  status: 'open' | 'follow_up' | 'discussed';
+  active: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium ${active ? 'bg-gray-100 text-viridian' : 'text-gray-700 hover:bg-gray-50'}`}
+    >
+      <LogbookStatusIcon status={status} />
+      {logbookStatusLabels[status]}
+      {active && <CheckCircle2 className="ml-auto h-4 w-4" />}
+    </button>
+  );
 }
 
 function DetailNote({

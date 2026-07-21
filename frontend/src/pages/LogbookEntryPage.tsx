@@ -34,6 +34,7 @@ import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 type FormState = {
   occurredAt: string;
@@ -205,6 +206,7 @@ export default function LogbookEntryPage() {
   const { showToast } = useToast();
   const isNew = !id;
   const [editing, setEditing] = useState(isNew || location.pathname.endsWith('/edit'));
+  useBodyScrollLock(editing);
   const [form, setForm] = useState<FormState>(() => emptyForm(search));
   const [comment, setComment] = useState('');
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
@@ -276,11 +278,11 @@ export default function LogbookEntryPage() {
       if (isNew) {
         const created = await create.mutateAsync(formPayload);
         showToast('Logbucheintrag wurde erstellt.', { type: 'success' });
-        navigate(`/logbook/${created.id}`, { replace: true });
+        navigate(`/logbook?entry=${encodeURIComponent(created.id)}`, { replace: true });
       } else if (id) {
         await update.mutateAsync({ id, data: formPayload });
         showToast('Änderungen gespeichert.', { type: 'success' });
-        navigate(`/logbook/${id}`, { replace: true });
+        navigate(`/logbook?entry=${encodeURIComponent(id)}`, { replace: true });
       }
     } catch (error: unknown) {
       showToast(getErrorMessage(error, 'Der Eintrag konnte nicht gespeichert werden.'), {
@@ -313,260 +315,280 @@ export default function LogbookEntryPage() {
 
   if (editing)
     return (
-      <div className="mx-auto -mx-2 -mt-8 max-w-3xl sm:mx-auto sm:mt-0">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => (isNew ? navigate('/logbook') : navigate(`/logbook/${id}`))}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-medium text-gray-700 hover:bg-white/70"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            Zurück
-          </button>
-          <span className="text-sm text-gray-500">
-            {isNew ? 'Neuer Eintrag' : 'Eintrag bearbeiten'}
-          </span>
-        </div>
-        <form onSubmit={save} className="modern-card overflow-hidden rounded-none sm:rounded-2xl">
-          <div className="border-b border-gray-100 p-5 sm:p-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              {isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Dokumentiere prägnant – sensible personenbezogene Angaben bitte vermeiden.
-            </p>
-          </div>
-          <div className="space-y-5 p-5 sm:p-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <label className="text-sm font-medium text-gray-700">
-                Zeitpunkt
-                <input
-                  required
-                  type="datetime-local"
-                  value={form.occurredAt}
-                  onChange={(event) => setForm({ ...form, occurredAt: event.target.value })}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
-                />
-              </label>
-              <label className="text-sm font-medium text-gray-700">
-                Eintragsart
-                <select
-                  value={form.type}
-                  onChange={(event) =>
-                    setForm({ ...form, type: event.target.value as LogbookEntryType })
-                  }
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
-                >
-                  {Object.entries(logbookTypeLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label className="block text-sm font-medium text-gray-700">
-              Titel
-              <input
-                required
-                maxLength={180}
-                value={form.title}
-                onChange={(event) => setForm({ ...form, title: event.target.value })}
-                placeholder="Worum geht es?"
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
-              />
-            </label>
-            <label className="block text-sm font-medium text-gray-700">
-              Beschreibung
-              <textarea
-                required
-                rows={5}
-                maxLength={12000}
-                value={form.body}
-                onChange={(event) => setForm({ ...form, body: event.target.value })}
-                placeholder="Was ist passiert oder was sollte das Team wissen?"
-                className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
-              />
-            </label>
-            <details
-              className="rounded-xl border border-gray-200 bg-gray-50/60 p-4"
-              open={!!(form.highlights || form.challenges || form.nextSteps)}
+      <div className="fixed inset-0 z-[60] flex items-stretch justify-center md:items-center md:p-6">
+        <button
+          type="button"
+          aria-label="Bearbeiten schließen"
+          onClick={() =>
+            navigate(isNew ? '/logbook' : `/logbook?entry=${encodeURIComponent(id || '')}`)
+          }
+          className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-[1px]"
+        />
+        <div className="logbook-editor-modal relative flex h-full w-full flex-col bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                isNew
+                  ? navigate('/logbook')
+                  : navigate(`/logbook?entry=${encodeURIComponent(id || '')}`)
+              }
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-medium text-gray-700 hover:bg-white/70"
             >
-              <summary className="cursor-pointer text-sm font-semibold text-gray-700">
-                Debriefing-Details ergänzen
-              </summary>
-              <div className="mt-4 space-y-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Was lief gut?
-                  <textarea
-                    rows={3}
-                    value={form.highlights}
-                    onChange={(event) => setForm({ ...form, highlights: event.target.value })}
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
-                  />
-                </label>
-                <label className="block text-sm font-medium text-gray-700">
-                  Herausforderungen
-                  <textarea
-                    rows={3}
-                    value={form.challenges}
-                    onChange={(event) => setForm({ ...form, challenges: event.target.value })}
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
-                  />
-                </label>
-                <label className="block text-sm font-medium text-gray-700">
-                  Nächste Schritte
-                  <textarea
-                    rows={3}
-                    value={form.nextSteps}
-                    onChange={(event) => setForm({ ...form, nextSteps: event.target.value })}
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
-                  />
-                </label>
-              </div>
-            </details>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="text-sm font-medium text-gray-700">
-                Projekt
-                <div className="mt-1 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setProjectPickerOpen(true)}
-                    className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 text-left hover:border-viridian"
-                  >
-                    <Plus className="h-5 w-5 shrink-0 text-viridian" />
-                    {selectedProject ? (
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="h-8 w-8 overflow-hidden rounded-lg bg-gray-100">
-                          {selectedProject.imageUrl && (
-                            <ProtectedImage
-                              src={selectedProject.imageUrl}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          )}
-                        </span>
-                        <span className="truncate">{selectedProject.title}</span>
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">Projekt verknüpfen</span>
-                    )}
-                  </button>
-                  {form.projectId && (
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, projectId: '' })}
-                      className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600"
-                      aria-label="Projektverknüpfung entfernen"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="text-sm font-medium text-gray-700">
-                Aktivität
-                <div className="mt-1 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActivityPickerOpen(true)}
-                    className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 text-left hover:border-viridian"
-                  >
-                    <Plus className="h-5 w-5 shrink-0 text-viridian" />
-                    {selectedActivity ? (
-                      <span className="min-w-0">
-                        <span className="block truncate">
-                          {selectedActivity.title || selectedActivity.project?.title || 'Aktivität'}
-                        </span>
-                        <span className="block text-xs font-normal text-gray-500">
-                          {selectedActivity.date}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">Aktivität verknüpfen</span>
-                    )}
-                  </button>
-                  {form.activityId && (
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, activityId: '' })}
-                      className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600"
-                      aria-label="Aktivitätsverknüpfung entfernen"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
+              <ArrowLeft className="h-5 w-5" />
+              Zurück
+            </button>
+            <span className="text-sm text-gray-500">
+              {isNew ? 'Neuer Eintrag' : 'Eintrag bearbeiten'}
+            </span>
+          </div>
+          <form onSubmit={save} className="min-h-0 flex-1 overflow-y-auto">
+            <div className="border-b border-gray-100 p-5 sm:p-6">
+              <h2 className="text-2xl font-bold text-gray-800">
+                {isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Dokumentiere prägnant – sensible personenbezogene Angaben bitte vermeiden.
+              </p>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <label className="text-sm font-medium text-gray-700">
-                Status
-                <select
-                  value={form.status}
-                  onChange={(event) =>
-                    setForm({ ...form, status: event.target.value as LogbookEntryStatus })
-                  }
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
-                >
-                  {Object.entries(logbookStatusLabels)
-                    .filter(([value]) => value !== 'archived')
-                    .map(([value, label]) => (
+            <div className="space-y-5 p-5 sm:p-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Zeitpunkt
+                  <input
+                    required
+                    type="datetime-local"
+                    value={form.occurredAt}
+                    onChange={(event) => setForm({ ...form, occurredAt: event.target.value })}
+                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                  />
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  Eintragsart
+                  <select
+                    value={form.type}
+                    onChange={(event) =>
+                      setForm({ ...form, type: event.target.value as LogbookEntryType })
+                    }
+                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                  >
+                    {Object.entries(logbookTypeLabels).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
                       </option>
                     ))}
-                </select>
+                  </select>
+                </label>
+              </div>
+              <label className="block text-sm font-medium text-gray-700">
+                Titel
+                <input
+                  required
+                  maxLength={180}
+                  value={form.title}
+                  onChange={(event) => setForm({ ...form, title: event.target.value })}
+                  placeholder="Worum geht es?"
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                />
               </label>
-              {isAdmin && (
+              <label className="block text-sm font-medium text-gray-700">
+                Beschreibung
+                <textarea
+                  required
+                  rows={5}
+                  maxLength={12000}
+                  value={form.body}
+                  onChange={(event) => setForm({ ...form, body: event.target.value })}
+                  placeholder="Was ist passiert oder was sollte das Team wissen?"
+                  className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                />
+              </label>
+              <details
+                className="rounded-xl border border-gray-200 bg-gray-50/60 p-4"
+                open={!!(form.highlights || form.challenges || form.nextSteps)}
+              >
+                <summary className="cursor-pointer text-sm font-semibold text-gray-700">
+                  Debriefing-Details ergänzen
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Was lief gut?
+                    <textarea
+                      rows={3}
+                      value={form.highlights}
+                      onChange={(event) => setForm({ ...form, highlights: event.target.value })}
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Herausforderungen
+                    <textarea
+                      rows={3}
+                      value={form.challenges}
+                      onChange={(event) => setForm({ ...form, challenges: event.target.value })}
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Nächste Schritte
+                    <textarea
+                      rows={3}
+                      value={form.nextSteps}
+                      onChange={(event) => setForm({ ...form, nextSteps: event.target.value })}
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    />
+                  </label>
+                </div>
+              </details>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="text-sm font-medium text-gray-700">
+                  Projekt
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProjectPickerOpen(true)}
+                      className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 text-left hover:border-viridian"
+                    >
+                      <Plus className="h-5 w-5 shrink-0 text-viridian" />
+                      {selectedProject ? (
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="h-8 w-8 overflow-hidden rounded-lg bg-gray-100">
+                            {selectedProject.imageUrl && (
+                              <ProtectedImage
+                                src={selectedProject.imageUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            )}
+                          </span>
+                          <span className="truncate">{selectedProject.title}</span>
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Projekt verknüpfen</span>
+                      )}
+                    </button>
+                    {form.projectId && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, projectId: '' })}
+                        className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600"
+                        aria-label="Projektverknüpfung entfernen"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="text-sm font-medium text-gray-700">
+                  Aktivität
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActivityPickerOpen(true)}
+                      className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 text-left hover:border-viridian"
+                    >
+                      <Plus className="h-5 w-5 shrink-0 text-viridian" />
+                      {selectedActivity ? (
+                        <span className="min-w-0">
+                          <span className="block truncate">
+                            {selectedActivity.title ||
+                              selectedActivity.project?.title ||
+                              'Aktivität'}
+                          </span>
+                          <span className="block text-xs font-normal text-gray-500">
+                            {selectedActivity.date}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Aktivität verknüpfen</span>
+                      )}
+                    </button>
+                    {form.activityId && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, activityId: '' })}
+                        className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600"
+                        aria-label="Aktivitätsverknüpfung entfernen"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Sichtbarkeit
+                  Status
                   <select
-                    value={form.visibility}
+                    value={form.status}
                     onChange={(event) =>
-                      setForm({ ...form, visibility: event.target.value as 'team' | 'admins' })
+                      setForm({ ...form, status: event.target.value as LogbookEntryStatus })
                     }
                     className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
                   >
-                    <option value="team">Ganzes Team</option>
-                    <option value="admins">Nur Admins</option>
+                    {Object.entries(logbookStatusLabels)
+                      .filter(([value]) => value !== 'archived')
+                      .map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
                   </select>
                 </label>
-              )}
+                {isAdmin && (
+                  <label className="text-sm font-medium text-gray-700">
+                    Sichtbarkeit
+                    <select
+                      value={form.visibility}
+                      onChange={(event) =>
+                        setForm({ ...form, visibility: event.target.value as 'team' | 'admins' })
+                      }
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    >
+                      <option value="team">Ganzes Team</option>
+                      <option value="admins">Nur Admins</option>
+                    </select>
+                  </label>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={() => (isNew ? navigate('/logbook') : navigate(`/logbook/${id}`))}
-              className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-            >
-              Abbrechen
-            </button>
-            <button
-              disabled={create.isPending || update.isPending}
-              className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60"
-            >
-              <Save className="h-4 w-4" />
-              {create.isPending || update.isPending ? 'Wird gespeichert…' : 'Speichern'}
-            </button>
-          </div>
-        </form>
-        {projectPickerOpen && (
-          <ProjectPickerModal
-            onClose={() => setProjectPickerOpen(false)}
-            onPick={(project) => {
-              setForm({ ...form, projectId: project.id });
-              setProjectPickerOpen(false);
-            }}
+            <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  isNew
+                    ? navigate('/logbook')
+                    : navigate(`/logbook?entry=${encodeURIComponent(id || '')}`)
+                }
+                className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                Abbrechen
+              </button>
+              <button
+                disabled={create.isPending || update.isPending}
+                className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {create.isPending || update.isPending ? 'Wird gespeichert…' : 'Speichern'}
+              </button>
+            </div>
+          </form>
+          {projectPickerOpen && (
+            <ProjectPickerModal
+              onClose={() => setProjectPickerOpen(false)}
+              onPick={(project) => {
+                setForm({ ...form, projectId: project.id });
+                setProjectPickerOpen(false);
+              }}
+            />
+          )}
+          <ActivityPickerModal
+            open={activityPickerOpen}
+            onClose={() => setActivityPickerOpen(false)}
+            onPick={(activityId) => setForm({ ...form, activityId })}
+            occurredAt={form.occurredAt}
           />
-        )}
-        <ActivityPickerModal
-          open={activityPickerOpen}
-          onClose={() => setActivityPickerOpen(false)}
-          onPick={(activityId) => setForm({ ...form, activityId })}
-          occurredAt={form.occurredAt}
-        />
+        </div>
       </div>
     );
 

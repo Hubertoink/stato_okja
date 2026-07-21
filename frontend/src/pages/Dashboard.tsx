@@ -63,8 +63,7 @@ function useMonthSummary(
           from,
           to: toISO,
           // Pass orgId explicitly so superadmin gets correctly scoped KPIs even before header is applied
-          orgId:
-            typeof scope === 'undefined' ? undefined : scope === null ? 'null' : scope,
+          orgId: typeof scope === 'undefined' ? undefined : scope === null ? 'null' : scope,
         },
       });
       return res.data as {
@@ -204,7 +203,8 @@ function formatAuditDiffValue(entityType: string, key: string, value: unknown): 
   }
   if (value === null || typeof value === 'undefined' || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
-  if (typeof value === 'number') return Number.isFinite(value) ? value.toLocaleString('de-DE') : '—';
+  if (typeof value === 'number')
+    return Number.isFinite(value) ? value.toLocaleString('de-DE') : '—';
   if (entityType === 'activity' && key === 'type' && typeof value === 'string') {
     return ACTIVITY_AUDIT_TYPE_LABELS[value] || value;
   }
@@ -266,16 +266,21 @@ export default function Dashboard() {
   const [exportOpen, setExportOpen] = useState(false);
   const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
-  const [expandedRecentActionGroups, setExpandedRecentActionGroups] = useState<Record<AuditLogAction, boolean>>({
+  const [expandedRecentActionGroups, setExpandedRecentActionGroups] = useState<
+    Record<AuditLogAction, boolean>
+  >({
     login: false,
     create: false,
     update: false,
     delete: false,
   });
   // Determine effective orgId for opening hours
-  const effectiveOrgId = user?.role === 'superadmin'
-    ? (typeof scope === 'string' ? scope : null)
-    : (user?.orgId ?? null);
+  const effectiveOrgId =
+    user?.role === 'superadmin'
+      ? typeof scope === 'string'
+        ? scope
+        : null
+      : (user?.orgId ?? null);
 
   // Fetch opening hours for today's display
   const { data: openingHours } = useQuery({
@@ -287,7 +292,15 @@ export default function Dashboard() {
   // Get today's opening hours
   const todayOpeningHours = useMemo(() => {
     if (!openingHours) return null;
-    const dayKeys: (keyof OpeningHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayKeys: (keyof OpeningHours)[] = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ];
     const today = new Date().getDay(); // 0=Sunday, 1=Monday, etc
     const dayData = openingHours[dayKeys[today]];
     if (!dayData) return null;
@@ -459,15 +472,17 @@ export default function Dashboard() {
           )}
           {entry.diff && Object.keys(entry.diff).length > 0 && (
             <ul className="recent-actions-diff mt-2 list-disc space-y-0.5 pl-5 text-sm">
-              {Object.entries(
-                entry.diff as Record<string, { from: unknown; to: unknown }>,
-              ).map(([key, value]) => (
-                <li key={key}>
-                  <span className="font-medium">{formatAuditDiffLabel(entry.entityType, key)}:</span>{' '}
-                  {formatAuditDiffValue(entry.entityType, key, value.from)} →{' '}
-                  {formatAuditDiffValue(entry.entityType, key, value.to)}
-                </li>
-              ))}
+              {Object.entries(entry.diff as Record<string, { from: unknown; to: unknown }>).map(
+                ([key, value]) => (
+                  <li key={key}>
+                    <span className="font-medium">
+                      {formatAuditDiffLabel(entry.entityType, key)}:
+                    </span>{' '}
+                    {formatAuditDiffValue(entry.entityType, key, value.from)} →{' '}
+                    {formatAuditDiffValue(entry.entityType, key, value.to)}
+                  </li>
+                ),
+              )}
             </ul>
           )}
         </div>
@@ -522,9 +537,7 @@ export default function Dashboard() {
 
         <div className="kpi-card">
           <h3 className="text-sm text-gray-500 font-medium mb-2">Teilnehmende (Monat)</h3>
-          <p className="text-3xl font-bold text-gray-800">
-            {fmt(summary?.totalParticipants)}
-          </p>
+          <p className="text-3xl font-bold text-gray-800">{fmt(summary?.totalParticipants)}</p>
         </div>
 
         <div className="kpi-card">
@@ -615,25 +628,90 @@ export default function Dashboard() {
       <div className="modern-card p-5 sm:p-6 mb-8">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800"><BookOpen className="h-5 w-5 text-viridian" />Logbuch</h3>
-            <p className="mt-0.5 text-sm text-gray-500">Neueste Beobachtungen, Übergaben und Debriefings.</p>
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+              <BookOpen className="h-5 w-5 text-viridian" />
+              Logbuch
+            </h3>
+            <p className="mt-0.5 text-sm text-gray-500">
+              Neueste Beobachtungen, Übergaben und Debriefings.
+            </p>
           </div>
-          <button type="button" onClick={() => navigate('/logbook/new')} className="rounded-xl bg-viridian px-3 py-2 text-sm font-semibold text-white">Eintrag</button>
+          <button
+            type="button"
+            onClick={() => navigate('/logbook/new')}
+            className="rounded-xl bg-viridian px-3 py-2 text-sm font-semibold text-white"
+          >
+            Eintrag
+          </button>
         </div>
         {recentLogbookEntries.length === 0 ? (
-          <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">Noch keine Logbucheinträge. Halte wichtige Beobachtungen direkt für das Team fest.</div>
+          <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+            Noch keine Logbucheinträge. Halte wichtige Beobachtungen direkt für das Team fest.
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {recentLogbookEntries.map((entry) => (
-              <button key={entry.id} type="button" onClick={() => navigate(`/logbook/${entry.id}`)} className="rounded-xl border border-gray-100 bg-white p-4 text-left transition hover:border-viridian/30 hover:bg-viridian/5">
-                <div className="mb-1 flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><span className="truncate font-semibold text-gray-800">{entry.title}</span><span className="flex shrink-0 items-center text-xs text-gray-500" title={new Date(entry.occurredAt).toLocaleString('de-DE')}><CalendarIcon className="mr-1 h-3.5 w-3.5" />{new Date(entry.occurredAt).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' })}</span></div><span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${entry.status === 'discussed' ? 'bg-green-100 text-green-700' : entry.status === 'follow_up' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-700'}`}>{entry.status === 'discussed' ? 'Besprochen' : entry.status === 'follow_up' ? 'Nachverfolgung' : 'Offen'}</span></div>
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => navigate(`/logbook?entry=${encodeURIComponent(entry.id)}`)}
+                className="rounded-xl border border-gray-100 bg-white p-4 text-left transition hover:border-viridian/30 hover:bg-viridian/5"
+              >
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-semibold text-gray-800">{entry.title}</span>
+                    <span
+                      className="flex shrink-0 items-center text-xs text-gray-500"
+                      title={new Date(entry.occurredAt).toLocaleString('de-DE')}
+                    >
+                      <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                      {new Date(entry.occurredAt).toLocaleDateString('de-DE', {
+                        weekday: 'long',
+                        day: '2-digit',
+                        month: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${entry.status === 'discussed' ? 'bg-green-100 text-green-700' : entry.status === 'follow_up' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-700'}`}
+                  >
+                    {entry.status === 'discussed'
+                      ? 'Besprochen'
+                      : entry.status === 'follow_up'
+                        ? 'Nachverfolgung'
+                        : 'Offen'}
+                  </span>
+                </div>
                 <p className="line-clamp-2 text-sm text-gray-600">{entry.body}</p>
-                <div className="mt-3 flex items-center justify-between text-xs text-gray-500"><span className="flex min-w-0 items-center gap-1.5">{entry.createdByUser?.avatarUrl && <span className="flex h-5 w-5 shrink-0 overflow-hidden rounded-full bg-viridian/10"><ProtectedImage src={entry.createdByUser.avatarUrl} alt="" className="h-full w-full object-cover" /></span>}<span className="truncate">{entry.createdByName}</span></span><span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{entry.commentCount || 0}</span></div>
+                <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {entry.createdByUser?.avatarUrl && (
+                      <span className="flex h-5 w-5 shrink-0 overflow-hidden rounded-full bg-viridian/10">
+                        <ProtectedImage
+                          src={entry.createdByUser.avatarUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      </span>
+                    )}
+                    <span className="truncate">{entry.createdByName}</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    {entry.commentCount || 0}
+                  </span>
+                </div>
               </button>
             ))}
           </div>
         )}
-        <button type="button" onClick={() => navigate('/logbook')} className="mt-4 text-sm font-semibold text-viridian hover:underline">Alle Logbucheinträge anzeigen</button>
+        <button
+          type="button"
+          onClick={() => navigate('/logbook')}
+          className="mt-4 text-sm font-semibold text-viridian hover:underline"
+        >
+          Alle Logbucheinträge anzeigen
+        </button>
       </div>
 
       {/* Daily Log */}
@@ -836,7 +914,12 @@ export default function Dashboard() {
       {exportOpen && (
         <Suspense
           fallback={
-            <Modal open={exportOpen} onClose={() => setExportOpen(false)} title="Daten exportieren" maxWidth="md">
+            <Modal
+              open={exportOpen}
+              onClose={() => setExportOpen(false)}
+              title="Daten exportieren"
+              maxWidth="md"
+            >
               <div className="py-6 text-sm text-gray-600">Exportmodul wird geladen…</div>
             </Modal>
           }

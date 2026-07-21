@@ -10,6 +10,7 @@ import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
+import { getWeekdayLabel } from './activityEditorShared';
 
 type FormState = {
   occurredAt: string;
@@ -94,6 +95,7 @@ export default function LogbookEntryPage() {
   const { data: activities = [] } = useActivities({ from, to, order: 'desc' });
   const selectedProject = projects.find((project) => project.id === form.projectId);
   const selectedActivity = activities.find((activity) => activity.id === form.activityId) || (entry?.activityId === form.activityId ? entry.activity : undefined);
+  const occurredAtWeekday = useMemo(() => getWeekdayLabel(form.occurredAt), [form.occurredAt]);
 
   useEffect(() => {
     if (!entry) return;
@@ -110,11 +112,14 @@ export default function LogbookEntryPage() {
 
   const canManage = !!entry && (user?.role === 'superadmin' || user?.role === 'org_admin' || user?.id === entry.createdByUserId);
   const isAdmin = user?.role === 'superadmin' || user?.role === 'org_admin';
-  const formPayload = useMemo<LogbookEntryInput>(() => ({
-    occurredAt: new Date(form.occurredAt).toISOString(), type: form.type, title: form.title, body: form.body,
+  const formPayload = useMemo<LogbookEntryInput>(() => {
+    const occurredAt = new Date(form.occurredAt);
+    return {
+    occurredAt: Number.isNaN(occurredAt.getTime()) ? '' : occurredAt.toISOString(), type: form.type, title: form.title, body: form.body,
     highlights: form.highlights || null, challenges: form.challenges || null, nextSteps: form.nextSteps || null,
     status: form.status, ...(isAdmin ? { visibility: form.visibility } : {}), activityId: form.activityId || null, projectId: form.projectId || null,
-  }), [form, isAdmin]);
+    };
+  }, [form, isAdmin]);
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -150,11 +155,11 @@ export default function LogbookEntryPage() {
   if (editing) return (
     <div className="mx-auto -mx-2 -mt-8 max-w-3xl sm:mx-auto sm:mt-0">
       <div className="mb-5 flex items-center justify-between gap-3"><button type="button" onClick={() => isNew ? navigate('/logbook') : navigate(`/logbook/${id}`)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-medium text-gray-700 hover:bg-white/70"><ArrowLeft className="h-5 w-5" />Zurück</button><span className="text-sm text-gray-500">{isNew ? 'Neuer Eintrag' : 'Eintrag bearbeiten'}</span></div>
-      <form onSubmit={save} className="modern-card overflow-hidden rounded-none sm:rounded-2xl">
-        <div className="border-b border-gray-100 p-5 sm:p-6"><h2 className="text-2xl font-bold text-gray-800">{isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}</h2><p className="mt-1 text-sm text-gray-600">Dokumentiere prägnant – sensible personenbezogene Angaben bitte vermeiden.</p></div>
+      <form onSubmit={save} className="modern-card overflow-hidden rounded-2xl">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-5 sm:p-6"><h2 className="text-2xl font-bold text-gray-800">{isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}</h2><div className="flex shrink-0 items-center gap-2"><label className="sr-only" htmlFor="logbook-status">Status</label><select id="logbook-status" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as LogbookEntryStatus })} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">{Object.entries(logbookStatusLabels).filter(([value]) => value !== 'archived').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button type="button" onClick={() => isNew ? navigate('/logbook') : navigate(`/logbook/${id}`)} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" aria-label="Schließen"><X className="h-5 w-5" /></button></div></div>
         <div className="space-y-5 p-5 sm:p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="text-sm font-medium text-gray-700">Zeitpunkt<input required type="datetime-local" value={form.occurredAt} onChange={(event) => setForm({ ...form, occurredAt: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5" /></label>
+            <label className="text-sm font-medium text-gray-700">Zeitpunkt{occurredAtWeekday && <span className="ml-2 font-normal text-gray-500">{occurredAtWeekday}</span>}<input required type="datetime-local" value={form.occurredAt} onChange={(event) => setForm({ ...form, occurredAt: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5" /></label>
             <label className="text-sm font-medium text-gray-700">Eintragsart<select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as LogbookEntryType })} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5">{Object.entries(logbookTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           </div>
           <label className="block text-sm font-medium text-gray-700">Titel<input required maxLength={180} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Worum geht es?" className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5" /></label>
@@ -164,7 +169,7 @@ export default function LogbookEntryPage() {
             <div className="text-sm font-medium text-gray-700">Projekt<div className="mt-1 flex gap-2"><button type="button" onClick={() => setProjectPickerOpen(true)} className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 text-left hover:border-viridian"><Plus className="h-5 w-5 shrink-0 text-viridian" />{selectedProject ? <span className="flex min-w-0 items-center gap-2"><span className="h-8 w-8 overflow-hidden rounded-lg bg-gray-100">{selectedProject.imageUrl && <ProtectedImage src={selectedProject.imageUrl} alt="" className="h-full w-full object-cover" />}</span><span className="truncate">{selectedProject.title}</span></span> : <span className="text-gray-500">Projekt verknüpfen</span>}</button>{form.projectId && <button type="button" onClick={() => setForm({ ...form, projectId: '' })} className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600" aria-label="Projektverknüpfung entfernen"><X className="h-4 w-4" /></button>}</div></div>
             <div className="text-sm font-medium text-gray-700">Aktivität<div className="mt-1 flex gap-2"><button type="button" onClick={() => setActivityPickerOpen(true)} className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 text-left hover:border-viridian"><Plus className="h-5 w-5 shrink-0 text-viridian" />{selectedActivity ? <span className="min-w-0"><span className="block truncate">{selectedActivity.title || selectedActivity.project?.title || 'Aktivität'}</span><span className="block text-xs font-normal text-gray-500">{selectedActivity.date}</span></span> : <span className="text-gray-500">Aktivität verknüpfen</span>}</button>{form.activityId && <button type="button" onClick={() => setForm({ ...form, activityId: '' })} className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600" aria-label="Aktivitätsverknüpfung entfernen"><X className="h-4 w-4" /></button>}</div></div>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><label className="text-sm font-medium text-gray-700">Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as LogbookEntryStatus })} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5">{Object.entries(logbookStatusLabels).filter(([value]) => value !== 'archived').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{isAdmin && <label className="text-sm font-medium text-gray-700">Sichtbarkeit<select value={form.visibility} onChange={(event) => setForm({ ...form, visibility: event.target.value as 'team' | 'admins' })} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"><option value="team">Ganzes Team</option><option value="admins">Nur Admins</option></select></label>}</div>
+          {isAdmin && <label className="block text-sm font-medium text-gray-700">Sichtbarkeit<select value={form.visibility} onChange={(event) => setForm({ ...form, visibility: event.target.value as 'team' | 'admins' })} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"><option value="team">Ganzes Team</option><option value="admins">Nur Admins</option></select></label>}
         </div>
         <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end"><button type="button" onClick={() => isNew ? navigate('/logbook') : navigate(`/logbook/${id}`)} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100">Abbrechen</button><button disabled={create.isPending || update.isPending} className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60"><Save className="h-4 w-4" />{create.isPending || update.isPending ? 'Wird gespeichert…' : 'Speichern'}</button></div>
       </form>

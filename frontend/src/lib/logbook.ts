@@ -44,6 +44,9 @@ export interface LogbookEntry {
   createdByUser?: LogbookAuthor | null;
   updatedByUserId?: string | null;
   updatedByName?: string | null;
+  documentationUpdatedByUserId?: string | null;
+  documentationUpdatedByName?: string | null;
+  documentationUpdatedAt?: string | null;
   discussedByUserId?: string | null;
   discussedByName?: string | null;
   discussedAt?: string | null;

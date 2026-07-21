@@ -1473,6 +1473,7 @@ export function createDemoLogbookEntry(data: Record<string, unknown>) {
     title: String(data.title || 'Ohne Titel'), body: String(data.body || ''), highlights: typeof data.highlights === 'string' ? data.highlights : null, challenges: typeof data.challenges === 'string' ? data.challenges : null, nextSteps: typeof data.nextSteps === 'string' ? data.nextSteps : null,
     status, visibility: data.visibility === 'admins' ? 'admins' : 'team', activityId: typeof data.activityId === 'string' ? data.activityId : null, projectId: typeof data.projectId === 'string' ? data.projectId : null,
     createdByUserId: store.user.id, createdByName: store.user.name, updatedByUserId: store.user.id, updatedByName: store.user.name,
+    documentationUpdatedByUserId: null, documentationUpdatedByName: null, documentationUpdatedAt: null,
     discussedByUserId: status === 'discussed' ? store.user.id : null, discussedByName: status === 'discussed' ? store.user.name : null, discussedAt: status === 'discussed' ? now : null, archivedAt: null, createdAt: now, updatedAt: now, comments: [], commentCount: 0,
   };
   store.logbookEntries.unshift(entry);
@@ -1483,7 +1484,21 @@ export function createDemoLogbookEntry(data: Record<string, unknown>) {
 export function updateDemoLogbookEntry(id: string, data: LogbookEntryInput) {
   const entry = store.logbookEntries.find((item) => item.id === id);
   if (!entry) throw new Error('Logbucheintrag nicht gefunden');
-  Object.assign(entry, data, { updatedByUserId: store.user.id, updatedByName: store.user.name, updatedAt: new Date().toISOString() });
+  const now = new Date().toISOString();
+  const documentationFields: (keyof LogbookEntryInput)[] = [
+    'occurredAt', 'type', 'title', 'body', 'highlights', 'challenges', 'nextSteps',
+    'visibility', 'activityId', 'projectId',
+  ];
+  const documentationChanged = documentationFields.some((field) =>
+    Object.prototype.hasOwnProperty.call(data, field) &&
+    entry[field as keyof DemoLogbookEntry] !== data[field],
+  );
+  Object.assign(entry, data, { updatedByUserId: store.user.id, updatedByName: store.user.name, updatedAt: now });
+  if (documentationChanged) {
+    entry.documentationUpdatedByUserId = store.user.id;
+    entry.documentationUpdatedByName = store.user.name;
+    entry.documentationUpdatedAt = now;
+  }
   if (entry.status === 'discussed' && !entry.discussedAt) {
     entry.discussedAt = new Date().toISOString(); entry.discussedByUserId = store.user.id; entry.discussedByName = store.user.name;
   }
@@ -1535,7 +1550,7 @@ function logbookSeed(activities: DemoActivityRecord[], projects: DemoProject[]):
       id: 'logbook-demo-1', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(), type: 'handover', title: 'Übergabe am Nachmittag',
       body: 'Der offene Treff war gut besucht. Im Medienraum bitte vor dem nächsten Termin die Kopfhörer prüfen.', highlights: 'Neue Besucher:innen haben schnell Anschluss gefunden.', challenges: null, nextSteps: 'Kopfhörerbestand prüfen und bei Bedarf nachbestellen.',
       status: 'follow_up', visibility: 'team', activityId: firstActivity?.id || null, projectId: project?.id || null,
-      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: null, discussedByName: null, discussedAt: null, archivedAt: null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, documentationUpdatedByUserId: null, documentationUpdatedByName: null, documentationUpdatedAt: null, discussedByUserId: null, discussedByName: null, discussedAt: null, archivedAt: null,
       createdAt: new Date(now.getTime() - 90 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
       comments: [{ id: 'logbook-comment-demo-1', entryId: 'logbook-demo-1', body: 'Ich kümmere mich morgen um die Bestandsaufnahme.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 30 * 60 * 1000).toISOString() }], commentCount: 1,
     },
@@ -1543,7 +1558,7 @@ function logbookSeed(activities: DemoActivityRecord[], projects: DemoProject[]):
       id: 'logbook-demo-2', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString(), type: 'success', title: 'Gelungener Projektabschluss',
       body: 'Die Abschlusspräsentation wurde von Jugendlichen und Eltern sehr positiv aufgenommen.', highlights: 'Gute Rollenverteilung und starke Beteiligung.', challenges: null, nextSteps: null,
       status: 'discussed', visibility: 'team', activityId: null, projectId: project?.id || null,
-      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: demoUser.id, discussedByName: demoUser.name, discussedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), archivedAt: null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, documentationUpdatedByUserId: null, documentationUpdatedByName: null, documentationUpdatedAt: null, discussedByUserId: demoUser.id, discussedByName: demoUser.name, discussedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), archivedAt: null,
       createdAt: new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), comments: [], commentCount: 0,
     },
   ];

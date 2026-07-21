@@ -80,6 +80,15 @@ export class LogbookEntry {
   updatedByName: string | null;
 
   @Column({ type: 'uuid', nullable: true })
+  documentationUpdatedByUserId: string | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  documentationUpdatedByName: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  documentationUpdatedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
   discussedByUserId: string | null;
 
   @Column({ type: 'varchar', length: 200, nullable: true })

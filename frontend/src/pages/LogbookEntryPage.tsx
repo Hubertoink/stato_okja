@@ -1,8 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   Archive,
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
+  Circle,
   Edit3,
   Link2,
   LockKeyhole,
@@ -100,6 +103,12 @@ function getErrorMessage(error: unknown, fallback: string) {
     ?.message;
   if (Array.isArray(message)) return message.join(', ');
   return typeof message === 'string' ? message : fallback;
+}
+
+function LogbookStatusIcon({ status }: { status: LogbookEntryStatus }) {
+  if (status === 'discussed') return <CheckCircle2 className="h-4 w-4" />;
+  if (status === 'follow_up') return <AlertTriangle className="h-4 w-4" />;
+  return <Circle className="h-4 w-4" />;
 }
 
 function UserAvatar({
@@ -211,6 +220,7 @@ export default function LogbookEntryPage() {
   const [comment, setComment] = useState('');
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const { data: entry, isLoading } = useLogbookEntry(id);
   const create = useCreateLogbookEntry();
   const update = useUpdateLogbookEntry();
@@ -325,22 +335,49 @@ export default function LogbookEntryPage() {
           className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-[1px]"
         />
         <div className="logbook-editor-modal relative flex h-full w-full flex-col bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl">
-          <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="flex items-center justify-end gap-2 border-b border-gray-100 px-5 py-3 sm:px-6">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setStatusMenuOpen((value) => !value)}
+                className="logbook-status-pill inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold"
+              >
+                <LogbookStatusIcon status={form.status} />
+                <span>Status</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {statusMenuOpen && (
+                <div className="absolute right-0 top-full z-10 mt-2 min-w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-xl">
+                  {(['open', 'discussed', 'follow_up'] as const).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...form, status });
+                        setStatusMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium ${form.status === status ? 'bg-gray-100 text-viridian' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      <LogbookStatusIcon status={status} />
+                      {logbookStatusLabels[status]}
+                      {form.status === status && <CheckCircle2 className="ml-auto h-4 w-4" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               type="button"
+              aria-label="Bearbeiten schließen"
               onClick={() =>
-                isNew
-                  ? navigate('/logbook')
-                  : navigate(`/logbook?entry=${encodeURIComponent(id || '')}`)
+                navigate(isNew ? '/logbook' : `/logbook?entry=${encodeURIComponent(id || '')}`)
               }
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-medium text-gray-700 hover:bg-white/70"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
             >
-              <ArrowLeft className="h-5 w-5" />
-              Zurück
+              <X className="h-5 w-5" />
             </button>
-            <span className="text-sm text-gray-500">
-              {isNew ? 'Neuer Eintrag' : 'Eintrag bearbeiten'}
-            </span>
           </div>
           <form onSubmit={save} className="min-h-0 flex-1 overflow-y-auto">
             <div className="border-b border-gray-100 p-5 sm:p-6">
@@ -517,24 +554,7 @@ export default function LogbookEntryPage() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Status
-                  <select
-                    value={form.status}
-                    onChange={(event) =>
-                      setForm({ ...form, status: event.target.value as LogbookEntryStatus })
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
-                  >
-                    {Object.entries(logbookStatusLabels)
-                      .filter(([value]) => value !== 'archived')
-                      .map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                  </select>
-                </label>
+                <div className="hidden sm:block" />
                 {isAdmin && (
                   <label className="text-sm font-medium text-gray-700">
                     Sichtbarkeit

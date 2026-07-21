@@ -339,7 +339,7 @@ export default function LogbookEntryPage() {
           }
           className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-[1px]"
         />
-        <div className="logbook-editor-modal relative flex h-full w-full flex-col rounded-2xl bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl">
+        <div className="logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl">
           <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 sm:px-6">
             <h2 className="min-w-0 truncate text-2xl font-bold text-gray-800">
               {isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}
@@ -349,7 +349,7 @@ export default function LogbookEntryPage() {
               <button
                 type="button"
                 onClick={() => setStatusMenuOpen((value) => !value)}
-                className="logbook-status-pill inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold"
+                className={`logbook-status-pill logbook-status-pill--${form.status} inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold`}
               >
                 <LogbookStatusIcon status={form.status} />
                 <span>{logbookStatusLabels[form.status]}</span>

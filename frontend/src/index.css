@@ -2209,6 +2209,28 @@ code {
   background: rgba(209, 250, 229, 0.96);
 }
 
+.logbook-status-pill--follow_up {
+  border-color: rgba(217, 119, 6, 0.44);
+  background: rgba(255, 251, 235, 0.94);
+  color: #b45309;
+}
+
+.logbook-status-pill--follow_up:hover {
+  border-color: rgba(180, 83, 9, 0.68);
+  background: rgba(254, 243, 199, 0.96);
+}
+
+.logbook-status-pill--discussed {
+  border-color: rgba(22, 163, 74, 0.42);
+  background: rgba(240, 253, 244, 0.94);
+  color: #15803d;
+}
+
+.logbook-status-pill--discussed:hover {
+  border-color: rgba(21, 128, 61, 0.66);
+  background: rgba(220, 252, 231, 0.96);
+}
+
 @keyframes logbook-modal-in {
   from {
     opacity: 0;
@@ -2250,6 +2272,30 @@ code {
   border-color: rgba(167, 243, 208, 0.8);
   background: rgba(6, 95, 70, 0.65);
   color: #ecfdf5;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill--follow_up {
+  border-color: rgba(253, 230, 138, 0.64);
+  background: rgba(120, 53, 15, 0.44);
+  color: #fef3c7;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill--follow_up:hover {
+  border-color: rgba(254, 243, 199, 0.84);
+  background: rgba(146, 64, 14, 0.58);
+  color: #fffbeb;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill--discussed {
+  border-color: rgba(134, 239, 172, 0.58);
+  background: rgba(20, 83, 45, 0.44);
+  color: #dcfce7;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill--discussed:hover {
+  border-color: rgba(220, 252, 231, 0.8);
+  background: rgba(21, 128, 61, 0.52);
+  color: #f0fdf4;
 }
 
 .kpi-value {

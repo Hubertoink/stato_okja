@@ -168,9 +168,9 @@ export default function LogbookEntryFlyout({
                   className={`logbook-status-pill logbook-status-pill--${entry.status} inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold`}
                 >
                   <LogbookStatusIcon status={entry.status} />
-                  <span>{logbookStatusLabels[entry.status]}</span>
+                  <span className="hidden md:inline">{logbookStatusLabels[entry.status]}</span>
                   <ChevronDown
-                    className={`h-4 w-4 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}
+                    className={`hidden h-4 w-4 transition-transform md:block ${statusMenuOpen ? 'rotate-180' : ''}`}
                   />
                 </button>
                 {statusMenuOpen && (

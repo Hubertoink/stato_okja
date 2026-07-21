@@ -39,6 +39,7 @@ import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { getWeekdayLabel } from './activityEditorShared';
+import { colorFromStringHash } from '@/lib/colors';
 
 type FormState = {
   occurredAt: string;
@@ -342,7 +343,10 @@ export default function LogbookEntryPage() {
         <div className="logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl">
           <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 sm:px-6">
             <h2 className="min-w-0 truncate text-2xl font-bold text-gray-800">
-              {isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}
+              <span className="md:hidden">Logbuch</span>
+              <span className="hidden md:inline">
+                {isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}
+              </span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
             <div className="relative">
@@ -352,9 +356,9 @@ export default function LogbookEntryPage() {
                 className={`logbook-status-pill logbook-status-pill--${form.status} inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold`}
               >
                 <LogbookStatusIcon status={form.status} />
-                <span>{logbookStatusLabels[form.status]}</span>
+                <span className="hidden md:inline">{logbookStatusLabels[form.status]}</span>
                 <ChevronDown
-                  className={`h-4 w-4 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}
+                  className={`hidden h-4 w-4 transition-transform md:block ${statusMenuOpen ? 'rotate-180' : ''}`}
                 />
               </button>
               {statusMenuOpen && (
@@ -494,7 +498,10 @@ export default function LogbookEntryPage() {
                       <Plus className="h-5 w-5 shrink-0 text-viridian" />
                       {selectedProject ? (
                         <span className="flex min-w-0 items-center gap-2">
-                          <span className="h-8 w-8 overflow-hidden rounded-lg bg-gray-100">
+                          <span
+                            className="h-8 w-8 overflow-hidden rounded-lg bg-gray-100"
+                            style={{ backgroundColor: selectedProject.color || colorFromStringHash(selectedProject.title) }}
+                          >
                             {selectedProject.imageUrl && (
                               <ProtectedImage
                                 src={selectedProject.imageUrl}

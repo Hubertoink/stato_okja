@@ -10,6 +10,7 @@ export default function Modal({
   onClose,
   maxWidth = 'md',
   blur = true,
+  showCloseButton = true,
 }: {
   open: boolean;
   title?: string;
@@ -17,6 +18,7 @@ export default function Modal({
   onClose: () => void;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl';
   blur?: boolean;
+  showCloseButton?: boolean;
 }) {
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
@@ -42,13 +44,15 @@ export default function Modal({
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold gradient-text">{title}</h3>
-          <button
-            className="inline-flex items-center justify-center p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all duration-200 hover:scale-105"
-            onClick={onClose}
-            aria-label="Schließen"
-          >
-            <XIcon className="w-5 h-5" />
-          </button>
+          {showCloseButton && (
+            <button
+              className="inline-flex items-center justify-center p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all duration-200 hover:scale-105"
+              onClick={onClose}
+              aria-label="Schließen"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+          )}
         </div>
         {children}
       </div>

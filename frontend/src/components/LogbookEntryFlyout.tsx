@@ -205,14 +205,14 @@ export default function LogbookEntryFlyout({
               </div>
             )}
             {canManage && !archived && entry && (
-              <Button
+              <IconButton
                 variant="secondary"
-                size="sm"
                 onClick={() => navigate(`/logbook/${entry.id}/edit`)}
+                aria-label="Bearbeiten"
+                title="Bearbeiten"
               >
-                <Edit3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Bearbeiten</span>
-              </Button>
+                <Edit3 className="h-5 w-5" />
+              </IconButton>
             )}
             {canManage && !archived && (
               <button

@@ -5,10 +5,10 @@ type BadgeVariant = 'neutral' | 'accent' | 'success' | 'warning' | 'info' | 'dan
 const variants: Record<BadgeVariant, string> = {
   neutral: 'border border-[var(--border-subtle)] bg-[var(--surface-2)] text-[var(--text-secondary)]',
   accent: 'bg-[var(--interactive-soft)] text-viridian',
-  success: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300',
-  warning: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200',
-  info: 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300',
-  danger: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
+  success: 'bg-[var(--status-success-bg)] text-[var(--status-success-text)]',
+  warning: 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]',
+  info: 'bg-[var(--status-info-bg)] text-[var(--status-info-text)]',
+  danger: 'bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]',
 };
 
 export function Badge({ children, className = '', variant = 'neutral', ...props }: HTMLAttributes<HTMLSpanElement> & {

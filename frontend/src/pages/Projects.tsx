@@ -1016,11 +1016,11 @@ function ProjectForm({
   const projectSectionClassName = 'rounded-xl border p-4 md:p-5';
   const projectInnerCardClassName = 'rounded-xl border p-4';
   const projectSectionStyle = {
-    background: 'color-mix(in srgb, var(--surface-2) 88%, transparent)',
+    background: 'var(--project-form-section-bg, color-mix(in srgb, var(--surface-2) 88%, transparent))',
     borderColor: 'var(--border-subtle)',
   } as const;
   const projectInnerCardStyle = {
-    background: 'var(--surface-1)',
+    background: 'var(--project-form-inner-card-bg, var(--surface-1))',
     borderColor: 'var(--border-subtle)',
   } as const;
   const projectSecondaryButtonClassName = 'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';

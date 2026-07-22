@@ -312,7 +312,8 @@ export default function Calendar() {
     : view === 'three-day'
       ? 'week'
       : view;
-  const showCalendarDayActions = !isMobile || calendarView === 'three-day';
+  const isCalendarInteractionOpen = Boolean(modal || picker || edit || closureDate);
+  const showCalendarDayActions = (!isMobile || calendarView === 'three-day') && !isCalendarInteractionOpen;
   
   // Tooltip state for activity hover
   const [tooltipActivity, setTooltipActivity] = useState<Activity | null>(null);

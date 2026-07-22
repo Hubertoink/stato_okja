@@ -33,6 +33,7 @@ import {
 import { useActivity } from '@/lib/activities';
 import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
 import Modal from '@/components/Modal';
+import ExportProgressModal from '@/components/ExportProgressModal';
 import { colorForActivityType } from '@/lib/colors';
 import { getBgClass } from '@/lib/colorPalette';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -179,6 +180,7 @@ export default function Activities() {
   const { data: publicConfig } = usePublicConfig();
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportProgress, setExportProgress] = useState<string | null>(null);
   const todayIso = toLocalIsoDate(new Date());
   useEffect(() => {
     saveActivitiesFilters({ advanced, order, search: searchTerm });
@@ -490,7 +492,10 @@ export default function Activities() {
     try {
       setExportModalOpen(false);
       setExporting(true);
+      setExportProgress('Aktivitäten werden geladen …');
       const list = await loadExportRows();
+      setExportProgress('Excel-Datei wird vorbereitet …');
+      await new Promise(requestAnimationFrame);
       const { rows, statusCol, typeCol, firstNumberCol, durationCol, categoriesCol, tagsCol, notesCol } =
         buildExportSheet(list);
 
@@ -615,6 +620,7 @@ export default function Activities() {
       utils.book_append_sheet(wb, ws, 'Aktivitäten');
 
       if (variant === 'styled') {
+        setExportProgress('Projekt-KPIs werden zusammengestellt …');
         const durationFrom = (activity: ExportRow) => {
           if (typeof activity.durationMinutes === 'number' && activity.durationMinutes >= 0) return activity.durationMinutes;
           const parseTime = (time?: string | null) => {
@@ -695,6 +701,7 @@ export default function Activities() {
           utils.book_append_sheet(wb, projectSheet, uniqueSheetName(project?.title || projectActivities[0]?.project?.title || 'Projekt'));
         }
 
+        setExportProgress('Logbuch wird ergänzt …');
         const projectFilter = advanced.projectIds?.length === 1 ? advanced.projectIds[0] : undefined;
         const allLogbookEntries = await fetchAllLogbookEntries({ from: advanced.from, to: advanced.to, projectId: projectFilter });
         const selectedProjectIds = advanced.projectIds || [];
@@ -714,6 +721,8 @@ export default function Activities() {
         logbookSheet['!cols'] = [{ wch: 14 }, { wch: 15 }, { wch: 30 }, { wch: 16 }, { wch: 26 }, { wch: 50 }, { wch: 32 }, { wch: 32 }, { wch: 32 }];
         utils.book_append_sheet(wb, logbookSheet, uniqueSheetName('Logbuch'));
       }
+      setExportProgress('Datei wird gespeichert …');
+      await new Promise(requestAnimationFrame);
       writeFile(
         wb,
         variant === 'styled'
@@ -722,6 +731,7 @@ export default function Activities() {
       );
     } finally {
       setExporting(false);
+      setExportProgress(null);
     }
   };
   const clearSearch = () => {
@@ -1441,6 +1451,7 @@ export default function Activities() {
           </div>
         </div>
       </Modal>
+      <ExportProgressModal message={exportProgress} />
       <ActivitiesFilterDrawer
         open={filterDrawer}
         initial={advanced}

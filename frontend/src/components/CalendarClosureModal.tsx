@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Clock3, Save, Trash2, X } from 'lucide-react';
 import type { OrganizationClosureDay } from '@/lib/orgs';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 function formatDateLabel(date: string): string {
   const [year, month, day] = date.split('-').map((value) => Number(value));
@@ -33,6 +34,7 @@ export default function CalendarClosureModal({
   saving?: boolean;
   deleting?: boolean;
 }) {
+  useBodyScrollLock(true);
   const [fullDay, setFullDay] = useState(!(closureDay?.from || closureDay?.to));
   const [from, setFrom] = useState(closureDay?.from ?? '08:00');
   const [to, setTo] = useState(closureDay?.to ?? '17:00');
@@ -48,10 +50,13 @@ export default function CalendarClosureModal({
 
   const content = (
     <div
-      className="modal-overlay fixed inset-0 flex items-end justify-center bg-black/45 p-0 md:items-center md:p-4"
+      className="modal-overlay fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 md:items-center md:p-4"
       onClick={onClose}
+      onWheel={(event) => event.stopPropagation()}
     >
       <div
+        aria-label="Einrichtung geschlossen"
+        aria-modal="true"
         className="calendar-closure-modal w-full rounded-t-2xl border px-4 py-4 shadow-2xl md:max-w-md md:rounded-2xl md:px-6 md:py-6"
         style={{
           background: 'var(--surface-elevated)',
@@ -59,6 +64,8 @@ export default function CalendarClosureModal({
           color: 'var(--text-primary)',
         }}
         onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        tabIndex={-1}
       >
         <div className="flex items-start justify-between gap-4">
           <div>

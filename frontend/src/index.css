@@ -1066,7 +1066,7 @@ code {
 }
 
 .project-form-field {
-  background: color-mix(in srgb, var(--surface-2) 84%, var(--surface-3));
+  background: var(--project-form-field-bg, color-mix(in srgb, var(--surface-2) 84%, var(--surface-3)));
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
   box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.04);
@@ -1111,7 +1111,7 @@ code {
 
 .project-rich-text-editor.rsw-editor {
   min-height: 190px;
-  background: color-mix(in srgb, var(--surface-2) 84%, var(--surface-3));
+  background: var(--project-form-field-bg, color-mix(in srgb, var(--surface-2) 84%, var(--surface-3)));
   border: 1px solid var(--border-strong);
   border-radius: 0.5rem;
   color: var(--text-primary);
@@ -1647,38 +1647,38 @@ code {
   background: rgba(255, 241, 242, 0.78);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-control {
+:root[data-color-mode='dark'] .activity-status-control {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-control--completed,
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-badge--completed {
+:root[data-color-mode='dark'] .activity-status-control--completed,
+:root[data-color-mode='dark'] .activity-status-badge--completed {
   --activity-status-border: rgba(74, 222, 128, 0.22);
   --activity-status-bg: rgba(22, 101, 52, 0.18);
   --activity-status-bg-hover: rgba(22, 101, 52, 0.26);
   --activity-status-fg: #bbf7d0;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-control--cancelled,
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-badge--cancelled {
+:root[data-color-mode='dark'] .activity-status-control--cancelled,
+:root[data-color-mode='dark'] .activity-status-badge--cancelled {
   --activity-status-border: rgba(251, 113, 133, 0.24);
   --activity-status-bg: rgba(159, 18, 57, 0.18);
   --activity-status-bg-hover: rgba(159, 18, 57, 0.26);
   --activity-status-fg: #fecdd3;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-menu {
+:root[data-color-mode='dark'] .activity-status-menu {
   border-color: rgba(148, 163, 184, 0.16);
   background: color-mix(in srgb, var(--surface-elevated) 92%, transparent);
   box-shadow: 0 22px 48px rgba(0, 0, 0, 0.4);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-menu-item:hover,
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-menu-item--active {
+:root[data-color-mode='dark'] .activity-status-menu-item:hover,
+:root[data-color-mode='dark'] .activity-status-menu-item--active {
   background: rgba(255, 255, 255, 0.08);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-status-banner {
+:root[data-color-mode='dark'] .activity-status-banner {
   border-color: rgba(251, 113, 133, 0.2);
   background: rgba(159, 18, 57, 0.14);
 }
@@ -2889,13 +2889,16 @@ code {
   --text-secondary: #5c5f77;
   --text-muted: #7c7f93;
   --text-faint: #9ca0b0;
-  --border-subtle: rgba(76, 79, 105, 0.14);
-  --border-strong: rgba(76, 79, 105, 0.25);
+  --border-subtle: rgba(76, 79, 105, 0.18);
+  --border-strong: rgba(76, 79, 105, 0.34);
   --header-surface-bg: rgba(255, 255, 255, 0.76);
   --nav-surface-bg: rgba(230, 233, 239, 0.86);
   --footer-surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(230, 233, 239, 0.92) 100%);
   --input-bg: #ffffff;
   --input-disabled-bg: #e6e9ef;
+  --project-form-section-bg: #dce0e8;
+  --project-form-field-bg: #ffffff;
+  --project-form-inner-card-bg: #f7f8fb;
   --focus-ring: rgba(136, 57, 239, 0.28);
   --calendar-surface-bg: #ffffff;
   --calendar-header-bg: #e6e9ef;
@@ -3011,6 +3014,10 @@ code {
 :root[data-color-mode='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
 :root[data-color-mode='dark'] select,
 :root[data-color-mode='dark'] textarea { color: var(--text-primary); background: var(--input-bg); border-color: var(--border-subtle); }
+:root[data-color-mode='dark'] input[type='date'],
+:root[data-color-mode='dark'] input[type='time'] { color-scheme: dark; }
+:root[data-color-mode='dark'] input[type='date']::-webkit-calendar-picker-indicator,
+:root[data-color-mode='dark'] input[type='time']::-webkit-calendar-picker-indicator { opacity: 0.72; }
 :root[data-color-mode='dark'] input::placeholder,
 :root[data-color-mode='dark'] textarea::placeholder { color: var(--text-faint); }
 :root[data-color-mode='dark'] .bg-white,

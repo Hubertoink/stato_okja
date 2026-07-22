@@ -1,4 +1,4 @@
-# Stato 2.0 - Architektur-Dokumentation
+# StatO – Architektur-Dokumentation
 
 ## 📐 Systemarchitektur
 

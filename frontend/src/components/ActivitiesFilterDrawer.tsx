@@ -18,6 +18,7 @@ type ActivitiesTaxonomyAvailability = {
   tagIds: string[];
   executionStatuses: Array<(typeof ACTIVITY_EXECUTION_STATUS_OPTIONS)[number]>;
   hasUncategorized: boolean;
+  availableYears: string[];
 };
 
 export default function ActivitiesFilterDrawer({
@@ -48,6 +49,7 @@ export default function ActivitiesFilterDrawer({
     queryKey: ['activities-filter-taxonomy-availability', scopeKey],
     queryFn: async () => {
       const list: Array<{
+        date?: string | null;
         tags?: Array<{ id: string }>;
         categories?: Array<{ id: string }>;
         executionStatus?: string | null;
@@ -57,8 +59,11 @@ export default function ActivitiesFilterDrawer({
       const tagIds = new Set<string>();
       const executionStatuses = new Set<(typeof ACTIVITY_EXECUTION_STATUS_OPTIONS)[number]>();
       let hasUncategorized = false;
+      const years = new Set<string>();
 
       for (const activity of list) {
+        const year = String(activity.date || '').slice(0, 4);
+        if (/^\d{4}$/.test(year)) years.add(year);
         executionStatuses.add(normalizeActivityExecutionStatus(activity.executionStatus));
         if (!Array.isArray(activity.categories) || activity.categories.length === 0) {
           hasUncategorized = true;
@@ -76,6 +81,7 @@ export default function ActivitiesFilterDrawer({
         tagIds: Array.from(tagIds),
         executionStatuses: Array.from(executionStatuses),
         hasUncategorized,
+        availableYears: Array.from(years).sort((left, right) => right.localeCompare(left)),
       } satisfies ActivitiesTaxonomyAvailability;
     },
     enabled: open,
@@ -98,6 +104,7 @@ export default function ActivitiesFilterDrawer({
   );
   const availabilityLoaded = availabilityQuery.isSuccess;
   const hasUncategorized = availabilityLoaded ? availabilityQuery.data.hasUncategorized : true;
+  const availableYears = availabilityQuery.data?.availableYears ?? [];
 
   const toggleIn = (key: keyof ActivitiesFilter, id: string) => {
     setF((prev) => {
@@ -192,6 +199,10 @@ export default function ActivitiesFilterDrawer({
                   return { from: s(f), to: s(t) };
                 })(),
               },
+              ...availableYears.map((year) => ({
+                label: year,
+                range: { from: `${year}-01-01`, to: `${year}-12-31` },
+              })),
             ].map((p) => (
               <button
                 key={p.label}

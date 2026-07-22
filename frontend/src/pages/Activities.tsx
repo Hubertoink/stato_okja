@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
+import { fetchAllLogbookEntries, type LogbookEntry } from '@/lib/logbook';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
@@ -32,6 +33,7 @@ import {
 import { useActivity } from '@/lib/activities';
 import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
 import Modal from '@/components/Modal';
+import ExportProgressModal from '@/components/ExportProgressModal';
 import { colorForActivityType } from '@/lib/colors';
 import { getBgClass } from '@/lib/colorPalette';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -49,6 +51,10 @@ import {
   loadActivitiesFilters,
   saveActivitiesFilters,
 } from '@/lib/activitiesFilterStorage';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Button, IconButton } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -178,6 +184,7 @@ export default function Activities() {
   const { data: publicConfig } = usePublicConfig();
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportProgress, setExportProgress] = useState<string | null>(null);
   const todayIso = toLocalIsoDate(new Date());
   useEffect(() => {
     saveActivitiesFilters({ advanced, order, search: searchTerm });
@@ -366,6 +373,7 @@ export default function Activities() {
   const goToLastPage = () => setPage(pageCount);
   type ExportRow = {
     id: string;
+    projectId?: string | null;
     date: string;
     type: string;
     title?: string | null;
@@ -488,7 +496,10 @@ export default function Activities() {
     try {
       setExportModalOpen(false);
       setExporting(true);
+      setExportProgress('Aktivitäten werden geladen …');
       const list = await loadExportRows();
+      setExportProgress('Excel-Datei wird vorbereitet …');
+      await new Promise(requestAnimationFrame);
       const { rows, statusCol, typeCol, firstNumberCol, durationCol, categoriesCol, tagsCol, notesCol } =
         buildExportSheet(list);
 
@@ -611,6 +622,111 @@ export default function Activities() {
 
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, 'Aktivitäten');
+
+      if (variant === 'styled') {
+        setExportProgress('Projekt-KPIs werden zusammengestellt …');
+        const durationFrom = (activity: ExportRow) => {
+          if (typeof activity.durationMinutes === 'number' && activity.durationMinutes >= 0) return activity.durationMinutes;
+          const parseTime = (time?: string | null) => {
+            if (!time) return undefined;
+            const [hours, minutes] = time.split(':').map(Number);
+            return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : undefined;
+          };
+          const start = parseTime(activity.startTime);
+          const end = parseTime(activity.endTime);
+          return start !== undefined && end !== undefined && end >= start ? end - start : undefined;
+        };
+        const styleHeader = (sheet: typeof ws, widthCount: number) => {
+          for (let column = 0; column < widthCount; column++) {
+            const cell = sheet[utils.encode_cell({ r: 0, c: column })] as unknown as { s?: CellStyle } | undefined;
+            if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } }, alignment: { vertical: 'center', wrapText: true } };
+          }
+        };
+        const usedSheetNames = new Set<string>(['Aktivitäten']);
+        const uniqueSheetName = (value: string) => {
+          const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || 'Projekt').slice(0, 31);
+          let name = base;
+          let suffix = 2;
+          while (usedSheetNames.has(name)) {
+            name = `${base.slice(0, Math.max(1, 31 - String(suffix).length - 1))} ${suffix}`;
+            suffix += 1;
+          }
+          usedSheetNames.add(name);
+          return name;
+        };
+        const projectsById = new Map(projects.map((project) => [project.id, project]));
+        const activitiesByProject = new Map<string, ExportRow[]>();
+        for (const activity of list) {
+          if (!activity.projectId) continue;
+          const grouped = activitiesByProject.get(activity.projectId) || [];
+          grouped.push(activity);
+          activitiesByProject.set(activity.projectId, grouped);
+        }
+        for (const [projectId, projectActivities] of activitiesByProject) {
+          const participantTotals = projectActivities.map((activity) => (activity.countTotal ?? ((activity.countMale || 0) + (activity.countFemale || 0) + (activity.countDiverse || 0))) || 0);
+          const totalParticipants = participantTotals.reduce((sum, value) => sum + value, 0);
+          const totalMale = projectActivities.reduce((sum, activity) => sum + (activity.countMale || 0), 0);
+          const totalFemale = projectActivities.reduce((sum, activity) => sum + (activity.countFemale || 0), 0);
+          const totalDiverse = projectActivities.reduce((sum, activity) => sum + (activity.countDiverse || 0), 0);
+          const durations = projectActivities.map(durationFrom).filter((value): value is number => typeof value === 'number');
+          const project = projectsById.get(projectId);
+          const ratio = totalParticipants > 0
+            ? `${Math.round((totalMale / totalParticipants) * 100)} % m · ${Math.round((totalFemale / totalParticipants) * 100)} % w · ${Math.round((totalDiverse / totalParticipants) * 100)} % d`
+            : 'Keine Teilnehmendendaten';
+          const projectRows: Array<Array<string | number>> = [
+            ['Projekt-KPI', 'Wert'],
+            ['Projekt', project?.title || projectActivities[0]?.project?.title || 'Unbenanntes Projekt'],
+            ['Zeitraum', rangeBadgeLabel],
+            ['Aktivitäten', projectActivities.length],
+            ['Teilnehmende gesamt', totalParticipants],
+            ['Ø Besucher*innen', projectActivities.length ? Math.round((totalParticipants / projectActivities.length) * 10) / 10 : 0],
+            ['Geschlechterverhältnis', ratio],
+            ['Ø Dauer (min)', durations.length ? Math.round((durations.reduce((sum, value) => sum + value, 0) / durations.length) * 10) / 10 : '–'],
+            [],
+            ['Datum', 'Typ', 'Titel', 'Teilnehmende', 'm', 'w', 'd', 'Dauer (min)'],
+            ...projectActivities.map((activity) => [
+              (activity.date || '').slice(0, 10),
+              ACTIVITY_TYPE_LABELS[activity.type] || activity.type,
+              activity.title || '',
+              (activity.countTotal ?? ((activity.countMale || 0) + (activity.countFemale || 0) + (activity.countDiverse || 0))) || 0,
+              activity.countMale || 0,
+              activity.countFemale || 0,
+              activity.countDiverse || 0,
+              durationFrom(activity) ?? '',
+            ]),
+          ];
+          const projectSheet = utils.aoa_to_sheet(projectRows);
+          styleHeader(projectSheet, 2);
+          for (let column = 0; column < 8; column++) {
+            const cell = projectSheet[utils.encode_cell({ r: 9, c: column })] as unknown as { s?: CellStyle } | undefined;
+            if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } } };
+          }
+          projectSheet['!cols'] = [{ wch: 20 }, { wch: 26 }, { wch: 30 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 14 }];
+          utils.book_append_sheet(wb, projectSheet, uniqueSheetName(project?.title || projectActivities[0]?.project?.title || 'Projekt'));
+        }
+
+        setExportProgress('Logbuch wird ergänzt …');
+        const projectFilter = advanced.projectIds?.length === 1 ? advanced.projectIds[0] : undefined;
+        const allLogbookEntries = await fetchAllLogbookEntries({ from: advanced.from, to: advanced.to, projectId: projectFilter });
+        const selectedProjectIds = advanced.projectIds || [];
+        const logbookEntries = selectedProjectIds.length > 1
+          ? allLogbookEntries.filter((entry) => entry.projectId && selectedProjectIds.includes(entry.projectId))
+          : allLogbookEntries;
+        const logbookRows: Array<Array<string | number>> = [
+          ['Datum', 'Typ', 'Titel', 'Status', 'Projekt', 'Eintrag', 'Highlights', 'Herausforderungen', 'Nächste Schritte'],
+          ...logbookEntries.map((entry: LogbookEntry) => [
+            (entry.occurredAt || '').slice(0, 10), entry.type, entry.title, entry.status,
+            entry.project?.title || '', entry.body || '', entry.highlights || '', entry.challenges || '', entry.nextSteps || '',
+          ]),
+        ];
+        const logbookSheet = utils.aoa_to_sheet(logbookRows);
+        styleHeader(logbookSheet, logbookRows[0].length);
+        (logbookSheet as unknown as { ['!autofilter']?: { ref: string } })['!autofilter'] = { ref: `A1:${utils.encode_col(logbookRows[0].length - 1)}1` };
+        logbookSheet['!cols'] = [{ wch: 14 }, { wch: 15 }, { wch: 30 }, { wch: 16 }, { wch: 26 }, { wch: 50 }, { wch: 32 }, { wch: 32 }, { wch: 32 }];
+        utils.book_append_sheet(wb, logbookSheet, uniqueSheetName('Logbuch'));
+      }
+      setExportProgress('Datei wird gespeichert …');
+      await new Promise(requestAnimationFrame);
       writeFile(
         wb,
         variant === 'styled'
@@ -619,6 +735,7 @@ export default function Activities() {
       );
     } finally {
       setExporting(false);
+      setExportProgress(null);
     }
   };
   const clearSearch = () => {
@@ -628,9 +745,10 @@ export default function Activities() {
   };
   return (
     <div>
-      <div className="mb-6 mt-1 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <h2 className="text-3xl font-bold text-viridian">Aktivitäten</h2>
-        <DemoHoverHint
+      <PageHeader
+        title="Aktivitäten"
+        actions={(
+          <DemoHoverHint
           title="Aktivitaeten-Werkzeuge"
           description="Hier suchst, exportierst, filterst und erstellst du Aktivitaeten. Der erweiterte Filter kombiniert Zeitraum, Typen, Projekte, Tags und Status."
           placement="bottom"
@@ -641,20 +759,20 @@ export default function Activities() {
             <div className="relative">
               {searchOpen && (
                 <div
-                  className={`absolute top-full mt-2 z-20 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-md ${
+                  className={`absolute top-full mt-2 z-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-2 shadow-xl backdrop-blur-md ${
                     isMobile
                       ? '-right-1 w-[min(16rem,calc(100vw-1.25rem))] max-w-[calc(100vw-1.25rem)]'
                       : 'right-0 w-[min(18rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)]'
                   }`}
                 >
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-faint)]" />
+                    <Input
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder="Titel / Projekt suchen"
-                      className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-10 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/30"
+                      className="mt-0 py-2 pl-9 pr-10"
                       autoFocus
                     />
                     {searchTerm.trim() && (
@@ -671,46 +789,44 @@ export default function Activities() {
                   </div>
                 </div>
               )}
-              <button
-                className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white text-viridian hover:bg-gray-50 hover:border-gray-300 transition-colors w-10 h-10"
+              <IconButton
+                variant="secondary"
                 title={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
                 aria-label={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
                 onClick={() => setSearchOpen((open) => !open)}
               >
                 <Search className="w-5 h-5" />
-              </button>
+              </IconButton>
             </div>
-            <button
-            className="relative inline-flex md:hidden items-center justify-center rounded-lg border border-gray-200 bg-white text-viridian hover:bg-gray-50 hover:border-gray-300 transition-colors w-10 h-10 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white"
+          <IconButton
+            variant="secondary"
+            className="relative md:hidden"
             title="Excel-Export"
             aria-label="Excel-Export"
             disabled={exporting || exportCount === 0}
             onClick={() => setExportModalOpen(true)}
           >
             <Download className="w-5 h-5" />
-          </button>
-          <button
-            className="hidden md:inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-viridian hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white"
+          </IconButton>
+          <Button
+            variant="secondary"
+            className="hidden md:inline-flex"
             title="Excel-Export"
             aria-label="Excel-Export"
             disabled={exporting || exportCount === 0}
             onClick={() => setExportModalOpen(true)}
           >
             <Download className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            className={`inline-flex items-center justify-center rounded-lg border transition-colors touch-manipulation w-10 h-10 ${
-              hasAdvancedFilters
-                ? 'border-viridian/40 bg-white text-viridian ring-1 ring-viridian/20 hover:bg-gray-50'
-                : 'border-gray-200 bg-white text-viridian hover:bg-gray-50 hover:border-gray-300'
-            }`}
+          </Button>
+          <IconButton
+            variant="secondary"
+            className={`touch-manipulation ${hasAdvancedFilters ? 'border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20' : ''}`}
             onClick={() => setFilterDrawer(true)}
             title="Erweiterter Filter"
             aria-label="Erweiterter Filter"
           >
             <SlidersHorizontal className="h-4 w-4" />
-          </button>
+          </IconButton>
           {/* Mobile icon-only: New activity */}
           <button
             className="md:hidden inline-flex items-center justify-center rounded-full bg-viridian text-white hover:bg-cambridge-blue transition-colors w-10 h-10"
@@ -724,16 +840,17 @@ export default function Activities() {
             <Plus className="w-5 h-5" />
           </button>
           {/* Desktop: New activity text button */}
-          <button
-            className="hidden md:inline-flex items-center bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
+          <Button
+            className="hidden md:inline-flex"
             onClick={() => setPicker(true)}
           >
             + Neue Aktivität
-          </button>
+          </Button>
             </div>
           </div>
-        </DemoHoverHint>
-      </div>
+          </DemoHoverHint>
+        )}
+      />
 
       {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
       <DemoHoverHint
@@ -1238,7 +1355,11 @@ export default function Activities() {
             </div>
           ))}
           {activities.length === 0 && !activitiesLoading && !activitiesFetching && (
-            <div className="text-gray-500 py-6 text-center">Keine Aktivitäten im Zeitraum.</div>
+            <EmptyState
+              className="mx-3 mb-3"
+              description="Passe den Zeitraum oder die Filter an, um weitere Aktivitäten zu sehen."
+              title="Keine Aktivitäten im Zeitraum"
+            />
           )}
         </div>
         </div>
@@ -1299,7 +1420,8 @@ export default function Activities() {
           </p>
           <p className="text-gray-600">
             Du kannst zwischen einer reinen Datendatei und einer Stato-formatierten Excel-Datei
-            wählen. Beide Varianten enthalten Status, Teilnehmende, Kategorien, Tags und Notizen.
+            wählen. Beide Varianten enthalten Status, Teilnehmende, Kategorien, Tags und Notizen;
+            das Stato-Format ergänzt Projekt-KPIs und das Logbuch.
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             <button
@@ -1321,7 +1443,7 @@ export default function Activities() {
             >
               <div className="font-semibold text-viridian">Stato-Format (.xlsx)</div>
               <div className="mt-1 text-xs text-gray-600">
-                Mit Header-Farben, Statusmarkierung, farbigem Typ-Feld und lesefreundlichen Hervorhebungen für Kategorien, Tags und Notizen.
+                Mit Header-Farben, Statusmarkierung und zusätzlichen Reitern je Projekt mit KPIs sowie einem Logbuch-Reiter.
               </div>
             </button>
           </div>
@@ -1337,6 +1459,7 @@ export default function Activities() {
           </div>
         </div>
       </Modal>
+      <ExportProgressModal message={exportProgress} />
       <ActivitiesFilterDrawer
         open={filterDrawer}
         initial={advanced}

@@ -13,6 +13,7 @@ import {
   storePendingTwoFactorChallenge,
   storeRefreshCsrfToken,
 } from './authStorage';
+import { applyTheme } from './theme';
 
 export type Role = 'superadmin' | 'org_admin' | 'user';
 export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
@@ -57,15 +58,6 @@ const AuthCtx = createContext<AuthState | undefined>(undefined);
 
 function normalizeThemeName(theme?: string | null) {
   return theme === 'Light Steel' ? 'Default Theme' : (theme || 'Default Theme');
-}
-
-function applyTheme(theme?: string | null) {
-  try {
-    if (theme) document.documentElement.setAttribute('data-theme', theme);
-    else document.documentElement.removeAttribute('data-theme');
-  } catch {
-    // ignore
-  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

@@ -14,7 +14,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import {
   type LogbookEntry,
-  type LogbookEntryStatus,
   useLogbookEntries,
   useSetLogbookStatus,
 } from '@/lib/logbook';
@@ -27,6 +26,10 @@ import {
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookFilterDrawer from '@/components/LogbookFilterDrawer';
 import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
+import { Badge } from '@/components/ui/Badge';
+import { Button, IconButton } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('de-DE', {
@@ -37,16 +40,6 @@ function formatDate(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function statusClass(status: LogbookEntryStatus) {
-  return status === 'discussed'
-    ? 'bg-green-100 text-green-700'
-    : status === 'follow_up'
-      ? 'bg-amber-100 text-amber-800'
-      : status === 'archived'
-        ? 'bg-gray-100 text-gray-600'
-        : 'bg-blue-100 text-blue-700';
 }
 
 function AuthorBadge({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
@@ -87,41 +80,39 @@ function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; onOpen: (id: stri
         <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
             <span>{formatDate(entry.occurredAt)}</span>
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
+            <Badge variant="neutral">
               {logbookTypeLabels[entry.type]}
-            </span>
+            </Badge>
             {entry.visibility === 'admins' && (
               <span className="rounded-full bg-violet-100 px-2 py-0.5 font-medium text-violet-700">
                 Intern
               </span>
             )}
           </div>
-          <h3 className="truncate text-base font-semibold text-gray-800 sm:text-lg">
+          <h3 className="truncate text-base font-semibold text-[var(--text-primary)] sm:text-lg">
             {entry.title}
           </h3>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(entry.status)}`}
-        >
+        <Badge className="shrink-0" variant={entry.status === 'discussed' ? 'success' : entry.status === 'follow_up' ? 'warning' : entry.status === 'archived' ? 'neutral' : 'info'}>
           {logbookStatusLabels[entry.status]}
-        </span>
+        </Badge>
       </div>
-      <p className="mb-4 line-clamp-3 whitespace-pre-wrap text-sm text-gray-700">{entry.body}</p>
+      <p className="mb-4 line-clamp-3 whitespace-pre-wrap text-sm text-[var(--text-secondary)]">{entry.body}</p>
       {(entry.project?.title || entry.activity?.title) && (
         <div className="mb-3 flex flex-wrap gap-2 text-xs">
           {entry.project?.title && (
-            <span className="rounded bg-gray-100 px-2 py-1 text-gray-700">
+            <span className="rounded bg-[var(--surface-2)] px-2 py-1 text-[var(--text-secondary)]">
               Projekt: {entry.project.title}
             </span>
           )}
           {entry.activity?.title && (
-            <span className="rounded bg-gray-100 px-2 py-1 text-gray-700">
+            <span className="rounded bg-[var(--surface-2)] px-2 py-1 text-[var(--text-secondary)]">
               Aktivität: {entry.activity.title}
             </span>
           )}
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
+      <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3 text-xs text-[var(--text-secondary)]">
         <div className="min-w-0">
           <AuthorBadge
             name={entry.createdByName}
@@ -148,7 +139,7 @@ function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; onOpen: (id: stri
                 event.stopPropagation();
                 status.mutate({ id: entry.id, status: 'discussed' });
               }}
-              className="flex items-center gap-1 rounded-md px-2 py-1 font-medium text-green-700 hover:bg-green-50"
+              className="flex items-center gap-1 rounded-md px-2 py-1 font-medium text-green-700 hover:bg-green-50 dark:bg-green-950/30 dark:hover:bg-green-950/50"
               title="Als besprochen markieren"
             >
               <CheckCircle2 className="h-4 w-4" />
@@ -244,20 +235,22 @@ export default function Logbook() {
 
   return (
     <div>
-      <div className="mb-4 mt-1 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <h2 className="text-3xl font-bold text-viridian">Logbuch</h2>
+      <PageHeader
+        className="mb-4"
+        title="Logbuch"
+        actions={(
         <div className="flex justify-end gap-2">
           <div className="relative">
             {searchOpen && (
-              <div className="absolute right-0 top-full z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-md">
+              <div className="absolute right-0 top-full z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-2 shadow-xl backdrop-blur-md">
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-faint)]" />
+                  <Input
                     autoFocus
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Logbuch durchsuchen…"
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-10 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/30"
+                    className="mt-0 py-2 pl-9 pr-10"
                   />
                   {search && (
                     <button
@@ -272,42 +265,40 @@ export default function Logbook() {
                 </div>
               </div>
             )}
-            <button
-              type="button"
+            <IconButton
+              variant="secondary"
               onClick={() => setSearchOpen((open) => !open)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 bg-white text-viridian transition-colors hover:border-gray-300 hover:bg-gray-50"
               title={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
               aria-label={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
             >
               <Search className="h-5 w-5" />
-            </button>
+            </IconButton>
           </div>
-          <button
-            type="button"
+          <IconButton
+            variant="secondary"
             onClick={() => setFilterDrawer(true)}
-            className={`inline-flex h-11 w-11 items-center justify-center rounded-lg border transition-colors ${hasAdvancedFilters ? 'border-viridian/40 bg-white text-viridian ring-1 ring-viridian/20 hover:bg-gray-50' : 'border-gray-200 bg-white text-viridian hover:border-gray-300 hover:bg-gray-50'}`}
+            className={hasAdvancedFilters ? 'border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20' : ''}
             title="Erweiterter Filter"
             aria-label="Erweiterter Filter"
           >
             <SlidersHorizontal className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
+          </IconButton>
+          <Button
             onClick={() => navigate('/logbook/new')}
-            className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold"
           >
             <Plus className="h-5 w-5" />
             <span className="hidden sm:inline">Eintrag erstellen</span>
-          </button>
+          </Button>
         </div>
-      </div>
+        )}
+      />
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-        <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/80 px-2 py-1 text-gray-700">
+        <Badge variant="neutral">
           {isLoading ? 'Treffer werden geladen…' : `Treffer: ${data?.total || 0}`}
-        </span>
+        </Badge>
         {search.trim() && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-azure-web px-2 py-1 text-viridian">
+          <Badge variant="accent">
             Suche: {search.trim()}
             <button
               type="button"
@@ -317,22 +308,23 @@ export default function Logbook() {
             >
               <XCircle className="h-3.5 w-3.5" />
             </button>
-          </span>
+          </Badge>
         )}
         {badges.map((badge) => (
-          <span key={badge} className="rounded-full bg-azure-web px-2 py-1 text-viridian">
+          <Badge key={badge} variant="accent">
             {badge}
-          </span>
+          </Badge>
         ))}
         {hasFilters && (
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={resetFilters}
-            className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 text-gray-700 hover:bg-gray-50"
+            className="min-h-0 rounded-full px-2 py-1"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Zurücksetzen
-          </button>
+          </Button>
         )}
       </div>
 

@@ -51,3 +51,20 @@ export function buildStatisticsActivitiesFileName({
 
   return `${parts.join('-')}.${extension}`;
 }
+
+export function buildStatisticsControllingFileName({
+  orgName,
+  exportRangeLabel,
+}: {
+  orgName?: string | null;
+  exportRangeLabel: string;
+}) {
+  const parts = [
+    'stato',
+    sanitizeStatisticsExportSegment(orgName || 'organisation'),
+    'controllingdaten',
+    sanitizeStatisticsExportSegment(exportRangeLabel) || 'gesamt',
+  ].filter(Boolean);
+
+  return `${parts.join('-')}.xlsx`;
+}

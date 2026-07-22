@@ -23,6 +23,7 @@ import { isDarkThemeName } from '../lib/theme';
 import type jsPDF from 'jspdf';
 import { FileDown, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
+import ExportProgressModal from '@/components/ExportProgressModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import { usePublicConfig } from '@/lib/publicConfig';
@@ -452,6 +453,7 @@ export default function Statistics() {
   const [activeChartExport, setActiveChartExport] = useState<string | null>(null);
   const [activeActivitiesExport, setActiveActivitiesExport] = useState<ActivitiesExportFormat | null>(null);
   const [reportExportOpen, setReportExportOpen] = useState(false);
+  const [exportProgress, setExportProgress] = useState<string | null>(null);
   const { user } = useAuth();
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
@@ -1219,6 +1221,8 @@ export default function Statistics() {
   };
 
   const exportActivitiesAsExcel = async (activities: Activity[]) => {
+    setExportProgress('Excel-Datei wird vorbereitet …');
+    await new Promise(requestAnimationFrame);
     const rows = toActivityExportRows(activities);
     const sheetRows: Array<Array<string | number>> = [
       ['Datum', 'Typ', 'Titel', 'Projekt', 'TN ges.', 'm', 'w', 'd', 'Dauer (min)'],
@@ -1281,10 +1285,14 @@ export default function Statistics() {
 
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, 'Aktivitäten');
+    setExportProgress('Excel-Datei wird gespeichert …');
+    await new Promise(requestAnimationFrame);
     writeFile(workbook, getActivitiesExportFileName('xlsx'));
   };
 
   const exportActivitiesAsPdf = async (activities: Activity[]) => {
+    setExportProgress('PDF-Dokument wird erstellt …');
+    await new Promise(requestAnimationFrame);
     const rows = toActivityExportRows(activities);
     const { JsPDF } = await loadPdfExportDependencies();
     const pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -1346,6 +1354,8 @@ export default function Statistics() {
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(10);
       pdf.text('Keine Aktivitäten für die aktuelle Filterung.', margin, currentY + 8);
+      setExportProgress('PDF wird gespeichert …');
+      await new Promise(requestAnimationFrame);
       pdf.save(getActivitiesExportFileName('pdf'));
       return;
     }
@@ -1399,11 +1409,14 @@ export default function Statistics() {
       currentY += rowHeight;
     });
 
+    setExportProgress('PDF wird gespeichert …');
+    await new Promise(requestAnimationFrame);
     pdf.save(getActivitiesExportFileName('pdf'));
   };
 
   async function exportActivitiesTable(format: ActivitiesExportFormat) {
     setActiveActivitiesExport(format);
+    setExportProgress('Alle gefilterten Aktivitäten werden geladen …');
 
     try {
       const activities = await fetchAllFilteredActivities();
@@ -1417,6 +1430,7 @@ export default function Statistics() {
       console.error('Activities export failed', error);
     } finally {
       setActiveActivitiesExport(null);
+      setExportProgress(null);
     }
   }
 
@@ -1426,6 +1440,7 @@ export default function Statistics() {
 
     const exportKey = `${chartId}:${format}`;
     setActiveChartExport(exportKey);
+    setExportProgress(format === 'pdf' ? 'Diagramm wird für das PDF aufbereitet …' : 'Diagramm wird als Bild aufbereitet …');
 
     try {
       const { JsPDF, html2canvas } = await loadPdfExportDependencies();
@@ -1440,6 +1455,8 @@ export default function Statistics() {
       });
 
       if (format === 'png') {
+        setExportProgress('Bilddatei wird gespeichert …');
+        await new Promise(requestAnimationFrame);
         const blob = await canvasToBlob(canvas);
         downloadBlob(blob, getChartFileName(chartTitle, 'png'));
         return;
@@ -1472,11 +1489,14 @@ export default function Statistics() {
         undefined,
         'FAST',
       );
+      setExportProgress('PDF wird gespeichert …');
+      await new Promise(requestAnimationFrame);
       pdf.save(getChartFileName(chartTitle, 'pdf'));
     } catch (error) {
       console.error('Chart export failed', error);
     } finally {
       setActiveChartExport(null);
+      setExportProgress(null);
     }
   }
 
@@ -1537,8 +1557,10 @@ export default function Statistics() {
     try {
       // The on-screen table is intentionally paginated. The PDF must instead
       // render the complete matching dataset before html2canvas captures it.
+      setExportProgress('Alle gefilterten Aktivitäten werden geladen …');
       setPdfActivities(await fetchAllFilteredActivities());
       setPdfMode(true);
+      setExportProgress('Bericht wird für das PDF aufbereitet …');
       const { JsPDF, html2canvas } = await loadPdfExportDependencies();
       await new Promise(requestAnimationFrame);
       const el = reportRef.current;
@@ -1551,6 +1573,8 @@ export default function Statistics() {
       });
 
       const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      setExportProgress('PDF-Seiten werden erstellt …');
+      await new Promise(requestAnimationFrame);
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const orgTitle = user?.orgName || 'Organisation';
@@ -1583,10 +1607,13 @@ export default function Statistics() {
         );
       });
 
+      setExportProgress('PDF wird gespeichert …');
+      await new Promise(requestAnimationFrame);
       pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
     } finally {
       setPdfMode(false);
       setPdfActivities([]);
+      setExportProgress(null);
     }
   }
 
@@ -3376,6 +3403,7 @@ export default function Statistics() {
           </div>
         </div>
       </Modal>
+      <ExportProgressModal message={exportProgress} />
     </div>
   );
 }

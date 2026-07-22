@@ -81,6 +81,8 @@ Wichtig:
 | `RATE_LIMIT_MAX` | Ganzzahl, z. B. `100` | Maximal erlaubte Requests pro Client innerhalb des globalen Fensters. |
 | `AUTH_RATE_LIMIT_TTL` | Sekunden, meist `60` | Zeitfenster fuer strengere Auth-Endpunkte wie Login oder Reset. |
 | `AUTH_RATE_LIMIT_MAX` | Ganzzahl, z. B. `10` | Maximal erlaubte Requests pro Client auf Auth-Endpunkte. |
+| `LOGIN_MAX_FAILED_ATTEMPTS` | Ganzzahl, meist `5` | Falsche Passworteingaben bis zur Kontosperre. |
+| `LOGIN_LOCKOUT_MINUTES` | Minuten, meist `10` | Dauer der Kontosperre nach zu vielen falschen Passworteingaben. |
 | `DEFAULT_PAGE_SIZE` | Ganzzahl, z. B. `20` | Standardgroesse paginierter API-Antworten in der Entwicklung. |
 | `MAX_PAGE_SIZE` | Ganzzahl, z. B. `100` | Harte Obergrenze fuer API-Listen pro Request. |
 

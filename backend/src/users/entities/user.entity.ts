@@ -3,6 +3,11 @@ import type { Organization } from '../../orgs/entities/organization.entity';
 
 export type UserRole = 'superadmin' | 'org_admin' | 'user';
 
+const userTimestampColumnType =
+  (process.env.DB_TYPE || 'postgres').toLowerCase() === 'postgres'
+    ? 'timestamptz'
+    : 'datetime';
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -39,10 +44,10 @@ export class User {
   @Column({ type: 'int', default: 0 })
   failedLoginAttempts!: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: userTimestampColumnType, nullable: true })
   lastFailedLoginAt!: Date | null;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: userTimestampColumnType, nullable: true })
   lockoutUntil!: Date | null;
 
   @Column({ type: 'int', default: 0 })

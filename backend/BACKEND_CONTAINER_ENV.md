@@ -171,6 +171,8 @@ Diese Werte liefert das Backend ueber `GET /auth/public-config` an das Frontend.
 | `RATE_LIMIT_MAX` | `100` | Globale maximale Requests je Client-IP und Zeitfenster. |
 | `AUTH_RATE_LIMIT_TTL` | `60` | Strengeres Auth-Zeitfenster in Sekunden. |
 | `AUTH_RATE_LIMIT_MAX` | `10` | Maximale Requests fuer Login, Invite und Passwort-Reset je Client-IP und Auth-Zeitfenster. |
+| `LOGIN_MAX_FAILED_ATTEMPTS` | `5` | Anzahl falscher Passworteingaben, bevor das Benutzerkonto gesperrt wird. |
+| `LOGIN_LOCKOUT_MINUTES` | `10` | Dauer der Benutzersperre nach zu vielen falschen Passworteingaben in Minuten. |
 
 Wenn alle Nutzer nur als Proxy-IP erscheinen, ist meist `TRUST_PROXY` falsch gesetzt oder der vorgelagerte Proxy uebergibt keine Forwarded-Header.
 

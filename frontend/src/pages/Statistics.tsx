@@ -14,7 +14,8 @@ import {
 } from 'recharts';
 import { useAuth } from '@/lib/auth';
 import { fetchAllActivities, useActivitiesPaged, type Activity } from '@/lib/activities';
-import { useTags } from '@/lib/taxonomy';
+import { fetchAllLogbookEntries, type LogbookEntry } from '@/lib/logbook';
+import { useCohorts, useTags, type Cohort } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -53,12 +54,15 @@ import {
 import {
   buildStatisticsActivitiesFileName,
   buildStatisticsChartFileName,
+  buildStatisticsControllingFileName,
   buildStatisticsExportRangeLabel,
 } from './statisticsExport';
 import { StatisticsBarChartCard } from './StatisticsBarChartCard';
 import { StatisticsExportActions } from './StatisticsExportActions';
 import { StatisticsPieChartCard } from './StatisticsPieChartCard';
 import CustomKpiCards from '@/components/CustomKpiCards';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { SurfaceCard } from '@/components/ui/SurfaceCard';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -149,6 +153,10 @@ type PdfSlice = {
 
 type ChartExportFormat = 'png' | 'pdf';
 type ActivitiesExportFormat = 'pdf' | 'xlsx';
+
+type ControllingExportRow = Activity & {
+  project?: { title?: string | null; type?: string | null } | null;
+};
 
 type ActivityExportRow = {
   date: string;
@@ -271,6 +279,10 @@ function toActivityExportRows(activities: Activity[]): ActivityExportRow[] {
     diverse: activity.countDiverse || 0,
     duration: getActivityDurationMinutes(activity) ?? '',
   }));
+}
+
+function getControllingDurationMinutes(activity: ControllingExportRow) {
+  return getActivityDurationMinutes(activity) ?? '';
 }
 
 function addPdfPageHeader(pdf: jsPDF, orgTitle: string, dateRange: string) {
@@ -452,6 +464,7 @@ export default function Statistics() {
   const statsUiFetchSeenRef = useRef<Record<string, boolean>>({});
   const [activeChartExport, setActiveChartExport] = useState<string | null>(null);
   const [activeActivitiesExport, setActiveActivitiesExport] = useState<ActivitiesExportFormat | null>(null);
+  const [isControllingExporting, setIsControllingExporting] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const { user } = useAuth();
@@ -515,6 +528,7 @@ export default function Statistics() {
   const reportActivities = pdfMode ? pdfActivities : pagedActivities;
   const totalActivities = activitiesPageQ.data?.total ?? summary?.totalActivities ?? 0;
   const { data: tagsAll = [] } = useTags({ active: true });
+  const { data: cohortsAll = [] } = useCohorts({ active: true });
   const { data: projectsAll = [] } = useProjects();
 
   const statsRunKey = useMemo(
@@ -1216,6 +1230,13 @@ export default function Statistics() {
     });
   };
 
+  const getControllingExportFileName = () => {
+    return buildStatisticsControllingFileName({
+      orgName: user?.orgName,
+      exportRangeLabel,
+    });
+  };
+
   const fetchAllFilteredActivities = async () => {
     return fetchAllActivities(activitiesParams, scope);
   };
@@ -1288,6 +1309,215 @@ export default function Statistics() {
     setExportProgress('Excel-Datei wird gespeichert …');
     await new Promise(requestAnimationFrame);
     writeFile(workbook, getActivitiesExportFileName('xlsx'));
+  };
+
+  const exportControllingDataAsExcel = async (activities: Activity[]) => {
+    setExportProgress('Controllingdaten werden vorbereitet …');
+    await new Promise(requestAnimationFrame);
+
+    const xlsx = await import('xlsx-js-style');
+    const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
+    type CellStyle = {
+      font?: { bold?: boolean; color?: { rgb: string } };
+      fill?: { patternType: 'solid'; fgColor: { rgb: string } };
+      alignment?: { horizontal?: 'left' | 'center'; vertical?: 'top' | 'center'; wrapText?: boolean };
+    };
+    const rows = activities as ControllingExportRow[];
+    const cohortOrder = (cohortsAll as Cohort[])
+      .slice()
+      .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
+    const cohortIds = cohortOrder.map((cohort) => cohort.id);
+    const cohortHeaders = cohortOrder.flatMap((cohort) => [
+      `${cohort.name} (m)`,
+      `${cohort.name} (w)`,
+      `${cohort.name} (d)`,
+    ]);
+    const activityRows: Array<Array<string | number>> = [
+      [
+        'Datum', 'Status', 'Typ', 'Titel', 'Projekt', 'Teilnehmende', 'm', 'w', 'd',
+        ...cohortHeaders, 'Dauer (min)', 'Kategorien', 'Tags', 'Notizen',
+      ],
+      ...rows.map((activity) => {
+        const perCohort: Record<string, { m: number; w: number; d: number }> = Object.fromEntries(
+          cohortIds.map((id) => [id, { m: 0, w: 0, d: 0 }] as const),
+        );
+        (activity.cohorts || []).forEach((cohort) => {
+          perCohort[cohort.cohortId] = {
+            m: (perCohort[cohort.cohortId]?.m || 0) + (cohort.m || 0),
+            w: (perCohort[cohort.cohortId]?.w || 0) + (cohort.w || 0),
+            d: (perCohort[cohort.cohortId]?.d || 0) + (cohort.d || 0),
+          };
+        });
+        return [
+          formatActivityDateGerman(activity.date),
+          activity.executionStatus === 'cancelled' ? 'Ausgefallen' : 'Durchgeführt',
+          getActivityTypeLabel(activity.type),
+          activity.title || '',
+          activity.project?.title || '',
+          getActivityParticipantTotal(activity),
+          activity.countMale || 0,
+          activity.countFemale || 0,
+          activity.countDiverse || 0,
+          ...cohortIds.flatMap((id) => {
+            const cohort = perCohort[id] || { m: 0, w: 0, d: 0 };
+            return [cohort.m, cohort.w, cohort.d];
+          }),
+          getControllingDurationMinutes(activity),
+          activity.project?.type === 'open_door' ? '' : (activity.categories || []).map((category) => category.name).join(', '),
+          (activity.tags || []).map((tag) => tag.name).join(', '),
+          activity.notes || '',
+        ];
+      }),
+    ];
+    const statusCol = 1;
+    const typeCol = 2;
+    const firstNumberCol = 5;
+    const durationCol = 9 + cohortHeaders.length;
+    const categoriesCol = durationCol + 1;
+    const tagsCol = durationCol + 2;
+    const notesCol = durationCol + 3;
+    const activitySheet = utils.aoa_to_sheet(activityRows);
+    (activitySheet as unknown as { ['!autofilter']?: { ref: string } })['!autofilter'] = {
+      ref: `A1:${utils.encode_col(activityRows[0].length - 1)}1`,
+    };
+    activitySheet['!cols'] = activityRows[0].map((header, index) => {
+      if (index === 0) return { wch: 14 };
+      if (index === statusCol) return { wch: 16 };
+      if (index === typeCol) return { wch: 22 };
+      if (index === 3 || index === 4) return { wch: 28 };
+      if (index === categoriesCol || index === tagsCol) return { wch: 30 };
+      if (index === notesCol) return { wch: 42 };
+      return { wch: Math.max(10, String(header).length + 2) };
+    });
+    const setStyle = (sheet: typeof activitySheet, rowIndex: number, colIndex: number, style: CellStyle) => {
+      const cell = sheet[utils.encode_cell({ r: rowIndex, c: colIndex })] as unknown as { s?: CellStyle } | undefined;
+      if (!cell) return;
+      cell.s = {
+        ...(cell.s || {}),
+        ...style,
+        font: { ...(cell.s?.font || {}), ...(style.font || {}) },
+        fill: style.fill || cell.s?.fill,
+        alignment: { ...(cell.s?.alignment || {}), ...(style.alignment || {}) },
+      };
+    };
+    const styleHeader = (sheet: typeof activitySheet, columnCount: number) => {
+      for (let column = 0; column < columnCount; column++) {
+        setStyle(sheet, 0, column, {
+          font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+          fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        });
+      }
+    };
+    styleHeader(activitySheet, activityRows[0].length);
+    for (let rowIndex = 1; rowIndex < activityRows.length; rowIndex++) {
+      setStyle(activitySheet, rowIndex, 0, { alignment: { horizontal: 'center', vertical: 'center' } });
+      const isCancelled = String(activityRows[rowIndex][statusCol] ?? '') === 'Ausgefallen';
+      setStyle(activitySheet, rowIndex, statusCol, {
+        font: { bold: true, color: { rgb: isCancelled ? 'FFB42318' : 'FF027A48' } },
+        fill: { patternType: 'solid', fgColor: { rgb: isCancelled ? 'FFFDECEC' : 'FFEAF7EE' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+      });
+      const typeRgb = `FF${colorForActivityType(rows[rowIndex - 1].type).replace('#', '').toUpperCase()}`;
+      setStyle(activitySheet, rowIndex, typeCol, {
+        font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+        fill: { patternType: 'solid', fgColor: { rgb: typeRgb } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      });
+      for (let column = firstNumberCol; column <= durationCol; column++) {
+        setStyle(activitySheet, rowIndex, column, { alignment: { horizontal: 'center', vertical: 'center' } });
+      }
+      for (const [column, color] of [[categoriesCol, 'FFF5F7FF'], [tagsCol, 'FFE8EBFF'], [notesCol, 'FFF8FAFC']] as const) {
+        if (activityRows[rowIndex][column]) {
+          setStyle(activitySheet, rowIndex, column, {
+            fill: { patternType: 'solid', fgColor: { rgb: color } },
+            alignment: { vertical: 'top', wrapText: true },
+          });
+        }
+      }
+    }
+
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, activitySheet, 'Aktivitäten');
+    const usedSheetNames = new Set<string>(['Aktivitäten']);
+    const uniqueSheetName = (value: string) => {
+      const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || 'Projekt').slice(0, 31);
+      let name = base;
+      let suffix = 2;
+      while (usedSheetNames.has(name)) {
+        name = `${base.slice(0, Math.max(1, 31 - String(suffix).length - 1))} ${suffix}`;
+        suffix += 1;
+      }
+      usedSheetNames.add(name);
+      return name;
+    };
+    const projectsById = new Map(projectsAll.map((project) => [project.id, project]));
+    const activitiesByProject = new Map<string, ControllingExportRow[]>();
+    rows.forEach((activity) => {
+      if (!activity.projectId) return;
+      const projectActivities = activitiesByProject.get(activity.projectId) || [];
+      projectActivities.push(activity);
+      activitiesByProject.set(activity.projectId, projectActivities);
+    });
+    for (const [id, projectActivities] of activitiesByProject) {
+      const totalParticipants = projectActivities.reduce((sum, activity) => sum + getActivityParticipantTotal(activity), 0);
+      const totalMale = projectActivities.reduce((sum, activity) => sum + (activity.countMale || 0), 0);
+      const totalFemale = projectActivities.reduce((sum, activity) => sum + (activity.countFemale || 0), 0);
+      const totalDiverse = projectActivities.reduce((sum, activity) => sum + (activity.countDiverse || 0), 0);
+      const durations = projectActivities.map(getControllingDurationMinutes).filter((value): value is number => typeof value === 'number');
+      const project = projectsById.get(id);
+      const ratio = totalParticipants > 0
+        ? `${Math.round((totalMale / totalParticipants) * 100)} % m · ${Math.round((totalFemale / totalParticipants) * 100)} % w · ${Math.round((totalDiverse / totalParticipants) * 100)} % d`
+        : 'Keine Teilnehmendendaten';
+      const projectRows: Array<Array<string | number>> = [
+        ['Projekt-KPI', 'Wert'],
+        ['Projekt', project?.title || projectActivities[0].project?.title || 'Unbenanntes Projekt'],
+        ['Zeitraum', exportRangeLabel],
+        ['Aktivitäten', projectActivities.length],
+        ['Teilnehmende gesamt', totalParticipants],
+        ['Ø Besucher*innen', projectActivities.length ? Math.round((totalParticipants / projectActivities.length) * 10) / 10 : 0],
+        ['Geschlechterverhältnis', ratio],
+        ['Ø Dauer (min)', durations.length ? Math.round((durations.reduce((sum, value) => sum + value, 0) / durations.length) * 10) / 10 : '–'],
+        [],
+        ['Datum', 'Typ', 'Titel', 'Teilnehmende', 'm', 'w', 'd', 'Dauer (min)'],
+        ...projectActivities.map((activity) => [
+          formatActivityDateGerman(activity.date), getActivityTypeLabel(activity.type), activity.title || '',
+          getActivityParticipantTotal(activity), activity.countMale || 0, activity.countFemale || 0,
+          activity.countDiverse || 0, getControllingDurationMinutes(activity),
+        ]),
+      ];
+      const projectSheet = utils.aoa_to_sheet(projectRows);
+      styleHeader(projectSheet, 2);
+      for (let column = 0; column < 8; column++) {
+        setStyle(projectSheet, 9, column, {
+          font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+          fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } },
+        });
+      }
+      projectSheet['!cols'] = [{ wch: 20 }, { wch: 26 }, { wch: 30 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 14 }];
+      utils.book_append_sheet(workbook, projectSheet, uniqueSheetName(project?.title || projectActivities[0].project?.title || 'Projekt'));
+    }
+
+    setExportProgress('Logbuch wird ergänzt …');
+    const logbookEntries = await fetchAllLogbookEntries({ from: from || undefined, to: to || undefined, projectId: projectId || undefined });
+    const logbookRows: Array<Array<string | number>> = [
+      ['Datum', 'Typ', 'Titel', 'Status', 'Projekt', 'Eintrag', 'Highlights', 'Herausforderungen', 'Nächste Schritte'],
+      ...logbookEntries.map((entry: LogbookEntry) => [
+        formatActivityDateGerman(entry.occurredAt), entry.type, entry.title, entry.status,
+        entry.project?.title || '', entry.body || '', entry.highlights || '', entry.challenges || '', entry.nextSteps || '',
+      ]),
+    ];
+    const logbookSheet = utils.aoa_to_sheet(logbookRows);
+    styleHeader(logbookSheet, logbookRows[0].length);
+    (logbookSheet as unknown as { ['!autofilter']?: { ref: string } })['!autofilter'] = {
+      ref: `A1:${utils.encode_col(logbookRows[0].length - 1)}1`,
+    };
+    logbookSheet['!cols'] = [{ wch: 14 }, { wch: 15 }, { wch: 30 }, { wch: 16 }, { wch: 26 }, { wch: 50 }, { wch: 32 }, { wch: 32 }, { wch: 32 }];
+    utils.book_append_sheet(workbook, logbookSheet, uniqueSheetName('Logbuch'));
+
+    setExportProgress('Excel-Datei wird gespeichert …');
+    await new Promise(requestAnimationFrame);
+    writeFile(workbook, getControllingExportFileName());
   };
 
   const exportActivitiesAsPdf = async (activities: Activity[]) => {
@@ -1430,6 +1660,21 @@ export default function Statistics() {
       console.error('Activities export failed', error);
     } finally {
       setActiveActivitiesExport(null);
+      setExportProgress(null);
+    }
+  }
+
+  async function exportControllingData() {
+    setIsControllingExporting(true);
+    setExportProgress('Alle gefilterten Aktivitäten werden geladen …');
+
+    try {
+      const activities = await fetchAllFilteredActivities();
+      await exportControllingDataAsExcel(activities);
+    } catch (error) {
+      console.error('Controlling export failed', error);
+    } finally {
+      setIsControllingExporting(false);
       setExportProgress(null);
     }
   }
@@ -1619,10 +1864,10 @@ export default function Statistics() {
 
   return (
     <div className="relative">
-      <h2 className="text-3xl font-bold text-viridian mb-6">Statistiken & Auswertungen</h2>
+      <PageHeader title="Statistiken & Auswertungen" />
 
       {/* Time Range Selector */}
-      <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
+      <SurfaceCard className="mb-6">
         {(() => {
           const openAdvancedFilters = () => {
             setTempFrom(isCustomRange ? from : '');
@@ -2386,7 +2631,7 @@ export default function Statistics() {
             </>
           );
         })()}
-      </div>
+      </SurfaceCard>
 
       <div ref={reportRef} className="">
         {/* KPI Summary with Toggle */}
@@ -3137,11 +3382,11 @@ export default function Statistics() {
         open={reportExportOpen}
         onClose={() => setReportExportOpen(false)}
         title="Auswertung exportieren"
-        maxWidth="md"
+        maxWidth="xl"
       >
         <div className="space-y-4 text-sm text-gray-700">
           <p>Der aktuell gesetzte Zeitraum und alle aktiven Filter werden übernommen.</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <button
               type="button"
               className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50"
@@ -3157,6 +3402,17 @@ export default function Statistics() {
             >
               <div className="font-semibold text-viridian">Stato-Excel</div>
               <div className="mt-1 text-xs text-gray-600">Aktivitäten als Arbeitsmappe für die weitere Auswertung.</div>
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-wait disabled:opacity-60"
+              disabled={isControllingExporting}
+              onClick={() => { setReportExportOpen(false); void exportControllingData(); }}
+              onMouseEnter={preloadActivitiesExportDependencies}
+              onFocus={preloadActivitiesExportDependencies}
+            >
+              <div className="font-semibold text-viridian">Controllingdaten</div>
+              <div className="mt-1 text-xs text-gray-600">Vollständige Arbeitsmappe mit Kohorten, Projekt-KPIs und Logbuch.</div>
             </button>
           </div>
         </div>

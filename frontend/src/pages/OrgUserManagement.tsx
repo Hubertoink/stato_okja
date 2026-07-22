@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
+import { createUserWithPassword, fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
 import { inviteUserApi, listOrgs, type OrgDto } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
@@ -12,7 +12,7 @@ import Modal from '@/components/Modal';
 import AssignOrgModal from '@/components/AssignOrgModal';
 import { useIsMobile } from '@/lib/useIsMobile';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
-import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
+import { getPasswordValidationMessage, isStrongPassword } from '@/lib/passwordPolicy';
 
 export default function OrgUserManagement() {
   const { user } = useAuth();
@@ -28,6 +28,8 @@ export default function OrgUserManagement() {
   const [role, setRole] = useState<'org_admin' | 'user'>('user');
   const [targetOrgId, setTargetOrgId] = useState<string | ''>('');
   const [creating, setCreating] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
 
   // User list state
   const [users, setUsers] = useState<UserDto[]>([]);
@@ -121,6 +123,8 @@ export default function OrgUserManagement() {
     setEmail('');
     setName('');
     setRole('user');
+    setPassword('');
+    setPasswordConfirmation('');
     setTargetOrgId(user?.role !== 'superadmin' ? (user?.orgId ?? '') : '');
   };
 
@@ -131,16 +135,35 @@ export default function OrgUserManagement() {
     setCreating(true);
     try {
       const selectedOrgId = (user?.role === 'superadmin') ? (targetOrgId || null) : ((targetOrgId as string) || (user?.orgId ?? null));
-      const invitation = await inviteUserApi({ email: email.trim(), name: name.trim() || email.split('@')[0], role, orgId: selectedOrgId });
+      const directProvisioning = publicConfig.accountProvisioningPolicy === 'admin_password';
+      if (directProvisioning && (!isStrongPassword(password) || password !== passwordConfirmation)) {
+        showToast(password !== passwordConfirmation ? 'Die Passwörter stimmen nicht überein.' : 'Das Passwort erfüllt die Anforderungen nicht.', { type: 'error' });
+        return;
+      }
+      const invitation = directProvisioning
+        ? null
+        : await inviteUserApi({ email: email.trim(), name: name.trim() || email.split('@')[0], role, orgId: selectedOrgId });
+      if (directProvisioning) {
+        await createUserWithPassword({
+          email: email.trim(),
+          name: name.trim() || email.split('@')[0],
+          role,
+          orgId: selectedOrgId as string,
+          password,
+          mustChangePassword: true,
+        });
+      }
       
       resetCreateForm();
       setCreateModalOpen(false);
       await reload();
       showToast(
-        invitation.emailQueued
+        directProvisioning
+          ? 'Benutzer angelegt. Beim ersten Login muss das Passwort geändert werden.'
+          : invitation!.emailQueued
           ? 'Einladung per E-Mail versendet.'
           : 'SMTP ist nicht konfiguriert; Einladung wurde nicht zugestellt.',
-        { type: invitation.emailQueued ? 'success' : 'error', durationMs: invitation.emailQueued ? undefined : 3500 },
+        { type: directProvisioning || invitation!.emailQueued ? 'success' : 'error', durationMs: directProvisioning || invitation!.emailQueued ? undefined : 3500 },
       );
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Einladung fehlgeschlagen';
@@ -151,6 +174,7 @@ export default function OrgUserManagement() {
   };
 
   if (!user) return null;
+  const directProvisioning = publicConfig.accountProvisioningPolicy === 'admin_password';
 
   // Get available orgs for selection (filtered for non-superadmins)
   const availableOrgs = orgs.filter(o => {
@@ -178,10 +202,10 @@ export default function OrgUserManagement() {
         <button
           className="inline-flex shrink-0 items-center justify-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
           onClick={() => { resetCreateForm(); setCreateModalOpen(true); }}
-          aria-label="Benutzer einladen"
+          aria-label={directProvisioning ? 'Benutzer anlegen' : 'Benutzer einladen'}
         >
           <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">Benutzer einladen</span>
+          <span className="hidden sm:inline">{directProvisioning ? 'Benutzer anlegen' : 'Benutzer einladen'}</span>
         </button>
       </div>
 
@@ -233,7 +257,7 @@ export default function OrgUserManagement() {
                   onClick={() => { resetCreateForm(); setCreateModalOpen(true); }}
                 >
                   <Plus className="w-4 h-4" />
-                  Ersten Benutzer einladen
+                  {directProvisioning ? 'Ersten Benutzer anlegen' : 'Ersten Benutzer einladen'}
                 </button>
               )}
             </div>
@@ -260,7 +284,7 @@ export default function OrgUserManagement() {
       </div>
 
       {/* Create User Modal */}
-      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Neuen Benutzer einladen" maxWidth="md">
+      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title={directProvisioning ? 'Neuen Benutzer anlegen' : 'Neuen Benutzer einladen'} maxWidth="md">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -285,6 +309,22 @@ export default function OrgUserManagement() {
               />
             </div>
           </div>
+
+          {directProvisioning && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Startpasswort *</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg border px-3 py-2 focus:border-viridian focus:ring-2 focus:ring-viridian" autoComplete="new-password" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Passwort bestätigen *</label>
+                <input type="password" value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} className="w-full rounded-lg border px-3 py-2 focus:border-viridian focus:ring-2 focus:ring-viridian" autoComplete="new-password" />
+                {passwordConfirmation && password !== passwordConfirmation ? <p className="mt-1 text-xs text-red-600">Passwörter stimmen nicht überein.</p> : null}
+              </div>
+              <PasswordRequirementsHint password={password} className="sm:col-span-2" />
+              <p className="-mt-2 text-xs text-gray-500 sm:col-span-2">Der Benutzer muss dieses Passwort beim ersten Anmelden ändern.</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -333,12 +373,12 @@ export default function OrgUserManagement() {
             </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              disabled={!email.trim() || !targetOrgId || creating}
+              disabled={!email.trim() || !targetOrgId || creating || (directProvisioning && (!isStrongPassword(password) || password !== passwordConfirmation))}
               onClick={handleCreate}
             >
               {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
-              <Mail className="w-4 h-4" />
-              Einladung erstellen
+              {directProvisioning ? <KeyRound className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+              {directProvisioning ? 'Benutzer anlegen' : 'Einladung erstellen'}
             </button>
           </div>
         </div>

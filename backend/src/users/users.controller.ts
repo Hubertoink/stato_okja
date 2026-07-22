@@ -7,6 +7,7 @@ import { OrgsService } from '../orgs/orgs.service';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { SystemSettingsService } from '../system-settings/system-settings.service';
 import { toPublicUser } from '../common/public-response';
 
 type ManageableUserRole = 'superadmin' | 'org_admin' | 'user';
@@ -16,7 +17,11 @@ type ManageableUserRole = 'superadmin' | 'org_admin' | 'user';
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
-  constructor(private readonly service: UsersService, private readonly orgs: OrgsService) {}
+  constructor(
+    private readonly service: UsersService,
+    private readonly orgs: OrgsService,
+    private readonly systemSettings: SystemSettingsService,
+  ) {}
 
   private parseRole(role: unknown, fallback: ManageableUserRole = 'user'): ManageableUserRole {
     if (role === 'superadmin' || role === 'org_admin' || role === 'user') return role;
@@ -132,6 +137,12 @@ export class UsersController {
   @Roles('org_admin','superadmin')
   @Post()
   async create(@Body() body: CreateUserDto, @Req() req: { user: { role: string; orgId?: string|null } }) {
+    if (!body.password) {
+      throw new BadRequestException('Für die direkte Benutzeranlage ist ein Passwort erforderlich. Nutze für Einladungen den Einladungs-Endpunkt.');
+    }
+    if (!(await this.systemSettings.allowsAdminPasswordProvisioning())) {
+      throw new ForbiddenException('Direkte Benutzeranlage mit Passwort ist für diese Installation deaktiviert.');
+    }
     const requestedRole = this.parseRole(body?.role);
     // Require an organization for all users
     const requestedOrgId = typeof body.orgId === 'undefined' ? (req.user.orgId || null) : (body.orgId ?? null);
@@ -145,9 +156,9 @@ export class UsersController {
       if (requestedRole === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
       const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
       if (!(requestedOrgId && subtree.includes(requestedOrgId))) throw new ForbiddenException('Nicht erlaubt');
-      return toPublicUser(await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }));
+      return toPublicUser(await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId, mustChangePassword: body.mustChangePassword !== false }));
     }
-    return toPublicUser(await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }));
+    return toPublicUser(await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId, mustChangePassword: body.mustChangePassword !== false }));
   }
 
   @Roles('org_admin','superadmin')

@@ -2,6 +2,7 @@ import { api } from './api';
 import { useQuery } from '@tanstack/react-query';
 
 type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
+export type AccountProvisioningPolicy = 'invite' | 'admin_password' | 'both';
 export type AdminResetActionMode = 'email' | 'temporary_password';
 
 export interface PublicConfig {
@@ -14,6 +15,7 @@ export interface PublicConfig {
   passwordResetMode: PasswordResetMode;
   forgotPasswordEnabled: boolean;
   adminTemporaryPasswordEnabled: boolean;
+  accountProvisioningPolicy: AccountProvisioningPolicy;
 }
 
 export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
@@ -26,6 +28,7 @@ export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   passwordResetMode: 'email',
   forgotPasswordEnabled: true,
   adminTemporaryPasswordEnabled: false,
+  accountProvisioningPolicy: 'both',
 };
 
 function parseLiveRefreshIntervalMs(value: unknown): number {
@@ -48,6 +51,12 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
     data.passwordResetMode === 'email'
       ? data.passwordResetMode
       : DEFAULT_PUBLIC_CONFIG.passwordResetMode;
+  const accountProvisioningPolicy =
+    data.accountProvisioningPolicy === 'invite' ||
+    data.accountProvisioningPolicy === 'admin_password' ||
+    data.accountProvisioningPolicy === 'both'
+      ? data.accountProvisioningPolicy
+      : DEFAULT_PUBLIC_CONFIG.accountProvisioningPolicy;
 
   return {
     appName: String(data.appName || DEFAULT_PUBLIC_CONFIG.appName),
@@ -65,6 +74,7 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
       typeof data.adminTemporaryPasswordEnabled === 'boolean'
         ? data.adminTemporaryPasswordEnabled
         : mode !== 'email',
+    accountProvisioningPolicy,
   };
 }
 

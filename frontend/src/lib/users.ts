@@ -15,6 +15,18 @@ export async function fetchUsers(): Promise<UserDto[]> {
   return res.data;
 }
 
+export async function createUserWithPassword(payload: {
+  email: string;
+  name: string;
+  role: 'org_admin' | 'user';
+  orgId: string;
+  password: string;
+  mustChangePassword?: boolean;
+}): Promise<UserDto> {
+  const res = await api.post<UserDto>('/users', payload);
+  return res.data;
+}
+
 export async function updateUserApi(id: string, patch: { role?: Exclude<Role, 'superadmin'>; orgId?: string | null }) {
   await api.patch(`/users/${id}`, patch);
 }

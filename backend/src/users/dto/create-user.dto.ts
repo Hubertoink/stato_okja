@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength, MinLength } from 'class-validator';
 import type { UserRole } from '../entities/user.entity';
 
 export class CreateUserDto {
@@ -17,4 +17,14 @@ export class CreateUserDto {
   @IsOptional()
   @IsUUID()
   orgId?: string | null;
+
+  /** A password turns this into a directly provisioned account (no e-mail required). */
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  password?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  mustChangePassword?: boolean;
 }

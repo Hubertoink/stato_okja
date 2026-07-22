@@ -2,9 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, In, IsNull, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import * as bcrypt from 'bcryptjs';
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../auth/password-policy';
 
 export type CreateManagedUserInput = Pick<User, 'email' | 'name'> &
-  Partial<Pick<User, 'role' | 'orgId'>>;
+  Partial<Pick<User, 'role' | 'orgId' | 'mustChangePassword'>> & { password?: string };
 export type UpdateManagedUserInput = Partial<Pick<User, 'role' | 'orgId'>>;
 
 @Injectable()
@@ -26,13 +28,15 @@ export class UsersService {
     if (!email) throw new BadRequestException('E-Mail ist erforderlich');
   const existing = await this.repo.createQueryBuilder('u').where('LOWER(u.email) = LOWER(:email)', { email }).getOne();
     if (existing) throw new BadRequestException('Diese E-Mail wird bereits verwendet');
-    // Never accept passwordHash from the outside; account/password is managed via AuthService flows
+    const password = typeof data.password === 'string' ? data.password : null;
+    if (password && !isStrongPassword(password)) throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
     const u = this.repo.create({
       email,
       name: data.name,
       role: data.role ?? 'user',
       orgId: typeof data.orgId === 'undefined' ? null : data.orgId,
-      passwordHash: null,
+      passwordHash: password ? await bcrypt.hash(password, 10) : null,
+      mustChangePassword: password ? data.mustChangePassword !== false : false,
     });
     return this.repo.save(u);
   }

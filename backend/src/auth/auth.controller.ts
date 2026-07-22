@@ -9,6 +9,7 @@ import { OrgsService } from '../orgs/orgs.service';
 import type { AdminResetActionMode } from './auth.service';
 import { getAuthRateLimitOverride } from '../config/rate-limit.config';
 import { isStrictSecurityMode } from '../config/security.config';
+import { SystemSettingsService } from '../system-settings/system-settings.service';
 import type { RefreshSessionMetadata } from './auth.service';
 import {
   AcceptInviteDto,
@@ -99,6 +100,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly orgs: OrgsService,
+    private readonly systemSettings: SystemSettingsService,
   ) {}
 
   private parseInviteRole(role: unknown): InviteRole {
@@ -146,11 +148,11 @@ export class AuthController {
   }
 
   @Get('public-config')
-  publicConfig() {
+  async publicConfig() {
     const appName = String(process.env.PUBLIC_APP_NAME || 'StatO');
-    const orgNameRaw = process.env.PUBLIC_ORG_NAME;
-    const orgName = typeof orgNameRaw === 'string' && orgNameRaw.trim() ? orgNameRaw.trim() : null;
-    const loginSubtitle = String(process.env.PUBLIC_LOGIN_SUBTITLE || 'OKJA Statistik & Dokumentation');
+    const systemSettings = await this.systemSettings.get();
+    const orgName = systemSettings.orgName;
+    const loginSubtitle = systemSettings.loginSubtitle;
     const loginTitle = orgName ? `${appName} - ${orgName}` : appName;
     const liveRefreshIntervalMs = parseNonNegativeIntEnv(
       process.env.PUBLIC_LIVE_REFRESH_INTERVAL_MS,
@@ -162,6 +164,7 @@ export class AuthController {
       loginTitle,
       loginSubtitle,
       liveRefreshIntervalMs,
+      accountProvisioningPolicy: systemSettings.accountProvisioningPolicy,
       twoFactorEnabled: this.auth.isTwoFactorAuthenticationEnabled(),
       ...this.auth.getPublicPasswordResetConfig(),
     };
@@ -251,6 +254,9 @@ export class AuthController {
     @Body() body: InviteUserDto,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
+    if (!(await this.systemSettings.allowsInviteProvisioning())) {
+      throw new ForbiddenException('Einladungen sind für diese Installation deaktiviert. Benutzer werden mit einem Passwort durch einen Admin angelegt.');
+    }
     if (!body?.orgId && !body?.orgName) {
       throw new BadRequestException('Organisation ist erforderlich');
     }

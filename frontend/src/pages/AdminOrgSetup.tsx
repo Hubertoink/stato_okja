@@ -17,6 +17,10 @@ import {
   updateOrgTaxonomySettings,
 } from '@/lib/orgs';
 import { api } from '@/lib/api';
+import { createUserWithPassword } from '@/lib/users';
+import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig, type PublicConfig } from '@/lib/publicConfig';
+import { isStrongPassword } from '@/lib/passwordPolicy';
+import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import { canAccessOrgMove } from '@/lib/orgMoveConfig';
@@ -771,6 +775,9 @@ export default function AdminOrgSetup() {
   const [withAdmin, setWithAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminName, setAdminName] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminPasswordConfirmation, setAdminPasswordConfirmation] = useState('');
+  const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_PUBLIC_CONFIG);
   const [creating, setCreating] = useState(false);
 
   async function reloadOrgs() {
@@ -787,6 +794,7 @@ export default function AdminOrgSetup() {
     } finally { setLoading(false); }
   }
   useEffect(() => { reloadOrgs(); }, [user?.id, user?.role, user?.orgId]);
+  useEffect(() => { void fetchPublicConfig().then(setPublicConfig).catch(() => undefined); }, []);
 
   useEffect(() => {
     setSelectedOrgId((current) => {
@@ -872,11 +880,14 @@ export default function AdminOrgSetup() {
     setWithAdmin(false);
     setAdminEmail('');
     setAdminName('');
+    setAdminPassword('');
+    setAdminPasswordConfirmation('');
   };
 
   const handleCreate = async () => {
     if (!orgName.trim()) return;
-    if (withAdmin && !adminEmail.trim()) return;
+    const directProvisioning = publicConfig.accountProvisioningPolicy === 'admin_password';
+    if (withAdmin && (!adminEmail.trim() || (directProvisioning && (!isStrongPassword(adminPassword) || adminPassword !== adminPasswordConfirmation)))) return;
     
     setCreating(true);
     try {
@@ -885,13 +896,24 @@ export default function AdminOrgSetup() {
       let invitationEmailQueued = true;
       
       if (withAdmin && adminEmail.trim()) {
-        const invitation = await inviteUserApi({
-          email: adminEmail.trim(), 
-          name: adminName.trim() || adminEmail.split('@')[0], 
-          role: 'org_admin', 
-          orgId: org.id 
-        });
-        invitationEmailQueued = invitation.emailQueued;
+        if (directProvisioning) {
+          await createUserWithPassword({
+            email: adminEmail.trim(),
+            name: adminName.trim() || adminEmail.split('@')[0],
+            role: 'org_admin',
+            orgId: org.id,
+            password: adminPassword,
+            mustChangePassword: true,
+          });
+        } else {
+          const invitation = await inviteUserApi({
+            email: adminEmail.trim(),
+            name: adminName.trim() || adminEmail.split('@')[0],
+            role: 'org_admin',
+            orgId: org.id,
+          });
+          invitationEmailQueued = invitation.emailQueued;
+        }
       }
       
       resetCreateForm();
@@ -899,7 +921,9 @@ export default function AdminOrgSetup() {
       await reloadOrgs();
       showToast(
         withAdmin
-          ? invitationEmailQueued
+          ? directProvisioning
+            ? `Organisation „${org.name}" und Administrator angelegt. Das Startpasswort muss beim ersten Login geändert werden.`
+            : invitationEmailQueued
             ? `Organisation „${org.name}" angelegt und Einladung per E-Mail versendet.`
             : `Organisation „${org.name}" angelegt, aber SMTP ist nicht konfiguriert; die Einladung wurde nicht zugestellt.`
           : `Organisation „${org.name}" erfolgreich angelegt.`,
@@ -918,7 +942,7 @@ export default function AdminOrgSetup() {
       {/* Header */}
       <DemoHoverHint
         title="Organisationen"
-        description="Verwaltet die Organisationsstruktur der Demo. Neue Organisationen koennen mit oder ohne Admin-Einladung angelegt werden."
+        description="Verwaltet die Organisationsstruktur. Neue Organisationen können mit oder ohne Administrator angelegt werden."
         placement="bottom"
       >
         <div className="flex items-center justify-between gap-3 mb-6">
@@ -1054,8 +1078,8 @@ export default function AdminOrgSetup() {
                 className="h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
               />
               <div>
-                <span className="font-medium text-gray-700">Administrator einladen</span>
-                <p className="text-xs text-gray-500">Erstellt einen Einladungslink für den Organisations-Admin</p>
+                <span className="font-medium text-gray-700">Administrator {publicConfig.accountProvisioningPolicy === 'admin_password' ? 'anlegen' : 'einladen'}</span>
+                <p className="text-xs text-gray-500">{publicConfig.accountProvisioningPolicy === 'admin_password' ? 'Startpasswort wird durch den anlegenden Admin vergeben' : 'Erstellt einen Einladungslink für den Organisations-Admin'}</p>
               </div>
             </label>
           </div>
@@ -1073,6 +1097,20 @@ export default function AdminOrgSetup() {
                   placeholder="admin@organisation.de"
                 />
               </div>
+              {publicConfig.accountProvisioningPolicy === 'admin_password' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Startpasswort *</label>
+                    <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian" autoComplete="new-password" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Passwort bestätigen *</label>
+                    <input type="password" value={adminPasswordConfirmation} onChange={(e) => setAdminPasswordConfirmation(e.target.value)} className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian" autoComplete="new-password" />
+                    {adminPasswordConfirmation && adminPassword !== adminPasswordConfirmation ? <p className="mt-1 text-xs text-red-600">Passwörter stimmen nicht überein.</p> : null}
+                  </div>
+                  <PasswordRequirementsHint password={adminPassword} />
+                </>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Admin Name</label>
                 <input 
@@ -1096,7 +1134,7 @@ export default function AdminOrgSetup() {
             </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              disabled={!orgName.trim() || (withAdmin && !adminEmail.trim()) || creating || (!isSuperadmin && !user?.orgId)}
+              disabled={!orgName.trim() || (withAdmin && (!adminEmail.trim() || (publicConfig.accountProvisioningPolicy === 'admin_password' && (!isStrongPassword(adminPassword) || adminPassword !== adminPasswordConfirmation)))) || creating || (!isSuperadmin && !user?.orgId)}
               onClick={handleCreate}
             >
               {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}

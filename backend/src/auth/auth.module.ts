@@ -13,6 +13,7 @@ import { EmailService } from '../email/email.service';
 import { AuditModule } from '../common/audit.module';
 import { getJwtSecret } from '../config/security.config';
 import { OrgsModule } from '../orgs/orgs.module';
+import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
 function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: number) {
 	const value = String(raw || '').trim().toLowerCase();
@@ -34,6 +35,7 @@ function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: num
 		PassportModule,
 		AuditModule,
 		OrgsModule,
+		SystemSettingsModule,
 		JwtModule.register({
 			secret: getJwtSecret(),
 			signOptions: { expiresIn: parseJwtExpirationSeconds(process.env.JWT_ACCESS_EXPIRATION, 15 * 60) },

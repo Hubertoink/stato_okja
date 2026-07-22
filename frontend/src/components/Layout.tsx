@@ -492,6 +492,19 @@ export default function Layout() {
                       <button
                         className="w-full px-4 py-2 text-left theme-menu-item"
                         onClick={() => {
+                          navigate('/admin/system-settings');
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Systemeinstellungen
+                      </button>
+                    </li>
+                  )}
+                  {!restrictToPasswordChange && user?.role === 'superadmin' && (
+                    <li>
+                      <button
+                        className="w-full px-4 py-2 text-left theme-menu-item"
+                        onClick={() => {
                           navigate('/admin/audit');
                           setMenuOpen(false);
                         }}

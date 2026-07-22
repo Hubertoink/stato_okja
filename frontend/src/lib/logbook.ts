@@ -76,6 +76,25 @@ export type LogbookEntryInput = Partial<Pick<
 
 type LogbookListResult = { data: LogbookEntry[]; total: number; page: number; pageSize: number };
 
+/** Load the complete visible logbook through the same bounded API pagination as the UI. */
+export async function fetchAllLogbookEntries(filters: LogbookFilters = {}): Promise<LogbookEntry[]> {
+  const data: LogbookEntry[] = [];
+  const limit = 100;
+  let page = 1;
+  let total = 0;
+
+  do {
+    const response = await api.get<LogbookListResult>('/logbook', { params: { ...filters, page, limit } });
+    const rows = Array.isArray(response.data.data) ? response.data.data : [];
+    data.push(...rows);
+    total = Number.isFinite(response.data.total) ? response.data.total : data.length;
+    if (rows.length === 0) break;
+    page += 1;
+  } while (data.length < total);
+
+  return data;
+}
+
 export function useLogbookEntries(filters: LogbookFilters = {}, page = 1, limit = 30) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({

@@ -27,6 +27,7 @@ import {
 } from '@/lib/logbook';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
+import { ModalBackdrop } from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
@@ -147,12 +148,7 @@ export default function LogbookEntryFlyout({
       className="fixed inset-0 z-[60] flex items-stretch justify-center md:items-center md:p-6"
       role="presentation"
     >
-      <button
-        type="button"
-        aria-label="Detailansicht schließen"
-        onClick={onClose}
-        className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-[1px]"
-      />
+      <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
       <aside
         role="dialog"
         aria-modal="true"

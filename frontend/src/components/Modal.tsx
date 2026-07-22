@@ -3,6 +3,15 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
+/**
+ * A visual modal backdrop that deliberately does not handle clicks.
+ * Dialogs are closed through their explicit controls so unsaved work cannot
+ * disappear from an incidental click outside the panel.
+ */
+export function ModalBackdrop({ className = '' }: { className?: string }) {
+  return <div aria-hidden="true" className={`absolute inset-0 ${className}`} />;
+}
+
 export default function Modal({
   open,
   title,

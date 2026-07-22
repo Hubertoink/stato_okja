@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
+import { fetchAllLogbookEntries, type LogbookEntry } from '@/lib/logbook';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
@@ -366,6 +367,7 @@ export default function Activities() {
   const goToLastPage = () => setPage(pageCount);
   type ExportRow = {
     id: string;
+    projectId?: string | null;
     date: string;
     type: string;
     title?: string | null;
@@ -611,6 +613,107 @@ export default function Activities() {
 
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, 'Aktivitäten');
+
+      if (variant === 'styled') {
+        const durationFrom = (activity: ExportRow) => {
+          if (typeof activity.durationMinutes === 'number' && activity.durationMinutes >= 0) return activity.durationMinutes;
+          const parseTime = (time?: string | null) => {
+            if (!time) return undefined;
+            const [hours, minutes] = time.split(':').map(Number);
+            return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : undefined;
+          };
+          const start = parseTime(activity.startTime);
+          const end = parseTime(activity.endTime);
+          return start !== undefined && end !== undefined && end >= start ? end - start : undefined;
+        };
+        const styleHeader = (sheet: typeof ws, widthCount: number) => {
+          for (let column = 0; column < widthCount; column++) {
+            const cell = sheet[utils.encode_cell({ r: 0, c: column })] as unknown as { s?: CellStyle } | undefined;
+            if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } }, alignment: { vertical: 'center', wrapText: true } };
+          }
+        };
+        const usedSheetNames = new Set<string>(['Aktivitäten']);
+        const uniqueSheetName = (value: string) => {
+          const base = (value.replace(/[\\/?*\[\]:]/g, ' ').trim() || 'Projekt').slice(0, 31);
+          let name = base;
+          let suffix = 2;
+          while (usedSheetNames.has(name)) {
+            name = `${base.slice(0, Math.max(1, 31 - String(suffix).length - 1))} ${suffix}`;
+            suffix += 1;
+          }
+          usedSheetNames.add(name);
+          return name;
+        };
+        const projectsById = new Map(projects.map((project) => [project.id, project]));
+        const activitiesByProject = new Map<string, ExportRow[]>();
+        for (const activity of list) {
+          if (!activity.projectId) continue;
+          const grouped = activitiesByProject.get(activity.projectId) || [];
+          grouped.push(activity);
+          activitiesByProject.set(activity.projectId, grouped);
+        }
+        for (const [projectId, projectActivities] of activitiesByProject) {
+          const participantTotals = projectActivities.map((activity) => (activity.countTotal ?? ((activity.countMale || 0) + (activity.countFemale || 0) + (activity.countDiverse || 0))) || 0);
+          const totalParticipants = participantTotals.reduce((sum, value) => sum + value, 0);
+          const totalMale = projectActivities.reduce((sum, activity) => sum + (activity.countMale || 0), 0);
+          const totalFemale = projectActivities.reduce((sum, activity) => sum + (activity.countFemale || 0), 0);
+          const totalDiverse = projectActivities.reduce((sum, activity) => sum + (activity.countDiverse || 0), 0);
+          const durations = projectActivities.map(durationFrom).filter((value): value is number => typeof value === 'number');
+          const project = projectsById.get(projectId);
+          const ratio = totalParticipants > 0
+            ? `${Math.round((totalMale / totalParticipants) * 100)} % m · ${Math.round((totalFemale / totalParticipants) * 100)} % w · ${Math.round((totalDiverse / totalParticipants) * 100)} % d`
+            : 'Keine Teilnehmendendaten';
+          const projectRows: Array<Array<string | number>> = [
+            ['Projekt-KPI', 'Wert'],
+            ['Projekt', project?.title || projectActivities[0]?.project?.title || 'Unbenanntes Projekt'],
+            ['Zeitraum', rangeBadgeLabel],
+            ['Aktivitäten', projectActivities.length],
+            ['Teilnehmende gesamt', totalParticipants],
+            ['Ø Besucher*innen', projectActivities.length ? Math.round((totalParticipants / projectActivities.length) * 10) / 10 : 0],
+            ['Geschlechterverhältnis', ratio],
+            ['Ø Dauer (min)', durations.length ? Math.round((durations.reduce((sum, value) => sum + value, 0) / durations.length) * 10) / 10 : '–'],
+            [],
+            ['Datum', 'Typ', 'Titel', 'Teilnehmende', 'm', 'w', 'd', 'Dauer (min)'],
+            ...projectActivities.map((activity) => [
+              (activity.date || '').slice(0, 10),
+              ACTIVITY_TYPE_LABELS[activity.type] || activity.type,
+              activity.title || '',
+              (activity.countTotal ?? ((activity.countMale || 0) + (activity.countFemale || 0) + (activity.countDiverse || 0))) || 0,
+              activity.countMale || 0,
+              activity.countFemale || 0,
+              activity.countDiverse || 0,
+              durationFrom(activity) ?? '',
+            ]),
+          ];
+          const projectSheet = utils.aoa_to_sheet(projectRows);
+          styleHeader(projectSheet, 2);
+          for (let column = 0; column < 8; column++) {
+            const cell = projectSheet[utils.encode_cell({ r: 9, c: column })] as unknown as { s?: CellStyle } | undefined;
+            if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } } };
+          }
+          projectSheet['!cols'] = [{ wch: 20 }, { wch: 26 }, { wch: 30 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 14 }];
+          utils.book_append_sheet(wb, projectSheet, uniqueSheetName(project?.title || projectActivities[0]?.project?.title || 'Projekt'));
+        }
+
+        const projectFilter = advanced.projectIds?.length === 1 ? advanced.projectIds[0] : undefined;
+        const allLogbookEntries = await fetchAllLogbookEntries({ from: advanced.from, to: advanced.to, projectId: projectFilter });
+        const selectedProjectIds = advanced.projectIds || [];
+        const logbookEntries = selectedProjectIds.length > 1
+          ? allLogbookEntries.filter((entry) => entry.projectId && selectedProjectIds.includes(entry.projectId))
+          : allLogbookEntries;
+        const logbookRows: Array<Array<string | number>> = [
+          ['Datum', 'Typ', 'Titel', 'Status', 'Projekt', 'Eintrag', 'Highlights', 'Herausforderungen', 'Nächste Schritte'],
+          ...logbookEntries.map((entry: LogbookEntry) => [
+            (entry.occurredAt || '').slice(0, 10), entry.type, entry.title, entry.status,
+            entry.project?.title || '', entry.body || '', entry.highlights || '', entry.challenges || '', entry.nextSteps || '',
+          ]),
+        ];
+        const logbookSheet = utils.aoa_to_sheet(logbookRows);
+        styleHeader(logbookSheet, logbookRows[0].length);
+        (logbookSheet as unknown as { ['!autofilter']?: { ref: string } })['!autofilter'] = { ref: `A1:${utils.encode_col(logbookRows[0].length - 1)}1` };
+        logbookSheet['!cols'] = [{ wch: 14 }, { wch: 15 }, { wch: 30 }, { wch: 16 }, { wch: 26 }, { wch: 50 }, { wch: 32 }, { wch: 32 }, { wch: 32 }];
+        utils.book_append_sheet(wb, logbookSheet, uniqueSheetName('Logbuch'));
+      }
       writeFile(
         wb,
         variant === 'styled'
@@ -1299,7 +1402,8 @@ export default function Activities() {
           </p>
           <p className="text-gray-600">
             Du kannst zwischen einer reinen Datendatei und einer Stato-formatierten Excel-Datei
-            wählen. Beide Varianten enthalten Status, Teilnehmende, Kategorien, Tags und Notizen.
+            wählen. Beide Varianten enthalten Status, Teilnehmende, Kategorien, Tags und Notizen;
+            das Stato-Format ergänzt Projekt-KPIs und das Logbuch.
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             <button
@@ -1321,7 +1425,7 @@ export default function Activities() {
             >
               <div className="font-semibold text-viridian">Stato-Format (.xlsx)</div>
               <div className="mt-1 text-xs text-gray-600">
-                Mit Header-Farben, Statusmarkierung, farbigem Typ-Feld und lesefreundlichen Hervorhebungen für Kategorien, Tags und Notizen.
+                Mit Header-Farben, Statusmarkierung und zusätzlichen Reitern je Projekt mit KPIs sowie einem Logbuch-Reiter.
               </div>
             </button>
           </div>

@@ -441,6 +441,7 @@ export default function Statistics() {
   const ACTIVITIES_PER_PAGE = 50;
 
   const [pdfMode, setPdfMode] = useState(false);
+  const [pdfActivities, setPdfActivities] = useState<Activity[]>([]);
   const reportRef = useRef<HTMLDivElement | null>(null);
   const chartCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const statsUiFlowIdRef = useRef<string | null>(null);
@@ -450,6 +451,7 @@ export default function Statistics() {
   const statsUiFetchSeenRef = useRef<Record<string, boolean>>({});
   const [activeChartExport, setActiveChartExport] = useState<string | null>(null);
   const [activeActivitiesExport, setActiveActivitiesExport] = useState<ActivitiesExportFormat | null>(null);
+  const [reportExportOpen, setReportExportOpen] = useState(false);
   const { user } = useAuth();
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
@@ -508,6 +510,7 @@ export default function Statistics() {
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
   const pagedActivities = activitiesPageQ.data?.data ?? [];
+  const reportActivities = pdfMode ? pdfActivities : pagedActivities;
   const totalActivities = activitiesPageQ.data?.total ?? summary?.totalActivities ?? 0;
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: projectsAll = [] } = useProjects();
@@ -1530,9 +1533,12 @@ export default function Statistics() {
   async function exportPdf() {
     // Render the report container to images and assemble into a PDF (A4 portrait)
     if (!reportRef.current) return;
-    setPdfMode(true);
 
     try {
+      // The on-screen table is intentionally paginated. The PDF must instead
+      // render the complete matching dataset before html2canvas captures it.
+      setPdfActivities(await fetchAllFilteredActivities());
+      setPdfMode(true);
       const { JsPDF, html2canvas } = await loadPdfExportDependencies();
       await new Promise(requestAnimationFrame);
       const el = reportRef.current;
@@ -1580,6 +1586,7 @@ export default function Statistics() {
       pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
     } finally {
       setPdfMode(false);
+      setPdfActivities([]);
     }
   }
 
@@ -2183,14 +2190,14 @@ export default function Statistics() {
                   <button
                     type="button"
                     className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation"
-                    onClick={exportPdf}
+                    onClick={() => setReportExportOpen(true)}
                     onMouseEnter={preloadPdfExportDependencies}
                     onFocus={preloadPdfExportDependencies}
-                    title="Exportieren (PDF)"
+                    title="Exportieren"
                   >
                     <FileDown className="h-4 w-4" />
-                    <span className="hidden sm:inline">Export (PDF)</span>
-                    <span className="sm:hidden">PDF</span>
+                    <span className="hidden sm:inline">Export</span>
+                    <span className="sm:hidden">Export</span>
                   </button>
                 </div>
               </div>
@@ -2725,9 +2732,9 @@ export default function Statistics() {
                 {totalActivities} Einträge
               </span>
             </h3>
-            <div className="flex items-center gap-2">
-              {renderActivitiesExportActions()}
-              {totalActivityPages > 1 && (
+            <div className="flex items-center gap-2" data-chart-export-ignore="true">
+              {!pdfMode && renderActivitiesExportActions()}
+              {!pdfMode && totalActivityPages > 1 && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-gray-500">
                     Seite {activitiesPage} von {totalActivityPages}
@@ -2752,7 +2759,7 @@ export default function Statistics() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {pagedActivities.map((a: Activity) => {
+                {reportActivities.map((a: Activity) => {
                   const dateDE = formatActivityDateGerman(a.date);
                   const total = getActivityParticipantTotal(a);
                   const duration = getActivityDurationMinutes(a);
@@ -2779,14 +2786,14 @@ export default function Statistics() {
                     </tr>
                   );
                 })}
-                {activitiesPageQ.isLoading && pagedActivities.length === 0 && (
+                {!pdfMode && activitiesPageQ.isLoading && reportActivities.length === 0 && (
                   <tr>
                     <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
                       Aktivitäten werden geladen.
                     </td>
                   </tr>
                 )}
-                {!activitiesPageQ.isLoading && pagedActivities.length === 0 && (
+                {!pdfMode && !activitiesPageQ.isLoading && reportActivities.length === 0 && (
                   <tr>
                     <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
                       Keine Aktivitäten im Zeitraum.
@@ -2798,8 +2805,8 @@ export default function Statistics() {
           </div>
           
           {/* Pagination Controls */}
-          {totalActivityPages > 1 && (
-            <div className="mt-4 border-t border-gray-100 pt-4">
+          {!pdfMode && totalActivityPages > 1 && (
+            <div className="mt-4 border-t border-gray-100 pt-4" data-chart-export-ignore="true">
               <div className="mb-3 text-xs text-gray-500 sm:mb-0">
                 Zeige {((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, totalActivities)} von {totalActivities}
               </div>
@@ -3095,6 +3102,35 @@ export default function Statistics() {
                 );
               })
             )}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={reportExportOpen}
+        onClose={() => setReportExportOpen(false)}
+        title="Auswertung exportieren"
+        maxWidth="md"
+      >
+        <div className="space-y-4 text-sm text-gray-700">
+          <p>Der aktuell gesetzte Zeitraum und alle aktiven Filter werden übernommen.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50"
+              onClick={() => { setReportExportOpen(false); void exportPdf(); }}
+            >
+              <div className="font-semibold text-gray-900">PDF-Bericht</div>
+              <div className="mt-1 text-xs text-gray-600">Vollständiger Statistikbericht inklusive aller gefilterten Aktivitäten auf mehreren Seiten.</div>
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green"
+              onClick={() => { setReportExportOpen(false); void exportActivitiesTable('xlsx'); }}
+            >
+              <div className="font-semibold text-viridian">Stato-Excel</div>
+              <div className="mt-1 text-xs text-gray-600">Aktivitäten als Arbeitsmappe für die weitere Auswertung.</div>
+            </button>
           </div>
         </div>
       </Modal>

@@ -195,7 +195,9 @@ function SessionsSection() {
 function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userName: string; avatarUrl: string | null; email: string; theme: string; onUpdated: ()=>Promise<void>|void }) {
   const [name, setName] = useState(userName);
   const [image, setImage] = useState<string | null>(normalizeUploadPath(avatarUrl) || null);
-  const [busy, setBusy] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+  const [savingAppearance, setSavingAppearance] = useState(false);
+  const [savingAvatar, setSavingAvatar] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>(theme);
@@ -204,6 +206,30 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
   const [avatarActionOpen, setAvatarActionOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const selectedBackgroundLabel = BACKGROUNDS.find((background) => background.id === selectedBackground)?.label || 'Standard';
+  const nameChanged = name.trim() !== userName.trim();
+
+  useEffect(() => setName(userName), [userName]);
+  useEffect(() => setImage(normalizeUploadPath(avatarUrl) || null), [avatarUrl]);
+  useEffect(() => setSelectedTheme(theme), [theme]);
+
+  function errorMessage(error: unknown) {
+    const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Aktualisierung fehlgeschlagen';
+    return Array.isArray(message as string[]) ? (message as string[]).join(', ') : String(message);
+  }
+
+  async function persistProfile(patch: { name?: string; avatarUrl?: string | null; theme?: string }, successMessage: string) {
+    setMsg(null);
+    setErr(null);
+    try {
+      await api.patch('/auth/me', patch);
+      setMsg(successMessage);
+      await onUpdated();
+      return true;
+    } catch (error: unknown) {
+      setErr(errorMessage(error));
+      return false;
+    }
+  }
 
   async function handleFile(file: File) {
     const form = new FormData();
@@ -218,7 +244,28 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
       <h3 className="text-lg font-semibold text-viridian mb-4">Profil</h3>
       <div className="flex flex-col gap-5 md:flex-row md:items-start">
         <div className="w-full shrink-0 space-y-2 text-center md:w-auto md:text-left">
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={async (e)=>{ const f = e.target.files?.[0]; if (f) { const url = await handleFile(f); setImage(url); } }} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              setSavingAvatar(true);
+              try {
+                const url = await handleFile(file);
+                const previousImage = image;
+                setImage(url);
+                if (!(await persistProfile({ avatarUrl: url }, 'Profilbild aktualisiert'))) setImage(previousImage);
+              } catch (error: unknown) {
+                setErr(errorMessage(error));
+              } finally {
+                setSavingAvatar(false);
+                event.target.value = '';
+              }
+            }}
+          />
           <div className="flex justify-center md:block">
             <button
               type="button"
@@ -227,7 +274,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
               aria-label={image ? 'Profilbild ändern' : 'Profilbild auswählen'}
               title={image ? 'Profilbild ändern' : 'Profilbild auswählen'}
             >
-              {image ? <ProtectedImage src={image} alt="Profilbild" className="w-full h-full object-cover" /> : <span className="text-sm">Kein Bild</span>}
+              {image ? <ProtectedImage src={image} alt="Profilbild" className="w-full h-full object-cover" /> : <span className="text-sm">{savingAvatar ? 'Lädt…' : 'Kein Bild'}</span>}
               <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                 <Camera className="h-4 w-4" />
                 {image ? 'Optionen' : 'Wählen'}
@@ -239,7 +286,23 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
         <div className="w-full flex-1 space-y-3">
           <div>
             <label className="block text-sm font-medium">Name</label>
-            <input className="border rounded px-3 py-2 w-full" value={name} onChange={(e)=> setName(e.target.value)} />
+            <div className="flex gap-2">
+              <input className="border rounded px-3 py-2 w-full" value={name} onChange={(e)=> setName(e.target.value)} />
+              {nameChanged && (
+                <button
+                  type="button"
+                  className="shrink-0 rounded bg-viridian px-4 py-2 text-white disabled:opacity-60"
+                  disabled={savingName || !name.trim()}
+                  onClick={async () => {
+                    setSavingName(true);
+                    await persistProfile({ name: name.trim() }, 'Name aktualisiert');
+                    setSavingName(false);
+                  }}
+                >
+                  {savingName ? 'Speichert…' : 'Speichern'}
+                </button>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium">E-Mail</label>
@@ -265,7 +328,23 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
               <div className="mt-4 space-y-4 border-t border-[var(--border-subtle)] pt-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Design-Theme</label>
-                  <ThemePicker value={selectedTheme} onChange={(t)=>{ setSelectedTheme(t); applyTheme(t); }} />
+                  <ThemePicker
+                    value={selectedTheme}
+                    onChange={(nextTheme) => {
+                      const previousTheme = selectedTheme;
+                      setSelectedTheme(nextTheme);
+                      applyTheme(nextTheme);
+                      setSavingAppearance(true);
+                      void persistProfile({ theme: nextTheme }, 'Darstellung aktualisiert').then((saved) => {
+                        if (!saved) {
+                          setSelectedTheme(previousTheme);
+                          applyTheme(previousTheme);
+                        }
+                        setSavingAppearance(false);
+                      });
+                    }}
+                  />
+                  {savingAppearance && <div className="mt-2 text-xs text-gray-500">Darstellung wird gespeichert…</div>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Hintergrund</label>
@@ -274,6 +353,8 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
                     onChange={(bg) => {
                       setSelectedBackground(bg);
                       applyBackground(bg);
+                      setMsg('Hintergrund aktualisiert');
+                      setErr(null);
                     }}
                   />
                 </div>
@@ -282,21 +363,6 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
           </div>
           {msg && <div className="text-green-700 text-sm">{msg}</div>}
           {err && <div className="text-red-600 text-sm">{err}</div>}
-          <button
-            className="bg-viridian text-white px-4 py-2 rounded disabled:opacity-60"
-            disabled={busy}
-            onClick={async()=>{
-              setBusy(true); setMsg(null); setErr(null);
-              try {
-                await api.patch('/auth/me', { name, avatarUrl: normalizeUploadPath(image) || null, theme: selectedTheme });
-                setMsg('Profil aktualisiert');
-                await onUpdated();
-              } catch (e: unknown) {
-                const m = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Aktualisierung fehlgeschlagen';
-                setErr(Array.isArray(m as string[]) ? (m as string[]).join(', ') : String(m));
-              } finally { setBusy(false); }
-            }}
-          >Speichern</button>
         </div>
       </div>
       </div>
@@ -321,9 +387,16 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
               <button
                 type="button"
                 className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                disabled={savingAvatar}
                 onClick={() => {
+                  const previousImage = image;
                   setImage(null);
                   setAvatarActionOpen(false);
+                  setSavingAvatar(true);
+                  void persistProfile({ avatarUrl: null }, 'Profilbild entfernt').then((saved) => {
+                    if (!saved) setImage(previousImage);
+                    setSavingAvatar(false);
+                  });
                 }}
               >
                 Bild löschen

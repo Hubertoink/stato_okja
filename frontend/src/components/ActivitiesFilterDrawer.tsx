@@ -1,8 +1,11 @@
 import Modal from './Modal';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAllActivities, type ActivitiesFilter } from '@/lib/activities';
-import { useOrgScopeKey } from '@/lib/orgScope';
+import {
+  fetchActivitiesFilterAvailability,
+  type ActivitiesFilter,
+} from '@/lib/activities';
+import { useOrgScopedQueryState } from '@/lib/orgScope';
 import { useTags, useCategories, useCohorts } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
@@ -12,14 +15,6 @@ import {
   ACTIVITY_EXECUTION_STATUS_OPTIONS,
   normalizeActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
-
-type ActivitiesTaxonomyAvailability = {
-  categoryIds: string[];
-  tagIds: string[];
-  executionStatuses: Array<(typeof ACTIVITY_EXECUTION_STATUS_OPTIONS)[number]>;
-  hasUncategorized: boolean;
-  availableYears: string[];
-};
 
 export default function ActivitiesFilterDrawer({
   open,
@@ -32,7 +27,7 @@ export default function ActivitiesFilterDrawer({
   onClose: () => void;
   onApply: (f: ActivitiesFilter) => void;
 }) {
-  const scopeKey = useOrgScopeKey();
+  const { scope, scopeKey, ready } = useOrgScopedQueryState();
   const [f, setF] = useState<ActivitiesFilter>(initial);
   useEffect(() => {
     if (!open) return;
@@ -47,44 +42,8 @@ export default function ActivitiesFilterDrawer({
   const { data: staff = [] } = useStaff({ active: true });
   const availabilityQuery = useQuery({
     queryKey: ['activities-filter-taxonomy-availability', scopeKey],
-    queryFn: async () => {
-      const list: Array<{
-        date?: string | null;
-        tags?: Array<{ id: string }>;
-        categories?: Array<{ id: string }>;
-        executionStatus?: string | null;
-      }> = await fetchAllActivities();
-
-      const categoryIds = new Set<string>();
-      const tagIds = new Set<string>();
-      const executionStatuses = new Set<(typeof ACTIVITY_EXECUTION_STATUS_OPTIONS)[number]>();
-      let hasUncategorized = false;
-      const years = new Set<string>();
-
-      for (const activity of list) {
-        const year = String(activity.date || '').slice(0, 4);
-        if (/^\d{4}$/.test(year)) years.add(year);
-        executionStatuses.add(normalizeActivityExecutionStatus(activity.executionStatus));
-        if (!Array.isArray(activity.categories) || activity.categories.length === 0) {
-          hasUncategorized = true;
-        }
-        for (const category of activity.categories || []) {
-          if (category?.id) categoryIds.add(category.id);
-        }
-        for (const tag of activity.tags || []) {
-          if (tag?.id) tagIds.add(tag.id);
-        }
-      }
-
-      return {
-        categoryIds: Array.from(categoryIds),
-        tagIds: Array.from(tagIds),
-        executionStatuses: Array.from(executionStatuses),
-        hasUncategorized,
-        availableYears: Array.from(years).sort((left, right) => right.localeCompare(left)),
-      } satisfies ActivitiesTaxonomyAvailability;
-    },
-    enabled: open,
+    queryFn: () => fetchActivitiesFilterAvailability(scope),
+    enabled: open && ready,
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 30,
     refetchOnMount: false,
@@ -99,7 +58,10 @@ export default function ActivitiesFilterDrawer({
     [availabilityQuery.data?.tagIds],
   );
   const availableExecutionStatuses = useMemo(
-    () => new Set(availabilityQuery.data?.executionStatuses ?? []),
+    () =>
+      new Set(
+        (availabilityQuery.data?.executionStatuses ?? []).map(normalizeActivityExecutionStatus),
+      ),
     [availabilityQuery.data?.executionStatuses],
   );
   const availabilityLoaded = availabilityQuery.isSuccess;

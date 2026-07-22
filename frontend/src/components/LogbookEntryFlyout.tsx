@@ -29,6 +29,10 @@ import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
+import LogbookStatusBadge from '@/components/LogbookStatusBadge';
+import { Button, IconButton } from '@/components/ui/Button';
+import { FieldLabel, Textarea } from '@/components/ui/Field';
+import { Menu, MenuItem } from '@/components/ui/Menu';
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
@@ -153,12 +157,12 @@ export default function LogbookEntryFlyout({
         role="dialog"
         aria-modal="true"
         aria-label="Logbucheintrag"
-        className="logbook-detail-modal relative flex h-full w-full flex-col bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl"
+        className="logbook-detail-modal relative flex h-full w-full flex-col bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl"
       >
-        <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
+        <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4 sm:px-6">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Logbuch</p>
-            <h2 className="truncate text-lg font-bold text-gray-800">Eintragsdetails</h2>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Logbuch</p>
+            <h2 className="truncate text-lg font-bold text-[var(--text-primary)]">Eintragsdetails</h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {canManage && !archived && entry && (
@@ -175,7 +179,7 @@ export default function LogbookEntryFlyout({
                   />
                 </button>
                 {statusMenuOpen && (
-                  <div className="absolute right-0 top-full z-10 mt-2 min-w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-xl">
+                  <Menu className="absolute right-0 top-full z-10 mt-2 min-w-48">
                     <StatusMenuItem
                       status="open"
                       active={entry.status === 'open'}
@@ -200,19 +204,19 @@ export default function LogbookEntryFlyout({
                         setStatusMenuOpen(false);
                       }}
                     />
-                  </div>
+                  </Menu>
                 )}
               </div>
             )}
             {canManage && !archived && entry && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => navigate(`/logbook/${entry.id}/edit`)}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 <Edit3 className="h-4 w-4" />
                 <span className="hidden sm:inline">Bearbeiten</span>
-              </button>
+              </Button>
             )}
             {canManage && !archived && (
               <button
@@ -224,14 +228,13 @@ export default function LogbookEntryFlyout({
                 <span className="hidden sm:inline">Archivieren</span>
               </button>
             )}
-            <button
-              type="button"
+            <IconButton
+              variant="secondary"
               onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200"
               aria-label="Schließen"
             >
               <X className="h-5 w-5" />
-            </button>
+            </IconButton>
           </div>
         </header>
 
@@ -247,11 +250,7 @@ export default function LogbookEntryFlyout({
                   <span className="rounded-full bg-gray-100 px-2.5 py-1 font-semibold text-gray-700">
                     {logbookTypeLabels[entry.type]}
                   </span>
-                  <span
-                    className={`rounded-full px-2.5 py-1 font-semibold ${entry.status === 'discussed' ? 'bg-green-100 text-green-700' : entry.status === 'follow_up' ? 'bg-amber-100 text-amber-800' : entry.status === 'archived' ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-700'}`}
-                  >
-                    {logbookStatusLabels[entry.status]}
-                  </span>
+                  <LogbookStatusBadge status={entry.status} />
                   {entry.visibility === 'admins' && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-700">
                       <LockKeyhole className="h-3 w-3" />
@@ -386,26 +385,25 @@ export default function LogbookEntryFlyout({
                   )}
                 </div>
                 {!archived && (
-                  <form onSubmit={addComment} className="mt-5 border-t border-gray-100 pt-5">
-                    <label className="block text-sm font-medium text-gray-700">
+                  <form onSubmit={addComment} className="mt-5 border-t border-[var(--border-subtle)] pt-5">
+                    <FieldLabel>
                       Kommentar hinzufügen
-                      <textarea
+                      <Textarea
                         value={comment}
                         onChange={(event) => setComment(event.target.value)}
                         rows={3}
                         maxLength={4000}
                         placeholder="Ergänzung oder Rückmeldung für das Team…"
-                        className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                        className="resize-y py-2.5"
                       />
-                    </label>
+                    </FieldLabel>
                     <div className="mt-2 flex justify-end">
-                      <button
+                      <Button
                         disabled={!comment.trim() || createComment.isPending}
-                        className="dashboard-accent-solid-button inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:opacity-50"
                       >
                         <Send className="h-4 w-4" />
                         Kommentar senden
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 )}
@@ -457,15 +455,14 @@ function StatusMenuItem({
   onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <MenuItem
       onClick={onSelect}
-      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium ${active ? 'bg-gray-100 text-viridian' : 'text-gray-700 hover:bg-gray-50'}`}
+      className={active ? 'bg-[var(--interactive-soft)] text-viridian' : ''}
     >
       <LogbookStatusIcon status={status} />
       {logbookStatusLabels[status]}
       {active && <CheckCircle2 className="ml-auto h-4 w-4" />}
-    </button>
+    </MenuItem>
   );
 }
 

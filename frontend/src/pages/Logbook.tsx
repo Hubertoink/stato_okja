@@ -1,166 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  CheckCircle2,
-  ChevronRight,
-  MessageCircle,
-  Plus,
-  RotateCcw,
-  Search,
-  SlidersHorizontal,
-  UserRound,
-  XCircle,
-} from 'lucide-react';
+import { Plus, RotateCcw, Search, SlidersHorizontal, UserRound, XCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/lib/auth';
-import {
-  type LogbookEntry,
-  type LogbookEntryStatus,
-  useLogbookEntries,
-  useSetLogbookStatus,
-} from '@/lib/logbook';
+import { useLogbookEntries } from '@/lib/logbook';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import {
   loadLogbookFilters,
   saveLogbookFilters,
   type LogbookAdvancedFilters,
 } from '@/lib/logbookFilterStorage';
-import ProtectedImage from '@/components/ProtectedImage';
 import LogbookFilterDrawer from '@/components/LogbookFilterDrawer';
 import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString('de-DE', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function statusClass(status: LogbookEntryStatus) {
-  return status === 'discussed'
-    ? 'bg-green-100 text-green-700'
-    : status === 'follow_up'
-      ? 'bg-amber-100 text-amber-800'
-      : status === 'archived'
-        ? 'bg-gray-100 text-gray-600'
-        : 'bg-blue-100 text-blue-700';
-}
-
-function AuthorBadge({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
-  return (
-    <span className="flex min-w-0 items-center gap-1.5">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-viridian/10 font-semibold text-viridian">
-        {avatarUrl ? (
-          <ProtectedImage src={avatarUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          name.slice(0, 1).toUpperCase()
-        )}
-      </span>
-      <span className="truncate">{name}</span>
-    </span>
-  );
-}
-
-function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; onOpen: (id: string) => void }) {
-  const { user } = useAuth();
-  const status = useSetLogbookStatus();
-  const canManage =
-    user?.role === 'superadmin' || user?.role === 'org_admin' || user?.id === entry.createdByUserId;
-  const wasUpdated = Boolean(entry.documentationUpdatedAt);
-  return (
-    <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(entry.id)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onOpen(entry.id);
-        }
-      }}
-      className="modern-card cursor-pointer p-4 transition-transform hover:-translate-y-0.5 sm:p-5"
-    >
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-            <span>{formatDate(entry.occurredAt)}</span>
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
-              {logbookTypeLabels[entry.type]}
-            </span>
-            {entry.visibility === 'admins' && (
-              <span className="rounded-full bg-violet-100 px-2 py-0.5 font-medium text-violet-700">
-                Intern
-              </span>
-            )}
-          </div>
-          <h3 className="truncate text-base font-semibold text-gray-800 sm:text-lg">
-            {entry.title}
-          </h3>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(entry.status)}`}
-        >
-          {logbookStatusLabels[entry.status]}
-        </span>
-      </div>
-      <p className="mb-4 line-clamp-3 whitespace-pre-wrap text-sm text-gray-700">{entry.body}</p>
-      {(entry.project?.title || entry.activity?.title) && (
-        <div className="mb-3 flex flex-wrap gap-2 text-xs">
-          {entry.project?.title && (
-            <span className="rounded bg-gray-100 px-2 py-1 text-gray-700">
-              Projekt: {entry.project.title}
-            </span>
-          )}
-          {entry.activity?.title && (
-            <span className="rounded bg-gray-100 px-2 py-1 text-gray-700">
-              Aktivität: {entry.activity.title}
-            </span>
-          )}
-        </div>
-      )}
-      <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
-        <div className="min-w-0">
-          <AuthorBadge
-            name={entry.createdByName}
-            avatarUrl={
-              entry.createdByUser?.avatarUrl ??
-              (entry.createdByUserId === user?.id ? user?.avatarUrl : null)
-            }
-          />
-          {wasUpdated && (
-            <span className="mt-1 block text-[11px] text-gray-400">
-              Geändert am {formatDate(entry.documentationUpdatedAt!)}
-            </span>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <span className="flex items-center gap-1">
-            <MessageCircle className="h-3.5 w-3.5" />
-            {entry.commentCount || 0}
-          </span>
-          {canManage && entry.status !== 'discussed' && entry.status !== 'archived' && (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                status.mutate({ id: entry.id, status: 'discussed' });
-              }}
-              className="flex items-center gap-1 rounded-md px-2 py-1 font-medium text-green-700 hover:bg-green-50"
-              title="Als besprochen markieren"
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              Besprochen
-            </button>
-          )}
-          <ChevronRight className="h-4 w-4" />
-        </div>
-      </div>
-    </article>
-  );
-}
+import LogbookCardView from '@/components/LogbookCard';
+import { Badge } from '@/components/ui/Badge';
+import { Button, IconButton } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { FilterChip } from '@/components/ui/FilterChip';
+import { Input } from '@/components/ui/Field';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { ErrorState, LoadingState } from '@/components/ui/StatePanel';
 
 function dateBadge(from?: string, to?: string) {
   if (from && to) return from === to ? `Zeitraum: ${from}` : `Zeitraum: ${from} – ${to}`;
@@ -181,7 +38,7 @@ export default function Logbook() {
     () => ({ search: search.trim() || undefined, ...advanced }),
     [advanced, search],
   );
-  const { data, isLoading } = useLogbookEntries(filters, 1, 100);
+  const { data, isError, isLoading, refetch } = useLogbookEntries(filters, 1, 100);
   const entries = data?.data || [];
   const hasAdvancedFilters = Boolean(
     advanced.from ||
@@ -244,20 +101,22 @@ export default function Logbook() {
 
   return (
     <div>
-      <div className="mb-4 mt-1 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <h2 className="text-3xl font-bold text-viridian">Logbuch</h2>
+      <PageHeader
+        className="mb-4"
+        title="Logbuch"
+        actions={(
         <div className="flex justify-end gap-2">
           <div className="relative">
             {searchOpen && (
-              <div className="absolute right-0 top-full z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-md">
+              <div className="absolute right-0 top-full z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-2 shadow-xl backdrop-blur-md">
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-faint)]" />
+                  <Input
                     autoFocus
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Logbuch durchsuchen…"
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-10 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/30"
+                    className="mt-0 py-2 pl-9 pr-10"
                   />
                   {search && (
                     <button
@@ -272,93 +131,84 @@ export default function Logbook() {
                 </div>
               </div>
             )}
-            <button
-              type="button"
+            <IconButton
+              variant="secondary"
               onClick={() => setSearchOpen((open) => !open)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 bg-white text-viridian transition-colors hover:border-gray-300 hover:bg-gray-50"
               title={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
               aria-label={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
             >
               <Search className="h-5 w-5" />
-            </button>
+            </IconButton>
           </div>
-          <button
-            type="button"
+          <IconButton
+            variant="secondary"
             onClick={() => setFilterDrawer(true)}
-            className={`inline-flex h-11 w-11 items-center justify-center rounded-lg border transition-colors ${hasAdvancedFilters ? 'border-viridian/40 bg-white text-viridian ring-1 ring-viridian/20 hover:bg-gray-50' : 'border-gray-200 bg-white text-viridian hover:border-gray-300 hover:bg-gray-50'}`}
+            className={hasAdvancedFilters ? 'border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20' : ''}
             title="Erweiterter Filter"
             aria-label="Erweiterter Filter"
           >
             <SlidersHorizontal className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
+          </IconButton>
+          <Button
             onClick={() => navigate('/logbook/new')}
-            className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold"
           >
             <Plus className="h-5 w-5" />
             <span className="hidden sm:inline">Eintrag erstellen</span>
-          </button>
+          </Button>
         </div>
-      </div>
+        )}
+      />
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-        <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/80 px-2 py-1 text-gray-700">
+        <Badge variant="neutral">
           {isLoading ? 'Treffer werden geladen…' : `Treffer: ${data?.total || 0}`}
-        </span>
+        </Badge>
         {search.trim() && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-azure-web px-2 py-1 text-viridian">
+          <FilterChip onRemove={() => setSearch('')}>
             Suche: {search.trim()}
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="rounded-full text-viridian/80 hover:text-viridian"
-              aria-label="Suche entfernen"
-            >
-              <XCircle className="h-3.5 w-3.5" />
-            </button>
-          </span>
+          </FilterChip>
         )}
         {badges.map((badge) => (
-          <span key={badge} className="rounded-full bg-azure-web px-2 py-1 text-viridian">
+          <FilterChip key={badge}>
             {badge}
-          </span>
+          </FilterChip>
         ))}
         {hasFilters && (
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={resetFilters}
-            className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 text-gray-700 hover:bg-gray-50"
+            className="min-h-0 rounded-full px-2 py-1"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Zurücksetzen
-          </button>
+          </Button>
         )}
       </div>
 
       {isLoading ? (
-        <div className="modern-card p-6 text-sm text-gray-500">Logbuch wird geladen…</div>
+        <LoadingState label="Logbuch wird geladen…" />
+      ) : isError ? (
+        <ErrorState action={{ label: 'Erneut versuchen', onClick: () => void refetch() }} />
       ) : entries.length === 0 ? (
-        <div className="modern-card p-8 text-center">
-          <UserRound className="mx-auto mb-3 h-9 w-9 text-gray-300" />
-          <h3 className="font-semibold text-gray-700">Noch keine passenden Einträge</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Halte Beobachtungen, Übergaben oder Debriefings direkt im Logbuch fest.
-          </p>
-          <button
-            type="button"
+        <EmptyState
+          icon={<UserRound className="h-5 w-5" />}
+          title="Noch keine passenden Einträge"
+          description="Halte Beobachtungen, Übergaben oder Debriefings direkt im Logbuch fest."
+          action={(
+          <Button
             onClick={() => navigate('/logbook/new')}
-            className="mt-4 rounded-xl bg-viridian px-4 py-2 text-sm font-semibold text-white"
           >
             Ersten Eintrag erstellen
-          </button>
-        </div>
+          </Button>
+          )}
+        />
       ) : (
         <>
           {currentEntries.length > 0 && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {currentEntries.map((entry) => (
-                <LogbookCard
+                <LogbookCardView
                   key={entry.id}
                   entry={entry}
                   onOpen={(entryId) => navigate(`/logbook?entry=${encodeURIComponent(entryId)}`)}

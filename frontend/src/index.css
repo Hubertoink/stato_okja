@@ -35,6 +35,14 @@
   --interactive-soft: color-mix(in srgb, var(--viridian) 10%, transparent);
   --interactive-soft-strong: color-mix(in srgb, var(--viridian) 16%, transparent);
   --interactive-soft-border: color-mix(in srgb, var(--viridian) 32%, transparent);
+  --status-success-bg: #dcfce7;
+  --status-success-text: #15803d;
+  --status-warning-bg: #fef3c7;
+  --status-warning-text: #b45309;
+  --status-info-bg: #dbeafe;
+  --status-info-text: #1d4ed8;
+  --status-danger-bg: #fee2e2;
+  --status-danger-text: #b91c1c;
   --calendar-surface-bg: rgba(255, 255, 255, 0.99);
   --calendar-header-bg: rgba(245, 247, 255, 0.96);
   --calendar-grid-border: rgba(15, 23, 42, 0.16);
@@ -1872,23 +1880,23 @@ code {
   );
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-image-fade {
+:root[data-color-mode='dark'] .activity-image-fade {
   background: linear-gradient(
     270deg,
-    rgba(15, 23, 42, 0.96) 0%,
-    rgba(15, 23, 42, 0.88) 34%,
-    rgba(15, 23, 42, 0.52) 60%,
-    rgba(15, 23, 42, 0) 100%
+    color-mix(in srgb, var(--surface-1) 98%, transparent) 0%,
+    color-mix(in srgb, var(--surface-1) 90%, transparent) 34%,
+    color-mix(in srgb, var(--surface-1) 55%, transparent) 60%,
+    transparent 100%
   );
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-image-fade-mobile {
+:root[data-color-mode='dark'] .activity-image-fade-mobile {
   background: linear-gradient(
     270deg,
-    rgba(15, 23, 42, 0.96) 0%,
-    rgba(15, 23, 42, 0.84) 36%,
-    rgba(15, 23, 42, 0.46) 60%,
-    rgba(15, 23, 42, 0) 100%
+    color-mix(in srgb, var(--surface-1) 98%, transparent) 0%,
+    color-mix(in srgb, var(--surface-1) 87%, transparent) 36%,
+    color-mix(in srgb, var(--surface-1) 50%, transparent) 60%,
+    transparent 100%
   );
 }
 
@@ -2989,6 +2997,17 @@ code {
 /* Dark utility colors previously only covered Stato's two original dark skins.
    The explicit mode attribute keeps all new families consistent in the desktop
    layout, mobile layout, modals, tables and form controls. */
+:root[data-color-mode='dark'] {
+  --status-success-bg: color-mix(in srgb, #166534 46%, var(--surface-1));
+  --status-success-text: #bbf7d0;
+  --status-warning-bg: color-mix(in srgb, #92400e 46%, var(--surface-1));
+  --status-warning-text: #fde68a;
+  --status-info-bg: color-mix(in srgb, #1d4ed8 43%, var(--surface-1));
+  --status-info-text: #bfdbfe;
+  --status-danger-bg: color-mix(in srgb, #991b1b 44%, var(--surface-1));
+  --status-danger-text: #fecaca;
+}
+
 :root[data-color-mode='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
 :root[data-color-mode='dark'] select,
 :root[data-color-mode='dark'] textarea { color: var(--text-primary); background: var(--input-bg); border-color: var(--border-subtle); }

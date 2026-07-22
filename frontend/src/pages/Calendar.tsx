@@ -28,6 +28,9 @@ import CalendarClosureModal from '@/components/CalendarClosureModal';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity } from '@/lib/activityExecutionStatus';
 import DemoHoverHint from '@/demo/DemoHoverHint';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -1081,16 +1084,13 @@ export default function Calendar() {
       {/* Mobile: stacked layout; Desktop: row layout */}
       <div className="flex flex-col gap-2 mb-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center justify-between md:block">
-          <div>
-            <h2 className="text-xl md:text-3xl font-bold text-viridian">Kalender</h2>
-            <div className="text-gray-600 text-sm md:text-lg">{label}</div>
-          </div>
+          <PageHeader className="mb-0" description={label} title="Kalender" />
           {/* Navigation controls on mobile - inline with title */}
           <div className="flex gap-1.5 md:hidden">
             {showTodayButton && (
-              <button className="bg-viridian text-white px-2.5 py-1.5 rounded text-sm" onClick={gotoToday}>
+              <Button className="rounded-lg px-2.5 py-1.5" size="sm" onClick={gotoToday}>
                 Heute
-              </button>
+              </Button>
             )}
             <button
               className="calendar-control px-2 py-1.5 rounded text-sm"
@@ -1115,9 +1115,9 @@ export default function Calendar() {
         >
           <div className="hidden md:flex gap-2">
             {showTodayButton && (
-              <button className="bg-viridian text-white px-3 py-2 rounded" onClick={gotoToday}>
+              <Button onClick={gotoToday}>
                 Heute
-              </button>
+              </Button>
             )}
             <button
               className="calendar-control px-3 py-2 rounded"
@@ -1567,9 +1567,11 @@ export default function Calendar() {
               </table>
             </div>
           ) : (
-            <div className="bg-white px-4 py-6 text-center text-sm text-gray-500">
-              Keine Aktivitäten an diesem Tag.
-            </div>
+            <EmptyState
+              className="rounded-none border-x-0 border-b-0"
+              description="Wähle einen anderen Tag oder lege eine neue Aktivität an."
+              title="Keine Aktivitäten an diesem Tag"
+            />
           )}
         </section>
         </DemoHoverHint>

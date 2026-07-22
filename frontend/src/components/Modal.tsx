@@ -40,13 +40,17 @@ export default function Modal({
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className={`w-full ${maxW} rounded-t-3xl md:rounded-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto bottom-sheet-animate shadow-2xl modal-panel-roomy ${blur ? 'backdrop-blur-xl' : ''}`}
+        aria-label={title || 'Dialog'}
+        aria-modal="true"
+        className={`w-full ${maxW} max-h-[85vh] overflow-y-auto rounded-t-3xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 text-[var(--text-primary)] shadow-2xl bottom-sheet-animate modal-panel-roomy md:rounded-2xl md:p-6 ${blur ? 'backdrop-blur-xl' : ''}`}
+        role="dialog"
+        tabIndex={-1}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold gradient-text">{title}</h3>
           {showCloseButton && (
             <button
-              className="inline-flex items-center justify-center p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all duration-200 hover:scale-105"
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--surface-2)] p-2 text-[var(--text-secondary)] transition-all duration-200 hover:scale-105 hover:bg-[var(--surface-3)]"
               onClick={onClose}
               aria-label="Schließen"
             >

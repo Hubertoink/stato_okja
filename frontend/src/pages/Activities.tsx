@@ -51,6 +51,10 @@ import {
   loadActivitiesFilters,
   saveActivitiesFilters,
 } from '@/lib/activitiesFilterStorage';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Button, IconButton } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   open_door: 'Offene Tür',
@@ -270,8 +274,10 @@ export default function Activities() {
     isError: activitiesIsError,
     refetch: refetchActivities,
   } = useActivitiesPaged(filters, page, pageSize, {
-    refetchOnWindowFocus: 'always',
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+    staleTimeMs: publicConfig?.liveRefreshIntervalMs ?? 0,
   });
   // no quick location filter
   const activities = useMemo(() => paged?.data || [], [paged]);
@@ -640,7 +646,7 @@ export default function Activities() {
         };
         const usedSheetNames = new Set<string>(['Aktivitäten']);
         const uniqueSheetName = (value: string) => {
-          const base = (value.replace(/[\\/?*\[\]:]/g, ' ').trim() || 'Projekt').slice(0, 31);
+          const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || 'Projekt').slice(0, 31);
           let name = base;
           let suffix = 2;
           while (usedSheetNames.has(name)) {
@@ -741,9 +747,10 @@ export default function Activities() {
   };
   return (
     <div>
-      <div className="mb-6 mt-1 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <h2 className="text-3xl font-bold text-viridian">Aktivitäten</h2>
-        <DemoHoverHint
+      <PageHeader
+        title="Aktivitäten"
+        actions={(
+          <DemoHoverHint
           title="Aktivitaeten-Werkzeuge"
           description="Hier suchst, exportierst, filterst und erstellst du Aktivitaeten. Der erweiterte Filter kombiniert Zeitraum, Typen, Projekte, Tags und Status."
           placement="bottom"
@@ -754,20 +761,20 @@ export default function Activities() {
             <div className="relative">
               {searchOpen && (
                 <div
-                  className={`absolute top-full mt-2 z-20 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-md ${
+                  className={`absolute top-full mt-2 z-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-2 shadow-xl backdrop-blur-md ${
                     isMobile
                       ? '-right-1 w-[min(16rem,calc(100vw-1.25rem))] max-w-[calc(100vw-1.25rem)]'
                       : 'right-0 w-[min(18rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)]'
                   }`}
                 >
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-faint)]" />
+                    <Input
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder="Titel / Projekt suchen"
-                      className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-10 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/30"
+                      className="mt-0 py-2 pl-9 pr-10"
                       autoFocus
                     />
                     {searchTerm.trim() && (
@@ -784,46 +791,44 @@ export default function Activities() {
                   </div>
                 </div>
               )}
-              <button
-                className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white text-viridian hover:bg-gray-50 hover:border-gray-300 transition-colors w-10 h-10"
+              <IconButton
+                variant="secondary"
                 title={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
                 aria-label={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
                 onClick={() => setSearchOpen((open) => !open)}
               >
                 <Search className="w-5 h-5" />
-              </button>
+              </IconButton>
             </div>
-            <button
-            className="relative inline-flex md:hidden items-center justify-center rounded-lg border border-gray-200 bg-white text-viridian hover:bg-gray-50 hover:border-gray-300 transition-colors w-10 h-10 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white"
+          <IconButton
+            variant="secondary"
+            className="relative md:hidden"
             title="Excel-Export"
             aria-label="Excel-Export"
             disabled={exporting || exportCount === 0}
             onClick={() => setExportModalOpen(true)}
           >
             <Download className="w-5 h-5" />
-          </button>
-          <button
-            className="hidden md:inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-viridian hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white"
+          </IconButton>
+          <Button
+            variant="secondary"
+            className="hidden md:inline-flex"
             title="Excel-Export"
             aria-label="Excel-Export"
             disabled={exporting || exportCount === 0}
             onClick={() => setExportModalOpen(true)}
           >
             <Download className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            className={`inline-flex items-center justify-center rounded-lg border transition-colors touch-manipulation w-10 h-10 ${
-              hasAdvancedFilters
-                ? 'border-viridian/40 bg-white text-viridian ring-1 ring-viridian/20 hover:bg-gray-50'
-                : 'border-gray-200 bg-white text-viridian hover:bg-gray-50 hover:border-gray-300'
-            }`}
+          </Button>
+          <IconButton
+            variant="secondary"
+            className={`touch-manipulation ${hasAdvancedFilters ? 'border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20' : ''}`}
             onClick={() => setFilterDrawer(true)}
             title="Erweiterter Filter"
             aria-label="Erweiterter Filter"
           >
             <SlidersHorizontal className="h-4 w-4" />
-          </button>
+          </IconButton>
           {/* Mobile icon-only: New activity */}
           <button
             className="md:hidden inline-flex items-center justify-center rounded-full bg-viridian text-white hover:bg-cambridge-blue transition-colors w-10 h-10"
@@ -837,16 +842,17 @@ export default function Activities() {
             <Plus className="w-5 h-5" />
           </button>
           {/* Desktop: New activity text button */}
-          <button
-            className="hidden md:inline-flex items-center bg-viridian text-white px-6 py-2 rounded-lg hover:bg-cambridge-blue transition-colors"
+          <Button
+            className="hidden md:inline-flex"
             onClick={() => setPicker(true)}
           >
             + Neue Aktivität
-          </button>
+          </Button>
             </div>
           </div>
-        </DemoHoverHint>
-      </div>
+          </DemoHoverHint>
+        )}
+      />
 
       {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
       <DemoHoverHint
@@ -1351,7 +1357,11 @@ export default function Activities() {
             </div>
           ))}
           {activities.length === 0 && !activitiesLoading && !activitiesFetching && (
-            <div className="text-gray-500 py-6 text-center">Keine Aktivitäten im Zeitraum.</div>
+            <EmptyState
+              className="mx-3 mb-3"
+              description="Passe den Zeitraum oder die Filter an, um weitere Aktivitäten zu sehen."
+              title="Keine Aktivitäten im Zeitraum"
+            />
           )}
         </div>
         </div>

@@ -160,6 +160,8 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 - `RATE_LIMIT_MAX`: maximale Requests pro Client-IP innerhalb des Zeitfensters, Standard `100`
 - `AUTH_RATE_LIMIT_TTL`: Zeitfenster für strengere Auth-Endpunkte in Sekunden, Standard `60`
 - `AUTH_RATE_LIMIT_MAX`: maximale Requests pro Client-IP auf Login, Invite und Passwort-Reset innerhalb des Auth-Zeitfensters, Standard `10`
+- `LOGIN_MAX_FAILED_ATTEMPTS`: falsche Passworteingaben bis zur Kontosperre, Standard `5`
+- `LOGIN_LOCKOUT_MINUTES`: Dauer der Kontosperre in Minuten, Standard `10`
 
 ### Optional: externe Postgres-Datenbank mit TLS
 
@@ -276,6 +278,8 @@ RATE_LIMIT_TTL=60
 RATE_LIMIT_MAX=100
 AUTH_RATE_LIMIT_TTL=60
 AUTH_RATE_LIMIT_MAX=10
+LOGIN_MAX_FAILED_ATTEMPTS=5
+LOGIN_LOCKOUT_MINUTES=10
 DB_REQUIRE_SSL=false
 DB_SSL=false
 DB_SSL_REJECT_UNAUTHORIZED=false

@@ -274,8 +274,10 @@ export default function Activities() {
     isError: activitiesIsError,
     refetch: refetchActivities,
   } = useActivitiesPaged(filters, page, pageSize, {
-    refetchOnWindowFocus: 'always',
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+    staleTimeMs: publicConfig?.liveRefreshIntervalMs ?? 0,
   });
   // no quick location filter
   const activities = useMemo(() => paged?.data || [], [paged]);

@@ -84,6 +84,8 @@ export type ActivitiesFilter = {
 type ActivitiesQueryOptions = {
   refetchOnWindowFocus?: boolean | 'always';
   refetchIntervalMs?: number;
+  refetchOnMount?: boolean | 'always';
+  staleTimeMs?: number;
 };
 
 export function buildActivityQueryParams(
@@ -111,9 +113,10 @@ export function useActivities(params?: ActivitiesFilter, options?: ActivitiesQue
     queryKey: ['activities', scopeKey, params],
     queryFn: () => fetchAllActivities(params, scope),
     enabled: ready,
-    refetchOnMount: 'always',
+    refetchOnMount: options?.refetchOnMount ?? 'always',
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: true,
+    staleTime: options?.staleTimeMs ?? 0,
     refetchInterval:
       typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
         ? options.refetchIntervalMs
@@ -126,6 +129,25 @@ export interface PagedActivitiesResult {
   total: number;
   page: number;
   pageSize: number; // limit
+}
+
+export interface ActivitiesFilterAvailability {
+  categoryIds: string[];
+  tagIds: string[];
+  executionStatuses: ActivityExecutionStatus[];
+  hasUncategorized: boolean;
+  availableYears: string[];
+}
+
+export async function fetchActivitiesFilterAvailability(
+  scope?: string | null | undefined,
+): Promise<ActivitiesFilterAvailability> {
+  const qp: Record<string, unknown> = {};
+  applyOrgScopeParam(qp, scope);
+  const response = await api.get<ActivitiesFilterAvailability>('/activities/filter-availability', {
+    params: qp,
+  });
+  return response.data;
 }
 
 /** Load all items only through bounded, paginated API requests. */
@@ -171,9 +193,10 @@ export function useActivitiesPaged(
       return res.data as PagedActivitiesResult;
     },
     enabled: ready,
-    refetchOnMount: 'always',
+    refetchOnMount: options?.refetchOnMount ?? 'always',
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: true,
+    staleTime: options?.staleTimeMs ?? 0,
     refetchInterval:
       typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
         ? options.refetchIntervalMs

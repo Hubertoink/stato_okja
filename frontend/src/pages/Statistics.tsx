@@ -196,15 +196,6 @@ function loadPdfExportDependencies() {
   return pdfExportDependenciesPromise;
 }
 
-function preloadPdfExportDependencies() {
-  void loadPdfExportDependencies();
-}
-
-function preloadActivitiesExportDependencies() {
-  preloadPdfExportDependencies();
-  void import('xlsx-js-style');
-}
-
 function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -1752,7 +1743,6 @@ export default function Statistics() {
       <StatisticsExportActions
         triggerLabel={`${chartTitle} exportieren`}
         menuTitle="Diagramm exportieren"
-        preload={preloadPdfExportDependencies}
         isExporting={isExporting}
         options={[
           {
@@ -1777,7 +1767,6 @@ export default function Statistics() {
       <StatisticsExportActions
         triggerLabel="Aktivitäten exportieren"
         menuTitle="Aktivitäten exportieren"
-        preload={preloadActivitiesExportDependencies}
         isExporting={isExporting}
         options={[
           {
@@ -2035,8 +2024,6 @@ export default function Statistics() {
                       type="button"
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian"
                       onClick={exportPdf}
-                      onMouseEnter={preloadPdfExportDependencies}
-                      onFocus={preloadPdfExportDependencies}
                       title="Exportieren (PDF)"
                     >
                       <FileDown className="h-4 w-4" />
@@ -2463,8 +2450,6 @@ export default function Statistics() {
                     type="button"
                     className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation"
                     onClick={() => setReportExportOpen(true)}
-                    onMouseEnter={preloadPdfExportDependencies}
-                    onFocus={preloadPdfExportDependencies}
                     title="Exportieren"
                   >
                     <FileDown className="h-4 w-4" />
@@ -3408,8 +3393,6 @@ export default function Statistics() {
               className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-wait disabled:opacity-60"
               disabled={isControllingExporting}
               onClick={() => { setReportExportOpen(false); void exportControllingData(); }}
-              onMouseEnter={preloadActivitiesExportDependencies}
-              onFocus={preloadActivitiesExportDependencies}
             >
               <div className="font-semibold text-viridian">Controllingdaten</div>
               <div className="mt-1 text-xs text-gray-600">Vollständige Arbeitsmappe mit Kohorten, Projekt-KPIs und Logbuch.</div>

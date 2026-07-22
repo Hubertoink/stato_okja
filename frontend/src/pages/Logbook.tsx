@@ -1,157 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  CheckCircle2,
-  ChevronRight,
-  MessageCircle,
-  Plus,
-  RotateCcw,
-  Search,
-  SlidersHorizontal,
-  UserRound,
-  XCircle,
-} from 'lucide-react';
+import { Plus, RotateCcw, Search, SlidersHorizontal, UserRound, XCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/lib/auth';
-import {
-  type LogbookEntry,
-  useLogbookEntries,
-  useSetLogbookStatus,
-} from '@/lib/logbook';
+import { useLogbookEntries } from '@/lib/logbook';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import {
   loadLogbookFilters,
   saveLogbookFilters,
   type LogbookAdvancedFilters,
 } from '@/lib/logbookFilterStorage';
-import ProtectedImage from '@/components/ProtectedImage';
 import LogbookFilterDrawer from '@/components/LogbookFilterDrawer';
 import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
+import LogbookCardView from '@/components/LogbookCard';
 import { Badge } from '@/components/ui/Badge';
 import { Button, IconButton } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { FilterChip } from '@/components/ui/FilterChip';
 import { Input } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString('de-DE', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function AuthorBadge({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
-  return (
-    <span className="flex min-w-0 items-center gap-1.5">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-viridian/10 font-semibold text-viridian">
-        {avatarUrl ? (
-          <ProtectedImage src={avatarUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          name.slice(0, 1).toUpperCase()
-        )}
-      </span>
-      <span className="truncate">{name}</span>
-    </span>
-  );
-}
-
-function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; onOpen: (id: string) => void }) {
-  const { user } = useAuth();
-  const status = useSetLogbookStatus();
-  const canManage =
-    user?.role === 'superadmin' || user?.role === 'org_admin' || user?.id === entry.createdByUserId;
-  const wasUpdated = Boolean(entry.documentationUpdatedAt);
-  return (
-    <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(entry.id)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onOpen(entry.id);
-        }
-      }}
-      className="modern-card cursor-pointer p-4 transition-transform hover:-translate-y-0.5 sm:p-5"
-    >
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-            <span>{formatDate(entry.occurredAt)}</span>
-            <Badge variant="neutral">
-              {logbookTypeLabels[entry.type]}
-            </Badge>
-            {entry.visibility === 'admins' && (
-              <span className="rounded-full bg-violet-100 px-2 py-0.5 font-medium text-violet-700">
-                Intern
-              </span>
-            )}
-          </div>
-          <h3 className="truncate text-base font-semibold text-[var(--text-primary)] sm:text-lg">
-            {entry.title}
-          </h3>
-        </div>
-        <Badge className="shrink-0" variant={entry.status === 'discussed' ? 'success' : entry.status === 'follow_up' ? 'warning' : entry.status === 'archived' ? 'neutral' : 'info'}>
-          {logbookStatusLabels[entry.status]}
-        </Badge>
-      </div>
-      <p className="mb-4 line-clamp-3 whitespace-pre-wrap text-sm text-[var(--text-secondary)]">{entry.body}</p>
-      {(entry.project?.title || entry.activity?.title) && (
-        <div className="mb-3 flex flex-wrap gap-2 text-xs">
-          {entry.project?.title && (
-            <span className="rounded bg-[var(--surface-2)] px-2 py-1 text-[var(--text-secondary)]">
-              Projekt: {entry.project.title}
-            </span>
-          )}
-          {entry.activity?.title && (
-            <span className="rounded bg-[var(--surface-2)] px-2 py-1 text-[var(--text-secondary)]">
-              Aktivität: {entry.activity.title}
-            </span>
-          )}
-        </div>
-      )}
-      <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3 text-xs text-[var(--text-secondary)]">
-        <div className="min-w-0">
-          <AuthorBadge
-            name={entry.createdByName}
-            avatarUrl={
-              entry.createdByUser?.avatarUrl ??
-              (entry.createdByUserId === user?.id ? user?.avatarUrl : null)
-            }
-          />
-          {wasUpdated && (
-            <span className="mt-1 block text-[11px] text-gray-400">
-              Geändert am {formatDate(entry.documentationUpdatedAt!)}
-            </span>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <span className="flex items-center gap-1">
-            <MessageCircle className="h-3.5 w-3.5" />
-            {entry.commentCount || 0}
-          </span>
-          {canManage && entry.status !== 'discussed' && entry.status !== 'archived' && (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                status.mutate({ id: entry.id, status: 'discussed' });
-              }}
-              className="flex items-center gap-1 rounded-md px-2 py-1 font-medium text-green-700 hover:bg-green-50 dark:bg-green-950/30 dark:hover:bg-green-950/50"
-              title="Als besprochen markieren"
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              Besprochen
-            </button>
-          )}
-          <ChevronRight className="h-4 w-4" />
-        </div>
-      </div>
-    </article>
-  );
-}
+import { ErrorState, LoadingState } from '@/components/ui/StatePanel';
 
 function dateBadge(from?: string, to?: string) {
   if (from && to) return from === to ? `Zeitraum: ${from}` : `Zeitraum: ${from} – ${to}`;
@@ -172,7 +38,7 @@ export default function Logbook() {
     () => ({ search: search.trim() || undefined, ...advanced }),
     [advanced, search],
   );
-  const { data, isLoading } = useLogbookEntries(filters, 1, 100);
+  const { data, isError, isLoading, refetch } = useLogbookEntries(filters, 1, 100);
   const entries = data?.data || [];
   const hasAdvancedFilters = Boolean(
     advanced.from ||
@@ -298,22 +164,14 @@ export default function Logbook() {
           {isLoading ? 'Treffer werden geladen…' : `Treffer: ${data?.total || 0}`}
         </Badge>
         {search.trim() && (
-          <Badge variant="accent">
+          <FilterChip onRemove={() => setSearch('')}>
             Suche: {search.trim()}
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="rounded-full text-viridian/80 hover:text-viridian"
-              aria-label="Suche entfernen"
-            >
-              <XCircle className="h-3.5 w-3.5" />
-            </button>
-          </Badge>
+          </FilterChip>
         )}
         {badges.map((badge) => (
-          <Badge key={badge} variant="accent">
+          <FilterChip key={badge}>
             {badge}
-          </Badge>
+          </FilterChip>
         ))}
         {hasFilters && (
           <Button
@@ -329,28 +187,28 @@ export default function Logbook() {
       </div>
 
       {isLoading ? (
-        <div className="modern-card p-6 text-sm text-gray-500">Logbuch wird geladen…</div>
+        <LoadingState label="Logbuch wird geladen…" />
+      ) : isError ? (
+        <ErrorState action={{ label: 'Erneut versuchen', onClick: () => void refetch() }} />
       ) : entries.length === 0 ? (
-        <div className="modern-card p-8 text-center">
-          <UserRound className="mx-auto mb-3 h-9 w-9 text-gray-300" />
-          <h3 className="font-semibold text-gray-700">Noch keine passenden Einträge</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Halte Beobachtungen, Übergaben oder Debriefings direkt im Logbuch fest.
-          </p>
-          <button
-            type="button"
+        <EmptyState
+          icon={<UserRound className="h-5 w-5" />}
+          title="Noch keine passenden Einträge"
+          description="Halte Beobachtungen, Übergaben oder Debriefings direkt im Logbuch fest."
+          action={(
+          <Button
             onClick={() => navigate('/logbook/new')}
-            className="mt-4 rounded-xl bg-viridian px-4 py-2 text-sm font-semibold text-white"
           >
             Ersten Eintrag erstellen
-          </button>
-        </div>
+          </Button>
+          )}
+        />
       ) : (
         <>
           {currentEntries.length > 0 && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {currentEntries.map((entry) => (
-                <LogbookCard
+                <LogbookCardView
                   key={entry.id}
                   entry={entry}
                   onOpen={(entryId) => navigate(`/logbook?entry=${encodeURIComponent(entryId)}`)}

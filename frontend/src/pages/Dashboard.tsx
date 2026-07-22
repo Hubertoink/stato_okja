@@ -35,6 +35,11 @@ import { usePublicConfig } from '@/lib/publicConfig';
 import CustomKpiCards from '@/components/CustomKpiCards';
 import { useLogbookEntries } from '@/lib/logbook';
 import ProtectedImage from '@/components/ProtectedImage';
+import LogbookStatusBadge from '@/components/LogbookStatusBadge';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { SurfaceCard } from '@/components/ui/SurfaceCard';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
 
@@ -511,9 +516,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-        <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
-      </div>
+      <PageHeader title="Dashboard" />
 
       {/* Today's Opening Hours */}
       {openingHours && (
@@ -592,11 +595,11 @@ export default function Dashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="modern-card p-6 mb-8">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Schnellzugriff</h3>
+      <SurfaceCard className="mb-8">
+        <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">Schnellzugriff</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            className="dashboard-accent-solid-button px-6 py-3 rounded-xl font-medium"
+          <Button
+            className="w-full"
             onClick={() => {
               const dateISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
               if (isMobile) {
@@ -607,47 +610,50 @@ export default function Dashboard() {
             }}
           >
             Neue Aktivität erfassen
-          </button>
-          <button
-            className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+          </Button>
+          <Button
+            className="w-full"
+            variant="secondary"
             onClick={() => navigate('/statistics')}
           >
             Statistik anzeigen
-          </button>
-          <button
-            className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+          </Button>
+          <Button
+            className="w-full"
+            variant="secondary"
             onClick={() => setExportOpen(true)}
             onMouseEnter={preloadExportModal}
             onFocus={preloadExportModal}
           >
             Daten exportieren
-          </button>
+          </Button>
         </div>
-      </div>
+      </SurfaceCard>
 
-      <div className="modern-card p-5 sm:p-6 mb-8">
+      <SurfaceCard className="mb-8" padding="md">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-[var(--text-primary)]">
               <BookOpen className="h-5 w-5 text-viridian" />
               Logbuch
             </h3>
-            <p className="mt-0.5 text-sm text-gray-500">
+            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
               Neueste Beobachtungen, Übergaben und Debriefings.
             </p>
           </div>
-          <button
-            type="button"
+          <Button
+            size="sm"
             onClick={() => navigate('/logbook/new')}
-            className="rounded-xl bg-viridian px-3 py-2 text-sm font-semibold text-white"
           >
             Eintrag
-          </button>
+          </Button>
         </div>
         {recentLogbookEntries.length === 0 ? (
-          <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
-            Noch keine Logbucheinträge. Halte wichtige Beobachtungen direkt für das Team fest.
-          </div>
+          <EmptyState
+            className="py-6"
+            description="Halte wichtige Beobachtungen direkt für das Team fest."
+            title="Noch keine Logbucheinträge"
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {recentLogbookEntries.map((entry) => (
@@ -672,15 +678,7 @@ export default function Dashboard() {
                       })}
                     </span>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${entry.status === 'discussed' ? 'bg-green-100 text-green-700' : entry.status === 'follow_up' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-700'}`}
-                  >
-                    {entry.status === 'discussed'
-                      ? 'Besprochen'
-                      : entry.status === 'follow_up'
-                        ? 'Nachverfolgung'
-                        : 'Offen'}
-                  </span>
+                  <LogbookStatusBadge className="shrink-0" status={entry.status} />
                 </div>
                 <p className="line-clamp-2 text-sm text-gray-600">{entry.body}</p>
                 <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
@@ -712,7 +710,7 @@ export default function Dashboard() {
         >
           Alle Logbucheinträge anzeigen
         </button>
-      </div>
+      </SurfaceCard>
 
       {/* Daily Log */}
       <div className="modern-card p-6 mb-8">

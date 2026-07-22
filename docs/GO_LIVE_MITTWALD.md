@@ -1,6 +1,6 @@
 # Go-Live Leitfaden – Mittwald (Docker Deploy + Varnish)
 
-Dieser Leitfaden beschreibt, wie du Stato 2.0 komplett bei Mittwald betreibst – inklusive Docker Deploy, Reverse-Proxy (Varnish/Nginx), E-Mail (SMTP) und persistenter Datenhaltung.
+Dieser Leitfaden beschreibt, wie du StatO komplett bei Mittwald betreibst – inklusive Docker-Deployment, Reverse-Proxy (Varnish/Nginx), E-Mail (SMTP) und persistenter Datenhaltung.
 
 ## Zielbild
 

@@ -1,4 +1,4 @@
-# Stato 2.0 - Setup Guide
+# StatO – Setup Guide
 
 ## 🚀 Schnellstart
 
@@ -19,7 +19,7 @@ git --version
 ### 2. Projekt klonen und Dependencies installieren
 
 ```powershell
-cd C:\Users\huber\Documents\Stato_2.0
+cd <Pfad-zum-Repository>
 
 # Root Dependencies
 npm install
@@ -340,4 +340,4 @@ Bei Problemen:
 
 ---
 
-**Viel Erfolg mit Stato 2.0! 🎉**
+**Viel Erfolg mit StatO! 🎉**

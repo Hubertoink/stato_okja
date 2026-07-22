@@ -1,4 +1,4 @@
-# Stato 2.0 - Erste Schritte
+# StatO – Erste Schritte
 
 ## ✅ Installation & Setup (Schritt für Schritt)
 
@@ -8,7 +8,7 @@
 
 2. **In Projekt-Verzeichnis navigieren:**
    ```powershell
-   cd C:\Users\huber\Documents\Stato_2.0
+   cd <Pfad-zum-Repository>
    ```
 
 3. **Root Dependencies installieren:**
@@ -106,11 +106,11 @@
     npm run start:dev
     ```
     
-    ✅ Warten bis: `🚀 Stato 2.0 Backend running on: http://localhost:3000`
+    ✅ Warten bis: `🚀 StatO Backend running on: http://localhost:3000`
 
 16. **Neues Terminal öffnen** → Frontend starten:
     ```powershell
-    cd C:\Users\huber\Documents\Stato_2.0\frontend
+    cd frontend
     npm run dev
     ```
     

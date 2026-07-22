@@ -1,6 +1,6 @@
-# Contributing to Stato 2.0
+# Zu StatO beitragen
 
-Vielen Dank für dein Interesse, zu Stato 2.0 beizutragen! 🎉
+Vielen Dank für dein Interesse, zu StatO beizutragen! 🎉
 
 ---
 
@@ -72,7 +72,7 @@ Siehe [GETTING_STARTED.md](GETTING_STARTED.md) für vollständiges Setup.
 **Quick Start:**
 ```powershell
 git clone <repo-url>
-cd Stato_2.0
+cd stato_okja
 npm install
 cd backend && npm install
 cd ../frontend && npm install
@@ -313,7 +313,7 @@ Closes #42
 ## 🏗️ Projekt-Struktur
 
 ```
-Stato_2.0/
+stato/
 ├── backend/
 │   ├── src/
 │   │   ├── activities/       # Activities Module

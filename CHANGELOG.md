@@ -1,4 +1,4 @@
-# Stato 2.0 - Changelog
+# StatO – Changelog
 
 Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert.
 

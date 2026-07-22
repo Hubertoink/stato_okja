@@ -1,4 +1,4 @@
-# Go-Live Checkliste – Stato 2.0
+# Go-Live-Checkliste – StatO
 
 Diese Datei beschreibt, was für den Produktivbetrieb (Go-Live) noch zu tun ist und wie eine empfohlene Infrastruktur aussieht. Sie ist als Schritt-für-Schritt-Leitfaden gedacht.
 

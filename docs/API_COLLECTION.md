@@ -1,4 +1,4 @@
-# Stato 2.0 API Collection
+# StatO API Collection
 
 Beispiel-Requests für Testing mit REST-Clients (Postman, Insomnia, Thunder Client)
 

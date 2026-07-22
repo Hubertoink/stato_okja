@@ -1880,23 +1880,23 @@ code {
   );
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-image-fade {
+:root[data-color-mode='dark'] .activity-image-fade {
   background: linear-gradient(
     270deg,
-    rgba(15, 23, 42, 0.96) 0%,
-    rgba(15, 23, 42, 0.88) 34%,
-    rgba(15, 23, 42, 0.52) 60%,
-    rgba(15, 23, 42, 0) 100%
+    color-mix(in srgb, var(--surface-1) 98%, transparent) 0%,
+    color-mix(in srgb, var(--surface-1) 90%, transparent) 34%,
+    color-mix(in srgb, var(--surface-1) 55%, transparent) 60%,
+    transparent 100%
   );
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-image-fade-mobile {
+:root[data-color-mode='dark'] .activity-image-fade-mobile {
   background: linear-gradient(
     270deg,
-    rgba(15, 23, 42, 0.96) 0%,
-    rgba(15, 23, 42, 0.84) 36%,
-    rgba(15, 23, 42, 0.46) 60%,
-    rgba(15, 23, 42, 0) 100%
+    color-mix(in srgb, var(--surface-1) 98%, transparent) 0%,
+    color-mix(in srgb, var(--surface-1) 87%, transparent) 36%,
+    color-mix(in srgb, var(--surface-1) 50%, transparent) 60%,
+    transparent 100%
   );
 }
 

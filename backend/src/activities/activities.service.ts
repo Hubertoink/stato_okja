@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, SelectQueryBuilder } from 'typeorm';
 import { Activity } from './entities/activity.entity';
 import { ActivityExecutionStatus, ActivityType } from '../common/enums';
 import { AuditService } from '../common/audit.service';
@@ -45,6 +45,13 @@ type ActivityCohortTarget = Pick<
   Activity,
   'cohorts' | 'countMale' | 'countFemale' | 'countDiverse' | 'countTotal'
 >;
+type ActivityFilterAvailability = {
+  categoryIds: string[];
+  tagIds: string[];
+  executionStatuses: ActivityExecutionStatus[];
+  hasUncategorized: boolean;
+  availableYears: string[];
+};
 @Injectable()
 export class ActivitiesService {
   constructor(
@@ -282,6 +289,83 @@ export class ActivitiesService {
     filters: ActivityListFilters & { page: number; limit: number },
   ): Promise<{ data: Activity[]; total: number; page: number; pageSize: number }> {
     return this.activityListQuery().findPaged(filters);
+  }
+
+  async getFilterAvailability(
+    orgFilter?: Pick<ActivityListFilters, 'orgId' | 'orgIds'>,
+  ): Promise<ActivityFilterAvailability> {
+    const applyOrgScope = (query: SelectQueryBuilder<Activity>) => {
+      if (Array.isArray(orgFilter?.orgIds) && orgFilter.orgIds.length > 0) {
+        query.andWhere('a.orgId IN (:...orgIds)', { orgIds: orgFilter.orgIds });
+      } else if (typeof orgFilter?.orgId !== 'undefined') {
+        if (orgFilter.orgId === null) query.andWhere('a.orgId IS NULL');
+        else query.andWhere('a.orgId = :orgId', { orgId: orgFilter.orgId });
+      }
+      return query;
+    };
+
+    const yearExpression = ['postgres', 'postgresql'].includes(
+      String(this.activityRepository.manager.connection.options.type).toLowerCase(),
+    )
+      ? "TO_CHAR(a.date, 'YYYY')"
+      : "strftime('%Y', a.date)";
+
+    const categoryIdsQuery = applyOrgScope(
+      this.activityRepository
+        .createQueryBuilder('a')
+        .leftJoin('a.categories', 'category')
+        .select('DISTINCT category.id', 'id')
+        .where('category.id IS NOT NULL'),
+    ).getRawMany<{ id: string }>();
+    const tagIdsQuery = applyOrgScope(
+      this.activityRepository
+        .createQueryBuilder('a')
+        .leftJoin('a.tags', 'tag')
+        .select('DISTINCT tag.id', 'id')
+        .where('tag.id IS NOT NULL'),
+    ).getRawMany<{ id: string }>();
+    const executionStatusesQuery = applyOrgScope(
+      this.activityRepository
+        .createQueryBuilder('a')
+        .select('DISTINCT a.executionStatus', 'executionStatus'),
+    ).getRawMany<{ executionStatus: ActivityExecutionStatus }>();
+    const yearsQuery = applyOrgScope(
+      this.activityRepository
+        .createQueryBuilder('a')
+        .select(`DISTINCT ${yearExpression}`, 'year'),
+    ).getRawMany<{ year: string }>();
+    const uncategorizedQuery = applyOrgScope(
+      this.activityRepository
+        .createQueryBuilder('a')
+        .leftJoin('a.categories', 'category')
+        .select('1', 'matched')
+        .where('category.id IS NULL')
+        .limit(1),
+    ).getRawOne<{ matched: number }>();
+
+    const [categoryRows, tagRows, statusRows, yearRows, uncategorizedRow] = await Promise.all([
+      categoryIdsQuery,
+      tagIdsQuery,
+      executionStatusesQuery,
+      yearsQuery,
+      uncategorizedQuery,
+    ]);
+
+    return {
+      categoryIds: categoryRows.map((row) => row.id).filter(Boolean),
+      tagIds: tagRows.map((row) => row.id).filter(Boolean),
+      executionStatuses: statusRows
+        .map((row) => row.executionStatus)
+        .filter(
+          (status): status is ActivityExecutionStatus =>
+            status === ActivityExecutionStatus.COMPLETED || status === ActivityExecutionStatus.CANCELLED,
+        ),
+      hasUncategorized: Boolean(uncategorizedRow),
+      availableYears: yearRows
+        .map((row) => String(row.year || ''))
+        .filter((year) => /^\d{4}$/.test(year))
+        .sort((left, right) => right.localeCompare(left)),
+    };
   }
 
   findOne(id: string): Promise<Activity | null> {

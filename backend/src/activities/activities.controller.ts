@@ -210,6 +210,38 @@ export class ActivitiesController {
     return { ...result, data: result.data.map(toPublicActivity) };
   }
 
+  @Get('filter-availability')
+  @ApiOperation({ summary: 'VerfÃ¼gbare Werte fÃ¼r Aktivitaetsfilter abrufen' })
+  async getFilterAvailability(
+    @Req()
+    req: {
+      user: { role: string; orgId?: string | null };
+      effectiveOrgId?: string | null | undefined;
+    },
+    @Query('orgId') orgIdQuery?: string,
+  ) {
+    let orgId: string | null | undefined = undefined;
+    let orgIds: string[] | undefined = undefined;
+
+    if (req.user.role === 'superadmin') {
+      if (typeof orgIdQuery !== 'undefined') {
+        if (orgIdQuery) orgIds = await this.orgs.getSubtreeOrgIds(orgIdQuery);
+        else orgId = null;
+      } else if (typeof req.effectiveOrgId === 'undefined' || req.effectiveOrgId === null) {
+        orgId = null;
+      } else {
+        orgIds = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
+      }
+    } else {
+      const scopeOrgId =
+        typeof req.effectiveOrgId === 'undefined' ? req.user.orgId || null : req.effectiveOrgId;
+      if (typeof scopeOrgId === 'string') orgIds = await this.orgs.getSubtreeOrgIds(scopeOrgId);
+      else orgId = null;
+    }
+
+    return this.activitiesService.getFilterAvailability({ orgId, orgIds });
+  }
+
   // Acknowledgments (Daily Log "done" flag)
   @Get('acks')
   @ApiOperation({ summary: 'Ack-Status (done) für eine Liste von Aktivitäten abrufen' })

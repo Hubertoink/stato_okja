@@ -6,8 +6,11 @@ import { Activity } from './entities/activity.entity';
 
 describe('ActivitiesController org scoping', () => {
   let controller: ActivitiesController;
-  const service: Pick<ActivitiesService, 'findAllPaged'|'create'|'updateScoped'> = {
+  const service: Pick<ActivitiesService, 'findAllPaged'|'getFilterAvailability'|'create'|'updateScoped'> = {
     findAllPaged: jest.fn(async () => ({ data: [] as Activity[], total: 0, page: 1, pageSize: 50 })),
+    getFilterAvailability: jest.fn(async () => ({
+      categoryIds: [], tagIds: [], executionStatuses: [], hasUncategorized: false, availableYears: [],
+    })),
     create: jest.fn(async () => ({} as unknown as Activity)),
     updateScoped: jest.fn(async () => ({} as unknown as Activity | null)),
   };
@@ -69,6 +72,18 @@ describe('ActivitiesController org scoping', () => {
     await controller.findAll(...args);
 
     expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ page: 3, limit: 50 }));
+  });
+
+  it('scopes filter availability to the selected organization subtree', async () => {
+    await controller.getFilterAvailability(
+      { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
+    );
+
+    expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
+    expect(service.getFilterAvailability).toHaveBeenCalledWith({
+      orgId: undefined,
+      orgIds: ['org-1', 'child-1'],
+    });
   });
 
   it('create sets orgId from scope and ignores body orgId', async () => {

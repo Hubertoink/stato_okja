@@ -47,6 +47,8 @@ Wichtig: Wenn deine Dev-Umgebung „komisch alte Features“ zeigt, läuft sehr 
   - `RATE_LIMIT_MAX=100`
   - `AUTH_RATE_LIMIT_TTL=60`
   - `AUTH_RATE_LIMIT_MAX=10`
+  - `LOGIN_MAX_FAILED_ATTEMPTS=5`
+  - `LOGIN_LOCKOUT_MINUTES=10`
   - `DB_TYPE=postgres`
   - `DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE`
   - Optional: `DB_SYNCHRONIZE=false`, `DB_LOGGING=false`

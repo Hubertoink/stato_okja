@@ -9,6 +9,7 @@ import { RefreshSession } from './entities/refresh-session.entity';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { EmailService } from '../email/email.service';
+import { getLoginLockoutConfig } from './login-lockout.config';
 import type { UserRole } from '../users/entities/user.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
@@ -97,8 +98,7 @@ function splitRefreshToken(refreshToken: string) {
 
 @Injectable()
 export class AuthService {
-  private readonly MAX_FAILED_LOGINS = 5;
-  private readonly LOGIN_LOCKOUT_MS = 10 * 60 * 1000;
+  private readonly loginLockout = getLoginLockoutConfig();
 
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
@@ -537,7 +537,7 @@ export class AuthService {
 
     if (
       user.lastFailedLoginAt &&
-      now.getTime() - user.lastFailedLoginAt.getTime() > this.LOGIN_LOCKOUT_MS
+      now.getTime() - user.lastFailedLoginAt.getTime() > this.loginLockout.lockoutMs
     ) {
       user.failedLoginAttempts = 0;
       user.lastFailedLoginAt = null;
@@ -548,8 +548,8 @@ export class AuthService {
     if (!ok) {
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
       user.lastFailedLoginAt = now;
-      if (user.failedLoginAttempts >= this.MAX_FAILED_LOGINS) {
-        user.lockoutUntil = new Date(now.getTime() + this.LOGIN_LOCKOUT_MS);
+      if (user.failedLoginAttempts >= this.loginLockout.maxAttempts) {
+        user.lockoutUntil = new Date(now.getTime() + this.loginLockout.lockoutMs);
       }
       await this.users.save(user);
       throw new UnauthorizedException('Ungültige Zugangsdaten');

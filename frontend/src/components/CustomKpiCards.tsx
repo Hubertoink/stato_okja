@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import Modal from './Modal';
+import { isDarkThemeName } from '@/lib/theme';
 import { useProjects } from '@/lib/projects';
 import {
   CustomKpiDefinition,
@@ -100,7 +101,6 @@ const WEEKDAY_OPTIONS = [
 
 const LIGHT_KPI_COLOR_OPTIONS = ['#ffffff', '#eff6ff', '#ecfdf5', '#fff7ed', '#fdf2f8', '#eef2ff', '#1f2937', '#0f766e'];
 const DARK_KPI_COLOR_OPTIONS = ['#0d1422', '#111a2b', '#1c2740', '#17303a', '#2b2d42', '#3a2747', '#4a2f24', '#0f766e'];
-const DARK_KPI_THEMES = new Set(['Midnight', 'Coastal Vibes']);
 
 const emptyForm: KpiFormState = {
   title: '',
@@ -241,7 +241,7 @@ function formatKpiDate(value?: string) {
 
 function isDarkKpiTheme() {
   if (typeof document === 'undefined') return false;
-  return DARK_KPI_THEMES.has(document.documentElement.getAttribute('data-theme') || '');
+  return isDarkThemeName(document.documentElement.getAttribute('data-theme'));
 }
 
 function rangeLabel(range: { from?: string; to?: string }) {
@@ -302,7 +302,7 @@ export default function CustomKpiCards({
     const observer = new MutationObserver(syncTheme);
 
     syncTheme();
-    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-color-mode'] });
 
     return () => observer.disconnect();
   }, []);

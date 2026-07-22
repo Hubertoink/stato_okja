@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
+import { applyTheme, THEME_DEFINITIONS } from '@/lib/theme';
 import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -264,7 +265,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
               <div className="mt-4 space-y-4 border-t border-[var(--border-subtle)] pt-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Design-Theme</label>
-                  <ThemePicker value={selectedTheme} onChange={(t)=>{ setSelectedTheme(t); try { document.documentElement.setAttribute('data-theme', t); } catch (e) { /* noop */ } }} />
+                  <ThemePicker value={selectedTheme} onChange={(t)=>{ setSelectedTheme(t); applyTheme(t); }} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Hintergrund</label>
@@ -507,27 +508,18 @@ function PasswordInput({
 }
 
 function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)=>void }) {
-  const themes: Array<{ name: string; colors: string[] }> = [
-    // Show primary + secondary + real UI accents + background
-    { name: 'Default Theme', colors: ['#5B6CFF','#7C8FFF','#16a34a','#f59e0b','#FAFBFF'] },
-    { name: 'Earthy Tones', colors: ['#6d6875','#b5838d','#e5989b','#ffb4a2','#f5f2f1'] },
-    { name: 'Peachy Delight', colors: ['#d8e2dc','#ffe5d9','#ffcad4','#f4acb7','#9d8189'] },
-    { name: 'Ocean Pearl', colors: ['#006d77','#83c5be','#edf6f9','#ffddd2','#f3f4f6'] },
-    { name: 'Midnight', colors: ['#08101d','#6ea8ff','#66d9d1','#1a2333','#ecf3ff'] },
-    { name: 'Coastal Vibes', colors: ['#2b2d42','#ef233c','#8d99ae','#edf2f4','#d90429'] },
-    { name: 'Amtsstube 1987', colors: ['#1f3a1f','#7a3b2e','#c2b78f','#b6873b','#d8d2bf'] },
-  ];
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {themes.map(t => (
+        {THEME_DEFINITIONS.map(t => (
           <button
             key={t.name}
             type="button"
             onClick={()=> onChange(t.name)}
             className={`border rounded p-2 text-left ${value===t.name ? 'ring-2 ring-viridian' : ''}`}
           >
-            <div className="font-medium text-sm mb-2">{t.name}</div>
+            <div className="font-medium text-sm">{t.name}</div>
+            <div className="text-xs text-gray-500 mb-2">{t.description}</div>
             <div className="flex -space-x-1">
               {t.colors.map((c,i)=> (<span key={i} className="inline-block w-6 h-6 rounded border" style={{ backgroundColor: c }} />))}
             </div>

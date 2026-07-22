@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Clock3, Save, Trash2, X } from 'lucide-react';
 import type { OrganizationClosureDay } from '@/lib/orgs';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { ModalBackdrop } from '@/components/Modal';
 
 function formatDateLabel(date: string): string {
   const [year, month, day] = date.split('-').map((value) => Number(value));
@@ -50,10 +51,10 @@ export default function CalendarClosureModal({
 
   const content = (
     <div
-      className="modal-overlay fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 md:items-center md:p-4"
-      onClick={onClose}
+      className="fixed inset-0 z-[70] flex items-end justify-center p-0 md:items-center md:p-4"
       onWheel={(event) => event.stopPropagation()}
     >
+      <ModalBackdrop className="modal-overlay bg-black/45" />
       <div
         aria-label="Einrichtung geschlossen"
         aria-modal="true"

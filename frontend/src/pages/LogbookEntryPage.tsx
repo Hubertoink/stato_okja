@@ -34,7 +34,7 @@ import {
 import { useProjects } from '@/lib/projects';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import { useToast } from '@/components/Toast';
-import Modal from '@/components/Modal';
+import Modal, { ModalBackdrop } from '@/components/Modal';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
@@ -333,14 +333,7 @@ export default function LogbookEntryPage() {
   if (editing)
     return (
       <div className="fixed inset-0 z-[60] flex items-stretch justify-center md:items-center md:p-6">
-        <button
-          type="button"
-          aria-label="Bearbeiten schließen"
-          onClick={() =>
-            navigate(isNew ? '/logbook' : `/logbook?entry=${encodeURIComponent(id || '')}`)
-          }
-          className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-[1px]"
-        />
+        <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
         <div className="logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl">
           <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 sm:px-6">
             <h2 className="min-w-0 truncate text-2xl font-bold text-gray-800">

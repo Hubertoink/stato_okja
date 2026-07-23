@@ -148,9 +148,6 @@ export default function ActivityEditPage() {
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
 
-  // Vereinfachung: Action-Bar grundsätzlich nicht sticky, nur Safe-Area berücksichtigen.
-  const actionBarClass =
-    'relative z-10 bg-white border-t -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 py-2 flex items-center justify-between gap-3';
   // Reduziere Container-Spacing bei Tastatur
   const contentSpacing = keyboardOpen ? 'space-y-2' : 'space-y-3';
 
@@ -692,40 +689,31 @@ export default function ActivityEditPage() {
           />
         </div>
 
-        <div className={actionBarClass}>
-          <div className="flex-1 flex items-center">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-              onClick={() => navigate(-1)}
-              title="Abbrechen"
-              aria-label="Abbrechen"
-            >
-              <XIcon className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <button
-              type="button"
-              className="danger-icon-button p-2"
-              onClick={() => setDeleteOpen(true)}
-              title="Löschen"
-              aria-label="Löschen"
-            >
-              <TrashIcon className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex-1 flex items-center justify-end">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-              onClick={handleSave}
-              title="Speichern"
-              aria-label="Speichern"
-            >
-              <SaveIcon className="w-5 h-5" />
-            </button>
-          </div>
+        <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:items-center sm:justify-end">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+          >
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            className="sm:mr-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-red-700 hover:bg-red-50"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <TrashIcon className="h-4 w-4" />
+            Löschen
+          </button>
+          <button
+            type="button"
+            className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60"
+            onClick={handleSave}
+            disabled={update.isPending || picker || deleteOpen}
+          >
+            <SaveIcon className="h-4 w-4" />
+            {update.isPending ? 'Wird gespeichert…' : 'Speichern'}
+          </button>
         </div>
       </div>
 

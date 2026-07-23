@@ -332,11 +332,11 @@ export default function LogbookEntryPage() {
 
   if (editing)
     return (
-      <div className="fixed inset-0 z-[60] flex items-stretch justify-center md:items-center md:p-6">
+      <div className="fixed inset-0 z-[60] flex items-stretch justify-center p-2 md:items-center md:p-6">
         <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
-        <div className="logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 sm:px-6">
-            <h2 className="min-w-0 truncate text-2xl font-bold text-gray-800">
+        <div className="logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl bg-[var(--surface-2)] shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-white">
+          <div className="mb-4 mt-1 flex items-center justify-between gap-3 px-3 pt-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3">
+            <h2 className="min-w-0 truncate text-2xl font-bold text-viridian md:text-gray-800">
               <span className="md:hidden">Logbuch</span>
               <span className="hidden md:inline">
                 {isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}
@@ -387,8 +387,8 @@ export default function LogbookEntryPage() {
             </button>
             </div>
           </div>
-          <form onSubmit={save} className="min-h-0 flex-1 overflow-y-auto">
-            <div className="space-y-5 p-5 sm:p-6">
+          <form onSubmit={save} className="mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-lg bg-white shadow md:mx-0 md:mb-0 md:rounded-none md:shadow-none">
+            <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">
                   Zeitpunkt

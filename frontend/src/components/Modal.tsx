@@ -20,6 +20,7 @@ export default function Modal({
   maxWidth = 'md',
   blur = true,
   showCloseButton = true,
+  variant = 'default',
 }: {
   open: boolean;
   title?: string;
@@ -28,6 +29,8 @@ export default function Modal({
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl';
   blur?: boolean;
   showCloseButton?: boolean;
+  /** Information modals keep their title and close control visible while their content scrolls. */
+  variant?: 'default' | 'information';
 }) {
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
@@ -43,6 +46,7 @@ export default function Modal({
     '5xl': 'md:max-w-5xl',
     '6xl': 'md:max-w-6xl',
   }[maxWidth];
+  const isInformationModal = variant === 'information';
   const content = (
     <div
       className={`fixed inset-0 z-[70] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? 'backdrop-blur-sm' : ''}`}
@@ -51,11 +55,15 @@ export default function Modal({
       <div
         aria-label={title || 'Dialog'}
         aria-modal="true"
-        className={`w-full ${maxW} max-h-[85vh] overflow-y-auto rounded-t-3xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 text-[var(--text-primary)] shadow-2xl bottom-sheet-animate modal-panel-roomy md:rounded-2xl md:p-6 ${blur ? 'backdrop-blur-xl' : ''}`}
+        className={`w-full ${maxW} max-h-[85vh] rounded-t-3xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl bottom-sheet-animate modal-panel-roomy md:rounded-2xl ${isInformationModal ? 'flex flex-col overflow-hidden' : 'overflow-y-auto p-4 md:p-6'} ${blur ? 'backdrop-blur-xl' : ''}`}
         role="dialog"
         tabIndex={-1}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div
+          className={isInformationModal
+            ? 'flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 md:p-6'
+            : 'mb-4 flex items-center justify-between'}
+        >
           <h3 className="text-lg font-bold gradient-text">{title}</h3>
           {showCloseButton && (
             <button
@@ -67,7 +75,11 @@ export default function Modal({
             </button>
           )}
         </div>
-        {children}
+        {isInformationModal ? (
+          <div className="min-h-0 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6">
+            {children}
+          </div>
+        ) : children}
       </div>
     </div>
   );

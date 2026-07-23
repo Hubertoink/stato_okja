@@ -70,6 +70,16 @@ erzeugen beim ersten Lauf eine lokale `.env.onprem` mit individuellen
 Zufalls-Secrets und starten alle Container. Eine bereits vorhandene
 `.env.onprem` wird bei erneuter Ausfuehrung nicht ueberschrieben.
 
+Die persistenten On-Prem-Daten liegen in einem stabil benannten Docker-Volume.
+Existiert dieser bereits, während `.env.onprem` fehlt, bricht der Installer ab,
+statt neue Secrets und ein nicht wirksames Startpasswort auszugeben. In diesem
+Fall die bisherige `.env.onprem` wiederherstellen oder den alten Datenbestand
+bewusst sichern und entfernen, bevor eine neue Installation angelegt wird.
+
+Bei einer wirklich leeren PostgreSQL-Datenbank erzeugt der Installer das
+Basisschema einmalig und fuehrt anschliessend die regulären Migrationen aus.
+Damit bleibt `DB_SYNCHRONIZE` im normalen Betrieb deaktiviert.
+
 Linux/macOS:
 
 ```bash

@@ -79,6 +79,12 @@ export class ResetPasswordDto {
   password!: string;
 }
 
+export class ValidateResetTokenDto {
+  @IsString()
+  @MinLength(1)
+  token!: string;
+}
+
 export class AdminResetPasswordDto {
   @IsUUID()
   userId!: string;

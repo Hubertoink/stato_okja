@@ -1,6 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { resetPassword } from '@/lib/password';
+import { resetPassword, validateResetToken } from '@/lib/password';
 import { isStrongPassword, PASSWORD_REQUIREMENTS_SHORT } from '@/lib/passwordPolicy';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 
@@ -12,6 +12,27 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+  const [tokenStatus, setTokenStatus] = useState<'checking' | 'valid' | 'invalid'>('checking');
+
+  useEffect(() => {
+    let active = true;
+
+    if (!token) {
+      setTokenStatus('invalid');
+      return () => { active = false; };
+    }
+
+    setTokenStatus('checking');
+    void validateResetToken(token)
+      .then(() => {
+        if (active) setTokenStatus('valid');
+      })
+      .catch(() => {
+        if (active) setTokenStatus('invalid');
+      });
+
+    return () => { active = false; };
+  }, [token]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -41,7 +62,21 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-mint-cream flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <h2 className="text-2xl font-bold text-viridian mb-4">Neues Passwort setzen</h2>
-        {ok ? (
+        {tokenStatus === 'checking' ? (
+          <p className="text-sm text-gray-700" aria-live="polite">Link wird geprüft…</p>
+        ) : tokenStatus === 'invalid' ? (
+          <div className="space-y-4" aria-live="polite">
+            <p className="text-sm text-red-700">
+              Dieser Passwort-Reset-Link ist abgelaufen, ungültig oder wurde bereits ersetzt.
+            </p>
+            <a href="/reset-password-request" className="text-sm font-medium text-viridian hover:underline">
+              Neuen Reset-Link anfordern
+            </a>
+            <p className="text-xs text-gray-600">
+              <a href="/" className="text-viridian hover:underline">Zurück zum Login</a>
+            </p>
+          </div>
+        ) : ok ? (
           <div className="space-y-4">
             <p className="text-sm text-gray-700">Passwort gesetzt. Du wirst weitergeleitet…</p>
             <p className="text-xs text-gray-600">

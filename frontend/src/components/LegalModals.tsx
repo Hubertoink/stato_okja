@@ -24,7 +24,7 @@ export function ImprintModal({
   const commitDisplay = getCommitDisplay();
 
   return (
-    <Modal open={open} onClose={onClose} title="Impressum" maxWidth="md">
+    <Modal open={open} onClose={onClose} title="Impressum" maxWidth="md" variant="information">
       <div className="space-y-4 text-sm text-gray-700">
         <section className="space-y-1">
           <h3 className="text-base font-semibold text-gray-900">Angaben gemäß § 5 TMG</h3>
@@ -80,7 +80,7 @@ export function CookieNoticeModal({
   onClose: () => void;
 }) {
   return (
-    <Modal open={open} onClose={onClose} title="Cookies & lokale Speicherung" maxWidth="lg">
+    <Modal open={open} onClose={onClose} title="Cookies & lokale Speicherung" maxWidth="lg" variant="information">
       <div className="space-y-5 text-sm text-gray-700">
         <section className="space-y-2">
           <h3 className="text-base font-semibold text-gray-900">Kurzfassung</h3>
@@ -130,7 +130,7 @@ export function PrivacyNoticeModal({
   onClose: () => void;
 }) {
   return (
-    <Modal open={open} onClose={onClose} title="Datenschutz & Datenverwendung" maxWidth="lg">
+    <Modal open={open} onClose={onClose} title="Datenschutz & Datenverwendung" maxWidth="lg" variant="information">
       <div className="space-y-5 text-sm text-gray-700">
         <section className="space-y-2">
           <h3 className="text-base font-semibold text-gray-900">Verantwortliche Stelle</h3>
@@ -200,7 +200,7 @@ export function TermsOfUseModal({
   onClose: () => void;
 }) {
   return (
-    <Modal open={open} onClose={onClose} title="Nutzungsbedingungen" maxWidth="lg">
+    <Modal open={open} onClose={onClose} title="Nutzungsbedingungen" maxWidth="lg" variant="information">
       <div className="space-y-5 text-sm text-gray-700">
         <section className="space-y-2">
           <h3 className="text-base font-semibold text-gray-900">1. Geltungsbereich und Zweck</h3>

@@ -13,6 +13,7 @@ import { shouldTrustProxy } from './config/rate-limit.config';
 import { assertTwoFactorRuntimeConfig, isTwoFactorAuthenticationEnabled } from './auth/two-factor.config';
 import { EmailService } from './email/email.service';
 import { HttpExceptionFilter } from './common/http-exception.filter';
+import { bootstrapEmptyDatabase } from './database/bootstrap-empty-database';
 
 const PG_TIMESTAMP_OID = 1114;
 
@@ -27,6 +28,7 @@ pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
 async function bootstrap() {
   assertSecureRuntimeConfig();
   assertTwoFactorRuntimeConfig();
+  await bootstrapEmptyDatabase();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const emailService = app.get(EmailService, { strict: false });
 

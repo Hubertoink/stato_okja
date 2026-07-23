@@ -689,31 +689,33 @@ export default function ActivityEditPage() {
           />
         </div>
 
-        <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:items-center sm:justify-end">
+        <div className="sticky bottom-0 flex flex-col gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:items-center sm:justify-end">
           <button
             type="button"
-            onClick={() => navigate(-1)}
-            className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-          >
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            className="sm:mr-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-red-700 hover:bg-red-50"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <TrashIcon className="h-4 w-4" />
-            Löschen
-          </button>
-          <button
-            type="button"
-            className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60"
+            className="dashboard-accent-solid-button order-1 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60 sm:order-3 sm:w-auto"
             onClick={handleSave}
             disabled={update.isPending || picker || deleteOpen}
           >
             <SaveIcon className="h-4 w-4" />
             {update.isPending ? 'Wird gespeichert…' : 'Speichern'}
           </button>
+          <div className="order-2 flex items-center justify-between gap-2 sm:contents">
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-red-700 hover:bg-red-50 sm:order-1"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <TrashIcon className="h-4 w-4" />
+              Löschen
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100 sm:order-2"
+            >
+              Abbrechen
+            </button>
+          </div>
         </div>
       </div>
 

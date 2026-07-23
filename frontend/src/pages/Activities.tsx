@@ -52,6 +52,7 @@ import {
   saveActivitiesFilters,
 } from '@/lib/activitiesFilterStorage';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Badge } from '@/components/ui/Badge';
 import { Button, IconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -863,9 +864,9 @@ export default function Activities() {
       >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-700">
+            <Badge variant="count">
               {activitiesLoading ? 'Treffer werden geladen…' : `Treffer: ${exportCountLabel}`}
-            </span>
+            </Badge>
           {searchTerm.trim() ? (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-azure-web text-viridian">
               <span>Suche: {searchTerm.trim()}</span>

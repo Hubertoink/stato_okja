@@ -170,7 +170,7 @@ export default function Logbook() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-        <Badge variant="neutral">
+        <Badge variant="count">
           {isLoading ? 'Treffer werden geladen…' : `Treffer: ${data?.total || 0}`}
         </Badge>
         {search.trim() && (

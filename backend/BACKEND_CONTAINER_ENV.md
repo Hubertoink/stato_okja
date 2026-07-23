@@ -98,6 +98,7 @@ Hinweis zu GitHub: `JWT_SECRET`, `DB_PASSWORD` und `SMTP_PASS` sollten immer Sec
 | `POSTGRES_PASSWORD` | erforderlich in Compose | Initiales DB-Passwort fuer Postgres und Backend. |
 | `DB_SYNCHRONIZE` | `false` | TypeORM-Schema-Sync. Fuer Produktion `false` lassen. |
 | `DB_MIGRATIONS_RUN` | `true` bei `NODE_ENV=production`, sonst `false` | Fuehrt Migrationen beim Backend-Start aus. Greift nur, wenn `DB_SYNCHRONIZE=false` ist. |
+| `DB_BOOTSTRAP_ON_EMPTY` | `true` in Produktion/Staging | Erstellt bei einer wirklich leeren Postgres-DB einmalig das Basisschema und fuehrt danach Migrationen aus. Bei einer unvollstaendigen DB wird aus Sicherheitsgruenden abgebrochen. |
 | `DB_LOGGING` | `false` | SQL-Logging. In Produktion normalerweise `false`. |
 | `DB_REQUIRE_SSL` | `true` fuer externe DBs im Strict Mode, sonst abhaengig vom Host | Erzwingt TLS fuer externe Postgres-Verbindungen. Fuer den lokalen Compose-Service `postgres` normalerweise `false`. |
 | `DB_SSL` | `false` | Aktiviert TLS zur Datenbank (`true`, `1` oder `require`). |

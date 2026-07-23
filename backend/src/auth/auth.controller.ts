@@ -20,6 +20,7 @@ import {
   ResendTwoFactorDto,
   ResetPasswordDto,
   UpdateMeDto,
+  ValidateResetTokenDto,
   VerifyTwoFactorDto,
 } from './dto/auth.dto';
 
@@ -304,6 +305,12 @@ export class AuthController {
   @Post('request-password-reset')
   requestPasswordReset(@Body() body: RequestPasswordResetDto) {
     return this.auth.requestPasswordReset(body.email);
+  }
+
+  @Throttle(AUTH_RATE_LIMIT)
+  @Post('validate-reset-token')
+  validateResetToken(@Body() body: ValidateResetTokenDto) {
+    return this.auth.validateResetToken(body.token);
   }
 
   @Throttle(AUTH_RATE_LIMIT)

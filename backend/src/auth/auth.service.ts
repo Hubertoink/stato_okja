@@ -797,16 +797,33 @@ export class AuthService {
     return { ok: true };
   }
 
-  async resetPassword(token: string, password: string) {
-    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(token, {
-      secret: getJwtSecret(),
-    });
-    if (!decoded || decoded.purpose !== 'reset') throw new Error('Invalid reset token');
-    const user = await this.users.findOne({ where: { id: decoded.sub } });
-    if (!user) throw new Error('User not found');
-    if ((decoded.version ?? -1) !== (user.passwordResetTokenVersion || 0)) {
-      throw new Error('Reset token bereits verbraucht oder ersetzt');
+  private async getUserForResetToken(token: string) {
+    let decoded: { sub: string; purpose?: string; version?: number };
+    try {
+      decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(token, {
+        secret: getJwtSecret(),
+      });
+    } catch {
+      throw new UnauthorizedException('Ungültiger oder abgelaufener Reset-Link');
     }
+    if (!decoded || decoded.purpose !== 'reset') {
+      throw new UnauthorizedException('Ungültiger oder abgelaufener Reset-Link');
+    }
+    const user = await this.users.findOne({ where: { id: decoded.sub } });
+    if (!user) throw new UnauthorizedException('Ungültiger oder abgelaufener Reset-Link');
+    if ((decoded.version ?? -1) !== (user.passwordResetTokenVersion || 0)) {
+      throw new UnauthorizedException('Ungültiger oder abgelaufener Reset-Link');
+    }
+    return user;
+  }
+
+  async validateResetToken(token: string) {
+    await this.getUserForResetToken(token);
+    return { ok: true };
+  }
+
+  async resetPassword(token: string, password: string) {
+    const user = await this.getUserForResetToken(token);
     await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: true });
     return { ok: true };
   }

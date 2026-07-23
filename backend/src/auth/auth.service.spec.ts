@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 describe('AuthService invitations', () => {
@@ -12,7 +12,10 @@ describe('AuthService invitations', () => {
       save: jest.fn(async (user) => user),
       delete: jest.fn().mockResolvedValue(undefined),
     };
-    const jwt = { signAsync: jest.fn().mockResolvedValue('invite-token') };
+    const jwt = {
+      signAsync: jest.fn().mockResolvedValue('invite-token'),
+      verifyAsync: jest.fn(),
+    };
     const email = { sendInviteEmail: jest.fn().mockResolvedValue(options.emailResult ?? { queued: true }) };
     const service = new AuthService(
       users as never,
@@ -94,5 +97,26 @@ describe('AuthService invitations', () => {
       service.inviteUser({ email: 'new@example.org', name: 'New User', role: 'user', orgId: 'org-1' }),
     ).rejects.toThrow('Invite email was not delivered');
     expect(users.delete).toHaveBeenCalledWith({ id: 'user-1' });
+  });
+
+  it('accepts an active reset token without consuming it', async () => {
+    const { service, jwt } = createService({
+      existingUser: { id: 'user-1', passwordResetTokenVersion: 3 },
+    });
+    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1', purpose: 'reset', version: 3 });
+
+    await expect(service.validateResetToken('reset-token')).resolves.toEqual({ ok: true });
+  });
+
+  it('rejects expired and replaced reset tokens during validation', async () => {
+    const expired = createService();
+    expired.jwt.verifyAsync.mockRejectedValue(new Error('jwt expired'));
+    await expect(expired.service.validateResetToken('expired-token')).rejects.toBeInstanceOf(UnauthorizedException);
+
+    const replaced = createService({
+      existingUser: { id: 'user-1', passwordResetTokenVersion: 4 },
+    });
+    replaced.jwt.verifyAsync.mockResolvedValue({ sub: 'user-1', purpose: 'reset', version: 3 });
+    await expect(replaced.service.validateResetToken('replaced-token')).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

@@ -11,6 +11,11 @@ export async function resetPassword(token: string, password: string) {
   return res.data as { ok: boolean };
 }
 
+export async function validateResetToken(token: string) {
+  const res = await api.post('/auth/validate-reset-token', { token });
+  return res.data as { ok: boolean };
+}
+
 export async function adminResetPassword(payload: {
   userId: string;
   mode?: AdminResetActionMode;

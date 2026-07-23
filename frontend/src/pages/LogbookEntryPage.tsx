@@ -334,7 +334,7 @@ export default function LogbookEntryPage() {
     return (
       <div className="fixed inset-0 z-[60] flex items-stretch justify-center p-2 md:items-center md:p-6">
         <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
-        <div className="logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl bg-[var(--surface-2)] shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-white">
+        <div className="app-background logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-white">
           <div className="mb-4 mt-1 flex items-center justify-between gap-3 px-3 pt-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3">
             <h2 className="min-w-0 truncate text-2xl font-bold text-viridian md:text-gray-800">
               <span className="md:hidden">Logbuch</span>
@@ -347,13 +347,11 @@ export default function LogbookEntryPage() {
               <button
                 type="button"
                 onClick={() => setStatusMenuOpen((value) => !value)}
-                className={`logbook-status-pill logbook-status-pill--${form.status} inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold`}
+                className={`status-control logbook-status-pill logbook-status-pill--${form.status}`}
               >
                 <LogbookStatusIcon status={form.status} />
                 <span className="hidden md:inline">{logbookStatusLabels[form.status]}</span>
-                <ChevronDown
-                  className={`hidden h-4 w-4 transition-transform md:block ${statusMenuOpen ? 'rotate-180' : ''}`}
-                />
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {statusMenuOpen && (
                 <div className="absolute right-0 top-full z-10 mt-2 min-w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-xl">

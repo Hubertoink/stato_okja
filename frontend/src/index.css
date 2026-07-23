@@ -320,14 +320,18 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text-primary);
+  /* Respect safe areas on iOS */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+body,
+.app-background {
   background-color: var(--app-bg);
   background-image: var(--app-bg-overlay), var(--app-bg-image);
   background-size: cover, cover;
   background-repeat: no-repeat, no-repeat;
   background-attachment: fixed;
   background-position: center;
-  /* Respect safe areas on iOS */
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Override color utility classes to use theme variables */
@@ -1595,9 +1599,30 @@ code {
   color: var(--activity-status-fg);
 }
 
-.activity-status-control {
+.status-control {
+  display: inline-flex;
+  height: 2.5rem;
+  align-items: center;
+  gap: 0.375rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 9999px;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
   backdrop-filter: blur(14px);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+@media (min-width: 768px) {
+  .logbook-editor-modal.app-background {
+    background-color: var(--surface-1);
+    background-image: none;
+  }
 }
 
 .activity-status-control:hover {
@@ -1647,7 +1672,7 @@ code {
   background: rgba(255, 241, 242, 0.78);
 }
 
-:root[data-color-mode='dark'] .activity-status-control {
+:root[data-color-mode='dark'] .status-control {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 

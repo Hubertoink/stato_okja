@@ -54,7 +54,7 @@ export default function ActivityExecutionStatusControl({
     <div ref={rootRef} className="relative shrink-0">
       <button
         type="button"
-        className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-medium shadow-sm transition-colors ${buttonClasses}`}
+        className={`status-control ${buttonClasses}`}
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="menu"
         aria-expanded={open}

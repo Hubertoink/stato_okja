@@ -830,8 +830,9 @@ export default function Activities() {
             <SlidersHorizontal className="h-4 w-4" />
           </IconButton>
           {/* Mobile icon-only: New activity */}
-          <button
-            className="md:hidden inline-flex items-center justify-center rounded-full bg-viridian text-white hover:bg-cambridge-blue transition-colors w-10 h-10"
+          <IconButton
+            variant="primary"
+            className="rounded-full md:hidden"
             onClick={() => {
               if (isMobile) navigate('/activities/new/select-project');
               else setPicker(true);
@@ -840,7 +841,7 @@ export default function Activities() {
             aria-label="Neue Aktivität"
           >
             <Plus className="w-5 h-5" />
-          </button>
+          </IconButton>
           {/* Desktop: New activity text button */}
           <Button
             className="hidden md:inline-flex"

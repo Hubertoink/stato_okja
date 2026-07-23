@@ -35,6 +35,7 @@ import { useProjects } from '@/lib/projects';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import { useToast } from '@/components/Toast';
 import Modal, { ModalBackdrop } from '@/components/Modal';
+import { Menu, MenuItem } from '@/components/ui/Menu';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
@@ -332,11 +333,11 @@ export default function LogbookEntryPage() {
 
   if (editing)
     return (
-      <div className="fixed inset-0 z-[60] flex items-stretch justify-center md:items-center md:p-6">
+      <div className="fixed inset-0 z-[60] flex items-stretch justify-center p-2 md:items-center md:p-6">
         <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
-        <div className="logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 sm:px-6">
-            <h2 className="min-w-0 truncate text-2xl font-bold text-gray-800">
+        <div className="app-background logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-white">
+          <div className="mb-4 mt-1 flex items-center justify-between gap-3 px-3 pt-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3">
+            <h2 className="min-w-0 truncate text-2xl font-bold text-viridian md:text-gray-800">
               <span className="md:hidden">Logbuch</span>
               <span className="hidden md:inline">
                 {isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}
@@ -347,32 +348,32 @@ export default function LogbookEntryPage() {
               <button
                 type="button"
                 onClick={() => setStatusMenuOpen((value) => !value)}
-                className={`logbook-status-pill logbook-status-pill--${form.status} inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold`}
+                className={`status-control logbook-status-pill logbook-status-pill--${form.status}`}
               >
                 <LogbookStatusIcon status={form.status} />
                 <span className="hidden md:inline">{logbookStatusLabels[form.status]}</span>
-                <ChevronDown
-                  className={`hidden h-4 w-4 transition-transform md:block ${statusMenuOpen ? 'rotate-180' : ''}`}
-                />
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {statusMenuOpen && (
-                <div className="absolute right-0 top-full z-10 mt-2 min-w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-xl">
+                <Menu className="absolute right-0 top-full z-10 mt-2 min-w-48">
+                  <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
+                    Logbuchstatus
+                  </div>
                   {(['open', 'discussed', 'follow_up'] as const).map((status) => (
-                    <button
+                    <MenuItem
                       key={status}
-                      type="button"
                       onClick={() => {
                         setForm({ ...form, status });
                         setStatusMenuOpen(false);
                       }}
-                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium ${form.status === status ? 'bg-gray-100 text-viridian' : 'text-gray-700 hover:bg-gray-50'}`}
+                      className={form.status === status ? 'bg-[var(--interactive-soft)] text-viridian' : ''}
                     >
                       <LogbookStatusIcon status={status} />
                       {logbookStatusLabels[status]}
                       {form.status === status && <CheckCircle2 className="ml-auto h-4 w-4" />}
-                    </button>
+                    </MenuItem>
                   ))}
-                </div>
+                </Menu>
               )}
             </div>
             <button
@@ -387,8 +388,8 @@ export default function LogbookEntryPage() {
             </button>
             </div>
           </div>
-          <form onSubmit={save} className="min-h-0 flex-1 overflow-y-auto">
-            <div className="space-y-5 p-5 sm:p-6">
+          <form onSubmit={save} className="mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-lg bg-white shadow md:mx-0 md:mb-0 md:rounded-none md:shadow-none">
+            <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">
                   Zeitpunkt

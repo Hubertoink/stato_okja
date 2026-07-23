@@ -52,6 +52,7 @@ import {
   saveActivitiesFilters,
 } from '@/lib/activitiesFilterStorage';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Badge } from '@/components/ui/Badge';
 import { Button, IconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -830,8 +831,9 @@ export default function Activities() {
             <SlidersHorizontal className="h-4 w-4" />
           </IconButton>
           {/* Mobile icon-only: New activity */}
-          <button
-            className="md:hidden inline-flex items-center justify-center rounded-full bg-viridian text-white hover:bg-cambridge-blue transition-colors w-10 h-10"
+          <IconButton
+            variant="primary"
+            className="rounded-full md:hidden"
             onClick={() => {
               if (isMobile) navigate('/activities/new/select-project');
               else setPicker(true);
@@ -840,7 +842,7 @@ export default function Activities() {
             aria-label="Neue Aktivität"
           >
             <Plus className="w-5 h-5" />
-          </button>
+          </IconButton>
           {/* Desktop: New activity text button */}
           <Button
             className="hidden md:inline-flex"
@@ -862,9 +864,9 @@ export default function Activities() {
       >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-700">
+            <Badge variant="count">
               {activitiesLoading ? 'Treffer werden geladen…' : `Treffer: ${exportCountLabel}`}
-            </span>
+            </Badge>
           {searchTerm.trim() ? (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-azure-web text-viridian">
               <span>Suche: {searchTerm.trim()}</span>

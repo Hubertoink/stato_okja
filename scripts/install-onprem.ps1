@@ -92,8 +92,14 @@ function Assert-NoExistingOnPremDataForFreshConfig {
     # paired silently with that existing database: its generated admin password
     # would not apply to the already-seeded superadmin.
     $volumeName = 'stato-onprem-postgres-data'
-    & docker volume inspect $volumeName *> $null
-    if ($LASTEXITCODE -eq 0) {
+    # Do not use `docker volume inspect` here: on PowerShell versions that turn
+    # native non-zero exits into terminating errors, its expected "not found"
+    # result would abort a perfectly valid fresh installation.
+    $volumeNames = & docker volume ls --format '{{.Name}}'
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Die vorhandenen Docker-Volumes konnten nicht ermittelt werden.'
+    }
+    if ($volumeNames -contains $volumeName) {
         throw "Der persistente Docker-Volume '$volumeName' existiert bereits, aber .env.onprem fehlt. Der Installer bricht ab, damit kein neues, ungueltiges Startpasswort ausgegeben wird. Fuer die bestehende Installation die bisherige .env.onprem wiederherstellen; fuer eine bewusst neue Installation den vorhandenen Datenbestand erst explizit sichern und entfernen."
     }
 }

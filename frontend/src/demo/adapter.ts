@@ -100,7 +100,7 @@ function handleAuth(method: string, path: string, body: Record<string, unknown>)
   if (method === 'post' && path === '/auth/resend-two-factor') return ok({ requiresTwoFactor: true, challengeToken: 'demo', emailHint: demo.getDemoUser().email, expiresInSeconds: 300 });
   if (method === 'post' && path === '/auth/invite') throw new DemoHttpError(403, 'Im Demo-Modus können keine Benutzer eingeladen werden.');
   if (method === 'get' && path === '/auth/public-config') return ok(demo.getDemoPublicConfig());
-  if (method === 'post' && (path === '/auth/change-password' || path === '/auth/request-password-reset' || path === '/auth/reset-password')) return ok({ ok: true });
+  if (method === 'post' && (path === '/auth/change-password' || path === '/auth/request-password-reset' || path === '/auth/validate-reset-token' || path === '/auth/reset-password')) return ok({ ok: true });
   return undefined;
 }
 

@@ -86,6 +86,24 @@ function Ensure-EnvValue([string]$Path, [string]$Key, [string]$DefaultValue) {
     [System.IO.File]::WriteAllText($Path, $content, $utf8WithoutBom)
 }
 
+function Assert-NoExistingOnPremDataForFreshConfig {
+    # The on-prem Compose file deliberately uses a stable, named Docker volume so
+    # data survives updates and a moved checkout. A new .env file must never be
+    # paired silently with that existing database: its generated admin password
+    # would not apply to the already-seeded superadmin.
+    $volumeName = 'stato-onprem-postgres-data'
+    # Do not use `docker volume inspect` here: on PowerShell versions that turn
+    # native non-zero exits into terminating errors, its expected "not found"
+    # result would abort a perfectly valid fresh installation.
+    $volumeNames = & docker volume ls --format '{{.Name}}'
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Die vorhandenen Docker-Volumes konnten nicht ermittelt werden.'
+    }
+    if ($volumeNames -contains $volumeName) {
+        throw "Der persistente Docker-Volume '$volumeName' existiert bereits, aber .env.onprem fehlt. Der Installer bricht ab, damit kein neues, ungueltiges Startpasswort ausgegeben wird. Fuer die bestehende Installation die bisherige .env.onprem wiederherstellen; fuer eine bewusst neue Installation den vorhandenen Datenbestand erst explizit sichern und entfernen."
+    }
+}
+
 Assert-Command git Git
 Assert-Command docker Docker
 
@@ -138,6 +156,7 @@ $envFile = Join-Path $InstallDirectory '.env.onprem'
 $envCreated = $false
 
 if (-not (Test-Path $envFile)) {
+    Assert-NoExistingOnPremDataForFreshConfig
     Write-Step 'Lokale Konfiguration mit individuellen Secrets erzeugen'
     Copy-Item (Join-Path $InstallDirectory '.env.onprem.example') $envFile
 
@@ -230,6 +249,21 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Das PostgreSQL-Passwort aus .env.onprem konnte nicht synchronisiert werden.'
 }
 
+# The historical migrations extend an already existing application schema.
+# Detect a truly empty database so the installer can create that base schema
+# once before running the migrations in a second, production-safe phase.
+$schemaCheckSql = "SELECT CASE WHEN to_regclass('public.users') IS NULL THEN 'missing' ELSE 'present' END;"
+$schemaCheckArguments = $composeArguments + @(
+    'exec', '-T', 'postgres', 'sh', '-c',
+    'exec psql --tuples-only --no-align --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1'
+)
+$schemaState = ($schemaCheckSql | & docker @schemaCheckArguments | Where-Object { $_ -in @('missing', 'present') } | Select-Object -Last 1)
+if ($LASTEXITCODE -ne 0 -or $schemaState -notin @('missing', 'present')) {
+    Show-ComposeDiagnostics $composeArguments
+    throw 'Der Schema-Status der PostgreSQL-Datenbank konnte nicht ermittelt werden.'
+}
+$freshDatabase = $schemaState -eq 'missing'
+
 Write-Step 'StatO-Images bauen'
 $buildArguments = $composeArguments + @('build')
 & docker @buildArguments
@@ -250,6 +284,37 @@ $uploadsArguments = $composeArguments + @(
 if ($LASTEXITCODE -ne 0) {
     Show-ComposeDiagnostics $composeArguments
     throw 'Die Berechtigungen des Upload-Verzeichnisses konnten nicht repariert werden.'
+}
+
+if ($freshDatabase) {
+    Write-Step 'Leere Datenbank: Basisschema einmalig erzeugen'
+    # TypeORM runs migrations before synchronize(). The first phase therefore
+    # creates the current entity schema without migrations; the second phase
+    # records and applies the regular migrations with synchronize disabled.
+    $previousSynchronize = [Environment]::GetEnvironmentVariable('DB_SYNCHRONIZE', 'Process')
+    $previousMigrationsRun = [Environment]::GetEnvironmentVariable('DB_MIGRATIONS_RUN', 'Process')
+    try {
+        $env:DB_SYNCHRONIZE = 'true'
+        $env:DB_MIGRATIONS_RUN = 'false'
+        $bootstrapArguments = $composeArguments + @('up', '-d', '--force-recreate', '--wait', '--wait-timeout', '120', 'backend')
+        & docker @bootstrapArguments
+        if ($LASTEXITCODE -ne 0) {
+            Show-ComposeDiagnostics $composeArguments
+            throw 'Das Basisschema der leeren PostgreSQL-Datenbank konnte nicht erzeugt werden.'
+        }
+    }
+    finally {
+        if ($null -eq $previousSynchronize) { Remove-Item Env:DB_SYNCHRONIZE -ErrorAction SilentlyContinue } else { $env:DB_SYNCHRONIZE = $previousSynchronize }
+        if ($null -eq $previousMigrationsRun) { Remove-Item Env:DB_MIGRATIONS_RUN -ErrorAction SilentlyContinue } else { $env:DB_MIGRATIONS_RUN = $previousMigrationsRun }
+    }
+
+    Write-Step 'Datenbankmigrationen auf dem Basisschema abschliessen'
+    $migrationArguments = $composeArguments + @('up', '-d', '--force-recreate', '--wait', '--wait-timeout', '120', 'backend')
+    & docker @migrationArguments
+    if ($LASTEXITCODE -ne 0) {
+        Show-ComposeDiagnostics $composeArguments
+        throw 'Die Datenbankmigrationen auf dem neuen Basisschema konnten nicht abgeschlossen werden.'
+    }
 }
 
 Write-Step 'StatO starten'

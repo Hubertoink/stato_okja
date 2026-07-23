@@ -54,7 +54,7 @@ export default function ActivityExecutionStatusControl({
     <div ref={rootRef} className="relative shrink-0">
       <button
         type="button"
-        className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-medium shadow-sm transition-colors ${buttonClasses}`}
+        className={`status-control ${buttonClasses}`}
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -67,7 +67,7 @@ export default function ActivityExecutionStatusControl({
 
       {open && (
         <div className="activity-status-menu absolute right-0 top-full z-30 mt-2 w-52 rounded-2xl p-2">
-          <div className="activity-status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
+          <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
             Aktivitätsstatus
           </div>
           {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((option) => {

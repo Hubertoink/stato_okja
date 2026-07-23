@@ -67,7 +67,7 @@ export default function ActivityExecutionStatusControl({
 
       {open && (
         <div className="activity-status-menu absolute right-0 top-full z-30 mt-2 w-52 rounded-2xl p-2">
-          <div className="activity-status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
+          <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
             Aktivitätsstatus
           </div>
           {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((option) => {

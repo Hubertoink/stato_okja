@@ -1653,7 +1653,7 @@ code {
   backdrop-filter: blur(18px);
 }
 
-.activity-status-menu-label {
+.status-menu-label {
   color: var(--text-faint);
 }
 

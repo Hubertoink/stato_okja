@@ -35,6 +35,7 @@ import { useProjects } from '@/lib/projects';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import { useToast } from '@/components/Toast';
 import Modal, { ModalBackdrop } from '@/components/Modal';
+import { Menu, MenuItem } from '@/components/ui/Menu';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
@@ -354,23 +355,25 @@ export default function LogbookEntryPage() {
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {statusMenuOpen && (
-                <div className="absolute right-0 top-full z-10 mt-2 min-w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-xl">
+                <Menu className="absolute right-0 top-full z-10 mt-2 min-w-48">
+                  <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
+                    Logbuchstatus
+                  </div>
                   {(['open', 'discussed', 'follow_up'] as const).map((status) => (
-                    <button
+                    <MenuItem
                       key={status}
-                      type="button"
                       onClick={() => {
                         setForm({ ...form, status });
                         setStatusMenuOpen(false);
                       }}
-                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium ${form.status === status ? 'bg-gray-100 text-viridian' : 'text-gray-700 hover:bg-gray-50'}`}
+                      className={form.status === status ? 'bg-[var(--interactive-soft)] text-viridian' : ''}
                     >
                       <LogbookStatusIcon status={status} />
                       {logbookStatusLabels[status]}
                       {form.status === status && <CheckCircle2 className="ml-auto h-4 w-4" />}
-                    </button>
+                    </MenuItem>
                   ))}
-                </div>
+                </Menu>
               )}
             </div>
             <button

@@ -62,7 +62,7 @@ function releaseProtectedImage(src: string) {
   }, PROTECTED_IMAGE_CACHE_TTL_MS);
 }
 
-export default function ProtectedImage({ src, loading = 'lazy', ...props }: ProtectedImageProps) {
+export function useResolvedImageSrc(src?: string | null) {
   const [resolvedSrc, setResolvedSrc] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -90,6 +90,12 @@ export default function ProtectedImage({ src, loading = 'lazy', ...props }: Prot
       releaseProtectedImage(normalizedSrc);
     };
   }, [src]);
+
+  return resolvedSrc;
+}
+
+export default function ProtectedImage({ src, loading = 'lazy', ...props }: ProtectedImageProps) {
+  const resolvedSrc = useResolvedImageSrc(src);
 
   if (!resolvedSrc) return null;
   return <img {...props} src={resolvedSrc} loading={loading} />;

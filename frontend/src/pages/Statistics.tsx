@@ -1064,6 +1064,14 @@ export default function Statistics() {
       m.set(p.id, p.color || undefined);
     return m;
   }, [projectsAll]);
+  const projectImage = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of projectsAll) {
+      const imageUrl = typeof p.imageUrl === 'string' ? p.imageUrl.trim() : '';
+      if (imageUrl) m.set(p.id, imageUrl);
+    }
+    return m;
+  }, [projectsAll]);
   const sortedProjects = useMemo(
     () =>
       filteredProjects
@@ -2977,6 +2985,7 @@ export default function Statistics() {
                 projectColor.get(item.id) || fallbackBarColors[index % fallbackBarColors.length]
               }
               getCellKey={(item) => `tp-${item.id}`}
+              getCellImageUrl={(item) => projectImage.get(item.id)}
             />
           )}
         </div>

@@ -93,6 +93,7 @@ const WEEKDAY_OPTIONS = [
   { value: 4, shortLabel: 'Do', label: 'Donnerstag' },
   { value: 5, shortLabel: 'Fr', label: 'Freitag' },
   { value: 6, shortLabel: 'Sa', label: 'Samstag' },
+  { value: 0, shortLabel: 'So', label: 'Sonntag' },
 ] as const;
 
 const CLOSURE_FILTER_LABELS: Record<OrganizationClosureStateFilter, string> = {
@@ -3406,7 +3407,7 @@ export default function Statistics() {
         open={customFilterOpen}
         onClose={() => setCustomFilterOpen(false)}
         title="Erweiterter Filter"
-        maxWidth="sm"
+        maxWidth="md"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">

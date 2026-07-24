@@ -261,3 +261,32 @@ describe('StatsService overview cache', () => {
     expect(second).toEqual(first);
   });
 });
+
+describe('StatsService custom KPIs', () => {
+  it('uses the gender breakdown for the female share, matching the gender chart', async () => {
+    const service = new StatsService(
+      { options: { type: 'postgres' } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    jest.spyOn(service, 'getSummary').mockResolvedValue({
+      totalActivities: 7,
+      totalParticipants: 156,
+      totalMale: 87,
+      totalFemale: 63,
+      totalDiverse: 3,
+      totalDurationMinutes: 0,
+      totalHours: 0,
+      averageParticipants: 0,
+      closureDaysCount: 0,
+    });
+
+    await expect(service.calculateCustomKpi({ metric: 'female_share_percent' })).resolves.toEqual({
+      value: 41.2,
+      unit: 'percent',
+      precision: 1,
+    });
+  });
+});

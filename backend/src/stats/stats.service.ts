@@ -409,10 +409,14 @@ export class StatsService {
       case 'female_total':
         return { value: summary.totalFemale, unit: 'count', precision: 0 };
       case 'female_share_percent':
+        // Keep this aligned with the gender chart: only participants with a
+        // recorded gender are included in the share. countTotal can include
+        // participants without a gender breakdown.
+        const totalGenderParticipants = summary.totalMale + summary.totalFemale + summary.totalDiverse;
         return {
           value:
-            summary.totalParticipants > 0
-              ? +((summary.totalFemale / summary.totalParticipants) * 100).toFixed(1)
+            totalGenderParticipants > 0
+              ? +((summary.totalFemale / totalGenderParticipants) * 100).toFixed(1)
               : null,
           unit: 'percent',
           precision: 1,

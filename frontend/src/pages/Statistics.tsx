@@ -2023,11 +2023,11 @@ export default function Statistics() {
                     <button
                       type="button"
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian"
-                      onClick={exportPdf}
-                      title="Exportieren (PDF)"
+                      onClick={() => setReportExportOpen(true)}
+                      title="Auswertung exportieren"
                     >
                       <FileDown className="h-4 w-4" />
-                      PDF
+                      Export
                     </button>
                   </div>
                 </div>

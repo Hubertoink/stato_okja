@@ -11,17 +11,19 @@ export function StatisticsExportActions({
   menuTitle,
   isExporting,
   options,
+  alwaysVisible = false,
 }: {
   triggerLabel: string;
   menuTitle: string;
   isExporting: boolean;
   options: StatisticsExportOption[];
+  alwaysVisible?: boolean;
 }) {
   return (
     <div className="group/chart-export relative shrink-0">
       <button
         type="button"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-viridian hover:text-viridian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viridian/30 opacity-100 md:opacity-0 md:group-hover/chart-card:opacity-100 md:group-focus-within/chart-card:opacity-100"
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-viridian hover:text-viridian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viridian/30 ${alwaysVisible ? '' : 'opacity-100 md:opacity-0 md:group-hover/chart-card:opacity-100 md:group-focus-within/chart-card:opacity-100'}`}
         aria-label={triggerLabel}
         title={triggerLabel}
         style={isExporting ? { visibility: 'hidden' } : undefined}

@@ -59,7 +59,7 @@ export default function ProjectPickerModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
+      className="fixed inset-0 z-[80] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
     >
       <div className="bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] md:max-h-[90vh] md:flex md:flex-col md:overflow-hidden bottom-sheet-animate">

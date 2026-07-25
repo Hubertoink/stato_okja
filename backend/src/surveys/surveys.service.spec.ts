@@ -1,0 +1,77 @@
+import { BadRequestException } from '@nestjs/common';
+import { SurveysService } from './surveys.service';
+import type { Survey } from './entities/survey.entity';
+
+const activeSurvey = (): Survey => ({
+  id: 'survey-1', orgId: 'org-1', projectId: null, seriesId: 'survey-1', roundNumber: 1, title: 'Feedback', introduction: null,
+  status: 'active', publicToken: 'public-token', allowMultiplePerDevice: false, expectedParticipants: null,
+  startsAt: null, endsAt: null, closedAt: null, rawResponsesPurgeAt: null, aggregateSnapshot: null,
+  createdById: null, archived: false, createdAt: new Date(), updatedAt: new Date(),
+  questions: [
+    { id: 'q-choice', type: 'single_choice', label: 'Wie war es?', options: [{ id: 'good', label: 'Gut' }, { id: 'bad', label: 'Schlecht' }] },
+    { id: 'q-text', type: 'text', label: 'Kommentar' },
+  ],
+});
+
+describe('SurveysService', () => {
+  const surveyRepository = { findOneBy: jest.fn(), find: jest.fn(), count: jest.fn(), create: jest.fn(), save: jest.fn(), createQueryBuilder: jest.fn() };
+  const responseRepository = { exist: jest.fn(), create: jest.fn(), save: jest.fn(), find: jest.fn(), count: jest.fn(), delete: jest.fn(), remove: jest.fn(), findOneBy: jest.fn() };
+  const organizationRepository = { findOneBy: jest.fn() };
+  const audit = { log: jest.fn() };
+  const service = new SurveysService(surveyRepository as any, responseRepository as any, organizationRepository as any, audit as any);
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('validates public answers and stores only the declared question fields', async () => {
+    surveyRepository.findOneBy.mockResolvedValue(activeSurvey());
+    responseRepository.exist.mockResolvedValue(false);
+    responseRepository.create.mockImplementation((value: unknown) => value);
+    responseRepository.save.mockResolvedValue({});
+
+    await expect(service.submitPublic('public-token', { 'q-choice': 'good', ignored: 'not stored' }, 'browser-token')).resolves.toEqual({ ok: true });
+    expect(responseRepository.save).toHaveBeenCalledWith(expect.objectContaining({
+      surveyId: 'survey-1',
+      answers: { 'q-choice': 'good', 'q-text': null },
+      deviceTokenHash: expect.any(String),
+    }));
+  });
+
+  it('rejects invalid choice values before storing a public response', async () => {
+    surveyRepository.findOneBy.mockResolvedValue(activeSurvey());
+    await expect(service.submitPublic('public-token', { 'q-choice': 'unknown' }, 'browser-token')).rejects.toBeInstanceOf(BadRequestException);
+    expect(responseRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('keeps an active survey publicly available even when its displayed start time is in the future', () => {
+    const survey = { ...activeSurvey(), startsAt: new Date(Date.now() + 2 * 60 * 60 * 1000) };
+    expect((service as any).isPubliclyOpen(survey)).toBe(true);
+    expect((service as any).isPubliclyOpen({ ...survey, status: 'draft' })).toBe(false);
+  });
+
+  it('excludes free text from a permanent aggregate calculation', async () => {
+    const survey = activeSurvey();
+    responseRepository.find.mockResolvedValue([{ answers: { 'q-choice': 'good', 'q-text': 'Mein Name ist nicht hier' } }]);
+    const result = await (service as any).buildAnalytics(survey, false);
+    expect(result.questions.find((question: { id: string }) => question.id === 'q-text')).toEqual(expect.objectContaining({ answeredCount: 1 }));
+    expect(result.questions.find((question: { id: string }) => question.id === 'q-text')).not.toHaveProperty('texts');
+  });
+
+  it('creates a fresh, comparable draft for the next survey round', async () => {
+    const closedRound = { ...activeSurvey(), status: 'closed' as const, closedAt: new Date(), seriesId: 'survey-1', roundNumber: 1 };
+    surveyRepository.findOneBy.mockResolvedValue(closedRound);
+    surveyRepository.find.mockResolvedValue([closedRound]);
+    surveyRepository.create.mockImplementation((value: Record<string, unknown>) => ({ ...value, id: 'survey-2' }));
+    surveyRepository.save.mockImplementation((value: unknown) => value);
+    responseRepository.count.mockResolvedValue(0);
+
+    const result = await service.createRound('survey-1', { id: 'user-1', role: 'user', orgId: 'org-1' });
+
+    expect(result).toEqual(expect.objectContaining({ id: 'survey-2', seriesId: 'survey-1', roundNumber: 2, status: 'draft' }));
+    expect(surveyRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+      publicToken: expect.any(String),
+      questions: closedRound.questions,
+      startsAt: null,
+      closedAt: null,
+    }));
+  });
+});

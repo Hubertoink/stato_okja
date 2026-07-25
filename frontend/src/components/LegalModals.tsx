@@ -67,6 +67,7 @@ export function CookieNoticeModal({ open, onClose }: { open: boolean; onClose: (
             <li>Ausgewählte Organisationsansicht und zuletzt genutzte Oberflächen-Einstellungen</li>
             <li>Filter, Sortierungen und kompakte Darstellungen in einzelnen Ansichten</li>
             <li>Optionale Komfortfunktionen wie Hintergrundauswahl oder ausgeblendete Hinweise</li>
+            <li>Bei einer öffentlichen Umfrage: ein zufälliger Browser-Schlüssel, damit bei aktivierter Einmal-Teilnahme nicht mehrfach abgestimmt wird</li>
           </ul>
         </section>
         <section className="space-y-2">

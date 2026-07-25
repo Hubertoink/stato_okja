@@ -22,6 +22,7 @@ import { SystemDataModule } from './system-data/system-data.module';
 import { ThrottlerBehindProxyGuard } from './common/throttler-behind-proxy.guard';
 import { HealthController } from './health.controller';
 import { LogbookModule } from './logbook/logbook.module';
+import { SurveysModule } from './surveys/surveys.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { LogbookModule } from './logbook/logbook.module';
     DevToolsModule,
     SystemDataModule,
     LogbookModule,
+    SurveysModule,
   ],
   controllers: [HealthController],
   providers: [

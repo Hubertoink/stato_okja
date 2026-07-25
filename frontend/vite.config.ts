@@ -46,6 +46,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Public QR links must always receive the current app shell from the
+      // network. Otherwise an older cached shell can miss the public route and
+      // render the login screen once before its service worker updates.
+      workbox: {
+        navigateFallbackDenylist: [/^\/survey\//],
+      },
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
         name: 'Stato 1.0 - OKJA Statistik',

@@ -36,7 +36,7 @@ export default function MyProfile() {
 
 const mobileNavLabels: Record<MobileNavItemId, string> = {
   dashboard: 'Home', activities: 'Aktivitäten', logbook: 'Logbuch', calendar: 'Kalender',
-  projects: 'Projekte', statistics: 'Statistiken', settings: 'Einstellungen',
+  projects: 'Projekte', surveys: 'Umfragen', statistics: 'Statistiken', settings: 'Einstellungen',
 };
 
 function MobileNavigationSettings({ userId }: { userId?: string }) {

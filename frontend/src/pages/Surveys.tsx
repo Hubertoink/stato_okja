@@ -1,0 +1,89 @@
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Archive, ArchiveRestore, BarChart3, ClipboardList, Copy, Plus, Search, Trash2 } from 'lucide-react';
+import Modal from '@/components/Modal';
+import { Button } from '@/components/ui/Button';
+import { FieldHint, FieldLabel, Input, Select, Textarea } from '@/components/ui/Field';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useToast } from '@/components/Toast';
+import { useCohorts } from '@/lib/taxonomy';
+import { useProjects } from '@/lib/projects';
+import { surveyQuestionId, type Survey, type SurveyInput, type SurveyQuestion, type SurveyQuestionType, useArchivedSurveys, useArchiveSurvey, useCreateSurvey, useSurveys, useUpdateSurvey } from '@/lib/surveys';
+
+type EditorState = { title: string; introduction: string; projectId: string; expectedParticipants: string; startsAt: string; endsAt: string; allowMultiplePerDevice: boolean; questions: SurveyQuestion[] };
+const isoToLocal = (value?: string | null) => value ? new Date(value).toISOString().slice(0, 16) : '';
+const localToIso = (value: string) => value ? new Date(value).toISOString() : null;
+const option = (label: string) => ({ id: surveyQuestionId(), label });
+const question = (type: SurveyQuestionType, label = ''): SurveyQuestion => ({ id: surveyQuestionId(), type, label, required: false, options: type === 'single_choice' || type === 'multiple_choice' ? [option('Option 1'), option('Option 2')] : undefined, scaleMin: type === 'scale' ? 1 : undefined, scaleMax: type === 'scale' ? 5 : undefined, scaleMinLabel: type === 'scale' ? 'Trifft gar nicht zu' : undefined, scaleMaxLabel: type === 'scale' ? 'Trifft völlig zu' : undefined });
+
+function generalTemplate(): SurveyQuestion[] {
+  return [
+    { ...question('multiple_choice', 'Was machst du bei uns besonders gerne?'), options: [option('Sport und Bewegung'), option('Musik und Kreatives'), option('Gaming und Medien'), option('Chillen und Leute treffen')] },
+    question('scale', 'Wie wohl fühlst du dich bei uns?'),
+    question('multiple_choice', 'Was sollte es häufiger geben?'),
+    question('text', 'Was möchtest du uns noch sagen?'),
+  ];
+}
+function projectTemplate(): SurveyQuestion[] {
+  return [question('scale', 'Das Angebot hat mir Spaß gemacht.'), question('scale', 'Ich konnte eigene Ideen einbringen.'), question('scale', 'Ich würde wieder teilnehmen.'), question('text', 'Was sollen wir beim nächsten Mal verändern?')];
+}
+function toEditor(survey?: Survey): EditorState {
+  return { title: survey?.title || '', introduction: survey?.introduction || '', projectId: survey?.projectId || '', expectedParticipants: survey?.expectedParticipants ? String(survey.expectedParticipants) : '', startsAt: isoToLocal(survey?.startsAt), endsAt: isoToLocal(survey?.endsAt), allowMultiplePerDevice: survey?.allowMultiplePerDevice || false, questions: survey?.questions?.length ? survey.questions : generalTemplate() };
+}
+
+function QuestionEditor({ value, index, onChange, onRemove }: { value: SurveyQuestion; index: number; onChange: (next: SurveyQuestion) => void; onRemove: () => void }) {
+  const setType = (type: SurveyQuestionType) => onChange({ ...question(type, value.label), id: value.id, required: value.required });
+  const isChoice = value.type === 'single_choice' || value.type === 'multiple_choice';
+  return <SurfaceCard padding="sm" className="space-y-3">
+    <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-viridian">Frage {index + 1}</span><Button variant="ghost" size="sm" onClick={onRemove} aria-label="Frage entfernen"><Trash2 className="h-4 w-4" /> Entfernen</Button></div>
+    <div className="grid gap-3 md:grid-cols-[1fr_11rem]"><div><FieldLabel>Frage</FieldLabel><Input value={value.label} onChange={(event) => onChange({ ...value, label: event.target.value })} placeholder="Frage formulieren…" /></div><div><FieldLabel>Antwortformat</FieldLabel><Select value={value.type} onChange={(event) => setType(event.target.value as SurveyQuestionType)}><option value="single_choice">Eine Auswahl</option><option value="multiple_choice">Mehrere Auswahl</option><option value="scale">Bewertung 1–5</option><option value="text">Freitext</option></Select></div></div>
+    {isChoice ? <div className="space-y-2"><FieldLabel>Antwortmöglichkeiten</FieldLabel>{(value.options || []).map((entry, optionIndex) => <div key={entry.id} className="flex gap-2"><Input value={entry.label} onChange={(event) => onChange({ ...value, options: (value.options || []).map((item, i) => i === optionIndex ? { ...item, label: event.target.value } : item) })} /><Button size="icon" variant="ghost" onClick={() => onChange({ ...value, options: (value.options || []).filter((_, i) => i !== optionIndex) })} aria-label="Option entfernen"><Trash2 className="h-4 w-4" /></Button></div>)}<Button size="sm" variant="secondary" onClick={() => onChange({ ...value, options: [...(value.options || []), option(`Option ${(value.options?.length || 0) + 1}`)] })}>Option hinzufügen</Button></div> : null}
+    {value.type === 'scale' ? <div className="grid gap-3 md:grid-cols-2"><div><FieldLabel>Linke Beschriftung</FieldLabel><Input value={value.scaleMinLabel || ''} onChange={(event) => onChange({ ...value, scaleMinLabel: event.target.value })} /></div><div><FieldLabel>Rechte Beschriftung</FieldLabel><Input value={value.scaleMaxLabel || ''} onChange={(event) => onChange({ ...value, scaleMaxLabel: event.target.value })} /></div></div> : null}
+    <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]"><input type="checkbox" checked={!!value.required} onChange={(event) => onChange({ ...value, required: event.target.checked })} /> Antwort ist erforderlich</label>
+  </SurfaceCard>;
+}
+
+export function SurveyEditor({ open, survey, onClose }: { open: boolean; survey?: Survey | null; onClose: () => void }) {
+  const [state, setState] = useState<EditorState>(() => toEditor(survey || undefined));
+  const [initialId, setInitialId] = useState(survey?.id);
+  if (survey?.id !== initialId) { setInitialId(survey?.id); setState(toEditor(survey || undefined)); }
+  const navigate = useNavigate(); const { showToast } = useToast(); const create = useCreateSurvey(); const update = useUpdateSurvey();
+  const cohorts = useCohorts({ active: true }).data || []; const projects = useProjects({ archived: false }).data || [];
+  const busy = create.isPending || update.isPending;
+  const set = <K extends keyof EditorState>(key: K, value: EditorState[K]) => setState((previous) => ({ ...previous, [key]: value }));
+  const addDemographic = (kind: 'age' | 'gender' | 'origin') => {
+    if (kind === 'age') set('questions', [...state.questions, { ...question('single_choice', 'Wie alt bist du?'), demographicKey: 'age_cohort', required: false, options: cohorts.map((cohort) => option(cohort.name)) }]);
+    if (kind === 'gender') set('questions', [...state.questions, { ...question('single_choice', 'Wie möchtest du dein Geschlecht angeben?'), demographicKey: 'gender', required: false, options: ['weiblich', 'männlich', 'divers', 'möchte ich nicht angeben'].map(option) }]);
+    if (kind === 'origin') set('questions', [...state.questions, { ...question('single_choice', 'In welchem Stadtteil wohnst du meistens?'), demographicKey: 'origin_area', required: false, options: ['möchte ich nicht angeben', 'außerhalb der Stadt'].map(option) }]);
+  };
+  const save = async () => {
+    if (!state.title.trim()) { showToast('Bitte gib einen Titel ein.', { type: 'error' }); return; }
+    const data: SurveyInput = { title: state.title, introduction: state.introduction || null, projectId: state.projectId || null, expectedParticipants: state.expectedParticipants ? Number(state.expectedParticipants) : null, startsAt: localToIso(state.startsAt), endsAt: localToIso(state.endsAt), allowMultiplePerDevice: state.allowMultiplePerDevice, questions: state.questions };
+    try { const saved = survey ? await update.mutateAsync({ id: survey.id, data }) as Survey : await create.mutateAsync(data) as Survey; showToast(survey ? 'Umfrage gespeichert.' : 'Umfrage als Entwurf angelegt.'); onClose(); navigate(`/surveys/${saved.id}`); } catch (error: any) { showToast(error?.response?.data?.message || 'Umfrage konnte nicht gespeichert werden.', { type: 'error' }); }
+  };
+  return <Modal open={open} onClose={onClose} title={survey ? 'Umfrage bearbeiten' : 'Neue Umfrage'} maxWidth="5xl">
+    <div className="space-y-5 pb-2"><div className="grid gap-4 md:grid-cols-2"><div><FieldLabel>Titel</FieldLabel><Input value={state.title} onChange={(event) => set('title', event.target.value)} placeholder="z. B. Wünsche für den offenen Treff" /></div><div><FieldLabel>Projekt (optional)</FieldLabel><Select value={state.projectId} onChange={(event) => set('projectId', event.target.value)}><option value="">Allgemeine Umfrage</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</Select></div></div>
+      <div><FieldLabel>Einleitung für Teilnehmende</FieldLabel><Textarea rows={3} value={state.introduction} onChange={(event) => set('introduction', event.target.value)} placeholder="Worum geht es? Deine Antworten sind anonym…" /></div>
+      <div className="grid gap-4 md:grid-cols-3"><div><FieldLabel>Erwartete Teilnehmende</FieldLabel><Input type="number" min="1" value={state.expectedParticipants} onChange={(event) => set('expectedParticipants', event.target.value)} /></div><div><FieldLabel>Start (optional)</FieldLabel><Input type="datetime-local" value={state.startsAt} onChange={(event) => set('startsAt', event.target.value)} /></div><div><FieldLabel>Ende (optional)</FieldLabel><Input type="datetime-local" value={state.endsAt} onChange={(event) => set('endsAt', event.target.value)} /></div></div>
+      <label className="flex items-start gap-2 rounded-xl bg-[var(--surface-2)] p-3 text-sm"><input className="mt-1" type="checkbox" checked={state.allowMultiplePerDevice} onChange={(event) => set('allowMultiplePerDevice', event.target.checked)} /><span><span className="font-medium text-[var(--text-primary)]">Mehrere Antworten pro Gerät erlauben</span><br /><span className="text-[var(--text-secondary)]">Für ein gemeinsames Tablet oder Smartphone. Sonst sperrt StatO weitere Antworten in diesem Browser bestmöglich.</span></span></label>
+      {!survey ? <div className="flex flex-wrap gap-2"><Button size="sm" variant="secondary" onClick={() => set('questions', generalTemplate())}>Vorlage: Wünsche</Button><Button size="sm" variant="secondary" onClick={() => set('questions', projectTemplate())}>Vorlage: Projektfeedback</Button><Button size="sm" variant="secondary" onClick={() => set('questions', [])}>Leere Umfrage</Button></div> : null}
+      <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold text-viridian">Fragen</h4><div className="flex flex-wrap gap-2"><Button size="sm" variant="secondary" onClick={() => addDemographic('age')}>+ Altersgruppe</Button><Button size="sm" variant="secondary" onClick={() => addDemographic('gender')}>+ Geschlecht</Button><Button size="sm" variant="secondary" onClick={() => addDemographic('origin')}>+ Stadtteil</Button><Button size="sm" onClick={() => set('questions', [...state.questions, question('single_choice')])}><Plus className="h-4 w-4" /> Frage</Button></div></div><FieldHint>Demografische Angaben bitte freiwillig lassen. Stadtteile können direkt als Optionen ergänzt werden.</FieldHint>{state.questions.map((entry, index) => <QuestionEditor key={entry.id} value={entry} index={index} onChange={(next) => set('questions', state.questions.map((item, itemIndex) => itemIndex === index ? next : item))} onRemove={() => set('questions', state.questions.filter((_, itemIndex) => itemIndex !== index))} />)}</div>
+    </div><div className="sticky bottom-0 -mx-4 mt-5 flex flex-col-reverse gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 pt-3 pb-safe md:-mx-6 md:flex-row md:justify-end md:px-6"><Button variant="secondary" onClick={onClose}>Abbrechen</Button><Button onClick={() => void save()} disabled={busy}>{busy ? 'Speichert…' : 'Entwurf speichern'}</Button></div>
+  </Modal>;
+}
+
+const statusLabel: Record<Survey['status'], string> = { draft: 'Entwurf', active: 'Aktiv', closed: 'Beendet', archived: 'Archiviert' };
+export default function Surveys() {
+  const navigate = useNavigate(); const { showToast } = useToast(); const [search, setSearch] = useState(''); const [archived, setArchived] = useState(false); const [editorOpen, setEditorOpen] = useState(false);
+  const surveysQuery = useSurveys({ search, archived }); const hasArchived = useArchivedSurveys().data; const archive = useArchiveSurvey();
+  const surveys = useMemo(() => surveysQuery.data || [], [surveysQuery.data]);
+  const copy = async (survey: Survey) => { const url = `${window.location.origin}/survey/${survey.publicToken}`; try { await navigator.clipboard.writeText(url); showToast('Link kopiert.'); } catch { showToast('Link konnte nicht kopiert werden.', { type: 'error' }); } };
+  return <div className="space-y-5"><PageHeader title="Umfragen" description="Anonyme Rückmeldungen von Kindern und Jugendlichen erfassen und auswerten." actions={<Button onClick={() => setEditorOpen(true)}><Plus className="h-4 w-4" /> Neue Umfrage</Button>} />
+    <div className="flex flex-wrap items-center gap-3"><div className="relative min-w-[15rem] flex-1 md:max-w-sm"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--text-faint)]" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Suchen…" /></div>{hasArchived ? <Button variant={archived ? 'primary' : 'secondary'} onClick={() => setArchived(!archived)}><Archive className="h-4 w-4" /> {archived ? 'Archiv anzeigen' : 'Archiv'}</Button> : null}</div>
+    {surveysQuery.isLoading ? <p className="text-sm text-[var(--text-secondary)]">Umfragen werden geladen…</p> : null}
+    {!surveysQuery.isLoading && surveys.length === 0 ? <EmptyState icon={<ClipboardList className="h-5 w-5" />} title={archived ? 'Keine archivierten Umfragen' : 'Noch keine Umfrage'} description="Lege eine Umfrage an, um Wünsche oder Rückmeldungen anonym zu erfassen." action={!archived ? <Button onClick={() => setEditorOpen(true)}><Plus className="h-4 w-4" /> Neue Umfrage</Button> : undefined} /> : <div className="space-y-4">{surveys.map((survey) => <SurfaceCard key={survey.id} className="cursor-pointer transition-colors hover:bg-[var(--surface-2)]" onClick={() => navigate(`/surveys/${survey.id}`)}><div className="flex flex-col gap-3 md:flex-row md:items-center"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--interactive-soft)] text-viridian"><ClipboardList /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-semibold text-[var(--text-primary)]">{survey.title}</h2><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${survey.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-[var(--surface-3)] text-[var(--text-secondary)]'}`}>{statusLabel[survey.status]}</span></div><p className="mt-1 text-sm text-[var(--text-secondary)]">{survey.questions.length} Fragen · {survey.responsesCount} Antworten {survey.projectId ? '· Projektumfrage' : '· Allgemeine Umfrage'}</p></div><div className="flex gap-2" onClick={(event) => event.stopPropagation()}><Button size="icon" variant="secondary" aria-label="Link kopieren" onClick={() => void copy(survey)}><Copy className="h-4 w-4" /></Button><Button size="icon" variant="secondary" aria-label="Auswertung öffnen" onClick={() => navigate(`/surveys/${survey.id}`)}><BarChart3 className="h-4 w-4" /></Button><Button size="icon" variant="secondary" disabled={survey.status === 'active'} aria-label={survey.archived ? 'Wiederherstellen' : 'Archivieren'} onClick={() => archive.mutate({ id: survey.id, archived: !survey.archived }, { onSuccess: () => showToast(survey.archived ? 'Umfrage wiederhergestellt.' : 'Umfrage archiviert.') })}>{survey.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button></div></div></SurfaceCard>)}</div>}
+    <SurveyEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
+  </div>;
+}

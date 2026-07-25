@@ -54,11 +54,11 @@ export function parseSurveyTemplate(json: string): Pick<SurveyInput, 'title' | '
 
 export function useSurveys(params?: { search?: string; archived?: boolean }) {
   const { scopeKey, ready } = useOrgScopedQueryState();
-  return useQuery({ queryKey: ['surveys', scopeKey, params], enabled: ready, queryFn: async () => (await api.get('/surveys', { params })).data as Survey[] });
+  return useQuery({ queryKey: ['surveys', scopeKey, params], enabled: ready, queryFn: async () => (await api.get('/surveys', { params })).data as Survey[], staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: 'always', refetchInterval: 15_000 });
 }
 export function useSurvey(id?: string) {
   const { scopeKey, ready } = useOrgScopedQueryState();
-  return useQuery({ queryKey: ['survey', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}`)).data as Survey });
+  return useQuery({ queryKey: ['survey', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}`)).data as Survey, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: 'always', refetchInterval: 15_000 });
 }
 export function useArchivedSurveys() {
   const { scopeKey, ready } = useOrgScopedQueryState();
@@ -75,11 +75,11 @@ export function useCloseSurvey() { return useSurveyMutation(async (id: string) =
 export function useArchiveSurvey() { return useSurveyMutation(async ({ id, archived }: { id: string; archived: boolean }) => (await api.patch(`/surveys/${id}`, { archived })).data as Survey); }
 export function useSurveyResponses(id?: string) {
   const { scopeKey, ready } = useOrgScopedQueryState();
-  return useQuery({ queryKey: ['survey-responses', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}/responses`)).data as { rawResponsesAvailable: boolean; responses: SurveyResponse[] } });
+  return useQuery({ queryKey: ['survey-responses', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}/responses`)).data as { rawResponsesAvailable: boolean; responses: SurveyResponse[] }, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: 'always', refetchInterval: 15_000 });
 }
 export function useSurveyAnalytics(id?: string) {
   const { scopeKey, ready } = useOrgScopedQueryState();
-  return useQuery({ queryKey: ['survey-analytics', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}/analytics`)).data as SurveyAnalytics });
+  return useQuery({ queryKey: ['survey-analytics', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}/analytics`)).data as SurveyAnalytics, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: 'always', refetchInterval: 15_000 });
 }
 export function useDeleteSurveyResponse() {
   const qc = useQueryClient(); const scopeKey = useOrgScopeKey();

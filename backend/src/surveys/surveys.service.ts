@@ -243,7 +243,7 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
   async listRounds(id: string, user: SurveyActor) {
     await this.purgeExpiredRawResponses();
     const seed = await this.findSeriesSeed(id, user);
-    const rounds = (await this.roundsFor(seed)).filter((round) => round.status !== 'draft');
+    const rounds = await this.roundsFor(seed);
     return Promise.all(rounds.map((round) => this.staffDto(round)));
   }
 
@@ -438,7 +438,7 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
   async trend(id: string, user: SurveyActor) {
     await this.purgeExpiredRawResponses();
     const seed = await this.findSeriesSeed(id, user);
-    const rounds = await this.roundsFor(seed);
+    const rounds = (await this.roundsFor(seed)).filter((round) => round.status !== 'draft');
     const analytics: SurveyAnalyticsData[] = await Promise.all(rounds.map(async (round) => (round.aggregateSnapshot as unknown as SurveyAnalyticsData) || this.buildAnalytics(round, false)));
     const roundDtos = await Promise.all(rounds.map((round) => this.staffDto(round)));
     const baselineQuestions = seed.questions || [];

@@ -22,6 +22,14 @@ describe('SurveysService', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
+  const mockPurgeQuery = () => {
+    const query = { where: jest.fn(), andWhere: jest.fn(), getMany: jest.fn() };
+    query.where.mockReturnValue(query);
+    query.andWhere.mockReturnValue(query);
+    query.getMany.mockResolvedValue([]);
+    surveyRepository.createQueryBuilder.mockReturnValue(query);
+  };
+
   it('validates public answers and stores only the declared question fields', async () => {
     surveyRepository.findOneBy.mockResolvedValue(activeSurvey());
     responseRepository.exist.mockResolvedValue(false);
@@ -73,5 +81,22 @@ describe('SurveysService', () => {
       startsAt: null,
       closedAt: null,
     }));
+  });
+
+  it('lists draft rounds while excluding them from the trend', async () => {
+    const closedRound = { ...activeSurvey(), status: 'closed' as const, aggregateSnapshot: { responsesCount: 2, responseRate: 20, questions: [] }, roundNumber: 1 };
+    const draftRound = { ...activeSurvey(), id: 'survey-2', status: 'draft' as const, aggregateSnapshot: null, roundNumber: 2 };
+    mockPurgeQuery();
+    surveyRepository.findOneBy.mockResolvedValue(closedRound);
+    surveyRepository.find.mockResolvedValue([closedRound, draftRound]);
+    responseRepository.count.mockResolvedValue(0);
+
+    const rounds = await service.listRounds('survey-1', { id: 'user-1', role: 'user', orgId: 'org-1' });
+    const trend = await service.trend('survey-1', { id: 'user-1', role: 'user', orgId: 'org-1' });
+
+    expect(rounds).toHaveLength(2);
+    expect(rounds[1]).toEqual(expect.objectContaining({ id: 'survey-2', status: 'draft' }));
+    expect(trend.rounds).toHaveLength(1);
+    expect(trend.rounds[0]).toEqual(expect.objectContaining({ id: 'survey-1', status: 'closed' }));
   });
 });

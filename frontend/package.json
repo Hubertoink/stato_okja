@@ -12,7 +12,8 @@
     "test:ui": "vitest run",
     "test:ui:watch": "vitest",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "type-check:ts7": "tsgo --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
@@ -40,6 +41,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "jsdom": "^29.1.1",

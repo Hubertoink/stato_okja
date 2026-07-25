@@ -29,6 +29,7 @@ RUN npm ci --workspace backend --include-workspace-root=false --omit=dev --no-au
 	&& npm cache clean --force
 
 COPY --from=builder --chown=node:node /app/backend/dist ./dist
+COPY --chown=node:node legal ./legal
 RUN mkdir -p /app/uploads/images \
 	&& chown -R node:node /app
 

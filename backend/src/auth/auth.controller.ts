@@ -10,6 +10,7 @@ import type { AdminResetActionMode } from './auth.service';
 import { getAuthRateLimitOverride } from '../config/rate-limit.config';
 import { isStrictSecurityMode } from '../config/security.config';
 import type { RefreshSessionMetadata } from './auth.service';
+import { getPublicLegalContent } from '../legal/legal-content';
 import {
   AcceptInviteDto,
   AdminResetPasswordDto,
@@ -168,6 +169,11 @@ export class AuthController {
     };
   }
 
+  @Get('legal')
+  legalContent() {
+    return getPublicLegalContent();
+  }
+
   @Throttle(AUTH_RATE_LIMIT)
   @Post('login')
   async login(
@@ -234,8 +240,8 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('sessions')
-  sessions(@Req() req: { user: { id: string } }) {
-    return this.auth.listRefreshSessions(req.user.id);
+  sessions(@Req() req: { user: { id: string }; headers?: { cookie?: string } }) {
+    return this.auth.listRefreshSessions(req.user.id, this.getRefreshTokenFromRequest(req));
   }
 
   @UseGuards(JwtAuthGuard)

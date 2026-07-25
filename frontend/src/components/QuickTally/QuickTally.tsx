@@ -432,7 +432,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
   const content = (
     <div className="group fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 right-4 md:right-6 z-50">
       <div
-        className="pointer-events-none absolute bottom-full right-0 hidden w-[22rem] pb-3 translate-y-2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block"
+        className="pointer-events-none absolute bottom-full right-0 hidden w-[28rem] max-w-[calc(100vw-2rem)] pb-3 translate-y-2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block"
         aria-label="Schnellerfassung fortsetzen"
       >
         <section
@@ -453,7 +453,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
             </span>
           </div>
 
-          <div className="max-h-[min(22rem,calc(100vh-12rem))] overflow-y-auto px-3 py-2">
+          <div className="max-h-[min(22rem,calc(100vh-12rem))] overflow-x-hidden overflow-y-auto px-3 py-2">
             <div className="grid grid-cols-[minmax(0,1fr)_2.5rem_2.5rem_2.5rem] items-center gap-1 px-1 pb-1 text-center text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
               <span className="text-left">Kohorte</span>
               <span title="Männlich">m</span>
@@ -472,21 +472,21 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
                     value={counts.m}
                     onChange={(value) => updateCount(cohort.id, 'm', value)}
                     label={`${cohort.name} männlich`}
-                    className="min-h-9 min-w-9 rounded-lg border px-1 py-1 text-sm"
+                    className="!min-h-10 !min-w-10 h-10 w-10 rounded-lg border px-1 py-1 text-sm"
                     valueClassName="text-base"
                   />
                   <QuickTallyButton
                     value={counts.w}
                     onChange={(value) => updateCount(cohort.id, 'w', value)}
                     label={`${cohort.name} weiblich`}
-                    className="min-h-9 min-w-9 rounded-lg border px-1 py-1 text-sm"
+                    className="!min-h-10 !min-w-10 h-10 w-10 rounded-lg border px-1 py-1 text-sm"
                     valueClassName="text-base"
                   />
                   <QuickTallyButton
                     value={counts.d}
                     onChange={(value) => updateCount(cohort.id, 'd', value)}
                     label={`${cohort.name} divers`}
-                    className="min-h-9 min-w-9 rounded-lg border px-1 py-1 text-sm"
+                    className="!min-h-10 !min-w-10 h-10 w-10 rounded-lg border px-1 py-1 text-sm"
                     valueClassName="text-base"
                   />
                 </div>

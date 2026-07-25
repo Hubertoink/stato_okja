@@ -77,6 +77,8 @@ services:
       PUBLIC_LOGIN_SUBTITLE: ${PUBLIC_LOGIN_SUBTITLE:-OKJA Statistik & Dokumentation}
       PUBLIC_LIVE_REFRESH_INTERVAL_MS: ${PUBLIC_LIVE_REFRESH_INTERVAL_MS:-30000}
       STATS_OVERVIEW_CACHE_TTL_MS: ${STATS_OVERVIEW_CACHE_TTL_MS:-30000}
+      # Editable, organisation-specific legal documents (mounted read-only below)
+      LEGAL_CONTENT_DIR: ${LEGAL_CONTENT_DIR:-/app/legal}
 
       SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.org}
       SUPERADMIN_PASSWORD: "${SUPERADMIN_PASSWORD:-}"
@@ -97,6 +99,7 @@ services:
     volumes:
       # Persistiert /uploads (u.a. /uploads/images)
       - backend-uploads:/app/uploads
+      - ${LEGAL_CONTENT_DIR_HOST:-./legal}:${LEGAL_CONTENT_DIR:-/app/legal}:ro
     networks: [frontend-backend, backend-db]
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]

@@ -526,6 +526,22 @@ code {
   color: var(--text-primary);
 }
 
+/* Keep keyboard navigation obvious without the browser's angular default outline. */
+.theme-nav-item:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px var(--viridian),
+    0 0 0 3px var(--focus-ring);
+}
+
+.mobile-bottom-nav a:focus-visible,
+.mobile-bottom-nav button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--viridian);
+}
+
 .theme-nav-item-active {
   background: var(--interactive-soft-strong);
   color: var(--viridian);

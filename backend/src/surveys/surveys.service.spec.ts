@@ -16,8 +16,9 @@ const activeSurvey = (): Survey => ({
 describe('SurveysService', () => {
   const surveyRepository = { findOneBy: jest.fn(), find: jest.fn(), count: jest.fn(), create: jest.fn(), save: jest.fn(), createQueryBuilder: jest.fn() };
   const responseRepository = { exist: jest.fn(), create: jest.fn(), save: jest.fn(), find: jest.fn(), count: jest.fn(), delete: jest.fn(), remove: jest.fn(), findOneBy: jest.fn() };
+  const organizationRepository = { findOneBy: jest.fn() };
   const audit = { log: jest.fn() };
-  const service = new SurveysService(surveyRepository as any, responseRepository as any, audit as any);
+  const service = new SurveysService(surveyRepository as any, responseRepository as any, organizationRepository as any, audit as any);
 
   beforeEach(() => jest.clearAllMocks());
 

@@ -85,5 +85,5 @@ export function useDeleteSurveyResponse() {
   const qc = useQueryClient(); const scopeKey = useOrgScopeKey();
   return useMutation({ mutationFn: async ({ surveyId, responseId, reason }: { surveyId: string; responseId: string; reason: string }) => api.delete(`/surveys/${surveyId}/responses/${responseId}`, { data: { reason } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ['survey-responses', scopeKey] }); qc.invalidateQueries({ queryKey: ['survey-analytics', scopeKey] }); qc.invalidateQueries({ queryKey: ['surveys', scopeKey] }); } });
 }
-export async function fetchPublicSurvey(token: string) { return (await api.get(`/public/surveys/${token}`)).data as Pick<Survey, 'title' | 'introduction' | 'questions' | 'allowMultiplePerDevice'>; }
+export async function fetchPublicSurvey(token: string) { return (await api.get(`/public/surveys/${token}`)).data as Pick<Survey, 'title' | 'introduction' | 'questions' | 'allowMultiplePerDevice'> & { organizationName?: string | null }; }
 export async function submitPublicSurvey(token: string, answers: Record<string, string | string[] | number | null>, deviceToken?: string) { return api.post(`/public/surveys/${token}/responses`, { answers, deviceToken }); }

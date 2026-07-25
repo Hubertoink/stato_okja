@@ -8,6 +8,7 @@ import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { assertExactOrgScopedEntityAccess, type OrgScopedUser } from '../auth/org-scope-access';
 import type { CreateSurveyDto, UpdateSurveyDto } from './dto/survey.dto';
+import { Organization } from '../orgs/entities/organization.entity';
 
 type SurveyActor = OrgScopedUser & { id?: string; name?: string | null };
 type AnswerValue = string | string[] | number | null;
@@ -18,6 +19,7 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @InjectRepository(Survey) private readonly surveys: Repository<Survey>,
     @InjectRepository(SurveyResponse) private readonly responses: Repository<SurveyResponse>,
+    @InjectRepository(Organization) private readonly organizations: Repository<Organization>,
     private readonly audit: AuditService,
   ) {}
 
@@ -225,11 +227,13 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     await this.purgeExpiredRawResponses();
     const survey = await this.surveys.findOneBy({ publicToken: token });
     if (!survey || !this.isPubliclyOpen(survey)) throw new NotFoundException('Diese Umfrage ist nicht aktiv.');
+    const organization = survey.orgId ? await this.organizations.findOneBy({ id: survey.orgId }) : null;
     return {
       title: survey.title,
       introduction: survey.introduction,
       questions: survey.questions || [],
       allowMultiplePerDevice: survey.allowMultiplePerDevice,
+      organizationName: organization?.name || null,
     };
   }
 

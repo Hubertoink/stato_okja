@@ -421,7 +421,8 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
 /** Floating pill to restore minimized session */
 export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }) {
   const { data: projects } = useProjects({ archived: false });
-  const { session, getTotals } = useQuickTallySession();
+  const { data: cohorts } = useCohorts({ active: true });
+  const { session, getTotals, getCohortTotal, updateCount } = useQuickTallySession();
 
   const totals = getTotals();
   const sessionProject = (projects || []).find((p: Project) => p.id === session?.projectId);
@@ -429,23 +430,102 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
   if (!session) return null;
 
   const content = (
-    <button
-      onClick={onRestore}
-      className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 right-4 md:right-6 z-50 theme-accent-solid-button pl-4 pr-5 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-3"
-      style={{ animation: 'pulse 2s infinite' }}
-    >
-      <div className="p-1.5 bg-white/20 rounded-full">
-        <Users className="w-5 h-5" />
+    <div className="group fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 right-4 md:right-6 z-50">
+      <div
+        className="pointer-events-none absolute bottom-full right-0 hidden w-[22rem] pb-3 translate-y-2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block"
+        aria-label="Schnellerfassung fortsetzen"
+      >
+        <section
+          className="overflow-hidden rounded-2xl border shadow-2xl"
+          style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)' }}
+        >
+          <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {sessionProject?.title || 'Tageserfassung'}
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Direkt weiterzählen
+              </p>
+            </div>
+            <span className="rounded-full bg-[var(--interactive-soft)] px-2.5 py-1 text-sm font-bold text-viridian tabular-nums">
+              {totals.total}
+            </span>
+          </div>
+
+          <div className="max-h-[min(22rem,calc(100vh-12rem))] overflow-y-auto px-3 py-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_2.5rem_2.5rem_2.5rem] items-center gap-1 px-1 pb-1 text-center text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-left">Kohorte</span>
+              <span title="Männlich">m</span>
+              <span title="Weiblich">w</span>
+              <span title="Divers">d</span>
+            </div>
+            {(cohorts || []).map((cohort) => {
+              const counts = session.counts[cohort.id] || { m: 0, w: 0, d: 0 };
+              return (
+                <div key={cohort.id} className="grid grid-cols-[minmax(0,1fr)_2.5rem_2.5rem_2.5rem] items-center gap-1 border-t py-2" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <div className="min-w-0 pr-1">
+                    <div className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{cohort.name}</div>
+                    <div className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>Σ {getCohortTotal(cohort.id)}</div>
+                  </div>
+                  <QuickTallyButton
+                    value={counts.m}
+                    onChange={(value) => updateCount(cohort.id, 'm', value)}
+                    label={`${cohort.name} männlich`}
+                    className="min-h-9 min-w-9 rounded-lg border px-1 py-1 text-sm"
+                    valueClassName="text-base"
+                  />
+                  <QuickTallyButton
+                    value={counts.w}
+                    onChange={(value) => updateCount(cohort.id, 'w', value)}
+                    label={`${cohort.name} weiblich`}
+                    className="min-h-9 min-w-9 rounded-lg border px-1 py-1 text-sm"
+                    valueClassName="text-base"
+                  />
+                  <QuickTallyButton
+                    value={counts.d}
+                    onChange={(value) => updateCount(cohort.id, 'd', value)}
+                    label={`${cohort.name} divers`}
+                    className="min-h-9 min-w-9 rounded-lg border px-1 py-1 text-sm"
+                    valueClassName="text-base"
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="border-t px-3 py-2" style={{ borderColor: 'var(--border-subtle)' }}>
+            <button
+              type="button"
+              onClick={onRestore}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-viridian transition-colors hover:bg-[var(--interactive-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            >
+              Vollbild-Erfassung öffnen <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </section>
       </div>
-      <div className="text-left">
-        <div className="font-semibold text-sm leading-tight">
-          {sessionProject?.title || 'Tageserfassung'}
+
+      <button
+        type="button"
+        onClick={onRestore}
+        className="theme-accent-solid-button flex items-center gap-3 rounded-full py-3 pl-4 pr-5 shadow-lg transition-all hover:scale-105 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
+        style={{ animation: 'pulse 2s infinite' }}
+      >
+        <div className="rounded-full bg-white/20 p-1.5">
+          <Users className="w-5 h-5" />
         </div>
-        <div className="text-white/80 text-xs">
-          {totals.total} Teilnehmende • Tippen zum Fortsetzen
+        <div className="text-left">
+          <div className="text-sm font-semibold leading-tight">
+            {sessionProject?.title || 'Tageserfassung'}
+          </div>
+          <div className="text-xs text-white/80">
+            {totals.total} Teilnehmende <span className="hidden md:inline">• Hover zum Weiterzählen</span>
+            <span className="md:hidden">• Tippen zum Fortsetzen</span>
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 
   return createPortal(content, document.body);

@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useResolvedImageSrc } from '@/components/ProtectedImage';
+import { useEmbeddedImageSrc } from '@/components/ProtectedImage';
 
 type StatisticsBarChartDatum = {
   name: string;
@@ -29,7 +29,7 @@ function ImageBarShape({
   getImageUrl,
 }: ImageBarShapeProps) {
   const imageUrl = payload ? getImageUrl?.(payload, index) : undefined;
-  const resolvedImageUrl = useResolvedImageSrc(imageUrl);
+  const embeddedImageUrl = useEmbeddedImageSrc(imageUrl);
   const clipId = useId();
 
   if (width <= 0 || height <= 0) return null;
@@ -42,13 +42,13 @@ function ImageBarShape({
         </clipPath>
       </defs>
       <rect x={x} y={y} width={width} height={height} fill={fill} />
-      {resolvedImageUrl ? (
+      {embeddedImageUrl ? (
         <image
           x={x}
           y={y}
           width={width}
           height={height}
-          href={resolvedImageUrl}
+          href={embeddedImageUrl}
           clipPath={`url(#${clipId})`}
           preserveAspectRatio="xMidYMid slice"
           opacity={0.78}

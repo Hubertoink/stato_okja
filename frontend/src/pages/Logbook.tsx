@@ -162,8 +162,7 @@ export default function Logbook() {
             className="hidden md:inline-flex"
             onClick={() => navigate('/logbook/new')}
           >
-            <Plus className="h-5 w-5" />
-            <span className="hidden sm:inline">Eintrag erstellen</span>
+            + Neuer Eintrag
           </Button>
         </div>
         )}

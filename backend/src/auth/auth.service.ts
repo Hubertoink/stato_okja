@@ -189,7 +189,7 @@ export class AuthService {
     });
     await this.refreshSessions.save(session);
 
-    return { refreshToken, refreshCsrfToken, refreshTokenMaxAgeMs };
+    return { refreshToken, refreshCsrfToken, refreshTokenMaxAgeMs, sessionId: session.id };
   }
 
   private async getSessionUser(user: User): Promise<AuthUserResponse> {
@@ -223,9 +223,15 @@ export class AuthService {
     user: User,
     options?: { auditLogin?: boolean; sessionMetadata?: RefreshSessionMetadata },
   ): Promise<AuthenticatedSessionResponse> {
-    const payload = { sub: user.id, role: user.role, orgId: user.orgId, name: user.name || null };
-    const token = await this.jwt.signAsync(payload);
     const refreshSession = await this.issueRefreshSession(user, options?.sessionMetadata);
+    const payload = {
+      sub: user.id,
+      sid: refreshSession.sessionId,
+      role: user.role,
+      orgId: user.orgId,
+      name: user.name || null,
+    };
+    const token = await this.jwt.signAsync(payload);
 
     if (options?.auditLogin !== false) {
       try {
@@ -298,7 +304,8 @@ export class AuthService {
     return { ok: true as const };
   }
 
-  async listRefreshSessions(userId: string) {
+  async listRefreshSessions(userId: string, currentRefreshToken?: string) {
+    const currentTokenId = splitRefreshToken(currentRefreshToken || '')?.id || null;
     const sessions = await this.refreshSessions.find({
       where: { userId },
       order: { lastUsedAt: 'DESC' },
@@ -310,6 +317,7 @@ export class AuthService {
       expiresAt: session.expiresAt,
       userAgent: session.userAgent,
       ipAddress: session.ipAddress,
+      isCurrent: session.tokenId === currentTokenId,
     }));
   }
 

@@ -240,8 +240,8 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('sessions')
-  sessions(@Req() req: { user: { id: string } }) {
-    return this.auth.listRefreshSessions(req.user.id);
+  sessions(@Req() req: { user: { id: string }; headers?: { cookie?: string } }) {
+    return this.auth.listRefreshSessions(req.user.id, this.getRefreshTokenFromRequest(req));
   }
 
   @UseGuards(JwtAuthGuard)

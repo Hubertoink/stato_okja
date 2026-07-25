@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -13,6 +13,61 @@ import { useToast } from '@/components/Toast';
 import { createSurveyTemplate, type SurveyQuestion, useCloseSurvey, useDeleteSurveyResponse, useStartSurvey, useSurvey, useSurveyAnalytics, useSurveyResponses } from '@/lib/surveys';
 import { SurveyEditor } from './Surveys';
 import { SurveyStatusBadge } from '@/components/SurveyStatusBadge';
+import { StatisticsExportActions } from './StatisticsExportActions';
+import ExportProgressModal from '@/components/ExportProgressModal';
+
+const SURVEY_EXPORT_SCALE = 2;
+const SURVEY_EXPORT_MARGIN_MM = 10;
+const SURVEY_EXPORT_HEADER_HEIGHT_MM = 24;
+
+let surveyExportDependenciesPromise:
+  | Promise<{
+      JsPDF: typeof import('jspdf').default;
+      html2canvas: typeof import('html2canvas').default;
+    }>
+  | null = null;
+
+function loadSurveyExportDependencies() {
+  if (!surveyExportDependenciesPromise) {
+    surveyExportDependenciesPromise = Promise.all([import('jspdf'), import('html2canvas')]).then(
+      ([jspdfModule, html2canvasModule]) => ({
+        JsPDF: jspdfModule.default,
+        html2canvas: html2canvasModule.default,
+      }),
+    );
+  }
+
+  return surveyExportDependenciesPromise;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Canvas export failed.'))), 'image/png');
+  });
+}
+
+function exportFilename(title: string, extension: 'png' | 'pdf') {
+  const segment = title
+    .toLocaleLowerCase('de-DE')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9äöüß_-]+/gi, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `stato-umfrage-${segment || 'auswertung'}.${extension}`;
+}
 
 function formatDate(value?: string | null) { return value ? new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : '–'; }
 function answerLabel(question: SurveyQuestion | undefined, value: string | string[] | number | null | undefined) {
@@ -27,9 +82,9 @@ function SurveyChartTooltip({ active, payload }: { active?: boolean; payload?: A
   return <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 py-2 text-sm shadow-sm"><p className="font-medium text-[var(--text-primary)]">{entry.payload?.name}</p><p className="mt-1 text-viridian">{entry.value ?? 0} Antworten</p></div>;
 }
 
-function SurveyQr({ url }: { url: string }) {
+function SurveyQr({ url, onReady }: { url: string; onReady?: (src: string) => void }) {
   const [src, setSrc] = useState('');
-  useEffect(() => { let alive = true; void QRCode.toDataURL(url, { width: 300, margin: 1, color: { dark: '#064e3b', light: '#ffffff' } }).then((next) => { if (alive) setSrc(next); }); return () => { alive = false; }; }, [url]);
+  useEffect(() => { let alive = true; void QRCode.toDataURL(url, { width: 300, margin: 1, color: { dark: '#064e3b', light: '#ffffff' } }).then((next) => { if (alive) { setSrc(next); onReady?.(next); } }); return () => { alive = false; }; }, [url, onReady]);
   return src ? <img className="mx-auto h-44 w-44 rounded-xl bg-white p-2" src={src} alt="QR-Code zur Umfrage" /> : <div className="mx-auto h-44 w-44 animate-pulse rounded-xl bg-[var(--surface-3)]" />;
 }
 
@@ -37,21 +92,69 @@ export default function SurveyDetail() {
   const { id = '' } = useParams(); const navigate = useNavigate(); const { showToast } = useToast();
   const surveyQuery = useSurvey(id); const survey = surveyQuery.data; const analytics = useSurveyAnalytics(id).data; const responsesQuery = useSurveyResponses(id);
   const start = useStartSurvey(); const close = useCloseSurvey(); const deleteResponse = useDeleteSurveyResponse();
-  const [tab, setTab] = useState<'overview' | 'responses' | 'analytics'>('overview'); const [edit, setEdit] = useState(false); const [responseToDelete, setResponseToDelete] = useState<string | null>(null); const [deleteReason, setDeleteReason] = useState('');
+  const [tab, setTab] = useState<'overview' | 'responses' | 'analytics'>('overview'); const [edit, setEdit] = useState(false); const [responseToDelete, setResponseToDelete] = useState<string | null>(null); const [deleteReason, setDeleteReason] = useState(''); const [qrDataUrl, setQrDataUrl] = useState(''); const [exportProgress, setExportProgress] = useState<string | null>(null); const [activeAnalyticsExport, setActiveAnalyticsExport] = useState<string | null>(null);
+  const analyticsCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const link = survey ? `${window.location.origin}/survey/${survey.publicToken}` : '';
   const byQuestion = useMemo(() => new Map((survey?.questions || []).map((question) => [question.id, question])), [survey?.questions]);
   if (surveyQuery.isLoading) return <p className="text-sm text-[var(--text-secondary)]">Umfrage wird geladen…</p>;
   if (!survey) return <EmptyState title="Umfrage nicht gefunden" description="Sie wurde möglicherweise gelöscht oder gehört zu einer anderen Einrichtung." action={<Button onClick={() => navigate('/surveys')}>Zur Übersicht</Button>} />;
   const copy = async () => { try { await navigator.clipboard.writeText(link); showToast('Öffentlicher Link kopiert.'); } catch { showToast('Link konnte nicht kopiert werden.', { type: 'error' }); } };
   const exportTemplate = () => { const blob = new Blob([JSON.stringify(createSurveyTemplate(survey), null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${survey.title.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'umfrage'}.stato-umfrage.json`; anchor.click(); URL.revokeObjectURL(url); showToast('Umfragevorlage heruntergeladen.'); };
+  const downloadQr = () => { if (!qrDataUrl) { showToast('Der QR-Code wird noch erstellt. Bitte versuche es gleich noch einmal.', { type: 'error' }); return; } const anchor = document.createElement('a'); anchor.href = qrDataUrl; anchor.download = exportFilename(`${survey.title}-qr-code`, 'png'); anchor.click(); showToast('QR-Code als PNG heruntergeladen.'); };
   const print = () => { const sourceImage = window.document.querySelector<HTMLImageElement>('img[alt="QR-Code zur Umfrage"]'); const popup = window.open('', '_blank'); if (!popup) return; popup.opener = null; const document = popup.document; document.title = survey.title; document.body.style.cssText = 'font-family:Inter,Arial,sans-serif;padding:36px;text-align:center;color:#064e3b'; const title = document.createElement('h1'); title.textContent = survey.title; const p = document.createElement('p'); p.textContent = 'Scanne den QR-Code und mach mit.'; const qr = document.createElement('img'); qr.src = sourceImage?.src || ''; qr.style.width = '280px'; qr.style.height = '280px'; const url = document.createElement('p'); url.textContent = link; url.style.fontSize = '12px'; document.body.append(title, p, qr, url); popup.focus(); window.setTimeout(() => popup.print(), 250); };
+  const exportAnalyticsCard = async (questionId: string, questionLabel: string, format: 'png' | 'pdf') => {
+    const card = analyticsCardRefs.current[questionId];
+    if (!card) return;
+    const exportKey = `${questionId}:${format}`;
+    setActiveAnalyticsExport(exportKey);
+    setExportProgress(format === 'pdf' ? 'Auswertung wird für das PDF aufbereitet …' : 'Auswertung wird als Bild aufbereitet …');
+    try {
+      const { JsPDF, html2canvas } = await loadSurveyExportDependencies();
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      const canvas = await html2canvas(card, {
+        scale: SURVEY_EXPORT_SCALE,
+        backgroundColor: '#ffffff',
+        ignoreElements: (element) => element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
+      });
+      const fileTitle = `${survey.title}-${questionLabel}`;
+      if (format === 'png') {
+        setExportProgress('Bilddatei wird gespeichert …');
+        downloadBlob(await canvasToBlob(canvas), exportFilename(fileTitle, 'png'));
+        return;
+      }
+      const orientation = canvas.width >= canvas.height ? 'landscape' : 'portrait';
+      const pdf = new JsPDF({ orientation, unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const scale = Math.min((pageWidth - SURVEY_EXPORT_MARGIN_MM * 2) / canvas.width, (pageHeight - SURVEY_EXPORT_HEADER_HEIGHT_MM - SURVEY_EXPORT_MARGIN_MM) / canvas.height);
+      const width = canvas.width * scale;
+      const height = canvas.height * scale;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(15);
+      pdf.text(survey.title, SURVEY_EXPORT_MARGIN_MM, 15);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(11);
+      pdf.text(questionLabel, SURVEY_EXPORT_MARGIN_MM, 21);
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', (pageWidth - width) / 2, SURVEY_EXPORT_HEADER_HEIGHT_MM, width, height, undefined, 'FAST');
+      setExportProgress('PDF wird gespeichert …');
+      pdf.save(exportFilename(fileTitle, 'pdf'));
+    } catch (error) {
+      console.error('Survey analytics export failed', error);
+      showToast('Die Auswertung konnte nicht exportiert werden.', { type: 'error' });
+    } finally {
+      setActiveAnalyticsExport(null);
+      setExportProgress(null);
+    }
+  };
   const runDelete = async () => { if (!responseToDelete || !deleteReason.trim()) { showToast('Bitte gib einen Löschgrund an.', { type: 'error' }); return; } try { await deleteResponse.mutateAsync({ surveyId: survey.id, responseId: responseToDelete, reason: deleteReason }); showToast('Einzelantwort gelöscht.'); setResponseToDelete(null); setDeleteReason(''); } catch { showToast('Antwort konnte nicht gelöscht werden.', { type: 'error' }); } };
   return <div className="space-y-5"><PageHeader title={survey.title} description={`${survey.questions.length} Fragen · ${survey.responsesCount} Antworten`} actions={<div className="flex flex-wrap justify-end gap-2"><Button variant="secondary" onClick={() => navigate('/surveys')}><ArrowLeft className="h-4 w-4" /> Übersicht</Button><Button variant="secondary" onClick={exportTemplate}><Download className="h-4 w-4" /> Vorlage exportieren</Button>{survey.status === 'draft' ? <Button onClick={() => start.mutate(survey.id, { onSuccess: () => showToast('Umfrage gestartet.'), onError: () => showToast('Umfrage konnte nicht gestartet werden.', { type: 'error' }) })}><Play className="h-4 w-4" /> Starten</Button> : null}{survey.status === 'active' ? <Button variant="danger" onClick={() => close.mutate(survey.id, { onSuccess: () => showToast('Umfrage beendet.'), onError: () => showToast('Umfrage konnte nicht beendet werden.', { type: 'error' }) })}><CheckCircle2 className="h-4 w-4" /> Beenden</Button> : null}<Button variant="secondary" onClick={() => setEdit(true)} disabled={survey.status !== 'draft'}><Pencil className="h-4 w-4" /> Bearbeiten</Button></div>} />
     <div className="flex gap-1 overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-1"><button className={`rounded-lg px-3 py-2 text-sm font-medium ${tab === 'overview' ? 'bg-[var(--surface-elevated)] text-viridian shadow-sm' : 'text-[var(--text-secondary)]'}`} onClick={() => setTab('overview')}>Überblick</button><button className={`rounded-lg px-3 py-2 text-sm font-medium ${tab === 'responses' ? 'bg-[var(--surface-elevated)] text-viridian shadow-sm' : 'text-[var(--text-secondary)]'}`} onClick={() => setTab('responses')}>Einzelantworten</button><button className={`rounded-lg px-3 py-2 text-sm font-medium ${tab === 'analytics' ? 'bg-[var(--surface-elevated)] text-viridian shadow-sm' : 'text-[var(--text-secondary)]'}`} onClick={() => setTab('analytics')}>Auswertung</button></div>
-    {tab === 'overview' ? <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]"><SurfaceCard><h2 className="text-lg font-semibold text-viridian">Umfrage</h2><dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-[var(--text-secondary)]">Status</dt><dd className="mt-1"><SurveyStatusBadge status={survey.status} /></dd></div><div><dt className="text-[var(--text-secondary)]">Teilnahmemodus</dt><dd className="mt-1 font-medium">{survey.allowMultiplePerDevice ? 'Mehrere Antworten pro Gerät' : 'Eine Antwort pro Browser'}</dd></div><div><dt className="text-[var(--text-secondary)]">Start</dt><dd className="mt-1">{formatDate(survey.startsAt)}</dd></div><div><dt className="text-[var(--text-secondary)]">Ende</dt><dd className="mt-1">{formatDate(survey.endsAt)}</dd></div>{survey.rawResponsesPurgeAt ? <div className="sm:col-span-2"><dt className="text-[var(--text-secondary)]">Einzelantworten werden gelöscht am</dt><dd className="mt-1">{formatDate(survey.rawResponsesPurgeAt)}</dd></div> : null}</dl><p className="mt-5 whitespace-pre-wrap text-sm text-[var(--text-secondary)]">{survey.introduction || 'Keine Einleitung hinterlegt.'}</p></SurfaceCard><SurfaceCard className="text-center"><QrCode className="mx-auto mb-2 h-5 w-5 text-viridian" /><h2 className="font-semibold text-viridian">QR-Code & Link</h2><div className="mt-3"><SurveyQr url={link} /></div><p className="mt-3 break-all text-xs text-[var(--text-secondary)]">{link}</p><div className="mt-4 grid gap-2"><Button variant="secondary" onClick={() => void copy()}><Copy className="h-4 w-4" /> Link kopieren</Button><Button variant="secondary" onClick={print}><Printer className="h-4 w-4" /> QR-Code drucken</Button><Button variant="secondary" onClick={() => window.open(link, '_blank', 'noopener,noreferrer')}><ExternalLink className="h-4 w-4" /> Teilnahme öffnen</Button></div></SurfaceCard></div> : null}
+    {tab === 'overview' ? <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]"><SurfaceCard><h2 className="text-lg font-semibold text-viridian">Umfrage</h2><dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-[var(--text-secondary)]">Status</dt><dd className="mt-1"><SurveyStatusBadge status={survey.status} /></dd></div><div><dt className="text-[var(--text-secondary)]">Teilnahmemodus</dt><dd className="mt-1 font-medium">{survey.allowMultiplePerDevice ? 'Mehrere Antworten pro Gerät' : 'Eine Antwort pro Browser'}</dd></div><div><dt className="text-[var(--text-secondary)]">Start</dt><dd className="mt-1">{formatDate(survey.startsAt)}</dd></div><div><dt className="text-[var(--text-secondary)]">Ende</dt><dd className="mt-1">{formatDate(survey.endsAt)}</dd></div>{survey.rawResponsesPurgeAt ? <div className="sm:col-span-2"><dt className="text-[var(--text-secondary)]">Einzelantworten werden gelöscht am</dt><dd className="mt-1">{formatDate(survey.rawResponsesPurgeAt)}</dd></div> : null}</dl><p className="mt-5 whitespace-pre-wrap text-sm text-[var(--text-secondary)]">{survey.introduction || 'Keine Einleitung hinterlegt.'}</p></SurfaceCard><SurfaceCard className="group/chart-card text-center"><div className="flex items-start justify-between gap-3"><div className="w-9" /><div><QrCode className="mx-auto mb-2 h-5 w-5 text-viridian" /><h2 className="font-semibold text-viridian">QR-Code & Link</h2></div><StatisticsExportActions triggerLabel="QR-Code herunterladen" menuTitle="QR-Code herunterladen" isExporting={false} options={[{ label: 'Als PNG', meta: 'Bild', onClick: downloadQr }]} /></div><div className="mt-3"><SurveyQr url={link} onReady={setQrDataUrl} /></div><p className="mt-3 break-all text-xs text-[var(--text-secondary)]">{link}</p><div className="mt-4 grid gap-2"><Button variant="secondary" onClick={() => void copy()}><Copy className="h-4 w-4" /> Link kopieren</Button><Button variant="secondary" onClick={print}><Printer className="h-4 w-4" /> QR-Code drucken</Button><Button variant="secondary" onClick={() => window.open(link, '_blank', 'noopener,noreferrer')}><ExternalLink className="h-4 w-4" /> Teilnahme öffnen</Button></div></SurfaceCard></div> : null}
     {tab === 'responses' ? <SurfaceCard>{responsesQuery.isLoading ? <p className="text-sm text-[var(--text-secondary)]">Einzelantworten werden geladen…</p> : !responsesQuery.data?.rawResponsesAvailable ? <EmptyState icon={<Archive className="h-5 w-5" />} title="Einzelantworten wurden anonymisiert gelöscht" description="Nach Ablauf der 30-Tage-Prüffrist bleiben nur die aggregierten Ergebnisse erhalten." /> : (responsesQuery.data?.responses.length || 0) === 0 ? <EmptyState icon={<Users className="h-5 w-5" />} title="Noch keine Antworten" description="Sobald jemand teilnimmt, erscheinen die anonymen Antworten hier." /> : <div className="overflow-x-auto"><table className="w-full min-w-[48rem] text-left text-sm"><thead className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)]"><tr><th className="px-2 py-3">#</th><th className="px-2 py-3">Eingang</th>{survey.questions.map((question) => <th key={question.id} className="px-2 py-3">{question.label}</th>)}<th className="px-2 py-3" /></tr></thead><tbody>{responsesQuery.data?.responses.map((response) => <tr key={response.id} className="border-b border-[var(--border-subtle)] last:border-0"><td className="px-2 py-3">{response.number}</td><td className="px-2 py-3 whitespace-nowrap">{formatDate(response.submittedAt)}</td>{survey.questions.map((question) => <td key={question.id} className="max-w-56 px-2 py-3 align-top">{answerLabel(question, response.answers[question.id])}</td>)}<td className="px-2 py-3"><Button size="icon" variant="ghost" aria-label="Antwort löschen" onClick={() => setResponseToDelete(response.id)}><Trash2 className="h-4 w-4 text-red-600" /></Button></td></tr>)}</tbody></table></div>}</SurfaceCard> : null}
-    {tab === 'analytics' ? <div className="space-y-5"><div className="grid gap-4 sm:grid-cols-3"><SurfaceCard padding="sm"><div className="text-xs text-[var(--text-secondary)]">Gültige Antworten</div><div className="mt-1 text-2xl font-bold text-viridian">{analytics?.responsesCount ?? 0}</div></SurfaceCard><SurfaceCard padding="sm"><div className="text-xs text-[var(--text-secondary)]">Erwartete Teilnehmende</div><div className="mt-1 text-2xl font-bold text-viridian">{analytics?.expectedParticipants ?? '–'}</div></SurfaceCard><SurfaceCard padding="sm"><div className="text-xs text-[var(--text-secondary)]">Rücklaufquote</div><div className="mt-1 text-2xl font-bold text-viridian">{analytics?.responseRate !== null && typeof analytics?.responseRate !== 'undefined' ? `${analytics.responseRate} %` : '–'}</div></SurfaceCard></div>{analytics?.suppressed ? <EmptyState icon={<Archive className="h-5 w-5" />} title="Dauerhafte Auswertung nicht verfügbar" description="Nach der Prüffrist wurden die Einzelantworten gelöscht. Für eine dauerhafte Auswertung waren weniger als fünf Antworten eingegangen." /> : !analytics || analytics.questions.length === 0 ? <EmptyState icon={<BarChart3 className="h-5 w-5" />} title="Noch keine Auswertung" description="Die Diagramme erscheinen, sobald Antworten eingegangen sind." /> : analytics.questions.map((result) => { const question = byQuestion.get(result.id); if (result.type === 'text') return <SurfaceCard key={result.id}><h2 className="font-semibold text-viridian">{result.label}</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">{result.answeredCount} Textantworten</p><div className="mt-4 space-y-2">{result.texts?.length ? result.texts.map((text, index) => <div key={`${index}-${text}`} className="rounded-xl bg-[var(--surface-2)] p-3 text-sm whitespace-pre-wrap">{text}</div>) : <p className="text-sm text-[var(--text-secondary)]">Keine Freitextantworten.</p>}</div></SurfaceCard>; const min = String(question?.scaleMin ?? 1); const max = String(question?.scaleMax ?? 5); const chartData = Object.entries(result.counts || {}).map(([key, value]) => ({ name: question?.type === 'scale' ? key === min ? `${key} – ${question.scaleMinLabel || 'trifft nicht zu'}` : key === max ? `${key} – ${question.scaleMaxLabel || 'trifft zu'}` : key : question?.options?.find((entry) => entry.id === key)?.label || key, value })); return <SurfaceCard key={result.id}><div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-semibold text-viridian">{result.label}</h2><span className="text-sm text-[var(--text-secondary)]">{result.answeredCount} Antworten{result.median ? ` · Median ${result.median}` : ''}</span></div><div className="mt-4 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}><CartesianGrid strokeDasharray="3 3" /><XAxis type="number" allowDecimals={false} /><YAxis type="category" dataKey="name" width={question?.type === 'scale' ? 220 : 150} tick={{ fontSize: 12 }} /><Tooltip content={<SurveyChartTooltip />} /><Bar dataKey="value" fill="var(--chart-primary, #0f766e)" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer></div></SurfaceCard>; })}</div> : null}
+    {tab === 'analytics' ? <div className="space-y-5"><div className="grid gap-4 sm:grid-cols-3"><SurfaceCard padding="sm"><div className="text-xs text-[var(--text-secondary)]">Gültige Antworten</div><div className="mt-1 text-2xl font-bold text-viridian">{analytics?.responsesCount ?? 0}</div></SurfaceCard><SurfaceCard padding="sm"><div className="text-xs text-[var(--text-secondary)]">Erwartete Teilnehmende</div><div className="mt-1 text-2xl font-bold text-viridian">{analytics?.expectedParticipants ?? '–'}</div></SurfaceCard><SurfaceCard padding="sm"><div className="text-xs text-[var(--text-secondary)]">Rücklaufquote</div><div className="mt-1 text-2xl font-bold text-viridian">{analytics?.responseRate !== null && typeof analytics?.responseRate !== 'undefined' ? `${analytics.responseRate} %` : '–'}</div></SurfaceCard></div>{analytics?.suppressed ? <EmptyState icon={<Archive className="h-5 w-5" />} title="Dauerhafte Auswertung nicht verfügbar" description="Nach der Prüffrist wurden die Einzelantworten gelöscht. Für eine dauerhafte Auswertung waren weniger als fünf Antworten eingegangen." /> : !analytics || analytics.questions.length === 0 ? <EmptyState icon={<BarChart3 className="h-5 w-5" />} title="Noch keine Auswertung" description="Die Diagramme erscheinen, sobald Antworten eingegangen sind." /> : analytics.questions.map((result) => { const question = byQuestion.get(result.id); const exportActions = <StatisticsExportActions triggerLabel={`${result.label} exportieren`} menuTitle="Auswertung exportieren" isExporting={activeAnalyticsExport?.startsWith(`${result.id}:`) ?? false} options={[{ label: 'Als PNG', meta: 'Bild', onClick: () => void exportAnalyticsCard(result.id, result.label, 'png') }, { label: 'Als PDF', meta: 'A4', onClick: () => void exportAnalyticsCard(result.id, result.label, 'pdf') }]} />; if (result.type === 'text') return <div key={result.id} className="group/chart-card" ref={(node) => { analyticsCardRefs.current[result.id] = node; }}><SurfaceCard><div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="font-semibold text-viridian">{result.label}</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">{result.answeredCount} Textantworten</p></div>{exportActions}</div><div className="mt-4 space-y-2">{result.texts?.length ? result.texts.map((text, index) => <div key={`${index}-${text}`} className="rounded-xl bg-[var(--surface-2)] p-3 text-sm whitespace-pre-wrap">{text}</div>) : <p className="text-sm text-[var(--text-secondary)]">Keine Freitextantworten.</p>}</div></SurfaceCard></div>; const min = String(question?.scaleMin ?? 1); const max = String(question?.scaleMax ?? 5); const chartData = Object.entries(result.counts || {}).map(([key, value]) => ({ name: question?.type === 'scale' ? key === min ? `${key} – ${question.scaleMinLabel || 'trifft nicht zu'}` : key === max ? `${key} – ${question.scaleMaxLabel || 'trifft zu'}` : key : question?.options?.find((entry) => entry.id === key)?.label || key, value })); return <div key={result.id} className="group/chart-card" ref={(node) => { analyticsCardRefs.current[result.id] = node; }}><SurfaceCard><div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-semibold text-viridian">{result.label}</h2><div className="flex items-center gap-2"><span className="text-sm text-[var(--text-secondary)]">{result.answeredCount} Antworten{result.median ? ` · Median ${result.median}` : ''}</span>{exportActions}</div></div><div className="mt-4 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}><CartesianGrid strokeDasharray="3 3" /><XAxis type="number" allowDecimals={false} /><YAxis type="category" dataKey="name" width={question?.type === 'scale' ? 220 : 150} tick={{ fontSize: 12 }} /><Tooltip content={<SurveyChartTooltip />} /><Bar dataKey="value" fill="var(--chart-primary, #0f766e)" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer></div></SurfaceCard></div>; })}</div> : null}
     <SurveyEditor open={edit} survey={survey} onClose={() => setEdit(false)} />
     <ConfirmModal open={!!responseToDelete} title="Einzelantwort löschen" message={<div className="space-y-3"><p>Die Antwort wird endgültig entfernt. Die Auswertung wird anschließend neu berechnet.</p><label className="block text-sm font-medium">Löschgrund<Input className="mt-1" value={deleteReason} onChange={(event) => setDeleteReason(event.target.value)} placeholder="z. B. Testantwort oder Spam" /></label></div>} confirmLabel="Endgültig löschen" onConfirm={() => void runDelete()} onCancel={() => { setResponseToDelete(null); setDeleteReason(''); }} />
+    <ExportProgressModal message={exportProgress} />
   </div>;
 }

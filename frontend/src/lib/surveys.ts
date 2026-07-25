@@ -20,8 +20,37 @@ export type SurveyResponse = { id: string; surveyId: string; submittedAt: string
 export type SurveyAnalyticsQuestion = { id: string; type: SurveyQuestionType; label: string; answeredCount: number; counts?: Record<string, number>; median?: number | null; texts?: string[] };
 export type SurveyAnalytics = { responsesCount: number; expectedParticipants?: number | null; responseRate?: number | null; questions: SurveyAnalyticsQuestion[]; generatedAt: string; suppressed?: boolean };
 export type SurveyInput = Partial<Pick<Survey, 'title' | 'introduction' | 'projectId' | 'questions' | 'allowMultiplePerDevice' | 'expectedParticipants' | 'startsAt' | 'endsAt'>>;
+export type SurveyTemplate = {
+  format: 'stato-survey-template';
+  version: 1;
+  template: Pick<Survey, 'title' | 'introduction' | 'questions'>;
+};
 
 export function surveyQuestionId() { return globalThis.crypto?.randomUUID?.() || `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
+
+export function createSurveyTemplate(survey: Survey): SurveyTemplate {
+  return {
+    format: 'stato-survey-template',
+    version: 1,
+    template: {
+      title: survey.title,
+      introduction: survey.introduction || null,
+      questions: survey.questions,
+    },
+  };
+}
+
+export function parseSurveyTemplate(json: string): Pick<SurveyInput, 'title' | 'introduction' | 'questions'> {
+  const value = JSON.parse(json) as Partial<SurveyTemplate>;
+  if (value.format !== 'stato-survey-template' || value.version !== 1 || !value.template || typeof value.template.title !== 'string' || !Array.isArray(value.template.questions)) {
+    throw new Error('Keine gültige StatO-Umfragevorlage.');
+  }
+  return {
+    title: value.template.title,
+    introduction: typeof value.template.introduction === 'string' ? value.template.introduction : null,
+    questions: value.template.questions,
+  };
+}
 
 export function useSurveys(params?: { search?: string; archived?: boolean }) {
   const { scopeKey, ready } = useOrgScopedQueryState();

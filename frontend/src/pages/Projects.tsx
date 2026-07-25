@@ -2618,7 +2618,7 @@ export default function Projects() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Suchen…"
-              className="w-full rounded border border-gray-300 py-2 pl-9 pr-10"
+              className="w-full rounded-xl border border-gray-300 py-2 pl-9 pr-10"
             />
             {search.trim() && (
               <button

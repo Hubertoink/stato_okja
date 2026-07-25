@@ -195,7 +195,6 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     if (survey.status === 'closed' || survey.status === 'archived') throw new BadRequestException('Diese Umfrage kann nicht gestartet werden.');
     survey.status = 'active';
     survey.archived = false;
-    if (!survey.startsAt) survey.startsAt = new Date();
     const saved = await this.surveys.save(survey);
     await this.audit.log({ action: AuditAction.UPDATE, entityType: 'survey', entityId: saved.id, entityTitle: saved.title, orgId: saved.orgId, user, details: { status: 'active' } });
     return this.staffDto(saved);
@@ -216,8 +215,10 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
   }
 
   private isPubliclyOpen(survey: Survey) {
-    const now = new Date();
-    return survey.status === 'active' && (!survey.startsAt || survey.startsAt <= now) && (!survey.endsAt || survey.endsAt >= now);
+    // The explicit staff action "Starten" is the source of truth. Date values are
+    // displayed as context, but must not accidentally block a published QR link
+    // when a browser or database timezone interprets a local datetime differently.
+    return survey.status === 'active';
   }
 
   async findPublic(token: string) {

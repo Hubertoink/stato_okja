@@ -41,6 +41,12 @@ describe('SurveysService', () => {
     expect(responseRepository.save).not.toHaveBeenCalled();
   });
 
+  it('keeps an active survey publicly available even when its displayed start time is in the future', () => {
+    const survey = { ...activeSurvey(), startsAt: new Date(Date.now() + 2 * 60 * 60 * 1000) };
+    expect((service as any).isPubliclyOpen(survey)).toBe(true);
+    expect((service as any).isPubliclyOpen({ ...survey, status: 'draft' })).toBe(false);
+  });
+
   it('excludes free text from a permanent aggregate calculation', async () => {
     const survey = activeSurvey();
     responseRepository.find.mockResolvedValue([{ answers: { 'q-choice': 'good', 'q-text': 'Mein Name ist nicht hier' } }]);

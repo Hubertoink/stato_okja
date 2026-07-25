@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { Surveys20260725193000 } from './20260725193000-surveys';
+import { Surveys20260725193000 } from '../migrations/20260725193000-surveys';
 
 describe('Surveys20260725193000', () => {
   it('creates and removes the survey tables on the SQL.js development database', async () => {

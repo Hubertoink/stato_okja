@@ -10,6 +10,7 @@ import type { AdminResetActionMode } from './auth.service';
 import { getAuthRateLimitOverride } from '../config/rate-limit.config';
 import { isStrictSecurityMode } from '../config/security.config';
 import type { RefreshSessionMetadata } from './auth.service';
+import { getPublicLegalContent } from '../legal/legal-content';
 import {
   AcceptInviteDto,
   AdminResetPasswordDto,
@@ -166,6 +167,11 @@ export class AuthController {
       twoFactorEnabled: this.auth.isTwoFactorAuthenticationEnabled(),
       ...this.auth.getPublicPasswordResetConfig(),
     };
+  }
+
+  @Get('legal')
+  legalContent() {
+    return getPublicLegalContent();
   }
 
   @Throttle(AUTH_RATE_LIMIT)

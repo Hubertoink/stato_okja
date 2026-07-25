@@ -6,6 +6,7 @@ import { storeAuthToken, storeRefreshCsrfToken } from '@/lib/authStorage';
 import { isStrongPassword, PASSWORD_REQUIREMENTS_SHORT } from '@/lib/passwordPolicy';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { TermsOfUseModal } from '@/components/LegalModals';
+import { useLegalContent } from '@/lib/legalContent';
 
 export default function AcceptInvite() {
   const [params] = useSearchParams();
@@ -16,6 +17,7 @@ export default function AcceptInvite() {
   const [error, setError] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+  const { isError: legalContentError, isFetching: legalContentFetching } = useLegalContent();
 
   useEffect(() => {
     setError(null);
@@ -66,10 +68,11 @@ export default function AcceptInvite() {
               gelesen und stimme ihnen zu.
             </span>
           </div>
+          {legalContentError && <div className="text-red-600 text-sm">Die Nutzungsbedingungen konnten nicht geladen werden. Bitte lade die Seite erneut.</div>}
           {error && <div className="text-red-600 text-sm">{error}</div>}
           <button
             className="w-full bg-viridian text-white py-2 rounded disabled:opacity-60"
-            disabled={!token || !password || !termsAccepted || busy}
+            disabled={!token || !password || !termsAccepted || busy || legalContentFetching || legalContentError}
             onClick={async () => {
               try {
                 setBusy(true);

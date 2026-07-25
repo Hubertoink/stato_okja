@@ -243,7 +243,7 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
   async listRounds(id: string, user: SurveyActor) {
     await this.purgeExpiredRawResponses();
     const seed = await this.findSeriesSeed(id, user);
-    const rounds = await this.roundsFor(seed);
+    const rounds = (await this.roundsFor(seed)).filter((round) => round.status !== 'draft');
     return Promise.all(rounds.map((round) => this.staffDto(round)));
   }
 

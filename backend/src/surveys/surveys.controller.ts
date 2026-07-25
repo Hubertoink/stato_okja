@@ -20,6 +20,9 @@ export class SurveysController {
   }
   @Get('meta/has-archived') hasArchived(@Req() req: SurveyRequest) { return this.service.hasArchived(resolveOrgScope(this.actor(req))); }
   @Post() create(@Body() body: CreateSurveyDto, @Req() req: SurveyRequest) { const actor = this.actor(req); return this.service.create(body, resolveOrgScope(actor), actor); }
+  @Get(':id/rounds') rounds(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.listRounds(id, this.actor(req)); }
+  @Post(':id/rounds') createRound(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.createRound(id, this.actor(req)); }
+  @Get(':id/trend') trend(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.trend(id, this.actor(req)); }
   @Get(':id') findOne(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.findOneScoped(id, this.actor(req)); }
   @Patch(':id') update(@Param('id') id: string, @Body() body: UpdateSurveyDto, @Req() req: SurveyRequest) { return this.service.update(id, body, this.actor(req)); }
   @Post(':id/start') start(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.start(id, this.actor(req)); }

@@ -12,6 +12,14 @@ import { Organization } from '../orgs/entities/organization.entity';
 
 type SurveyActor = OrgScopedUser & { id?: string; name?: string | null };
 type AnswerValue = string | string[] | number | null;
+type SurveyAnalyticsData = {
+  responsesCount: number;
+  expectedParticipants?: number | null;
+  responseRate?: number | null;
+  questions: Array<{ id: string; type: string; label: string; answeredCount: number; counts?: Record<string, number>; median?: number | null; mean?: number | null; texts?: string[] }>;
+  generatedAt: string;
+  suppressed?: boolean;
+};
 
 @Injectable()
 export class SurveysService implements OnModuleInit, OnModuleDestroy {
@@ -78,9 +86,27 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
       : await this.countResponses(survey.id);
     return {
       ...survey,
+      seriesId: survey.seriesId || survey.id,
+      roundNumber: survey.roundNumber || 1,
       responsesCount,
       rawResponsesAvailable: !survey.aggregateSnapshot,
     };
+  }
+
+  private seriesIdOf(survey: Survey) {
+    return survey.seriesId || survey.id;
+  }
+
+  private async roundsFor(survey: Survey) {
+    const seriesId = this.seriesIdOf(survey);
+    return this.surveys.find({ where: { seriesId }, order: { roundNumber: 'ASC' } });
+  }
+
+  private async findSeriesSeed(id: string, user: SurveyActor) {
+    const survey = await this.surveys.findOneBy({ id });
+    if (!survey) throw new NotFoundException('Umfrage nicht gefunden.');
+    assertExactOrgScopedEntityAccess(survey, user);
+    return survey;
   }
 
   async purgeExpiredRawResponses() {
@@ -112,15 +138,30 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
   async findAll(orgId: string | null, search?: string, archived?: boolean) {
     await this.purgeExpiredRawResponses();
     const qb = this.surveys.createQueryBuilder('survey').where('survey.orgId IS NOT DISTINCT FROM :orgId', { orgId });
+    qb.andWhere('survey.id = survey.seriesId');
     if (typeof archived === 'boolean') qb.andWhere('survey.archived = :archived', { archived });
     if (search?.trim()) qb.andWhere('LOWER(survey.title) LIKE :search', { search: `%${search.trim().toLowerCase()}%` });
     qb.orderBy('survey.updatedAt', 'DESC');
     const rows = await qb.getMany();
-    return Promise.all(rows.map((survey) => this.staffDto(survey)));
+    return Promise.all(rows.map(async (survey) => {
+      const rounds = await this.roundsFor(survey);
+      const latest = rounds[rounds.length - 1] || survey;
+      const rootDto = await this.staffDto(survey);
+      const latestDto = await this.staffDto(latest);
+      return {
+        ...rootDto,
+        status: latestDto.status,
+        publicToken: latestDto.publicToken,
+        responsesCount: latestDto.responsesCount,
+        rawResponsesAvailable: latestDto.rawResponsesAvailable,
+        roundNumber: latestDto.roundNumber,
+        roundsCount: rounds.length,
+      };
+    }));
   }
 
   async hasArchived(orgId: string | null) {
-    const qb = this.surveys.createQueryBuilder('survey').where('survey.archived = :archived', { archived: true });
+    const qb = this.surveys.createQueryBuilder('survey').where('survey.archived = :archived', { archived: true }).andWhere('survey.id = survey.seriesId');
     if (orgId === null) qb.andWhere('survey.orgId IS NULL');
     else qb.andWhere('survey.orgId = :orgId', { orgId });
     return (await qb.getCount()) > 0;
@@ -153,7 +194,10 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
       status: 'draft',
       archived: false,
     });
-    const saved = await this.surveys.save(survey);
+    const created = await this.surveys.save(survey);
+    created.seriesId = created.id;
+    created.roundNumber = 1;
+    const saved = await this.surveys.save(created);
     await this.audit.log({ action: AuditAction.CREATE, entityType: 'survey', entityId: saved.id, entityTitle: saved.title, orgId, user });
     return this.staffDto(saved);
   }
@@ -164,6 +208,13 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     assertExactOrgScopedEntityAccess(survey, user);
     if (survey.status !== 'draft' && typeof data.questions !== 'undefined') {
       throw new BadRequestException('Fragen können nach dem Start nicht mehr verändert werden.');
+    }
+    if (survey.roundNumber > 1 && typeof data.questions !== 'undefined') {
+      const baseline = await this.surveys.findOneBy({ id: this.seriesIdOf(survey) });
+      const normalized = this.normalizeQuestions(data.questions as SurveyQuestion[]);
+      if (baseline && JSON.stringify(normalized) !== JSON.stringify(baseline.questions || [])) {
+        throw new BadRequestException('Fragen einer wiederholten Umfragerunde können nicht verändert werden, damit der Verlauf vergleichbar bleibt.');
+      }
     }
     const startsAt = typeof data.startsAt !== 'undefined' ? this.date(data.startsAt) : survey.startsAt;
     const endsAt = typeof data.endsAt !== 'undefined' ? this.date(data.endsAt) : survey.endsAt;
@@ -189,12 +240,53 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     return this.staffDto(saved);
   }
 
+  async listRounds(id: string, user: SurveyActor) {
+    await this.purgeExpiredRawResponses();
+    const seed = await this.findSeriesSeed(id, user);
+    const rounds = await this.roundsFor(seed);
+    return Promise.all(rounds.map((round) => this.staffDto(round)));
+  }
+
+  async createRound(id: string, user: SurveyActor) {
+    const seed = await this.findSeriesSeed(id, user);
+    const rounds = await this.roundsFor(seed);
+    if (rounds.some((round) => round.status === 'active')) {
+      throw new BadRequestException('Beende die aktive Umfragerunde, bevor du eine neue anlegst.');
+    }
+    const source = rounds[rounds.length - 1] || seed;
+    const clone = this.surveys.create({
+      orgId: source.orgId,
+      projectId: source.projectId,
+      seriesId: this.seriesIdOf(seed),
+      roundNumber: Math.max(...rounds.map((round) => round.roundNumber || 1), 0) + 1,
+      title: source.title,
+      introduction: source.introduction,
+      status: 'draft',
+      publicToken: this.token(),
+      questions: JSON.parse(JSON.stringify(source.questions || [])) as SurveyQuestion[],
+      allowMultiplePerDevice: source.allowMultiplePerDevice,
+      expectedParticipants: source.expectedParticipants,
+      startsAt: null,
+      endsAt: null,
+      closedAt: null,
+      rawResponsesPurgeAt: null,
+      aggregateSnapshot: null,
+      createdById: user.id || null,
+      archived: false,
+    });
+    const saved = await this.surveys.save(clone);
+    await this.audit.log({ action: AuditAction.CREATE, entityType: 'survey_round', entityId: saved.id, entityTitle: saved.title, orgId: saved.orgId, user, details: { seriesId: saved.seriesId, roundNumber: saved.roundNumber } });
+    return this.staffDto(saved);
+  }
+
   async start(id: string, user: SurveyActor) {
     const survey = await this.surveys.findOneBy({ id });
     if (!survey) throw new NotFoundException('Umfrage nicht gefunden.');
     assertExactOrgScopedEntityAccess(survey, user);
     if (!survey.questions?.length) throw new BadRequestException('Eine Umfrage benötigt mindestens eine Frage.');
     if (survey.status === 'closed' || survey.status === 'archived') throw new BadRequestException('Diese Umfrage kann nicht gestartet werden.');
+    const otherActiveRound = (await this.roundsFor(survey)).find((round) => round.status === 'active' && round.id !== survey.id);
+    if (otherActiveRound) throw new BadRequestException('In dieser Umfragereihe läuft bereits eine aktive Runde.');
     survey.status = 'active';
     survey.archived = false;
     const saved = await this.surveys.save(survey);
@@ -302,7 +394,7 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     return { ok: true };
   }
 
-  private async buildAnalytics(survey: Survey, includeTexts = true) {
+  private async buildAnalytics(survey: Survey, includeTexts = true): Promise<SurveyAnalyticsData> {
     const responses = await this.responses.find({ where: { surveyId: survey.id }, order: { submittedAt: 'ASC' } });
     const questions = (survey.questions || []).map((question) => {
       const answered = responses.map((response) => response.answers?.[question.id]).filter((value) => value !== null && typeof value !== 'undefined' && value !== '');
@@ -315,7 +407,8 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
         for (const value of answered) counts[String(value)] = (counts[String(value)] || 0) + 1;
         const numbers = answered.filter((value): value is number => typeof value === 'number').sort((a, b) => a - b);
         const median = numbers.length ? numbers[Math.floor((numbers.length - 1) / 2)] : null;
-        return { id: question.id, type: question.type, label: question.label, answeredCount: answered.length, counts, median };
+        const mean = numbers.length ? Math.round((numbers.reduce((sum, value) => sum + value, 0) / numbers.length) * 100) / 100 : null;
+        return { id: question.id, type: question.type, label: question.label, answeredCount: answered.length, counts, median, mean };
       }
       for (const option of question.options || []) counts[option.id] = 0;
       for (const value of answered) {
@@ -340,5 +433,59 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     if (!survey) throw new NotFoundException('Umfrage nicht gefunden.');
     assertExactOrgScopedEntityAccess(survey, user);
     return survey.aggregateSnapshot || this.buildAnalytics(survey);
+  }
+
+  async trend(id: string, user: SurveyActor) {
+    await this.purgeExpiredRawResponses();
+    const seed = await this.findSeriesSeed(id, user);
+    const rounds = await this.roundsFor(seed);
+    const analytics: SurveyAnalyticsData[] = await Promise.all(rounds.map(async (round) => (round.aggregateSnapshot as unknown as SurveyAnalyticsData) || this.buildAnalytics(round, false)));
+    const roundDtos = await Promise.all(rounds.map((round) => this.staffDto(round)));
+    const baselineQuestions = seed.questions || [];
+    return {
+      rounds: roundDtos.map((round) => ({
+        id: round.id,
+        roundNumber: round.roundNumber,
+        status: round.status,
+        date: round.closedAt || round.startsAt || round.createdAt,
+        responsesCount: round.responsesCount,
+        expectedParticipants: round.expectedParticipants,
+        responseRate: round.aggregateSnapshot ? Number((round.aggregateSnapshot as Record<string, unknown>).responseRate ?? null) : round.expectedParticipants ? Math.round((round.responsesCount / round.expectedParticipants) * 1000) / 10 : null,
+        suppressed: !round.rawResponsesAvailable && !round.responsesCount,
+      })),
+      questions: baselineQuestions.map((question) => {
+        const points = rounds.map((round, index) => {
+          const result = analytics[index]?.questions?.find((entry: { id: string }) => entry.id === question.id);
+          const suppressed = Boolean(analytics[index]?.suppressed) || !result;
+          return {
+            roundId: round.id,
+            roundNumber: round.roundNumber || 1,
+            date: round.closedAt || round.startsAt || round.createdAt,
+            responsesCount: analytics[index]?.responsesCount || 0,
+            answeredCount: result?.answeredCount || 0,
+            median: result?.median ?? null,
+            mean: result?.mean ?? null,
+            counts: result?.counts || {},
+            suppressed,
+          };
+        });
+        if (question.type === 'single_choice' || question.type === 'multiple_choice') {
+          return {
+            id: question.id,
+            label: question.label,
+            type: question.type,
+            options: (question.options || []).map((option) => ({
+              id: option.id,
+              label: option.label,
+              points: points.map((point) => ({
+                ...point,
+                percentage: point.suppressed || !point.answeredCount ? null : Math.round(((Number(point.counts[option.id] || 0) / point.answeredCount) * 100) * 10) / 10,
+              })),
+            })),
+          };
+        }
+        return { id: question.id, label: question.label, type: question.type, points };
+      }),
+    };
   }
 }

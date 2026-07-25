@@ -12,13 +12,17 @@ export type SurveyQuestion = {
 };
 export type Survey = {
   id: string; orgId?: string | null; projectId?: string | null; title: string; introduction?: string | null;
+  seriesId?: string | null; roundNumber?: number;
   status: SurveyStatus; publicToken: string; questions: SurveyQuestion[]; allowMultiplePerDevice: boolean;
   expectedParticipants?: number | null; startsAt?: string | null; endsAt?: string | null; closedAt?: string | null;
   rawResponsesPurgeAt?: string | null; archived: boolean; responsesCount: number; rawResponsesAvailable: boolean;
+  roundsCount?: number;
 };
 export type SurveyResponse = { id: string; surveyId: string; submittedAt: string; answers: Record<string, string | string[] | number | null>; number: number };
-export type SurveyAnalyticsQuestion = { id: string; type: SurveyQuestionType; label: string; answeredCount: number; counts?: Record<string, number>; median?: number | null; texts?: string[] };
+export type SurveyAnalyticsQuestion = { id: string; type: SurveyQuestionType; label: string; answeredCount: number; counts?: Record<string, number>; median?: number | null; mean?: number | null; texts?: string[] };
 export type SurveyAnalytics = { responsesCount: number; expectedParticipants?: number | null; responseRate?: number | null; questions: SurveyAnalyticsQuestion[]; generatedAt: string; suppressed?: boolean };
+export type SurveyTrendPoint = { roundId: string; roundNumber: number; date: string; responsesCount: number; answeredCount: number; median?: number | null; mean?: number | null; counts?: Record<string, number>; percentage?: number | null; suppressed?: boolean };
+export type SurveyTrend = { rounds: Array<{ id: string; roundNumber: number; status: SurveyStatus; date: string; responsesCount: number; expectedParticipants?: number | null; responseRate?: number | null; suppressed?: boolean }>; questions: Array<{ id: string; label: string; type: SurveyQuestionType; points?: SurveyTrendPoint[]; options?: Array<{ id: string; label: string; points: SurveyTrendPoint[] }> }> };
 export type SurveyInput = Partial<Pick<Survey, 'title' | 'introduction' | 'projectId' | 'questions' | 'allowMultiplePerDevice' | 'expectedParticipants' | 'startsAt' | 'endsAt'>>;
 export type SurveyTemplate = {
   format: 'stato-survey-template';
@@ -60,19 +64,28 @@ export function useSurvey(id?: string) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({ queryKey: ['survey', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}`)).data as Survey, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: 'always', refetchInterval: 15_000 });
 }
+export function useSurveyRounds(id?: string) {
+  const { scopeKey, ready } = useOrgScopedQueryState();
+  return useQuery({ queryKey: ['survey-rounds', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}/rounds`)).data as Survey[], staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: 'always', refetchInterval: 15_000 });
+}
+export function useSurveyTrend(id?: string) {
+  const { scopeKey, ready } = useOrgScopedQueryState();
+  return useQuery({ queryKey: ['survey-trend', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}/trend`)).data as SurveyTrend, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: 'always', refetchInterval: 15_000 });
+}
 export function useArchivedSurveys() {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({ queryKey: ['surveys-has-archived', scopeKey], enabled: ready, queryFn: async () => Boolean((await api.get('/surveys/meta/has-archived')).data) });
 }
 function useSurveyMutation<T>(fn: (input: T) => Promise<unknown>) {
   const qc = useQueryClient(); const scopeKey = useOrgScopeKey();
-  return useMutation({ mutationFn: fn, onSuccess: () => { qc.invalidateQueries({ queryKey: ['surveys', scopeKey] }); qc.invalidateQueries({ queryKey: ['survey', scopeKey] }); qc.invalidateQueries({ queryKey: ['surveys-has-archived', scopeKey] }); } });
+  return useMutation({ mutationFn: fn, onSuccess: () => { qc.invalidateQueries({ queryKey: ['surveys', scopeKey] }); qc.invalidateQueries({ queryKey: ['survey', scopeKey] }); qc.invalidateQueries({ queryKey: ['survey-rounds', scopeKey] }); qc.invalidateQueries({ queryKey: ['survey-trend', scopeKey] }); qc.invalidateQueries({ queryKey: ['surveys-has-archived', scopeKey] }); } });
 }
 export function useCreateSurvey() { return useSurveyMutation(async (input: SurveyInput) => (await api.post('/surveys', input)).data as Survey); }
 export function useUpdateSurvey() { return useSurveyMutation(async ({ id, data }: { id: string; data: SurveyInput }) => (await api.patch(`/surveys/${id}`, data)).data as Survey); }
 export function useStartSurvey() { return useSurveyMutation(async (id: string) => (await api.post(`/surveys/${id}/start`)).data as Survey); }
 export function useCloseSurvey() { return useSurveyMutation(async (id: string) => (await api.post(`/surveys/${id}/close`)).data as Survey); }
 export function useArchiveSurvey() { return useSurveyMutation(async ({ id, archived }: { id: string; archived: boolean }) => (await api.patch(`/surveys/${id}`, { archived })).data as Survey); }
+export function useCreateSurveyRound() { return useSurveyMutation(async (id: string) => (await api.post(`/surveys/${id}/rounds`)).data as Survey); }
 export function useSurveyResponses(id?: string) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({ queryKey: ['survey-responses', scopeKey, id], enabled: ready && !!id, queryFn: async () => (await api.get(`/surveys/${id}/responses`)).data as { rawResponsesAvailable: boolean; responses: SurveyResponse[] }, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: 'always', refetchInterval: 15_000 });

@@ -21,6 +21,7 @@ export type SurveyQuestion = {
 @Entity('surveys')
 @Index(['orgId', 'status'])
 @Index(['publicToken'], { unique: true })
+@Index(['seriesId', 'roundNumber'], { unique: true })
 export class Survey {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -30,6 +31,13 @@ export class Survey {
 
   @Column({ type: 'uuid', nullable: true })
   projectId!: string | null;
+
+  /** The first survey's id identifies a manually repeated survey series. */
+  @Column({ type: 'uuid', nullable: true })
+  seriesId!: string | null;
+
+  @Column({ type: 'int', default: 1 })
+  roundNumber!: number;
 
   @Column({ type: 'varchar', length: 180 })
   title!: string;

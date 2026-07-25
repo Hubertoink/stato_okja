@@ -3,7 +3,7 @@ import { SurveysService } from './surveys.service';
 import type { Survey } from './entities/survey.entity';
 
 const activeSurvey = (): Survey => ({
-  id: 'survey-1', orgId: 'org-1', projectId: null, title: 'Feedback', introduction: null,
+  id: 'survey-1', orgId: 'org-1', projectId: null, seriesId: 'survey-1', roundNumber: 1, title: 'Feedback', introduction: null,
   status: 'active', publicToken: 'public-token', allowMultiplePerDevice: false, expectedParticipants: null,
   startsAt: null, endsAt: null, closedAt: null, rawResponsesPurgeAt: null, aggregateSnapshot: null,
   createdById: null, archived: false, createdAt: new Date(), updatedAt: new Date(),
@@ -54,5 +54,24 @@ describe('SurveysService', () => {
     const result = await (service as any).buildAnalytics(survey, false);
     expect(result.questions.find((question: { id: string }) => question.id === 'q-text')).toEqual(expect.objectContaining({ answeredCount: 1 }));
     expect(result.questions.find((question: { id: string }) => question.id === 'q-text')).not.toHaveProperty('texts');
+  });
+
+  it('creates a fresh, comparable draft for the next survey round', async () => {
+    const closedRound = { ...activeSurvey(), status: 'closed' as const, closedAt: new Date(), seriesId: 'survey-1', roundNumber: 1 };
+    surveyRepository.findOneBy.mockResolvedValue(closedRound);
+    surveyRepository.find.mockResolvedValue([closedRound]);
+    surveyRepository.create.mockImplementation((value: Record<string, unknown>) => ({ ...value, id: 'survey-2' }));
+    surveyRepository.save.mockImplementation((value: unknown) => value);
+    responseRepository.count.mockResolvedValue(0);
+
+    const result = await service.createRound('survey-1', { id: 'user-1', role: 'user', orgId: 'org-1' });
+
+    expect(result).toEqual(expect.objectContaining({ id: 'survey-2', seriesId: 'survey-1', roundNumber: 2, status: 'draft' }));
+    expect(surveyRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+      publicToken: expect.any(String),
+      questions: closedRound.questions,
+      startsAt: null,
+      closedAt: null,
+    }));
   });
 });

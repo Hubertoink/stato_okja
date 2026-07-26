@@ -52,6 +52,6 @@ describe('shared UI components', () => {
     expect(onChange).toHaveBeenLastCalledWith(expect.stringMatching(/^#[0-9a-f]{6}$/));
 
     fireEvent.click(screen.getByRole('button', { name: 'Farbauswahl öffnen' }));
-    expect(screen.getByRole('dialog', { name: 'Farbe auswählen' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Farbe auswählen' })).toHaveClass('fixed');
   });
 });

@@ -1,7 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Dices } from 'lucide-react';
 
 type Hsl = { h: number; s: number; l: number };
+type PopoverPosition = { top: number; left: number; arrowLeft: number; placement: 'top' | 'bottom' };
 
 function hslToHex({ h, s, l }: Hsl) {
   const saturation = s / 100;
@@ -72,14 +74,41 @@ export function ColorPicker({
   const [open, setOpen] = useState(false);
   const [hexInput, setHexInput] = useState(currentColor);
   const rootRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverPosition, setPopoverPosition] = useState<PopoverPosition | null>(null);
   const hsl = hexToHsl(currentColor);
+
+  const updatePopoverPosition = useCallback(() => {
+    const anchor = rootRef.current?.getBoundingClientRect();
+    if (!anchor) return;
+
+    const popoverWidth = 256;
+    const viewportPadding = 12;
+    const popoverHeight = popoverRef.current?.offsetHeight || 240;
+    const left = Math.max(
+      viewportPadding,
+      Math.min(anchor.left + anchor.width / 2 - popoverWidth / 2, window.innerWidth - popoverWidth - viewportPadding),
+    );
+    const placeBelow = anchor.bottom + 10 + popoverHeight <= window.innerHeight || anchor.top < popoverHeight + 10;
+    const top = placeBelow
+      ? anchor.bottom + 10
+      : Math.max(viewportPadding, anchor.top - popoverHeight - 10);
+
+    setPopoverPosition({
+      top,
+      left,
+      arrowLeft: Math.max(16, Math.min(popoverWidth - 16, anchor.left + anchor.width / 2 - left)),
+      placement: placeBelow ? 'bottom' : 'top',
+    });
+  }, []);
 
   useEffect(() => setHexInput(currentColor), [currentColor]);
 
   useEffect(() => {
     if (!open) return;
     const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !popoverRef.current?.contains(target)) setOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
@@ -92,6 +121,20 @@ export function ColorPicker({
     };
   }, [open]);
 
+  useLayoutEffect(() => {
+    if (!open) {
+      setPopoverPosition(null);
+      return;
+    }
+    updatePopoverPosition();
+    window.addEventListener('resize', updatePopoverPosition);
+    window.addEventListener('scroll', updatePopoverPosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePopoverPosition);
+      window.removeEventListener('scroll', updatePopoverPosition, true);
+    };
+  }, [open, updatePopoverPosition]);
+
   const setHsl = (next: Partial<Hsl>) => onChange(hslToHex({ ...hsl, ...next }));
   const updateHex = (nextValue: string) => {
     setHexInput(nextValue);
@@ -99,108 +142,123 @@ export function ColorPicker({
     if (validColor) onChange(validColor);
   };
 
-  return (
-    <div ref={rootRef} className="relative">
-      <div className="flex h-10 overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--surface-1)] shadow-sm focus-within:border-[var(--viridian)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]">
-        <button
-          type="button"
-          className="w-10 shrink-0 border-r border-black/10 transition-opacity hover:opacity-85 disabled:cursor-not-allowed"
-          style={{ backgroundColor: currentColor }}
-          onClick={() => setOpen((current) => !current)}
-          aria-label="Farbauswahl öffnen"
-          aria-expanded={open}
-          aria-controls={`${inputId}-popover`}
-          disabled={disabled}
-        />
-        <input
-          id={inputId}
-          value={hexInput}
-          onFocus={() => setOpen(true)}
-          onChange={(event) => updateHex(event.target.value)}
-          onBlur={() => setHexInput(currentColor)}
-          inputMode="text"
-          spellCheck={false}
-          maxLength={7}
-          className="min-w-0 flex-1 bg-transparent px-3 font-mono text-sm uppercase text-[var(--text-primary)] outline-none disabled:cursor-not-allowed"
-          aria-label="Farbwert als Hexadezimalzahl"
-          disabled={disabled}
-        />
-        <button
-          type="button"
-          className="grid w-10 shrink-0 place-items-center border-l border-[var(--border-subtle)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--viridian)] disabled:cursor-not-allowed"
-          onClick={() => onChange(randomColor())}
-          aria-label="Zufällige Farbe erzeugen"
-          title="Zufällige Farbe erzeugen"
-          disabled={disabled}
-        >
-          <Dices className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
-
-      {open ? (
+  const popover = open && typeof document !== 'undefined'
+    ? createPortal(
+      <div
+        ref={popoverRef}
+        id={`${inputId}-popover`}
+        className="fixed z-[100] w-64 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-elevated)] p-4 shadow-xl"
+        style={{
+          top: popoverPosition?.top ?? -9999,
+          left: popoverPosition?.left ?? -9999,
+          visibility: popoverPosition ? 'visible' : 'hidden',
+        }}
+        role="dialog"
+        aria-label="Farbe auswählen"
+      >
         <div
-          id={`${inputId}-popover`}
-          className="absolute left-1/2 z-[90] mt-2 w-64 -translate-x-1/2 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-elevated)] p-4 shadow-xl"
-          role="dialog"
-          aria-label="Farbe auswählen"
-        >
-          <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t border-[var(--border-strong)] bg-[var(--surface-elevated)]" />
-          <div className="relative space-y-3">
-            <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-hue`}>
-              Farbton
-            </label>
-            <input
-              id={`${inputId}-hue`}
-              type="range"
-              min="0"
-              max="359"
-              value={hsl.h}
-              onChange={(event) => setHsl({ h: Number(event.target.value) })}
-              className="h-3 w-full cursor-pointer appearance-none rounded-full"
-              style={{ background: 'linear-gradient(90deg, #ef4444, #f59e0b, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444)' }}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-saturation`}>
-                  Sättigung
-                </label>
-                <input
-                  id={`${inputId}-saturation`}
-                  type="range"
-                  min="20"
-                  max="100"
-                  value={hsl.s}
-                  onChange={(event) => setHsl({ s: Number(event.target.value) })}
-                  className="mt-1 h-2 w-full cursor-pointer appearance-none rounded-full"
-                  style={{ background: `linear-gradient(90deg, hsl(${hsl.h} 0% ${hsl.l}%), hsl(${hsl.h} 100% ${hsl.l}%))` }}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-lightness`}>
-                  Helligkeit
-                </label>
-                <input
-                  id={`${inputId}-lightness`}
-                  type="range"
-                  min="20"
-                  max="75"
-                  value={hsl.l}
-                  onChange={(event) => setHsl({ l: Number(event.target.value) })}
-                  className="mt-1 h-2 w-full cursor-pointer appearance-none rounded-full"
-                  style={{ background: `linear-gradient(90deg, hsl(${hsl.h} ${hsl.s}% 20%), hsl(${hsl.h} ${hsl.s}% 75%))` }}
-                />
-              </div>
+          className={`absolute h-4 w-4 rotate-45 border-[var(--border-strong)] bg-[var(--surface-elevated)] ${popoverPosition?.placement === 'top' ? '-bottom-2 border-b border-r' : '-top-2 border-l border-t'}`}
+          style={{ left: (popoverPosition?.arrowLeft ?? 128) - 8 }}
+        />
+        <div className="relative space-y-3">
+          <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-hue`}>
+            Farbton
+          </label>
+          <input
+            id={`${inputId}-hue`}
+            type="range"
+            min="0"
+            max="359"
+            value={hsl.h}
+            onChange={(event) => setHsl({ h: Number(event.target.value) })}
+            className="h-3 w-full cursor-pointer appearance-none rounded-full"
+            style={{ background: 'linear-gradient(90deg, #ef4444, #f59e0b, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444)' }}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-saturation`}>
+                Sättigung
+              </label>
+              <input
+                id={`${inputId}-saturation`}
+                type="range"
+                min="20"
+                max="100"
+                value={hsl.s}
+                onChange={(event) => setHsl({ s: Number(event.target.value) })}
+                className="mt-1 h-2 w-full cursor-pointer appearance-none rounded-full"
+                style={{ background: `linear-gradient(90deg, hsl(${hsl.h} 0% ${hsl.l}%), hsl(${hsl.h} 100% ${hsl.l}%))` }}
+              />
             </div>
-            <button
-              type="button"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--viridian)]"
-              onClick={() => onChange(randomColor())}
-            >
-              <Dices className="h-4 w-4" aria-hidden="true" /> Zufällige Farbe
-            </button>
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-lightness`}>
+                Helligkeit
+              </label>
+              <input
+                id={`${inputId}-lightness`}
+                type="range"
+                min="20"
+                max="75"
+                value={hsl.l}
+                onChange={(event) => setHsl({ l: Number(event.target.value) })}
+                className="mt-1 h-2 w-full cursor-pointer appearance-none rounded-full"
+                style={{ background: `linear-gradient(90deg, hsl(${hsl.h} ${hsl.s}% 20%), hsl(${hsl.h} ${hsl.s}% 75%))` }}
+              />
+            </div>
           </div>
+          <button
+            type="button"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--viridian)]"
+            onClick={() => onChange(randomColor())}
+          >
+            <Dices className="h-4 w-4" aria-hidden="true" /> Zufällige Farbe
+          </button>
         </div>
-      ) : null}
-    </div>
+      </div>,
+      document.body,
+    )
+    : null;
+
+  return (
+    <>
+      <div ref={rootRef}>
+        <div className="flex h-10 overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--surface-1)] shadow-sm focus-within:border-[var(--viridian)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]">
+          <button
+            type="button"
+            className="w-10 shrink-0 border-r border-black/10 transition-opacity hover:opacity-85 disabled:cursor-not-allowed"
+            style={{ backgroundColor: currentColor }}
+            onClick={() => setOpen((current) => !current)}
+            aria-label="Farbauswahl öffnen"
+            aria-expanded={open}
+            aria-controls={`${inputId}-popover`}
+            disabled={disabled}
+          />
+          <input
+            id={inputId}
+            value={hexInput}
+            onFocus={() => setOpen(true)}
+            onChange={(event) => updateHex(event.target.value)}
+            onBlur={() => setHexInput(currentColor)}
+            inputMode="text"
+            spellCheck={false}
+            maxLength={7}
+            className="min-w-0 flex-1 bg-transparent px-3 font-mono text-sm uppercase text-[var(--text-primary)] outline-none disabled:cursor-not-allowed"
+            aria-label="Farbwert als Hexadezimalzahl"
+            disabled={disabled}
+          />
+          <button
+            type="button"
+            className="grid w-10 shrink-0 place-items-center border-l border-[var(--border-subtle)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--viridian)] disabled:cursor-not-allowed"
+            onClick={() => onChange(randomColor())}
+            aria-label="Zufällige Farbe erzeugen"
+            title="Zufällige Farbe erzeugen"
+            disabled={disabled}
+          >
+            <Dices className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      {popover}
+    </>
   );
 }

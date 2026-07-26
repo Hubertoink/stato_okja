@@ -11,6 +11,7 @@ import {
   GitBranch,
   Lightbulb,
   BookOpen,
+  ClipboardList,
   Menu,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
@@ -65,7 +66,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const appVersion = String(import.meta.env.VITE_APP_VERSION || '1.0.0');
+  const appVersion = String(import.meta.env.VITE_APP_VERSION || 'unbekannt');
   const appVersionDisplay = appVersion.replace(/\.0$/, '');
   const restrictToPasswordChange = user?.mustChangePassword === true;
   const { scope, setScope, switching: orgSwitching } = useOrgScope();
@@ -146,6 +147,7 @@ export default function Layout() {
     logbook: { to: '/logbook', label: 'Logbuch', icon: BookOpen },
     calendar: { to: '/calendar', label: 'Kalender', icon: CalendarIcon },
     projects: { to: '/projects', label: 'Projekte', icon: Boxes },
+    surveys: { to: '/surveys', label: 'Umfragen', icon: ClipboardList },
     statistics: { to: '/statistics', label: 'Statistik', icon: BarChart3 },
     settings: { to: '/settings', label: 'Einstell.', icon: Settings },
   };
@@ -629,6 +631,18 @@ export default function Layout() {
               >
                 <Boxes className="w-5 h-5 lg:mr-2 flex-shrink-0" />
                 <span className={`nav-label ${isActive('/projects') ? 'nav-label-active' : ''}`} data-text="Projekte">Projekte</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/surveys"
+                data-tooltip="Umfragen"
+                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                  isActive('/surveys') ? 'theme-nav-item-active' : ''
+                }`}
+              >
+                <ClipboardList className="w-5 h-5 lg:mr-2 flex-shrink-0" />
+                <span className={`nav-label ${isActive('/surveys') ? 'nav-label-active' : ''}`} data-text="Umfragen">Umfragen</span>
               </Link>
             </li>
             <li>

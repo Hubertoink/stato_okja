@@ -73,6 +73,9 @@ const ResetPassword = lazyWithReload(() => import('./pages/ResetPassword'));
 const ProjectPickerPage = lazyWithReload(() => import('@/pages/ProjectPickerPage'));
 const Logbook = lazyWithReload(() => import('@/pages/Logbook'));
 const LogbookEntryPage = lazyWithReload(() => import('@/pages/LogbookEntryPage'));
+const Surveys = lazyWithReload(() => import('@/pages/Surveys'));
+const SurveyDetail = lazyWithReload(() => import('@/pages/SurveyDetail'));
+const PublicSurvey = lazyWithReload(() => import('@/pages/PublicSurvey'));
 
 function LogbookEditorRoute() {
   return (
@@ -148,6 +151,14 @@ function App() {
             element={
               <RouteBoundary label="Passwort-Reset">
                 <ResetPassword />
+              </RouteBoundary>
+            }
+          />
+          <Route
+            path="/survey/:token"
+            element={
+              <RouteBoundary label="Umfrage">
+                <PublicSurvey />
               </RouteBoundary>
             }
           />
@@ -322,6 +333,22 @@ function AuthedRoutes() {
             element={
               <RouteBoundary label="Statistik">
                 <Statistics />
+              </RouteBoundary>
+            }
+          />
+          <Route
+            path="surveys"
+            element={
+              <RouteBoundary label="Umfragen">
+                <Surveys />
+              </RouteBoundary>
+            }
+          />
+          <Route
+            path="surveys/:id"
+            element={
+              <RouteBoundary label="Umfrage">
+                <SurveyDetail />
               </RouteBoundary>
             }
           />

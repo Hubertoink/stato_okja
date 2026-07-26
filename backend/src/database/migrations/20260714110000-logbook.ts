@@ -62,7 +62,10 @@ export class Logbook20260714110000 implements MigrationInterface {
     }
 
     const createIndex = async (table: string, name: string, columns: string[]) => {
-      try { await queryRunner.createIndex(table, new TableIndex({ name, columnNames: columns })); } catch { /* exists */ }
+      const existing = await queryRunner.getTable(table);
+      if (!existing?.indices.some((index) => index.name === name)) {
+        await queryRunner.createIndex(table, new TableIndex({ name, columnNames: columns }));
+      }
     };
     await createIndex('logbook_entries', 'IDX_logbook_entries_org_occurredAt', ['orgId', 'occurredAt']);
     await createIndex('logbook_entries', 'IDX_logbook_entries_org_status', ['orgId', 'status']);

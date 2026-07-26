@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { useAuth } from '@/lib/auth';
 import { useCategories, useTags, useCreateCategory, useCreateTag } from '@/lib/taxonomy';
 import ProtectedImage from '@/components/ProtectedImage';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import {
@@ -513,12 +514,11 @@ export default function SettingsProjectTemplates() {
                   </div>
                 </Modal>
                 <div className="mt-3">
-                  <label className="block text-sm font-medium mb-1">Farbe</label>
-                  <input
-                    type="color"
+                  <label className="block text-sm font-medium mb-1" htmlFor="project-template-color">Farbe</label>
+                  <ColorPicker
+                    id="project-template-color"
                     value={(form.color as string) || '#7aa39a'}
-                    onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-                    className="w-20 h-10 p-1 border rounded bg-white"
+                    onChange={(color) => setForm((current) => ({ ...current, color }))}
                   />
                 </div>
               </div>
@@ -701,13 +701,8 @@ export default function SettingsProjectTemplates() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Farbe</label>
-                <input
-                  type="color"
-                  value={newCatColor}
-                  onChange={(e) => setNewCatColor(e.target.value)}
-                  className="w-20 h-10 p-1 border rounded bg-white"
-                />
+                <label className="block text-sm font-medium mb-1" htmlFor="new-template-category-color">Farbe</label>
+                <ColorPicker id="new-template-category-color" value={newCatColor} onChange={setNewCatColor} />
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 mt-4">
@@ -747,13 +742,8 @@ export default function SettingsProjectTemplates() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Farbe</label>
-                <input
-                  type="color"
-                  value={newTagColor}
-                  onChange={(e) => setNewTagColor(e.target.value)}
-                  className="w-20 h-10 p-1 border rounded bg-white"
-                />
+                <label className="block text-sm font-medium mb-1" htmlFor="new-template-tag-color">Farbe</label>
+                <ColorPicker id="new-template-tag-color" value={newTagColor} onChange={setNewTagColor} />
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 mt-4">

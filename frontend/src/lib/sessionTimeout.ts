@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { getStoredAuthToken, subscribeToAuthEvents } from './authStorage';
+import { refreshAccessToken } from './api';
 
 const LAST_ACTIVITY_KEY = 'stato:lastActivityMs';
 
@@ -74,6 +75,8 @@ export function useSessionTimeout(opts: {
   useEffect(() => {
     if (!enabled) return;
 
+    let active = true;
+
     const clearTimers = () => {
       if (idleTimerId.current) window.clearTimeout(idleTimerId.current);
       if (expTimerId.current) window.clearTimeout(expTimerId.current);
@@ -101,7 +104,19 @@ export function useSessionTimeout(opts: {
       }, remaining);
     };
 
-    const scheduleExpiryLogout = () => {
+    const refreshSessionOrLogout = () => {
+      void refreshAccessToken().then((token) => {
+        if (!active) return;
+        if (token) {
+          scheduleTokenRefresh();
+          return;
+        }
+        onNotify?.('Session abgelaufen. Bitte erneut anmelden.');
+        onLogout('expired');
+      });
+    };
+
+    const scheduleTokenRefresh = () => {
       if (!enabled) return;
       if (expTimerId.current) window.clearTimeout(expTimerId.current);
 
@@ -115,14 +130,12 @@ export function useSessionTimeout(opts: {
       const remaining = expMs - now - EXPIRY_SKEW_MS;
 
       if (remaining <= 0) {
-        onNotify?.('Session abgelaufen. Bitte erneut anmelden.');
-        onLogout('expired');
+        refreshSessionOrLogout();
         return;
       }
 
       expTimerId.current = window.setTimeout(() => {
-        onNotify?.('Session abgelaufen. Bitte erneut anmelden.');
-        onLogout('expired');
+        refreshSessionOrLogout();
       }, remaining);
     };
 
@@ -137,7 +150,7 @@ export function useSessionTimeout(opts: {
     // Init
     writeLastActivityMs(Date.now());
     scheduleIdleLogout();
-    scheduleExpiryLogout();
+    scheduleTokenRefresh();
 
     const activityEvents: Array<keyof WindowEventMap> = [
       'mousedown',
@@ -156,7 +169,7 @@ export function useSessionTimeout(opts: {
       if (document.visibilityState === 'visible') {
         // Re-arm on return
         scheduleIdleLogout();
-        scheduleExpiryLogout();
+        scheduleTokenRefresh();
       }
     };
     document.addEventListener('visibilitychange', onVisibility, { passive: true } as AddEventListenerOptions);
@@ -164,6 +177,7 @@ export function useSessionTimeout(opts: {
     const unsubscribeAuthEvents = subscribeToAuthEvents(() => onLogout('remote'));
 
     return () => {
+      active = false;
       clearTimers();
       for (const e of activityEvents) {
         window.removeEventListener(e, bumpActivity);

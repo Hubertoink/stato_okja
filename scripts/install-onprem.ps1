@@ -86,6 +86,24 @@ function Ensure-EnvValue([string]$Path, [string]$Key, [string]$DefaultValue) {
     [System.IO.File]::WriteAllText($Path, $content, $utf8WithoutBom)
 }
 
+function Assert-NoExistingOnPremDataForFreshConfig {
+    # The on-prem Compose file deliberately uses a stable, named Docker volume so
+    # data survives updates and a moved checkout. A new .env file must never be
+    # paired silently with that existing database: its generated admin password
+    # would not apply to the already-seeded superadmin.
+    $volumeName = 'stato-onprem-postgres-data'
+    # Do not use `docker volume inspect` here: on PowerShell versions that turn
+    # native non-zero exits into terminating errors, its expected "not found"
+    # result would abort a perfectly valid fresh installation.
+    $volumeNames = & docker volume ls --format '{{.Name}}'
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Die vorhandenen Docker-Volumes konnten nicht ermittelt werden.'
+    }
+    if ($volumeNames -contains $volumeName) {
+        throw "Der persistente Docker-Volume '$volumeName' existiert bereits, aber .env.onprem fehlt. Der Installer bricht ab, damit kein neues, ungueltiges Startpasswort ausgegeben wird. Fuer die bestehende Installation die bisherige .env.onprem wiederherstellen; fuer eine bewusst neue Installation den vorhandenen Datenbestand erst explizit sichern und entfernen."
+    }
+}
+
 Assert-Command git Git
 Assert-Command docker Docker
 
@@ -117,7 +135,12 @@ if (Test-Path (Join-Path $InstallDirectory '.git')) {
     Invoke-Native git @('-C', $InstallDirectory, 'fetch', 'origin', $Branch)
     & git -C $InstallDirectory show-ref --verify --quiet "refs/heads/$Branch"
     $branchExists = $LASTEXITCODE -eq 0
-    if ($branchExists) {
+    & git -C $InstallDirectory show-ref --verify --quiet "refs/tags/$Branch"
+    $tagExists = $LASTEXITCODE -eq 0
+    if ($tagExists) {
+        Invoke-Native git @('-C', $InstallDirectory, 'checkout', '--detach', $Branch)
+    }
+    elseif ($branchExists) {
         Invoke-Native git @('-C', $InstallDirectory, 'checkout', $Branch)
         Invoke-Native git @('-C', $InstallDirectory, 'merge', '--ff-only', "origin/$Branch")
     }
@@ -138,6 +161,7 @@ $envFile = Join-Path $InstallDirectory '.env.onprem'
 $envCreated = $false
 
 if (-not (Test-Path $envFile)) {
+    Assert-NoExistingOnPremDataForFreshConfig
     Write-Step 'Lokale Konfiguration mit individuellen Secrets erzeugen'
     Copy-Item (Join-Path $InstallDirectory '.env.onprem.example') $envFile
 
@@ -160,6 +184,12 @@ Ensure-EnvValue $envFile 'STATO_TLS_MODE' 'off'
 Ensure-EnvValue $envFile 'STATO_PUBLIC_HOST' ''
 Ensure-EnvValue $envFile 'HTTPS_BIND_ADDRESS' '0.0.0.0'
 Ensure-EnvValue $envFile 'HTTPS_PORT' '443'
+Ensure-EnvValue $envFile 'STATO_IMAGE_TAG' ''
+
+# An explicit environment value is useful for one-command installs; otherwise
+# retain the version selected in .env.onprem for subsequent installer runs.
+if ($env:STATO_IMAGE_TAG) { Set-EnvValue $envFile 'STATO_IMAGE_TAG' $env:STATO_IMAGE_TAG.Trim() }
+$imageTag = if ($env:STATO_IMAGE_TAG) { $env:STATO_IMAGE_TAG.Trim() } else { Get-EnvValue $envFile 'STATO_IMAGE_TAG' }
 
 # One-command opt-in for internal HTTPS, e.g.
 # $env:STATO_INTERNAL_TLS_HOST='stato.intern.example.de'; irm ... | iex
@@ -230,19 +260,48 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Das PostgreSQL-Passwort aus .env.onprem konnte nicht synchronisiert werden.'
 }
 
-Write-Step 'StatO-Images bauen'
-$buildArguments = $composeArguments + @('build')
-& docker @buildArguments
-if ($LASTEXITCODE -ne 0) {
+# The historical migrations extend an already existing application schema.
+# Detect a truly empty database so the installer can create that base schema
+# once before running the migrations in a second, production-safe phase.
+$schemaCheckSql = "SELECT CASE WHEN to_regclass('public.users') IS NULL THEN 'missing' ELSE 'present' END;"
+$schemaCheckArguments = $composeArguments + @(
+    'exec', '-T', 'postgres', 'sh', '-c',
+    'exec psql --tuples-only --no-align --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1'
+)
+$schemaState = ($schemaCheckSql | & docker @schemaCheckArguments | Where-Object { $_ -in @('missing', 'present') } | Select-Object -Last 1)
+if ($LASTEXITCODE -ne 0 -or $schemaState -notin @('missing', 'present')) {
     Show-ComposeDiagnostics $composeArguments
-    throw 'Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung.'
+    throw 'Der Schema-Status der PostgreSQL-Datenbank konnte nicht ermittelt werden.'
+}
+$freshDatabase = $schemaState -eq 'missing'
+
+if ($imageTag) {
+    Write-Step "Veroeffentlichte StatO-Images $imageTag aus GHCR laden"
+    $pullArguments = $composeArguments + @('pull', 'backend', 'frontend', 'backup')
+    & docker @pullArguments
+    if ($LASTEXITCODE -ne 0) {
+        Show-ComposeDiagnostics $composeArguments
+        throw 'Die veroeffentlichten StatO-Images konnten nicht geladen werden. Pruefe STATO_IMAGE_TAG und die Netzwerkverbindung.'
+    }
+}
+else {
+    Write-Step 'StatO-Images bauen'
+    $buildArguments = $composeArguments + @('build')
+    & docker @buildArguments
+    if ($LASTEXITCODE -ne 0) {
+        Show-ComposeDiagnostics $composeArguments
+        throw 'Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung.'
+    }
 }
 
 # Volumes created by older images can still belong to root. Repair ownership
 # before the unprivileged backend starts; existing uploaded files stay intact.
 Write-Step 'Berechtigungen des persistenten Upload-Verzeichnisses pruefen'
 $uploadsArguments = $composeArguments + @(
-    'run', '--rm', '--no-deps', '--user', '0', '--cap-add', 'CHOWN',
+    # The production service drops all Linux capabilities. The short-lived
+    # repair container therefore needs the three narrowly scoped capabilities
+    # required to create and chown files in a volume created by an older image.
+    'run', '--rm', '--no-deps', '--user', '0', '--cap-add', 'CHOWN', '--cap-add', 'DAC_OVERRIDE', '--cap-add', 'FOWNER',
     '--entrypoint', 'sh', 'backend', '-c',
     'mkdir -p /app/uploads/images /app/uploads/project-documents && chown -R node:node /app/uploads'
 )
@@ -252,8 +311,40 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Die Berechtigungen des Upload-Verzeichnisses konnten nicht repariert werden.'
 }
 
+if ($freshDatabase) {
+    Write-Step 'Leere Datenbank: Basisschema einmalig erzeugen'
+    # TypeORM runs migrations before synchronize(). The first phase therefore
+    # creates the current entity schema without migrations; the second phase
+    # records and applies the regular migrations with synchronize disabled.
+    $previousSynchronize = [Environment]::GetEnvironmentVariable('DB_SYNCHRONIZE', 'Process')
+    $previousMigrationsRun = [Environment]::GetEnvironmentVariable('DB_MIGRATIONS_RUN', 'Process')
+    try {
+        $env:DB_SYNCHRONIZE = 'true'
+        $env:DB_MIGRATIONS_RUN = 'false'
+        $bootstrapArguments = $composeArguments + @('up', '-d', '--force-recreate', '--wait', '--wait-timeout', '120', 'backend')
+        & docker @bootstrapArguments
+        if ($LASTEXITCODE -ne 0) {
+            Show-ComposeDiagnostics $composeArguments
+            throw 'Das Basisschema der leeren PostgreSQL-Datenbank konnte nicht erzeugt werden.'
+        }
+    }
+    finally {
+        if ($null -eq $previousSynchronize) { Remove-Item Env:DB_SYNCHRONIZE -ErrorAction SilentlyContinue } else { $env:DB_SYNCHRONIZE = $previousSynchronize }
+        if ($null -eq $previousMigrationsRun) { Remove-Item Env:DB_MIGRATIONS_RUN -ErrorAction SilentlyContinue } else { $env:DB_MIGRATIONS_RUN = $previousMigrationsRun }
+    }
+
+    Write-Step 'Datenbankmigrationen auf dem Basisschema abschliessen'
+    $migrationArguments = $composeArguments + @('up', '-d', '--force-recreate', '--wait', '--wait-timeout', '120', 'backend')
+    & docker @migrationArguments
+    if ($LASTEXITCODE -ne 0) {
+        Show-ComposeDiagnostics $composeArguments
+        throw 'Die Datenbankmigrationen auf dem neuen Basisschema konnten nicht abgeschlossen werden.'
+    }
+}
+
 Write-Step 'StatO starten'
 $upArguments = $composeArguments + @('up', '-d')
+if ($imageTag) { $upArguments += '--no-build' }
 & docker @upArguments
 if ($LASTEXITCODE -ne 0) {
     Show-ComposeDiagnostics $composeArguments

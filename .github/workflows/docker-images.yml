@@ -7,9 +7,14 @@ on:
   pull_request:
     branches: [dev, main, demo]
   workflow_dispatch:
+    inputs:
+      promote_version:
+        description: Bestehendes stabiles Image-Tag auf latest promoten (z. B. 1.0.0)
+        required: false
+        type: string
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   security-events: write
   actions: read
@@ -23,23 +28,103 @@ env:
   FRONTEND_API_BASE_URL: ${{ vars.FRONTEND_API_BASE_URL || '/api' }}
 
 jobs:
+  quality:
+    name: Tests und PostgreSQL-Migrationen
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: stato_migration_test
+          POSTGRES_USER: stato_migration_test
+          POSTGRES_PASSWORD: stato_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stato_migration_test -d stato_migration_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MIGRATION_TEST_POSTGRES: 'true'
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: stato_migration_test
+      DB_PASSWORD: stato_migration_test
+      DB_DATABASE: stato_migration_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check release version
+        run: npm run version:check
+
+      - name: Test and build backend
+        run: |
+          npm run test --workspace=backend -- --runInBand
+          npm run build --workspace=backend
+
+      - name: Test and build frontend
+        run: |
+          npm run test --workspace=frontend
+          npm run build --workspace=frontend
+
+  release-gate:
+    name: Release-Tag pruefen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release tag
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_tag="v$(tr -d '\r\n' < VERSION)"
+          if [ "$GITHUB_REF_NAME" != "$expected_tag" ]; then
+            echo "Release-Tag muss $expected_tag entsprechen (VERSION), erhalten: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "Release-Tag muss auf einem Commit aus main liegen." >&2
+            exit 1
+          }
+
   backend:
     name: Backend image
     if: github.ref != 'refs/heads/demo' && github.base_ref != 'demo'
+    needs: [quality, release-gate]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-backend-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU for release images
+        if: github.ref_type == 'tag'
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -47,12 +132,14 @@ jobs:
 
       - name: Extract tags and labels
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_BACKEND }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -60,7 +147,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and (optionally) push backend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./backend/Dockerfile
@@ -69,25 +156,32 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          pull: true
           sbom: true
           provenance: true
+          platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 
   frontend:
     name: Frontend image
+    needs: [quality, release-gate]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-frontend-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU for release images
+        if: github.ref_type == 'tag'
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -95,13 +189,15 @@ jobs:
 
       - name: Extract tags and labels
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_FRONTEND }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
             type=raw,value=demo,enable=${{ github.ref == 'refs/heads/demo' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -109,7 +205,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and (optionally) push frontend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./frontend/Dockerfile
@@ -118,31 +214,38 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          pull: true
           sbom: true
           provenance: true
+          platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           build-args: |
             VITE_API_BASE_URL=${{ github.ref == 'refs/heads/demo' && '/api' || (github.ref == 'refs/heads/dev' && 'https://devapi.stato-okja.de/api' || env.FRONTEND_API_BASE_URL) }}
             VITE_ENABLE_DEV_TOOLS=${{ github.ref == 'refs/heads/dev' && 'true' || 'false' }}
             VITE_DEMO_MODE=${{ github.ref == 'refs/heads/demo' && 'true' || 'false' }}
             VITE_COMMIT_SHA=${{ github.sha }}
-            NGINX_MODE=${{ github.ref == 'refs/heads/dev' && 'direct-dev' || 'direct' }}
+            NGINX_MODE=${{ github.ref_type == 'tag' && 'proxy' || (github.ref == 'refs/heads/dev' && 'direct-dev' || 'direct') }}
 
   backup:
     name: Backup image
+    needs: [quality, release-gate]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-backup-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU for release images
+        if: github.ref_type == 'tag'
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -150,12 +253,14 @@ jobs:
 
       - name: Extract tags and labels
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_BACKUP }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -163,7 +268,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and (optionally) push backup
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./backup/Dockerfile
@@ -172,52 +277,58 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          pull: true
           sbom: true
           provenance: true
+          platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 
   security-scan:
     name: Container scan and SBOM
+    needs: [quality, release-gate]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-security-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build backend image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./backend/Dockerfile
           load: true
           tags: stato-backend:security-scan
           cache-from: type=gha
+          pull: true
 
       - name: Build frontend image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./frontend/Dockerfile
           load: true
           tags: stato-frontend:security-scan
           cache-from: type=gha
+          pull: true
           build-args: |
             VITE_API_BASE_URL=/api
             VITE_ENABLE_DEV_TOOLS=false
             NGINX_MODE=proxy
 
       - name: Build backup image for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./backup/Dockerfile
           load: true
           tags: stato-backup:security-scan
           cache-from: type=gha
+          pull: true
 
       - name: Scan backend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -250,21 +361,21 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload backend Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-backend.sarif
           category: trivy-backend-image
 
       - name: Upload frontend Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-frontend.sarif
           category: trivy-frontend-image
 
       - name: Upload backup Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-backup.sarif
@@ -278,7 +389,172 @@ jobs:
           output-file: stato-sbom.spdx.json
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: stato-sbom-spdx
           path: stato-sbom.spdx.json
+
+  release-assets:
+    name: Release-Artefakte vorbereiten
+    if: github.ref_type == 'tag'
+    needs: [quality, release-gate, security-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download repository SBOM
+        uses: actions/download-artifact@v4
+        with:
+          name: stato-sbom-spdx
+          path: .release-sbom
+
+      - name: Create release bundle and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          test "$GITHUB_REF_NAME" = "v$version"
+          node scripts/extract-release-notes.mjs "$version" > RELEASE_NOTES.md
+          test -s RELEASE_NOTES.md
+
+          mkdir -p release-assets/bundle
+          cp docker-compose.onprem.yml release-assets/docker-compose.yml
+          # GitHub Release assets cannot reliably retain a leading dot in their
+          # filename. The tar bundle still contains .env.example; the standalone
+          # asset gets an explicit, portable name.
+          cp .env.onprem.example release-assets/stato.env.example
+          sed -i "s/^STATO_IMAGE_TAG=$/STATO_IMAGE_TAG=$version/" release-assets/stato.env.example
+          cp scripts/install-onprem.sh release-assets/install-onprem.sh
+          cp scripts/install-onprem.ps1 release-assets/install-onprem.ps1
+          cp .release-sbom/stato-sbom.spdx.json release-assets/stato-sbom.spdx.json
+          cp release-assets/docker-compose.yml release-assets/bundle/docker-compose.yml
+          cp release-assets/stato.env.example release-assets/bundle/.env.example
+          cp release-assets/install-onprem.sh release-assets/bundle/install-onprem.sh
+          cp release-assets/install-onprem.ps1 release-assets/bundle/install-onprem.ps1
+          cp release-assets/stato-sbom.spdx.json release-assets/bundle/stato-sbom.spdx.json
+          cp RELEASE_NOTES.md release-assets/bundle/RELEASE_NOTES.md
+          printf '%s\n' \
+            '# StatO Release-Bundle' \
+            '' \
+            'Dieses Bundle enthält die On-Prem-Compose-Konfiguration, eine sichere ENV-Vorlage, beide Installer und die SBOM.' \
+            '1. .env.example nach .env kopieren und die Secrets sowie die öffentliche URL setzen.' \
+            '2. docker compose --env-file .env -f docker-compose.yml pull ausführen.' \
+            '3. docker compose --env-file .env -f docker-compose.yml up -d --no-build ausführen.' \
+            'STATO_IMAGE_TAG ist absichtlich auf diese feste Release-Version gesetzt.' \
+            > release-assets/bundle/README.md
+          tar -C release-assets/bundle -czf "release-assets/StatO-v$version.tar.gz" .
+          (
+            cd release-assets
+            sha256sum docker-compose.yml stato.env.example install-onprem.sh install-onprem.ps1 stato-sbom.spdx.json "StatO-v$version.tar.gz" > SHA256SUMS
+          )
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          if-no-files-found: error
+          path: |
+            release-assets/docker-compose.yml
+            release-assets/stato.env.example
+            release-assets/install-onprem.sh
+            release-assets/install-onprem.ps1
+            release-assets/stato-sbom.spdx.json
+            release-assets/SHA256SUMS
+            release-assets/StatO-*.tar.gz
+            RELEASE_NOTES.md
+
+  github-release:
+    name: GitHub Release erstellen
+    if: github.ref_type == 'tag'
+    needs: [backend, frontend, backup, security-scan, release-assets]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          # The artifact already contains the release-assets directory. Restore
+          # it at the workspace root instead of adding a second nested level.
+          path: .
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          prerelease=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then prerelease+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" \
+            --title "StatO $GITHUB_REF_NAME" \
+            --notes-file RELEASE_NOTES.md \
+            "${prerelease[@]}" \
+            release-assets/docker-compose.yml \
+            release-assets/stato.env.example \
+            release-assets/install-onprem.sh \
+            release-assets/install-onprem.ps1 \
+            release-assets/stato-sbom.spdx.json \
+            release-assets/SHA256SUMS \
+            release-assets/StatO-*.tar.gz
+
+  promote-latest:
+    name: latest nach Release promoten
+    if: github.ref_type == 'tag' && !contains(github.ref_name, '-')
+    needs: [github-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote stable release to latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          for image in "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"; do
+            image="$(tr '[:upper:]' '[:lower:]' <<< "$image")"
+            docker buildx imagetools create --tag "$image:latest" "$image:$version"
+          done
+
+  manual-promote-latest:
+    name: Bestehendes Release auf latest promoten
+    if: github.event_name == 'workflow_dispatch' && inputs.promote_version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote requested stable release to latest
+        shell: bash
+        env:
+          VERSION: ${{ inputs.promote_version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          for image in "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"; do
+            image="$(tr '[:upper:]' '[:lower:]' <<< "$image")"
+            docker buildx imagetools create --tag "$image:latest" "$image:$VERSION"
+          done

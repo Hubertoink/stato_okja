@@ -1,8 +1,9 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { LogbookEntry } from './logbook-entry.entity';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('logbook_comments')
+@Index('IDX_logbook_comments_entry_createdAt', ['entryId', 'createdAt'])
 export class LogbookComment {
   @PrimaryGeneratedColumn('uuid')
   id: string;

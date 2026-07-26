@@ -93,6 +93,7 @@ const WEEKDAY_OPTIONS = [
   { value: 4, shortLabel: 'Do', label: 'Donnerstag' },
   { value: 5, shortLabel: 'Fr', label: 'Freitag' },
   { value: 6, shortLabel: 'Sa', label: 'Samstag' },
+  { value: 0, shortLabel: 'So', label: 'Sonntag' },
 ] as const;
 
 const CLOSURE_FILTER_LABELS: Record<OrganizationClosureStateFilter, string> = {
@@ -1063,6 +1064,14 @@ export default function Statistics() {
       m.set(p.id, p.color || undefined);
     return m;
   }, [projectsAll]);
+  const projectImage = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of projectsAll) {
+      const imageUrl = typeof p.imageUrl === 'string' ? p.imageUrl.trim() : '';
+      if (imageUrl) m.set(p.id, imageUrl);
+    }
+    return m;
+  }, [projectsAll]);
   const sortedProjects = useMemo(
     () =>
       filteredProjects
@@ -2023,11 +2032,11 @@ export default function Statistics() {
                     <button
                       type="button"
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian"
-                      onClick={exportPdf}
-                      title="Exportieren (PDF)"
+                      onClick={() => setReportExportOpen(true)}
+                      title="Auswertung exportieren"
                     >
                       <FileDown className="h-4 w-4" />
-                      PDF
+                      Export
                     </button>
                   </div>
                 </div>
@@ -2976,6 +2985,7 @@ export default function Statistics() {
                 projectColor.get(item.id) || fallbackBarColors[index % fallbackBarColors.length]
               }
               getCellKey={(item) => `tp-${item.id}`}
+              getCellImageUrl={(item) => projectImage.get(item.id)}
             />
           )}
         </div>
@@ -3406,7 +3416,7 @@ export default function Statistics() {
         open={customFilterOpen}
         onClose={() => setCustomFilterOpen(false)}
         title="Erweiterter Filter"
-        maxWidth="sm"
+        maxWidth="md"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">

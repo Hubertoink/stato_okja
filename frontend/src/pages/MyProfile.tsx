@@ -36,7 +36,7 @@ export default function MyProfile() {
 
 const mobileNavLabels: Record<MobileNavItemId, string> = {
   dashboard: 'Home', activities: 'Aktivitäten', logbook: 'Logbuch', calendar: 'Kalender',
-  projects: 'Projekte', statistics: 'Statistiken', settings: 'Einstellungen',
+  projects: 'Projekte', surveys: 'Umfragen', statistics: 'Statistiken', settings: 'Einstellungen',
 };
 
 function MobileNavigationSettings({ userId }: { userId?: string }) {
@@ -102,6 +102,7 @@ type AuthSession = {
   expiresAt: string;
   userAgent: string | null;
   ipAddress: string | null;
+  isCurrent: boolean;
 };
 
 function formatSessionDate(value: string) {
@@ -116,10 +117,12 @@ function formatSessionDate(value: string) {
 }
 
 function SessionsSection() {
+  const { logout } = useAuth();
   const [sessions, setSessions] = useState<AuthSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function loadSessions() {
     setLoading(true);
@@ -142,8 +145,15 @@ function SessionsSection() {
   async function revokeSession(sessionId: string) {
     setBusyId(sessionId);
     setErr(null);
+    setNotice(null);
     try {
       await api.delete(`/auth/sessions/${sessionId}`);
+      const revokedSession = sessions.find((session) => session.id === sessionId);
+      if (revokedSession?.isCurrent) {
+        logout();
+        return;
+      }
+      setNotice('Sitzung widerrufen. Der betreffende Browser wird bei seiner nächsten Aktion abgemeldet.');
       await loadSessions();
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Sitzung konnte nicht widerrufen werden';
@@ -158,18 +168,22 @@ function SessionsSection() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-viridian mb-2">Aktive Sitzungen</h3>
-          <p className="text-sm text-gray-600">Hier kannst du alte Browser-Sitzungen widerrufen.</p>
+          <p className="text-sm text-gray-600">Hier kannst du Browser-Sitzungen widerrufen. Dieses Gerät wird gesondert markiert.</p>
         </div>
         <ShieldCheck className="w-5 h-5 text-viridian shrink-0" />
       </div>
       {err && <div className="mt-4 text-sm text-red-600">{err}</div>}
+      {notice && <div className="mt-4 text-sm text-green-700" role="status">{notice}</div>}
       <div className="mt-4 space-y-3">
         {loading && <div className="text-sm text-gray-500">Sitzungen werden geladen…</div>}
         {!loading && sessions.length === 0 && <div className="text-sm text-gray-500">Keine aktiven Refresh-Sitzungen gefunden.</div>}
         {sessions.map((session) => (
           <div key={session.id} className="rounded-lg border border-gray-200 px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
-              <div className="text-sm font-medium text-gray-800 truncate">{session.userAgent || 'Unbekannter Client'}</div>
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                <span className="truncate">{session.userAgent || 'Unbekannter Client'}</span>
+                {session.isCurrent && <span className="shrink-0 rounded-full bg-viridian/10 px-2 py-0.5 text-xs font-semibold text-viridian">Dieses Gerät</span>}
+              </div>
               <div className="mt-1 text-xs text-gray-500">
                 Zuletzt genutzt: {formatSessionDate(session.lastUsedAt)} · Ablauf: {formatSessionDate(session.expiresAt)}
               </div>
@@ -180,10 +194,10 @@ function SessionsSection() {
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
               disabled={busyId === session.id}
               onClick={() => void revokeSession(session.id)}
-              title="Sitzung widerrufen"
+              title={session.isCurrent ? 'Diese Sitzung beenden' : 'Sitzung widerrufen'}
             >
               <Trash2 className="w-4 h-4" />
-              Widerrufen
+              {session.isCurrent ? 'Diese Sitzung beenden' : 'Widerrufen'}
             </button>
           </div>
         ))}

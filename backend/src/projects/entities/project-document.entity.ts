@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -9,6 +10,8 @@ import {
 import { Project } from './project.entity';
 
 @Entity('project_documents')
+@Index('IDX_project_documents_projectId', ['projectId'])
+@Index('IDX_project_documents_storageRef', ['storageRef'])
 export class ProjectDocument {
   @PrimaryGeneratedColumn('uuid')
   id: string;

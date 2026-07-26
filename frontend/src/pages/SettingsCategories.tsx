@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FIXED_PALETTE, getBgClass, isInFixedPalette } from '@/lib/colorPalette';
 import { DEFAULT_CATEGORIES } from '@/lib/defaultCategories';
 import Toggle from '@/components/Toggle';
 import {
@@ -145,7 +144,8 @@ export default function SettingsCategories() {
             <div key={c.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
               <div className="min-w-0 flex items-center gap-3">
                 <span
-                  className={`inline-block w-4 h-4 rounded ${getBgClass(c.color as string, 'bg-slate-400')}`}
+                  className="inline-block h-4 w-4 rounded bg-slate-400"
+                  style={{ backgroundColor: c.color || undefined }}
                 />
                 <div>
                   <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">
@@ -213,9 +213,7 @@ export default function SettingsCategories() {
           initial={modal.mode === 'edit' ? modal.category : undefined}
           onSubmit={(values) => {
             if (modal.mode === 'create') {
-              const color = isInFixedPalette(values.color as string)
-                ? values.color
-                : FIXED_PALETTE[0];
+              const color = values.color || '#7aa39a';
               create.mutate(
                 { ...values, color, active: true },
                 { onSuccess: () => setModal(null) },
@@ -223,11 +221,7 @@ export default function SettingsCategories() {
             } else if (modal.category?.id) {
               const { id: _r, ...rest } = (values || {}) as Partial<Category>;
               void _r;
-              const color = isInFixedPalette(rest.color as string)
-                ? rest.color
-                : isInFixedPalette(modal.category?.color as string)
-                  ? modal.category?.color
-                  : FIXED_PALETTE[0];
+              const color = rest.color || modal.category?.color || '#7aa39a';
               update.mutate(
                 { id: modal.category.id, data: { ...rest, color } },
                 { onSuccess: () => setModal(null) },
@@ -340,7 +334,8 @@ export default function SettingsCategories() {
                           }}
                         />
                         <span
-                          className={`mt-1 inline-block h-3.5 w-3.5 rounded ${getBgClass(c.color, 'bg-slate-400')}`}
+                          className="mt-1 inline-block h-3.5 w-3.5 rounded bg-slate-400"
+                          style={{ backgroundColor: c.color || undefined }}
                         />
                         <span className="min-w-0 flex-1 text-gray-800">{c.name}</span>
                       </label>

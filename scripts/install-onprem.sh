@@ -1,12 +1,14 @@
 #!/bin/sh
 
 # StatO On-Prem bootstrap for Linux and macOS.
-# Environment overrides: STATO_REPO_URL, STATO_BRANCH, STATO_INSTALL_DIR.
+# Environment overrides: STATO_REPO_URL, STATO_BRANCH, STATO_INSTALL_DIR,
+# STATO_IMAGE_TAG.
 
 set -eu
 
 REPOSITORY_URL="${STATO_REPO_URL:-https://github.com/Hubertoink/stato_okja.git}"
 BRANCH="${STATO_BRANCH:-main}"
+IMAGE_TAG="${STATO_IMAGE_TAG:-}"
 
 if [ -n "${STATO_INSTALL_DIR:-}" ]; then
   INSTALL_DIR=$STATO_INSTALL_DIR
@@ -68,6 +70,17 @@ ensure_env_value() {
   printf '\n%s=%s\n' "$key" "$default_value" >> "$ENV_FILE"
 }
 
+assert_no_existing_onprem_data_for_fresh_config() {
+  # The on-prem Compose file deliberately uses a stable, named Docker volume so
+  # data survives updates and a moved checkout. A new .env file must never be
+  # paired silently with that existing database: its generated admin password
+  # would not apply to the already-seeded superadmin.
+  volume_name=stato-onprem-postgres-data
+  if docker volume inspect "$volume_name" >/dev/null 2>&1; then
+    fail "Der persistente Docker-Volume '$volume_name' existiert bereits, aber .env.onprem fehlt. Der Installer bricht ab, damit kein neues, ungueltiges Startpasswort ausgegeben wird. Fuer die bestehende Installation die bisherige .env.onprem wiederherstellen; fuer eine bewusst neue Installation den vorhandenen Datenbestand erst explizit sichern und entfernen."
+  fi
+}
+
 compose() {
   if [ "$TLS_ENABLED" = true ]; then
     docker compose --profile internal-tls -f docker-compose.onprem.yml --env-file "$ENV_FILE" "$@"
@@ -91,7 +104,9 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   fi
 
   git -C "$INSTALL_DIR" fetch origin "$BRANCH"
-  if git -C "$INSTALL_DIR" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+  if git -C "$INSTALL_DIR" show-ref --verify --quiet "refs/tags/$BRANCH"; then
+    git -C "$INSTALL_DIR" checkout --detach "$BRANCH"
+  elif git -C "$INSTALL_DIR" show-ref --verify --quiet "refs/heads/$BRANCH"; then
     git -C "$INSTALL_DIR" checkout "$BRANCH"
     git -C "$INSTALL_DIR" merge --ff-only "origin/$BRANCH"
   else
@@ -108,6 +123,7 @@ cd "$INSTALL_DIR"
 ENV_FILE=.env.onprem
 
 if [ ! -f "$ENV_FILE" ]; then
+  assert_no_existing_onprem_data_for_fresh_config
   say "Lokale Konfiguration mit individuellen Secrets erzeugen"
   cp .env.onprem.example "$ENV_FILE"
 
@@ -131,6 +147,16 @@ ensure_env_value STATO_TLS_MODE off
 ensure_env_value STATO_PUBLIC_HOST ''
 ensure_env_value HTTPS_BIND_ADDRESS 0.0.0.0
 ensure_env_value HTTPS_PORT 443
+ensure_env_value STATO_IMAGE_TAG ''
+
+# An explicit environment value is useful for one-command installs; otherwise
+# retain the version selected in .env.onprem for subsequent installer runs.
+if [ -n "${STATO_IMAGE_TAG:-}" ]; then
+  replace_env_value STATO_IMAGE_TAG "$STATO_IMAGE_TAG"
+fi
+if [ -z "$IMAGE_TAG" ]; then
+  IMAGE_TAG=$(sed -n 's/^STATO_IMAGE_TAG=//p' "$ENV_FILE" | tail -n 1)
+fi
 
 # One-command opt-in for internal HTTPS, e.g.
 # curl ... | STATO_INTERNAL_TLS_HOST=stato.intern.example.de sh
@@ -203,10 +229,36 @@ if ! printf '%s\n' "$SYNC_SQL" | \
   fail "Das PostgreSQL-Passwort aus .env.onprem konnte nicht synchronisiert werden."
 fi
 
-say "StatO-Images bauen"
-if ! compose build; then
+# The historical migrations extend an already existing application schema.
+# Detect a truly empty database so the installer can create that base schema
+# once before running the migrations in a second, production-safe phase.
+if ! SCHEMA_STATE=$(printf '%s\n' "SELECT CASE WHEN to_regclass('public.users') IS NULL THEN 'missing' ELSE 'present' END;" | \
+  compose exec -T postgres sh -c \
+    'exec psql --tuples-only --no-align --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1'); then
   show_compose_diagnostics
-  fail "Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung."
+  fail "Der Schema-Status der PostgreSQL-Datenbank konnte nicht ermittelt werden."
+fi
+case "$SCHEMA_STATE" in
+  missing) FRESH_DATABASE=true ;;
+  present) FRESH_DATABASE=false ;;
+  *)
+    show_compose_diagnostics
+    fail "Der Schema-Status der PostgreSQL-Datenbank konnte nicht ermittelt werden."
+    ;;
+esac
+
+if [ -n "$IMAGE_TAG" ]; then
+  say "Veroeffentlichte StatO-Images $IMAGE_TAG aus GHCR laden"
+  if ! compose pull backend frontend backup; then
+    show_compose_diagnostics
+    fail "Die veroeffentlichten StatO-Images konnten nicht geladen werden. Pruefe STATO_IMAGE_TAG und die Netzwerkverbindung."
+  fi
+else
+  say "StatO-Images bauen"
+  if ! compose build; then
+    show_compose_diagnostics
+    fail "Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung."
+  fi
 fi
 
 # Volumes created by older images can still belong to root. Repair ownership
@@ -218,8 +270,34 @@ if ! compose run --rm --no-deps --user 0 --cap-add CHOWN --entrypoint sh backend
   fail "Die Berechtigungen des Upload-Verzeichnisses konnten nicht repariert werden."
 fi
 
+if [ "$FRESH_DATABASE" = true ]; then
+  say "Leere Datenbank: Basisschema einmalig erzeugen"
+  # TypeORM runs migrations before synchronize(). The first phase therefore
+  # creates the current entity schema without migrations; the second phase
+  # records and applies the regular migrations with synchronize disabled.
+  if ! (
+    export DB_SYNCHRONIZE=true
+    export DB_MIGRATIONS_RUN=false
+    compose up -d --force-recreate --wait --wait-timeout 120 backend
+  ); then
+    show_compose_diagnostics
+    fail "Das Basisschema der leeren PostgreSQL-Datenbank konnte nicht erzeugt werden."
+  fi
+
+  say "Datenbankmigrationen auf dem Basisschema abschliessen"
+  if ! compose up -d --force-recreate --wait --wait-timeout 120 backend; then
+    show_compose_diagnostics
+    fail "Die Datenbankmigrationen auf dem neuen Basisschema konnten nicht abgeschlossen werden."
+  fi
+fi
+
 say "StatO starten"
-if ! compose up -d; then
+if [ -n "$IMAGE_TAG" ]; then
+  START_ARGUMENTS='-d --no-build'
+else
+  START_ARGUMENTS='-d'
+fi
+if ! compose up $START_ARGUMENTS; then
   show_compose_diagnostics
   fail "StatO konnte nicht vollstaendig gestartet werden. Die Diagnose steht oberhalb dieser Meldung."
 fi

@@ -1,9 +1,62 @@
+import { useId } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useEmbeddedImageSrc } from '@/components/ProtectedImage';
 
 type StatisticsBarChartDatum = {
   name: string;
 };
+
+type ImageBarShapeProps = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  fill?: string;
+  index?: number;
+  payload?: StatisticsBarChartDatum;
+  getImageUrl?: (item: StatisticsBarChartDatum, index: number) => string | null | undefined;
+};
+
+function ImageBarShape({
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  fill,
+  index = 0,
+  payload,
+  getImageUrl,
+}: ImageBarShapeProps) {
+  const imageUrl = payload ? getImageUrl?.(payload, index) : undefined;
+  const embeddedImageUrl = useEmbeddedImageSrc(imageUrl);
+  const clipId = useId();
+
+  if (width <= 0 || height <= 0) return null;
+
+  return (
+    <g>
+      <defs>
+        <clipPath id={clipId}>
+          <rect x={x} y={y} width={width} height={height} />
+        </clipPath>
+      </defs>
+      <rect x={x} y={y} width={width} height={height} fill={fill} />
+      {embeddedImageUrl ? (
+        <image
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          href={embeddedImageUrl}
+          clipPath={`url(#${clipId})`}
+          preserveAspectRatio="xMidYMid slice"
+          opacity={0.78}
+        />
+      ) : null}
+    </g>
+  );
+}
 
 type StatisticsBarChartMargin = {
   top?: number;
@@ -37,6 +90,7 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
   valueLabelContent,
   getCellFill,
   getCellKey,
+  getCellImageUrl,
 }: {
   title: string;
   exportActions: ReactNode;
@@ -62,6 +116,7 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
   valueLabelContent: ReactElement;
   getCellFill?: (item: T, index: number) => string;
   getCellKey?: (item: T, index: number) => string;
+  getCellImageUrl?: (item: T, index: number) => string | null | undefined;
 }) {
   return (
     <div className={cardClassName} data-pdf-section ref={chartRef}>
@@ -98,7 +153,16 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
                   : undefined
               }
             />
-            <Bar dataKey={barDataKey} name={barName} fill={barFill}>
+            <Bar
+              dataKey={barDataKey}
+              name={barName}
+              fill={barFill}
+              shape={
+                getCellImageUrl
+                  ? <ImageBarShape getImageUrl={getCellImageUrl as ImageBarShapeProps['getImageUrl']} />
+                  : undefined
+              }
+            >
               {getCellFill
                 ? data.map((item, index) => (
                     <Cell

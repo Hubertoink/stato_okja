@@ -1,4 +1,4 @@
-export const MOBILE_NAV_ITEM_IDS = ['dashboard', 'activities', 'logbook', 'calendar', 'projects', 'statistics', 'settings'] as const;
+export const MOBILE_NAV_ITEM_IDS = ['dashboard', 'activities', 'logbook', 'calendar', 'projects', 'surveys', 'statistics', 'settings'] as const;
 export type MobileNavItemId = typeof MOBILE_NAV_ITEM_IDS[number];
 export type MobileNavLayout = { bottom: MobileNavItemId[] };
 

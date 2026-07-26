@@ -1,5 +1,6 @@
 import {
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
@@ -11,6 +12,8 @@ import { ActivityType } from '../../common/enums';
 import { Organization } from '../../orgs/entities/organization.entity';
 
 @Entity('project_templates')
+@Index('IDX_project_templates_orgId', ['orgId'])
+@Index('IDX_project_templates_archived', ['archived'])
 export class ProjectTemplate {
   @PrimaryGeneratedColumn('uuid')
   id: string;

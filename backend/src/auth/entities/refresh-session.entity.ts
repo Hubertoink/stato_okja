@@ -11,7 +11,7 @@ export class RefreshSession {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Index()
+  @Index('IDX_auth_refresh_sessions_userId')
   @Column({ type: 'uuid' })
   userId!: string;
 
@@ -19,7 +19,7 @@ export class RefreshSession {
   @JoinColumn({ name: 'userId' })
   user!: User;
 
-  @Index({ unique: true })
+  @Index('IDX_auth_refresh_sessions_tokenId', { unique: true })
   @Column({ type: 'varchar', length: 80 })
   tokenId!: string;
 
@@ -29,6 +29,7 @@ export class RefreshSession {
   @Column({ type: 'varchar', length: 255 })
   csrfHash!: string;
 
+  @Index('IDX_auth_refresh_sessions_expiresAt')
   @Column({ type: refreshSessionTimestampColumnType })
   expiresAt!: Date;
 

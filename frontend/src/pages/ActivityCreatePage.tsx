@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { X as XIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
+import { X as XIcon, Boxes, Plus as PlusIcon, Save as SaveIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import { useCreateActivity } from '@/lib/activities';
 import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
@@ -229,11 +229,10 @@ export default function ActivityCreatePage() {
     onSave: create.isPending || picker || Boolean(errorOpen) ? undefined : handleSave,
   });
 
-  // Vereinfachte Strategie: Keine sticky Action-Bar mehr auf Mobil/Route-Seiten.
-  // So kann die Tastatur ohne Layout-Konflikte aufgehen. Wir behalten nur die echte Safe-Area unten.
+  // Die Aktionen bleiben im normalen Dokumentfluss, damit die Tastatur das Layout nicht überdeckt.
   const containerPad = 'pb-[env(safe-area-inset-bottom,0px)]';
   const actionBarClass =
-    'relative z-10 bg-white border-t -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 py-2 flex items-center justify-between gap-3';
+    'sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end';
   // Etwas kompakter, wenn die Tastatur offen ist
   const formSpacing = keyboardOpen ? 'space-y-2' : 'space-y-4';
 
@@ -745,31 +744,23 @@ export default function ActivityCreatePage() {
           />
         </div>
 
-        {/* Sticky actions above bottom nav on mobile */}
+        {/* Mobile-friendly, labelled actions match the Logbook editor. */}
         <div className={actionBarClass}>
-          <div className="flex-1 flex items-center">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-              onClick={handleCancel}
-              title="Abbrechen"
-              aria-label="Abbrechen"
-            >
-              <XIcon className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex-1 flex items-center justify-end">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={handleSave}
-              title="Aktivität speichern"
-              aria-label="Aktivität speichern"
-              disabled={create.isPending || picker || Boolean(errorOpen)}
-            >
-              <PlusIcon className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+          >
+            Abbrechen
+          </button>
+          <button
+            type="submit"
+            className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={create.isPending || picker || Boolean(errorOpen)}
+          >
+            <SaveIcon className="h-4 w-4" />
+            {create.isPending ? 'Wird gespeichert…' : 'Speichern'}
+          </button>
         </div>
       </form>
 

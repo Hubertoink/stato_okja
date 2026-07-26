@@ -8,6 +8,7 @@ import type { ProjectTemplateDto } from '../lib/projectTemplatesApi';
 import type { Project } from '../lib/projects';
 import type { LogbookComment, LogbookEntry, LogbookEntryInput, LogbookEntryStatus, LogbookEntryType } from '../lib/logbook';
 import type { StaffMember, StaffRole } from '../lib/staff';
+import type { Survey, SurveyAnalytics, SurveyInput, SurveyQuestion, SurveyResponse, SurveyTrend } from '../lib/surveys';
 import type { Category, Cohort, Tag } from '../lib/taxonomy';
 
 type DemoActivityRecord = Omit<Activity, 'project' | 'location' | 'categories' | 'tags' | 'staff'> & {
@@ -20,6 +21,7 @@ type DemoActivityRecord = Omit<Activity, 'project' | 'location' | 'categories' |
 type DemoProject = Project & { orgId: string };
 type DemoProjectTemplate = ProjectTemplateDto & { orgId: string | null };
 type DemoLogbookEntry = LogbookEntry;
+type DemoSurvey = Survey & { createdAt: string; updatedAt: string };
 
 type DemoStore = {
   generatedAt: string;
@@ -41,6 +43,8 @@ type DemoStore = {
   acks: Record<string, boolean>;
   auditLogs: AuditLog[];
   logbookEntries: DemoLogbookEntry[];
+  surveys: DemoSurvey[];
+  surveyResponses: Record<string, SurveyResponse[]>;
 };
 
 type StatsOverviewResponse = {
@@ -642,6 +646,69 @@ function createInitialAuditLogs(activities: DemoActivityRecord[], projects: Demo
   ];
 }
 
+function surveySeed(now: Date): { surveys: DemoSurvey[]; surveyResponses: Record<string, SurveyResponse[]> } {
+  const feedbackQuestions: SurveyQuestion[] = [
+    { id: 'survey-feedback-mood', type: 'scale', label: 'Wie wohl fühlst du dich bei uns?', required: true, scaleMin: 1, scaleMax: 5, scaleMinLabel: 'Gar nicht wohl', scaleMaxLabel: 'Sehr wohl' },
+    { id: 'survey-feedback-offers', type: 'multiple_choice', label: 'Was machst du bei uns besonders gerne?', options: [
+      { id: 'offer-sport', label: 'Sport und Bewegung' }, { id: 'offer-creative', label: 'Musik und Kreatives' }, { id: 'offer-media', label: 'Gaming und Medien' }, { id: 'offer-meet', label: 'Chillen und Leute treffen' },
+    ] },
+    { id: 'survey-feedback-more', type: 'single_choice', label: 'Was sollte es häufiger geben?', options: [
+      { id: 'more-workshops', label: 'Workshops' }, { id: 'more-trips', label: 'Ausflüge' }, { id: 'more-sports', label: 'Sportangebote' }, { id: 'more-nothing', label: 'So ist es gut' },
+    ] },
+    { id: 'survey-feedback-text', type: 'text', label: 'Was möchtest du uns noch sagen?' },
+  ];
+  const holidayQuestions: SurveyQuestion[] = [
+    { id: 'survey-holiday-fun', type: 'scale', label: 'Das Ferienprogramm hat mir Spaß gemacht.', required: true, scaleMin: 1, scaleMax: 5, scaleMinLabel: 'Trifft nicht zu', scaleMaxLabel: 'Trifft völlig zu' },
+    { id: 'survey-holiday-again', type: 'single_choice', label: 'Würdest du wieder mitmachen?', options: [
+      { id: 'again-yes', label: 'Ja, auf jeden Fall' }, { id: 'again-maybe', label: 'Vielleicht' }, { id: 'again-no', label: 'Eher nicht' },
+    ] },
+    { id: 'survey-holiday-text', type: 'text', label: 'Welche Aktion wünschst du dir fürs nächste Mal?' },
+  ];
+  const iso = (daysAgo: number, hour = 15) => new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000 - (now.getHours() - hour) * 60 * 60 * 1000).toISOString();
+  const feedbackRound1: DemoSurvey = {
+    id: 'survey-feedback-round-1', seriesId: 'survey-feedback-round-1', roundNumber: 1, orgId: DEMO_ORG_ID, projectId: null,
+    title: 'Wünsche für den offenen Treff', introduction: 'Deine Meinung hilft uns, den offenen Treff noch besser zu machen. Die Antworten sind anonym.', status: 'closed', publicToken: 'demo-feedback-june', questions: feedbackQuestions,
+    allowMultiplePerDevice: true, expectedParticipants: 24, startsAt: iso(36), startedAt: iso(36), endsAt: iso(28), closedAt: iso(28), rawResponsesPurgeAt: null, archived: false, responsesCount: 8, rawResponsesAvailable: true, createdAt: iso(38), updatedAt: iso(28),
+  };
+  const feedbackRound2: DemoSurvey = {
+    ...feedbackRound1, id: 'survey-feedback-round-2', seriesId: 'survey-feedback-round-1', roundNumber: 2, status: 'active', publicToken: 'demo-feedback-now', startsAt: iso(5), startedAt: iso(5), endsAt: null, closedAt: null, rawResponsesPurgeAt: null, responsesCount: 6, createdAt: iso(6), updatedAt: iso(1),
+  };
+  const holidaySurvey: DemoSurvey = {
+    id: 'survey-holiday-2026', seriesId: 'survey-holiday-2026', roundNumber: 1, orgId: DEMO_ORG_ID, projectId: null,
+    title: 'Feedback zum Ferienprogramm', introduction: 'Danke, dass du beim Ferienprogramm dabei warst. Deine Rückmeldung hilft bei der Planung der nächsten Aktionen.', status: 'closed', publicToken: 'demo-holiday-feedback', questions: holidayQuestions,
+    allowMultiplePerDevice: true, expectedParticipants: 18, startsAt: iso(18), startedAt: iso(18), endsAt: iso(14), closedAt: iso(14), rawResponsesPurgeAt: null, archived: false, responsesCount: 7, rawResponsesAvailable: true, createdAt: iso(20), updatedAt: iso(14),
+  };
+  const response = (id: string, surveyId: string, daysAgo: number, answers: SurveyResponse['answers']): SurveyResponse => ({ id, surveyId, submittedAt: iso(daysAgo), answers, number: 0 });
+  const feedbackResponses1 = [
+    response('demo-feedback-1-1', feedbackRound1.id, 35, { 'survey-feedback-mood': 5, 'survey-feedback-offers': ['offer-creative', 'offer-meet'], 'survey-feedback-more': 'more-trips', 'survey-feedback-text': 'Mehr Ausflüge in den Ferien wären toll.' }),
+    response('demo-feedback-1-2', feedbackRound1.id, 34, { 'survey-feedback-mood': 4, 'survey-feedback-offers': ['offer-sport'], 'survey-feedback-more': 'more-sports', 'survey-feedback-text': 'Das Fußballturnier war super.' }),
+    response('demo-feedback-1-3', feedbackRound1.id, 33, { 'survey-feedback-mood': 5, 'survey-feedback-offers': ['offer-media', 'offer-meet'], 'survey-feedback-more': 'more-workshops', 'survey-feedback-text': 'Ein Podcast-Workshop wäre cool.' }),
+    response('demo-feedback-1-4', feedbackRound1.id, 32, { 'survey-feedback-mood': 4, 'survey-feedback-offers': ['offer-creative'], 'survey-feedback-more': 'more-trips', 'survey-feedback-text': null }),
+    response('demo-feedback-1-5', feedbackRound1.id, 31, { 'survey-feedback-mood': 3, 'survey-feedback-offers': ['offer-meet'], 'survey-feedback-more': 'more-sports', 'survey-feedback-text': 'Manchmal ist es sehr voll.' }),
+    response('demo-feedback-1-6', feedbackRound1.id, 30, { 'survey-feedback-mood': 5, 'survey-feedback-offers': ['offer-sport', 'offer-media'], 'survey-feedback-more': 'more-nothing', 'survey-feedback-text': null }),
+    response('demo-feedback-1-7', feedbackRound1.id, 29, { 'survey-feedback-mood': 4, 'survey-feedback-offers': ['offer-creative', 'offer-media'], 'survey-feedback-more': 'more-workshops', 'survey-feedback-text': 'Mehr Zeit für Musik bitte.' }),
+    response('demo-feedback-1-8', feedbackRound1.id, 28, { 'survey-feedback-mood': 5, 'survey-feedback-offers': ['offer-meet'], 'survey-feedback-more': 'more-trips', 'survey-feedback-text': null }),
+  ];
+  const feedbackResponses2 = [
+    response('demo-feedback-2-1', feedbackRound2.id, 5, { 'survey-feedback-mood': 5, 'survey-feedback-offers': ['offer-creative', 'offer-meet'], 'survey-feedback-more': 'more-workshops', 'survey-feedback-text': 'Der Kreativraum ist mein Lieblingsort.' }),
+    response('demo-feedback-2-2', feedbackRound2.id, 4, { 'survey-feedback-mood': 4, 'survey-feedback-offers': ['offer-sport'], 'survey-feedback-more': 'more-sports', 'survey-feedback-text': null }),
+    response('demo-feedback-2-3', feedbackRound2.id, 3, { 'survey-feedback-mood': 5, 'survey-feedback-offers': ['offer-media'], 'survey-feedback-more': 'more-workshops', 'survey-feedback-text': 'Gaming-Turnier machen!' }),
+    response('demo-feedback-2-4', feedbackRound2.id, 2, { 'survey-feedback-mood': 4, 'survey-feedback-offers': ['offer-meet', 'offer-sport'], 'survey-feedback-more': 'more-trips', 'survey-feedback-text': null }),
+    response('demo-feedback-2-5', feedbackRound2.id, 1, { 'survey-feedback-mood': 5, 'survey-feedback-offers': ['offer-creative'], 'survey-feedback-more': 'more-nothing', 'survey-feedback-text': 'Alles gut so.' }),
+    response('demo-feedback-2-6', feedbackRound2.id, 1, { 'survey-feedback-mood': 3, 'survey-feedback-offers': ['offer-meet'], 'survey-feedback-more': 'more-sports', 'survey-feedback-text': 'Vielleicht später offen lassen.' }),
+  ];
+  const holidayResponses = [
+    response('demo-holiday-1', holidaySurvey.id, 18, { 'survey-holiday-fun': 5, 'survey-holiday-again': 'again-yes', 'survey-holiday-text': 'Noch einmal ins Kletterzentrum.' }),
+    response('demo-holiday-2', holidaySurvey.id, 17, { 'survey-holiday-fun': 5, 'survey-holiday-again': 'again-yes', 'survey-holiday-text': 'Graffiti-Workshop.' }),
+    response('demo-holiday-3', holidaySurvey.id, 16, { 'survey-holiday-fun': 4, 'survey-holiday-again': 'again-yes', 'survey-holiday-text': null }),
+    response('demo-holiday-4', holidaySurvey.id, 15, { 'survey-holiday-fun': 4, 'survey-holiday-again': 'again-maybe', 'survey-holiday-text': 'Mehr Zeit zum Kochen.' }),
+    response('demo-holiday-5', holidaySurvey.id, 15, { 'survey-holiday-fun': 5, 'survey-holiday-again': 'again-yes', 'survey-holiday-text': null }),
+    response('demo-holiday-6', holidaySurvey.id, 14, { 'survey-holiday-fun': 3, 'survey-holiday-again': 'again-maybe', 'survey-holiday-text': 'Etwas später anfangen.' }),
+    response('demo-holiday-7', holidaySurvey.id, 14, { 'survey-holiday-fun': 4, 'survey-holiday-again': 'again-yes', 'survey-holiday-text': null }),
+  ];
+  return { surveys: [feedbackRound1, feedbackRound2, holidaySurvey], surveyResponses: { [feedbackRound1.id]: feedbackResponses1, [feedbackRound2.id]: feedbackResponses2, [holidaySurvey.id]: holidayResponses } };
+}
+
 function createDemoStore(now = new Date()): DemoStore {
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const windowStart = localIsoDate(addMonths(currentMonthStart, -12));
@@ -653,6 +720,7 @@ function createDemoStore(now = new Date()): DemoStore {
   const staff = staffSeed();
   const projects = projectSeed(windowStart, windowEnd);
   const activities = activitySeed(windowStart, windowEnd, projects, tags, staff);
+  const surveyData = surveySeed(now);
   return {
     generatedAt: now.toISOString(),
     windowStart,
@@ -673,6 +741,7 @@ function createDemoStore(now = new Date()): DemoStore {
     acks: {},
     auditLogs: createInitialAuditLogs(activities, projects),
     logbookEntries: logbookSeed(activities, projects),
+    ...surveyData,
   };
 }
 
@@ -701,6 +770,177 @@ function addAudit(entityType: string, entityId: string, action: AuditLogAction, 
     createdAt: new Date().toISOString(),
   });
   store.auditLogs = store.auditLogs.slice(0, 80);
+}
+
+function surveyResponses(surveyId: string) {
+  return store.surveyResponses[surveyId] || [];
+}
+
+function surveyDto(survey: DemoSurvey): Survey {
+  return clone({ ...survey, responsesCount: surveyResponses(survey.id).length, rawResponsesAvailable: true });
+}
+
+function surveySeriesId(survey: DemoSurvey) {
+  return survey.seriesId || survey.id;
+}
+
+function surveyRounds(survey: DemoSurvey) {
+  return store.surveys
+    .filter((entry) => surveySeriesId(entry) === surveySeriesId(survey))
+    .sort((left, right) => (left.roundNumber || 1) - (right.roundNumber || 1));
+}
+
+export function listDemoSurveys(params: DemoQueryParams = {}) {
+  const archived = readBoolean(params.archived) || false;
+  const search = String(params.search || '').trim().toLocaleLowerCase('de-DE');
+  return store.surveys
+    .filter((survey) => survey.id === surveySeriesId(survey) && survey.archived === archived)
+    .filter((survey) => !search || survey.title.toLocaleLowerCase('de-DE').includes(search))
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .map((root) => {
+      const rounds = surveyRounds(root);
+      const latest = rounds[rounds.length - 1] || root;
+      return clone({
+        ...surveyDto(root),
+        status: latest.status,
+        publicToken: latest.publicToken,
+        responsesCount: surveyResponses(latest.id).length,
+        rawResponsesAvailable: true,
+        roundNumber: latest.roundNumber,
+        roundsCount: rounds.length,
+      });
+    });
+}
+
+export function hasDemoArchivedSurveys() {
+  return store.surveys.some((survey) => survey.id === surveySeriesId(survey) && survey.archived);
+}
+
+export function getDemoSurvey(id: string) {
+  const survey = store.surveys.find((entry) => entry.id === id);
+  return survey ? surveyDto(survey) : null;
+}
+
+export function listDemoSurveyRounds(id: string) {
+  const survey = store.surveys.find((entry) => entry.id === id);
+  return survey ? surveyRounds(survey).map(surveyDto) : [];
+}
+
+export function createDemoSurvey(data: SurveyInput) {
+  const now = new Date().toISOString();
+  const id = nextId('survey');
+  const survey: DemoSurvey = {
+    id, seriesId: id, roundNumber: 1, orgId: DEMO_ORG_ID, projectId: data.projectId || null,
+    title: String(data.title || 'Neue Umfrage').trim(), introduction: data.introduction || null, status: 'draft', publicToken: `${id}-token`,
+    questions: clone(data.questions || []), allowMultiplePerDevice: !!data.allowMultiplePerDevice, expectedParticipants: data.expectedParticipants || null,
+    startsAt: data.startsAt || null, startedAt: null, endsAt: data.endsAt || null, closedAt: null, rawResponsesPurgeAt: null,
+    archived: false, responsesCount: 0, rawResponsesAvailable: true, createdAt: now, updatedAt: now,
+  };
+  store.surveys.unshift(survey); store.surveyResponses[id] = []; addAudit('survey', id, 'create', survey.title);
+  return surveyDto(survey);
+}
+
+export function updateDemoSurvey(id: string, data: SurveyInput & { archived?: boolean }) {
+  const survey = store.surveys.find((entry) => entry.id === id);
+  if (!survey) throw new Error('Umfrage nicht gefunden');
+  if (typeof data.title === 'string') survey.title = data.title.trim();
+  if (typeof data.introduction !== 'undefined') survey.introduction = data.introduction || null;
+  if (typeof data.projectId !== 'undefined') survey.projectId = data.projectId || null;
+  if (typeof data.questions !== 'undefined') survey.questions = clone(data.questions || []);
+  if (typeof data.allowMultiplePerDevice !== 'undefined') survey.allowMultiplePerDevice = data.allowMultiplePerDevice;
+  if (typeof data.expectedParticipants !== 'undefined') survey.expectedParticipants = data.expectedParticipants || null;
+  if (typeof data.startsAt !== 'undefined') survey.startsAt = data.startsAt || null;
+  if (typeof data.endsAt !== 'undefined') survey.endsAt = data.endsAt || null;
+  if (typeof data.archived === 'boolean') { survey.archived = data.archived; survey.status = data.archived ? 'archived' : (survey.closedAt ? 'closed' : 'draft'); }
+  survey.updatedAt = new Date().toISOString(); addAudit('survey', id, 'update', survey.title);
+  return surveyDto(survey);
+}
+
+export function startDemoSurvey(id: string) {
+  const survey = store.surveys.find((entry) => entry.id === id);
+  if (!survey) throw new Error('Umfrage nicht gefunden');
+  survey.status = 'active'; survey.archived = false; survey.startedAt ||= new Date().toISOString(); survey.updatedAt = new Date().toISOString();
+  addAudit('survey', id, 'update', survey.title); return surveyDto(survey);
+}
+
+export function closeDemoSurvey(id: string) {
+  const survey = store.surveys.find((entry) => entry.id === id);
+  if (!survey) throw new Error('Umfrage nicht gefunden');
+  const now = new Date(); survey.status = 'closed'; survey.closedAt = now.toISOString(); survey.rawResponsesPurgeAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(); survey.updatedAt = survey.closedAt;
+  addAudit('survey', id, 'update', survey.title); return surveyDto(survey);
+}
+
+export function createDemoSurveyRound(id: string) {
+  const source = store.surveys.find((entry) => entry.id === id);
+  if (!source) throw new Error('Umfrage nicht gefunden');
+  const rounds = surveyRounds(source);
+  if (rounds.some((round) => round.status === 'active')) throw new Error('Beende die aktive Umfragerunde, bevor du eine neue anlegst.');
+  const now = new Date().toISOString(); const roundId = nextId('survey-round');
+  const round: DemoSurvey = { ...source, id: roundId, seriesId: surveySeriesId(source), roundNumber: rounds.length + 1, status: 'draft', publicToken: `${roundId}-token`, startsAt: null, startedAt: null, endsAt: null, closedAt: null, rawResponsesPurgeAt: null, archived: false, responsesCount: 0, createdAt: now, updatedAt: now, questions: clone(source.questions) };
+  store.surveys.push(round); store.surveyResponses[roundId] = []; addAudit('survey_round', roundId, 'create', round.title);
+  return surveyDto(round);
+}
+
+export function listDemoSurveyResponses(id: string) {
+  const responses = [...surveyResponses(id)].sort((left, right) => right.submittedAt.localeCompare(left.submittedAt));
+  return { rawResponsesAvailable: true, responses: clone(responses.map((response, index) => ({ ...response, number: responses.length - index }))) };
+}
+
+export function deleteDemoSurveyResponse(surveyId: string, responseId: string) {
+  store.surveyResponses[surveyId] = surveyResponses(surveyId).filter((response) => response.id !== responseId);
+  const survey = store.surveys.find((entry) => entry.id === surveyId); if (survey) { survey.updatedAt = new Date().toISOString(); addAudit('survey_response', responseId, 'delete', survey.title); }
+  return { ok: true };
+}
+
+export function getDemoSurveyAnalytics(id: string): SurveyAnalytics {
+  const survey = store.surveys.find((entry) => entry.id === id);
+  if (!survey) throw new Error('Umfrage nicht gefunden');
+  const responses = surveyResponses(id);
+  const questions = (survey.questions || []).map((question) => {
+    const answered = responses.map((response) => response.answers[question.id]).filter((value) => value !== null && typeof value !== 'undefined' && value !== '');
+    if (question.type === 'text') return { id: question.id, type: question.type, label: question.label, answeredCount: answered.length, texts: answered.filter((value): value is string => typeof value === 'string') };
+    const counts: Record<string, number> = {};
+    if (question.type === 'scale') {
+      for (let value = question.scaleMin || 1; value <= (question.scaleMax || 5); value += 1) counts[String(value)] = 0;
+      answered.forEach((value) => { counts[String(value)] = (counts[String(value)] || 0) + 1; });
+      const numbers = answered.filter((value): value is number => typeof value === 'number').sort((left, right) => left - right);
+      return { id: question.id, type: question.type, label: question.label, answeredCount: answered.length, counts, median: numbers.length ? numbers[Math.floor((numbers.length - 1) / 2)] : null, mean: numbers.length ? Math.round(numbers.reduce((sum, value) => sum + value, 0) / numbers.length * 100) / 100 : null };
+    }
+    (question.options || []).forEach((option) => { counts[option.id] = 0; });
+    answered.forEach((value) => (Array.isArray(value) ? value : [value]).forEach((entry) => { if (typeof entry === 'string') counts[entry] = (counts[entry] || 0) + 1; }));
+    return { id: question.id, type: question.type, label: question.label, answeredCount: answered.length, counts };
+  });
+  return { responsesCount: responses.length, expectedParticipants: survey.expectedParticipants, responseRate: survey.expectedParticipants ? Math.round(responses.length / survey.expectedParticipants * 1000) / 10 : null, questions, generatedAt: new Date().toISOString() };
+}
+
+export function getDemoSurveyTrend(id: string): SurveyTrend {
+  const seed = store.surveys.find((entry) => entry.id === id);
+  if (!seed) throw new Error('Umfrage nicht gefunden');
+  const rounds = surveyRounds(seed).filter((round) => round.status !== 'draft');
+  const analytics = rounds.map((round) => getDemoSurveyAnalytics(round.id));
+  const point = (round: DemoSurvey, result: SurveyAnalytics['questions'][number]) => ({ roundId: round.id, roundNumber: round.roundNumber || 1, date: round.closedAt || round.startsAt || round.createdAt, responsesCount: surveyResponses(round.id).length, answeredCount: result.answeredCount, median: result.median || null, mean: result.mean || null, counts: result.counts || {}, suppressed: false });
+  return {
+    rounds: rounds.map((round) => ({ id: round.id, roundNumber: round.roundNumber || 1, status: round.status, date: round.closedAt || round.startsAt || round.createdAt, responsesCount: surveyResponses(round.id).length, expectedParticipants: round.expectedParticipants, responseRate: round.expectedParticipants ? Math.round(surveyResponses(round.id).length / round.expectedParticipants * 1000) / 10 : null })),
+    questions: (seed.questions || []).map((question) => {
+      const points = rounds.map((round, index) => point(round, analytics[index].questions.find((entry) => entry.id === question.id) || { id: question.id, type: question.type, label: question.label, answeredCount: 0 }));
+      if (question.type === 'single_choice' || question.type === 'multiple_choice') return { id: question.id, label: question.label, type: question.type, options: (question.options || []).map((option) => ({ id: option.id, label: option.label, points: points.map((entry) => ({ ...entry, percentage: entry.answeredCount ? Math.round((entry.counts[option.id] || 0) / entry.answeredCount * 1000) / 10 : null })) })) };
+      return { id: question.id, label: question.label, type: question.type, points };
+    }),
+  };
+}
+
+export function getDemoPublicSurvey(token: string) {
+  const survey = store.surveys.find((entry) => entry.publicToken === token && entry.status === 'active');
+  if (!survey) throw new Error('Diese Umfrage ist nicht aktiv.');
+  return clone({ title: survey.title, introduction: survey.introduction, questions: survey.questions, allowMultiplePerDevice: survey.allowMultiplePerDevice, organizationName: 'Demo Jugendhaus' });
+}
+
+export function submitDemoPublicSurvey(token: string, answers: SurveyResponse['answers']) {
+  const survey = store.surveys.find((entry) => entry.publicToken === token && entry.status === 'active');
+  if (!survey) throw new Error('Diese Umfrage ist nicht aktiv.');
+  const response: SurveyResponse = { id: nextId('survey-response'), surveyId: survey.id, submittedAt: new Date().toISOString(), answers: clone(answers), number: 0 };
+  store.surveyResponses[survey.id] = [...surveyResponses(survey.id), response]; survey.updatedAt = response.submittedAt;
+  return { ok: true };
 }
 
 function compareActivityRecordsDesc(left: Pick<Activity, 'date' | 'startTime'>, right: Pick<Activity, 'date' | 'startTime'>) {
@@ -1543,7 +1783,10 @@ export function removeDemoLogbookComment(entryId: string, commentId: string) {
 
 function logbookSeed(activities: DemoActivityRecord[], projects: DemoProject[]): DemoLogbookEntry[] {
   const firstActivity = activities[0];
+  const secondActivity = activities[1] || firstActivity;
+  const thirdActivity = activities[2] || secondActivity;
   const project = projects.find((item) => item.id === firstActivity?.projectId) || projects[0];
+  const secondProject = projects.find((item) => item.id !== project?.id) || project;
   const now = new Date();
   return [
     {
@@ -1560,6 +1803,36 @@ function logbookSeed(activities: DemoActivityRecord[], projects: DemoProject[]):
       status: 'discussed', visibility: 'team', activityId: null, projectId: project?.id || null,
       createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, documentationUpdatedByUserId: null, documentationUpdatedByName: null, documentationUpdatedAt: null, discussedByUserId: demoUser.id, discussedByName: demoUser.name, discussedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), archivedAt: null,
       createdAt: new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), comments: [], commentCount: 0,
+    },
+    {
+      id: 'logbook-demo-3', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 50 * 60 * 60 * 1000).toISOString(), type: 'observation', title: 'Neue Clique nutzt den Kreativraum',
+      body: 'Vier Jugendliche kamen ohne Anmeldung vorbei und haben den Kreativraum eigenständig für Sticker-Entwürfe genutzt. Die Gruppe wirkte neugierig, aber noch zurückhaltend gegenüber dem Team.',
+      highlights: 'Gute Gelegenheit, das offene Kreativangebot als niedrigschwelligen Einstieg zu zeigen.', challenges: 'Material wurde teilweise offen liegen gelassen.', nextSteps: 'Beim nächsten Besuch kurz Materialregeln erklären und eine feste Box für angefangene Entwürfe anbieten.',
+      status: 'open', visibility: 'team', activityId: secondActivity?.id || null, projectId: secondProject?.id || null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: null, discussedByName: null, discussedAt: null, archivedAt: null,
+      createdAt: new Date(now.getTime() - 49 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 49 * 60 * 60 * 1000).toISOString(),
+      comments: [{ id: 'logbook-comment-demo-3', entryId: 'logbook-demo-3', body: 'Ich lege morgen eine beschriftete Materialbox bereit.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 47 * 60 * 60 * 1000).toISOString() }], commentCount: 1,
+    },
+    {
+      id: 'logbook-demo-4', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 74 * 60 * 60 * 1000).toISOString(), type: 'incident', title: 'Konflikt beim Kochabend',
+      body: 'Beim gemeinsamen Kochen gab es eine kurze verbale Auseinandersetzung zwischen zwei Teilnehmenden. Das Team konnte die Situation im Nebenraum beruhigen.',
+      highlights: 'Beide Jugendlichen konnten danach wieder in die Gruppe zurückkehren.', challenges: 'Auslöser war vermutlich die Rollenverteilung in der Küche.', nextSteps: 'Beim nächsten Kochabend Aufgaben vorab sichtbar verteilen und kurz nachfragen, ob die Rollen passen.',
+      status: 'follow_up', visibility: 'admins', activityId: thirdActivity?.id || null, projectId: project?.id || null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: null, discussedByName: null, discussedAt: null, archivedAt: null,
+      createdAt: new Date(now.getTime() - 73 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString(),
+      comments: [
+        { id: 'logbook-comment-demo-4a', entryId: 'logbook-demo-4', body: 'Bitte im Teammeeting kurz aufnehmen, damit alle dieselbe Ansprache nutzen.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 71 * 60 * 60 * 1000).toISOString() },
+        { id: 'logbook-comment-demo-4b', entryId: 'logbook-demo-4', body: 'Rollenkarte für Küche ist vorbereitet.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 68 * 60 * 60 * 1000).toISOString() },
+      ], commentCount: 2,
+    },
+    {
+      id: 'logbook-demo-5', orgId: DEMO_ORG_ID, occurredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), type: 'debrief', title: 'Debriefing zur Ferienaktion',
+      body: 'Die Ferienaktion lief stabil, die spontanen Tagesgäste konnten gut integriert werden. Für das nächste Mal sollte die Materialplanung früher abgeschlossen sein.',
+      highlights: 'Hohe Beteiligung am Abschlusstag und mehrere neue Kontakte für Folgeangebote.', challenges: 'Zu wenig Puffer beim Aufbau und bei der Ausgabe von Material.', nextSteps: 'Checkliste für Aufbau, Material und Zuständigkeiten in die Projektvorlage übernehmen.',
+      status: 'discussed', visibility: 'team', activityId: null, projectId: secondProject?.id || null,
+      createdByUserId: demoUser.id, createdByName: demoUser.name, updatedByUserId: demoUser.id, updatedByName: demoUser.name, discussedByUserId: demoUser.id, discussedByName: demoUser.name, discussedAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(), archivedAt: null,
+      createdAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000).toISOString(), updatedAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+      comments: [{ id: 'logbook-comment-demo-5', entryId: 'logbook-demo-5', body: 'Checkliste passt gut als Vorlage für Herbstferien.', createdByUserId: demoUser.id, createdByName: demoUser.name, createdAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString() }], commentCount: 1,
     },
   ];
 }

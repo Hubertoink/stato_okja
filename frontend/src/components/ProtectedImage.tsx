@@ -62,7 +62,21 @@ function releaseProtectedImage(src: string) {
   }, PROTECTED_IMAGE_CACHE_TTL_MS);
 }
 
-export default function ProtectedImage({ src, loading = 'lazy', ...props }: ProtectedImageProps) {
+function blobUrlToDataUrl(url: string): Promise<string | undefined> {
+  return fetch(url)
+    .then((response) => response.blob())
+    .then(
+      (blob) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        }),
+    )
+    .catch(() => undefined);
+}
+export function useResolvedImageSrc(src?: string | null) {
   const [resolvedSrc, setResolvedSrc] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -90,6 +104,43 @@ export default function ProtectedImage({ src, loading = 'lazy', ...props }: Prot
       releaseProtectedImage(normalizedSrc);
     };
   }, [src]);
+
+  return resolvedSrc;
+}
+
+/**
+ * Resolves upload images to a data URL when necessary for an SVG to be copied
+ * into a canvas. Blob URLs work in the live chart but are lost when html2canvas
+ * serializes the surrounding SVG for PNG/PDF export.
+ */
+export function useEmbeddedImageSrc(src?: string | null) {
+  const resolvedSrc = useResolvedImageSrc(src);
+  const [embeddedSrc, setEmbeddedSrc] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!resolvedSrc) {
+      setEmbeddedSrc(undefined);
+      return;
+    }
+    if (!resolvedSrc.startsWith('blob:')) {
+      setEmbeddedSrc(resolvedSrc);
+      return;
+    }
+
+    let active = true;
+    void blobUrlToDataUrl(resolvedSrc).then((dataUrl) => {
+      if (active) setEmbeddedSrc(dataUrl);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [resolvedSrc]);
+
+  return embeddedSrc;
+}
+export default function ProtectedImage({ src, loading = 'lazy', ...props }: ProtectedImageProps) {
+  const resolvedSrc = useResolvedImageSrc(src);
 
   if (!resolvedSrc) return null;
   return <img {...props} src={resolvedSrc} loading={loading} />;

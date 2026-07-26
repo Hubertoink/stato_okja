@@ -2,7 +2,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useNavigate } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import Toggle from '@/components/Toggle';
-import { FIXED_PALETTE, TAG_PALETTE, isInFixedPalette, isInTagPalette } from '@/lib/colorPalette';
+import { FIXED_PALETTE, TAG_PALETTE } from '@/lib/colorPalette';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import {
   Project,
   ProjectDocument,
@@ -2193,15 +2194,14 @@ function ProjectForm({
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
             <section className={projectSectionClassName} style={projectSectionStyle}>
               {renderSectionHeader('Bild & Farbe')}
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr),160px] gap-4 items-start">
+              <div className="grid grid-cols-1 gap-4 items-start">
                 {renderImageManager()}
                 <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
-                  <label className="block text-sm font-medium mb-2">Farbe</label>
-                  <input
-                    type="color"
+                  <label className="block text-sm font-medium mb-2" htmlFor="project-color">Farbe</label>
+                  <ColorPicker
+                    id="project-color"
                     value={(form.color as string) || '#7aa39a'}
-                    onChange={(e) => update('color', e.target.value)}
-                    className="project-form-field h-12 w-full rounded"
+                    onChange={(color) => update('color', color)}
                   />
                 </div>
               </div>
@@ -2317,7 +2317,7 @@ function ProjectForm({
             try {
               await ensureTagByName(name, {
                 description: values.description,
-                color: isInTagPalette(values.color as string) ? values.color : TAG_PALETTE[0],
+                color: values.color || TAG_PALETTE[0],
               });
               const next = new Set(selectedTags);
               next.add(name);
@@ -2346,7 +2346,7 @@ function ProjectForm({
               const ensured = await ensureCategoryByName(name, {
                 description: values.description,
                 standardRef: values.standardRef,
-                color: isInFixedPalette(values.color as string) ? values.color : FIXED_PALETTE[0],
+                color: values.color || FIXED_PALETTE[0],
               });
               if (!ensured?.id) throw new Error('missing-category-id');
               update('categoryId', ensured.id);
@@ -2604,9 +2604,9 @@ export default function Projects() {
         <h2 className="text-3xl font-bold text-viridian">Angebote & Projekte</h2>
         <button
           onClick={() => setModal({ mode: 'create', requestId: createClientRequestId() })}
-          className="bg-viridian text-white px-4 py-2 rounded hover:bg-cambridge-blue"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-viridian bg-viridian px-4 py-2 text-sm font-medium text-white transition-colors hover:border-cambridge-blue hover:bg-cambridge-blue"
         >
-          Neues Projekt
+          <Plus className="h-4 w-4" /> Neues Projekt
         </button>
       </div>
 
@@ -2618,7 +2618,7 @@ export default function Projects() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Suchen…"
-              className="w-full rounded border border-gray-300 py-2 pl-9 pr-10"
+              className="w-full rounded-xl border border-gray-300 py-2 pl-9 pr-10"
             />
             {search.trim() && (
               <button

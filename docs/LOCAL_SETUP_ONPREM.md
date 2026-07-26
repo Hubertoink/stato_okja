@@ -1,4 +1,4 @@
-# StatO 2.0 – Local/On‑Prem Setup (Docker)
+# StatO – Local/On‑Prem Setup (Docker)
 
 Dieses Dokument beschreibt ein **On‑Prem / Local** Setup, bei dem StatO vollständig auf einem eigenen PC/Server läuft (ohne die von uns bereitgestellten Online‑Backends wie `api.stato-okja.de` / `devapi.stato-okja.de`).
 

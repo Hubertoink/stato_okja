@@ -1,4 +1,4 @@
-# Stato 2.0 - Projekt-Zusammenfassung
+# StatO – Projekt-Zusammenfassung
 
 ## ✅ Was wurde erstellt?
 
@@ -79,7 +79,7 @@ Ein **Production-Ready Starter-Setup** für ein modernes Web-Anwendungs-Projekt 
 ## 🏗️ Projekt-Struktur
 
 ```
-Stato_2.0/
+stato/
 ├── 📁 backend/              NestJS API
 │   ├── src/
 │   │   ├── activities/      ✅ Activities Module (CRUD + Filter)
@@ -114,7 +114,7 @@ Stato_2.0/
 ├── SETUP.md                 ✅ Dev-Workflows
 ├── CONTRIBUTING.md          ✅ Contribution Guide
 ├── CHANGELOG.md             ✅ Versions-Historie
-└── stato-2.0.code-workspace ✅ VSCode Config
+└── VS Code Workspace-Konfiguration ✅
 ```
 
 ---
@@ -372,7 +372,7 @@ npm run dev
 
 Dieses Projekt wurde mit viel Sorgfalt und Liebe zum Detail erstellt. Es soll OKJA-Teams eine moderne, datenschutzkonforme Lösung für ihre Statistik-Arbeit bieten.
 
-**Viel Erfolg mit Stato 2.0!** 🎉
+**Viel Erfolg mit StatO!** 🎉
 
 ---
 

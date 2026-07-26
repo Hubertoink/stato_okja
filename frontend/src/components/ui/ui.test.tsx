@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
 import { Button } from './Button';
+import { ColorPicker } from './ColorPicker';
 import { FilterChip } from './FilterChip';
 import { ErrorState, LoadingState } from './StatePanel';
 
@@ -36,5 +37,21 @@ describe('shared UI components', () => {
     rerender(<ErrorState action={{ label: 'Erneut versuchen', onClick: onRetry }} />);
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts hexadecimal values and generates random colors', () => {
+    const onChange = vi.fn();
+    render(<ColorPicker value="#0f766e" onChange={onChange} />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Farbwert als Hexadezimalzahl' }), {
+      target: { value: '#b079d2' },
+    });
+    expect(onChange).toHaveBeenLastCalledWith('#b079d2');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zufällige Farbe erzeugen' }));
+    expect(onChange).toHaveBeenLastCalledWith(expect.stringMatching(/^#[0-9a-f]{6}$/));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Farbauswahl öffnen' }));
+    expect(screen.getByRole('dialog', { name: 'Farbe auswählen' })).toHaveClass('fixed');
   });
 });

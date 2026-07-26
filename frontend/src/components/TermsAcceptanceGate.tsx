@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { LogOut } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { TERMS_OF_USE_VERSION, TermsOfUseModal } from '@/components/LegalModals';
+import { TermsOfUseModal } from '@/components/LegalModals';
+import { useLegalContent } from '@/lib/legalContent';
 
 export default function TermsAcceptanceGate() {
   const { logout, refresh } = useAuth();
@@ -10,6 +11,7 @@ export default function TermsAcceptanceGate() {
   const [termsOpen, setTermsOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: legalContent, isError: legalContentError, isFetching: legalContentFetching } = useLegalContent();
 
   const accept = async () => {
     if (!accepted) return;
@@ -30,7 +32,7 @@ export default function TermsAcceptanceGate() {
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
         <h1 className="text-2xl font-bold text-gray-800">Nutzungsbedingungen bestätigen</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Bitte lies die Nutzungsbedingungen (Stand {TERMS_OF_USE_VERSION}) und stimme ihnen zu, um StatO zu verwenden.
+          Bitte lies die Nutzungsbedingungen (Stand {legalContent?.termsVersion || 'wird geladen…'}) und stimme ihnen zu, um StatO zu verwenden.
         </p>
         <button type="button" onClick={() => setTermsOpen(true)} className="mt-4 text-sm font-semibold text-viridian underline">
           Nutzungsbedingungen anzeigen
@@ -39,8 +41,9 @@ export default function TermsAcceptanceGate() {
           <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="mt-0.5 h-4 w-4" />
           <span>Ich habe die Nutzungsbedingungen gelesen und stimme ihnen zu.</span>
         </label>
+        {legalContentError && <p className="mt-3 text-sm text-red-600">Die Nutzungsbedingungen konnten nicht geladen werden. Bitte lade die Seite erneut.</p>}
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-        <button type="button" disabled={!accepted || busy} onClick={accept} className="dashboard-accent-solid-button mt-5 flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold disabled:opacity-60">
+        <button type="button" disabled={!accepted || busy || legalContentFetching || legalContentError} onClick={accept} className="dashboard-accent-solid-button mt-5 flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold disabled:opacity-60">
           {busy ? 'Wird gespeichert…' : 'Zustimmen und StatO öffnen'}
         </button>
         <button type="button" onClick={logout} className="mx-auto mt-4 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">

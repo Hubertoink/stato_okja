@@ -1,0 +1,9 @@
+{
+  "termsVersion": "2026-07-25",
+  "updatedAt": "2026-07-25",
+  "documents": {
+    "imprint": { "title": "Impressum", "file": "imprint.de.md" },
+    "privacy": { "title": "Datenschutz & Datenverwendung", "file": "privacy.de.md" },
+    "terms": { "title": "Nutzungsbedingungen", "file": "terms.de.md" }
+  }
+}

@@ -166,16 +166,17 @@ export default function LogbookEntryFlyout({
                 <button
                   type="button"
                   onClick={() => setStatusMenuOpen((value) => !value)}
-                  className={`logbook-status-pill logbook-status-pill--${entry.status} inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold`}
+                  className={`status-control logbook-status-pill logbook-status-pill--${entry.status}`}
                 >
                   <LogbookStatusIcon status={entry.status} />
                   <span className="hidden md:inline">{logbookStatusLabels[entry.status]}</span>
-                  <ChevronDown
-                    className={`hidden h-4 w-4 transition-transform md:block ${statusMenuOpen ? 'rotate-180' : ''}`}
-                  />
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {statusMenuOpen && (
                   <Menu className="absolute right-0 top-full z-10 mt-2 min-w-48">
+                    <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
+                      Logbuchstatus
+                    </div>
                     <StatusMenuItem
                       status="open"
                       active={entry.status === 'open'}
@@ -205,14 +206,14 @@ export default function LogbookEntryFlyout({
               </div>
             )}
             {canManage && !archived && entry && (
-              <Button
+              <IconButton
                 variant="secondary"
-                size="sm"
                 onClick={() => navigate(`/logbook/${entry.id}/edit`)}
+                aria-label="Bearbeiten"
+                title="Bearbeiten"
               >
-                <Edit3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Bearbeiten</span>
-              </Button>
+                <Edit3 className="h-5 w-5" />
+              </IconButton>
             )}
             {canManage && !archived && (
               <button

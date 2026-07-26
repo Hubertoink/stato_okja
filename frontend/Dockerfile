@@ -1,10 +1,11 @@
 # Frontend production Dockerfile (React + Vite) with unprivileged Nginx
 # Build context must be the repository root so npm can use the workspace lockfile.
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY VERSION ./VERSION
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
 RUN npm ci --workspace frontend --include-workspace-root=false --no-audit --no-fund
@@ -24,9 +25,15 @@ ARG VITE_COMMIT_SHA
 ENV VITE_COMMIT_SHA=${VITE_COMMIT_SHA}
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runner
+FROM nginxinc/nginx-unprivileged:1.29-alpine AS runner
 USER root
 WORKDIR /usr/share/nginx/html
+
+# Refresh Alpine packages before removing the otherwise unused curl stack.
+# This keeps the final Nginx image on the patched package revisions published
+# by the upstream Alpine repository.
+RUN apk upgrade --no-cache && \
+		apk del --no-network curl
 
 # Remove default content and config
 RUN rm -rf ./* /etc/nginx/conf.d/* /etc/nginx/templates/*

@@ -1,4 +1,4 @@
-# Stato 2.0 - Changelog
+# StatO – Changelog
 
 Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert.
 
@@ -17,6 +17,82 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Attachment-Upload mit MinIO
 - Offline-PWA Funktionalität
 - Azure AD OIDC Integration
+
+---
+
+## [1.0.5] - 2026-07-26
+
+### Fixed
+- Kategorien und Tags behalten frei gewählte Farben und zeigen diese zuverlässig
+  in ihren Verwaltungslisten an.
+- Die Projektfarbe wird bei breiten Ansichten unterhalb des Bildbereichs angeordnet.
+
+---
+
+## [1.0.4] - 2026-07-26
+
+### Added
+- Einheitlicher Farbwähler für Kategorien, Tags und Projektfarben mit Hex-Eingabe,
+  Farbton-, Sättigungs- und Helligkeitssteuerung.
+- Würfel-Schaltfläche für zufällig erzeugte, kontrastreiche Farben.
+
+### Changed
+- Die bisherigen festen Farbpaletten in den Kategorie- und Tag-Formularen durch den
+  gemeinsamen Farbwähler ersetzt.
+
+---
+
+## [1.0.3] - 2026-07-26
+
+### Fixed
+- Verwaiste, verwundbare `brace-expansion`-Kopie aus dem Backend-Produktimage entfernt.
+- Automatischer GitHub-Release checkt das Repository aus, bevor er die Release-Artefakte
+  und Release Notes veröffentlicht.
+
+---
+
+## [1.0.2] - 2026-07-26
+
+### Security
+- Backend-Image aktualisiert `body-parser` auf 2.3.0 und `brace-expansion` auf 2.1.2.
+- Swagger verwendet im Produktimage die gepatchte transitive Abhängigkeit `js-yaml` 5.2.2.
+- Frontend-Image aktualisiert beim Build die Alpine-Laufzeitpakete, einschließlich
+  OpenSSL, Expat, Libxml2 und Libpng.
+
+---
+
+## [1.0.1] - 2026-07-26
+
+### Added
+- Demo-Umfragen mit Beispielantworten, Auswertung und Verlauf ergänzt.
+
+### Changed
+- Die zusätzliche Beschreibung auf der Übersichtsseite der Umfragen entfernt.
+
+### Fixed
+- Windows-On-Prem-Installer kann die Berechtigungen eines bestehenden Upload-Volumes
+  wiederherstellen, obwohl der Backend-Container standardmäßig alle Capabilities ablegt.
+- Docker-Builds schließen TypeScript-Buildcache aus und erzeugen dadurch zuverlässig
+  das Backend-Startartefakt.
+
+---
+
+## [1.0.0] - 2026-07-26
+
+### Added
+- Wiederholbare Umfragen mit Runden, Antwortauswertung, Verlauf und Exporten.
+- On-Prem-Installer für Linux/macOS und Windows sowie versionierte GHCR-Images.
+- Automatische Prüfung eines frischen PostgreSQL-Bootstraps mit allen Migrationen.
+
+### Changed
+- Produkt-, Browser- und PWA-Bezeichnung auf **StatO** vereinheitlicht.
+- Release-Prozess mit Versionsprüfung, SBOM, Provenance und veröffentlichten
+  Installationsartefakten eingeführt.
+
+### Fixed
+- Detailansicht von Umfragen für mobile Bildschirme optimiert.
+- PostgreSQL-Migrationen bei einem frischen Bootstrap und erneutem Start
+  idempotent gemacht.
 
 ---
 

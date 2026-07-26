@@ -16,6 +16,7 @@ import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { isStrictSecurityMode } from '../config/security.config';
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from './password-policy';
+import { getTermsOfUseVersion } from '../legal/legal-content';
 import { getTwoFactorCodeTtlSeconds, isTwoFactorAuthenticationEnabled } from './two-factor.config';
 
 export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
@@ -65,7 +66,6 @@ export type RefreshSessionMetadata = {
 const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
 const DEFAULT_REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_INVITE_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
-const TERMS_OF_USE_VERSION = '2026-07-15';
 const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
   'admin@example.org',
   'admin@example.com',
@@ -189,7 +189,7 @@ export class AuthService {
     });
     await this.refreshSessions.save(session);
 
-    return { refreshToken, refreshCsrfToken, refreshTokenMaxAgeMs };
+    return { refreshToken, refreshCsrfToken, refreshTokenMaxAgeMs, sessionId: session.id };
   }
 
   private async getSessionUser(user: User): Promise<AuthUserResponse> {
@@ -215,7 +215,7 @@ export class AuthService {
       avatarUrl,
       theme,
       mustChangePassword: user.mustChangePassword === true,
-      termsAcceptanceRequired: user.termsAcceptedVersion !== TERMS_OF_USE_VERSION,
+      termsAcceptanceRequired: user.termsAcceptedVersion !== (await getTermsOfUseVersion()),
     };
   }
 
@@ -223,9 +223,15 @@ export class AuthService {
     user: User,
     options?: { auditLogin?: boolean; sessionMetadata?: RefreshSessionMetadata },
   ): Promise<AuthenticatedSessionResponse> {
-    const payload = { sub: user.id, role: user.role, orgId: user.orgId, name: user.name || null };
-    const token = await this.jwt.signAsync(payload);
     const refreshSession = await this.issueRefreshSession(user, options?.sessionMetadata);
+    const payload = {
+      sub: user.id,
+      sid: refreshSession.sessionId,
+      role: user.role,
+      orgId: user.orgId,
+      name: user.name || null,
+    };
+    const token = await this.jwt.signAsync(payload);
 
     if (options?.auditLogin !== false) {
       try {
@@ -298,7 +304,8 @@ export class AuthService {
     return { ok: true as const };
   }
 
-  async listRefreshSessions(userId: string) {
+  async listRefreshSessions(userId: string, currentRefreshToken?: string) {
+    const currentTokenId = splitRefreshToken(currentRefreshToken || '')?.id || null;
     const sessions = await this.refreshSessions.find({
       where: { userId },
       order: { lastUsedAt: 'DESC' },
@@ -310,6 +317,7 @@ export class AuthService {
       expiresAt: session.expiresAt,
       userAgent: session.userAgent,
       ipAddress: session.ipAddress,
+      isCurrent: session.tokenId === currentTokenId,
     }));
   }
 
@@ -728,7 +736,7 @@ export class AuthService {
       throw new Error('Invite token wurde ersetzt oder ist nicht mehr gültig');
     }
     await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
-    user.termsAcceptedVersion = TERMS_OF_USE_VERSION;
+    user.termsAcceptedVersion = await getTermsOfUseVersion();
     user.termsAcceptedAt = new Date();
     await this.users.save(user);
     return this.login(user, metadata);
@@ -737,7 +745,7 @@ export class AuthService {
   async acceptTerms(userId: string) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
-    user.termsAcceptedVersion = TERMS_OF_USE_VERSION;
+    user.termsAcceptedVersion = await getTermsOfUseVersion();
     user.termsAcceptedAt = new Date();
     await this.users.save(user);
     return this.getProfile(user.id);
@@ -797,16 +805,33 @@ export class AuthService {
     return { ok: true };
   }
 
-  async resetPassword(token: string, password: string) {
-    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(token, {
-      secret: getJwtSecret(),
-    });
-    if (!decoded || decoded.purpose !== 'reset') throw new Error('Invalid reset token');
-    const user = await this.users.findOne({ where: { id: decoded.sub } });
-    if (!user) throw new Error('User not found');
-    if ((decoded.version ?? -1) !== (user.passwordResetTokenVersion || 0)) {
-      throw new Error('Reset token bereits verbraucht oder ersetzt');
+  private async getUserForResetToken(token: string) {
+    let decoded: { sub: string; purpose?: string; version?: number };
+    try {
+      decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(token, {
+        secret: getJwtSecret(),
+      });
+    } catch {
+      throw new UnauthorizedException('Ungültiger oder abgelaufener Reset-Link');
     }
+    if (!decoded || decoded.purpose !== 'reset') {
+      throw new UnauthorizedException('Ungültiger oder abgelaufener Reset-Link');
+    }
+    const user = await this.users.findOne({ where: { id: decoded.sub } });
+    if (!user) throw new UnauthorizedException('Ungültiger oder abgelaufener Reset-Link');
+    if ((decoded.version ?? -1) !== (user.passwordResetTokenVersion || 0)) {
+      throw new UnauthorizedException('Ungültiger oder abgelaufener Reset-Link');
+    }
+    return user;
+  }
+
+  async validateResetToken(token: string) {
+    await this.getUserForResetToken(token);
+    return { ok: true };
+  }
+
+  async resetPassword(token: string, password: string) {
+    const user = await this.getUserForResetToken(token);
     await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: true });
     return { ok: true };
   }

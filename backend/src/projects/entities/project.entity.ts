@@ -5,6 +5,7 @@ import { Organization } from '../../orgs/entities/organization.entity';
 import { ProjectDocument } from './project-document.entity';
 
 @Entity('projects')
+@Index('IDX_projects_orgId', ['orgId'])
 @Index('IDX_projects_orgId_clientRequestId_unique', ['orgId', 'clientRequestId'], { unique: true })
 export class Project {
   @PrimaryGeneratedColumn('uuid')

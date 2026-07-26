@@ -19,6 +19,7 @@ services:
     networks: [backend-db]
 
   backend:
+    image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -48,6 +49,7 @@ services:
       DB_DATABASE: ${POSTGRES_DB:-stato_prod}
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
       DB_MIGRATIONS_RUN: ${DB_MIGRATIONS_RUN:-true}
+      DB_BOOTSTRAP_ON_EMPTY: ${DB_BOOTSTRAP_ON_EMPTY:-true}
       DB_LOGGING: ${DB_LOGGING:-false}
       RATE_LIMIT_TTL: ${RATE_LIMIT_TTL:-60}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
@@ -76,6 +78,8 @@ services:
       PUBLIC_LOGIN_SUBTITLE: ${PUBLIC_LOGIN_SUBTITLE:-OKJA Statistik & Dokumentation}
       PUBLIC_LIVE_REFRESH_INTERVAL_MS: ${PUBLIC_LIVE_REFRESH_INTERVAL_MS:-30000}
       STATS_OVERVIEW_CACHE_TTL_MS: ${STATS_OVERVIEW_CACHE_TTL_MS:-30000}
+      # Editable, organisation-specific legal documents (mounted read-only below)
+      LEGAL_CONTENT_DIR: ${LEGAL_CONTENT_DIR:-/app/legal}
 
       SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.org}
       SUPERADMIN_PASSWORD: "${SUPERADMIN_PASSWORD:-}"
@@ -96,6 +100,7 @@ services:
     volumes:
       # Persistiert /uploads (u.a. /uploads/images)
       - backend-uploads:/app/uploads
+      - ${LEGAL_CONTENT_DIR_HOST:-./legal}:${LEGAL_CONTENT_DIR:-/app/legal}:ro
     networks: [frontend-backend, backend-db]
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -105,6 +110,7 @@ services:
       start_period: 20s
 
   frontend:
+    image: ghcr.io/hubertoink/stato-frontend:${STATO_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: frontend/Dockerfile
@@ -174,7 +180,7 @@ services:
     build:
       context: .
       dockerfile: backup/Dockerfile
-    image: ${BACKUP_IMAGE:-stato-backup:local}
+    image: ${BACKUP_IMAGE:-ghcr.io/hubertoink/stato-backup:${STATO_IMAGE_TAG:-local}}
     restart: unless-stopped
     read_only: true
     tmpfs:

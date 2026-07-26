@@ -50,6 +50,7 @@ services:
       DB_DATABASE: ${DB_DATABASE:-stato_prod}
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
       DB_MIGRATIONS_RUN: ${DB_MIGRATIONS_RUN:-true}
+      DB_BOOTSTRAP_ON_EMPTY: ${DB_BOOTSTRAP_ON_EMPTY:-true}
       DB_LOGGING: ${DB_LOGGING:-false}
       DB_REQUIRE_SSL: ${DB_REQUIRE_SSL:-false}
       DB_SSL: ${DB_SSL:-false}
@@ -74,6 +75,8 @@ services:
       PUBLIC_LOGIN_SUBTITLE: ${PUBLIC_LOGIN_SUBTITLE:-OKJA Statistik & Dokumentation}
       PUBLIC_LIVE_REFRESH_INTERVAL_MS: ${PUBLIC_LIVE_REFRESH_INTERVAL_MS:-30000}
       STATS_OVERVIEW_CACHE_TTL_MS: ${STATS_OVERVIEW_CACHE_TTL_MS:-30000}
+      # Editable, organisation-specific legal documents (mounted read-only below)
+      LEGAL_CONTENT_DIR: ${LEGAL_CONTENT_DIR:-/app/legal}
       # Superadmin credentials (set on startup)
       SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.org}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
@@ -90,6 +93,7 @@ services:
         condition: service_healthy
     volumes:
       - backend-uploads:/app/uploads
+      - ${LEGAL_CONTENT_DIR_HOST:-./legal}:${LEGAL_CONTENT_DIR:-/app/legal}:ro
     networks: [stato]
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]

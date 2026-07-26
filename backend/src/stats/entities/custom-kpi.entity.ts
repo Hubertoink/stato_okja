@@ -36,7 +36,7 @@ export class CustomKpi {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Index()
+  @Index('IDX_custom_kpis_userId')
   @Column({ type: 'uuid' })
   userId!: string;
 

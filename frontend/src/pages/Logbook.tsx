@@ -149,18 +149,27 @@ export default function Logbook() {
           >
             <SlidersHorizontal className="h-4 w-4" />
           </IconButton>
-          <Button
+          <IconButton
+            variant="primary"
+            className="rounded-full md:hidden"
             onClick={() => navigate('/logbook/new')}
+            title="Eintrag erstellen"
+            aria-label="Eintrag erstellen"
           >
             <Plus className="h-5 w-5" />
-            <span className="hidden sm:inline">Eintrag erstellen</span>
+          </IconButton>
+          <Button
+            className="hidden md:inline-flex"
+            onClick={() => navigate('/logbook/new')}
+          >
+            + Neuer Eintrag
           </Button>
         </div>
         )}
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-        <Badge variant="neutral">
+        <Badge variant="count">
           {isLoading ? 'Treffer werden geladen…' : `Treffer: ${data?.total || 0}`}
         </Badge>
         {search.trim() && (

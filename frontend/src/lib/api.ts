@@ -52,7 +52,7 @@ function summarizeParams(value: unknown): Record<string, unknown> | undefined {
   return Object.fromEntries(entries);
 }
 
-async function refreshAccessToken() {
+export async function refreshAccessToken() {
   if (!refreshAccessTokenPromise) {
     refreshAccessTokenPromise = (async () => {
       const csrfToken = getStoredRefreshCsrfToken();

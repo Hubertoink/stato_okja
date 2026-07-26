@@ -51,7 +51,7 @@ Wichtig: Wenn deine Dev-Umgebung „komisch alte Features“ zeigt, läuft sehr 
   - `LOGIN_LOCKOUT_MINUTES=10`
   - `DB_TYPE=postgres`
   - `DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE`
-  - Optional: `DB_SYNCHRONIZE=false`, `DB_LOGGING=false`
+  - `DB_SYNCHRONIZE=false`, `DB_MIGRATIONS_RUN=true`, `DB_BOOTSTRAP_ON_EMPTY=true`, `DB_LOGGING=false`
   - Fuer externe DB mit TLS: `DB_SSL=true`, `DB_SSL_REJECT_UNAUTHORIZED=true`
   - Fuer bewusst vertraute Nicht-SSL-DB: `DB_REQUIRE_SSL=false`, `DB_SSL=false`
 
@@ -62,6 +62,7 @@ Wichtig:
 - Wenn Mittwald fuer den Backend-Service keine Umgebungsvariable gesetzt hat, endet der Container genau mit dem Fehler aus deinem Log.
 - `TZ=Europe/Berlin` im Backend-Container behebt keine verschobenen Audit-Log-Zeiten zuverlaessig. Entscheidend ist die Postgres-Session-Zeitzone bzw. der Spaltentyp (`timestamp without time zone` vs. `timestamptz`).
 - Das Backend erzwingt deshalb fuer Postgres jetzt UTC auf der DB-Session. Neue Audit-Logs werden damit konsistent gespeichert, auch wenn Mittwald oder die DB selbst lokal auf Europe/Berlin laufen.
+- Bei einer wirklich leeren Managed-Postgres-Datenbank erstellt das Backend mit `DB_BOOTSTRAP_ON_EMPTY=true` einmalig das Basisschema und fuehrt danach alle Migrationen aus. Es ist kein manuelles Umschalten von `DB_SYNCHRONIZE` notwendig. Bei einer teilweise vorhandenen Datenbank ohne `users`-Tabelle bricht der Start bewusst ab, statt ein unbekanntes Schema zu veraendern.
 
 ## 4) Frontend-Container
 

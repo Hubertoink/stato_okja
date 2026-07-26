@@ -1,7 +1,7 @@
 # Backend production Dockerfile (NestJS)
 # Build context must be the repository root so npm can use the workspace lockfile.
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -13,7 +13,7 @@ COPY backend ./backend
 WORKDIR /app/backend
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 # npm installs workspace dependencies below /app/backend/node_modules. The
@@ -24,9 +24,12 @@ ENV NODE_PATH=/app/backend/node_modules
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
+# NPM is only required while building the image. Removing it keeps its bundled
+# package-manager toolchain out of the production runtime image.
 RUN npm ci --workspace backend --include-workspace-root=false --omit=dev --no-audit --no-fund \
 	&& node -e "require.resolve('@nestjs/swagger')" \
-	&& npm cache clean --force
+	&& npm cache clean --force \
+	&& rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 COPY --from=builder --chown=node:node /app/backend/dist ./dist
 COPY --chown=node:node legal ./legal

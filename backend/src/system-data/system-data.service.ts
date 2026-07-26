@@ -7,7 +7,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import archiver = require('archiver');
 import { createReadStream } from 'fs';
 import { stat, unlink } from 'fs/promises';
 import { join, relative, resolve as resolvePath, sep } from 'path';
@@ -31,6 +30,23 @@ import {
   type SystemDataManagedTable,
   type SystemDataManifest,
 } from './system-data-import-archive-reader';
+
+type ExportArchive = import('archiver').Archiver;
+type ExportArchiveEntry = import('archiver').EntryData;
+type ArchiverModule = {
+  ZipArchive: new (options: { zlib: { level: number } }) => ExportArchive;
+};
+
+let archiverModulePromise: Promise<ArchiverModule> | undefined;
+
+function loadArchiverModule() {
+  // Archiver v8 is ESM-only while StatO's Nest build remains CommonJS. Keep
+  // the native dynamic import intact instead of transpiling it to require().
+  archiverModulePromise ??= new Function('specifier', 'return import(specifier)')(
+    'archiver',
+  ) as Promise<ArchiverModule>;
+  return archiverModulePromise;
+}
 
 export type SystemDataActor = {
   id: string;
@@ -297,7 +313,8 @@ export class SystemDataService {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `stato-system-data-export-${timestamp}.zip`;
       const output = new PassThrough();
-      const archive = archiver('zip', { zlib: { level: 6 } });
+      const { ZipArchive } = await loadArchiverModule();
+      const archive = new ZipArchive({ zlib: { level: 6 } });
       archive.on('warning', (error) => this.logger.warn(`System export ZIP warning: ${error.message}`));
       archive.on('error', (error) => output.destroy(error));
       archive.pipe(output);
@@ -1016,7 +1033,7 @@ export class SystemDataService {
   }
 
   private async writeExportArchive(input: {
-    archive: archiver.Archiver;
+    archive: ExportArchive;
     output: PassThrough;
     queryRunner: QueryRunner;
     managedTables: ManagedTable[];
@@ -1102,7 +1119,7 @@ export class SystemDataService {
     return Readable.from(this.iterateJsonExportRows(queryRunner, table));
   }
 
-  private appendExportStream(archive: archiver.Archiver, stream: Readable, name: string): Promise<void> {
+  private appendExportStream(archive: ExportArchive, stream: Readable, name: string): Promise<void> {
     return new Promise((resolve, reject) => {
       let settled = false;
       const finish = (callback: () => void) => {
@@ -1113,7 +1130,7 @@ export class SystemDataService {
         stream.off('error', onStreamError);
         callback();
       };
-      const onEntry = (entry: archiver.EntryData) => {
+      const onEntry = (entry: ExportArchiveEntry) => {
         if (entry.name === name) finish(resolve);
       };
       const onStreamError = (error: Error) => {

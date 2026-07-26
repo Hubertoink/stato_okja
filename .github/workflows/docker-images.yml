@@ -54,7 +54,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -151,6 +151,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          pull: true
           sbom: true
           provenance: true
           platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
@@ -208,6 +209,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          pull: true
           sbom: true
           provenance: true
           platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
@@ -270,6 +272,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          pull: true
           sbom: true
           provenance: true
           platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
@@ -296,6 +299,7 @@ jobs:
           load: true
           tags: stato-backend:security-scan
           cache-from: type=gha
+          pull: true
 
       - name: Build frontend image for scanning
         uses: docker/build-push-action@v6
@@ -305,6 +309,7 @@ jobs:
           load: true
           tags: stato-frontend:security-scan
           cache-from: type=gha
+          pull: true
           build-args: |
             VITE_API_BASE_URL=/api
             VITE_ENABLE_DEV_TOOLS=false
@@ -318,6 +323,7 @@ jobs:
           load: true
           tags: stato-backup:security-scan
           cache-from: type=gha
+          pull: true
 
       - name: Scan backend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -395,7 +401,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Download repository SBOM
         uses: actions/download-artifact@v4

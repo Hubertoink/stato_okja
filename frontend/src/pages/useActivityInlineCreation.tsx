@@ -1,6 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { CategoryFormModal, StaffFormModal, TagFormModal } from '@/components/settings/EntityFormModals';
-import { FIXED_PALETTE, TAG_PALETTE, isInFixedPalette, isInTagPalette } from '@/lib/colorPalette';
 import type { StaffRole } from '@/lib/staff';
 import type { ActivityFormState } from './activityEditorShared';
 import { appendUniqueId, findNamedEntity } from './activityEditorShared';
@@ -111,7 +110,7 @@ export function useActivityInlineCreation({
 
     try {
       let categoryId = existing?.id;
-      const color = isInFixedPalette(values.color as string) ? values.color : FIXED_PALETTE[0];
+      const color = values.color || '#7aa39a';
 
       if (existing?.id && existing.active === false) {
         await updateCategory.mutateAsync({
@@ -148,7 +147,7 @@ export function useActivityInlineCreation({
 
     try {
       let tagId = existing?.id;
-      const color = isInTagPalette(values.color as string) ? values.color : TAG_PALETTE[0];
+      const color = values.color || '#7aa39a';
 
       if (existing?.id && existing.active === false) {
         await updateTag.mutateAsync({
@@ -209,7 +208,7 @@ export function useActivityInlineCreation({
     <>
       {tagCreateOpen ? (
         <TagFormModal
-          initial={{ color: TAG_PALETTE[0] }}
+          initial={{ color: '#7aa39a' }}
           onCancel={() => setTagCreateOpen(false)}
           onSubmit={handleTagCreate}
         />
@@ -217,7 +216,7 @@ export function useActivityInlineCreation({
 
       {categoryCreateOpen ? (
         <CategoryFormModal
-          initial={{ color: FIXED_PALETTE[0] }}
+          initial={{ color: '#7aa39a' }}
           onCancel={() => setCategoryCreateOpen(false)}
           onSubmit={handleCategoryCreate}
         />

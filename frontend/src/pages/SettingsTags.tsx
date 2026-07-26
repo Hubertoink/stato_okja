@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TAG_PALETTE, getBgClass, isInTagPalette } from '@/lib/colorPalette';
+import { getBgClass } from '@/lib/colorPalette';
 import Toggle from '@/components/Toggle';
 import { Tag, useCreateTag, useDeleteTag, useTags, useTaxonomyAccess, useUpdateTag } from '@/lib/taxonomy';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -149,9 +149,8 @@ export default function SettingsTags() {
           initial={modal.mode === 'edit' ? modal.tag : undefined}
           onSubmit={(values) => {
             if (modal.mode === 'create') {
-              // Tags sind per Default aktiv
-              // Enforce palette on create: fallback to first palette color if invalid
-              const color = isInTagPalette(values.color as string) ? values.color : TAG_PALETTE[0];
+              // Tags sind per Default aktiv.
+              const color = values.color || '#7aa39a';
               create.mutate(
                 { ...values, color, active: true },
                 { onSuccess: () => setModal(null) },
@@ -159,12 +158,7 @@ export default function SettingsTags() {
             } else if (modal.tag?.id) {
               const { id: _r, ...rest } = (values || {}) as Partial<Tag>;
               void _r;
-              // Enforce palette on update
-              const color = isInTagPalette(rest.color as string)
-                ? rest.color
-                : isInTagPalette(modal.tag?.color as string)
-                  ? modal.tag?.color
-                  : TAG_PALETTE[0];
+              const color = rest.color || modal.tag?.color || '#7aa39a';
               update.mutate(
                 { id: modal.tag.id, data: { ...rest, color } },
                 { onSuccess: () => setModal(null) },

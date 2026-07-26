@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FIXED_PALETTE, getBgClass, isInFixedPalette } from '@/lib/colorPalette';
+import { getBgClass } from '@/lib/colorPalette';
 import { DEFAULT_CATEGORIES } from '@/lib/defaultCategories';
 import Toggle from '@/components/Toggle';
 import {
@@ -213,9 +213,7 @@ export default function SettingsCategories() {
           initial={modal.mode === 'edit' ? modal.category : undefined}
           onSubmit={(values) => {
             if (modal.mode === 'create') {
-              const color = isInFixedPalette(values.color as string)
-                ? values.color
-                : FIXED_PALETTE[0];
+              const color = values.color || '#7aa39a';
               create.mutate(
                 { ...values, color, active: true },
                 { onSuccess: () => setModal(null) },
@@ -223,11 +221,7 @@ export default function SettingsCategories() {
             } else if (modal.category?.id) {
               const { id: _r, ...rest } = (values || {}) as Partial<Category>;
               void _r;
-              const color = isInFixedPalette(rest.color as string)
-                ? rest.color
-                : isInFixedPalette(modal.category?.color as string)
-                  ? modal.category?.color
-                  : FIXED_PALETTE[0];
+              const color = rest.color || modal.category?.color || '#7aa39a';
               update.mutate(
                 { id: modal.category.id, data: { ...rest, color } },
                 { onSuccess: () => setModal(null) },

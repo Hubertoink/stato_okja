@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'fs';
 import path from 'path';
-import packageJson from './package.json';
 
-const appVersion = process.env.VITE_APP_VERSION || packageJson.version;
+const appVersion = process.env.VITE_APP_VERSION || readFileSync(path.resolve(__dirname, '../VERSION'), 'utf8').trim();
 const MANUAL_CHUNK_RULES: Array<{ match: string; chunk: string }> = [
   { match: '/node_modules/recharts/', chunk: 'vendor-charts' },
   { match: '/node_modules/jspdf/', chunk: 'vendor-jspdf' },
@@ -54,8 +54,8 @@ export default defineConfig({
       },
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Stato 1.0 - OKJA Statistik',
-        short_name: 'Stato',
+        name: 'StatO',
+        short_name: 'StatO',
         description: 'Statistik- und Dokumentationssystem für offene Kinder- und Jugendarbeit',
         theme_color: '#5B6CFF',
         background_color: '#FAFBFF',

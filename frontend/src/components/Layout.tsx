@@ -66,7 +66,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const appVersion = String(import.meta.env.VITE_APP_VERSION || '1.0.0');
+  const appVersion = String(import.meta.env.VITE_APP_VERSION || 'unbekannt');
   const appVersionDisplay = appVersion.replace(/\.0$/, '');
   const restrictToPasswordChange = user?.mustChangePassword === true;
   const { scope, setScope, switching: orgSwitching } = useOrgScope();

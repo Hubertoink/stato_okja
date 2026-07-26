@@ -5,6 +5,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY VERSION ./VERSION
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
 RUN npm ci --workspace frontend --include-workspace-root=false --no-audit --no-fund

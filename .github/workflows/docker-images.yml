@@ -23,6 +23,56 @@ env:
   FRONTEND_API_BASE_URL: ${{ vars.FRONTEND_API_BASE_URL || '/api' }}
 
 jobs:
+  quality:
+    name: Tests und PostgreSQL-Migrationen
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: stato_migration_test
+          POSTGRES_USER: stato_migration_test
+          POSTGRES_PASSWORD: stato_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stato_migration_test -d stato_migration_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MIGRATION_TEST_POSTGRES: 'true'
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: stato_migration_test
+      DB_PASSWORD: stato_migration_test
+      DB_DATABASE: stato_migration_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check release version
+        run: npm run version:check
+
+      - name: Test and build backend
+        run: |
+          npm run test --workspace=backend -- --runInBand
+          npm run build --workspace=backend
+
+      - name: Test and build frontend
+        run: |
+          npm run test --workspace=frontend
+          npm run build --workspace=frontend
+
   backend:
     name: Backend image
     if: github.ref != 'refs/heads/demo' && github.base_ref != 'demo'

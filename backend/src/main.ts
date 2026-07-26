@@ -14,6 +14,7 @@ import { assertTwoFactorRuntimeConfig, isTwoFactorAuthenticationEnabled } from '
 import { EmailService } from './email/email.service';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { bootstrapEmptyDatabase } from './database/bootstrap-empty-database';
+import backendPackage from '../package.json';
 
 const PG_TIMESTAMP_OID = 1114;
 
@@ -72,9 +73,9 @@ async function bootstrap() {
 
   // Swagger API Documentation
   const config = new DocumentBuilder()
-    .setTitle('Stato 1.0 API')
+    .setTitle('StatO API')
     .setDescription('OKJA Statistik- und Dokumentationssystem API')
-    .setVersion('1.0.0')
+    .setVersion(backendPackage.version)
     .addBearerAuth()
     .addTag('auth', 'Authentifizierung')
     .addTag('activities', 'Tätigkeiten & Aktivitäten')
@@ -103,7 +104,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`\n🚀 Stato 1.0 Backend running on: http://localhost:${port}`);
+  console.log(`\n🚀 StatO Backend ${backendPackage.version} running on: http://localhost:${port}`);
   if (shouldExposeSwaggerDocs()) {
     console.log(`📚 API Documentation: http://localhost:${port}/api/docs\n`);
   } else {

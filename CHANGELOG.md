@@ -20,6 +20,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.2] - 2026-07-26
+
+### Security
+- Backend-Image aktualisiert `body-parser` auf 2.3.0 und `brace-expansion` auf 2.1.2.
+- Swagger verwendet im Produktimage die gepatchte transitive Abhängigkeit `js-yaml` 5.2.2.
+- Frontend-Image aktualisiert beim Build die Alpine-Laufzeitpakete, einschließlich
+  OpenSSL, Expat, Libxml2 und Libpng.
+
+---
+
 ## [1.0.1] - 2026-07-26
 
 ### Added

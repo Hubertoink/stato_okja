@@ -27,7 +27,8 @@ COPY frontend/package.json ./frontend/package.json
 # NPM is only required while building the image. Removing it keeps its bundled
 # package-manager toolchain out of the production runtime image.
 RUN npm ci --workspace backend --include-workspace-root=false --omit=dev --no-audit --no-fund \
-	&& node -e "require.resolve('@nestjs/swagger')" \
+	&& npm install --prefix /app/node_modules/@nestjs/swagger js-yaml@5.2.2 --no-save --package-lock=false --ignore-scripts --no-audit --no-fund \
+	&& node -e "for (const dependency of ['@nestjs/swagger', 'body-parser', 'brace-expansion']) require.resolve(dependency); if (require('/app/node_modules/@nestjs/swagger/node_modules/js-yaml/package.json').version !== '5.2.2') process.exit(1)" \
 	&& npm cache clean --force \
 	&& rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 

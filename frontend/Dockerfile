@@ -29,9 +29,11 @@ FROM nginxinc/nginx-unprivileged:1.29-alpine AS runner
 USER root
 WORKDIR /usr/share/nginx/html
 
-# The runtime healthcheck uses wget. Remove the otherwise unused curl stack
-# from the final image to reduce the reachable package surface.
-RUN apk del --no-network curl
+# Refresh Alpine packages before removing the otherwise unused curl stack.
+# This keeps the final Nginx image on the patched package revisions published
+# by the upstream Alpine repository.
+RUN apk upgrade --no-cache && \
+		apk del --no-network curl
 
 # Remove default content and config
 RUN rm -rf ./* /etc/nginx/conf.d/* /etc/nginx/templates/*

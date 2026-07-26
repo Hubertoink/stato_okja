@@ -2604,9 +2604,9 @@ export default function Projects() {
         <h2 className="text-3xl font-bold text-viridian">Angebote & Projekte</h2>
         <button
           onClick={() => setModal({ mode: 'create', requestId: createClientRequestId() })}
-          className="bg-viridian text-white px-4 py-2 rounded hover:bg-cambridge-blue"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-viridian bg-viridian px-4 py-2 text-sm font-medium text-white transition-colors hover:border-cambridge-blue hover:bg-cambridge-blue"
         >
-          Neues Projekt
+          <Plus className="h-4 w-4" /> Neues Projekt
         </button>
       </div>
 

@@ -351,6 +351,36 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     return this.staffDto(saved);
   }
 
+  async deleteRound(id: string, roundId: string, user: SurveyActor) {
+    const seed = await this.findSeriesSeed(id, user);
+    const round = await this.surveys.findOneBy({ id: roundId });
+    if (!round || round.seriesId !== this.seriesIdOf(seed)) {
+      throw new NotFoundException('Umfragerunde nicht gefunden.');
+    }
+    assertExactOrgScopedEntityAccess(round, user);
+    if ((round.roundNumber || 1) <= 1) {
+      throw new BadRequestException('Die erste Umfragerunde kann nicht einzeln gelöscht werden.');
+    }
+    if (round.status !== 'draft') {
+      throw new BadRequestException('Nur noch nicht gestartete Umfragerunden können gelöscht werden.');
+    }
+    const responsesCount = await this.countResponses(round.id);
+    if (responsesCount > 0) {
+      throw new BadRequestException('Umfragerunden mit Antworten können nicht gelöscht werden.');
+    }
+    await this.surveys.remove(round);
+    await this.audit.log({
+      action: AuditAction.DELETE,
+      entityType: 'survey_round',
+      entityId: round.id,
+      entityTitle: round.title,
+      orgId: round.orgId,
+      user,
+      details: { seriesId: round.seriesId, roundNumber: round.roundNumber },
+    });
+    return { id: roundId };
+  }
+
   async start(id: string, user: SurveyActor) {
     const survey = await this.surveys.findOneBy({ id });
     if (!survey) throw new NotFoundException('Umfrage nicht gefunden.');

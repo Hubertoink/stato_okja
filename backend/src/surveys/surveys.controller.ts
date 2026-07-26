@@ -22,6 +22,7 @@ export class SurveysController {
   @Post() create(@Body() body: CreateSurveyDto, @Req() req: SurveyRequest) { const actor = this.actor(req); return this.service.create(body, resolveOrgScope(actor), actor); }
   @Get(':id/rounds') rounds(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.listRounds(id, this.actor(req)); }
   @Post(':id/rounds') createRound(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.createRound(id, this.actor(req)); }
+  @Delete(':id/rounds/:roundId') deleteRound(@Param('id') id: string, @Param('roundId') roundId: string, @Req() req: SurveyRequest) { return this.service.deleteRound(id, roundId, this.actor(req)); }
   @Get(':id/trend') trend(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.trend(id, this.actor(req)); }
   @Get(':id') findOne(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.findOneScoped(id, this.actor(req)); }
   @Patch(':id') update(@Param('id') id: string, @Body() body: UpdateSurveyDto, @Req() req: SurveyRequest) { return this.service.update(id, body, this.actor(req)); }

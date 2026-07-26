@@ -257,6 +257,12 @@ export function useCreateSurveyRound() {
     async (id: string) => (await api.post(`/surveys/${id}/rounds`)).data as Survey,
   );
 }
+export function useDeleteSurveyRound() {
+  return useSurveyMutation(
+    async ({ surveyId, roundId }: { surveyId: string; roundId: string }) =>
+      (await api.delete(`/surveys/${surveyId}/rounds/${roundId}`)).data as { id: string },
+  );
+}
 export function useSurveyResponses(id?: string) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({

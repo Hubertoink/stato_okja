@@ -41,6 +41,7 @@ import {
   type SurveyQuestion,
   useCloseSurvey,
   useCreateSurveyRound,
+  useDeleteSurveyRound,
   useDeleteSurveyResponse,
   useStartSurvey,
   useSurvey,
@@ -272,6 +273,7 @@ function SurveyOverview({
   onDownloadQr,
   onCopy,
   onPrint,
+  onDeleteDraftRound,
 }: {
   survey: Survey;
   rounds: Survey[];
@@ -282,6 +284,7 @@ function SurveyOverview({
   onDownloadQr: () => void;
   onCopy: () => void;
   onPrint: () => void;
+  onDeleteDraftRound: (round: Survey) => void;
 }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -347,7 +350,7 @@ function SurveyOverview({
                     <td className="px-2 py-3">
                       <SurveyStatusBadge status={round.status} />
                     </td>
-                    <td className="px-2 py-3 text-right">{round.responsesCount}</td>
+                    <td className="px-2 py-3 text-right"><div className="flex items-center justify-end gap-1"><span>{round.responsesCount}</span>{round.status === 'draft' && (round.roundNumber || 1) > 1 ? <span className="tooltip-wrapper opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"><Button size="icon" variant="ghost" className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700" aria-label={`Umfragerunde ${round.roundNumber} löschen`} title="Umfragerunde löschen" onClick={(event) => { event.stopPropagation(); onDeleteDraftRound(round); }}><Trash2 className="h-4 w-4" /></Button><span className="tooltip-bubble">Umfragerunde löschen</span></span> : null}</div></td>
                   </tr>
                 ))}
               </tbody>
@@ -426,6 +429,7 @@ export default function SurveyDetail() {
   const close = useCloseSurvey();
   const deleteResponse = useDeleteSurveyResponse();
   const createRound = useCreateSurveyRound();
+  const deleteRound = useDeleteSurveyRound();
   const [tab, setTab] = useState<'overview' | 'responses' | 'analytics' | 'trend'>('overview');
   const [edit, setEdit] = useState(false);
   const [responseToDelete, setResponseToDelete] = useState<string | null>(null);
@@ -742,6 +746,22 @@ export default function SurveyDetail() {
           { type: 'error' },
         ),
     });
+  const deleteDraftRound = (round: Survey) => {
+    deleteRound.mutate(
+      { surveyId: id, roundId: round.id },
+      {
+        onSuccess: () => {
+          if (selectedRoundId === round.id) setSelectedRoundId(id);
+          showToast(`Umfragerunde ${round.roundNumber} gelöscht.`);
+        },
+        onError: (error: any) =>
+          showToast(
+            error?.response?.data?.message || 'Umfragerunde konnte nicht gelöscht werden.',
+            { type: 'error' },
+          ),
+      },
+    );
+  };
   const showRoundPicker = rounds.length > 1 && (tab === 'responses' || tab === 'analytics');
   const canEdit = survey.status === 'draft' && (survey.roundNumber || 1) === 1;
   return (
@@ -851,6 +871,7 @@ export default function SurveyDetail() {
           onDownloadQr={downloadQr}
           onCopy={() => void copy()}
           onPrint={print}
+          onDeleteDraftRound={deleteDraftRound}
         />
       ) : null}
       {tab === 'responses' ? (

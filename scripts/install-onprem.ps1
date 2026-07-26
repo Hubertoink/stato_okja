@@ -8,6 +8,18 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2.0
 
+function Write-Banner {
+    Write-Host @'
+   ____  _        _
+  / ___|| |_ __ _| |_ ___
+  \___ \| __/ _` | __/ _ \
+   ___) | || (_| | || (_) |
+  |____/ \__\__,_|\__\___/
+'@ -ForegroundColor Magenta
+    Write-Host '  OKJA Statistik & Dokumentation' -ForegroundColor Cyan
+    Write-Host '  On-Prem Installer' -ForegroundColor DarkGray
+}
+
 function Write-Step([string]$Message) {
     Write-Host "`n==> $Message" -ForegroundColor Cyan
 }
@@ -16,6 +28,58 @@ function Assert-Command([string]$Name, [string]$InstallHint) {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "'$Name' wurde nicht gefunden. Bitte zuerst $InstallHint installieren."
     }
+    Write-Host "  [OK] $Name gefunden" -ForegroundColor Green
+}
+
+function Test-DockerCompose {
+    $previousErrorActionPreference = $ErrorActionPreference
+    $composeExitCode = 1
+    try {
+        # Capture native stderr so the installer can show one actionable message instead of
+        # PowerShell's raw NativeCommandError output.
+        $ErrorActionPreference = 'Continue'
+        $composeOutput = & docker compose version 2>&1
+        $composeExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($composeExitCode -ne 0) {
+        if ($env:STATO_DIAGNOSTICS -eq 'true' -and $composeOutput) { $composeOutput | Out-Host }
+        throw "Das Docker-Compose-Plugin fehlt. Installiere bzw. aktualisiere Docker Desktop, sodass 'docker compose' verfügbar ist."
+    }
+    Write-Host '  [OK] Docker Compose verfügbar' -ForegroundColor Green
+}
+
+function Test-DockerEngine {
+    $previousErrorActionPreference = $ErrorActionPreference
+    $dockerExitCode = 1
+    try {
+        # Windows PowerShell otherwise writes native Docker stderr before the script can
+        # explain how to recover from an unavailable Docker Desktop engine.
+        $ErrorActionPreference = 'Continue'
+        $dockerOutput = & docker info 2>&1
+        $dockerExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($dockerExitCode -ne 0) {
+        Write-Host "`nFEHLER: Docker Desktop ist nicht erreichbar." -ForegroundColor Red
+        Write-Host 'StatO kann erst installiert werden, wenn die Docker-Engine läuft.' -ForegroundColor Yellow
+        Write-Host "`nSo geht es weiter:"
+        Write-Host '  1. Docker Desktop starten.'
+        Write-Host '  2. Warten, bis „Engine running“ angezeigt wird.'
+        Write-Host '  3. Falls nötig in Docker Desktop die WSL-2-basierte Engine aktivieren.'
+        Write-Host '  4. In einer neuen PowerShell prüfen: docker info'
+        Write-Host '  5. Anschließend diesen StatO-Installer erneut starten.'
+        if ($env:STATO_DIAGNOSTICS -eq 'true' -and $dockerOutput) {
+            Write-Host "`nTechnische Docker-Diagnose:" -ForegroundColor DarkYellow
+            $dockerOutput | Out-Host
+        }
+        throw 'Installation abgebrochen: Docker ist nicht erreichbar.'
+    }
+    Write-Host '  [OK] Docker Engine erreichbar' -ForegroundColor Green
 }
 
 function Invoke-Native([string]$Command, [string[]]$Arguments) {
@@ -104,14 +168,12 @@ function Assert-NoExistingOnPremDataForFreshConfig {
     }
 }
 
+Write-Banner
+Write-Step 'Voraussetzungen prüfen'
 Assert-Command git Git
 Assert-Command docker Docker
-
-Invoke-Native docker @('compose', 'version')
-& docker info *> $null
-if ($LASTEXITCODE -ne 0) {
-    throw 'Docker ist nicht erreichbar. Bitte Docker Desktop bzw. den Docker-Dienst starten.'
-}
+Test-DockerCompose
+Test-DockerEngine
 
 if (-not $InstallDirectory) {
     if ((Test-Path (Join-Path $PWD '.git')) -and (Test-Path (Join-Path $PWD 'docker-compose.onprem.yml'))) {

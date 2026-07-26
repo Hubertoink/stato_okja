@@ -2194,7 +2194,7 @@ function ProjectForm({
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
             <section className={projectSectionClassName} style={projectSectionStyle}>
               {renderSectionHeader('Bild & Farbe')}
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr),20rem] gap-4 items-start">
+              <div className="grid grid-cols-1 gap-4 items-start">
                 {renderImageManager()}
                 <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
                   <label className="block text-sm font-medium mb-2" htmlFor="project-color">Farbe</label>

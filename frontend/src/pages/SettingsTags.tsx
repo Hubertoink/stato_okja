@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { getBgClass } from '@/lib/colorPalette';
 import Toggle from '@/components/Toggle';
 import { Tag, useCreateTag, useDeleteTag, useTags, useTaxonomyAccess, useUpdateTag } from '@/lib/taxonomy';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -84,7 +83,8 @@ export default function SettingsTags() {
             <div key={t.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
               <div className="min-w-0 flex items-center gap-3">
                 <span
-                  className={`inline-block w-4 h-4 rounded ${getBgClass(t.color as string, 'bg-slate-400')}`}
+                  className="inline-block h-4 w-4 rounded bg-slate-400"
+                  style={{ backgroundColor: t.color || undefined }}
                 />
                 <div>
                   <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">

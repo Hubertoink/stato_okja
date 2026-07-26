@@ -20,6 +20,25 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.0] - 2026-07-26
+
+### Added
+- Wiederholbare Umfragen mit Runden, Antwortauswertung, Verlauf und Exporten.
+- On-Prem-Installer für Linux/macOS und Windows sowie versionierte GHCR-Images.
+- Automatische Prüfung eines frischen PostgreSQL-Bootstraps mit allen Migrationen.
+
+### Changed
+- Produkt-, Browser- und PWA-Bezeichnung auf **StatO** vereinheitlicht.
+- Release-Prozess mit Versionsprüfung, SBOM, Provenance und veröffentlichten
+  Installationsartefakten eingeführt.
+
+### Fixed
+- Detailansicht von Umfragen für mobile Bildschirme optimiert.
+- PostgreSQL-Migrationen bei einem frischen Bootstrap und erneutem Start
+  idempotent gemacht.
+
+---
+
 ## [2.0.0] - 2025-10-10
 
 ### 🎉 Initiales Release

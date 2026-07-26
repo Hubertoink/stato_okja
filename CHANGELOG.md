@@ -20,6 +20,22 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.1] - 2026-07-26
+
+### Added
+- Demo-Umfragen mit Beispielantworten, Auswertung und Verlauf ergänzt.
+
+### Changed
+- Die zusätzliche Beschreibung auf der Übersichtsseite der Umfragen entfernt.
+
+### Fixed
+- Windows-On-Prem-Installer kann die Berechtigungen eines bestehenden Upload-Volumes
+  wiederherstellen, obwohl der Backend-Container standardmäßig alle Capabilities ablegt.
+- Docker-Builds schließen TypeScript-Buildcache aus und erzeugen dadurch zuverlässig
+  das Backend-Startartefakt.
+
+---
+
 ## [1.0.0] - 2026-07-26
 
 ### Added

@@ -298,7 +298,10 @@ else {
 # before the unprivileged backend starts; existing uploaded files stay intact.
 Write-Step 'Berechtigungen des persistenten Upload-Verzeichnisses pruefen'
 $uploadsArguments = $composeArguments + @(
-    'run', '--rm', '--no-deps', '--user', '0', '--cap-add', 'CHOWN',
+    # The production service drops all Linux capabilities. The short-lived
+    # repair container therefore needs the three narrowly scoped capabilities
+    # required to create and chown files in a volume created by an older image.
+    'run', '--rm', '--no-deps', '--user', '0', '--cap-add', 'CHOWN', '--cap-add', 'DAC_OVERRIDE', '--cap-add', 'FOWNER',
     '--entrypoint', 'sh', 'backend', '-c',
     'mkdir -p /app/uploads/images /app/uploads/project-documents && chown -R node:node /app/uploads'
 )

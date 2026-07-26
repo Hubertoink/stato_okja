@@ -211,6 +211,35 @@ function handleProjectTemplates(method: string, segments: string[], body: Record
   return undefined;
 }
 
+function handleSurveys(method: string, segments: string[], params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult | undefined {
+  if (segments[0] === 'public' && segments[1] === 'surveys' && segments[2]) {
+    const token = decodeURIComponent(segments[2]);
+    if (method === 'get' && segments.length === 3) return ok(demo.getDemoPublicSurvey(token));
+    if (method === 'post' && segments[3] === 'responses') return ok(demo.submitDemoPublicSurvey(token, body.answers as never), 201);
+  }
+  if (segments[0] !== 'surveys') return undefined;
+  if (method === 'get' && segments.length === 1) return ok(demo.listDemoSurveys(params));
+  if (method === 'post' && segments.length === 1) return ok(demo.createDemoSurvey(body), 201);
+  if (method === 'get' && segments[1] === 'meta' && segments[2] === 'has-archived') return ok(demo.hasDemoArchivedSurveys());
+  const id = segments[1] ? decodeURIComponent(segments[1]) : '';
+  if (!id) return undefined;
+  if (method === 'get' && segments.length === 2) {
+    const survey = demo.getDemoSurvey(id);
+    if (!survey) throw new DemoHttpError(404, 'Umfrage nicht gefunden');
+    return ok(survey);
+  }
+  if (method === 'patch' && segments.length === 2) return ok(demo.updateDemoSurvey(id, body));
+  if (method === 'post' && segments[2] === 'start') return ok(demo.startDemoSurvey(id));
+  if (method === 'post' && segments[2] === 'close') return ok(demo.closeDemoSurvey(id));
+  if (method === 'get' && segments[2] === 'rounds') return ok(demo.listDemoSurveyRounds(id));
+  if (method === 'post' && segments[2] === 'rounds') return ok(demo.createDemoSurveyRound(id), 201);
+  if (method === 'get' && segments[2] === 'analytics') return ok(demo.getDemoSurveyAnalytics(id));
+  if (method === 'get' && segments[2] === 'trend') return ok(demo.getDemoSurveyTrend(id));
+  if (method === 'get' && segments[2] === 'responses') return ok(demo.listDemoSurveyResponses(id));
+  if (method === 'delete' && segments[2] === 'responses' && segments[3]) return ok(demo.deleteDemoSurveyResponse(id, decodeURIComponent(segments[3])));
+  return undefined;
+}
+
 function handleRequest(method: string, path: string, params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult {
   const segments = path.split('/').filter(Boolean);
   const authResult = handleAuth(method, path, body);
@@ -227,6 +256,8 @@ function handleRequest(method: string, path: string, params: Record<string, unkn
   if (logbookResult) return logbookResult;
   const templateResult = handleProjectTemplates(method, segments, body);
   if (templateResult) return templateResult;
+  const surveyResult = handleSurveys(method, segments, params, body);
+  if (surveyResult) return surveyResult;
 
   if (method === 'get' && path === '/locations') return ok(demo.listDemoLocations(params));
   if (method === 'post' && path === '/locations') return ok(demo.createDemoLocation(body), 201);

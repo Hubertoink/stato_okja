@@ -101,11 +101,11 @@ END$$;`);
       await ensureColumn('archived', new TableColumn({ name: 'archived', type: 'boolean', isNullable: false, default: 'false' }));
       await ensureColumn('orgId', new TableColumn({ name: 'orgId', type: uuidType, isNullable: true }));
 
-      // Ensure index exists (ignore errors if already present)
-      try {
+      // PostgreSQL aborts the surrounding migration transaction on a duplicate
+      // index error, even when it is caught. Inspect first instead.
+      const projectTable = await queryRunner.getTable('projects');
+      if (!projectTable?.indices.some((index) => index.name === 'IDX_projects_orgId')) {
         await queryRunner.createIndex('projects', new TableIndex({ name: 'IDX_projects_orgId', columnNames: ['orgId'] }));
-      } catch {
-        // noop
       }
     }
 

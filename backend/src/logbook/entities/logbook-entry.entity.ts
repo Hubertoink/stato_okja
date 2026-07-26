@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -15,6 +16,10 @@ import { User } from '../../users/entities/user.entity';
 import { LogbookComment } from './logbook-comment.entity';
 
 @Entity('logbook_entries')
+@Index('IDX_logbook_entries_org_occurredAt', ['orgId', 'occurredAt'])
+@Index('IDX_logbook_entries_org_status', ['orgId', 'status'])
+@Index('IDX_logbook_entries_activityId', ['activityId'])
+@Index('IDX_logbook_entries_projectId', ['projectId'])
 export class LogbookEntry {
   @PrimaryGeneratedColumn('uuid')
   id: string;

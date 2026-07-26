@@ -45,25 +45,21 @@ export class ProjectDocuments20260602120000 implements MigrationInterface {
       );
     }
 
-    try {
+    const table = await queryRunner.getTable('project_documents');
+    if (!table?.indices.some((index) => index.name === 'IDX_project_documents_projectId')) {
       await queryRunner.createIndex(
         'project_documents',
         new TableIndex({ name: 'IDX_project_documents_projectId', columnNames: ['projectId'] }),
       );
-    } catch {
-      // ignore when the index already exists
     }
 
-    try {
+    if (!table?.indices.some((index) => index.name === 'IDX_project_documents_storageRef')) {
       await queryRunner.createIndex(
         'project_documents',
         new TableIndex({ name: 'IDX_project_documents_storageRef', columnNames: ['storageRef'] }),
       );
-    } catch {
-      // ignore when the index already exists
     }
 
-    const table = await queryRunner.getTable('project_documents');
     const hasProjectFk = (table?.foreignKeys || []).some((foreignKey) =>
       foreignKey.columnNames.includes('projectId'),
     );

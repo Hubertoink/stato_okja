@@ -81,15 +81,12 @@ END$$;`);
       await ensureColumn('archived', new TableColumn({ name: 'archived', type: 'boolean', isNullable: false, default: 'false' }));
       await ensureColumn('orgId', new TableColumn({ name: 'orgId', type: uuidType, isNullable: true }));
 
-      try {
+      const projectTemplatesTable = await queryRunner.getTable('project_templates');
+      if (!projectTemplatesTable?.indices.some((index) => index.name === 'IDX_project_templates_orgId')) {
         await queryRunner.createIndex('project_templates', new TableIndex({ name: 'IDX_project_templates_orgId', columnNames: ['orgId'] }));
-      } catch {
-        // noop
       }
-      try {
+      if (!projectTemplatesTable?.indices.some((index) => index.name === 'IDX_project_templates_archived')) {
         await queryRunner.createIndex('project_templates', new TableIndex({ name: 'IDX_project_templates_archived', columnNames: ['archived'] }));
-      } catch {
-        // noop
       }
     }
   }

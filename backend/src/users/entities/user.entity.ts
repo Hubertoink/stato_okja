@@ -75,6 +75,7 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   twoFactorCodeExpiresAt!: Date | null;
 
+  @Index('IDX_users_refreshTokenId')
   @Column({ type: 'varchar', length: 80, nullable: true })
   refreshTokenId!: string | null;
 

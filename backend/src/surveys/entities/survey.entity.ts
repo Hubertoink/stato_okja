@@ -28,7 +28,7 @@ export type SurveyQuestion = {
 @Entity('surveys')
 @Index(['orgId', 'status'])
 @Index(['publicToken'], { unique: true })
-@Index(['seriesId', 'roundNumber'], { unique: true })
+@Index('IDX_surveys_series_round', ['seriesId', 'roundNumber'], { unique: true })
 export class Survey {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

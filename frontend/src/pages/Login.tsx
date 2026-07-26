@@ -10,9 +10,11 @@ import { useNavigate } from 'react-router-dom';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 
 export default function Login() {
-  const { login, verifyTwoFactor, resendTwoFactor } = useAuth();
+  const { login, verifyTwoFactor, resendTwoFactor, completeInitialSetup } = useAuth();
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('admin');
+  const [setupPassword, setSetupPassword] = useState('');
+  const [setupPasswordConfirmation, setSetupPasswordConfirmation] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [twoFactorEmailHint, setTwoFactorEmailHint] = useState<string | null>(null);
@@ -96,6 +98,26 @@ export default function Login() {
     }
   }
 
+  async function onInitialSetup(e: FormEvent) {
+    e.preventDefault();
+    if (setupPassword !== setupPasswordConfirmation) {
+      setError('Die Passwörter stimmen nicht überein.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await completeInitialSetup(setupPassword);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      navigate('/dashboard');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #5B6CFF 0%, #7C8FFF 30%, #9F7AEA 70%, #00CFE8 100%)'}}>
       <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white/50">
@@ -106,6 +128,43 @@ export default function Login() {
           <p className="text-gray-500 mt-2 font-medium">{branding.loginSubtitle}</p>
         </div>
 
+        {branding.initialSetupRequired ? (
+          <form className="space-y-6" onSubmit={onInitialSetup}>
+            <div className="rounded-2xl border border-viridian/20 bg-viridian/5 px-4 py-3 text-sm text-gray-600">
+              Lege jetzt das Passwort für den Administratorzugang fest. Es wird nicht in der Server-Konfiguration gespeichert.
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Admin-Passwort</label>
+              <input
+                type="password"
+                required
+                minLength={12}
+                value={setupPassword}
+                onChange={(event) => setSetupPassword(event.target.value)}
+                className="input-modern w-full"
+                placeholder="Mindestens 12 Zeichen"
+                autoComplete="new-password"
+              />
+              <p className="mt-2 text-xs text-gray-500">Mit Groß- und Kleinbuchstaben, Zahl und Sonderzeichen.</p>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Passwort wiederholen</label>
+              <input
+                type="password"
+                required
+                value={setupPasswordConfirmation}
+                onChange={(event) => setSetupPasswordConfirmation(event.target.value)}
+                className="input-modern w-full"
+                placeholder="Passwort wiederholen"
+                autoComplete="new-password"
+              />
+            </div>
+            <button type="submit" className="btn-modern w-full py-3" disabled={busy}>
+              Adminzugang einrichten
+            </button>
+            {error && <div className="chip chip-danger mt-2 w-full justify-center">{error}</div>}
+          </form>
+        ) : (
         <form className="space-y-6" onSubmit={onSubmit}>
           {!challengeToken ? (
             <>
@@ -223,6 +282,7 @@ export default function Login() {
 
           {error && <div className="chip chip-danger mt-2 w-full justify-center">{error}</div>}
         </form>
+        )}
 
         <div className="mt-6 flex items-center justify-center gap-3 flex-wrap text-sm text-gray-500">
           <button

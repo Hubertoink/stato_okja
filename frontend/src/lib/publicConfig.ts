@@ -11,6 +11,7 @@ export interface PublicConfig {
   loginSubtitle: string;
   liveRefreshIntervalMs: number;
   twoFactorEnabled: boolean;
+  initialSetupRequired: boolean;
   passwordResetMode: PasswordResetMode;
   forgotPasswordEnabled: boolean;
   adminTemporaryPasswordEnabled: boolean;
@@ -23,6 +24,7 @@ export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   loginSubtitle: 'OKJA Statistik & Dokumentation',
   liveRefreshIntervalMs: 15000,
   twoFactorEnabled: false,
+  initialSetupRequired: false,
   passwordResetMode: 'email',
   forgotPasswordEnabled: true,
   adminTemporaryPasswordEnabled: false,
@@ -56,6 +58,10 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
     loginSubtitle: String(data.loginSubtitle || DEFAULT_PUBLIC_CONFIG.loginSubtitle),
     liveRefreshIntervalMs: parseLiveRefreshIntervalMs(data.liveRefreshIntervalMs),
     twoFactorEnabled: typeof data.twoFactorEnabled === 'boolean' ? data.twoFactorEnabled : DEFAULT_PUBLIC_CONFIG.twoFactorEnabled,
+    initialSetupRequired:
+      typeof data.initialSetupRequired === 'boolean'
+        ? data.initialSetupRequired
+        : DEFAULT_PUBLIC_CONFIG.initialSetupRequired,
     passwordResetMode: mode,
     forgotPasswordEnabled:
       typeof data.forgotPasswordEnabled === 'boolean'

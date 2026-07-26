@@ -10,6 +10,12 @@ export class LoginDto {
   password!: string;
 }
 
+export class InitialSetupDto {
+  @IsString()
+  @MinLength(1)
+  password!: string;
+}
+
 export class VerifyTwoFactorDto {
   @IsString()
   @MinLength(1)

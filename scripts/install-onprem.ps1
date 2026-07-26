@@ -229,11 +229,9 @@ if (-not (Test-Path $envFile)) {
 
     $databasePassword = "StatoDb_$(New-RandomHex 24)_A9!"
     $jwtSecret = New-RandomHex 48
-    $adminPassword = "Stato_$(New-RandomHex 16)_A9!"
 
     Set-EnvValue $envFile 'POSTGRES_PASSWORD' $databasePassword
     Set-EnvValue $envFile 'JWT_SECRET' $jwtSecret
-    Set-EnvValue $envFile 'SUPERADMIN_PASSWORD' $adminPassword
     $envCreated = $true
 }
 else {
@@ -247,6 +245,7 @@ Ensure-EnvValue $envFile 'STATO_PUBLIC_HOST' ''
 Ensure-EnvValue $envFile 'HTTPS_BIND_ADDRESS' '0.0.0.0'
 Ensure-EnvValue $envFile 'HTTPS_PORT' '443'
 Ensure-EnvValue $envFile 'STATO_IMAGE_TAG' ''
+Ensure-EnvValue $envFile 'INITIAL_SETUP_ENABLED' 'true'
 
 # An explicit environment value is useful for one-command installs; otherwise
 # retain the version selected in .env.onprem for subsequent installer runs.
@@ -427,8 +426,7 @@ else {
 }
 Write-Host 'Superadmin:    admin@stato.local'
 if ($envCreated) {
-    Write-Host "Startpasswort: $adminPassword" -ForegroundColor Yellow
-    Write-Host "`nBitte das Startpasswort sicher notieren und nach dem ersten Login aendern." -ForegroundColor Yellow
+    Write-Host 'Ersteinrichtung: Beim ersten Aufruf das Admin-Passwort festlegen.' -ForegroundColor Yellow
 }
 Write-Host "`nNach Aenderungen an .env.onprem den Installer erneut ausfuehren mit:"
 Write-Host "  cd `"$InstallDirectory`"; .\scripts\install-onprem.ps1"

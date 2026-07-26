@@ -72,7 +72,7 @@ Zufalls-Secrets und starten alle Container. Eine bereits vorhandene
 
 Die persistenten On-Prem-Daten liegen in einem stabil benannten Docker-Volume.
 Existiert dieser bereits, während `.env.onprem` fehlt, bricht der Installer ab,
-statt neue Secrets und ein nicht wirksames Startpasswort auszugeben. In diesem
+statt neue Secrets und eine unklare Ersteinrichtung auszugeben. In diesem
 Fall die bisherige `.env.onprem` wiederherstellen oder den alten Datenbestand
 bewusst sichern und entfernen, bevor eine neue Installation angelegt wird.
 
@@ -103,9 +103,10 @@ curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/
 $env:STATO_INSTALL_DIR = 'C:\Stato'; irm https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.ps1 | iex
 ```
 
-Der Installer zeigt das initial generierte Superadmin-Passwort am Ende einmal
-an. Es steht ausserdem in `.env.onprem` und sollte nach dem ersten Login
-geaendert werden. Fuer den produktiven Betrieb danach mindestens Domain, E-Mail,
+Beim ersten Aufruf von StatO erscheint stattdessen die Ersteinrichtung. Dort
+wird das Passwort für `admin@stato.local` festgelegt; es wird ausschließlich
+als Passwort-Hash in der Datenbank gespeichert und nicht in `.env.onprem`
+abgelegt. Fuer den produktiven Betrieb danach mindestens Domain, E-Mail,
 Branding und HTTPS-Einstellungen pruefen.
 
 ## Veroeffentlichten Release installieren oder aktualisieren
@@ -211,7 +212,8 @@ Für den mitgelieferten lokalen `postgres`-Service sollten diese Werte normalerw
 ### Initialer Superadmin
 
 - `SUPERADMIN_EMAIL`: Login des ersten Superadmins
-- `SUPERADMIN_PASSWORD`: starkes Passwort
+- `INITIAL_SETUP_ENABLED=true`: aktiviert die einmalige Passwortvergabe bei leerer Datenbank
+- `SUPERADMIN_PASSWORD`: optionales starkes Passwort für einen manuellen Bootstrap oder bewussten Reset
 - `SUPERADMIN_EMAIL_FORCE`: optional, Default `false`
 - `SUPERADMIN_PASSWORD_FORCE`: optional, Default `false`
 
@@ -223,7 +225,8 @@ Mindestanforderung im produktiven/staging Bootstrap:
 
 Präzises Verhalten:
 
-- Beim allerersten Start, wenn noch kein `superadmin` existiert, werden `SUPERADMIN_EMAIL` und `SUPERADMIN_PASSWORD` für die initiale Anlage verwendet.
+- Mit `INITIAL_SETUP_ENABLED=true` erscheint beim allerersten Aufruf die Passwortvergabe für `SUPERADMIN_EMAIL`. Sobald ein Superadmin existiert, ist dieser öffentliche Setup-Schritt dauerhaft geschlossen.
+- Ohne aktivierte Ersteinrichtung werden `SUPERADMIN_EMAIL` und `SUPERADMIN_PASSWORD` beim allerersten Start wie bisher für die initiale Anlage verwendet.
 - Solange `SUPERADMIN_EMAIL_FORCE=false` und `SUPERADMIN_PASSWORD_FORCE=false` bleiben, wird ein bereits existierender Superadmin bei weiteren Container-Starts **nicht** automatisch überschrieben.
 - Wenn `SUPERADMIN_EMAIL_FORCE=true` gesetzt ist, schreibt das Backend beim Start die E-Mail des vorhandenen Superadmins auf den Wert aus `SUPERADMIN_EMAIL` um.
 - Wenn `SUPERADMIN_PASSWORD_FORCE=true` gesetzt ist, schreibt das Backend beim Start den Passwort-Hash des vorhandenen Superadmins neu, also effektiv das Passwort auf den Wert aus `SUPERADMIN_PASSWORD` zurück.
@@ -326,9 +329,10 @@ ENABLE_ORG_MOVE=false
 PASSWORD_RESET_MODE=admin_temp_password
 
 SUPERADMIN_EMAIL=admin@stato.local
-SUPERADMIN_PASSWORD=GENERATED_BY_INSTALLER
+SUPERADMIN_PASSWORD=
 SUPERADMIN_EMAIL_FORCE=false
 SUPERADMIN_PASSWORD_FORCE=false
+INITIAL_SETUP_ENABLED=true
 
 PUBLIC_APP_NAME=StatO
 PUBLIC_ORG_NAME=Stadt Musterstadt
@@ -404,7 +408,7 @@ Manuelle Migrationen sind nur für Sonderfälle nötig, etwa wenn ein separates 
 Nach erfolgreichem Start:
 
 1. Frontend im Browser öffnen
-2. Mit `SUPERADMIN_EMAIL` und `SUPERADMIN_PASSWORD` anmelden
+2. Bei einer neuen Installer-Installation das Passwort für `SUPERADMIN_EMAIL` in der Ersteinrichtung festlegen; bei einer bestehenden Installation normal anmelden
 3. Prüfen, ob Projekte, Benutzerverwaltung und Statistik erreichbar sind
 
 ## Container-Architektur im On-Prem-Compose

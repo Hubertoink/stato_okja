@@ -442,6 +442,44 @@ export class AuthService {
     return { ok: true as const, mode: 'email' as const };
   }
 
+  private isInitialSetupEnabled() {
+    return ['true', '1', 'yes', 'on'].includes(String(process.env.INITIAL_SETUP_ENABLED || '').trim().toLowerCase());
+  }
+
+  async isInitialSetupRequired() {
+    if (!this.isInitialSetupEnabled()) return false;
+    return !(await this.users.findOne({ where: { role: 'superadmin' } }));
+  }
+
+  async completeInitialSetup(password: string, metadata?: RefreshSessionMetadata) {
+    if (!this.isInitialSetupEnabled()) {
+      throw new BadRequestException('Die Ersteinrichtung ist nicht aktiviert.');
+    }
+    if (!isStrongPassword(password)) {
+      throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
+    }
+
+    const existing = await this.users.findOne({ where: { role: 'superadmin' } });
+    if (existing) {
+      throw new ConflictException('Die Ersteinrichtung wurde bereits abgeschlossen.');
+    }
+
+    const email = String(process.env.SUPERADMIN_EMAIL || '').trim().toLowerCase();
+    if (!email || PLACEHOLDER_SUPERADMIN_EMAILS.has(email)) {
+      throw new BadRequestException('SUPERADMIN_EMAIL muss für die Ersteinrichtung gesetzt sein.');
+    }
+
+    const user = this.users.create({
+      email,
+      name: 'Super Admin',
+      role: 'superadmin',
+      passwordHash: await bcrypt.hash(password, 10),
+      mustChangePassword: false,
+    });
+    await this.users.save(user);
+    return this.createAuthenticatedSession(user, { sessionMetadata: metadata });
+  }
+
   async ensureSeed() {
     const strictMode = isStrictSecurityMode();
     const configuredSeedEmail = String(process.env.SUPERADMIN_EMAIL || '').trim().toLowerCase();
@@ -450,6 +488,8 @@ export class AuthService {
     const forceEmail = (process.env.SUPERADMIN_EMAIL_FORCE || '').toLowerCase() === 'true';
     const forcePassword = (process.env.SUPERADMIN_PASSWORD_FORCE || '').toLowerCase() === 'true';
     const existing = await this.users.findOne({ where: { role: 'superadmin' } });
+
+    if (!existing && this.isInitialSetupEnabled()) return;
 
     if (!existing && strictMode) {
       if (!configuredSeedEmail || PLACEHOLDER_SUPERADMIN_EMAILS.has(seedEmail)) {

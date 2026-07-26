@@ -30,7 +30,7 @@ DB_SYNCHRONIZE=false
 SWAGGER_ENABLED=false
 ```
 
-Der produktive Erststart einer leeren Datenbank ist streng: `SUPERADMIN_EMAIL` darf kein Platzhalter sein und `SUPERADMIN_PASSWORD` muss mindestens 12 Zeichen mit Grossbuchstaben, Kleinbuchstaben, Zahl und Sonderzeichen enthalten.
+Der produktive Erststart einer leeren Datenbank ist streng: `SUPERADMIN_EMAIL` darf kein Platzhalter sein und `SUPERADMIN_PASSWORD` muss mindestens 12 Zeichen mit Grossbuchstaben, Kleinbuchstaben, Zahl und Sonderzeichen enthalten. On-Prem kann alternativ `INITIAL_SETUP_ENABLED=true` setzen: Dann wird das Passwort einmalig beim ersten Browser-Aufruf vergeben und nicht als Klartext-ENV gespeichert.
 
 ## GitHub Schnellreferenz
 
@@ -137,6 +137,7 @@ Hinweis: Postgres-Sessions werden vom Backend auf UTC gesetzt. `TZ=Europe/Berlin
 | `SUPERADMIN_PASSWORD` | `admin`, wenn leer und nicht Strict Mode | Initiales Passwort. In Produktion/Staging starkes Passwort erforderlich. |
 | `SUPERADMIN_EMAIL_FORCE` | `false` | `true` ueberschreibt beim Backend-Start die E-Mail des bestehenden Superadmins. Danach wieder auf `false` setzen. |
 | `SUPERADMIN_PASSWORD_FORCE` | `false` | `true` setzt beim Backend-Start das Passwort des bestehenden Superadmins neu. Danach wieder auf `false` setzen. |
+| `INITIAL_SETUP_ENABLED` | `false` | Erlaubt bei leerer Datenbank einmalig die Passwortvergabe im Browser; nach Anlage eines Superadmins ist der Endpunkt geschlossen. |
 
 Fuer normalen Betrieb bleiben beide Force-Flags `false`. Sie sind nur fuer bewusste Admin-Resets gedacht.
 

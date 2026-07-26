@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
+  Plus,
   PlusCircle,
   Trash2,
   LogIn,
@@ -638,7 +639,7 @@ export default function Dashboard() {
             size="sm"
             onClick={() => navigate('/logbook/new')}
           >
-            <PlusCircle className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
             Eintrag
           </Button>
         </div>

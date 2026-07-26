@@ -6,6 +6,7 @@ import { useProjects } from '@/lib/projects';
 import { colorFromStringHash } from '@/lib/colors';
 import ProjectPickerModal from '@/pages/ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import {
   CustomKpiDefinition,
   CustomKpiMetric,
@@ -542,38 +543,17 @@ export default function CustomKpiCards({
                 </span>
               </label>
 
-              <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-3">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-sm font-medium text-gray-700">Hintergrundfarbe</div>
-                  <label className="flex h-10 items-center gap-2 rounded-lg border border-gray-300 bg-white py-1 pl-1 pr-2 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:border-viridian">
-                    <input
-                      type="color"
-                      value={normalizeHexColor(form.backgroundColor)}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, backgroundColor: event.target.value }))
-                      }
-                      className="h-8 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
-                      aria-label="Eigene KPI-Hintergrundfarbe wählen"
-                    />
-                    <span>{normalizeHexColor(form.backgroundColor).toUpperCase()}</span>
-                  </label>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {colorOptions.map((color) => {
-                    const active = normalizeHexColor(form.backgroundColor) === color;
-                    return (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setForm((current) => ({ ...current, backgroundColor: color }))}
-                        className={`h-8 w-8 rounded-full border transition-transform ${active ? 'scale-110 border-gray-900 ring-2 ring-gray-900/15' : 'border-gray-300 hover:scale-105'}`}
-                        style={{ backgroundColor: color }}
-                        aria-label={`Farbe ${color} auswählen`}
-                        title={color}
-                      />
-                    );
-                  })}
-                </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="kpi-background-color">
+                  Hintergrundfarbe
+                </label>
+                <ColorPicker
+                  id="kpi-background-color"
+                  value={form.backgroundColor}
+                  onChange={(backgroundColor) =>
+                    setForm((current) => ({ ...current, backgroundColor }))
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

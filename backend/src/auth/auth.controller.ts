@@ -15,6 +15,7 @@ import {
   AcceptInviteDto,
   AdminResetPasswordDto,
   ChangePasswordDto,
+  InitialSetupDto,
   InviteUserDto,
   LoginDto,
   RequestPasswordResetDto,
@@ -148,7 +149,7 @@ export class AuthController {
   }
 
   @Get('public-config')
-  publicConfig() {
+  async publicConfig() {
     const appName = String(process.env.PUBLIC_APP_NAME || 'StatO');
     const orgNameRaw = process.env.PUBLIC_ORG_NAME;
     const orgName = typeof orgNameRaw === 'string' && orgNameRaw.trim() ? orgNameRaw.trim() : null;
@@ -165,6 +166,7 @@ export class AuthController {
       loginSubtitle,
       liveRefreshIntervalMs,
       twoFactorEnabled: this.auth.isTwoFactorAuthenticationEnabled(),
+      initialSetupRequired: await this.auth.isInitialSetupRequired(),
       ...this.auth.getPublicPasswordResetConfig(),
     };
   }
@@ -172,6 +174,17 @@ export class AuthController {
   @Get('legal')
   legalContent() {
     return getPublicLegalContent();
+  }
+
+  @Throttle(AUTH_RATE_LIMIT)
+  @Post('initial-setup')
+  async initialSetup(
+    @Body() body: InitialSetupDto,
+    @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = await this.auth.completeInitialSetup(body.password, getSessionMetadata(req));
+    return this.finalizeAuthSession(res, session);
   }
 
   @Throttle(AUTH_RATE_LIMIT)

@@ -94,6 +94,7 @@ Wichtig:
 | `SUPERADMIN_PASSWORD` | starkes Passwort | Initiales Superadmin-Passwort. In produktiven Bootstrap-Faellen mindestens 12 Zeichen mit Gross-/Kleinbuchstaben, Zahl und Sonderzeichen. |
 | `SUPERADMIN_EMAIL_FORCE` | `true`, `false` | Wenn `true`, wird die bestehende Superadmin-Mail beim Backend-Start ueberschrieben. Nur fuer bewusste Admin-Resets. |
 | `SUPERADMIN_PASSWORD_FORCE` | `true`, `false` | Wenn `true`, wird das bestehende Superadmin-Passwort beim Start neu gesetzt. Nur fuer bewusste Resets. |
+| `INITIAL_SETUP_ENABLED` | `true`, `false` | Erlaubt bei leerer Datenbank einmalig die Passwortvergabe im Browser. Danach ist der Setup-Endpunkt geschlossen. |
 | `PUBLIC_APP_NAME` | Freitext | Anzeigename der Anwendung. |
 | `PUBLIC_ORG_NAME` | Freitext | Optionaler Organisationsname, z. B. fuer die Login-Seite. |
 | `PUBLIC_LOGIN_SUBTITLE` | Freitext | Untertitel auf der Login-Seite. |

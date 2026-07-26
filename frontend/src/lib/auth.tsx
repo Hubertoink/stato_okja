@@ -48,6 +48,7 @@ interface AuthState {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
+  completeInitialSetup: (password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   verifyTwoFactor: (challengeToken: string, code: string) => Promise<TwoFactorResult>;
   resendTwoFactor: (challengeToken: string) => Promise<({ ok: true } & TwoFactorChallenge) | { ok: false; error: string }>;
   logout: () => void;
@@ -177,6 +178,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Login fehlgeschlagen';
         return { status: 'error', error: Array.isArray(msg as []) ? (msg as string[]).join(', ') : String(msg) } as const;
+      }
+    },
+    async completeInitialSetup(password: string) {
+      try {
+        const res = await api.post<AuthSessionPayload>('/auth/initial-setup', { password });
+        applyAuthenticatedSession(res.data);
+        return { ok: true } as const;
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Ersteinrichtung fehlgeschlagen';
+        return { ok: false, error: Array.isArray(msg as []) ? (msg as string[]).join(', ') : String(msg) } as const;
       }
     },
     async verifyTwoFactor(challengeToken: string, code: string) {

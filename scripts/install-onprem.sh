@@ -169,11 +169,9 @@ if [ ! -f "$ENV_FILE" ]; then
 
   DB_PASSWORD="StatoDb_$(random_hex 24)_A9!"
   JWT_SECRET=$(random_hex 48)
-  ADMIN_PASSWORD="Stato_$(random_hex 16)_A9!"
 
   replace_env_value POSTGRES_PASSWORD "$DB_PASSWORD"
   replace_env_value JWT_SECRET "$JWT_SECRET"
-  replace_env_value SUPERADMIN_PASSWORD "$ADMIN_PASSWORD"
   chmod 600 "$ENV_FILE"
   ENV_CREATED=true
 else
@@ -188,6 +186,7 @@ ensure_env_value STATO_PUBLIC_HOST ''
 ensure_env_value HTTPS_BIND_ADDRESS 0.0.0.0
 ensure_env_value HTTPS_PORT 443
 ensure_env_value STATO_IMAGE_TAG ''
+ensure_env_value INITIAL_SETUP_ENABLED true
 
 # An explicit environment value is useful for one-command installs; otherwise
 # retain the version selected in .env.onprem for subsequent installer runs.
@@ -355,8 +354,7 @@ else
 fi
 printf 'Superadmin:    admin@stato.local\n'
 if [ "$ENV_CREATED" = true ]; then
-  printf 'Startpasswort: %s\n' "$ADMIN_PASSWORD"
-  printf '\nBitte das Startpasswort sicher notieren und nach dem ersten Login aendern.\n'
+  printf 'Ersteinrichtung: Beim ersten Aufruf das Admin-Passwort festlegen.\n'
 fi
 printf '\nNach Aenderungen an .env.onprem den Installer erneut ausfuehren mit:\n'
 printf '  cd "%s" && sh ./scripts/install-onprem.sh\n' "$INSTALL_DIR"

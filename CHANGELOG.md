@@ -20,6 +20,15 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.7] - 2026-07-26
+
+### Added
+- Beim ersten Start einer On-Prem-Installation führt StatO durch die sichere
+  Einrichtung eines initialen Administratorkontos einschließlich Passwort.
+- KPI-Editor und Dashboard-Logbuch wurden erweitert und überarbeitet.
+
+---
+
 ## [1.0.6] - 2026-07-26
 
 ### Added

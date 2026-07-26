@@ -20,6 +20,19 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.4] - 2026-07-26
+
+### Added
+- Einheitlicher Farbwähler für Kategorien, Tags und Projektfarben mit Hex-Eingabe,
+  Farbton-, Sättigungs- und Helligkeitssteuerung.
+- Würfel-Schaltfläche für zufällig erzeugte, kontrastreiche Farben.
+
+### Changed
+- Die bisherigen festen Farbpaletten in den Kategorie- und Tag-Formularen durch den
+  gemeinsamen Farbwähler ersetzt.
+
+---
+
 ## [1.0.3] - 2026-07-26
 
 ### Fixed

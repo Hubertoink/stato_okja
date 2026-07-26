@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Archive as ArchiveIcon, Save as SaveIcon, X as XIcon } from 'lucide-react';
-import { FIXED_PALETTE, TAG_PALETTE, getBgClass, isInFixedPalette, isInTagPalette } from '@/lib/colorPalette';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { type Category, type Tag } from '@/lib/taxonomy';
 import { type StaffMember, type StaffRole } from '@/lib/staff';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
@@ -57,21 +57,8 @@ export function TagFormModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Farbe</label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {TAG_PALETTE.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => update('color', color as Tag['color'])}
-                  className={`w-8 h-8 rounded-full border ${getBgClass(color)} ${form.color === color ? 'ring-2 ring-offset-2 ring-viridian' : ''}`}
-                  aria-label={`Farbe ${color}`}
-                />
-              ))}
-            </div>
-            {!isInTagPalette(form.color as string) && (
-              <p className="text-xs text-gray-500">Hinweis: Farben sind auf die feste Palette begrenzt.</p>
-            )}
+            <label className="block text-sm font-medium mb-1" htmlFor="tag-color">Farbe</label>
+            <ColorPicker id="tag-color" value={form.color} onChange={(color) => update('color', color as Tag['color'])} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="tag-desc">
@@ -208,21 +195,8 @@ export function CategoryFormModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Farbe</label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {FIXED_PALETTE.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => update('color', color as Category['color'])}
-                    className={`w-8 h-8 rounded-full border ${getBgClass(color)} ${form.color === color ? 'ring-2 ring-offset-2 ring-viridian' : ''}`}
-                    aria-label={`Farbe ${color}`}
-                  />
-                ))}
-              </div>
-              {!isInFixedPalette(form.color as string) && (
-                <p className="text-xs text-gray-500">Hinweis: Farben sind auf die feste Palette begrenzt.</p>
-              )}
+              <label className="block text-sm font-medium mb-1" htmlFor="category-color">Farbe</label>
+              <ColorPicker id="category-color" value={form.color} onChange={(color) => update('color', color as Category['color'])} />
             </div>
           </div>
         </div>

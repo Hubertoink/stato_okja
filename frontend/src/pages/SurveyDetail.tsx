@@ -923,19 +923,16 @@ export default function SurveyDetail() {
                         </td>
                       ))}
                       <td className="px-2 py-3">
-                        <span className="tooltip-wrapper inline-flex">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700"
-                            aria-label="Antwort löschen"
-                            title="Antwort löschen"
-                            onClick={() => setResponseToDelete(response.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          <span className="tooltip-bubble">Antwort löschen</span>
-                        </span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700"
+                          aria-label="Antwort löschen"
+                          title="Antwort löschen"
+                          onClick={() => setResponseToDelete(response.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}

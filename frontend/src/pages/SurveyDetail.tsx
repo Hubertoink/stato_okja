@@ -335,22 +335,24 @@ function SurveyOverview({
               <thead className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)]">
                 <tr>
                   <th className="w-[28%] px-2 py-2">Runde</th>
-                  <th className="w-[42%] px-2 py-2">Status</th>
-                  <th className="w-[30%] px-2 py-2 text-right">Antworten</th>
+                  <th className="w-[38%] px-2 py-2">Status</th>
+                  <th className="w-[26%] px-2 py-2 text-right">Antworten</th>
+                  <th className="w-12 px-2 py-2"><span className="sr-only">Aktionen</span></th>
                 </tr>
               </thead>
               <tbody>
                 {rounds.map((round) => (
                   <tr
                     key={round.id}
-                    className={`cursor-pointer border-b border-[var(--border-subtle)] last:border-0 ${round.id === selectedRoundId ? 'bg-[var(--interactive-soft)]' : 'hover:bg-[var(--surface-2)]'}`}
+                    className={`group cursor-pointer border-b border-[var(--border-subtle)] last:border-0 ${round.id === selectedRoundId ? 'bg-[var(--interactive-soft)]' : 'hover:bg-[var(--surface-2)]'}`}
                     onClick={() => onSelectRound(round.id)}
                   >
                     <td className="px-2 py-3 font-medium">Runde {round.roundNumber || 1}</td>
                     <td className="px-2 py-3">
                       <SurveyStatusBadge status={round.status} />
                     </td>
-                    <td className="px-2 py-3 text-right"><div className="flex items-center justify-end gap-1"><span>{round.responsesCount}</span>{round.status === 'draft' && (round.roundNumber || 1) > 1 ? <span className="tooltip-wrapper opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"><Button size="icon" variant="ghost" className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700" aria-label={`Umfragerunde ${round.roundNumber} löschen`} title="Umfragerunde löschen" onClick={(event) => { event.stopPropagation(); onDeleteDraftRound(round); }}><Trash2 className="h-4 w-4" /></Button><span className="tooltip-bubble">Umfragerunde löschen</span></span> : null}</div></td>
+                    <td className="px-2 py-3 text-right">{round.responsesCount}</td>
+                    <td className="px-2 py-2 text-right">{round.status === 'draft' && (round.roundNumber || 1) > 1 ? <span className="tooltip-wrapper inline-flex"><Button size="icon" variant="ghost" className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700" aria-label={`Umfragerunde ${round.roundNumber} löschen`} title="Umfragerunde löschen" onClick={(event) => { event.stopPropagation(); onDeleteDraftRound(round); }}><Trash2 className="h-4 w-4" /></Button><span className="tooltip-bubble">Umfragerunde löschen</span></span> : null}</td>
                   </tr>
                 ))}
               </tbody>

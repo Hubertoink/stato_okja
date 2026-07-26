@@ -20,6 +20,15 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.5] - 2026-07-26
+
+### Fixed
+- Kategorien und Tags behalten frei gewählte Farben und zeigen diese zuverlässig
+  in ihren Verwaltungslisten an.
+- Die Projektfarbe wird bei breiten Ansichten unterhalb des Bildbereichs angeordnet.
+
+---
+
 ## [1.0.4] - 2026-07-26
 
 ### Added

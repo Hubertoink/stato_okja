@@ -45,6 +45,7 @@ describe('SurveysService', () => {
     count: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
+    remove: jest.fn(),
     createQueryBuilder: jest.fn(),
   };
   const responseRepository = {
@@ -198,5 +199,33 @@ describe('SurveysService', () => {
     expect(rounds[1]).toEqual(expect.objectContaining({ id: 'survey-2', status: 'draft' }));
     expect(trend.rounds).toHaveLength(1);
     expect(trend.rounds[0]).toEqual(expect.objectContaining({ id: 'survey-1', status: 'closed' }));
+  });
+
+  it('keeps the audit payload intact when deleting a draft round', async () => {
+    const seed = { ...activeSurvey(), status: 'closed' as const };
+    const draftRound = {
+      ...activeSurvey(),
+      id: 'survey-5',
+      seriesId: 'survey-1',
+      roundNumber: 5,
+      status: 'draft' as const,
+    };
+    surveyRepository.findOneBy.mockResolvedValueOnce(seed).mockResolvedValueOnce(draftRound);
+    responseRepository.count.mockResolvedValue(0);
+    surveyRepository.remove.mockImplementation(async (entry: Survey) => {
+      (entry as Partial<Survey>).id = undefined as never;
+    });
+
+    await expect(
+      service.deleteRound('survey-1', 'survey-5', {
+        id: 'user-1',
+        role: 'user',
+        orgId: 'org-1',
+      }),
+    ).resolves.toEqual({ id: 'survey-5' });
+
+    expect(audit.log).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'survey-5', entityTitle: 'Feedback' }),
+    );
   });
 });

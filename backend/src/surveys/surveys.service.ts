@@ -368,17 +368,24 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     if (responsesCount > 0) {
       throw new BadRequestException('Umfragerunden mit Antworten können nicht gelöscht werden.');
     }
+    // TypeORM clears generated ids on an entity passed to `remove`. Keep the audit payload
+    // before removal so a successfully deleted round does not incorrectly return a 500.
+    const deletedId = round.id;
+    const deletedTitle = round.title;
+    const deletedOrgId = round.orgId;
+    const deletedSeriesId = round.seriesId;
+    const deletedRoundNumber = round.roundNumber;
     await this.surveys.remove(round);
     await this.audit.log({
       action: AuditAction.DELETE,
       entityType: 'survey_round',
-      entityId: round.id,
-      entityTitle: round.title,
-      orgId: round.orgId,
+      entityId: deletedId,
+      entityTitle: deletedTitle,
+      orgId: deletedOrgId,
       user,
-      details: { seriesId: round.seriesId, roundNumber: round.roundNumber },
+      details: { seriesId: deletedSeriesId, roundNumber: deletedRoundNumber },
     });
-    return { id: roundId };
+    return { id: deletedId };
   }
 
   async start(id: string, user: SurveyActor) {

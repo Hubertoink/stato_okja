@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Settings2, Trash2, X } from 'lucide-react';
 import Modal from './Modal';
 import { isDarkThemeName } from '@/lib/theme';
 import { useProjects } from '@/lib/projects';
+import { colorFromStringHash } from '@/lib/colors';
+import ProjectPickerModal from '@/pages/ProjectPickerModal';
+import ProtectedImage from '@/components/ProtectedImage';
 import {
   CustomKpiDefinition,
   CustomKpiMetric,
@@ -268,6 +271,7 @@ export default function CustomKpiCards({
   const previousIsDarkThemeRef = useRef(isDarkTheme);
   const [managerOpen, setManagerOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [form, setForm] = useState<KpiFormState>({
     ...emptyForm,
     backgroundColor: defaultBackgroundColor,
@@ -282,17 +286,17 @@ export default function CustomKpiCards({
 
   const definitions = definitionsQ.data ?? [];
   const results = resultsQ.data ?? [];
-  const filteredProjects = useMemo(
-    () => (form.type ? projects.filter((project) => project.type === form.type) : projects),
-    [form.type, projects],
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === form.projectId),
+    [form.projectId, projects],
   );
 
   useEffect(() => {
     if (!form.projectId) return;
-    if (!filteredProjects.some((project) => project.id === form.projectId)) {
+    if (!selectedProject || (form.type && selectedProject.type !== form.type)) {
       setForm((current) => ({ ...current, projectId: '' }));
     }
-  }, [filteredProjects, form.projectId]);
+  }, [form.projectId, form.type, selectedProject]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return undefined;
@@ -319,6 +323,7 @@ export default function CustomKpiCards({
 
   const beginCreate = () => {
     setError(null);
+    setProjectPickerOpen(false);
     setForm({ ...emptyForm, surface, backgroundColor: defaultBackgroundColor });
     setEditorOpen(true);
   };
@@ -409,6 +414,7 @@ export default function CustomKpiCards({
         onClose={() => {
           setManagerOpen(false);
           setEditorOpen(false);
+          setProjectPickerOpen(false);
         }}
         maxWidth="xl"
         blur={false}
@@ -489,7 +495,10 @@ export default function CustomKpiCards({
       <Modal
         open={showManager && editorOpen}
         title={form.id ? 'KPI bearbeiten' : 'KPI anlegen'}
-        onClose={() => setEditorOpen(false)}
+        onClose={() => {
+          setEditorOpen(false);
+          setProjectPickerOpen(false);
+        }}
         maxWidth="lg"
         blur={false}
       >
@@ -533,20 +542,21 @@ export default function CustomKpiCards({
                 </span>
               </label>
 
-              <div className="rounded-lg border border-gray-200 p-3">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-medium text-gray-700">Hintergrundfarbe</div>
-                  </div>
-                  <input
-                    type="color"
-                    value={normalizeHexColor(form.backgroundColor)}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, backgroundColor: event.target.value }))
-                    }
-                    className="h-9 w-12 cursor-pointer rounded border border-gray-300 bg-white p-1"
-                    aria-label="KPI-Hintergrundfarbe wählen"
-                  />
+              <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-3">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm font-medium text-gray-700">Hintergrundfarbe</div>
+                  <label className="flex h-10 items-center gap-2 rounded-lg border border-gray-300 bg-white py-1 pl-1 pr-2 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:border-viridian">
+                    <input
+                      type="color"
+                      value={normalizeHexColor(form.backgroundColor)}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, backgroundColor: event.target.value }))
+                      }
+                      className="h-8 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+                      aria-label="Eigene KPI-Hintergrundfarbe wählen"
+                    />
+                    <span>{normalizeHexColor(form.backgroundColor).toUpperCase()}</span>
+                  </label>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {colorOptions.map((color) => {
@@ -643,23 +653,47 @@ export default function CustomKpiCards({
                   </select>
                 </label>
 
-                <label className="block text-sm">
+                <div className="min-w-0 text-sm">
                   <span className="mb-1 block font-medium text-gray-700">Projekt</span>
-                  <select
-                    value={form.projectId}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, projectId: event.target.value }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
-                  >
-                    <option value="">Alle Projekte</option>
-                    {filteredProjects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProjectPickerOpen(true)}
+                      className="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-left transition-colors hover:border-viridian focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                    >
+                      {selectedProject ? (
+                        <>
+                          <span
+                            className="h-7 w-7 shrink-0 overflow-hidden rounded-md bg-gray-100"
+                            style={{ backgroundColor: selectedProject.color || colorFromStringHash(selectedProject.title) }}
+                          >
+                            {selectedProject.imageUrl && (
+                              <ProtectedImage
+                                src={selectedProject.imageUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            )}
+                          </span>
+                          <span className="truncate text-sm text-gray-700">{selectedProject.title}</span>
+                        </>
+                      ) : (
+                        <span className="text-gray-500">Alle Projekte</span>
+                      )}
+                    </button>
+                    {form.projectId && (
+                      <button
+                        type="button"
+                        onClick={() => setForm((current) => ({ ...current, projectId: '' }))}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                        aria-label="Projektfilter entfernen"
+                        title="Projektfilter entfernen"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <label className="block text-sm">
@@ -736,6 +770,15 @@ export default function CustomKpiCards({
             </div>
           </div>
       </Modal>
+      {projectPickerOpen && (
+        <ProjectPickerModal
+          onClose={() => setProjectPickerOpen(false)}
+          onPick={(project) => {
+            setForm((current) => ({ ...current, projectId: project.id, type: project.type }));
+            setProjectPickerOpen(false);
+          }}
+        />
+      )}
     </section>
   );
 }

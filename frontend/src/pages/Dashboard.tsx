@@ -17,7 +17,6 @@ import {
   Circle,
   CheckCircle2,
   Clock,
-  BookOpen,
   MessageCircle,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
@@ -633,18 +632,13 @@ export default function Dashboard() {
       <SurfaceCard className="mb-8" padding="md">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-[var(--text-primary)]">
-              <BookOpen className="h-5 w-5 text-viridian" />
-              Logbuch
-            </h3>
-            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
-              Neueste Beobachtungen, Übergaben und Debriefings.
-            </p>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">Logbuch</h3>
           </div>
           <Button
             size="sm"
             onClick={() => navigate('/logbook/new')}
           >
+            <PlusCircle className="h-4 w-4" />
             Eintrag
           </Button>
         </div>

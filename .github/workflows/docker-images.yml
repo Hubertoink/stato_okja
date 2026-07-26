@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [dev, main, demo]
   workflow_dispatch:
+    inputs:
+      promote_version:
+        description: Bestehendes stabiles Image-Tag auf latest promoten (z. B. 1.0.0)
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -420,13 +425,16 @@ jobs:
 
           mkdir -p release-assets/bundle
           cp docker-compose.onprem.yml release-assets/docker-compose.yml
-          cp .env.onprem.example release-assets/.env.example
-          sed -i "s/^STATO_IMAGE_TAG=$/STATO_IMAGE_TAG=$version/" release-assets/.env.example
+          # GitHub Release assets cannot reliably retain a leading dot in their
+          # filename. The tar bundle still contains .env.example; the standalone
+          # asset gets an explicit, portable name.
+          cp .env.onprem.example release-assets/stato.env.example
+          sed -i "s/^STATO_IMAGE_TAG=$/STATO_IMAGE_TAG=$version/" release-assets/stato.env.example
           cp scripts/install-onprem.sh release-assets/install-onprem.sh
           cp scripts/install-onprem.ps1 release-assets/install-onprem.ps1
           cp .release-sbom/stato-sbom.spdx.json release-assets/stato-sbom.spdx.json
           cp release-assets/docker-compose.yml release-assets/bundle/docker-compose.yml
-          cp release-assets/.env.example release-assets/bundle/.env.example
+          cp release-assets/stato.env.example release-assets/bundle/.env.example
           cp release-assets/install-onprem.sh release-assets/bundle/install-onprem.sh
           cp release-assets/install-onprem.ps1 release-assets/bundle/install-onprem.ps1
           cp release-assets/stato-sbom.spdx.json release-assets/bundle/stato-sbom.spdx.json
@@ -443,7 +451,7 @@ jobs:
           tar -C release-assets/bundle -czf "release-assets/StatO-v$version.tar.gz" .
           (
             cd release-assets
-            sha256sum docker-compose.yml .env.example install-onprem.sh install-onprem.ps1 stato-sbom.spdx.json "StatO-v$version.tar.gz" > SHA256SUMS
+            sha256sum docker-compose.yml stato.env.example install-onprem.sh install-onprem.ps1 stato-sbom.spdx.json "StatO-v$version.tar.gz" > SHA256SUMS
           )
 
       - name: Upload release artifacts
@@ -453,7 +461,7 @@ jobs:
           if-no-files-found: error
           path: |
             release-assets/docker-compose.yml
-            release-assets/.env.example
+            release-assets/stato.env.example
             release-assets/install-onprem.sh
             release-assets/install-onprem.ps1
             release-assets/stato-sbom.spdx.json
@@ -471,7 +479,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-assets
-          path: release-assets
+          # The artifact already contains the release-assets directory. Restore
+          # it at the workspace root instead of adding a second nested level.
+          path: .
 
       - name: Create GitHub Release
         env:
@@ -486,7 +496,7 @@ jobs:
             --notes-file release-assets/RELEASE_NOTES.md \
             "${prerelease[@]}" \
             release-assets/docker-compose.yml \
-            release-assets/.env.example \
+            release-assets/stato.env.example \
             release-assets/install-onprem.sh \
             release-assets/install-onprem.ps1 \
             release-assets/stato-sbom.spdx.json \
@@ -516,4 +526,30 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           for image in "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"; do
             docker buildx imagetools create --tag "$image:latest" "$image:$version"
+          done
+
+  manual-promote-latest:
+    name: Bestehendes Release auf latest promoten
+    if: github.event_name == 'workflow_dispatch' && inputs.promote_version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote requested stable release to latest
+        shell: bash
+        env:
+          VERSION: ${{ inputs.promote_version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          for image in "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"; do
+            docker buildx imagetools create --tag "$image:latest" "$image:$VERSION"
           done

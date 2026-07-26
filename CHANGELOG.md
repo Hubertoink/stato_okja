@@ -20,6 +20,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.6] - 2026-07-26
+
+### Added
+- Die On-Prem-Installer zeigen beim Start ein StatO-Banner und verständliche
+  Statusprüfungen für Git, Docker und Docker Compose an.
+
+### Fixed
+- Bei einer nicht laufenden Docker-Engine liefern die On-Prem-Installer klare
+  Schritt-für-Schritt-Hinweise statt einer technischen Docker-Pipe-Fehlermeldung.
+
+---
+
 ## [1.0.5] - 2026-07-26
 
 ### Fixed

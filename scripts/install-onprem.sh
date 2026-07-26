@@ -22,6 +22,22 @@ say() {
   printf '\n==> %s\n' "$1"
 }
 
+print_banner() {
+  cat <<'EOF'
+   ____  _        _
+  / ___|| |_ __ _| |_ ___
+  \___ \| __/ _` | __/ _ \
+   ___) | || (_| | || (_) |
+  |____/ \__\__,_|\__\___/
+EOF
+  printf '%s\n' '  OKJA Statistik & Dokumentation'
+  printf '%s\n' '  On-Prem Installer'
+}
+
+print_check() {
+  printf '  [OK] %s\n' "$1"
+}
+
 fail() {
   printf '\nFehler: %s\n' "$1" >&2
   exit 1
@@ -29,6 +45,26 @@ fail() {
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "'$1' wurde nicht gefunden. Bitte zuerst $2 installieren."
+  print_check "$1 gefunden"
+}
+
+show_docker_unavailable_help() {
+  cat >&2 <<'EOF'
+
+FEHLER: Docker ist nicht erreichbar.
+StatO kann erst installiert werden, wenn die Docker-Engine läuft.
+
+So geht es weiter:
+  1. Den Docker-Dienst bzw. Docker Desktop starten.
+  2. Unter Linux gegebenenfalls ausführen: sudo systemctl start docker
+  3. Prüfen: docker info
+  4. Anschließend diesen StatO-Installer erneut starten.
+EOF
+  if [ "${STATO_DIAGNOSTICS:-}" = "true" ]; then
+    printf '\nTechnische Docker-Diagnose:\n' >&2
+    docker info >&2 || true
+  fi
+  exit 1
 }
 
 show_compose_diagnostics() {
@@ -89,12 +125,16 @@ compose() {
   fi
 }
 
+print_banner
+say 'Voraussetzungen prüfen'
 require_command git Git
 require_command docker Docker
 require_command od "die POSIX-Core-Utilities"
 
 docker compose version >/dev/null 2>&1 || fail "Das Docker-Compose-Plugin fehlt (erwartet: 'docker compose')."
-docker info >/dev/null 2>&1 || fail "Docker ist nicht erreichbar. Bitte den Docker-Dienst starten."
+print_check 'Docker Compose verfügbar'
+docker info >/dev/null 2>&1 || show_docker_unavailable_help
+print_check 'Docker Engine erreichbar'
 
 if [ -d "$INSTALL_DIR/.git" ]; then
   say "Vorhandene StatO-Installation aus Branch '$BRANCH' aktualisieren"

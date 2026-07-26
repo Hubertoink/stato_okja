@@ -525,6 +525,7 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           for image in "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"; do
+            image="$(tr '[:upper:]' '[:lower:]' <<< "$image")"
             docker buildx imagetools create --tag "$image:latest" "$image:$version"
           done
 
@@ -551,5 +552,6 @@ jobs:
           set -euo pipefail
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           for image in "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"; do
+            image="$(tr '[:upper:]' '[:lower:]' <<< "$image")"
             docker buildx imagetools create --tag "$image:latest" "$image:$VERSION"
           done

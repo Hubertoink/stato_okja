@@ -20,6 +20,15 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.3] - 2026-07-26
+
+### Fixed
+- Verwaiste, verwundbare `brace-expansion`-Kopie aus dem Backend-Produktimage entfernt.
+- Automatischer GitHub-Release checkt das Repository aus, bevor er die Release-Artefakte
+  und Release Notes veröffentlicht.
+
+---
+
 ## [1.0.2] - 2026-07-26
 
 ### Security

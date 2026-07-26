@@ -26,9 +26,14 @@ COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
 # NPM is only required while building the image. Removing it keeps its bundled
 # package-manager toolchain out of the production runtime image.
+# npm leaves a no-longer-required vulnerable development dependency in the
+# workspace subdirectory. The resolved production copy remains 2.1.2 at
+# /app/node_modules/brace-expansion.
 RUN npm ci --workspace backend --include-workspace-root=false --omit=dev --no-audit --no-fund \
 	&& npm install --prefix /app/node_modules/@nestjs/swagger js-yaml@5.2.2 --no-save --package-lock=false --ignore-scripts --no-audit --no-fund \
+	&& rm -rf /app/backend/node_modules/brace-expansion \
 	&& node -e "for (const dependency of ['@nestjs/swagger', 'body-parser', 'brace-expansion']) require.resolve(dependency); if (require('/app/node_modules/@nestjs/swagger/node_modules/js-yaml/package.json').version !== '5.2.2') process.exit(1)" \
+	&& test ! -e /app/backend/node_modules/brace-expansion \
 	&& npm cache clean --force \
 	&& rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 

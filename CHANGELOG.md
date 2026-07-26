@@ -20,6 +20,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.8] - 2026-07-26
+
+### Added
+- Die Einrichtung des ersten On-Prem-Administratorkontos zeigt nun dieselbe
+  Live-Prüfung der Passwortanforderungen wie der Passwortwechsel.
+
+---
+
 ## [1.0.7] - 2026-07-26
 
 ### Added

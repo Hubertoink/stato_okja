@@ -6,6 +6,8 @@ import {
 } from '@/lib/authStorage';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
 import { CookieNoticeModal, ImprintModal, PrivacyNoticeModal, TermsOfUseModal } from '@/components/LegalModals';
+import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
+import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { useNavigate } from 'react-router-dom';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 
@@ -28,6 +30,7 @@ export default function Login() {
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const setupPasswordValidationMessage = getPasswordValidationMessage(setupPassword);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +103,10 @@ export default function Login() {
 
   async function onInitialSetup(e: FormEvent) {
     e.preventDefault();
+    if (setupPasswordValidationMessage) {
+      setError(setupPasswordValidationMessage);
+      return;
+    }
     if (setupPassword !== setupPasswordConfirmation) {
       setError('Die Passwörter stimmen nicht überein.');
       return;
@@ -145,7 +152,7 @@ export default function Login() {
                 placeholder="Mindestens 12 Zeichen"
                 autoComplete="new-password"
               />
-              <p className="mt-2 text-xs text-gray-500">Mit Groß- und Kleinbuchstaben, Zahl und Sonderzeichen.</p>
+              <PasswordRequirementsHint password={setupPassword} className="mt-2" />
             </div>
             <div>
               <label className="mb-2 block text-sm font-semibold text-gray-700">Passwort wiederholen</label>
@@ -159,7 +166,17 @@ export default function Login() {
                 autoComplete="new-password"
               />
             </div>
-            <button type="submit" className="btn-modern w-full py-3" disabled={busy}>
+            <button
+              type="submit"
+              className="btn-modern w-full py-3"
+              disabled={
+                busy ||
+                !setupPassword ||
+                !setupPasswordConfirmation ||
+                setupPassword !== setupPasswordConfirmation ||
+                Boolean(setupPasswordValidationMessage)
+              }
+            >
               Adminzugang einrichten
             </button>
             {error && <div className="chip chip-danger mt-2 w-full justify-center">{error}</div>}

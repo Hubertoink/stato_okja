@@ -1,4 +1,11 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 export type SurveyStatus = 'draft' | 'active' | 'closed' | 'archived';
 export type SurveyQuestionType = 'single_choice' | 'multiple_choice' | 'scale' | 'text';
@@ -63,6 +70,10 @@ export class Survey {
 
   @Column({ type: 'timestamp', nullable: true })
   startsAt!: Date | null;
+
+  /** Timestamp at which the survey was actually made available to participants. */
+  @Column({ type: 'timestamp', nullable: true })
+  startedAt!: Date | null;
 
   @Column({ type: 'timestamp', nullable: true })
   endsAt!: Date | null;

@@ -73,9 +73,35 @@ jobs:
           npm run test --workspace=frontend
           npm run build --workspace=frontend
 
+  release-gate:
+    name: Release-Tag pruefen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release tag
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_tag="v$(tr -d '\r\n' < VERSION)"
+          if [ "$GITHUB_REF_NAME" != "$expected_tag" ]; then
+            echo "Release-Tag muss $expected_tag entsprechen (VERSION), erhalten: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "Release-Tag muss auf einem Commit aus main liegen." >&2
+            exit 1
+          }
+
   backend:
     name: Backend image
     if: github.ref != 'refs/heads/demo' && github.base_ref != 'demo'
+    needs: [quality, release-gate]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-backend-${{ github.ref }}
@@ -101,8 +127,11 @@ jobs:
         with:
           images: ${{ env.IMAGE_BACKEND }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -124,6 +153,7 @@ jobs:
 
   frontend:
     name: Frontend image
+    needs: [quality, release-gate]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-frontend-${{ github.ref }}
@@ -149,9 +179,12 @@ jobs:
         with:
           images: ${{ env.IMAGE_FRONTEND }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
             type=raw,value=demo,enable=${{ github.ref == 'refs/heads/demo' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -175,10 +208,11 @@ jobs:
             VITE_ENABLE_DEV_TOOLS=${{ github.ref == 'refs/heads/dev' && 'true' || 'false' }}
             VITE_DEMO_MODE=${{ github.ref == 'refs/heads/demo' && 'true' || 'false' }}
             VITE_COMMIT_SHA=${{ github.sha }}
-            NGINX_MODE=${{ github.ref == 'refs/heads/dev' && 'direct-dev' || 'direct' }}
+            NGINX_MODE=${{ github.ref_type == 'tag' && 'proxy' || (github.ref == 'refs/heads/dev' && 'direct-dev' || 'direct') }}
 
   backup:
     name: Backup image
+    needs: [quality, release-gate]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-backup-${{ github.ref }}
@@ -204,8 +238,11 @@ jobs:
         with:
           images: ${{ env.IMAGE_BACKUP }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=ref,event=tag
             type=sha,format=short,prefix=sha-
           labels: |
@@ -227,6 +264,7 @@ jobs:
 
   security-scan:
     name: Container scan and SBOM
+    needs: [quality, release-gate]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-security-${{ github.ref }}

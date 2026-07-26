@@ -135,7 +135,12 @@ if (Test-Path (Join-Path $InstallDirectory '.git')) {
     Invoke-Native git @('-C', $InstallDirectory, 'fetch', 'origin', $Branch)
     & git -C $InstallDirectory show-ref --verify --quiet "refs/heads/$Branch"
     $branchExists = $LASTEXITCODE -eq 0
-    if ($branchExists) {
+    & git -C $InstallDirectory show-ref --verify --quiet "refs/tags/$Branch"
+    $tagExists = $LASTEXITCODE -eq 0
+    if ($tagExists) {
+        Invoke-Native git @('-C', $InstallDirectory, 'checkout', '--detach', $Branch)
+    }
+    elseif ($branchExists) {
         Invoke-Native git @('-C', $InstallDirectory, 'checkout', $Branch)
         Invoke-Native git @('-C', $InstallDirectory, 'merge', '--ff-only', "origin/$Branch")
     }
@@ -179,6 +184,12 @@ Ensure-EnvValue $envFile 'STATO_TLS_MODE' 'off'
 Ensure-EnvValue $envFile 'STATO_PUBLIC_HOST' ''
 Ensure-EnvValue $envFile 'HTTPS_BIND_ADDRESS' '0.0.0.0'
 Ensure-EnvValue $envFile 'HTTPS_PORT' '443'
+Ensure-EnvValue $envFile 'STATO_IMAGE_TAG' ''
+
+# An explicit environment value is useful for one-command installs; otherwise
+# retain the version selected in .env.onprem for subsequent installer runs.
+if ($env:STATO_IMAGE_TAG) { Set-EnvValue $envFile 'STATO_IMAGE_TAG' $env:STATO_IMAGE_TAG.Trim() }
+$imageTag = if ($env:STATO_IMAGE_TAG) { $env:STATO_IMAGE_TAG.Trim() } else { Get-EnvValue $envFile 'STATO_IMAGE_TAG' }
 
 # One-command opt-in for internal HTTPS, e.g.
 # $env:STATO_INTERNAL_TLS_HOST='stato.intern.example.de'; irm ... | iex
@@ -264,12 +275,23 @@ if ($LASTEXITCODE -ne 0 -or $schemaState -notin @('missing', 'present')) {
 }
 $freshDatabase = $schemaState -eq 'missing'
 
-Write-Step 'StatO-Images bauen'
-$buildArguments = $composeArguments + @('build')
-& docker @buildArguments
-if ($LASTEXITCODE -ne 0) {
-    Show-ComposeDiagnostics $composeArguments
-    throw 'Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung.'
+if ($imageTag) {
+    Write-Step "Veroeffentlichte StatO-Images $imageTag aus GHCR laden"
+    $pullArguments = $composeArguments + @('pull', 'backend', 'frontend', 'backup')
+    & docker @pullArguments
+    if ($LASTEXITCODE -ne 0) {
+        Show-ComposeDiagnostics $composeArguments
+        throw 'Die veroeffentlichten StatO-Images konnten nicht geladen werden. Pruefe STATO_IMAGE_TAG und die Netzwerkverbindung.'
+    }
+}
+else {
+    Write-Step 'StatO-Images bauen'
+    $buildArguments = $composeArguments + @('build')
+    & docker @buildArguments
+    if ($LASTEXITCODE -ne 0) {
+        Show-ComposeDiagnostics $composeArguments
+        throw 'Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung.'
+    }
 }
 
 # Volumes created by older images can still belong to root. Repair ownership
@@ -319,6 +341,7 @@ if ($freshDatabase) {
 
 Write-Step 'StatO starten'
 $upArguments = $composeArguments + @('up', '-d')
+if ($imageTag) { $upArguments += '--no-build' }
 & docker @upArguments
 if ($LASTEXITCODE -ne 0) {
     Show-ComposeDiagnostics $composeArguments

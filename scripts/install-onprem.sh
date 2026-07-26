@@ -1,12 +1,14 @@
 #!/bin/sh
 
 # StatO On-Prem bootstrap for Linux and macOS.
-# Environment overrides: STATO_REPO_URL, STATO_BRANCH, STATO_INSTALL_DIR.
+# Environment overrides: STATO_REPO_URL, STATO_BRANCH, STATO_INSTALL_DIR,
+# STATO_IMAGE_TAG.
 
 set -eu
 
 REPOSITORY_URL="${STATO_REPO_URL:-https://github.com/Hubertoink/stato_okja.git}"
 BRANCH="${STATO_BRANCH:-main}"
+IMAGE_TAG="${STATO_IMAGE_TAG:-}"
 
 if [ -n "${STATO_INSTALL_DIR:-}" ]; then
   INSTALL_DIR=$STATO_INSTALL_DIR
@@ -102,7 +104,9 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   fi
 
   git -C "$INSTALL_DIR" fetch origin "$BRANCH"
-  if git -C "$INSTALL_DIR" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+  if git -C "$INSTALL_DIR" show-ref --verify --quiet "refs/tags/$BRANCH"; then
+    git -C "$INSTALL_DIR" checkout --detach "$BRANCH"
+  elif git -C "$INSTALL_DIR" show-ref --verify --quiet "refs/heads/$BRANCH"; then
     git -C "$INSTALL_DIR" checkout "$BRANCH"
     git -C "$INSTALL_DIR" merge --ff-only "origin/$BRANCH"
   else
@@ -143,6 +147,16 @@ ensure_env_value STATO_TLS_MODE off
 ensure_env_value STATO_PUBLIC_HOST ''
 ensure_env_value HTTPS_BIND_ADDRESS 0.0.0.0
 ensure_env_value HTTPS_PORT 443
+ensure_env_value STATO_IMAGE_TAG ''
+
+# An explicit environment value is useful for one-command installs; otherwise
+# retain the version selected in .env.onprem for subsequent installer runs.
+if [ -n "${STATO_IMAGE_TAG:-}" ]; then
+  replace_env_value STATO_IMAGE_TAG "$STATO_IMAGE_TAG"
+fi
+if [ -z "$IMAGE_TAG" ]; then
+  IMAGE_TAG=$(sed -n 's/^STATO_IMAGE_TAG=//p' "$ENV_FILE" | tail -n 1)
+fi
 
 # One-command opt-in for internal HTTPS, e.g.
 # curl ... | STATO_INTERNAL_TLS_HOST=stato.intern.example.de sh
@@ -233,10 +247,18 @@ case "$SCHEMA_STATE" in
     ;;
 esac
 
-say "StatO-Images bauen"
-if ! compose build; then
-  show_compose_diagnostics
-  fail "Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung."
+if [ -n "$IMAGE_TAG" ]; then
+  say "Veroeffentlichte StatO-Images $IMAGE_TAG aus GHCR laden"
+  if ! compose pull backend frontend backup; then
+    show_compose_diagnostics
+    fail "Die veroeffentlichten StatO-Images konnten nicht geladen werden. Pruefe STATO_IMAGE_TAG und die Netzwerkverbindung."
+  fi
+else
+  say "StatO-Images bauen"
+  if ! compose build; then
+    show_compose_diagnostics
+    fail "Die StatO-Images konnten nicht gebaut werden. Die Diagnose steht oberhalb dieser Meldung."
+  fi
 fi
 
 # Volumes created by older images can still belong to root. Repair ownership
@@ -270,7 +292,12 @@ if [ "$FRESH_DATABASE" = true ]; then
 fi
 
 say "StatO starten"
-if ! compose up -d; then
+if [ -n "$IMAGE_TAG" ]; then
+  START_ARGUMENTS='-d --no-build'
+else
+  START_ARGUMENTS='-d'
+fi
+if ! compose up $START_ARGUMENTS; then
   show_compose_diagnostics
   fail "StatO konnte nicht vollstaendig gestartet werden. Die Diagnose steht oberhalb dieser Meldung."
 fi

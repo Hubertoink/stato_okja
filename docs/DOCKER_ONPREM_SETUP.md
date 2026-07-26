@@ -108,6 +108,33 @@ an. Es steht ausserdem in `.env.onprem` und sollte nach dem ersten Login
 geaendert werden. Fuer den produktiven Betrieb danach mindestens Domain, E-Mail,
 Branding und HTTPS-Einstellungen pruefen.
 
+## Veroeffentlichten Release installieren oder aktualisieren
+
+Die offiziellen Container werden bei einem Release als versionierte Images in
+GHCR veroeffentlicht. Mit `STATO_IMAGE_TAG` verwendet der Installer genau diese
+Version fuer Backend, Frontend und Backup; es ist dann kein lokaler Node- oder
+Docker-Build erforderlich. Der Wert wird in `.env.onprem` gespeichert und bei
+spaeteren Installer-Laeufen beibehalten.
+
+Beispiel fuer Release `1.0.0` unter Linux/macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/v1.0.0/scripts/install-onprem.sh | STATO_BRANCH=v1.0.0 STATO_IMAGE_TAG=1.0.0 sh
+```
+
+Unter Windows PowerShell:
+
+```powershell
+$env:STATO_BRANCH = 'v1.0.0'
+$env:STATO_IMAGE_TAG = '1.0.0'
+irm https://raw.githubusercontent.com/Hubertoink/stato_okja/v1.0.0/scripts/install-onprem.ps1 | iex
+```
+
+Fuer ein Update wird `STATO_IMAGE_TAG` in `.env.onprem` auf die gewuenschte
+freigegebene Version gesetzt und der Installer erneut gestartet. Ein Release-Tag
+ist absichtlich unveraenderlich; `latest` zeigt nur auf den neuesten stabilen
+Release. Vor einem Update immer ein Backup erstellen.
+
 ## Manuelle Installation
 
 ### Schritt 1: Repo auf den Zielserver bringen
@@ -234,6 +261,8 @@ Hinweis: Feinsteuerung wie `RESET_TOKEN_EXPIRATION` oder `INVITE_TOKEN_EXPIRATIO
 
 ### Optional: Laufzeitumgebung
 
+- `STATO_IMAGE_TAG`: leer fuer lokale Builds aus dem Checkout; sonst eine feste
+  veroeffentlichte GHCR-Version wie `1.0.0`
 - `TZ`: Container-Zeitzone, z. B. `Europe/Berlin`
 - `APP_ENV`: steuert u. a. die Backend-Dev-Tools
 - `NODE_ENV`: steuert Runtime-Verhalten des Backends

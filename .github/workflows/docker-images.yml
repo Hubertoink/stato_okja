@@ -493,7 +493,7 @@ jobs:
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then prerelease+=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" \
             --title "StatO $GITHUB_REF_NAME" \
-            --notes-file release-assets/RELEASE_NOTES.md \
+            --notes-file RELEASE_NOTES.md \
             "${prerelease[@]}" \
             release-assets/docker-compose.yml \
             release-assets/stato.env.example \

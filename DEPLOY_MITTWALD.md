@@ -3,8 +3,8 @@
 ## Schnellinstallation als Stack
 
 StatO muss im mStudio nicht aus einzelnen Containern zusammengesetzt werden.
-Der mitgelieferte Stack beschreibt PostgreSQL, Upload-Initialisierung, Backend,
-Frontend und Backup gemeinsam. Der PowerShell-Installer erzeugt beim ersten
+Der mitgelieferte Stack beschreibt PostgreSQL, Backend, Frontend und Backup
+gemeinsam. Der PowerShell-Installer erzeugt beim ersten
 Aufruf eine lokale, persistente Konfiguration mit individuellen DB- und JWT-
 Secrets und kann bei spaeteren Aufrufen denselben Stack aktualisieren.
 

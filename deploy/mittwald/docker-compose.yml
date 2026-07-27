@@ -14,14 +14,6 @@ services:
       timeout: 5s
       retries: 10
 
-  uploads-init:
-    image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG}
-    user: "0"
-    restart: "no"
-    command: ["/bin/sh", "-c", "mkdir -p /app/uploads/images /app/uploads/project-documents && chown -R node:node /app/uploads"]
-    volumes:
-      - backend-uploads:/app/uploads
-
   backend:
     image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG}
     restart: unless-stopped
@@ -80,8 +72,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      uploads-init:
-        condition: service_completed_successfully
     volumes:
       - backend-uploads:/app/uploads
     ports:

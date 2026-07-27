@@ -145,6 +145,7 @@ if (-not $ImageTag) {
     $ImageTag = 'latest'
 }
 Set-EnvValue $envFile 'STATO_IMAGE_TAG' $ImageTag.Trim()
+Set-EnvValue $envFile 'STATO_FRONTEND_IMAGE_TAG' "stack-$($ImageTag.Trim())"
 
 if ((Get-EnvValue $envFile 'POSTGRES_PASSWORD') -like 'replace-with-*') {
     $databasePassword = "StatoDb_$(New-RandomHex 24)_A9!"
@@ -172,7 +173,7 @@ if ($configuredAdminEmail -notmatch '^[^@\s]+@[^@\s]+\.[^@\s]+$') {
 Set-EnvValue $envFile 'SUPERADMIN_EMAIL' $configuredAdminEmail
 
 Write-Step 'Konfiguration pruefen'
-$requiredKeys = @('STATO_IMAGE_TAG', 'APP_ORIGIN', 'CORS_ORIGINS', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'JWT_SECRET', 'SUPERADMIN_EMAIL')
+$requiredKeys = @('STATO_IMAGE_TAG', 'STATO_FRONTEND_IMAGE_TAG', 'APP_ORIGIN', 'CORS_ORIGINS', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'JWT_SECRET', 'SUPERADMIN_EMAIL')
 foreach ($key in $requiredKeys) {
     if (-not (Get-EnvValue $envFile $key)) {
         throw "Variable '$key' darf nicht leer sein."

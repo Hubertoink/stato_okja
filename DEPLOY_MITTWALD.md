@@ -45,6 +45,7 @@ Im mStudio wird danach nur noch die Domain einmalig zugeordnet:
 - `app.example.org` auf Service `frontend`, Port `8080`
 
 Der Frontend-Container leitet `/api` und `/uploads` intern an das Backend weiter.
+Der Installer setzt den dazu passenden internen Proxy-Frontend-Tag automatisch.
 Fuer Updates wird in der lokalen `.env` nur `STATO_IMAGE_TAG` auf den gewuenschten
 Release-Tag geaendert und der Installer erneut ausgefuehrt.
 

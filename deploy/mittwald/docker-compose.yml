@@ -94,7 +94,7 @@ services:
       start_period: 20s
 
   frontend:
-    image: ghcr.io/hubertoink/stato-frontend:${STATO_IMAGE_TAG}
+    image: ghcr.io/hubertoink/stato-frontend:${STATO_FRONTEND_IMAGE_TAG}
     restart: unless-stopped
     ports:
       - "8080/tcp"

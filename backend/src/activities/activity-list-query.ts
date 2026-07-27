@@ -226,7 +226,7 @@ export class ActivityListQuery {
   }
 
   private getWeekdayExpression(column: string) {
-    const dbType = this.activityRepository.manager.connection.options.type;
+    const dbType = this.activityRepository.manager.dataSource.options.type;
     if (dbType === 'postgres') {
       return `CAST(EXTRACT(DOW FROM ${column}) AS integer)`;
     }

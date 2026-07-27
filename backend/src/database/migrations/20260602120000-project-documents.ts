@@ -10,7 +10,7 @@ export class ProjectDocuments20260602120000 implements MigrationInterface {
   name = 'ProjectDocuments20260602120000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const isPostgres = dbType === 'postgres';
     const uuidType = isPostgres ? 'uuid' : 'varchar';
     const timestampType = isPostgres ? 'timestamptz' : 'datetime';

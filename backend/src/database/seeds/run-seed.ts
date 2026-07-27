@@ -13,7 +13,7 @@
  *   SEED_CLEAR=true       Clear existing data first (default: false)
  */
 
-import { DataSource } from 'typeorm';
+import { DataSource, IsNull, Not } from 'typeorm';
 import { typeormConfig } from '../../config/typeorm.config';
 import { Organization } from '../../orgs/entities/organization.entity';
 import { Staff } from '../../staff/entities/staff.entity';
@@ -173,13 +173,14 @@ async function main() {
     await activityRepo.query('TRUNCATE TABLE activity_tags CASCADE');
     await activityRepo.query('TRUNCATE TABLE activity_staff CASCADE');
     await activityRepo.query('TRUNCATE TABLE project_categories CASCADE');
-    await activityRepo.delete({});
-    await projectRepo.delete({});
-    await locationRepo.delete({});
-    await tagRepo.delete({});
-    await categoryRepo.delete({});
-    await staffRepo.delete({});
-    await orgRepo.delete({});
+    const allRows = { id: Not(IsNull()) };
+    await activityRepo.delete(allRows);
+    await projectRepo.delete(allRows);
+    await locationRepo.delete(allRows);
+    await tagRepo.delete(allRows);
+    await categoryRepo.delete(allRows);
+    await staffRepo.delete(allRows);
+    await orgRepo.delete(allRows);
     console.log('✅ Data cleared\n');
   }
 

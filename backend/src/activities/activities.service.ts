@@ -305,7 +305,7 @@ export class ActivitiesService {
     };
 
     const yearExpression = ['postgres', 'postgresql'].includes(
-      String(this.activityRepository.manager.connection.options.type).toLowerCase(),
+      String(this.activityRepository.manager.dataSource.options.type).toLowerCase(),
     )
       ? "TO_CHAR(a.date, 'YYYY')"
       : "strftime('%Y', a.date)";
@@ -371,16 +371,16 @@ export class ActivitiesService {
   findOne(id: string): Promise<Activity | null> {
     return this.activityRepository.findOne({
       where: { id },
-      relations: [
-        'location',
-        'categories',
-        'tags',
-        'staff',
-        'attachments',
-        'createdBy',
-        'updatedBy',
-        'project',
-      ],
+      relations: {
+        location: true,
+        categories: true,
+        tags: true,
+        staff: true,
+        attachments: true,
+        createdBy: true,
+        updatedBy: true,
+        project: true,
+      },
     });
   }
 
@@ -469,7 +469,13 @@ export class ActivitiesService {
   ): Promise<Activity | null> {
     const existing = await this.activityRepository.findOne({
       where: { id },
-      relations: ['tags', 'staff', 'categories', 'project', 'location'],
+      relations: {
+        tags: true,
+        staff: true,
+        categories: true,
+        project: true,
+        location: true,
+      },
     });
     if (!existing) return null;
     const beforeActivityForAudit: Partial<Activity> = {

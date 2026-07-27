@@ -6,7 +6,7 @@ export class SurveyStartedAt20260726100000 implements MigrationInterface {
     const table = await queryRunner.getTable('surveys');
     if (table?.columns.some((column) => column.name === 'startedAt')) return;
     const dbType = String(
-      (queryRunner.connection.options as { type?: unknown }).type || '',
+      (queryRunner.dataSource.options as { type?: unknown }).type || '',
     ).toLowerCase();
     await queryRunner.addColumn(
       'surveys',

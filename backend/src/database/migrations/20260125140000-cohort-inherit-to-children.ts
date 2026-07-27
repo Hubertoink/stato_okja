@@ -4,7 +4,7 @@ export class CohortInheritToChildren20260125140000 implements MigrationInterface
   name = 'CohortInheritToChildren20260125140000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const isPostgres = dbType === 'postgres';
 
     const hasTable = await queryRunner.hasTable('cohorts');

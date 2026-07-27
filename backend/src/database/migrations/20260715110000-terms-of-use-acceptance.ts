@@ -6,7 +6,7 @@ export class TermsOfUseAcceptance20260715110000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const table = await queryRunner.getTable('users');
     if (!table) return;
-    const timestampType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase() === 'postgres'
+    const timestampType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase() === 'postgres'
       ? 'timestamp'
       : 'datetime';
 

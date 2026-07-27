@@ -49,7 +49,7 @@ describe('SurveysService', () => {
     createQueryBuilder: jest.fn(),
   };
   const responseRepository = {
-    exist: jest.fn(),
+    exists: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
@@ -79,7 +79,7 @@ describe('SurveysService', () => {
 
   it('validates public answers and stores only the declared question fields', async () => {
     surveyRepository.findOneBy.mockResolvedValue(activeSurvey());
-    responseRepository.exist.mockResolvedValue(false);
+    responseRepository.exists.mockResolvedValue(false);
     responseRepository.create.mockImplementation((value: unknown) => value);
     responseRepository.save.mockResolvedValue({});
 

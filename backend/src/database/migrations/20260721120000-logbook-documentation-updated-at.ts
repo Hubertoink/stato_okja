@@ -6,7 +6,7 @@ export class LogbookDocumentationUpdatedAt20260721120000 implements MigrationInt
   public async up(queryRunner: QueryRunner): Promise<void> {
     if (!(await queryRunner.hasTable('logbook_entries'))) return;
 
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const uuidType = dbType === 'postgres' ? 'uuid' : 'varchar';
     const timestampType = dbType === 'postgres' ? 'timestamp' : 'datetime';
     const table = await queryRunner.getTable('logbook_entries');

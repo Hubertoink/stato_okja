@@ -4,7 +4,7 @@ export class AuditLoginAction20260127103000 implements MigrationInterface {
   name = 'AuditLoginAction20260127103000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const isPostgres = dbType === 'postgres';
     if (!isPostgres) return;
 

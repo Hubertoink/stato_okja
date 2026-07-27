@@ -1,6 +1,6 @@
 {
   "name": "stato",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "OKJA Statistik- und Dokumentationssystem",
   "private": true,
   "workspaces": [
@@ -34,6 +34,7 @@
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.8.0",
+    "typeorm": "1.1.0",
     "typescript-eslint": "^8.65.0"
   },
   "overrides": {
@@ -41,7 +42,8 @@
     "@nestjs/core": "11.1.28",
     "form-data": "4.0.6",
     "lodash": "4.18.1",
-    "qs": "6.15.3"
+    "qs": "6.15.3",
+    "typeorm": "1.1.0"
   },
   "engines": {
     "node": ">=20.0.0",

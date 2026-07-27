@@ -10,7 +10,7 @@ export class AuthRefreshSessionsTimestamptz20260602183000 implements MigrationIn
   name = 'AuthRefreshSessionsTimestamptz20260602183000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     if (dbType !== 'postgres') return;
 
     const hasTable = await queryRunner.hasTable('auth_refresh_sessions');
@@ -27,7 +27,7 @@ export class AuthRefreshSessionsTimestamptz20260602183000 implements MigrationIn
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     if (dbType !== 'postgres') return;
 
     const hasTable = await queryRunner.hasTable('auth_refresh_sessions');

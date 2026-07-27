@@ -5,7 +5,7 @@ export class CustomKpis20260504120000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const dbType = String(
-      (queryRunner.connection.options as { type?: unknown }).type || '',
+      (queryRunner.dataSource.options as { type?: unknown }).type || '',
     ).toLowerCase();
     const isPostgres = dbType === 'postgres';
 
@@ -60,7 +60,7 @@ export class CustomKpis20260504120000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     const dbType = String(
-      (queryRunner.connection.options as { type?: unknown }).type || '',
+      (queryRunner.dataSource.options as { type?: unknown }).type || '',
     ).toLowerCase();
     const isPostgres = dbType === 'postgres';
 

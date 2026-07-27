@@ -20,6 +20,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.10] - 2026-07-27
+
+### Added
+- Die Projektverknüpfung im Umfrage-Editor zeigt nun das Projektbild mit
+  farbigem Fallback an.
+
+### Fixed
+- Die Aktivitätsansicht zeigt bei null Treffern keine doppelte Leerzustandsmeldung
+  mehr; Aktionsleiste und Suchfelder sind mit den übrigen Übersichten abgestimmt.
+
+---
+
 ## [1.0.9] - 2026-07-27
 
 ### Changed

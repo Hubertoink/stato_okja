@@ -20,6 +20,15 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.9] - 2026-07-27
+
+### Changed
+- TypeORM wurde von 0.3 auf 1.1 aktualisiert. Historische Migrationen,
+  sichere WHERE-Kriterien und der Production-Docker-Layer sind kompatibel
+  angepasst und gegen PostgreSQL geprüft.
+
+---
+
 ## [1.0.8] - 2026-07-26
 
 ### Added

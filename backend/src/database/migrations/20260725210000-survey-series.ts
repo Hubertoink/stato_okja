@@ -4,7 +4,7 @@ export class SurveySeries20260725210000 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
     if (!(await queryRunner.hasTable('surveys'))) return;
     const table = await queryRunner.getTable('surveys');
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const uuidType = dbType === 'postgres' ? 'uuid' : 'varchar';
     if (!table?.columns.some((column) => column.name === 'seriesId')) {
       await queryRunner.addColumn('surveys', new TableColumn({ name: 'seriesId', type: uuidType, isNullable: true }));

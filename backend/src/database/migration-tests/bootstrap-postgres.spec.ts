@@ -1,6 +1,7 @@
 import { readdir } from 'fs/promises';
 import { resolve } from 'path';
 import { DataSource, type DataSourceOptions } from 'typeorm';
+import { LogbookEntry } from '../../logbook/entities/logbook-entry.entity';
 
 const enabled = process.env.MIGRATION_TEST_POSTGRES === 'true';
 const describePostgres = enabled ? describe : describe.skip;
@@ -99,6 +100,30 @@ describePostgres('PostgreSQL-First-Run und Migrationen', () => {
       expect(await dataSource.query('SELECT COUNT(*)::int AS count FROM "migrations"')).toEqual([
         expect.objectContaining({ count: expect.any(Number) }),
       ]);
+    } finally {
+      await dataSource.destroy();
+    }
+  }, 60_000);
+
+  it('berechnet virtuelle Logbuch-Kommentarzahlen unter TypeORM 1.x', async () => {
+    const entryId = '10000000-0000-4000-8000-000000000001';
+    const dataSource = await openRuntimeDataSource();
+    try {
+      await dataSource.query(
+        `INSERT INTO "logbook_entries" ("id", "occurredAt", "title", "body", "createdByName")
+         VALUES ($1, NOW(), 'TypeORM-Test', 'Virtuelle Spalte', 'Migrationstest')`,
+        [entryId],
+      );
+      await dataSource.query(
+        `INSERT INTO "logbook_comments" ("id", "entryId", "body", "createdByName")
+         VALUES
+           ('20000000-0000-4000-8000-000000000001', $1, 'Erster Kommentar', 'Migrationstest'),
+           ('20000000-0000-4000-8000-000000000002', $1, 'Zweiter Kommentar', 'Migrationstest')`,
+        [entryId],
+      );
+
+      const entry = await dataSource.getRepository(LogbookEntry).findOneByOrFail({ id: entryId });
+      expect(entry.commentCount).toBe(2);
     } finally {
       await dataSource.destroy();
     }

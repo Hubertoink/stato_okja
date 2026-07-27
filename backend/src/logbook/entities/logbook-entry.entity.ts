@@ -8,6 +8,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  VirtualColumn,
 } from 'typeorm';
 import { LogbookEntryStatus, LogbookEntryType, LogbookVisibility } from '../../common/enums';
 import { Activity } from '../../activities/entities/activity.entity';
@@ -116,4 +117,10 @@ export class LogbookEntry {
 
   @OneToMany(() => LogbookComment, (comment) => comment.entry)
   comments: LogbookComment[];
+
+  @VirtualColumn({
+    query: (alias) =>
+      `(SELECT COUNT(*) FROM "logbook_comments" "comment" WHERE "comment"."entryId" = ${alias}."id")`,
+  })
+  commentCount: number;
 }

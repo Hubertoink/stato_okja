@@ -20,6 +20,12 @@ function buildTypeOrmConfig(): DataSourceOptions {
   const base = {
     entities: [path.join(__dirname, '/../**/*.entity{.ts,.js}')],
     migrations: [path.join(__dirname, '/../database/migrations/*{.ts,.js}')],
+    // TypeORM 1.x rejects null/undefined WHERE values by default. Keep this
+    // explicit so accidental unscoped reads or writes cannot become broad queries.
+    invalidWhereValuesBehavior: {
+      null: 'throw',
+      undefined: 'throw',
+    },
     // IMPORTANT: TypeORM runs migrations before synchronize().
     // For fresh/bootstrap environments where DB_SYNCHRONIZE=true we must not run migrations,
     // because many migrations assume base tables already exist.
@@ -38,6 +44,7 @@ function buildTypeOrmConfig(): DataSourceOptions {
       migrationsRun: base.migrationsRun,
       synchronize: base.synchronize,
       logging: base.logging,
+      invalidWhereValuesBehavior: base.invalidWhereValuesBehavior,
     };
     return cfg;
   }
@@ -57,6 +64,7 @@ function buildTypeOrmConfig(): DataSourceOptions {
     migrationsRun: base.migrationsRun,
     synchronize: base.synchronize,
     logging: base.logging,
+    invalidWhereValuesBehavior: base.invalidWhereValuesBehavior,
     // Keep Postgres sessions in UTC so legacy `timestamp without time zone`
     // columns stay aligned with the runtime parser in main.ts.
     extra: { options: postgresSessionOptions },

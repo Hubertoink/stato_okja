@@ -144,7 +144,6 @@ export class LogbookService {
       .leftJoinAndSelect('entry.activity', 'activity')
       .leftJoinAndSelect('entry.project', 'project')
       .leftJoinAndSelect('entry.createdByUser', 'createdByUser')
-      .loadRelationCountAndMap('entry.commentCount', 'entry.comments')
       // The list uses joins and pagination, so TypeORM wraps it in SELECT DISTINCT.
       // Select the priority explicitly; ordering by a raw expression alone breaks the
       // outer DISTINCT query on PostgreSQL (and results in a 500 response).

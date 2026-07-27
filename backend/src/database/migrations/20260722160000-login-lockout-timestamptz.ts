@@ -10,7 +10,7 @@ export class LoginLockoutTimestamptz20260722160000 implements MigrationInterface
   name = 'LoginLockoutTimestamptz20260722160000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     if (dbType !== 'postgres') return;
 
     const legacyTimezone = getLegacySessionTimezone();
@@ -22,7 +22,7 @@ export class LoginLockoutTimestamptz20260722160000 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     if (dbType !== 'postgres') return;
 
     const legacyTimezone = getLegacySessionTimezone();

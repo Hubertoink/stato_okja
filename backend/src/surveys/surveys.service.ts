@@ -529,7 +529,7 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Die Teilnahme konnte nicht gesichert werden.');
     if (
       deviceTokenHash &&
-      (await this.responses.exist({ where: { surveyId: survey.id, deviceTokenHash } }))
+      (await this.responses.exists({ where: { surveyId: survey.id, deviceTokenHash } }))
     ) {
       throw new ConflictException('Von diesem Gerät wurde bereits teilgenommen.');
     }

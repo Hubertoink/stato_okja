@@ -4,7 +4,7 @@ export class Logbook20260714110000 implements MigrationInterface {
   name = 'Logbook20260714110000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const isPostgres = dbType === 'postgres';
     const uuidType = isPostgres ? 'uuid' : 'varchar';
     const timestampType = isPostgres ? 'timestamp' : 'datetime';

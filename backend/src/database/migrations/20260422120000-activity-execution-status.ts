@@ -4,7 +4,7 @@ export class ActivityExecutionStatus20260422120000 implements MigrationInterface
   name = 'ActivityExecutionStatus20260422120000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const isPostgres = dbType === 'postgres';
 
     const hasActivitiesTable = await queryRunner.hasTable('activities');
@@ -44,7 +44,7 @@ END $$;
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const isPostgres = dbType === 'postgres';
 
     const hasActivitiesTable = await queryRunner.hasTable('activities');

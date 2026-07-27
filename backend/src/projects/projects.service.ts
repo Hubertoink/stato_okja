@@ -124,7 +124,7 @@ export class ProjectsService {
         clientRequestId,
         orgId: orgId === null ? IsNull() : Equal(orgId),
       },
-      relations: ['documents'],
+      relations: { documents: true },
     });
     return existing ? this.hydrateProject(existing) : null;
   }
@@ -156,15 +156,15 @@ export class ProjectsService {
     if (typeof orgId !== 'undefined') {
       Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
     }
-    return this.projectRepository.find({ where, order: { title: 'ASC' }, relations: ['documents'] }).then((projects) =>
-      projects.map((project) => this.hydrateProject(project)),
-    );
+    return this.projectRepository
+      .find({ where, order: { title: 'ASC' }, relations: { documents: true } })
+      .then((projects) => projects.map((project) => this.hydrateProject(project)));
   }
 
   findOne(id: string): Promise<Project | null> {
-    return this.projectRepository.findOne({ where: { id }, relations: ['documents'] }).then((project) =>
-      project ? this.hydrateProject(project) : null,
-    );
+    return this.projectRepository
+      .findOne({ where: { id }, relations: { documents: true } })
+      .then((project) => (project ? this.hydrateProject(project) : null));
   }
 
   async create(
@@ -225,7 +225,10 @@ export class ProjectsService {
     id: string,
     user?: { id?: string; name?: string | null; orgId?: string | null },
   ): Promise<void> {
-    const existing = await this.projectRepository.findOne({ where: { id }, relations: ['documents'] });
+    const existing = await this.projectRepository.findOne({
+      where: { id },
+      relations: { documents: true },
+    });
     await this.projectRepository.delete(id);
     await this.audit.log({
       action: AuditAction.DELETE,

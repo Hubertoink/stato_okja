@@ -4,7 +4,7 @@ export class AddActivityAckdoneAndAcks20260125120000 implements MigrationInterfa
   name = 'AddActivityAckdoneAndAcks20260125120000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const isPostgres = dbType === 'postgres';
 
     if (isPostgres) {

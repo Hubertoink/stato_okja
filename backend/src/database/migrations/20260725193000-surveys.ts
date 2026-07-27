@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
 export class Surveys20260725193000 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const uuidType = dbType === 'postgres' ? 'uuid' : 'varchar';
     const timestampType = dbType === 'postgres' ? 'timestamp' : 'datetime';
     if (!(await queryRunner.hasTable('surveys'))) {

@@ -4,7 +4,7 @@ export class PasswordResetTokenVersion20260322120000 implements MigrationInterfa
   name = 'PasswordResetTokenVersion20260322120000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const isPostgres = dbType === 'postgres';
 
     if (isPostgres) {
@@ -20,7 +20,7 @@ export class PasswordResetTokenVersion20260322120000 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const dbType = String((queryRunner.connection.options as { type?: unknown }).type || '').toLowerCase();
+    const dbType = String((queryRunner.dataSource.options as { type?: unknown }).type || '').toLowerCase();
     const isPostgres = dbType === 'postgres';
 
     if (isPostgres) {

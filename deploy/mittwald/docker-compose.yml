@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
-      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -15,7 +15,7 @@ services:
       retries: 10
 
   uploads-init:
-    image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG:?STATO_IMAGE_TAG is required}
+    image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG}
     user: "0"
     restart: "no"
     command: ["/bin/sh", "-c", "mkdir -p /app/uploads/images /app/uploads/project-documents && chown -R node:node /app/uploads"]
@@ -23,7 +23,7 @@ services:
       - backend-uploads:/app/uploads
 
   backend:
-    image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG:?STATO_IMAGE_TAG is required}
+    image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -31,18 +31,18 @@ services:
       PORT: 3000
       API_PREFIX: api
       TZ: ${TZ:-Europe/Berlin}
-      APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN is required}
-      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      APP_ORIGIN: ${APP_ORIGIN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
       TRUST_PROXY: "true"
       STRICT_SECURITY_MODE: "true"
       SWAGGER_ENABLED: "false"
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_SECRET: ${JWT_SECRET}
       DB_TYPE: postgres
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USERNAME: ${POSTGRES_USER:?POSTGRES_USER is required}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      DB_DATABASE: ${POSTGRES_DB:?POSTGRES_DB is required}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_DATABASE: ${POSTGRES_DB}
       DB_SYNCHRONIZE: "false"
       DB_MIGRATIONS_RUN: "true"
       DB_BOOTSTRAP_ON_EMPTY: "true"
@@ -64,7 +64,7 @@ services:
       PASSWORD_RESET_MODE: ${PASSWORD_RESET_MODE:-email}
       AUTH_2FA_ENABLED: ${AUTH_2FA_ENABLED:-false}
       AUTH_2FA_CODE_TTL: ${AUTH_2FA_CODE_TTL:-600}
-      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:?SUPERADMIN_EMAIL is required}
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
       SUPERADMIN_EMAIL_FORCE: "false"
       SUPERADMIN_PASSWORD_FORCE: "false"
@@ -94,7 +94,7 @@ services:
       start_period: 20s
 
   frontend:
-    image: ghcr.io/hubertoink/stato-frontend:${STATO_IMAGE_TAG:?STATO_IMAGE_TAG is required}
+    image: ghcr.io/hubertoink/stato-frontend:${STATO_IMAGE_TAG}
     restart: unless-stopped
     ports:
       - "8080/tcp"
@@ -106,14 +106,14 @@ services:
       start_period: 10s
 
   backup:
-    image: ghcr.io/hubertoink/stato-backup:${STATO_IMAGE_TAG:?STATO_IMAGE_TAG is required}
+    image: ghcr.io/hubertoink/stato-backup:${STATO_IMAGE_TAG}
     restart: unless-stopped
     environment:
       PGHOST: postgres
       PGPORT: 5432
-      PGUSER: ${POSTGRES_USER:?POSTGRES_USER is required}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      PGDATABASE: ${POSTGRES_DB:?POSTGRES_DB is required}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
       BACKUP_OUTPUT_DIR: /backups
       BACKUP_UPLOADS_DIR: /mnt/uploads
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
@@ -121,7 +121,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - backend-uploads:/mnt/uploads:ro
+      - backend-uploads:/mnt/uploads
       - backup-data:/backups
 
 volumes:

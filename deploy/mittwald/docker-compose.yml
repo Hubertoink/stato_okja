@@ -1,0 +1,130 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  uploads-init:
+    image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG:?STATO_IMAGE_TAG is required}
+    user: "0"
+    restart: "no"
+    command: ["/bin/sh", "-c", "mkdir -p /app/uploads/images /app/uploads/project-documents && chown -R node:node /app/uploads"]
+    volumes:
+      - backend-uploads:/app/uploads
+
+  backend:
+    image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG:?STATO_IMAGE_TAG is required}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      PORT: 3000
+      API_PREFIX: api
+      TZ: ${TZ:-Europe/Berlin}
+      APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      TRUST_PROXY: "true"
+      STRICT_SECURITY_MODE: "true"
+      SWAGGER_ENABLED: "false"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER:?POSTGRES_USER is required}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_DATABASE: ${POSTGRES_DB:?POSTGRES_DB is required}
+      DB_SYNCHRONIZE: "false"
+      DB_MIGRATIONS_RUN: "true"
+      DB_BOOTSTRAP_ON_EMPTY: "true"
+      DB_LOGGING: "false"
+      DB_REQUIRE_SSL: "false"
+      DB_SSL: "false"
+      DB_SSL_REJECT_UNAUTHORIZED: "false"
+      RATE_LIMIT_TTL: ${RATE_LIMIT_TTL:-60}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      AUTH_RATE_LIMIT_TTL: ${AUTH_RATE_LIMIT_TTL:-60}
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-10}
+      LOGIN_MAX_FAILED_ATTEMPTS: ${LOGIN_MAX_FAILED_ATTEMPTS:-5}
+      LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-10}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      AUTH_REFRESH_COOKIE_SAMESITE: lax
+      INVITE_TOKEN_EXPIRATION: ${INVITE_TOKEN_EXPIRATION:-24h}
+      RESET_TOKEN_EXPIRATION: ${RESET_TOKEN_EXPIRATION:-1h}
+      PASSWORD_RESET_MODE: ${PASSWORD_RESET_MODE:-email}
+      AUTH_2FA_ENABLED: ${AUTH_2FA_ENABLED:-false}
+      AUTH_2FA_CODE_TTL: ${AUTH_2FA_CODE_TTL:-600}
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:?SUPERADMIN_EMAIL is required}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
+      SUPERADMIN_EMAIL_FORCE: "false"
+      SUPERADMIN_PASSWORD_FORCE: "false"
+      INITIAL_SETUP_ENABLED: "true"
+      PUBLIC_APP_NAME: ${PUBLIC_APP_NAME:-StatO}
+      PUBLIC_ORG_NAME: ${PUBLIC_ORG_NAME:-}
+      PUBLIC_LOGIN_SUBTITLE: ${PUBLIC_LOGIN_SUBTITLE:-OKJA Statistik und Dokumentation}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@stato.local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      uploads-init:
+        condition: service_completed_successfully
+    volumes:
+      - backend-uploads:/app/uploads
+    ports:
+      - "3000/tcp"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    image: ghcr.io/hubertoink/stato-frontend:${STATO_IMAGE_TAG:?STATO_IMAGE_TAG is required}
+    restart: unless-stopped
+    ports:
+      - "8080/tcp"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backup:
+    image: ghcr.io/hubertoink/stato-backup:${STATO_IMAGE_TAG:?STATO_IMAGE_TAG is required}
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGDATABASE: ${POSTGRES_DB:?POSTGRES_DB is required}
+      BACKUP_OUTPUT_DIR: /backups
+      BACKUP_UPLOADS_DIR: /mnt/uploads
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backend-uploads:/mnt/uploads:ro
+      - backup-data:/backups
+
+volumes:
+  postgres-data: {}
+  backend-uploads: {}
+  backup-data: {}

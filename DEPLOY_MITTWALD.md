@@ -1,4 +1,58 @@
-# Deployment auf Mittwald (Modus B)
+# Deployment auf Mittwald
+
+## Schnellinstallation als Stack
+
+StatO muss im mStudio nicht aus einzelnen Containern zusammengesetzt werden.
+Der mitgelieferte Stack beschreibt PostgreSQL, Upload-Initialisierung, Backend,
+Frontend und Backup gemeinsam. Der PowerShell-Installer erzeugt beim ersten
+Aufruf eine lokale, persistente Konfiguration mit individuellen DB- und JWT-
+Secrets und kann bei spaeteren Aufrufen denselben Stack aktualisieren.
+
+Voraussetzungen auf dem eigenen Rechner:
+
+1. Die Mittwald CLI `mw` ist installiert.
+2. Ein mStudio API-Token wurde einmalig mit `mw login token` hinterlegt.
+3. Im Projekt existiert ein Ziel-Stack; dessen ID liefert `mw stack ls`.
+
+Einmalig vorbereiten und ohne API-Aufruf pruefen:
+
+```powershell
+git clone https://github.com/Hubertoink/stato_okja.git
+cd stato_okja
+.\scripts\install-mittwald.ps1 -StackId <STACK-ID> -AppOrigin https://app.example.org -AdminEmail admin@example.org -PrepareOnly
+```
+
+Danach wirklich deployen:
+
+```powershell
+.\scripts\install-mittwald.ps1 -StackId <STACK-ID> -AppOrigin https://app.example.org -AdminEmail admin@example.org
+```
+
+Fuer die One-Liner-Variante werden die Werte als Prozessvariablen gesetzt. Die
+Konfiguration landet standardmaessig unter `~/stato-mittwald/deploy/.env` und
+wird bei Updates nicht ueberschrieben:
+
+```powershell
+$env:STATO_MITTWALD_STACK_ID='<STACK-ID>'
+$env:STATO_APP_ORIGIN='https://app.example.org'
+$env:STATO_SUPERADMIN_EMAIL='admin@example.org'
+$env:STATO_IMAGE_TAG='1.0.10'
+irm https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-mittwald.ps1 | iex
+```
+
+Im mStudio wird danach nur noch die Domain einmalig zugeordnet:
+
+- `app.example.org` auf Service `frontend`, Port `8080`
+
+Der Frontend-Container leitet `/api` und `/uploads` intern an das Backend weiter.
+Fuer Updates wird in der lokalen `.env` nur `STATO_IMAGE_TAG` auf den gewuenschten
+Release-Tag geaendert und der Installer erneut ausgefuehrt.
+
+Der Stack enthaelt den `backup`-Service. Im mStudio einen Container-Cronjob mit
+dem Befehl `/usr/local/bin/stato-container-backup` anlegen, zum Beispiel taeglich
+um 03:00 Uhr. Die persistenten Volumes bleiben bei einem Stack-Update erhalten.
+
+## Manuelle Alternative (Modus B)
 
 Dieses Dokument beschreibt, wie du das Projekt auf Mittwald mit separater API-Domain betreibst:
 

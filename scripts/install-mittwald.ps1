@@ -71,9 +71,12 @@ function Set-EnvValue([string]$Path, [string]$Key, [string]$Value) {
     $content = [System.IO.File]::ReadAllText($Path)
     $pattern = '(?m)^' + [regex]::Escape($Key) + '=.*$'
     if (-not [regex]::IsMatch($content, $pattern)) {
-        throw "Variable '$Key' fehlt in $Path."
+        $separator = if ($content.EndsWith("`n")) { '' } else { "`r`n" }
+        $content = "$content$separator$Key=$Value`r`n"
     }
-    $content = [regex]::Replace($content, $pattern, "$Key=$Value")
+    else {
+        $content = [regex]::Replace($content, $pattern, "$Key=$Value")
+    }
     $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($Path, $content, $utf8WithoutBom)
 }

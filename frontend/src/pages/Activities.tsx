@@ -757,7 +757,7 @@ export default function Activities() {
           placement="bottom"
           align="end"
         >
-          <div className="flex justify-end mt-1">
+          <div className="flex justify-end">
             <div className="flex gap-2 flex-wrap justify-end">
             <div className="relative">
               {searchOpen && (
@@ -1169,10 +1169,12 @@ export default function Activities() {
         </div>
       </DemoHoverHint>
       {/* Pagination Controls */}
-      <div className="mt-4 mb-4 md:mb-0 flex items-center justify-between gap-3">
-        <div className="text-sm text-gray-600">
-          {total > 0 ? `Seite ${page} von ${pageCount} · ${total} Einträge` : 'Keine Einträge'}
-        </div>
+      <div className={`mt-4 mb-4 flex items-center gap-3 md:mb-0 ${total > 0 ? 'justify-between' : 'justify-end'}`}>
+        {total > 0 ? (
+          <div className="text-sm text-gray-600">
+            {`Seite ${page} von ${pageCount} · ${total} Einträge`}
+          </div>
+        ) : null}
         <ActivitiesPaginationControls
           page={page}
           pageCount={pageCount}
@@ -1368,10 +1370,12 @@ export default function Activities() {
         </div>
         </div>
       </DemoHoverHint>
-      <div className="mt-4 flex items-center justify-between gap-3 md:hidden">
-        <div className="text-sm text-gray-600">
-          {total > 0 ? `Seite ${page} von ${pageCount} · ${total} Einträge` : 'Keine Einträge'}
-        </div>
+      <div className={`mt-4 flex items-center gap-3 md:hidden ${total > 0 ? 'justify-between' : 'justify-end'}`}>
+        {total > 0 ? (
+          <div className="text-sm text-gray-600">
+            {`Seite ${page} von ${pageCount} · ${total} Einträge`}
+          </div>
+        ) : null}
         <ActivitiesPaginationControls
           page={page}
           pageCount={pageCount}

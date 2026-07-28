@@ -761,6 +761,21 @@ export default function Statistics() {
     updateDateRange(year, month);
   };
 
+  // Leaving the "Alle" range must establish a concrete year. Otherwise the
+  // resulting date range is incorrectly treated as a custom range on the way
+  // back to the year view.
+  const switchToYearView = () => {
+    const year = selectedYear || String(currentYear);
+    setSelectedYear(year);
+    setSelectedMonth(null);
+    setFilterMode('year');
+    updateDateRange(year, null);
+  };
+
+  const switchToMonthView = () => {
+    selectMonth(selectedMonth ?? currentMonth);
+  };
+
   // Navigate to previous/next month
   const navigateMonth = (direction: 'prev' | 'next') => {
     let year = Number(selectedYear || currentYear);
@@ -2055,11 +2070,7 @@ export default function Statistics() {
                               ? 'bg-white shadow text-viridian font-medium'
                               : `${mobileSecondaryTextClass} hover:text-viridian`
                           }`}
-                          onClick={() => {
-                            setFilterMode('year');
-                            setSelectedMonth(null);
-                            updateDateRange(selectedYear || String(currentYear), null);
-                          }}
+                          onClick={switchToYearView}
                         >
                           Jahr
                         </button>
@@ -2070,12 +2081,7 @@ export default function Statistics() {
                               ? 'bg-white shadow text-viridian font-medium'
                               : `${mobileSecondaryTextClass} hover:text-viridian`
                           }`}
-                          onClick={() => {
-                            setFilterMode('month');
-                            const month = selectedMonth ?? currentMonth;
-                            setSelectedMonth(month);
-                            updateDateRange(selectedYear || String(currentYear), month);
-                          }}
+                          onClick={switchToMonthView}
                         >
                           Monat
                         </button>
@@ -2342,11 +2348,7 @@ export default function Statistics() {
                         ? 'bg-white shadow text-viridian font-medium'
                         : 'text-gray-600 hover:text-gray-800'
                     }`}
-                    onClick={() => {
-                      setFilterMode('year');
-                      setSelectedMonth(null);
-                      updateDateRange(selectedYear || String(currentYear), null);
-                    }}
+                    onClick={switchToYearView}
                   >
                     Jahr
                   </button>
@@ -2357,12 +2359,7 @@ export default function Statistics() {
                         ? 'bg-white shadow text-viridian font-medium'
                         : 'text-gray-600 hover:text-gray-800'
                     }`}
-                    onClick={() => {
-                      setFilterMode('month');
-                      const month = selectedMonth ?? currentMonth;
-                      setSelectedMonth(month);
-                      updateDateRange(selectedYear || String(currentYear), month);
-                    }}
+                    onClick={switchToMonthView}
                   >
                     Monat
                   </button>

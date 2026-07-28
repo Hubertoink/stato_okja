@@ -27,6 +27,7 @@ import DemoHoverHint from '@/demo/DemoHoverHint';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig, type PublicConfig } from '@/lib/publicConfig';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
+import { getEmailValidationMessage } from '@/lib/emailValidation';
 
 /** Instant hover tooltip with optional user list */
 function Tooltip({ label, names, children }: { label: string; names?: string[]; children: React.ReactNode }) {
@@ -778,6 +779,7 @@ export default function AdminOrgSetup() {
   const [adminTemporaryPassword, setAdminTemporaryPassword] = useState('');
   const [creating, setCreating] = useState(false);
   const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_PUBLIC_CONFIG);
+  const adminEmailValidationMessage = getEmailValidationMessage(adminEmail);
 
   useEffect(() => {
     let cancelled = false;
@@ -894,6 +896,7 @@ export default function AdminOrgSetup() {
   const handleCreate = async () => {
     if (!orgName.trim()) return;
     if (withAdmin && !adminEmail.trim()) return;
+    if (withAdmin && adminEmailValidationMessage) return;
     const localProvisioning = publicConfig.userProvisioningMode === 'local';
     if (withAdmin && localProvisioning && (!adminTemporaryPassword || getPasswordValidationMessage(adminTemporaryPassword))) return;
     
@@ -1096,9 +1099,11 @@ export default function AdminOrgSetup() {
                   type="email"
                   value={adminEmail} 
                   onChange={(e)=>setAdminEmail(e.target.value)} 
-                  className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian" 
+                  className={`border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian ${adminEmailValidationMessage ? 'border-red-500' : ''}`}
                   placeholder="admin@organisation.de"
+                  aria-invalid={Boolean(adminEmailValidationMessage)}
                 />
+                {adminEmailValidationMessage && <p className="text-xs text-red-600 mt-1">{adminEmailValidationMessage}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Admin Name</label>
@@ -1137,7 +1142,7 @@ export default function AdminOrgSetup() {
             </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              disabled={!orgName.trim() || (withAdmin && (!adminEmail.trim() || (publicConfig.userProvisioningMode === 'local' && (!adminTemporaryPassword || Boolean(getPasswordValidationMessage(adminTemporaryPassword)))))) || creating || (!isSuperadmin && !user?.orgId)}
+              disabled={!orgName.trim() || (withAdmin && (!adminEmail.trim() || Boolean(adminEmailValidationMessage) || (publicConfig.userProvisioningMode === 'local' && (!adminTemporaryPassword || Boolean(getPasswordValidationMessage(adminTemporaryPassword)))))) || creating || (!isSuperadmin && !user?.orgId)}
               onClick={handleCreate}
             >
               {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}

@@ -53,6 +53,7 @@ interface AuthState {
   resendTwoFactor: (challengeToken: string) => Promise<({ ok: true } & TwoFactorChallenge) | { ok: false; error: string }>;
   logout: () => void;
   refresh: () => Promise<void>;
+  updateSessionUser: (user: AuthUser) => void;
 }
 
 const AuthCtx = createContext<AuthState | undefined>(undefined);
@@ -245,7 +246,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async refresh() {
       await refreshProfile();
     },
-  }), [applyAuthenticatedSession, clearSession, loading, refreshProfile, user]);
+    updateSessionUser(nextUser: AuthUser) {
+      applyResolvedUser(nextUser);
+    },
+  }), [applyAuthenticatedSession, applyResolvedUser, clearSession, loading, refreshProfile, user]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

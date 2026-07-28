@@ -887,7 +887,7 @@ export class AuthService {
     const ok = await bcrypt.compare(currentPassword || '', user.passwordHash || '');
     if (!ok) throw new Error('Aktuelles Passwort ist falsch');
     await this.savePassword(user, newPassword, { mustChangePassword: false, bumpResetVersion: true });
-    return { ok: true };
+    return { ok: true, user: await this.getProfile(user.id) };
   }
 
   async verifyPasswordForUser(userId: string, password: string) {

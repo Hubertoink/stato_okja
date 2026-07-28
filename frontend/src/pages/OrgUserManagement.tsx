@@ -13,6 +13,7 @@ import AssignOrgModal from '@/components/AssignOrgModal';
 import { useIsMobile } from '@/lib/useIsMobile';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
+import { getEmailValidationMessage } from '@/lib/emailValidation';
 
 export default function OrgUserManagement() {
   const { user } = useAuth();
@@ -116,6 +117,7 @@ export default function OrgUserManagement() {
     const q = searchQuery.toLowerCase();
     return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.org?.name?.toLowerCase().includes(q);
   });
+  const emailValidationMessage = getEmailValidationMessage(email);
 
   // Reset create form
   const resetCreateForm = () => {
@@ -129,6 +131,7 @@ export default function OrgUserManagement() {
   // Handle create user
   const handleCreate = async () => {
     if (!email.trim() || !targetOrgId) return;
+    if (emailValidationMessage) return;
     const localProvisioning = publicConfig.userProvisioningMode === 'local';
     if (localProvisioning && (!temporaryPassword || getPasswordValidationMessage(temporaryPassword))) return;
     
@@ -293,10 +296,12 @@ export default function OrgUserManagement() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
+                className={`border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian ${emailValidationMessage ? 'border-red-500' : ''}`}
                 placeholder="user@organisation.de"
                 autoFocus
+                aria-invalid={Boolean(emailValidationMessage)}
               />
+              {emailValidationMessage && <p className="text-xs text-red-600 mt-1">{emailValidationMessage}</p>}
             </div>
           </div>
 
@@ -362,7 +367,7 @@ export default function OrgUserManagement() {
             </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              disabled={!email.trim() || !targetOrgId || creating || (publicConfig.userProvisioningMode === 'local' && (!temporaryPassword || Boolean(getPasswordValidationMessage(temporaryPassword))))}
+              disabled={!email.trim() || Boolean(emailValidationMessage) || !targetOrgId || creating || (publicConfig.userProvisioningMode === 'local' && (!temporaryPassword || Boolean(getPasswordValidationMessage(temporaryPassword))))}
               onClick={handleCreate}
             >
               {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}

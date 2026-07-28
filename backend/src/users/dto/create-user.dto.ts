@@ -1,7 +1,8 @@
-import { IsEmail, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
+import { IsAscii, IsEmail, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
 import type { UserRole } from '../entities/user.entity';
 
 export class CreateUserDto {
+  @IsAscii()
   @IsEmail()
   @MaxLength(200)
   email!: string;

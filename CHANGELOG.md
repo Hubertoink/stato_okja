@@ -20,6 +20,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.12] - 2026-07-28
+
+### Fixed
+- Die Benutzeranlage lehnt E-Mail-Adressen mit Umlauten oder anderen
+  Nicht-ASCII-Zeichen nun im Browser und im Backend ab.
+- Nach dem Ändern eines temporären Passworts wird das aktualisierte
+  Benutzerprofil sofort übernommen. Die Passwortpflicht endet ohne erneutes
+  Anmelden; gegebenenfalls werden anschließend die Nutzungsbedingungen zur
+  Zustimmung angezeigt.
+
+---
+
 ## [1.0.11] - 2026-07-28
 
 ### Added

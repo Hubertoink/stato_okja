@@ -1,6 +1,7 @@
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength, MinLength } from 'class-validator';
+import { IsAscii, IsBoolean, IsEmail, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength, MinLength } from 'class-validator';
 
 export class LoginDto {
+  @IsAscii()
   @IsEmail()
   @MaxLength(200)
   email!: string;
@@ -33,6 +34,7 @@ export class ResendTwoFactorDto {
 }
 
 export class InviteUserDto {
+  @IsAscii()
   @IsEmail()
   @MaxLength(200)
   email!: string;
@@ -57,6 +59,7 @@ export class InviteUserDto {
 }
 
 export class CreateLocalUserDto {
+  @IsAscii()
   @IsEmail()
   @MaxLength(200)
   email!: string;
@@ -92,6 +95,7 @@ export class AcceptInviteDto {
 }
 
 export class RequestPasswordResetDto {
+  @IsAscii()
   @IsEmail()
   @MaxLength(200)
   email!: string;

@@ -185,6 +185,7 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 - `JWT_SECRET`: lang, zufällig, stabil, nicht bei jedem Deploy ändern
 - `JWT_ACCESS_EXPIRATION`: optional, Standard z. B. `12h`
 - `PASSWORD_RESET_MODE`: `email`, `admin_temp_password` oder `hybrid`
+- `USER_PROVISIONING_MODE`: `email` (empfohlen) oder `local` für lokale Benutzeranlage ohne SMTP
 - `AUTH_2FA_ENABLED`: optionale E-Mail-Zwei-Faktor-Authentifizierung für den Login, Standard `false`
 - `AUTH_2FA_CODE_TTL`: Gültigkeit des E-Mail-Codes in Sekunden, Standard `600`
 - `APP_ORIGIN` muss auf die echte Frontend-URL zeigen, damit der Direktlink aus der 2FA-E-Mail den Code wieder in die Login-Seite zurückgeben kann
@@ -524,6 +525,39 @@ PASSWORD_RESET_MODE=hybrid
 ```
 
 Dann kann der Superadmin je nach Situation zwischen Reset-Link und temporärem Passwort wählen.
+
+## Neue Benutzer ohne SMTP anlegen
+
+Standard und Empfehlung bleibt die Einladung per E-Mail:
+
+```env
+USER_PROVISIONING_MODE=email
+```
+
+Sie benötigt einen funktionierenden SMTP-Server und erlaubt dem Benutzer, sein
+eigenes Passwort über einen zeitlich begrenzten Einladungslink zu setzen.
+
+Für ein bewusst isoliertes On-Prem-Netz ohne SMTP kann der lokale
+Anlagemodus aktiviert werden:
+
+```env
+USER_PROVISIONING_MODE=local
+PASSWORD_RESET_MODE=admin_temp_password
+AUTH_2FA_ENABLED=false
+```
+
+Danach den Stack neu starten, damit das Backend die Variable übernimmt:
+
+```powershell
+docker compose -f docker-compose.onprem.yml --env-file .env.onprem up -d
+```
+
+In „Benutzer verwalten“ und beim Anlegen einer Organisation erscheint dann
+„Benutzer lokal anlegen“ beziehungsweise „Administrator lokal anlegen“.
+Der Admin setzt ein starkes temporäres Passwort und gibt es sicher an die
+Person weiter. Beim ersten Login muss dieses Passwort geändert werden. Die
+E-Mail bleibt derzeit die eindeutige Login-Kennung, muss in diesem Modus aber
+nicht erreichbar sein.
 
 ## Dev Tools auf On-Prem
 

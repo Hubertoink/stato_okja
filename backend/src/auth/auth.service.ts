@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ConflictException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes, randomInt } from 'crypto';
@@ -21,6 +21,7 @@ import { getTwoFactorCodeTtlSeconds, isTwoFactorAuthenticationEnabled } from './
 
 export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
 export type AdminResetActionMode = 'email' | 'temporary_password';
+export type UserProvisioningMode = 'email' | 'local';
 export type TwoFactorChallengeResponse = {
   requiresTwoFactor: true;
   challengeToken: string;
@@ -116,12 +117,18 @@ export class AuthService {
     return 'email';
   }
 
+  private getUserProvisioningMode(): UserProvisioningMode {
+    const raw = String(process.env.USER_PROVISIONING_MODE || 'email').trim().toLowerCase();
+    return raw === 'local' ? 'local' : 'email';
+  }
+
   getPublicPasswordResetConfig() {
     const passwordResetMode = this.getPasswordResetMode();
     return {
       passwordResetMode,
       forgotPasswordEnabled: passwordResetMode !== 'admin_temp_password',
       adminTemporaryPasswordEnabled: passwordResetMode !== 'email',
+      userProvisioningMode: this.getUserProvisioningMode(),
     };
   }
 
@@ -761,6 +768,62 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  async createLocalUser(payload: {
+    email: string;
+    name: string;
+    role?: 'org_admin' | 'user' | 'superadmin';
+    orgId: string;
+    temporaryPassword: string;
+    actor?: { id?: string; name?: string | null; orgId?: string | null };
+  }) {
+    if (this.getUserProvisioningMode() !== 'local') {
+      throw new ForbiddenException('Lokale Benutzeranlage ist deaktiviert. USER_PROVISIONING_MODE=local setzen.');
+    }
+
+    const email = payload.email.toLowerCase();
+    const existing = await this.users.findOne({ where: { email } });
+    if (existing) {
+      throw new ConflictException('Diese E-Mail-Adresse wird bereits verwendet.');
+    }
+
+    const user = this.users.create({
+      email,
+      name: payload.name || email,
+      role: (payload.role ?? 'user') as UserRole,
+      orgId: payload.orgId,
+      passwordHash: null,
+      mustChangePassword: false,
+    });
+    await this.users.save(user);
+    await this.savePassword(user, payload.temporaryPassword, {
+      mustChangePassword: true,
+      bumpResetVersion: true,
+    });
+
+    try {
+      await this.audit.log({
+        action: AuditAction.CREATE,
+        entityType: 'user',
+        entityId: user.id,
+        entityTitle: user.email,
+        user: payload.actor,
+        orgId: user.orgId ?? null,
+        details: { provisioningMode: 'local', mustChangePassword: true },
+      });
+    } catch {
+      /* An audit error must not leave the new account unusable. */
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      orgId: user.orgId,
+      mustChangePassword: true,
+    };
   }
 
   async acceptInvite(token: string, password: string, termsAccepted: boolean, metadata?: RefreshSessionMetadata) {

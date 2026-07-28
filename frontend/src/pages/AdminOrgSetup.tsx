@@ -4,6 +4,7 @@ import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import {
   createOrgApi,
+  createLocalUserApi,
   inviteUserApi,
   listOrgs,
   type OrgDto,
@@ -23,6 +24,9 @@ import { canAccessOrgMove } from '@/lib/orgMoveConfig';
 import { Shield, User as UserIcon, Trash2, Plus, Building2, ChevronDown, ChevronRight, Users, Settings2, ArrowRightLeft, CheckCircle2, Ban, GitBranch, Save as SaveIcon, X as XIcon, Mail } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
 import DemoHoverHint from '@/demo/DemoHoverHint';
+import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig, type PublicConfig } from '@/lib/publicConfig';
+import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
+import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 
 /** Instant hover tooltip with optional user list */
 function Tooltip({ label, names, children }: { label: string; names?: string[]; children: React.ReactNode }) {
@@ -771,7 +775,19 @@ export default function AdminOrgSetup() {
   const [withAdmin, setWithAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminName, setAdminName] = useState('');
+  const [adminTemporaryPassword, setAdminTemporaryPassword] = useState('');
   const [creating, setCreating] = useState(false);
+  const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_PUBLIC_CONFIG);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicConfig().then((config) => {
+      if (!cancelled) setPublicConfig(config);
+    }).catch(() => {
+      /* Keep the secure email-invitation default when config loading fails. */
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   async function reloadOrgs() {
     setLoading(true);
@@ -872,26 +888,37 @@ export default function AdminOrgSetup() {
     setWithAdmin(false);
     setAdminEmail('');
     setAdminName('');
+    setAdminTemporaryPassword('');
   };
 
   const handleCreate = async () => {
     if (!orgName.trim()) return;
     if (withAdmin && !adminEmail.trim()) return;
+    const localProvisioning = publicConfig.userProvisioningMode === 'local';
+    if (withAdmin && localProvisioning && (!adminTemporaryPassword || getPasswordValidationMessage(adminTemporaryPassword))) return;
     
     setCreating(true);
     try {
       const effectiveParentId = isSuperadmin ? (parentId === 'root' ? null : parentId || null) : (user?.orgId ?? null);
       const org = await createOrgApi(orgName.trim(), effectiveParentId);
-      let invitationEmailQueued = true;
       
       if (withAdmin && adminEmail.trim()) {
-        const invitation = await inviteUserApi({
-          email: adminEmail.trim(), 
-          name: adminName.trim() || adminEmail.split('@')[0], 
-          role: 'org_admin', 
-          orgId: org.id 
-        });
-        invitationEmailQueued = invitation.emailQueued;
+        if (localProvisioning) {
+          await createLocalUserApi({
+            email: adminEmail.trim(),
+            name: adminName.trim() || adminEmail.split('@')[0],
+            role: 'org_admin',
+            orgId: org.id,
+            temporaryPassword: adminTemporaryPassword,
+          });
+        } else {
+          await inviteUserApi({
+            email: adminEmail.trim(),
+            name: adminName.trim() || adminEmail.split('@')[0],
+            role: 'org_admin',
+            orgId: org.id,
+          });
+        }
       }
       
       resetCreateForm();
@@ -899,9 +926,9 @@ export default function AdminOrgSetup() {
       await reloadOrgs();
       showToast(
         withAdmin
-          ? invitationEmailQueued
-            ? `Organisation „${org.name}" angelegt und Einladung per E-Mail versendet.`
-            : `Organisation „${org.name}" angelegt, aber SMTP ist nicht konfiguriert; die Einladung wurde nicht zugestellt.`
+          ? localProvisioning
+            ? `Organisation „${org.name}" und lokaler Admin angelegt. Das temporäre Passwort muss beim ersten Login geändert werden.`
+            : `Organisation „${org.name}" angelegt und Einladung per E-Mail versendet.`
           : `Organisation „${org.name}" erfolgreich angelegt.`,
         { type: 'success' },
       );
@@ -1054,8 +1081,8 @@ export default function AdminOrgSetup() {
                 className="h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
               />
               <div>
-                <span className="font-medium text-gray-700">Administrator einladen</span>
-                <p className="text-xs text-gray-500">Erstellt einen Einladungslink für den Organisations-Admin</p>
+                <span className="font-medium text-gray-700">{publicConfig.userProvisioningMode === 'local' ? 'Administrator lokal anlegen' : 'Administrator einladen'}</span>
+                <p className="text-xs text-gray-500">{publicConfig.userProvisioningMode === 'local' ? 'Legt ein Konto mit temporärem Passwort an' : 'Erstellt einen Einladungslink für den Organisations-Admin'}</p>
               </div>
             </label>
           </div>
@@ -1083,6 +1110,20 @@ export default function AdminOrgSetup() {
                 />
                 <p className="text-xs text-gray-500 mt-1">Optional – wird sonst aus der E-Mail abgeleitet</p>
               </div>
+              {publicConfig.userProvisioningMode === 'local' && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Temporäres Passwort *</label>
+                  <input
+                    type="password"
+                    value={adminTemporaryPassword}
+                    onChange={(event) => setAdminTemporaryPassword(event.target.value)}
+                    className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
+                    autoComplete="new-password"
+                  />
+                  <PasswordRequirementsHint password={adminTemporaryPassword} className="mt-2" />
+                  <p className="text-xs text-gray-600 mt-2">Sicher weitergeben; beim ersten Login muss es geändert werden.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1096,7 +1137,7 @@ export default function AdminOrgSetup() {
             </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              disabled={!orgName.trim() || (withAdmin && !adminEmail.trim()) || creating || (!isSuperadmin && !user?.orgId)}
+              disabled={!orgName.trim() || (withAdmin && (!adminEmail.trim() || (publicConfig.userProvisioningMode === 'local' && (!adminTemporaryPassword || Boolean(getPasswordValidationMessage(adminTemporaryPassword)))))) || creating || (!isSuperadmin && !user?.orgId)}
               onClick={handleCreate}
             >
               {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}

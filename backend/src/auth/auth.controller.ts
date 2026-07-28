@@ -15,6 +15,7 @@ import {
   AcceptInviteDto,
   AdminResetPasswordDto,
   ChangePasswordDto,
+  CreateLocalUserDto,
   InitialSetupDto,
   InviteUserDto,
   LoginDto,
@@ -306,6 +307,36 @@ export class AuthController {
       ...body,
       name: body.name || body.email,
       role,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('superadmin','org_admin')
+  @Throttle(AUTH_RATE_LIMIT)
+  @Post('local-user')
+  async createLocalUser(
+    @Body() body: CreateLocalUserDto,
+    @Req() req: { user: { id?: string; name?: string | null; role: string; orgId?: string | null } },
+  ) {
+    const role = this.parseInviteRole(body?.role);
+    const actor = req.user;
+    const requestedOrgId = body.orgId;
+
+    if (actor.role !== 'superadmin') {
+      if (role === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
+      const myOrgId = actor.orgId || null;
+      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
+      if (!subtree.includes(requestedOrgId)) throw new ForbiddenException('Nicht erlaubt');
+    }
+
+    return this.auth.createLocalUser({
+      email: body.email,
+      name: body.name || body.email,
+      role,
+      orgId: requestedOrgId,
+      temporaryPassword: body.temporaryPassword,
+      actor,
     });
   }
 

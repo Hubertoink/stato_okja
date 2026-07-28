@@ -20,6 +20,22 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.11] - 2026-07-28
+
+### Added
+- On-Prem-Installationen können Benutzer und Organisations-Admins optional
+  lokal mit einem temporären Passwort anlegen. Der neue Schalter
+  `USER_PROVISIONING_MODE=local` benötigt keinen SMTP-Server; das Passwort
+  muss beim ersten Login geändert werden.
+- Der Mittwald-Go-Live-Leitfaden beschreibt den neuen Stack-Installer,
+  die Domain-Zuordnung, Updates und den Backup-Cronjob.
+
+### Changed
+- E-Mail-Einladungen über SMTP bleiben der sichere, empfohlene Standard für
+  neue Benutzer (`USER_PROVISIONING_MODE=email`).
+
+---
+
 ## [1.0.10] - 2026-07-27
 
 ### Added

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
-import { inviteUserApi, listOrgs, type OrgDto } from '@/lib/orgs';
+import { createLocalUserApi, inviteUserApi, listOrgs, type OrgDto } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
 import { Trash2, KeyRound, Users, Plus, Shield, User as UserIcon, Building2, Mail, Search } from 'lucide-react';
@@ -27,6 +27,7 @@ export default function OrgUserManagement() {
   const [name, setName] = useState('');
   const [role, setRole] = useState<'org_admin' | 'user'>('user');
   const [targetOrgId, setTargetOrgId] = useState<string | ''>('');
+  const [temporaryPassword, setTemporaryPassword] = useState('');
   const [creating, setCreating] = useState(false);
 
   // User list state
@@ -122,25 +123,38 @@ export default function OrgUserManagement() {
     setName('');
     setRole('user');
     setTargetOrgId(user?.role !== 'superadmin' ? (user?.orgId ?? '') : '');
+    setTemporaryPassword('');
   };
 
   // Handle create user
   const handleCreate = async () => {
     if (!email.trim() || !targetOrgId) return;
+    const localProvisioning = publicConfig.userProvisioningMode === 'local';
+    if (localProvisioning && (!temporaryPassword || getPasswordValidationMessage(temporaryPassword))) return;
     
     setCreating(true);
     try {
       const selectedOrgId = (user?.role === 'superadmin') ? (targetOrgId || null) : ((targetOrgId as string) || (user?.orgId ?? null));
-      const invitation = await inviteUserApi({ email: email.trim(), name: name.trim() || email.split('@')[0], role, orgId: selectedOrgId });
+      if (localProvisioning) {
+        await createLocalUserApi({
+          email: email.trim(),
+          name: name.trim() || email.split('@')[0],
+          role,
+          orgId: selectedOrgId as string,
+          temporaryPassword,
+        });
+      } else {
+        await inviteUserApi({ email: email.trim(), name: name.trim() || email.split('@')[0], role, orgId: selectedOrgId });
+      }
       
       resetCreateForm();
       setCreateModalOpen(false);
       await reload();
       showToast(
-        invitation.emailQueued
-          ? 'Einladung per E-Mail versendet.'
-          : 'SMTP ist nicht konfiguriert; Einladung wurde nicht zugestellt.',
-        { type: invitation.emailQueued ? 'success' : 'error', durationMs: invitation.emailQueued ? undefined : 3500 },
+        localProvisioning
+          ? 'Benutzer lokal angelegt. Das temporäre Passwort muss beim ersten Login geändert werden.'
+          : 'Einladung per E-Mail versendet.',
+        { type: 'success' },
       );
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Einladung fehlgeschlagen';
@@ -178,10 +192,10 @@ export default function OrgUserManagement() {
         <button
           className="inline-flex shrink-0 items-center justify-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
           onClick={() => { resetCreateForm(); setCreateModalOpen(true); }}
-          aria-label="Benutzer einladen"
+          aria-label={publicConfig.userProvisioningMode === 'local' ? 'Benutzer lokal anlegen' : 'Benutzer einladen'}
         >
           <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">Benutzer einladen</span>
+          <span className="hidden sm:inline">{publicConfig.userProvisioningMode === 'local' ? 'Benutzer anlegen' : 'Benutzer einladen'}</span>
         </button>
       </div>
 
@@ -260,7 +274,7 @@ export default function OrgUserManagement() {
       </div>
 
       {/* Create User Modal */}
-      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Neuen Benutzer einladen" maxWidth="md">
+      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title={publicConfig.userProvisioningMode === 'local' ? 'Neuen Benutzer lokal anlegen' : 'Neuen Benutzer einladen'} maxWidth="md">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -285,6 +299,21 @@ export default function OrgUserManagement() {
               />
             </div>
           </div>
+
+          {publicConfig.userProvisioningMode === 'local' && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Temporäres Passwort *</label>
+              <input
+                type="password"
+                value={temporaryPassword}
+                onChange={(event) => setTemporaryPassword(event.target.value)}
+                className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
+                autoComplete="new-password"
+              />
+              <PasswordRequirementsHint password={temporaryPassword} className="mt-2" />
+              <p className="text-xs text-gray-600 mt-2">Sicher an die Person weitergeben. Beim ersten Login muss es geändert werden.</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -333,12 +362,12 @@ export default function OrgUserManagement() {
             </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              disabled={!email.trim() || !targetOrgId || creating}
+              disabled={!email.trim() || !targetOrgId || creating || (publicConfig.userProvisioningMode === 'local' && (!temporaryPassword || Boolean(getPasswordValidationMessage(temporaryPassword))))}
               onClick={handleCreate}
             >
               {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
-              <Mail className="w-4 h-4" />
-              Einladung erstellen
+              {publicConfig.userProvisioningMode === 'local' ? <KeyRound className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+              {publicConfig.userProvisioningMode === 'local' ? 'Benutzer lokal anlegen' : 'Einladung erstellen'}
             </button>
           </div>
         </div>

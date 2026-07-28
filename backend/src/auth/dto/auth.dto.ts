@@ -56,6 +56,28 @@ export class InviteUserDto {
   orgName?: string;
 }
 
+export class CreateLocalUserDto {
+  @IsEmail()
+  @MaxLength(200)
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 200)
+  name?: string;
+
+  @IsOptional()
+  @IsIn(['superadmin', 'org_admin', 'user'])
+  role?: 'superadmin' | 'org_admin' | 'user';
+
+  @IsUUID()
+  orgId!: string;
+
+  @IsString()
+  @MinLength(1)
+  temporaryPassword!: string;
+}
+
 export class AcceptInviteDto {
   @IsString()
   @MinLength(1)

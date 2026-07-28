@@ -147,6 +147,26 @@ export async function inviteUserApi(payload: { email: string; name?: string; rol
   return res.data;
 }
 
+export type CreateLocalUserResult = {
+  id: string;
+  email: string;
+  name: string;
+  role: 'superadmin' | 'org_admin' | 'user';
+  orgId: string;
+  mustChangePassword: true;
+};
+
+export async function createLocalUserApi(payload: {
+  email: string;
+  name?: string;
+  role?: 'org_admin' | 'user';
+  orgId: string;
+  temporaryPassword: string;
+}): Promise<CreateLocalUserResult> {
+  const res = await api.post<CreateLocalUserResult>('/auth/local-user', payload);
+  return res.data;
+}
+
 export async function acceptInviteApi(token: string, password: string, termsAccepted: boolean) {
   const res = await api.post('/auth/accept-invite', { token, password, termsAccepted });
   return res.data as { access_token: string; refresh_csrf_token: string };

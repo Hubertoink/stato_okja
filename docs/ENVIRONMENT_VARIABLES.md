@@ -70,6 +70,7 @@ Wichtig:
 | `INVITE_TOKEN_EXPIRATION` | Zeitangabe wie `24h` | Gueltigkeit von Einladungslinks (maximal 24 Stunden). |
 | `RESET_TOKEN_EXPIRATION` | Zeitangabe wie `1h` | Gueltigkeit von Passwort-Reset-Links. |
 | `PASSWORD_RESET_MODE` | `email`, `admin_temp_password`, `hybrid` | Legt fest, ob Passwort-Resets per Mail, nur durch Admins oder in beiden Modi moeglich sind. |
+| `USER_PROVISIONING_MODE` | `email` (Standard), `local` | `email` nutzt Einladungen per SMTP und ist empfohlen. `local` aktiviert die lokale Benutzeranlage mit einem durch den Admin gesetzten temporären Passwort; dieses muss beim ersten Login geändert werden. |
 | `AUTH_2FA_ENABLED` | `true`, `false` | Aktiviert E-Mail-basierte Zwei-Faktor-Anmeldung. Benoetigt funktionierendes SMTP. |
 | `AUTH_2FA_CODE_TTL` | Sekunden, z. B. `600` | Gueltigkeit eines 2FA-Codes. |
 

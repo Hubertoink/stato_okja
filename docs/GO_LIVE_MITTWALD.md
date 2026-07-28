@@ -1,15 +1,62 @@
-# Go-Live Leitfaden – Mittwald (Docker Deploy + Varnish)
+# Go-Live Leitfaden – Mittwald (Docker Deploy)
 
-Dieser Leitfaden beschreibt, wie du StatO komplett bei Mittwald betreibst – inklusive Docker-Deployment, Reverse-Proxy (Varnish/Nginx), E-Mail (SMTP) und persistenter Datenhaltung.
+Dieser Leitfaden beschreibt, wie du StatO komplett bei Mittwald betreibst – inklusive Docker-Deployment, Domain-Zuordnung, E-Mail (SMTP) und persistenter Datenhaltung. Der empfohlene Weg ist der unten beschriebene vollständige Stack mit dem Mittwald-Installer. Die manuelle Proxy-/Container-Konfiguration bleibt als Alternative möglich.
 
 ## Zielbild
 
-- Alles bei Mittwald: Postgres, Backend (NestJS), Frontend (Nginx)
-- Öffentliche Domain: `https://app.<deinedomain>` (einfach) oder `https://app.<...>` + `https://api.<...>` (getrennt)
-- Varnish/Proxy routet: `/` → Frontend, `/api` → Backend
+- Alles bei Mittwald: Postgres, Backend (NestJS), Frontend (Nginx) und Backup
+- Empfohlener Stack: öffentliche Domain `https://app.<deinedomain>` auf den Frontend-Service; dieser routet `/api` und `/uploads` intern an das Backend
+- Alternative: getrennte Frontend-/API-Domains mit eigener Varnish- oder Proxy-Konfiguration
 - E-Mail über Mittwald SMTP
 
+## Empfohlener Weg: Stack per Mittwald-Installer
+
+Der bereitgestellte Stack enthält PostgreSQL, Backend, Frontend und den
+Backup-Service. Dadurch müssen die Container im mStudio nicht einzeln
+konfiguriert werden. Der Installer erzeugt beim ersten Lauf individuelle,
+persistente DB- und JWT-Secrets; bei späteren Updates werden diese nicht
+überschrieben.
+
+Voraussetzungen auf dem eigenen Rechner:
+
+1. Die Mittwald-CLI `mw` ist installiert.
+2. Ein mStudio-API-Token wurde einmalig mit `mw login token` hinterlegt.
+3. Im Zielprojekt existiert ein Stack; dessen ID liefert `mw stack ls`.
+
+Zuerst die Konfiguration ohne API-Aufruf vorbereiten:
+
+```powershell
+git clone https://github.com/Hubertoink/stato_okja.git
+cd stato_okja
+.\scripts\install-mittwald.ps1 -StackId <STACK-ID> -AppOrigin https://app.example.org -AdminEmail admin@example.org -PrepareOnly
+```
+
+Danach mit denselben Parametern deployen:
+
+```powershell
+.\scripts\install-mittwald.ps1 -StackId <STACK-ID> -AppOrigin https://app.example.org -AdminEmail admin@example.org
+```
+
+Im mStudio wird anschließend die Domain einmalig dem Service `frontend` auf
+Port `8080` zugeordnet. Der Frontend-Container leitet `/api` und `/uploads`
+intern an das Backend weiter; eine separate öffentliche API-Domain ist dafür
+nicht nötig.
+
+Für ein Update `STATO_IMAGE_TAG` in der lokalen Installer-Konfiguration auf
+den gewünschten Release-Tag setzen und den Installer erneut ausführen. Der
+vollständige Referenzablauf einschließlich One-Liner-Variante steht in
+[`DEPLOY_MITTWALD.md`](../DEPLOY_MITTWALD.md).
+
+Der Stack enthält außerdem den Service `backup`. Im mStudio einen
+Container-Cronjob auf `backup` mit dem Befehl
+`/usr/local/bin/stato-container-backup` einrichten, beispielsweise täglich um
+03:00 Uhr. Das Volume `backup-data` zusätzlich über Mittwald-Volume- bzw.
+Projektbackups oder einen separaten Export sichern.
+
 ## 1) Vorbereitung
+
+Dieser Abschnitt gehört zur manuellen Alternative. Beim Installer sind die
+benötigten Stack-Dateien bereits hinterlegt.
 
 - Repository: aktueller Stand auf `main` ist produktionsbereit
 - Stelle sicher, dass folgende Dateien passen:
@@ -19,6 +66,10 @@ Dieser Leitfaden beschreibt, wie du StatO komplett bei Mittwald betreibst – in
 
 ## 2) DNS & TLS
 
+Beim empfohlenen Installer-Stack wird `app.<deinedomain>` im mStudio dem
+Service `frontend` auf Port `8080` zugeordnet; TLS wird dort für die Domain
+aktiviert. Die folgenden Hinweise gelten für die manuelle Proxy-Alternative.
+
 - Lege `app.<deinedomain>` (und optional `api.<deinedomain>`, `uploads.<deinedomain>`) im Mittwald DNS an
 - Aktiviere TLS/SSL-Zertifikate für die Domain(s) über Mittwald
 
@@ -27,6 +78,10 @@ Empfehlung – Single-Domain Setup:
 - Routen (siehe Abschnitt Proxy) bedienen Frontend+Backend unter derselben Domain
 
 ## 3) ENV-Variablen (wichtig!)
+
+Beim Installer-Stack werden die grundlegenden Werte und individuellen Secrets
+in dessen persistenter lokaler Konfiguration verwaltet. Die folgenden
+Variablen werden nur für die manuelle Alternative direkt in Mittwald gesetzt.
 
 Setze in Mittwald (Projekt-Umgebung oder Deployment-Variablen):
 
@@ -52,7 +107,11 @@ Wichtig:
 - Einen geeigneten Wert kannst du z. B. mit `openssl rand -base64 48` erzeugen.
 - Fuer Postgres gilt standardmaessig: Externe Hosts sollen TLS nutzen. Wenn eure DB bewusst intern und ohne TLS betrieben wird, muss das explizit mit `DB_REQUIRE_SSL=false` freigegeben werden.
 
-## 4) Docker Deploy (Compose)
+## 4) Manuelles Docker-Deploy (Compose, Alternative)
+
+Für neue Installationen den Installer im Abschnitt „Empfohlener Weg“ verwenden.
+Dieser Abschnitt ist für bestehende oder bewusst manuell konfigurierte
+Deployments gedacht.
 
 - Nutze `docker-compose.prod.yml` als Basis. Es enthält folgende Services:
   - `postgres`: Postgres 16
@@ -67,7 +126,7 @@ Bei Mittwald:
 - Hinterlege ENV (siehe 3)
 - Starte das Deployment
 
-## 5) Proxy-/Routing-Konfiguration (Varnish/Nginx)
+## 5) Manuelle Proxy-/Routing-Konfiguration (Varnish/Nginx)
 
 Single-Domain (empfohlen für Einfachheit):
 - Domain: `app.<deinedomain>` → Varnish → interner Nginx (oder direkt auf Frontend-Container)

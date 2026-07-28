@@ -2,6 +2,7 @@ import { api } from './api';
 import { useQuery } from '@tanstack/react-query';
 
 type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
+export type UserProvisioningMode = 'email' | 'local';
 export type AdminResetActionMode = 'email' | 'temporary_password';
 
 export interface PublicConfig {
@@ -15,6 +16,7 @@ export interface PublicConfig {
   passwordResetMode: PasswordResetMode;
   forgotPasswordEnabled: boolean;
   adminTemporaryPasswordEnabled: boolean;
+  userProvisioningMode: UserProvisioningMode;
 }
 
 export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
@@ -28,6 +30,7 @@ export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   passwordResetMode: 'email',
   forgotPasswordEnabled: true,
   adminTemporaryPasswordEnabled: false,
+  userProvisioningMode: 'email',
 };
 
 function parseLiveRefreshIntervalMs(value: unknown): number {
@@ -71,6 +74,8 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
       typeof data.adminTemporaryPasswordEnabled === 'boolean'
         ? data.adminTemporaryPasswordEnabled
         : mode !== 'email',
+    userProvisioningMode:
+      data.userProvisioningMode === 'local' ? 'local' : 'email',
   };
 }
 

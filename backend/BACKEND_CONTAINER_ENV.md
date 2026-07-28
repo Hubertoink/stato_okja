@@ -41,6 +41,7 @@ Die folgende Tabelle ist als praktische Referenz fuer GitHub Deployments gedacht
 | `TZ` | Variable | z. B. `Europe/Berlin`, `UTC` | Zeitzone des Backend-Containers. Beeinflusst Logs und prozessnahe Zeitdarstellung; fuer deutsche Installationen meist `Europe/Berlin`. |
 | `DB_MIGRATIONS_RUN` | Variable | `true` oder `false` | Steuert, ob das Backend beim Start TypeORM-Migrationen automatisch ausfuehrt. Fuer reproduzierbare Deployments in Produktion normalerweise `true`. |
 | `PASSWORD_RESET_MODE` | Variable | `email`, `admin_temp_password` oder `hybrid` | Legt fest, wie Passwort-Resets funktionieren: per E-Mail, nur ueber temporaeres Admin-Passwort oder hybrid. |
+| `USER_PROVISIONING_MODE` | Variable | `email` (empfohlen) oder `local` | Steuert die Anlage neuer Benutzer: E-Mail-Einladung via SMTP oder lokale Anlage mit temporärem Passwort. |
 | `VITE_ENABLE_DEV_TOOLS` | Variable | `true` oder `false` | Frontend-Build-Flag, nicht vom Backend gelesen. Aktiviert nur das Dev-Tools-Menue im Frontend und sollte in Produktion normalerweise `false` sein. |
 | `APP_ENV` | Variable | typischerweise `development`, `staging` oder `production` | App-spezifischer Modus. `production` deaktiviert Dev- und Seed-Funktionen auch dann, wenn `NODE_ENV` abweichend gesetzt ist. |
 | `NODE_ENV` | Variable | typischerweise `development`, `test` oder `production` | Standard-Node-Runtime-Modus. `production` aktiviert produktionsnahe Defaults und strengere Sicherheitspruefungen. |
@@ -118,6 +119,7 @@ Hinweis: Postgres-Sessions werden vom Backend auf UTC gesetzt. `TZ=Europe/Berlin
 | `INVITE_TOKEN_EXPIRATION` | `24h` | Gueltigkeit von Einladungslinks (maximal 24 Stunden). |
 | `RESET_TOKEN_EXPIRATION` | `1h` | Gueltigkeit von Passwort-Reset-Links. |
 | `PASSWORD_RESET_MODE` | `email` | `email`, `admin_temp_password` oder `hybrid`. |
+| `USER_PROVISIONING_MODE` | `email` | `email` nutzt SMTP-Einladungen und ist der empfohlene Modus. `local` aktiviert die lokale Benutzeranlage; das gesetzte temporäre Passwort muss beim ersten Login geändert werden. |
 | `AUTH_2FA_ENABLED` | `false` | Aktiviert E-Mail-2FA fuer Login. Erfordert funktionierendes SMTP, mindestens `SMTP_HOST`. |
 | `AUTH_2FA_CODE_TTL` | `600` | Gueltigkeit des 2FA-Codes in Sekunden. |
 
@@ -152,6 +154,12 @@ Fuer normalen Betrieb bleiben beide Force-Flags `false`. Sie sind nur fuer bewus
 | `SMTP_FROM` | `no-reply@stato.local` | Absenderadresse. |
 
 Wenn `AUTH_2FA_ENABLED=true` gesetzt ist, wird SMTP beim Backend-Start verifiziert. Schlaegt die Verbindung fehl, startet das Backend nicht. Fuer Passwort-Reset ohne SMTP ist `PASSWORD_RESET_MODE=admin_temp_password` der passende On-Prem-Modus. In Produktion/Staging oder bei `STRICT_SECURITY_MODE=true` werden Invite-/Reset-Links ohne SMTP nicht in Logs ausgegeben.
+
+Fuer vollständig interne On-Prem-Installationen ohne SMTP kann zusätzlich
+`USER_PROVISIONING_MODE=local` gesetzt werden. Dann erscheint in der
+Benutzerverwaltung sowie beim Anlegen einer Organisation die lokale
+Benutzeranlage mit einem temporären Passwort. Dieser Modus ist bewusst nicht
+der Standard; die Passwortübergabe muss sicher außerhalb von StatO erfolgen.
 
 ## Branding und Public Config
 

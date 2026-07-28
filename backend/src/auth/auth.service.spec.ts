@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 describe('AuthService invitations', () => {
@@ -21,7 +21,7 @@ describe('AuthService invitations', () => {
       users as never,
       { findOne: jest.fn() } as never,
       {} as never,
-      {} as never,
+      { delete: jest.fn().mockResolvedValue(undefined) } as never,
       jwt as never,
       email as never,
       {} as never,
@@ -97,6 +97,55 @@ describe('AuthService invitations', () => {
       service.inviteUser({ email: 'new@example.org', name: 'New User', role: 'user', orgId: 'org-1' }),
     ).rejects.toThrow('Invite email was not delivered');
     expect(users.delete).toHaveBeenCalledWith({ id: 'user-1' });
+  });
+
+  it('creates a local account only when local provisioning is enabled', async () => {
+    const previousMode = process.env.USER_PROVISIONING_MODE;
+    process.env.USER_PROVISIONING_MODE = 'local';
+    try {
+      const { service, users } = createService();
+      const result = await service.createLocalUser({
+        email: 'Local.Admin@example.org',
+        name: 'Local Admin',
+        role: 'org_admin',
+        orgId: 'org-1',
+        temporaryPassword: 'StrongLocal1!',
+      });
+
+      expect(result).toEqual(expect.objectContaining({
+        email: 'local.admin@example.org',
+        orgId: 'org-1',
+        mustChangePassword: true,
+      }));
+      expect(users.create).toHaveBeenCalledWith(expect.objectContaining({
+        passwordHash: null,
+        mustChangePassword: false,
+      }));
+      expect(users.save).toHaveBeenCalledWith(expect.objectContaining({
+        passwordHash: expect.any(String),
+        mustChangePassword: true,
+      }));
+    } finally {
+      if (typeof previousMode === 'undefined') delete process.env.USER_PROVISIONING_MODE;
+      else process.env.USER_PROVISIONING_MODE = previousMode;
+    }
+  });
+
+  it('rejects local account creation while email provisioning is active', async () => {
+    const previousMode = process.env.USER_PROVISIONING_MODE;
+    process.env.USER_PROVISIONING_MODE = 'email';
+    try {
+      const { service } = createService();
+      await expect(service.createLocalUser({
+        email: 'local@example.org',
+        name: 'Local User',
+        orgId: 'org-1',
+        temporaryPassword: 'StrongLocal1!',
+      })).rejects.toBeInstanceOf(ForbiddenException);
+    } finally {
+      if (typeof previousMode === 'undefined') delete process.env.USER_PROVISIONING_MODE;
+      else process.env.USER_PROVISIONING_MODE = previousMode;
+    }
   });
 
   it('accepts an active reset token without consuming it', async () => {

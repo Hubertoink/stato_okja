@@ -124,6 +124,14 @@ function displayStart(survey: Survey) {
 function displayEnd(survey: Survey) {
   return formatDate(survey.endsAt || survey.closedAt || null);
 }
+
+function formatRoundMonthYear(survey: Survey) {
+  const date = survey.startedAt || survey.startsAt || survey.closedAt || survey.endsAt || null;
+  return date
+    ? new Date(date).toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })
+    : null;
+}
+
 function answerLabel(
   question: SurveyQuestion | undefined,
   value: string | string[] | number | null | undefined,
@@ -334,10 +342,10 @@ function SurveyOverview({
             <table className="w-full table-fixed text-left text-sm">
               <thead className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)]">
                 <tr>
-                  <th className="w-[28%] px-2 py-2">Runde</th>
-                  <th className="w-[38%] px-2 py-2">Status</th>
-                  <th className="w-[26%] px-2 py-2 text-right">Antworten</th>
-                  <th className="w-12 px-2 py-2"><span className="sr-only">Aktionen</span></th>
+                  <th className="w-[36%] px-2 py-2 sm:w-[28%]">Runde</th>
+                  <th className="w-[32%] px-2 py-2 sm:w-[38%]">Status</th>
+                  <th className="w-[22%] px-2 py-2 text-right sm:w-[26%]">Antworten</th>
+                  <th className="w-[10%] px-2 py-2 sm:w-12"><span className="sr-only">Aktionen</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -347,7 +355,14 @@ function SurveyOverview({
                     className={`group cursor-pointer border-b border-[var(--border-subtle)] last:border-0 ${round.id === selectedRoundId ? 'bg-[var(--interactive-soft)]' : 'hover:bg-[var(--surface-2)]'}`}
                     onClick={() => onSelectRound(round.id)}
                   >
-                    <td className="px-2 py-3 font-medium">Runde {round.roundNumber || 1}</td>
+                    <td className="px-2 py-3 font-medium">
+                      Runde {round.roundNumber || 1}
+                      {formatRoundMonthYear(round) ? (
+                        <span className="ml-1 whitespace-nowrap text-xs font-normal text-[var(--text-secondary)]">
+                          ({formatRoundMonthYear(round)})
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-2 py-3">
                       <SurveyStatusBadge status={round.status} />
                     </td>
@@ -423,7 +438,10 @@ export default function SurveyDetail() {
   const rounds = roundsQuery.data || [];
   const [selectedRoundId, setSelectedRoundId] = useState(id);
   const surveyQuery = useSurvey(selectedRoundId);
-  const survey = surveyQuery.data;
+  // The rounds endpoint already contains the complete staff DTO. Use it while the
+  // detail request for a newly selected round is in flight, so the layout never
+  // collapses to the loading state on the first round switch after login.
+  const survey = surveyQuery.data || rounds.find((round) => round.id === selectedRoundId);
   const analytics = useSurveyAnalytics(selectedRoundId).data;
   const responsesQuery = useSurveyResponses(selectedRoundId);
   const trendQuery = useSurveyTrend(id);

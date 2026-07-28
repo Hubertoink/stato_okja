@@ -211,6 +211,7 @@ describe('SurveysService', () => {
       status: 'draft' as const,
     };
     surveyRepository.findOneBy.mockResolvedValueOnce(seed).mockResolvedValueOnce(draftRound);
+    surveyRepository.find.mockResolvedValue([seed]);
     responseRepository.count.mockResolvedValue(0);
     surveyRepository.remove.mockImplementation(async (entry: Survey) => {
       (entry as Partial<Survey>).id = undefined as never;
@@ -226,6 +227,40 @@ describe('SurveysService', () => {
 
     expect(audit.log).toHaveBeenCalledWith(
       expect.objectContaining({ entityId: 'survey-5', entityTitle: 'Feedback' }),
+    );
+  });
+
+  it('closes the numbering gap after deleting a draft round', async () => {
+    const seed = { ...activeSurvey(), status: 'closed' as const, roundNumber: 1 };
+    const deletedRound = {
+      ...activeSurvey(),
+      id: 'survey-3',
+      seriesId: 'survey-1',
+      roundNumber: 3,
+      status: 'draft' as const,
+    };
+    const followingRound = {
+      ...activeSurvey(),
+      id: 'survey-4',
+      seriesId: 'survey-1',
+      roundNumber: 4,
+      status: 'draft' as const,
+    };
+    surveyRepository.findOneBy.mockResolvedValueOnce(seed).mockResolvedValueOnce(deletedRound);
+    surveyRepository.find.mockResolvedValue([seed, followingRound]);
+    surveyRepository.remove.mockResolvedValue(deletedRound);
+    surveyRepository.save.mockImplementation(async (entry: Survey) => entry);
+    responseRepository.count.mockResolvedValue(0);
+
+    await service.deleteRound('survey-1', 'survey-3', {
+      id: 'user-1',
+      role: 'user',
+      orgId: 'org-1',
+    });
+
+    expect(followingRound.roundNumber).toBe(3);
+    expect(surveyRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'survey-4', roundNumber: 3 }),
     );
   });
 });

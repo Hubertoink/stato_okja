@@ -881,6 +881,31 @@ export function createDemoSurveyRound(id: string) {
   return surveyDto(round);
 }
 
+export function deleteDemoSurveyRound(surveyId: string, roundId: string) {
+  const seed = store.surveys.find((entry) => entry.id === surveyId);
+  const round = store.surveys.find((entry) => entry.id === roundId);
+  if (!seed || !round || surveySeriesId(round) !== surveySeriesId(seed))
+    throw new Error('Umfragerunde nicht gefunden');
+  if ((round.roundNumber || 1) <= 1)
+    throw new Error('Die erste Umfragerunde kann nicht einzeln gelöscht werden.');
+  if (round.status !== 'draft')
+    throw new Error('Nur noch nicht gestartete Umfragerunden können gelöscht werden.');
+  if (surveyResponses(round.id).length > 0)
+    throw new Error('Umfragerunden mit Antworten können nicht gelöscht werden.');
+
+  const index = store.surveys.findIndex((entry) => entry.id === roundId);
+  store.surveys.splice(index, 1);
+  delete store.surveyResponses[roundId];
+  surveyRounds(seed)
+    .filter((entry) => (entry.roundNumber || 1) > (round.roundNumber || 1))
+    .forEach((entry) => {
+      entry.roundNumber = (entry.roundNumber || 1) - 1;
+      entry.updatedAt = new Date().toISOString();
+    });
+  addAudit('survey_round', roundId, 'delete', round.title);
+  return { id: roundId };
+}
+
 export function listDemoSurveyResponses(id: string) {
   const responses = [...surveyResponses(id)].sort((left, right) => right.submittedAt.localeCompare(left.submittedAt));
   return { rawResponsesAvailable: true, responses: clone(responses.map((response, index) => ({ ...response, number: responses.length - index }))) };

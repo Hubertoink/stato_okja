@@ -376,6 +376,16 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     const deletedSeriesId = round.seriesId;
     const deletedRoundNumber = round.roundNumber;
     await this.surveys.remove(round);
+    // Keep the displayed sequence chronological after removing a draft. Saving
+    // from the lowest following number upwards avoids conflicts with the unique
+    // (seriesId, roundNumber) constraint (e.g. 4 becomes 3 before 5 becomes 4).
+    const followingRounds = (await this.roundsFor(seed)).filter(
+      (entry) => (entry.roundNumber || 1) > (deletedRoundNumber || 1),
+    );
+    for (const followingRound of followingRounds) {
+      followingRound.roundNumber = (followingRound.roundNumber || 1) - 1;
+      await this.surveys.save(followingRound);
+    }
     await this.audit.log({
       action: AuditAction.DELETE,
       entityType: 'survey_round',

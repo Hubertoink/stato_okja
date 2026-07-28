@@ -233,6 +233,7 @@ function handleSurveys(method: string, segments: string[], params: Record<string
   if (method === 'post' && segments[2] === 'close') return ok(demo.closeDemoSurvey(id));
   if (method === 'get' && segments[2] === 'rounds') return ok(demo.listDemoSurveyRounds(id));
   if (method === 'post' && segments[2] === 'rounds') return ok(demo.createDemoSurveyRound(id), 201);
+  if (method === 'delete' && segments[2] === 'rounds' && segments[3]) return ok(demo.deleteDemoSurveyRound(id, decodeURIComponent(segments[3])));
   if (method === 'get' && segments[2] === 'analytics') return ok(demo.getDemoSurveyAnalytics(id));
   if (method === 'get' && segments[2] === 'trend') return ok(demo.getDemoSurveyTrend(id));
   if (method === 'get' && segments[2] === 'responses') return ok(demo.listDemoSurveyResponses(id));

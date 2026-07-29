@@ -20,6 +20,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.14] - 2026-07-29
+
+### Fixed
+- Der Dialog „Einrichtung geschlossen“ wird im Kalender wieder klar und
+  ungedimmt über dem abgedunkelten Seitenhintergrund dargestellt.
+
+---
+
 ## [1.0.13] - 2026-07-29
 
 ### Added

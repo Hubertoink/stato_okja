@@ -60,7 +60,7 @@ export default function CalendarClosureModal({
       <div
         aria-label={autoT('ui_afd5e7713414')}
         aria-modal="true"
-        className="calendar-closure-modal w-full rounded-t-2xl border px-4 py-4 shadow-2xl md:max-w-md md:rounded-2xl md:px-6 md:py-6"
+        className="calendar-closure-modal relative z-10 w-full rounded-t-2xl border px-4 py-4 shadow-2xl md:max-w-md md:rounded-2xl md:px-6 md:py-6"
         style={{
           background: 'var(--surface-elevated)',
           borderColor: 'var(--border-subtle)',

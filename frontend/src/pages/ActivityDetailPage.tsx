@@ -14,16 +14,11 @@ import {
 } from 'lucide-react';
 import { getBadgeBackgroundColor } from '@/lib/colorPalette';
 import { isCancelledActivity } from '@/lib/activityExecutionStatus';
-
-const typeLabel: Record<string, string> = {
-  open_door: 'Offene Tür',
-  project_open: 'Projekt (offen)',
-  project_closed: 'Projekt (geschlossen)',
-  event: 'Veranstaltung',
-  outreach: 'Aufsuchend',
-};
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/i18n/formatters';
 
 export default function ActivityDetailPage() {
+  const { t } = useTranslation(['activities', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -35,6 +30,10 @@ export default function ActivityDetailPage() {
   })();
 
   if (!activity) return null;
+  const typeLabel: Record<string, string> = {
+    open_door: t('types.open_door'), project_open: t('types.project_open'),
+    project_closed: t('types.project_closed'), event: t('types.event'), outreach: t('types.outreach'),
+  };
 
   const dateLabel = (() => {
     const s = (activity.date || '').slice(0, 10);
@@ -46,8 +45,7 @@ export default function ActivityDetailPage() {
     if (!year || !month || !day) return baseDate;
     const date = new Date(year, month - 1, day);
     if (Number.isNaN(date.getTime())) return baseDate;
-    const weekday = new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
-    return weekday ? `${baseDate} (${weekday})` : baseDate;
+    return formatDate(date, { dateStyle: 'full' });
   })();
   const fmtHHMM = (t?: string | null) => {
     if (!t) return '';
@@ -59,7 +57,7 @@ export default function ActivityDetailPage() {
     .filter(Boolean)
     .join(' – ');
   const duration = (() => {
-    if (activity.durationMinutes) return `${activity.durationMinutes} min`;
+    if (activity.durationMinutes) return t('detail.minutes', { count: activity.durationMinutes });
     const parse = (t?: string | null) => {
       if (!t) return undefined;
       const [h, m] = t.split(':').map((v) => parseInt(v, 10));
@@ -68,7 +66,7 @@ export default function ActivityDetailPage() {
     };
     const s = parse(activity.startTime);
     const e = parse(activity.endTime);
-    return s !== undefined && e !== undefined && e >= s ? `${e - s} min` : '';
+    return s !== undefined && e !== undefined && e >= s ? t('detail.minutes', { count: e - s }) : '';
   })();
 
   const roleBadgeClass = (roles?: string[] | null, role?: string | null) => {
@@ -96,8 +94,8 @@ export default function ActivityDetailPage() {
           {!!activity.id && (
             <button
               onClick={() => navigate(`/logbook/new?activityId=${encodeURIComponent(activity.id)}${activity.projectId ? `&projectId=${encodeURIComponent(activity.projectId)}` : ''}`)}
-              aria-label="Im Logbuch dokumentieren"
-              title="Im Logbuch dokumentieren"
+              aria-label={t('detail.documentInLogbook')}
+              title={t('detail.documentInLogbook')}
               className="inline-flex items-center justify-center p-2 rounded-full bg-white border text-viridian"
             >
               <BookOpen className="w-5 h-5" />
@@ -106,8 +104,8 @@ export default function ActivityDetailPage() {
           {!!activity.id && (
             <button
               onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from } })}
-              aria-label="Bearbeiten"
-              title="Bearbeiten"
+              aria-label={t('common:actions.edit')}
+              title={t('common:actions.edit')}
               className="inline-flex items-center justify-center p-2 rounded-full bg-white border text-viridian"
             >
               <Pencil className="w-5 h-5" />
@@ -115,8 +113,8 @@ export default function ActivityDetailPage() {
           )}
           <button
             onClick={() => navigate(-1)}
-            aria-label="Zurück"
-            title="Zurück"
+            aria-label={t('common:actions.back')}
+            title={t('common:actions.back')}
             className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
           >
             <XIcon className="w-5 h-5" />
@@ -135,7 +133,7 @@ export default function ActivityDetailPage() {
         </div>
         {!!timeStr && (
           <div className="flex items-center gap-2 text-sm text-gray-700">
-            <Clock3 className="w-4 h-4" /> {timeStr} Uhr
+            <Clock3 className="w-4 h-4" /> {timeStr}{t('detail.clockSuffix') ? ` ${t('detail.clockSuffix')}` : ''}
             {duration ? ` · ${duration}` : ''}
           </div>
         )}
@@ -153,20 +151,24 @@ export default function ActivityDetailPage() {
         )}
 
         <div className="text-sm text-gray-700">
-          <div className="font-medium mb-1">Teilnehmende</div>
+          <div className="font-medium mb-1">{t('detail.participants')}</div>
           {isCancelledActivity(activity.executionStatus) ? (
             <ActivityExecutionStatusBadge status={activity.executionStatus} />
           ) : (
             <div>
-              {activity.countTotal ?? 0} (m:{activity.countMale ?? 0}, w:{activity.countFemale ?? 0},
-              d:{activity.countDiverse ?? 0})
+              {t('detail.participantBreakdown', {
+                total: activity.countTotal ?? 0,
+                male: activity.countMale ?? 0,
+                female: activity.countFemale ?? 0,
+                diverse: activity.countDiverse ?? 0,
+              })}
             </div>
           )}
         </div>
 
         {activity.categories && activity.categories.length > 0 && (
           <div>
-            <div className="text-sm font-medium text-gray-700 mb-1">Kategorien</div>
+            <div className="text-sm font-medium text-gray-700 mb-1">{t('detail.categories')}</div>
             <div className="flex flex-wrap gap-2">
               {activity.categories.map((c) => (
                 <span
@@ -185,7 +187,7 @@ export default function ActivityDetailPage() {
         {activity.tags && activity.tags.length > 0 && (
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-              <TagIcon className="w-4 h-4" /> Tags
+              <TagIcon className="w-4 h-4" /> {t('detail.tags')}
             </div>
             <div className="flex flex-wrap gap-2">
               {activity.tags.map((t) => (
@@ -205,7 +207,7 @@ export default function ActivityDetailPage() {
         {activity.staff && activity.staff.length > 0 && (
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-              <Users className="w-4 h-4" /> Mitarbeitende
+              <Users className="w-4 h-4" /> {t('detail.staff')}
             </div>
             <div className="flex flex-wrap gap-2">
               {activity.staff.map((s) => {
@@ -230,7 +232,7 @@ export default function ActivityDetailPage() {
 
         {activity.notes && (
           <div>
-            <div className="text-sm font-medium text-gray-700 mb-1">Notizen</div>
+            <div className="text-sm font-medium text-gray-700 mb-1">{t('detail.notes')}</div>
             <div className="text-sm text-gray-700 whitespace-pre-wrap">{activity.notes}</div>
           </div>
         )}

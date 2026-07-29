@@ -5,6 +5,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import type { OpeningHours, OrganizationClosureDay, OrganizationTaxonomySettingsUpdatePayload } from './entities/organization.entity';
 import { toPublicUser } from '../common/public-response';
+import { SUPPORTED_LOCALES, type SupportedLocale } from '../users/entities/user.entity';
 
 function orgMoveFeatureEnabled() {
   return ['1', 'true', 'yes', 'on'].includes(String(process.env.ENABLE_ORG_MOVE || '').toLowerCase());
@@ -88,6 +89,20 @@ export class OrgsController {
     const ok = await this.service.removeOrg(id);
     if (!ok) throw new BadRequestException('Organisation kann nicht gelöscht werden (existieren Unterorganisationen?)');
     return { ok: true };
+  }
+
+  @Roles('superadmin', 'org_admin')
+  @Patch(':id/default-locale')
+  async updateDefaultLocale(
+    @Param('id') id: string,
+    @Body() body: { locale?: string },
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    await this.assertCanAccessOrg(id, req.user);
+    if (!SUPPORTED_LOCALES.includes(body?.locale as SupportedLocale)) {
+      throw new BadRequestException('Unsupported locale');
+    }
+    return this.service.updateDefaultLocale(id, body.locale as SupportedLocale);
   }
 
   // List users for an org (optionally include subtree)

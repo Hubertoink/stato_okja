@@ -34,10 +34,12 @@ import LogbookStatusBadge from '@/components/LogbookStatusBadge';
 import { Button, IconButton } from '@/components/ui/Button';
 import { FieldLabel, Textarea } from '@/components/ui/Field';
 import { Menu, MenuItem } from '@/components/ui/Menu';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
-  return new Date(value).toLocaleString('de-DE', {
+  return new Date(value).toLocaleString(getCurrentIntlLocale(), {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
@@ -137,7 +139,7 @@ export default function LogbookEntryFlyout({
       await createComment.mutateAsync({ entryId: entry.id, body: comment.trim() });
       setComment('');
     } catch (error) {
-      showToast(getErrorMessage(error, 'Kommentar konnte nicht gespeichert werden.'), {
+      showToast(getErrorMessage(error, autoT('ui_4ce1ddf633ea')), {
         type: 'error',
       });
     }
@@ -152,13 +154,13 @@ export default function LogbookEntryFlyout({
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label="Logbucheintrag"
+        aria-label={autoT('ui_20cde07dafc6')}
         className="logbook-detail-modal relative flex h-full w-full flex-col bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl"
       >
         <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4 sm:px-6">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Logbuch</p>
-            <h2 className="truncate text-lg font-bold text-[var(--text-primary)]">Eintragsdetails</h2>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">{autoT('ui_f95da57ad34c')}</p>
+            <h2 className="truncate text-lg font-bold text-[var(--text-primary)]">{autoT('ui_73d71268a537')}</h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {canManage && !archived && entry && (
@@ -170,13 +172,11 @@ export default function LogbookEntryFlyout({
                 >
                   <LogbookStatusIcon status={entry.status} />
                   <span className="hidden md:inline">{logbookStatusLabels[entry.status]}</span>
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? "rotate-180" : ''}`} />
                 </button>
                 {statusMenuOpen && (
                   <Menu className="absolute right-0 top-full z-10 mt-2 min-w-48">
-                    <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
-                      Logbuchstatus
-                    </div>
+                    <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">{autoT('ui_95706e6c2697')}</div>
                     <StatusMenuItem
                       status="open"
                       active={entry.status === 'open'}
@@ -209,8 +209,8 @@ export default function LogbookEntryFlyout({
               <IconButton
                 variant="secondary"
                 onClick={() => navigate(`/logbook/${entry.id}/edit`)}
-                aria-label="Bearbeiten"
-                title="Bearbeiten"
+                aria-label={autoT('ui_104f3bfdc340')}
+                title={autoT('ui_104f3bfdc340')}
               >
                 <Edit3 className="h-5 w-5" />
               </IconButton>
@@ -222,13 +222,13 @@ export default function LogbookEntryFlyout({
                 className="logbook-archive-button inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold"
               >
                 <Archive className="h-4 w-4" />
-                <span className="hidden sm:inline">Archivieren</span>
+                <span className="hidden sm:inline">{autoT('ui_b81f3298d960')}</span>
               </button>
             )}
             <IconButton
               variant="secondary"
               onClick={onClose}
-              aria-label="Schließen"
+              aria-label={autoT('ui_44424b18700e')}
             >
               <X className="h-5 w-5" />
             </IconButton>
@@ -236,9 +236,9 @@ export default function LogbookEntryFlyout({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
-          {isLoading && <p className="text-sm text-gray-500">Logbucheintrag wird geladen…</p>}
+          {isLoading && <p className="text-sm text-gray-500">{autoT('ui_a7151ad4e39f')}</p>}
           {!isLoading && !entry && (
-            <p className="text-sm text-gray-600">Der Logbucheintrag wurde nicht gefunden.</p>
+            <p className="text-sm text-gray-600">{autoT('ui_118fdc8c2826')}</p>
           )}
           {entry && (
             <div className="space-y-6">
@@ -250,9 +250,7 @@ export default function LogbookEntryFlyout({
                   <LogbookStatusBadge status={entry.status} />
                   {entry.visibility === 'admins' && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-700">
-                      <LockKeyhole className="h-3 w-3" />
-                      Nur Admins
-                    </span>
+                      <LockKeyhole className="h-3 w-3" />{autoT('ui_db8e800f08e5')}</span>
                   )}
                 </div>
                 <h1 className="text-2xl font-bold text-gray-800">{entry.title}</h1>
@@ -269,8 +267,7 @@ export default function LogbookEntryFlyout({
                   </span>
                   <span>{formatDate(entry.occurredAt)}</span>
                   {entry.documentationUpdatedAt && (
-                    <span>
-                      Geändert am {formatDate(entry.documentationUpdatedAt)}
+                    <span>{autoT('ui_dee2fa0b54d8')}{formatDate(entry.documentationUpdatedAt)}
                       {entry.documentationUpdatedByName
                         ? ` von ${entry.documentationUpdatedByName}`
                         : ''}
@@ -279,31 +276,28 @@ export default function LogbookEntryFlyout({
                 </div>
                 {entry.status === 'discussed' && (
                   <p className="mt-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-                    <CheckCircle2 className="h-5 w-5" />
-                    Besprochen von {entry.discussedByName || '—'} am {formatDate(entry.discussedAt)}.
+                    <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
                   </p>
                 )}
               </section>
               <section className="border-t border-gray-100 pt-5">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  Dokumentation
-                </h3>
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{autoT('ui_0401e23e6030')}</h3>
                 <p className="whitespace-pre-wrap leading-7 text-gray-800">{entry.body}</p>
               </section>
               {(entry.highlights || entry.challenges || entry.nextSteps) && (
                 <section className="grid gap-3">
                   <DetailNote
-                    title="Was lief gut?"
+                    title={autoT('ui_ed124d299865')}
                     value={entry.highlights}
                     className="bg-green-50 text-green-800"
                   />
                   <DetailNote
-                    title="Herausforderungen"
+                    title={autoT('ui_24cb5c6fa8e6')}
                     value={entry.challenges}
                     className="bg-amber-50 text-amber-800"
                   />
                   <DetailNote
-                    title="Nächste Schritte"
+                    title={autoT('ui_76231e1d047c')}
                     value={entry.nextSteps}
                     className="bg-blue-50 text-blue-800"
                   />
@@ -312,17 +306,14 @@ export default function LogbookEntryFlyout({
               {(entry.activity || entry.project) && (
                 <section className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                   <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <Link2 className="h-4 w-4" />
-                    Verknüpfungen
-                  </h3>
+                    <Link2 className="h-4 w-4" />{autoT('ui_0493d567bdb7')}</h3>
                   <div className="flex flex-wrap gap-2 text-sm">
                     {entry.project && (
                       <button
                         type="button"
                         onClick={() => navigate('/projects')}
                         className="rounded-lg bg-white px-3 py-2 text-viridian shadow-sm"
-                      >
-                        Projekt: {entry.project.title}
+                      >{autoT('ui_30c095c845e0')}{entry.project.title}
                       </button>
                     )}
                     {entry.activity && (
@@ -330,8 +321,7 @@ export default function LogbookEntryFlyout({
                         type="button"
                         onClick={() => navigate(`/activities/${entry.activity!.id}`)}
                         className="rounded-lg bg-white px-3 py-2 text-viridian shadow-sm"
-                      >
-                        Aktivität: {entry.activity.title || entry.activity.date}
+                      >{autoT('ui_c71c993f48b0')}{entry.activity.title || entry.activity.date}
                       </button>
                     )}
                   </div>
@@ -339,8 +329,7 @@ export default function LogbookEntryFlyout({
               )}
               <section className="border-t border-gray-100 pt-5">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
-                  <MessageCircle className="h-5 w-5 text-viridian" />
-                  Kommentare ({entry.comments?.length || 0})
+                  <MessageCircle className="h-5 w-5 text-viridian" />{autoT('ui_b9677171d9f7')}{entry.comments?.length || 0})
                 </h3>
                 <div className="space-y-3">
                   {entry.comments?.length ? (
@@ -371,26 +360,22 @@ export default function LogbookEntryFlyout({
                             }
                             className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-600"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Kommentar löschen
-                          </button>
+                            <Trash2 className="h-3.5 w-3.5" />{autoT('ui_8bb9a7f4f1ff')}</button>
                         )}
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">Noch keine Kommentare.</p>
+                    <p className="text-sm text-gray-500">{autoT('ui_7c5c406d9f7e')}</p>
                   )}
                 </div>
                 {!archived && (
                   <form onSubmit={addComment} className="mt-5 border-t border-[var(--border-subtle)] pt-5">
-                    <FieldLabel>
-                      Kommentar hinzufügen
-                      <Textarea
+                    <FieldLabel>{autoT('ui_dad674bd7da1')}<Textarea
                         value={comment}
                         onChange={(event) => setComment(event.target.value)}
                         rows={3}
                         maxLength={4000}
-                        placeholder="Ergänzung oder Rückmeldung für das Team…"
+                        placeholder={autoT('ui_6119b63de1a4')}
                         className="resize-y py-2.5"
                       />
                     </FieldLabel>
@@ -398,9 +383,7 @@ export default function LogbookEntryFlyout({
                       <Button
                         disabled={!comment.trim() || createComment.isPending}
                       >
-                        <Send className="h-4 w-4" />
-                        Kommentar senden
-                      </Button>
+                        <Send className="h-4 w-4" />{autoT('ui_86b530d1039e')}</Button>
                     </div>
                   </form>
                 )}
@@ -411,20 +394,20 @@ export default function LogbookEntryFlyout({
       </aside>
       <ConfirmModal
         open={archiveConfirmOpen}
-        title="Eintrag archivieren"
-        message="Der Logbucheintrag bleibt im Archiv erhalten, ist aber in der Standardansicht nicht mehr sichtbar."
-        confirmLabel="Archivieren"
+        title={autoT('ui_549a1516f520')}
+        message={autoT('ui_f6044433ee4d')}
+        confirmLabel={autoT('ui_b81f3298d960')}
         onCancel={() => setArchiveConfirmOpen(false)}
         onConfirm={() => {
           if (!entry) return;
           archive.mutate(entry.id, {
             onSuccess: () => {
               setArchiveConfirmOpen(false);
-              showToast('Eintrag archiviert.', { type: 'success' });
+              showToast(autoT('ui_e041a9132c74'), { type: 'success' });
               onClose();
             },
             onError: (error) =>
-              showToast(getErrorMessage(error, 'Eintrag konnte nicht archiviert werden.'), {
+              showToast(getErrorMessage(error, autoT('ui_a2acb0418a4f')), {
                 type: 'error',
               }),
           });
@@ -454,7 +437,7 @@ function StatusMenuItem({
   return (
     <MenuItem
       onClick={onSelect}
-      className={active ? 'bg-[var(--interactive-soft)] text-viridian' : ''}
+      className={active ? "bg-[var(--interactive-soft)] text-viridian" : ''}
     >
       <LogbookStatusIcon status={status} />
       {logbookStatusLabels[status]}

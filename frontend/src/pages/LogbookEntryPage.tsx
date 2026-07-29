@@ -41,6 +41,8 @@ import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 type FormState = {
   occurredAt: string;
@@ -92,7 +94,7 @@ function initials(name: string) {
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
-  return new Date(value).toLocaleString('de-DE', {
+  return new Date(value).toLocaleString(getCurrentIntlLocale(), {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
@@ -164,15 +166,12 @@ function ActivityPickerModal({
       .includes(search.trim().toLowerCase()),
   );
   return (
-    <Modal open={open} onClose={onClose} title="Aktivität verknüpfen" maxWidth="2xl">
-      <p className="mb-4 text-sm text-gray-600">
-        Es werden Aktivitäten im Zeitraum von zwei Wochen vor bis zwei Wochen nach dem Eintrag
-        angezeigt.
-      </p>
+    <Modal open={open} onClose={onClose} title={autoT('ui_ab6635285bc7')} maxWidth="2xl">
+      <p className="mb-4 text-sm text-gray-600">{autoT('ui_3c4b1175587b')}</p>
       <input
         value={search}
         onChange={(event) => setSearch(event.target.value)}
-        placeholder="Aktivität oder Projekt suchen…"
+        placeholder={autoT('ui_cdcd2f758fec')}
         className="mb-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
       />
       <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
@@ -188,22 +187,19 @@ function ActivityPickerModal({
           >
             <span className="min-w-0">
               <span className="block font-semibold text-gray-800">
-                {activity.title || activity.project?.title || 'Aktivität'}
+                {activity.title || activity.project?.title || autoT('ui_1c4aaccf808e')}
               </span>
               <span className="mt-1 block text-xs text-gray-500">
-                {new Date(`${activity.date}T12:00:00`).toLocaleDateString('de-DE')} ·{' '}
-                {activity.project?.title || 'Ohne Projekt'}
+                {new Date(`${activity.date}T12:00:00`).toLocaleDateString(getCurrentIntlLocale())} ·{' '}
+                {activity.project?.title || autoT('ui_5b4a4a84148c')}
               </span>
             </span>
             <span className="shrink-0 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600">
-              {activity.countTotal || 0} TN
-            </span>
+              {activity.countTotal || 0}{autoT('ui_f79fa2d4a0a2')}</span>
           </button>
         ))}
         {visible.length === 0 && (
-          <p className="py-8 text-center text-sm text-gray-500">
-            Keine Aktivitäten im gewählten Zeitraum gefunden.
-          </p>
+          <p className="py-8 text-center text-sm text-gray-500">{autoT('ui_dfc3488ab197')}</p>
         )}
       </div>
     </Modal>
@@ -295,15 +291,15 @@ export default function LogbookEntryPage() {
     try {
       if (isNew) {
         const created = await create.mutateAsync(formPayload);
-        showToast('Logbucheintrag wurde erstellt.', { type: 'success' });
+        showToast(autoT('ui_bfeed61d0034'), { type: 'success' });
         navigate(`/logbook?entry=${encodeURIComponent(created.id)}`, { replace: true });
       } else if (id) {
         await update.mutateAsync({ id, data: formPayload });
-        showToast('Änderungen gespeichert.', { type: 'success' });
+        showToast(autoT('ui_e1bd2c4575ee'), { type: 'success' });
         navigate(`/logbook?entry=${encodeURIComponent(id)}`, { replace: true });
       }
     } catch (error: unknown) {
-      showToast(getErrorMessage(error, 'Der Eintrag konnte nicht gespeichert werden.'), {
+      showToast(getErrorMessage(error, autoT('ui_81128854f3b0')), {
         type: 'error',
       });
     }
@@ -316,19 +312,17 @@ export default function LogbookEntryPage() {
       await createComment.mutateAsync({ entryId: id, body: comment });
       setComment('');
     } catch (error: unknown) {
-      showToast(getErrorMessage(error, 'Kommentar konnte nicht gespeichert werden.'), {
+      showToast(getErrorMessage(error, autoT('ui_4ce1ddf633ea')), {
         type: 'error',
       });
     }
   };
 
   if (!isNew && isLoading)
-    return <div className="p-6 text-sm text-gray-500">Logbucheintrag wird geladen…</div>;
+    return <div className="p-6 text-sm text-gray-500">{autoT('ui_a7151ad4e39f')}</div>;
   if (!isNew && !entry)
     return (
-      <div className="modern-card p-6 text-sm text-gray-600">
-        Der Logbucheintrag wurde nicht gefunden.
-      </div>
+      <div className="modern-card p-6 text-sm text-gray-600">{autoT('ui_118fdc8c2826')}</div>
     );
 
   if (editing)
@@ -338,9 +332,9 @@ export default function LogbookEntryPage() {
         <div className="app-background logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-white">
           <div className="mb-4 mt-1 flex items-center justify-between gap-3 px-3 pt-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3">
             <h2 className="min-w-0 truncate text-2xl font-bold text-viridian md:text-gray-800">
-              <span className="md:hidden">Logbuch</span>
+              <span className="md:hidden">{autoT('ui_f95da57ad34c')}</span>
               <span className="hidden md:inline">
-                {isNew ? 'Logbucheintrag erstellen' : 'Logbucheintrag bearbeiten'}
+                {isNew ? autoT('ui_feb9aab49734') : autoT('ui_0b00abd52aba')}
               </span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
@@ -352,13 +346,11 @@ export default function LogbookEntryPage() {
               >
                 <LogbookStatusIcon status={form.status} />
                 <span className="hidden md:inline">{logbookStatusLabels[form.status]}</span>
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? "rotate-180" : ''}`} />
               </button>
               {statusMenuOpen && (
                 <Menu className="absolute right-0 top-full z-10 mt-2 min-w-48">
-                  <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
-                    Logbuchstatus
-                  </div>
+                  <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">{autoT('ui_95706e6c2697')}</div>
                   {(['open', 'discussed', 'follow_up'] as const).map((status) => (
                     <MenuItem
                       key={status}
@@ -366,7 +358,7 @@ export default function LogbookEntryPage() {
                         setForm({ ...form, status });
                         setStatusMenuOpen(false);
                       }}
-                      className={form.status === status ? 'bg-[var(--interactive-soft)] text-viridian' : ''}
+                      className={form.status === status ? "bg-[var(--interactive-soft)] text-viridian" : ''}
                     >
                       <LogbookStatusIcon status={status} />
                       {logbookStatusLabels[status]}
@@ -378,9 +370,9 @@ export default function LogbookEntryPage() {
             </div>
             <button
               type="button"
-              aria-label="Bearbeiten schließen"
+              aria-label={autoT('ui_e3bdcc71200e')}
               onClick={() =>
-                navigate(isNew ? '/logbook' : `/logbook?entry=${encodeURIComponent(id || '')}`)
+                navigate(isNew ? "/logbook" : `/logbook?entry=${encodeURIComponent(id || '')}`)
               }
               className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
             >
@@ -391,9 +383,7 @@ export default function LogbookEntryPage() {
           <form onSubmit={save} className="mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-lg bg-white shadow md:mx-0 md:mb-0 md:rounded-none md:shadow-none">
             <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Zeitpunkt
-                  {occurredAtWeekday && (
+                <label className="text-sm font-medium text-gray-700">{autoT('ui_e2f9e932be0a')}{occurredAtWeekday && (
                     <span className="ml-2 font-normal text-gray-500">{occurredAtWeekday}</span>
                   )}
                   <input
@@ -404,9 +394,7 @@ export default function LogbookEntryPage() {
                     className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
                   />
                 </label>
-                <label className="text-sm font-medium text-gray-700">
-                  Eintragsart
-                  <select
+                <label className="text-sm font-medium text-gray-700">{autoT('ui_f4b0e988965d')}<select
                     value={form.type}
                     onChange={(event) =>
                       setForm({ ...form, type: event.target.value as LogbookEntryType })
@@ -421,26 +409,22 @@ export default function LogbookEntryPage() {
                   </select>
                 </label>
               </div>
-              <label className="block text-sm font-medium text-gray-700">
-                Titel
-                <input
+              <label className="block text-sm font-medium text-gray-700">{autoT('ui_950701e758d1')}<input
                   required
                   maxLength={180}
                   value={form.title}
                   onChange={(event) => setForm({ ...form, title: event.target.value })}
-                  placeholder="Worum geht es?"
+                  placeholder={autoT('ui_b1654f25a69e')}
                   className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700">
-                Beschreibung
-                <textarea
+              <label className="block text-sm font-medium text-gray-700">{autoT('ui_b3c8defcacc0')}<textarea
                   required
                   rows={5}
                   maxLength={12000}
                   value={form.body}
                   onChange={(event) => setForm({ ...form, body: event.target.value })}
-                  placeholder="Was ist passiert oder was sollte das Team wissen?"
+                  placeholder={autoT('ui_c64d2713db08')}
                   className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
                 />
               </label>
@@ -448,31 +432,23 @@ export default function LogbookEntryPage() {
                 className="rounded-xl border border-gray-200 bg-gray-50/60 p-4"
                 open={!!(form.highlights || form.challenges || form.nextSteps)}
               >
-                <summary className="cursor-pointer text-sm font-semibold text-gray-700">
-                  Debriefing-Details ergänzen
-                </summary>
+                <summary className="cursor-pointer text-sm font-semibold text-gray-700">{autoT('ui_f009ede6baa6')}</summary>
                 <div className="mt-4 space-y-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Was lief gut?
-                    <textarea
+                  <label className="block text-sm font-medium text-gray-700">{autoT('ui_ed124d299865')}<textarea
                       rows={3}
                       value={form.highlights}
                       onChange={(event) => setForm({ ...form, highlights: event.target.value })}
                       className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
                     />
                   </label>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Herausforderungen
-                    <textarea
+                  <label className="block text-sm font-medium text-gray-700">{autoT('ui_24cb5c6fa8e6')}<textarea
                       rows={3}
                       value={form.challenges}
                       onChange={(event) => setForm({ ...form, challenges: event.target.value })}
                       className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
                     />
                   </label>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Nächste Schritte
-                    <textarea
+                  <label className="block text-sm font-medium text-gray-700">{autoT('ui_76231e1d047c')}<textarea
                       rows={3}
                       value={form.nextSteps}
                       onChange={(event) => setForm({ ...form, nextSteps: event.target.value })}
@@ -482,9 +458,7 @@ export default function LogbookEntryPage() {
                 </div>
               </details>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="text-sm font-medium text-gray-700">
-                  Projekt
-                  <div className="mt-1 flex gap-2">
+                <div className="text-sm font-medium text-gray-700">{autoT('ui_20bda6d2e725')}<div className="mt-1 flex gap-2">
                     <button
                       type="button"
                       onClick={() => setProjectPickerOpen(true)}
@@ -508,7 +482,7 @@ export default function LogbookEntryPage() {
                           <span className="truncate">{selectedProject.title}</span>
                         </span>
                       ) : (
-                        <span className="text-gray-500">Projekt verknüpfen</span>
+                        <span className="text-gray-500">{autoT('ui_9302645ead5f')}</span>
                       )}
                     </button>
                     {form.projectId && (
@@ -516,16 +490,14 @@ export default function LogbookEntryPage() {
                         type="button"
                         onClick={() => setForm({ ...form, projectId: '' })}
                         className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600"
-                        aria-label="Projektverknüpfung entfernen"
+                        aria-label={autoT('ui_0fb18f089b5a')}
                       >
                         <X className="h-4 w-4" />
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="text-sm font-medium text-gray-700">
-                  Aktivität
-                  <div className="mt-1 flex gap-2">
+                <div className="text-sm font-medium text-gray-700">{autoT('ui_1c4aaccf808e')}<div className="mt-1 flex gap-2">
                     <button
                       type="button"
                       onClick={() => setActivityPickerOpen(true)}
@@ -537,14 +509,14 @@ export default function LogbookEntryPage() {
                           <span className="block truncate">
                             {selectedActivity.title ||
                               selectedActivity.project?.title ||
-                              'Aktivität'}
+                              autoT('ui_1c4aaccf808e')}
                           </span>
                           <span className="block text-xs font-normal text-gray-500">
                             {selectedActivity.date}
                           </span>
                         </span>
                       ) : (
-                        <span className="text-gray-500">Aktivität verknüpfen</span>
+                        <span className="text-gray-500">{autoT('ui_ab6635285bc7')}</span>
                       )}
                     </button>
                     {form.activityId && (
@@ -552,7 +524,7 @@ export default function LogbookEntryPage() {
                         type="button"
                         onClick={() => setForm({ ...form, activityId: '' })}
                         className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600"
-                        aria-label="Aktivitätsverknüpfung entfernen"
+                        aria-label={autoT('ui_5740ee577fe9')}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -563,17 +535,15 @@ export default function LogbookEntryPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="hidden sm:block" />
                 {isAdmin && (
-                  <label className="text-sm font-medium text-gray-700">
-                    Sichtbarkeit
-                    <select
+                  <label className="text-sm font-medium text-gray-700">{autoT('ui_0218eb5cd0e8')}<select
                       value={form.visibility}
                       onChange={(event) =>
                         setForm({ ...form, visibility: event.target.value as 'team' | 'admins' })
                       }
                       className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
                     >
-                      <option value="team">Ganzes Team</option>
-                      <option value="admins">Nur Admins</option>
+                      <option value="team">{autoT('ui_adc88eec60e4')}</option>
+                      <option value="admins">{autoT('ui_db8e800f08e5')}</option>
                     </select>
                   </label>
                 )}
@@ -588,15 +558,13 @@ export default function LogbookEntryPage() {
                     : navigate(`/logbook?entry=${encodeURIComponent(id || '')}`)
                 }
                 className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-              >
-                Abbrechen
-              </button>
+              >{autoT('ui_07af7cb30fca')}</button>
               <button
                 disabled={create.isPending || update.isPending}
                 className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
-                {create.isPending || update.isPending ? 'Wird gespeichert…' : 'Speichern'}
+                {create.isPending || update.isPending ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}
               </button>
             </div>
           </form>
@@ -629,9 +597,7 @@ export default function LogbookEntryPage() {
           onClick={() => navigate('/logbook')}
           className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-medium text-gray-700 hover:bg-white/70"
         >
-          <ArrowLeft className="h-5 w-5" />
-          Logbuch
-        </button>
+          <ArrowLeft className="h-5 w-5" />{autoT('ui_f95da57ad34c')}</button>
         {canManage && (
           <div className="flex gap-2">
             <button
@@ -641,21 +607,21 @@ export default function LogbookEntryPage() {
               className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 disabled:opacity-40"
             >
               <Edit3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Bearbeiten</span>
+              <span className="hidden sm:inline">{autoT('ui_104f3bfdc340')}</span>
             </button>
             <button
               type="button"
               disabled={archived || archive.isPending}
               onClick={async () => {
-                if (!window.confirm('Diesen Logbucheintrag archivieren?')) return;
+                if (!window.confirm(autoT('ui_14cdcb1a47ae'))) return;
                 await archive.mutateAsync(id!);
-                showToast('Eintrag archiviert.', { type: 'success' });
+                showToast(autoT('ui_e041a9132c74'), { type: 'success' });
                 navigate('/logbook');
               }}
               className="logbook-archive-button inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold disabled:opacity-40"
             >
               <Archive className="h-4 w-4" />
-              <span className="hidden sm:inline">Archivieren</span>
+              <span className="hidden sm:inline">{autoT('ui_b81f3298d960')}</span>
             </button>
           </div>
         )}
@@ -667,15 +633,13 @@ export default function LogbookEntryPage() {
               {logbookTypeLabels[entry.type]}
             </span>
             <span
-              className={`rounded-full px-2.5 py-1 font-semibold ${entry.status === 'discussed' ? 'bg-green-100 text-green-700' : entry.status === 'follow_up' ? 'bg-amber-100 text-amber-800' : entry.status === 'archived' ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-700'}`}
+              className={`rounded-full px-2.5 py-1 font-semibold ${entry.status === 'discussed' ? "bg-green-100 text-green-700" : entry.status === 'follow_up' ? "bg-amber-100 text-amber-800" : entry.status === 'archived' ? "bg-gray-100 text-gray-600" : "bg-blue-100 text-blue-700"}`}
             >
               {logbookStatusLabels[entry.status]}
             </span>
             {entry.visibility === 'admins' && (
               <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-700">
-                <LockKeyhole className="h-3 w-3" />
-                Nur Admins
-              </span>
+                <LockKeyhole className="h-3 w-3" />{autoT('ui_db8e800f08e5')}</span>
             )}
           </div>
           <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">{entry.title}</h1>
@@ -692,43 +656,39 @@ export default function LogbookEntryPage() {
             </span>
             <span>{formatDate(entry.occurredAt)}</span>
             {entry.documentationUpdatedAt && (
-              <span>
-                Geändert am {formatDate(entry.documentationUpdatedAt)}
+              <span>{autoT('ui_dee2fa0b54d8')}{formatDate(entry.documentationUpdatedAt)}
                 {entry.documentationUpdatedByName ? ` von ${entry.documentationUpdatedByName}` : ''}
               </span>
             )}
           </div>
           {entry.status === 'discussed' && (
             <p className="mt-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-              <CheckCircle2 className="h-5 w-5" />
-              Besprochen von {entry.discussedByName || '—'} am {formatDate(entry.discussedAt)}.
+              <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
             </p>
           )}
         </div>
         <div className="space-y-6 p-5 sm:p-7">
           <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Dokumentation
-            </h2>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{autoT('ui_0401e23e6030')}</h2>
             <p className="whitespace-pre-wrap leading-7 text-gray-800">{entry.body}</p>
           </section>
           {(entry.highlights || entry.challenges || entry.nextSteps) && (
             <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {entry.highlights && (
                 <div className="rounded-xl bg-green-50 p-4">
-                  <h3 className="mb-2 font-semibold text-green-800">Was lief gut?</h3>
+                  <h3 className="mb-2 font-semibold text-green-800">{autoT('ui_ed124d299865')}</h3>
                   <p className="whitespace-pre-wrap text-sm text-green-950">{entry.highlights}</p>
                 </div>
               )}
               {entry.challenges && (
                 <div className="rounded-xl bg-amber-50 p-4">
-                  <h3 className="mb-2 font-semibold text-amber-800">Herausforderungen</h3>
+                  <h3 className="mb-2 font-semibold text-amber-800">{autoT('ui_24cb5c6fa8e6')}</h3>
                   <p className="whitespace-pre-wrap text-sm text-amber-950">{entry.challenges}</p>
                 </div>
               )}
               {entry.nextSteps && (
                 <div className="rounded-xl bg-blue-50 p-4">
-                  <h3 className="mb-2 font-semibold text-blue-800">Nächste Schritte</h3>
+                  <h3 className="mb-2 font-semibold text-blue-800">{autoT('ui_76231e1d047c')}</h3>
                   <p className="whitespace-pre-wrap text-sm text-blue-950">{entry.nextSteps}</p>
                 </div>
               )}
@@ -737,24 +697,20 @@ export default function LogbookEntryPage() {
           {(entry.activity || entry.project) && (
             <section className="rounded-xl border border-gray-100 bg-gray-50 p-4">
               <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <Link2 className="h-4 w-4" />
-                Verknüpfungen
-              </h2>
+                <Link2 className="h-4 w-4" />{autoT('ui_0493d567bdb7')}</h2>
               <div className="flex flex-wrap gap-2 text-sm">
                 {entry.project && (
                   <button
                     onClick={() => navigate('/projects')}
                     className="rounded-lg bg-white px-3 py-2 text-viridian shadow-sm"
-                  >
-                    Projekt: {entry.project.title}
+                  >{autoT('ui_30c095c845e0')}{entry.project.title}
                   </button>
                 )}
                 {entry.activity && (
                   <button
                     onClick={() => navigate(`/activities/${entry.activity!.id}`)}
                     className="rounded-lg bg-white px-3 py-2 text-viridian shadow-sm"
-                  >
-                    Aktivität: {entry.activity.title || entry.activity.date}
+                  >{autoT('ui_c71c993f48b0')}{entry.activity.title || entry.activity.date}
                   </button>
                 )}
               </div>
@@ -767,25 +723,19 @@ export default function LogbookEntryPage() {
                   onClick={() => setStatus.mutate({ id: entry.id, status: 'discussed' })}
                   className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white"
                 >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Als besprochen markieren
-                </button>
+                  <CheckCircle2 className="h-4 w-4" />{autoT('ui_b2eeedb93d1d')}</button>
               )}
               {entry.status === 'discussed' && (
                 <button
                   onClick={() => setStatus.mutate({ id: entry.id, status: 'open' })}
                   className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700"
-                >
-                  Wieder öffnen
-                </button>
+                >{autoT('ui_6dd9529dd376')}</button>
               )}
               {entry.status !== 'follow_up' && (
                 <button
                   onClick={() => setStatus.mutate({ id: entry.id, status: 'follow_up' })}
                   className="min-h-11 rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-800"
-                >
-                  Nachverfolgung nötig
-                </button>
+                >{autoT('ui_45329e1b2ada')}</button>
               )}
             </div>
           )}
@@ -793,8 +743,7 @@ export default function LogbookEntryPage() {
       </article>
       <section className="modern-card mt-5 p-5 sm:p-7">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
-          <MessageCircle className="h-5 w-5 text-viridian" />
-          Kommentare ({entry.comments?.length || 0})
+          <MessageCircle className="h-5 w-5 text-viridian" />{autoT('ui_b9677171d9f7')}{entry.comments?.length || 0})
         </h2>
         <div className="space-y-4">
           {entry.comments?.length ? (
@@ -823,26 +772,22 @@ export default function LogbookEntryPage() {
                     onClick={() => removeComment.mutate({ entryId: entry.id, commentId: item.id })}
                     className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-600"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Kommentar löschen
-                  </button>
+                    <Trash2 className="h-3.5 w-3.5" />{autoT('ui_8bb9a7f4f1ff')}</button>
                 )}
               </div>
             ))
           ) : (
-            <p className="text-sm text-gray-500">Noch keine Kommentare.</p>
+            <p className="text-sm text-gray-500">{autoT('ui_7c5c406d9f7e')}</p>
           )}
         </div>
         {!archived && (
           <form onSubmit={addComment} className="mt-5 border-t border-gray-100 pt-5">
-            <label className="block text-sm font-medium text-gray-700">
-              Kommentar hinzufügen
-              <textarea
+            <label className="block text-sm font-medium text-gray-700">{autoT('ui_dad674bd7da1')}<textarea
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
                 rows={3}
                 maxLength={4000}
-                placeholder="Ergänzung oder Rückmeldung für das Team…"
+                placeholder={autoT('ui_6119b63de1a4')}
                 className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
               />
             </label>
@@ -851,9 +796,7 @@ export default function LogbookEntryPage() {
                 disabled={!comment.trim() || createComment.isPending}
                 className="dashboard-accent-solid-button inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:opacity-50"
               >
-                <Send className="h-4 w-4" />
-                Kommentar senden
-              </button>
+                <Send className="h-4 w-4" />{autoT('ui_86b530d1039e')}</button>
             </div>
           </form>
         )}

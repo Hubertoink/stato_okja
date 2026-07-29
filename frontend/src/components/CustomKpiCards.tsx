@@ -18,6 +18,8 @@ import {
   useDeleteCustomKpi,
   useUpdateCustomKpi,
 } from '@/lib/customKpis';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 type CustomKpiCardsProps = {
   surface: Exclude<CustomKpiSurface, 'both'>;
@@ -49,58 +51,58 @@ type KpiFormState = {
 };
 
 const TYPE_OPTIONS = [
-  { value: '', label: 'Alle Typen' },
-  { value: 'open_door', label: 'Offene Tür' },
-  { value: 'project_open', label: 'Projekt (offen)' },
-  { value: 'project_closed', label: 'Projekt (geschlossen)' },
-  { value: 'event', label: 'Veranstaltung' },
-  { value: 'outreach', label: 'Aufsuchend' },
+  { value: '', label: autoT('ui_172a950cc0da') },
+  { value: 'open_door', label: autoT('ui_a80778b6b148') },
+  { value: 'project_open', label: autoT('ui_00d882fbb5d4') },
+  { value: 'project_closed', label: autoT('ui_8f256393653e') },
+  { value: 'event', label: autoT('ui_e6fdb4cc8ce5') },
+  { value: 'outreach', label: autoT('ui_3c1538690eb7') },
 ];
 
 const METRIC_OPTIONS: Array<{ value: CustomKpiMetric; label: string; hint: string }> = [
-  { value: 'activity_count', label: 'Aktivitäten', hint: 'Anzahl stattgefundener Aktivitäten' },
-  { value: 'participant_total', label: 'Teilnehmende', hint: 'Summe aller Teilnehmenden' },
-  { value: 'duration_hours', label: 'Gesamtstunden', hint: 'Summe der Dauer in Stunden' },
+  { value: 'activity_count', label: autoT('ui_b6bf5f1a2033'), hint: autoT('ui_90afe1f69e39') },
+  { value: 'participant_total', label: autoT('ui_a8a4d6b019af'), hint: 'Summe aller Teilnehmenden' },
+  { value: 'duration_hours', label: autoT('ui_ebe374fcd912'), hint: 'Summe der Dauer in Stunden' },
   {
     value: 'duration_hours_per_week',
-    label: 'Stunden pro Woche',
-    hint: 'Gesamtstunden geteilt durch Wochen im Zeitraum',
+    label: autoT('ui_4633b6de152c'),
+    hint: autoT('ui_f2659ac86fa1'),
   },
   {
     value: 'avg_participants_per_activity',
-    label: 'Ø Teilnehmende / Aktivität',
-    hint: 'Durchschnitt pro Aktivität',
+    label: autoT('ui_ce999918d5c2'),
+    hint: autoT('ui_a3ffa21fbcff'),
   },
   {
     value: 'participants_per_hour',
-    label: 'Teilnehmende / Stunde',
-    hint: 'Teilnehmende im Verhältnis zur Dauer',
+    label: autoT('ui_bb662b9cd669'),
+    hint: autoT('ui_6e70a1364a56'),
   },
-  { value: 'female_total', label: 'Mädchen absolut', hint: 'Summe weiblicher Teilnehmender' },
+  { value: 'female_total', label: autoT('ui_7cfef178a302'), hint: 'Summe weiblicher Teilnehmender' },
   {
     value: 'female_share_percent',
-    label: 'Mädchenanteil',
-    hint: 'Weibliche Teilnehmende in Prozent',
+    label: autoT('ui_0d0a4cb3680c'),
+    hint: autoT('ui_d080ed1e92e5'),
   },
-  { value: 'male_total', label: 'Jungen absolut', hint: 'Summe männlicher Teilnehmender' },
-  { value: 'diverse_total', label: 'Divers absolut', hint: 'Summe diverser Teilnehmender' },
+  { value: 'male_total', label: autoT('ui_ede543781ab1'), hint: autoT('ui_80077cd64707') },
+  { value: 'diverse_total', label: autoT('ui_e68d7e97cfe0'), hint: 'Summe diverser Teilnehmender' },
 ];
 
 const DATE_MODE_OPTIONS = [
-  { value: 'inherit', label: 'Zeitraum der Seite' },
-  { value: 'current_month', label: 'Aktueller Monat' },
-  { value: 'current_year', label: 'Aktuelles Jahr' },
-  { value: 'rolling_weeks', label: 'Letzte X Wochen' },
+  { value: 'inherit', label: autoT('ui_fb40a0822495') },
+  { value: 'current_month', label: autoT('ui_27f61476da99') },
+  { value: 'current_year', label: autoT('ui_3b75641dca09') },
+  { value: 'rolling_weeks', label: autoT('ui_95270ef6e251') },
 ] as const;
 
 const WEEKDAY_OPTIONS = [
-  { value: 1, label: 'Mo' },
-  { value: 2, label: 'Di' },
-  { value: 3, label: 'Mi' },
-  { value: 4, label: 'Do' },
-  { value: 5, label: 'Fr' },
-  { value: 6, label: 'Sa' },
-  { value: 0, label: 'So' },
+  { value: 1, label: autoT('ui_91e885d8e5af') },
+  { value: 2, label: autoT('ui_fe564f789dc6') },
+  { value: 3, label: autoT('ui_6b7439b40105') },
+  { value: 4, label: autoT('ui_22bdf47be3fd') },
+  { value: 5, label: autoT('ui_aa77f314fab0') },
+  { value: 6, label: autoT('ui_50cf95cee822') },
+  { value: 0, label: autoT('ui_26c0ca793e8f') },
 ];
 
 const LIGHT_KPI_COLOR_OPTIONS = ['#ffffff', '#eff6ff', '#ecfdf5', '#fff7ed', '#fdf2f8', '#eef2ff', '#1f2937', '#0f766e'];
@@ -207,7 +209,7 @@ function getMutedTextColor(textColor: string) {
 
 function formatKpiValue(value: number | null, unit: string, precision: number) {
   if (value === null || typeof value === 'undefined') return '-';
-  const formatted = value.toLocaleString('de-DE', {
+  const formatted = value.toLocaleString(getCurrentIntlLocale(), {
     minimumFractionDigits: precision > 0 ? 0 : undefined,
     maximumFractionDigits: precision,
   });
@@ -215,7 +217,7 @@ function formatKpiValue(value: number | null, unit: string, precision: number) {
   return formatted;
 }
 
-const KPI_DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+const KPI_DATE_FORMATTER = new Intl.DateTimeFormat(getCurrentIntlLocale(), {
   day: 'numeric',
   month: 'long',
   year: 'numeric',
@@ -252,7 +254,7 @@ function rangeLabel(range: { from?: string; to?: string }) {
   const from = formatKpiDate(range.from);
   const to = formatKpiDate(range.to);
 
-  if (!from && !to) return 'Gesamter Zeitraum';
+  if (!from && !to) return autoT('ui_38fc1281b47b');
   if (from && to) return `${from} bis ${to}`;
   return from ? `ab ${from}` : `bis ${to}`;
 }
@@ -342,7 +344,7 @@ export default function CustomKpiCards({
   const save = async () => {
     const payload = toPayload(form, definitions.length);
     if (!payload.title) {
-      setError('Bitte einen Namen vergeben.');
+      setError(autoT('ui_3902fc1936f1'));
       return;
     }
     setError(null);
@@ -376,9 +378,7 @@ export default function CustomKpiCards({
             onClick={() => setManagerOpen(true)}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
           >
-            <Settings2 className="h-4 w-4" />
-            KPIs anpassen
-          </button>
+            <Settings2 className="h-4 w-4" />{autoT('ui_eec3bb26ec04')}</button>
         )}
       </div>
 
@@ -411,7 +411,7 @@ export default function CustomKpiCards({
 
       <Modal
         open={showManager && managerOpen}
-        title="Eigene KPIs"
+        title={autoT('ui_88fe92182f1a')}
         onClose={() => {
           setManagerOpen(false);
           setEditorOpen(false);
@@ -422,21 +422,17 @@ export default function CustomKpiCards({
       >
         <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <h4 className="font-semibold text-gray-800">Gespeicherte KPIs</h4>
+              <h4 className="font-semibold text-gray-800">{autoT('ui_4e56f471ac53')}</h4>
               <button
                 type="button"
                 onClick={beginCreate}
                 className="inline-flex items-center gap-2 rounded-lg bg-viridian px-3 py-2 text-sm font-medium text-white hover:bg-cambridge-blue"
               >
-                <Plus className="h-4 w-4" />
-                Neu
-              </button>
+                <Plus className="h-4 w-4" />{autoT('ui_e5683279e563')}</button>
             </div>
 
             {definitions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
-                Noch keine eigenen KPIs angelegt.
-              </div>
+              <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">{autoT('ui_44d1314454ba')}</div>
             ) : (
               <div className="space-y-2">
                 {definitions.map((definition) => {
@@ -444,7 +440,7 @@ export default function CustomKpiCards({
                   const textColor = getTextColorForBackground(backgroundColor);
                   const mutedColor = getMutedTextColor(textColor);
                   const borderColor =
-                    textColor === '#ffffff' ? 'rgba(255, 255, 255, 0.28)' : 'rgba(17, 24, 39, 0.12)';
+                    textColor === '#ffffff' ? "rgba(255, 255, 255, 0.28)" : "rgba(17, 24, 39, 0.12)";
                   return (
                     <div
                       key={definition.id}
@@ -459,7 +455,7 @@ export default function CustomKpiCards({
                           <div className="mt-1 text-xs" style={{ color: mutedColor }}>
                             {METRIC_OPTIONS.find((metric) => metric.value === definition.metric)
                               ?.label || definition.metric}{' '}
-                            · {definition.enabled ? 'aktiv' : 'inaktiv'}
+                            · {definition.enabled ? autoT('ui_586af4477774') : autoT('ui_728f0dfdafb6')}
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
@@ -468,8 +464,8 @@ export default function CustomKpiCards({
                             onClick={() => beginEdit(definition)}
                             className="rounded-lg p-2 transition-colors hover:bg-black/10"
                             style={{ color: textColor }}
-                            aria-label="KPI bearbeiten"
-                            title="KPI bearbeiten"
+                            aria-label={autoT('ui_bc88a646e18c')}
+                            title={autoT('ui_bc88a646e18c')}
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
@@ -478,8 +474,8 @@ export default function CustomKpiCards({
                             onClick={() => deleteKpi.mutate(definition.id)}
                             className="rounded-lg p-2 transition-colors hover:bg-black/10"
                             style={{ color: textColor }}
-                            aria-label="KPI löschen"
-                            title="KPI löschen"
+                            aria-label={autoT('ui_b20fab033a82')}
+                            title={autoT('ui_b20fab033a82')}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -495,7 +491,7 @@ export default function CustomKpiCards({
 
       <Modal
         open={showManager && editorOpen}
-        title={form.id ? 'KPI bearbeiten' : 'KPI anlegen'}
+        title={form.id ? autoT('ui_bc88a646e18c') : autoT('ui_e2a953ee8cab')}
         onClose={() => {
           setEditorOpen(false);
           setProjectPickerOpen(false);
@@ -505,23 +501,23 @@ export default function CustomKpiCards({
       >
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <h4 className="mb-4 font-semibold text-gray-800">
-              {form.id ? 'KPI bearbeiten' : 'KPI anlegen'}
+              {form.id ? autoT('ui_bc88a646e18c') : autoT('ui_e2a953ee8cab')}
             </h4>
             <div className="space-y-4">
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">Name</span>
+                <span className="mb-1 block font-medium text-gray-700">{autoT('ui_709a23220f2c')}</span>
                 <input
                   value={form.title}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, title: event.target.value }))
                   }
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
-                  placeholder="z.B. Offener Bereich Stunden"
+                  placeholder={autoT('ui_0b9c251f6cac')}
                 />
               </label>
 
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">Kennzahl</span>
+                <span className="mb-1 block font-medium text-gray-700">{autoT('ui_99d216e15ec4')}</span>
                 <select
                   value={form.metric}
                   onChange={(event) =>
@@ -544,9 +540,7 @@ export default function CustomKpiCards({
               </label>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="kpi-background-color">
-                  Hintergrundfarbe
-                </label>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="kpi-background-color">{autoT('ui_9d9e37049444')}</label>
                 <ColorPicker
                   id="kpi-background-color"
                   value={form.backgroundColor}
@@ -558,7 +552,7 @@ export default function CustomKpiCards({
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block text-sm">
-                  <span className="mb-1 block font-medium text-gray-700">Anzeigen auf</span>
+                  <span className="mb-1 block font-medium text-gray-700">{autoT('ui_287a36892e96')}</span>
                   <select
                     value={form.surface}
                     onChange={(event) =>
@@ -569,14 +563,14 @@ export default function CustomKpiCards({
                     }
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
                   >
-                    <option value="both">Dashboard & Statistik</option>
-                    <option value="dashboard">Dashboard</option>
-                    <option value="statistics">Statistik</option>
+                    <option value="both">{autoT('ui_9ed1b4491ea9')}</option>
+                    <option value="dashboard">{autoT('ui_d87f47b47e4d')}</option>
+                    <option value="statistics">{autoT('ui_05fbbfe941ae')}</option>
                   </select>
                 </label>
 
                 <label className="block text-sm">
-                  <span className="mb-1 block font-medium text-gray-700">Zeitraum</span>
+                  <span className="mb-1 block font-medium text-gray-700">{autoT('ui_fe359159c8ad')}</span>
                   <select
                     value={form.dateMode}
                     onChange={(event) =>
@@ -598,7 +592,7 @@ export default function CustomKpiCards({
 
               {form.dateMode === 'rolling_weeks' && (
                 <label className="block text-sm">
-                  <span className="mb-1 block font-medium text-gray-700">Anzahl Wochen</span>
+                  <span className="mb-1 block font-medium text-gray-700">{autoT('ui_aa1a4e595ffb')}</span>
                   <input
                     type="number"
                     min={1}
@@ -617,7 +611,7 @@ export default function CustomKpiCards({
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block text-sm">
-                  <span className="mb-1 block font-medium text-gray-700">Typ</span>
+                  <span className="mb-1 block font-medium text-gray-700">{autoT('ui_edcaf9aaa282')}</span>
                   <select
                     value={form.type}
                     onChange={(event) =>
@@ -634,7 +628,7 @@ export default function CustomKpiCards({
                 </label>
 
                 <div className="min-w-0 text-sm">
-                  <span className="mb-1 block font-medium text-gray-700">Projekt</span>
+                  <span className="mb-1 block font-medium text-gray-700">{autoT('ui_20bda6d2e725')}</span>
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -658,7 +652,7 @@ export default function CustomKpiCards({
                           <span className="truncate text-sm text-gray-700">{selectedProject.title}</span>
                         </>
                       ) : (
-                        <span className="text-gray-500">Alle Projekte</span>
+                        <span className="text-gray-500">{autoT('ui_b857d350e38e')}</span>
                       )}
                     </button>
                     {form.projectId && (
@@ -666,8 +660,8 @@ export default function CustomKpiCards({
                         type="button"
                         onClick={() => setForm((current) => ({ ...current, projectId: '' }))}
                         className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                        aria-label="Projektfilter entfernen"
-                        title="Projektfilter entfernen"
+                        aria-label={autoT('ui_a79e1aeb2ec5')}
+                        title={autoT('ui_a79e1aeb2ec5')}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -677,7 +671,7 @@ export default function CustomKpiCards({
               </div>
 
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">Status</span>
+                <span className="mb-1 block font-medium text-gray-700">{autoT('ui_bae7d5be7082')}</span>
                 <select
                   value={form.executionStatusMode}
                   onChange={(event) =>
@@ -689,14 +683,14 @@ export default function CustomKpiCards({
                   }
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
                 >
-                  <option value="completed">Nur stattgefunden</option>
-                  <option value="all">Stattgefunden und ausgefallen</option>
-                  <option value="cancelled">Nur ausgefallen</option>
+                  <option value="completed">{autoT('ui_c67eb2ee2fbc')}</option>
+                  <option value="all">{autoT('ui_087a7dedf105')}</option>
+                  <option value="cancelled">{autoT('ui_2826c5841061')}</option>
                 </select>
               </label>
 
               <div>
-                <div className="mb-2 text-sm font-medium text-gray-700">Wochentage</div>
+                <div className="mb-2 text-sm font-medium text-gray-700">{autoT('ui_1d474635b5d2')}</div>
                 <div className="flex flex-wrap gap-2">
                   {WEEKDAY_OPTIONS.map((weekday) => {
                     const active = form.weekdays.includes(weekday.value);
@@ -705,7 +699,7 @@ export default function CustomKpiCards({
                         key={weekday.value}
                         type="button"
                         onClick={() => toggleWeekday(weekday.value)}
-                        className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${active ? 'border-viridian bg-viridian text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+                        className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${active ? "border-viridian bg-viridian text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
                       >
                         {weekday.label}
                       </button>
@@ -722,9 +716,7 @@ export default function CustomKpiCards({
                     setForm((current) => ({ ...current, enabled: event.target.checked }))
                   }
                   className="h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
-                />
-                Aktiv anzeigen
-              </label>
+                />{autoT('ui_8e93f873f691')}</label>
 
               {error && (
                 <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
@@ -735,16 +727,14 @@ export default function CustomKpiCards({
                   type="button"
                   onClick={beginCreate}
                   className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Zurücksetzen
-                </button>
+                >{autoT('ui_a4565af537e2')}</button>
                 <button
                   type="button"
                   disabled={isSaving}
                   onClick={save}
                   className="rounded-lg bg-viridian px-4 py-2 text-sm font-semibold text-white hover:bg-cambridge-blue disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSaving ? 'Speichert...' : 'Speichern'}
+                  {isSaving ? autoT('ui_bb6cc3d64a76') : autoT('ui_70b73bbc118d')}
                 </button>
               </div>
             </div>

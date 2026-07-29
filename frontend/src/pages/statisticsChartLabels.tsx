@@ -1,3 +1,4 @@
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 type BarLabelProps = { x?: number; y?: number; width?: number; value?: number | string };
 type LineLabelProps = { x?: number; y?: number; value?: number | string };
 type PieLabelProps = {
@@ -11,7 +12,7 @@ type PieLabelProps = {
 
 function formatChartValue(value?: number | string) {
   return typeof value === 'number'
-    ? value.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+    ? value.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
     : String(value ?? '');
 }
 
@@ -33,7 +34,7 @@ export function createPieValueLabelRenderer({
 
     const textAnchor = typeof cx === 'number' && x < cx ? 'end' : 'start';
     const labelColor = payload?.color || fallbackColor;
-    const percentageText = `${(percent * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
+    const percentageText = `${(percent * 100).toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })} %`;
 
     return (
       <text

@@ -17,7 +17,7 @@ import { Tag } from '../taxonomy/entities/tag.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
-import { User } from '../users/entities/user.entity';
+import { type SupportedLocale, User } from '../users/entities/user.entity';
 
 const SUBTREE_CACHE_TTL_MS = 10_000;
 type SubtreeCacheEntry = { expiresAt: number; ids: string[] };
@@ -180,6 +180,13 @@ export class OrgsService {
   findUsersByOrgIds(orgIds: string[]) {
     if (!orgIds.length) return Promise.resolve([]);
     return this.users.find({ where: { orgId: In(orgIds) }, relations: { org: true } });
+  }
+
+  async updateDefaultLocale(id: string, locale: SupportedLocale) {
+    const org = await this.repo.findOne({ where: { id } });
+    if (!org) throw new BadRequestException('Organization not found');
+    org.defaultLocale = locale;
+    return this.repo.save(org);
   }
 
   private clearSubtreeCache() {

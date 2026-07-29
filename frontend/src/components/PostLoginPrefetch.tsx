@@ -10,6 +10,7 @@ import DemoSplashScreen from '@/demo/DemoSplashScreen';
 import { demoModeEnabled } from '@/demo/config';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import { getActivitiesPrefetchParams } from '@/lib/activitiesFilterStorage';
+import { autoT } from '@/i18n/auto';
 
 async function fetchProjects(params?: { search?: string; archived?: boolean }) {
   const res = await api.get('/projects', { params });
@@ -56,7 +57,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
   const qc = useQueryClient();
   const isRestoring = useIsRestoring();
   const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState<string>('Daten werden vorbereitet…');
+  const [message, setMessage] = useState<string>(autoT('ui_4fe8f5bcccb7'));
   const [progress, setProgress] = useState<{ current: number; total: number } | undefined>(undefined);
   const didRunKeyRef = useRef<string>('');
   const runIdRef = useRef(0);
@@ -83,7 +84,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
     if (!user) return;
     if (switching) {
       setOpen(true);
-      setMessage('Organisation wird gewechselt…');
+      setMessage(autoT('ui_c8341da98f4c'));
       setProgress(undefined);
     }
   }, [switching, user?.id]);
@@ -163,7 +164,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
             to: toISO,
           });
           setOpen(true);
-          setMessage('Daten werden geladen…');
+          setMessage(autoT('ui_ca66f165dc36'));
           setProgress(undefined);
 
           // Run ALL prefetches in parallel for maximum performance
@@ -172,7 +173,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
           // Projects
           if (!hasProjects) {
             allTasks.push({
-              label: 'projects:list',
+              label: autoT('ui_4c489cf3d575'),
               promise: qc.prefetchQuery({
                 queryKey: ['projects', scopeKey, undefined],
                 queryFn: () => fetchProjects(undefined),
@@ -183,7 +184,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
           // Dashboard month summary
           if (!hasDashboardMonthSummary)
             allTasks.push({
-              label: 'stats:summary:month',
+              label: autoT('ui_3431af46f2d2'),
               promise: qc.prefetchQuery({
                 queryKey: dashboardMonthSummaryKey,
                 queryFn: () => fetchStats('/stats/summary', { from, to: toISO, projectId: undefined }),
@@ -193,7 +194,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
           // Activities first page
           if (!hasActivitiesFirstPage) {
             allTasks.push({
-              label: 'activities:paged:first-page',
+              label: autoT('ui_c262a49754e0'),
               promise: qc.prefetchQuery({
                 queryKey: activitiesFirstPageKey,
                 queryFn: () => fetchActivitiesPaged(activitiesParams, activitiesPage, activitiesLimit, scope),
@@ -226,7 +227,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
               });
               if (!cancelled && runIdRef.current === runId) {
                 setProgress({ current: done, total });
-                setMessage(`Daten werden geladen… (${done}/${total})`);
+                setMessage(autoT('ui_6d153f4ac9f8', { value0: done, value1: total }));
               }
             }
           });
@@ -311,7 +312,7 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
       {demoModeEnabled ? (
         <DemoSplashScreen open={open} message={message} progress={progress} />
       ) : (
-        <LoadingOverlay open={open} title="Initialisiere StatO…" message={message} progress={progress} />
+        <LoadingOverlay open={open} title={autoT('ui_7898bb2b2332')} message={message} progress={progress} />
       )}
     </>
   );

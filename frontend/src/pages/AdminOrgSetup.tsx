@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import {
@@ -16,6 +17,7 @@ import {
   moveOrgWithConfirmationApi,
   getOrgTaxonomySettings,
   updateOrgTaxonomySettings,
+  updateOrgDefaultLocale,
 } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -28,6 +30,8 @@ import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig, type PublicConfig } from '@/l
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getEmailValidationMessage } from '@/lib/emailValidation';
+import { autoT } from '@/i18n/auto';
+import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
 
 /** Instant hover tooltip with optional user list */
 function Tooltip({ label, names, children }: { label: string; names?: string[]; children: React.ReactNode }) {
@@ -41,10 +45,10 @@ function Tooltip({ label, names, children }: { label: string; names?: string[]; 
           {names && names.length > 0 ? (
             <ul className="text-gray-300 text-[11px] space-y-0.5">
               {names.slice(0, 5).map((n, i) => <li key={i}>• {n}</li>)}
-              {names.length > 5 && <li className="text-gray-400">… +{names.length - 5} weitere</li>}
+              {names.length > 5 && <li className="text-gray-400">… +{names.length - 5}{' '}{autoT('ui_4e3936d10c2b')}</li>}
             </ul>
           ) : (
-            <div className="text-gray-400 text-[11px]">Keine</div>
+            <div className="text-gray-400 text-[11px]">{autoT('ui_3ce60e7427c1')}</div>
           )}
         </span>
       )}
@@ -71,6 +75,7 @@ type TaxonomyDraftState = OrgTaxonomySettingsSnapshot['settings'] | OrgTaxonomyS
 type TaxonomySectionKey = keyof OrgTaxonomySettingsSnapshot['settings'];
 
 function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto | null; open: boolean; onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation('common');
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -176,22 +181,22 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
   const sections = [
     {
       key: 'categories' as const,
-      title: 'Kategorien',
-      inheritAllLabel: 'Alle aktuellen und zukünftigen Kategorien vererben',
+      title: autoT('ui_4e1e15e17610'),
+      inheritAllLabel: autoT('ui_e10f2f99a057'),
       allowLabel: 'Eigene Kategorien erlauben',
       renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['categories'][number]) => item.name,
     },
     {
       key: 'tags' as const,
-      title: 'Tags',
-      inheritAllLabel: 'Alle aktuellen und zukünftigen Tags vererben',
+      title: autoT('ui_848eed0fbd54'),
+      inheritAllLabel: autoT('ui_e1da640c8be7'),
       allowLabel: 'Eigene Tags erlauben',
       renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['tags'][number]) => item.name,
     },
     {
       key: 'cohorts' as const,
-      title: 'Kohorten',
-      inheritAllLabel: 'Alle aktuellen und zukünftigen Kohorten vererben',
+      title: autoT('ui_5ee833a989b0'),
+      inheritAllLabel: autoT('ui_eb378040c8fa'),
       allowLabel: 'Eigene Kohorten erlauben',
       renderItem: (item: OrgTaxonomySettingsSnapshot['parentOptions']['cohorts'][number]) => `${item.name}${typeof item.minAge === 'number' && typeof item.maxAge === 'number' ? ` (${item.minAge}–${item.maxAge})` : ''}`,
     },
@@ -227,10 +232,10 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     selectedCount: number,
     showInheritedContentRules: boolean,
   ) => {
-    if (!showInheritedContentRules) return 'Keine Parent-Vererbung';
-    if (entry.inheritAll) return 'Alle Einträge automatisch';
-    if (selectedCount === 0) return 'Keine Einträge ausgewählt';
-    return `${selectedCount} Eintrag${selectedCount === 1 ? '' : 'e'} ausgewählt`;
+    if (!showInheritedContentRules) return autoT('ui_b702ccfc141d');
+    if (entry.inheritAll) return autoT('ui_5456924a21e1');
+    if (selectedCount === 0) return autoT('ui_e48689c9cbcd');
+    return autoT('ui_fb6131c21c05', { value0: selectedCount, value1: selectedCount === 1 ? '' : 'e' });
   };
 
   const renderRuleSummary = ({
@@ -298,23 +303,23 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
     const rows: Array<{ label: string; before: string; after: string }> = [];
     if (draftEntry.allowOwn !== baselineEntry.allowOwn) {
       rows.push({
-        label: 'Lokale Erstellung',
+        label: autoT('ui_be719edc9e4f'),
         before: allowOwnLabel(sectionTitle, baselineEntry.allowOwn),
         after: allowOwnLabel(sectionTitle, draftEntry.allowOwn),
       });
     }
     if (showInheritedContentRules && draftEntry.inheritAll !== baselineEntry.inheritAll) {
       rows.push({
-        label: 'Vererbungsmodus',
-        before: baselineEntry.inheritAll ? 'Alle Einträge automatisch' : 'Ausgewählte Einträge',
-        after: draftEntry.inheritAll ? 'Alle Einträge automatisch' : 'Ausgewählte Einträge',
+        label: autoT('ui_0c8050464fd9'),
+        before: baselineEntry.inheritAll ? autoT('ui_5456924a21e1') : autoT('ui_fa86c6c248e6'),
+        after: draftEntry.inheritAll ? autoT('ui_5456924a21e1') : autoT('ui_fa86c6c248e6'),
       });
     }
     if (showInheritedContentRules && changedItemCount > 0) {
       rows.push({
-        label: 'Auswahl',
+        label: autoT('ui_0177f6dca0b7'),
         before: 'Standardauswahl',
-        after: `${changedItemCount} geänderte Auswahl${changedItemCount === 1 ? '' : 'en'}`,
+        after: autoT('ui_05dd7aa3fb32', { value0: changedItemCount, value1: changedItemCount === 1 ? '' : 'en' }),
       });
     }
 
@@ -322,7 +327,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
 
     return (
       <div className="taxonomy-config-diff-list rounded-lg px-3 py-2 text-xs">
-        <div className="mb-1 font-semibold text-[var(--text-primary)]">Abweichung vom Standard</div>
+        <div className="mb-1 font-semibold text-[var(--text-primary)]">{autoT('ui_80beaa4a186a')}</div>
         <div className="space-y-1">
           {rows.map((row) => (
             <div key={row.label} className="grid gap-1 sm:grid-cols-[9rem_1fr]">
@@ -365,9 +370,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
       {renderRuleSummary({ draft, target, options, baseline, showInheritedContentRules })}
       {reset}
       {target === 'self' && baseline ? (
-        <div className={`${taxonomyBannerWarningClass} text-xs`}>
-          Abweichungen vom geltenden Standard werden direkt in den betroffenen Bereichen erklärt.
-        </div>
+        <div className={`${taxonomyBannerWarningClass} text-xs`}>{autoT('ui_69013566f7e7')}</div>
       ) : null}
       {sections.map((section) => {
         const sectionOptions = options[section.key];
@@ -380,23 +383,22 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
           : 0;
         const hasSectionDiff = hasAllowOwnDiff || hasInheritAllDiff || changedItemCount > 0;
         return (
-          <div key={`${target}-${section.key}`} className={`${taxonomySectionCardClass} ${hasSectionDiff ? taxonomyOverrideSurfaceClass : 'border-[var(--border-subtle)] bg-[var(--surface-1)]'}`}>
+          <div key={`${target}-${section.key}`} className={`${taxonomySectionCardClass} ${hasSectionDiff ? taxonomyOverrideSurfaceClass : "border-[var(--border-subtle)] bg-[var(--surface-1)]"}`}>
             <div>
               <div className="flex items-center justify-between gap-3">
                 <h4 className="font-semibold text-[var(--text-primary)]">{section.title}</h4>
-                {hasSectionDiff ? <span className={taxonomyOverridePillClass}>Override aktiv</span> : null}
+                {hasSectionDiff ? <span className={taxonomyOverridePillClass}>{autoT('ui_58a869567bf1')}</span> : null}
               </div>
               <p className={`text-xs ${taxonomyMutedTextClass}`}>
                 {target === 'self'
                   ? hasParentSource
-                    ? 'Wähle, welche Einträge aus der Parent-Organisation in dieser Unterorganisation sichtbar sind.'
-                    : 'Steuere für diese Organisation, ob lokale Einträge zusätzlich erlaubt sind.'
-                  : 'Lege fest, welche Einträge Unterorganisationen standardmäßig von dieser Organisation sehen.'}
+                    ? autoT('ui_cb006cc6637b')
+                    : autoT('ui_15d2a37bed98')
+                  : autoT('ui_75f29b7250d2')}
               </p>
             </div>
             {hasParentSource && source && source.mode !== 'explicit' ? (
-              <div className={`${taxonomyBannerInfoClass} text-xs`}>
-                Derzeit greift {source.mode === 'default' ? `der Standard von ${source.sourceOrgName || 'einer übergeordneten Organisation'}` : 'das bisherige Standardsystem ohne expliziten Override'}.
+              <div className={`${taxonomyBannerInfoClass} text-xs`}>{autoT('ui_6be9a46fee06')}{source.mode === 'default' ? t('organization.standardFrom', { name: source.sourceOrgName || t('organization.parent') }) : autoT('ui_4f8f3a0bf2a3')}.
               </div>
             ) : null}
             {renderDiffRows({
@@ -408,7 +410,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
             })}
             <div className={`space-y-2 p-3 ${taxonomyMutedSurfaceClass}`}>
               {showInheritedContentRules ? (
-                <label className={`taxonomy-rule-control ${hasInheritAllDiff ? taxonomyOverrideSoftClass : ''} ${readOnly ? 'cursor-not-allowed opacity-75' : ''}`}>
+                <label className={`taxonomy-rule-control ${hasInheritAllDiff ? taxonomyOverrideSoftClass : ''} ${readOnly ? "cursor-not-allowed opacity-75" : ''}`}>
                   <input
                     type="checkbox"
                     checked={draft[section.key].inheritAll}
@@ -416,20 +418,20 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                     disabled={readOnly}
                     className="sr-only"
                   />
-                  <span className={`taxonomy-rule-switch ${draft[section.key].inheritAll ? 'taxonomy-rule-switch-on' : ''}`} aria-hidden="true">
+                  <span className={`taxonomy-rule-switch ${draft[section.key].inheritAll ? "taxonomy-rule-switch-on" : ''}`} aria-hidden="true">
                     <span />
                   </span>
                   <span className="min-w-0">
                     <span className="block font-medium text-[var(--text-primary)]">{section.inheritAllLabel}</span>
                     <span className={`block text-xs ${taxonomyMutedTextClass}`}>
                       {target === 'self'
-                        ? 'Bestehende und künftig sichtbare Parent-Einträge werden automatisch übernommen.'
-                        : 'Direkte und weitere Unterorganisationen übernehmen bestehende und künftig sichtbare Einträge automatisch, solange dort kein eigener Override gesetzt ist.'}
+                        ? autoT('ui_d66a910a42dd')
+                        : autoT('ui_0d8a51190a5d')}
                     </span>
                   </span>
                 </label>
               ) : null}
-              <label className={`taxonomy-rule-control ${hasAllowOwnDiff ? taxonomyOverrideSoftClass : ''} ${readOnly ? 'cursor-not-allowed opacity-75' : ''}`}>
+              <label className={`taxonomy-rule-control ${hasAllowOwnDiff ? taxonomyOverrideSoftClass : ''} ${readOnly ? "cursor-not-allowed opacity-75" : ''}`}>
                 <input
                   type="checkbox"
                   checked={draft[section.key].allowOwn}
@@ -437,15 +439,15 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                   disabled={readOnly}
                   className="sr-only"
                 />
-                <span className={`taxonomy-rule-switch ${draft[section.key].allowOwn ? 'taxonomy-rule-switch-on' : ''}`} aria-hidden="true">
+                <span className={`taxonomy-rule-switch ${draft[section.key].allowOwn ? "taxonomy-rule-switch-on" : ''}`} aria-hidden="true">
                   <span />
                 </span>
                 <span className="min-w-0">
                   <span className="block font-medium text-[var(--text-primary)]">{section.allowLabel}</span>
                   <span className={`block text-xs ${taxonomyMutedTextClass}`}>
                     {target === 'self'
-                      ? 'Lokale Einträge können zusätzlich in dieser Organisation angelegt werden.'
-                      : 'Unterorganisationen dürfen zusätzlich eigene lokale Einträge anlegen, sofern sie keinen eigenen Override setzen.'}
+                      ? autoT('ui_5d8b574b50b4')
+                      : autoT('ui_11062ebc4bcf')}
                   </span>
                 </span>
               </label>
@@ -455,8 +457,8 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                 {draft[section.key].inheritAll && (
                   <div className="rounded-lg border border-viridian/20 bg-viridian/5 px-3 py-2 text-xs text-viridian">
                     {target === 'self'
-                      ? 'Alle aktuell sichtbaren Parent-Einträge sind aktiv und neue Einträge werden künftig automatisch mit vererbt.'
-                      : 'Unterorganisationen erhalten alle aktuell sichtbaren Einträge dieser Organisation und künftig sichtbare Einträge automatisch.'}
+                      ? autoT('ui_a48f2d872641')
+                      : autoT('ui_3a54690f5745')}
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -466,7 +468,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                       ? isSectionItemSelected(draft, section.key, item.id) !== isSectionItemSelected(baseline, section.key, item.id)
                       : false;
                     return (
-                      <label key={`${target}-${section.key}-${item.id}`} className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${draft[section.key].inheritAll || readOnly ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${differsFromBaseline ? taxonomyOverrideSoftClass : selected ? 'border-viridian bg-viridian/5' : 'border-[var(--border-subtle)] bg-[var(--surface-1)]'}`}>
+                      <label key={`${target}-${section.key}-${item.id}`} className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${draft[section.key].inheritAll || readOnly ? "cursor-not-allowed opacity-70" : "cursor-pointer"} ${differsFromBaseline ? taxonomyOverrideSoftClass : selected ? "border-viridian bg-viridian/5" : "border-[var(--border-subtle)] bg-[var(--surface-1)]"}`}>
                         <input
                           type="checkbox"
                           checked={selected}
@@ -477,7 +479,7 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                         <span className="min-w-0">
                           <span className="block text-sm font-medium text-[var(--text-primary)]">{section.renderItem(item as never)}</span>
                           {item.sourceOrgName && target === 'self' && item.sourceOrgName !== snapshot?.parentName && (
-                            <span className={`block text-xs ${taxonomyMutedTextClass}`}>Im Parent-Kontext geerbt aus {item.sourceOrgName}</span>
+                            <span className={`block text-xs ${taxonomyMutedTextClass}`}>{autoT('ui_058914a524bc')}{' '}{item.sourceOrgName}</span>
                           )}
                         </span>
                       </label>
@@ -488,12 +490,12 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
             ) : (
               <div className={`text-sm ${taxonomyMutedTextClass}`}>
                 {!showInheritedContentRules
-                  ? 'Es gibt keine übergeordnete Organisation. In diesem Bereich steuerst du daher nur die lokalen Erstellungsrechte.'
+                  ? autoT('ui_a080abd398bd')
                   : draft[section.key].inheritAll
-                    ? 'Derzeit sind noch keine passenden Einträge sichtbar. Neue Einträge werden nach dem Anlegen automatisch berücksichtigt.'
+                    ? autoT('ui_b6ea868adc5a')
                     : target === 'self'
-                      ? 'In der Parent-Organisation sind derzeit keine passenden Einträge sichtbar.'
-                      : 'In dieser Organisation sind derzeit keine passenden Einträge sichtbar.'}
+                      ? autoT('ui_6c738d1a3631')
+                      : autoT('ui_aab49b639dd5')}
               </div>
             )}
           </div>
@@ -504,42 +506,42 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={org ? `Vererbung für „${org.name}“` : 'Vererbung'} maxWidth="5xl">
-      {loading && <div className="py-8 text-center text-gray-500">Lade Vererbungsregeln…</div>}
+    <Modal open={open} onClose={onClose} title={org ? autoT('ui_5b2a4f8af741', { value0: org.name }) : autoT('ui_73a0104df5e5')} maxWidth="5xl">
+      {loading && <div className="py-8 text-center text-gray-500">{autoT('ui_2c9d36fbce1b')}</div>}
       {!loading && snapshot && settingsDraft && childDefaultsDraft && (
         <div className="space-y-5">
           <div className="taxonomy-modal-hero rounded-xl border border-[var(--border-subtle)] px-4 py-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
-                <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">Regelkontext</div>
+                <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">{autoT('ui_90f3c2de38c3')}</div>
                 <div className="mt-1 text-xl font-bold text-[var(--text-primary)]">{snapshot.orgName}</div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className={taxonomyContextPillClass}>
                     <GitBranch className="h-3.5 w-3.5" />
-                    {snapshot.parentName ? `Erbt von ${snapshot.parentName}` : 'Oberste Organisation'}
+                    {snapshot.parentName ? `Erbt von ${snapshot.parentName}` : autoT('ui_056cf317078e')}
                   </span>
                   <span className={taxonomyContextPillClass}>
                     <Settings2 className="h-3.5 w-3.5" />
-                    {snapshot.hasExplicitSettings ? 'Eigener Override' : 'Standardregeln aktiv'}
+                    {snapshot.hasExplicitSettings ? autoT('ui_0383b6828c49') : autoT('ui_8467199dbd4e')}
                   </span>
                   <span className={taxonomyContextPillClass}>
                     <Users className="h-3.5 w-3.5" />
-                    {snapshot.hasChildDefaults ? 'Standards für Unterorgs gesetzt' : 'Keine Unterorg-Standards'}
+                    {snapshot.hasChildDefaults ? autoT('ui_319a962a610a') : autoT('ui_0a82238fcc70')}
                   </span>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[20rem]">
                 <div className="taxonomy-context-stat rounded-lg px-3 py-2">
                   <div className="text-lg font-bold text-[var(--text-primary)]">{snapshot.directChildCount}</div>
-                  <div className="text-[11px] text-[var(--text-muted)]">direkt</div>
+                  <div className="text-[11px] text-[var(--text-muted)]">{autoT('ui_5be3b245eac6')}</div>
                 </div>
                 <div className="taxonomy-context-stat rounded-lg px-3 py-2">
                   <div className="text-lg font-bold text-[var(--text-primary)]">{snapshot.descendantCount}</div>
-                  <div className="text-[11px] text-[var(--text-muted)]">gesamt</div>
+                  <div className="text-[11px] text-[var(--text-muted)]">{autoT('ui_d25cfca669ed')}</div>
                 </div>
                 <div className="taxonomy-context-stat rounded-lg px-3 py-2">
-                  <div className="text-lg font-bold text-[var(--text-primary)]">{snapshot.permissions.canEditSelf || snapshot.permissions.canEditChildDefaults ? 'Ja' : 'Nein'}</div>
-                  <div className="text-[11px] text-[var(--text-muted)]">bearbeitbar</div>
+                  <div className="text-lg font-bold text-[var(--text-primary)]">{snapshot.permissions.canEditSelf || snapshot.permissions.canEditChildDefaults ? autoT('ui_283c735c8901') : autoT('ui_70bb813787b6')}</div>
+                  <div className="text-[11px] text-[var(--text-muted)]">{autoT('ui_bd2fe6d3ef5c')}</div>
                 </div>
               </div>
             </div>
@@ -549,18 +551,14 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
               type="button"
               onClick={() => setActivePanel('self')}
               aria-pressed={activePanel === 'self'}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'self' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
-            >
-              Regeln für diese Organisation
-            </button>
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'self' ? "bg-viridian text-white shadow-sm" : taxonomySegmentedButtonInactiveClass}`}
+            >{autoT('ui_ca7f16d8ef7e')}</button>
             <button
               type="button"
               onClick={() => setActivePanel('children')}
               aria-pressed={activePanel === 'children'}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'children' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
-            >
-              Standards für Unterorganisationen
-            </button>
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'children' ? "bg-viridian text-white shadow-sm" : taxonomySegmentedButtonInactiveClass}`}
+            >{autoT('ui_6d31c3c8355f')}</button>
           </div>
           {activePanel === 'self' ? renderSettingsEditor({
             draft: settingsDraft,
@@ -570,28 +568,20 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
             intro: (
               <div className={`${taxonomySurfaceClass} px-4 py-3 text-sm ${taxonomySecondaryTextClass}`}>
                 {snapshot.parentId ? (
-                  <>
-                    Diese Regeln gelten nur für <strong>{snapshot.orgName}</strong>. Wenn kein eigener Override gesetzt ist, werden Standards aus der Hierarchie verwendet.
-                  </>
+                  <>{autoT('ui_8a4951c9ecf0')}<strong>{snapshot.orgName}</strong>{autoT('ui_eb47130d07a4')}</>
                 ) : (
-                  <>
-                    Diese Regeln gelten direkt für <strong>{snapshot.orgName}</strong>. Da es keine übergeordnete Organisation gibt, steuerst du hier vor allem, ob lokale Kategorien, Tags und Kohorten angelegt werden dürfen.
-                  </>
+                  <>{autoT('ui_6dcb477a5344')}<strong>{snapshot.orgName}</strong>{autoT('ui_9c3e30e3abbe')}</>
                 )}
                 {snapshot.hasExplicitSettings ? (
-                  <div className={`mt-1 text-xs ${taxonomyMutedTextClass}`}>
-                    Vergleichsbasis: {snapshot.fallbackSource.categories.sourceOrgName || snapshot.fallbackSource.tags.sourceOrgName || snapshot.fallbackSource.cohorts.sourceOrgName || (snapshot.parentId ? 'übergeordnete Standardvererbung' : 'systemweite Standardregel')}
+                  <div className={`mt-1 text-xs ${taxonomyMutedTextClass}`}>{autoT('ui_bdc434b247a3')}{snapshot.fallbackSource.categories.sourceOrgName || snapshot.fallbackSource.tags.sourceOrgName || snapshot.fallbackSource.cohorts.sourceOrgName || (snapshot.parentId ? autoT('ui_3d072e66015a') : "systemweite Standardregel")}
                   </div>
                 ) : null}
                 {!snapshot.ownAdminPolicy.allowChildAdminOverrides ? (
-                  <div className={`${taxonomyBannerInfoClass} mt-3`}>
-                    Admins dieser Organisation können die Vererbungsregeln aktuell nicht selbst ändern. Gesteuert durch {snapshot.ownAdminPolicy.sourceOrgName || 'die übergeordnete Organisation'}.
+                  <div className={`${taxonomyBannerInfoClass} mt-3`}>{autoT('ui_c6546b04a3cb')}{snapshot.ownAdminPolicy.sourceOrgName || autoT('ui_4f4a56a66165')}.
                   </div>
                 ) : null}
                 {!snapshot.permissions.canEditSelf ? (
-                  <div className={`${taxonomyBannerWarningClass} mt-3`}>
-                    Deine Admin-Rolle darf diese Vererbungsregeln aktuell nur ansehen, aber nicht bearbeiten.
-                  </div>
+                  <div className={`${taxonomyBannerWarningClass} mt-3`}>{autoT('ui_390766826850')}</div>
                 ) : null}
               </div>
             ),
@@ -611,12 +601,11 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                     setSettingsDraft(snapshot.fallbackSettings);
                   }}
                 >
-                  {clearOwnSettings ? 'Override wiederherstellen' : 'Eigenen Override entfernen'}
+                  {clearOwnSettings ? autoT('ui_920b76c43617') : autoT('ui_ab5deb17f39f')}
                 </button>
               </div>
             ) : clearOwnSettings ? (
-              <div className={taxonomyBannerWarningClass}>
-                Beim Speichern wird der eigene Override entfernt. Danach gelten wieder {snapshot.parentId ? 'die Standards der übergeordneten Organisation' : 'die systemweiten Standardwerte'}.
+              <div className={taxonomyBannerWarningClass}>{autoT('ui_45949baad5d6')}{snapshot.parentId ? autoT('ui_284ea55a27d4') : autoT('ui_2358864656a2')}.
               </div>
             ) : null,
             readOnly: !snapshot.permissions.canEditSelf,
@@ -626,14 +615,11 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
             options: snapshot.childDefaultOptions,
             intro: (
               <div className="space-y-3">
-                <div className={`${taxonomySurfaceClass} px-4 py-3 text-sm ${taxonomySecondaryTextClass}`}>
-                  Diese Standardregeln gelten für direkte und weitere Unterorganisationen von <strong>{snapshot.orgName}</strong>, solange dort kein eigener Override gesetzt ist.
-                  <div className={`mt-1 text-xs ${taxonomyMutedTextClass}`}>
-                    Direkte Unterorganisationen: {snapshot.directChildCount} · In der Kaskade insgesamt: {snapshot.descendantCount}
+                <div className={`${taxonomySurfaceClass} px-4 py-3 text-sm ${taxonomySecondaryTextClass}`}>{autoT('ui_05fd6084bff8')}<strong>{snapshot.orgName}</strong>{autoT('ui_0b390ca81ab3')}<div className={`mt-1 text-xs ${taxonomyMutedTextClass}`}>{autoT('ui_b4fb63cb8125')}{snapshot.directChildCount}{' '}{autoT('ui_48ebb798ee34')}{' '}{snapshot.descendantCount}
                   </div>
                 </div>
                 <div className={`space-y-2 p-3 ${taxonomyMutedSurfaceClass}`}>
-                  <label className={`taxonomy-rule-control ${childDefaultsDraft.allowChildAdminOverrides !== snapshot.childDefaults.allowChildAdminOverrides ? taxonomyOverrideSoftClass : ''} ${!snapshot.permissions.canEditChildDefaults ? 'cursor-not-allowed opacity-75' : ''}`}>
+                  <label className={`taxonomy-rule-control ${childDefaultsDraft.allowChildAdminOverrides !== snapshot.childDefaults.allowChildAdminOverrides ? taxonomyOverrideSoftClass : ''} ${!snapshot.permissions.canEditChildDefaults ? "cursor-not-allowed opacity-75" : ''}`}>
                     <input
                       type="checkbox"
                       checked={childDefaultsDraft.allowChildAdminOverrides}
@@ -641,20 +627,16 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                       disabled={!snapshot.permissions.canEditChildDefaults}
                       className="sr-only"
                     />
-                    <span className={`taxonomy-rule-switch ${childDefaultsDraft.allowChildAdminOverrides ? 'taxonomy-rule-switch-on' : ''}`} aria-hidden="true">
+                    <span className={`taxonomy-rule-switch ${childDefaultsDraft.allowChildAdminOverrides ? "taxonomy-rule-switch-on" : ''}`} aria-hidden="true">
                       <span />
                     </span>
                     <span className="min-w-0">
-                      <span className="block font-medium text-[var(--text-primary)]">Admins von Unterorganisationen dürfen Vererbungen anpassen</span>
-                      <span className={`block text-xs ${taxonomyMutedTextClass}`}>
-                        Wenn deaktiviert, können Org-Admins in direkten Unterorganisationen ihre eigenen Vererbungsregeln nur ansehen. Superadmins und die übergeordnete Organisation können weiterhin ändern.
-                      </span>
+                      <span className="block font-medium text-[var(--text-primary)]">{autoT('ui_3760fc0b0d6a')}</span>
+                      <span className={`block text-xs ${taxonomyMutedTextClass}`}>{autoT('ui_8c085486e9ab')}</span>
                     </span>
                   </label>
                   {!snapshot.permissions.canEditChildDefaults ? (
-                    <div className={taxonomyBannerWarningClass}>
-                      Deine Admin-Rolle darf diese Standardregeln aktuell nur ansehen, aber nicht bearbeiten.
-                    </div>
+                    <div className={taxonomyBannerWarningClass}>{autoT('ui_5abcb50fbc00')}</div>
                   ) : null}
                 </div>
               </div>
@@ -669,14 +651,10 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                     setClearChildDefaults(true);
                     setChildDefaultsDraft(snapshot.childDefaults);
                   }}
-                >
-                  Standardregeln entfernen
-                </button>
+                >{autoT('ui_a648fa1c79fa')}</button>
               </div>
             ) : clearChildDefaults ? (
-              <div className={taxonomyBannerWarningClass}>
-                Beim Speichern werden keine Standardregeln mehr vorgegeben. Unterorganisationen verwenden dann den nächsthöheren Standard oder ihre eigenen Overrides.
-              </div>
+              <div className={taxonomyBannerWarningClass}>{autoT('ui_07cb81ef2ec1')}</div>
             ) : null,
             readOnly: !snapshot.permissions.canEditChildDefaults,
           })}
@@ -685,8 +663,8 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
               onClick={onClose}
-              aria-label="Abbrechen"
-              title="Abbrechen"
+              aria-label={autoT('ui_07af7cb30fca')}
+              title={autoT('ui_07af7cb30fca')}
             >
               <XIcon className="w-5 h-5" />
             </button>
@@ -694,8 +672,8 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:opacity-50"
               disabled={saving || (activePanel === 'self' ? !snapshot.permissions.canEditSelf : !snapshot.permissions.canEditChildDefaults)}
-              aria-label={saving ? 'Speichert' : 'Speichern'}
-              title={saving ? 'Speichert' : 'Speichern'}
+              aria-label={saving ? autoT('ui_b28e5e6d9ac7') : autoT('ui_70b73bbc118d')}
+              title={saving ? autoT('ui_b28e5e6d9ac7') : autoT('ui_70b73bbc118d')}
               onClick={async () => {
                 if (!org || !settingsDraft || !childDefaultsDraft) return;
                 try {
@@ -721,11 +699,11 @@ function OrgTaxonomySettingsModal({ org, open, onClose, onSaved }: { org: OrgDto
                   setChildDefaultsDraft(saved.childDefaults);
                   setClearOwnSettings(false);
                   setClearChildDefaults(false);
-                  showToast('Vererbungsregeln gespeichert.', { type: 'success' });
+                  showToast(autoT('ui_1a66f2dda092'), { type: 'success' });
                   onSaved();
                   onClose();
                 } catch (error: unknown) {
-                  const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Speichern fehlgeschlagen.';
+                  const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_892c38bb9803');
                   showToast(String(message), { type: 'error' });
                 } finally {
                   setSaving(false);
@@ -752,13 +730,14 @@ function MoveImpactList({ title, items }: { title: string; items: OrgMoveImpactI
             {item.name}{item.sourceOrgName ? ` (${item.sourceOrgName})` : ''}
           </li>
         ))}
-        {items.length > 6 && <li className="text-gray-500">… und {items.length - 6} weitere</li>}
+        {items.length > 6 && <li className="text-gray-500">{autoT('ui_12023cf943b2')}{' '}{items.length - 6}{' '}{autoT('ui_4e3936d10c2b')}</li>}
       </ul>
     </div>
   );
 }
 
 export default function AdminOrgSetup() {
+  const { t } = useTranslation('common');
   const { user } = useAuth();
   const { scope } = useOrgScope();
   const { showToast } = useToast();
@@ -768,6 +747,7 @@ export default function AdminOrgSetup() {
   const isSuperadmin = user?.role === 'superadmin';
   const [settingsOrg, setSettingsOrg] = useState<OrgDto | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [savingDefaultLocale, setSavingDefaultLocale] = useState(false);
   
   // Create org modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -871,8 +851,8 @@ export default function AdminOrgSetup() {
     return roots;
   }, [orgs]);
   const fixedParentName = useMemo(() => {
-    if (!user?.orgId) return user?.orgName || 'Eigene Organisation';
-    return orgs.find((o) => o.id === user.orgId)?.name || user.orgName || 'Eigene Organisation';
+    if (!user?.orgId) return user?.orgName || autoT('ui_89e32a6a5474');
+    return orgs.find((o) => o.id === user.orgId)?.name || user.orgName || autoT('ui_89e32a6a5474');
   }, [orgs, user?.orgId, user?.orgName]);
   const selectedOrg = useMemo(
     () => orgs.find((candidate) => candidate.id === selectedOrgId) || orgs[0] || null,
@@ -883,6 +863,20 @@ export default function AdminOrgSetup() {
     if (user?.orgId && orgs.some((candidate) => candidate.id === user.orgId)) return user.orgId;
     return selectedOrg?.id ?? null;
   }, [orgs, scope, selectedOrg?.id, user?.orgId]);
+
+  const handleDefaultLocaleChange = async (locale: AppLocale) => {
+    if (!selectedOrg || savingDefaultLocale || selectedOrg.defaultLocale === locale) return;
+    setSavingDefaultLocale(true);
+    try {
+      const updated = await updateOrgDefaultLocale(selectedOrg.id, locale);
+      setOrgs((current) => current.map((org) => org.id === updated.id ? { ...org, defaultLocale: updated.defaultLocale } : org));
+      showToast(t('language.organizationSaved'), { type: 'success' });
+    } catch {
+      showToast(t('language.organizationError'), { type: 'error' });
+    } finally {
+      setSavingDefaultLocale(false);
+    }
+  };
 
   const resetCreateForm = () => {
     setOrgName('');
@@ -930,13 +924,13 @@ export default function AdminOrgSetup() {
       showToast(
         withAdmin
           ? localProvisioning
-            ? `Organisation „${org.name}" und lokaler Admin angelegt. Das temporäre Passwort muss beim ersten Login geändert werden.`
-            : `Organisation „${org.name}" angelegt und Einladung per E-Mail versendet.`
-          : `Organisation „${org.name}" erfolgreich angelegt.`,
+            ? autoT('ui_382a758a5739', { value0: org.name })
+            : autoT('ui_d1e50e86b092', { value0: org.name })
+          : autoT('ui_cd9e04bd6469', { value0: org.name }),
         { type: 'success' },
       );
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Fehler beim Anlegen';
+      const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_23277c7f6107');
       showToast(String(msg), { type: 'error' });
     } finally {
       setCreating(false);
@@ -947,17 +941,15 @@ export default function AdminOrgSetup() {
     <div className="mx-auto max-w-6xl px-3 sm:px-4">
       {/* Header */}
       <DemoHoverHint
-        title="Organisationen"
-        description="Verwaltet die Organisationsstruktur der Demo. Neue Organisationen koennen mit oder ohne Admin-Einladung angelegt werden."
+        title={autoT('ui_4048d8ed39f2')}
+        description={autoT('ui_cc1f1be5005f')}
         placement="bottom"
       >
         <div className="flex items-center justify-between gap-3 mb-6">
           <div>
             <h2 className="text-2xl font-bold text-viridian flex items-center gap-2">
-              <Building2 className="w-6 h-6" />
-              Organisationen
-            </h2>
-            <p className="text-sm text-[var(--text-secondary)] mt-1">Hierarchie, Benutzer und Vererbungsregeln an einem Ort</p>
+              <Building2 className="w-6 h-6" />{autoT('ui_4048d8ed39f2')}</h2>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">{autoT('ui_7344d9db4825')}</p>
           </div>
           <button
             className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
@@ -967,45 +959,62 @@ export default function AdminOrgSetup() {
             }}
           >
             <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">Neue Organisation</span>
+            <span className="hidden sm:inline">{autoT('ui_e769bc597b64')}</span>
           </button>
         </div>
       </DemoHoverHint>
 
       <DemoHoverHint
-        title="Organisationsbaum"
-        description="Zeigt Unterorganisationen, direkte Benutzerzahlen und Admins. Ueber die Aktionsbuttons lassen sich Mitglieder, Vererbungsregeln und Verschiebungen pruefen."
+        title={autoT('ui_d215130fe3a4')}
+        description={autoT('ui_d390d709c7cd')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Organisations-Liste */}
           <div className="org-admin-card rounded-lg shadow">
             <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="font-semibold text-[var(--text-primary)]">Bestehende Organisationen</h3>
-                <span className="text-xs text-[var(--text-muted)]">{orgs.length} Organisation{orgs.length !== 1 ? 'en' : ''}</span>
+                <h3 className="font-semibold text-[var(--text-primary)]">{autoT('ui_be050db539ba')}</h3>
+                <span className="text-xs text-[var(--text-muted)]">{orgs.length}{' '}{autoT('ui_6e99c1d3b150')}{orgs.length !== 1 ? autoT('ui_094b0fe0e302') : ''}</span>
               </div>
-              <p className="text-xs text-[var(--text-muted)] mt-1">Wähle eine Organisation im Baum, um Benutzer zu öffnen oder Vererbungsregeln direkt zu bearbeiten.</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">{autoT('ui_c33477720509')}</p>
+              {selectedOrg && (
+                <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                  <label htmlFor="organization-default-locale" className="text-sm font-medium text-[var(--text-secondary)]">
+                    {t('language.organizationDefault')}
+                  </label>
+                  <select
+                    id="organization-default-locale"
+                    value={selectedOrg.defaultLocale || 'de'}
+                    disabled={savingDefaultLocale}
+                    onChange={(event) => void handleDefaultLocaleChange(event.target.value as AppLocale)}
+                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-primary)] disabled:opacity-60"
+                  >
+                    {APP_LOCALES.map((locale) => (
+                      <option key={locale} value={locale}>{t(`language.options.${locale}`)}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {savingDefaultLocale ? t('language.saving') : t('language.organizationHelp')}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="p-2">
               {loading && (
                 <div className="flex items-center justify-center py-8 text-[var(--text-muted)]">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-viridian mr-2"></div>
-                  Lade Organisationen…
-                </div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-viridian mr-2"></div>{autoT('ui_240c23fcdd31')}</div>
               )}
 
               {!loading && orgs.length === 0 && (
                 <div className="text-center py-12">
                   <Building2 className="w-12 h-12 text-[var(--text-faint)] mx-auto mb-3" />
-                  <p className="text-[var(--text-muted)] mb-4">Noch keine Organisationen vorhanden</p>
+                  <p className="text-[var(--text-muted)] mb-4">{autoT('ui_e7c1e646423c')}</p>
                   <button
                     className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg"
                     onClick={()=> { resetCreateForm(); setCreateModalOpen(true); }}
                   >
-                    <Plus className="w-4 h-4" />
-                    Erste Organisation anlegen
-                  </button>
+                    <Plus className="w-4 h-4" />{autoT('ui_d2d6d3930079')}</button>
                 </div>
               )}
               {!loading && orgs.length > 0 && (
@@ -1033,23 +1042,23 @@ export default function AdminOrgSetup() {
       </DemoHoverHint>
 
       {/* Neues einheitliches Create Modal */}
-      <Modal open={createModalOpen} onClose={()=> setCreateModalOpen(false)} title="Neue Organisation anlegen" maxWidth="md">
+      <Modal open={createModalOpen} onClose={()=> setCreateModalOpen(false)} title={autoT('ui_2e3d756e557a')} maxWidth="md">
         <div className="space-y-4">
           {/* Organisation Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name der Organisation *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_1e4cd494c5fd')}</label>
             <input 
               value={orgName} 
               onChange={(e)=>setOrgName(e.target.value)} 
               className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian" 
-              placeholder="z. B. Jugendzentrum Nord"
+              placeholder={autoT('ui_c07736c0505f')}
               autoFocus
             />
           </div>
           
           {/* Übergeordnete Organisation */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Übergeordnete Organisation</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_ff5ba4d2f6c1')}</label>
             {isSuperadmin ? (
               <>
                 <select 
@@ -1057,10 +1066,10 @@ export default function AdminOrgSetup() {
                   onChange={(e)=> setParentId((e.target.value || 'root') as 'root' | string)} 
                   className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
                 >
-                  <option value="root">(Keine – oberste Ebene)</option>
+                  <option value="root">{autoT('ui_95da21abcbab')}</option>
                   {orgs.map(o => (<option key={o.id} value={o.id}>{o.name}</option>))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">Leer lassen, um eine eigenständige Organisation zu erstellen</p>
+                <p className="text-xs text-gray-500 mt-1">{autoT('ui_79f38132024b')}</p>
               </>
             ) : (
               <>
@@ -1069,7 +1078,7 @@ export default function AdminOrgSetup() {
                   disabled
                   className="border rounded-lg px-3 py-2 w-full bg-gray-50 text-gray-600 cursor-not-allowed"
                 />
-                <p className="text-xs text-gray-500 mt-1">Org-Admins können neue Organisationen nur direkt unter ihrer eigenen Organisation anlegen.</p>
+                <p className="text-xs text-gray-500 mt-1">{autoT('ui_264e18d56e8f')}</p>
               </>
             )}
           </div>
@@ -1084,8 +1093,8 @@ export default function AdminOrgSetup() {
                 className="h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
               />
               <div>
-                <span className="font-medium text-gray-700">{publicConfig.userProvisioningMode === 'local' ? 'Administrator lokal anlegen' : 'Administrator einladen'}</span>
-                <p className="text-xs text-gray-500">{publicConfig.userProvisioningMode === 'local' ? 'Legt ein Konto mit temporärem Passwort an' : 'Erstellt einen Einladungslink für den Organisations-Admin'}</p>
+                <span className="font-medium text-gray-700">{publicConfig.userProvisioningMode === 'local' ? autoT('ui_de759568dc3f') : autoT('ui_458c8eb542fa')}</span>
+                <p className="text-xs text-gray-500">{publicConfig.userProvisioningMode === 'local' ? autoT('ui_689b09c840d6') : autoT('ui_70300220d9a4')}</p>
               </div>
             </label>
           </div>
@@ -1094,30 +1103,30 @@ export default function AdminOrgSetup() {
           {withAdmin && (
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Admin E-Mail *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_3103d22b6bd6')}</label>
                 <input 
                   type="email"
                   value={adminEmail} 
                   onChange={(e)=>setAdminEmail(e.target.value)} 
-                  className={`border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian ${adminEmailValidationMessage ? 'border-red-500' : ''}`}
-                  placeholder="admin@organisation.de"
+                  className={`border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian ${adminEmailValidationMessage ? "border-red-500" : ''}`}
+                  placeholder={autoT('ui_11834f2e879a')}
                   aria-invalid={Boolean(adminEmailValidationMessage)}
                 />
                 {adminEmailValidationMessage && <p className="text-xs text-red-600 mt-1">{adminEmailValidationMessage}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Admin Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_0ec96e88bad2')}</label>
                 <input 
                   value={adminName} 
                   onChange={(e)=>setAdminName(e.target.value)} 
                   className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian" 
-                  placeholder="Max Mustermann"
+                  placeholder={autoT('ui_57d950a48336')}
                 />
-                <p className="text-xs text-gray-500 mt-1">Optional – wird sonst aus der E-Mail abgeleitet</p>
+                <p className="text-xs text-gray-500 mt-1">{autoT('ui_14c8987e027b')}</p>
               </div>
               {publicConfig.userProvisioningMode === 'local' && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Temporäres Passwort *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_c07dc032f12a')}</label>
                   <input
                     type="password"
                     value={adminTemporaryPassword}
@@ -1126,7 +1135,7 @@ export default function AdminOrgSetup() {
                     autoComplete="new-password"
                   />
                   <PasswordRequirementsHint password={adminTemporaryPassword} className="mt-2" />
-                  <p className="text-xs text-gray-600 mt-2">Sicher weitergeben; beim ersten Login muss es geändert werden.</p>
+                  <p className="text-xs text-gray-600 mt-2">{autoT('ui_198d169e7342')}</p>
                 </div>
               )}
             </div>
@@ -1137,16 +1146,14 @@ export default function AdminOrgSetup() {
             <button 
               className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors" 
               onClick={()=> setCreateModalOpen(false)}
-            >
-              Abbrechen
-            </button>
+            >{autoT('ui_07af7cb30fca')}</button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
               disabled={!orgName.trim() || (withAdmin && (!adminEmail.trim() || Boolean(adminEmailValidationMessage) || (publicConfig.userProvisioningMode === 'local' && (!adminTemporaryPassword || Boolean(getPasswordValidationMessage(adminTemporaryPassword)))))) || creating || (!isSuperadmin && !user?.orgId)}
               onClick={handleCreate}
             >
               {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
-              {withAdmin ? 'Organisation + Admin anlegen' : 'Organisation anlegen'}
+              {withAdmin ? autoT('ui_6d62972efc1b') : autoT('ui_bf524c1f1672')}
             </button>
           </div>
         </div>
@@ -1320,7 +1327,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
       setMembers(await listUsersByOrg(org.id, false));
     } catch {
       setMembers([]);
-      showToast('Benutzer konnten nicht geladen werden.', { type: 'error' });
+      showToast(autoT('ui_c41069f95501'), { type: 'error' });
     }
   };
 
@@ -1343,7 +1350,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
 
   return (
     <li 
-      className={`org-tree-item rounded-lg transition-colors ${selected ? 'org-tree-item-selected' : ''}`}
+      className={`org-tree-item rounded-lg transition-colors ${selected ? "org-tree-item-selected" : ''}`}
       style={{ marginLeft: depth * 12 }}
     >
       {/* Mobile: Stacked layout */}
@@ -1351,7 +1358,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
         {/* Row 1: Toggle + Org Name (full width) */}
         <div className="flex items-center gap-2">
           <button 
-            className={`org-tree-toggle w-5 h-5 flex-shrink-0 flex items-center justify-center rounded transition-colors ${!hasChildren ? 'invisible' : ''}`}
+            className={`org-tree-toggle w-5 h-5 flex-shrink-0 flex items-center justify-center rounded transition-colors ${!hasChildren ? "invisible" : ''}`}
             onClick={onToggleExpand}
           >
             {hasChildren && (expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
@@ -1360,30 +1367,29 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
             <button 
               className="block w-full truncate text-left font-semibold text-[var(--text-primary)] transition-colors hover:text-viridian"
               onClick={openMembers}
-              title="Benutzer anzeigen"
+              title={autoT('ui_4424bfed8ec2')}
             >
               {org.name}
             </button>
             <div className="mt-1 flex flex-wrap gap-1.5">
-              <span className={`org-tree-level-badge ${depth === 0 ? 'org-tree-level-badge-root' : 'org-tree-level-badge-child'}`}>
+              <span className={`org-tree-level-badge ${depth === 0 ? "org-tree-level-badge-root" : "org-tree-level-badge-child"}`}>
                 {depth === 0 ? <Building2 className="h-3.5 w-3.5" /> : <GitBranch className="h-3.5 w-3.5" />}
-                {depth === 0 ? 'Root' : `Ebene ${depth}`}
+                {depth === 0 ? autoT('ui_e96857c58f71') : `Ebene ${depth}`}
               </span>
               <span className="org-tree-child-badge">
                 <Users className="h-3.5 w-3.5" />
-                {childCount} direkt
-              </span>
+                {childCount}{autoT('ui_5be3b245eac6')}</span>
             </div>
           </div>
         </div>
         {/* Row 2: Counts + Actions */}
         <div className="flex items-center gap-2 pl-7">
-          <Tooltip label="Administratoren" names={orgUsers?.admins.map(a => a.name)}>
+          <Tooltip label={autoT('ui_52a675eed361')} names={orgUsers?.admins.map(a => a.name)}>
             <span className="org-tree-count-pill inline-flex items-center gap-1 rounded px-2 py-1 text-xs cursor-default">
               <Shield className="w-3.5 h-3.5" /> {orgUsers?.admins.length ?? '–'}
             </span>
           </Tooltip>
-          <Tooltip label="Benutzer" names={orgUsers?.users.map(u => u.name)}>
+          <Tooltip label={autoT('ui_bd26f3d230af')} names={orgUsers?.users.map(u => u.name)}>
             <span className="org-tree-count-pill inline-flex items-center gap-1 rounded px-2 py-1 text-xs cursor-default">
               <UserIcon className="w-3.5 h-3.5" /> {orgUsers?.users.length ?? '–'}
             </span>
@@ -1391,7 +1397,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
           {canConfigureTaxonomy && (
             <button
               className="org-tree-icon-button org-tree-settings-button inline-flex items-center justify-center w-8 h-8 rounded"
-              title="Vererbungsregeln"
+              title={autoT('ui_645f55452cd1')}
               onClick={() => { onSelectOrg(org); onOpenSettings(org); }}
             >
               <Settings2 className="w-4 h-4" />
@@ -1400,7 +1406,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
           {canMoveOrg && (
             <button
               className="org-tree-icon-button inline-flex items-center justify-center w-8 h-8 rounded"
-              title="Organisation verschieben"
+              title={autoT('ui_fc30edb15ff7')}
               onClick={() => { onSelectOrg(org); openMovePicker(); }}
             >
               <ArrowRightLeft className="w-4 h-4" />
@@ -1409,7 +1415,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
           {user?.role === 'superadmin' && (
             <button
               className="org-tree-delete-button inline-flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs flex-shrink-0"
-              title="Organisation löschen"
+              title={autoT('ui_3974dc710086')}
               onClick={()=> { onSelectOrg(org); setDeleteModalOpen(true); }}
             >
               <Trash2 className="w-4 h-4" />
@@ -1422,7 +1428,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
       <div className="hidden sm:flex items-center gap-2 px-3 py-2">
         {/* Expand/Collapse Toggle */}
         <button 
-          className={`org-tree-toggle w-5 h-5 flex items-center justify-center rounded transition-colors ${!hasChildren ? 'invisible' : ''}`}
+          className={`org-tree-toggle w-5 h-5 flex items-center justify-center rounded transition-colors ${!hasChildren ? "invisible" : ''}`}
           onClick={onToggleExpand}
         >
           {hasChildren && (expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
@@ -1432,30 +1438,29 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
         <button
           className="min-w-0 flex-1 text-left transition-colors hover:text-viridian"
           onClick={openMembers}
-          title="Benutzer anzeigen"
+          title={autoT('ui_4424bfed8ec2')}
         >
           <span className="block truncate font-semibold text-[var(--text-primary)]">{org.name}</span>
         </button>
 
         <div className="hidden min-w-[12rem] flex-wrap justify-end gap-1.5 lg:flex">
-          <span className={`org-tree-level-badge ${depth === 0 ? 'org-tree-level-badge-root' : 'org-tree-level-badge-child'}`}>
+          <span className={`org-tree-level-badge ${depth === 0 ? "org-tree-level-badge-root" : "org-tree-level-badge-child"}`}>
             {depth === 0 ? <Building2 className="h-3.5 w-3.5" /> : <GitBranch className="h-3.5 w-3.5" />}
-            {depth === 0 ? 'Root' : `Ebene ${depth}`}
+            {depth === 0 ? autoT('ui_e96857c58f71') : `Ebene ${depth}`}
           </span>
           <span className="org-tree-child-badge">
             <Users className="h-3.5 w-3.5" />
-            {childCount} direkt
-          </span>
+            {childCount}{autoT('ui_5be3b245eac6')}</span>
         </div>
         
         {/* User Counts */}
         <div className="flex items-center gap-2 text-xs">
-          <Tooltip label="Administratoren" names={orgUsers?.admins.map(a => a.name)}>
+          <Tooltip label={autoT('ui_52a675eed361')} names={orgUsers?.admins.map(a => a.name)}>
             <span className="org-tree-count-pill inline-flex items-center gap-1 rounded px-2 py-1 cursor-default">
               <Shield className="w-3.5 h-3.5" /> {orgUsers?.admins.length ?? '–'}
             </span>
           </Tooltip>
-          <Tooltip label="Benutzer" names={orgUsers?.users.map(u => u.name)}>
+          <Tooltip label={autoT('ui_bd26f3d230af')} names={orgUsers?.users.map(u => u.name)}>
             <span className="org-tree-count-pill inline-flex items-center gap-1 rounded px-2 py-1 cursor-default">
               <UserIcon className="w-3.5 h-3.5" /> {orgUsers?.users.length ?? '–'}
             </span>
@@ -1465,11 +1470,11 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
         {canConfigureTaxonomy && (
           <button
             className="org-tree-action-button org-tree-settings-button inline-flex items-center justify-center gap-2 rounded px-2.5 py-2 text-xs font-medium"
-            title="Vererbungsregeln"
+            title={autoT('ui_645f55452cd1')}
             onClick={() => { onSelectOrg(org); onOpenSettings(org); }}
           >
             <Settings2 className="w-4 h-4" />
-            <span className="hidden xl:inline">Regeln</span>
+            <span className="hidden xl:inline">{autoT('ui_53b85ac95f23')}</span>
           </button>
         )}
         
@@ -1477,11 +1482,11 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
         {canMoveOrg && (
           <button
             className="org-tree-action-button inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium"
-            title="Organisation verschieben"
+            title={autoT('ui_fc30edb15ff7')}
             onClick={() => { onSelectOrg(org); openMovePicker(); }}
           >
             <ArrowRightLeft className="w-4 h-4" />
-            <span>Verschieben</span>
+            <span>{autoT('ui_af0e56812bc6')}</span>
           </button>
         )}
         
@@ -1489,7 +1494,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
         {user?.role === 'superadmin' && (
           <button
             className="org-tree-delete-button inline-flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs"
-            title="Organisation löschen"
+            title={autoT('ui_3974dc710086')}
             onClick={()=> { onSelectOrg(org); setDeleteModalOpen(true); }}
           >
             <Trash2 className="w-4 h-4" />
@@ -1498,12 +1503,12 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
       </div>
 
       {/* Benutzer Modal */}
-      <Modal open={open} onClose={()=>setOpen(false)} title={`Benutzer in „${org.name}"`} maxWidth="md">
-        {!members && <div className="text-gray-500">Lade Benutzer…</div>}
+      <Modal open={open} onClose={()=>setOpen(false)} title={autoT('ui_82d8ea07df8e', { value0: org.name })} maxWidth="md">
+        {!members && <div className="text-gray-500">{autoT('ui_fdfb01fa6df9')}</div>}
         {members && members.length === 0 && (
           <div className="text-center py-6">
             <Users className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-500">Noch keine Benutzer in dieser Organisation</p>
+            <p className="text-gray-500">{autoT('ui_2a0f2de1cbae')}</p>
           </div>
         )}
         {members && members.length > 0 && (
@@ -1514,11 +1519,11 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
                   <div className="font-medium">{m.name} <span className="text-gray-500 font-normal">({m.email})</span></div>
                   <div className="text-xs text-gray-600">
                     {m.role === 'org_admin' ? (
-                      <span className="inline-flex items-center gap-1"><Shield className="w-3 h-3" /> Admin</span>
+                      <span className="inline-flex items-center gap-1"><Shield className="w-3 h-3" />{' '}{autoT('ui_4e7afebcfbae')}</span>
                     ) : m.role === 'superadmin' ? (
-                      <span className="text-viridian font-medium">Superadmin</span>
+                      <span className="text-viridian font-medium">{autoT('ui_8fc2130c51bf')}</span>
                     ) : (
-                      <span className="inline-flex items-center gap-1"><UserIcon className="w-3 h-3" /> Benutzer</span>
+                      <span className="inline-flex items-center gap-1"><UserIcon className="w-3 h-3" />{' '}{autoT('ui_bd26f3d230af')}</span>
                     )}
                   </div>
                 </div>
@@ -1527,39 +1532,39 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
           </ul>
         )}
         <div className="mt-4 pt-4 border-t border-gray-200">
-          <label className="text-sm font-medium text-gray-700 mb-2 block">Neuen Benutzer einladen</label>
+          <label className="text-sm font-medium text-gray-700 mb-2 block">{autoT('ui_be454fe3dbfd')}</label>
           <div className="flex gap-2">
             <input
               type="email"
               inputMode="email"
-              placeholder="E-Mail-Adresse"
+              placeholder={autoT('ui_ce8fdbcbfea8')}
               className="border rounded-lg px-3 py-2 text-sm flex-1"
               value={inviteEmail}
               onChange={(e)=> setInviteEmail(e.target.value)}
             />
             <button
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-viridian text-white disabled:opacity-60 text-sm"
-              title="Einladung per E-Mail senden"
+              title={autoT('ui_18ababb1960c')}
               disabled={inviteBusy || !/[^\s@]+@[^\s@]+\.[^\s@]+/.test(inviteEmail)}
               onClick={async()=>{
                 try {
                   setInviteBusy(true);
                   const invitation = await inviteUserApi({ email: inviteEmail.trim(), role: 'user', orgId: org.id });
                   const message = invitation.emailQueued
-                    ? 'Einladung per E-Mail versendet'
-                    : 'SMTP ist nicht konfiguriert; Einladung wurde nicht zugestellt';
+                    ? autoT('ui_b90214965611')
+                    : autoT('ui_4fb8125a11b1');
                   setCopyMsg(message);
                   setTimeout(()=>setCopyMsg(null), 1500);
-                  showToast(`${message}.`, { type: invitation.emailQueued ? 'success' : 'error' });
+                  showToast(`${message}.`, { type: invitation.emailQueued ? "success" : "error" });
                 } catch {
-                  showToast('Einladung fehlgeschlagen.', { type: 'error' });
+                  showToast(autoT('ui_cc6688313c0a'), { type: 'error' });
                 } finally {
                   setInviteBusy(false);
                 }
               }}
             >
               <Mail className="w-4 h-4" />
-              <span className="hidden sm:inline">Einladung senden</span>
+              <span className="hidden sm:inline">{autoT('ui_871d0f64660b')}</span>
             </button>
           </div>
           {copyMsg && <div className="text-xs text-viridian mt-1">{copyMsg}</div>}
@@ -1569,16 +1574,14 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
       <Modal
         open={movePicker.open}
         onClose={() => setMovePicker({ open: false, targetParentId: defaultMoveTargetId })}
-        title={`Organisation verschieben: „${org.name}“`}
+        title={autoT('ui_97aaf31a81b5', { value0: org.name })}
         maxWidth="md"
       >
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-            Wähle bewusst das neue übergeordnete Ziel. Die Auswirkungen werden im nächsten Schritt geprüft, bevor etwas gespeichert wird.
-          </div>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{autoT('ui_aa75557c36cd')}</div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Neue übergeordnete Organisation</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{autoT('ui_a8f567062b93')}</label>
             <select
               className="w-full border rounded-lg px-3 py-2 bg-white"
               value={movePicker.targetParentId ?? ''}
@@ -1591,22 +1594,18 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
                 <option key={o.id} value={o.id}>{`${'  '.repeat(d)}${o.name}`}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-2">
-              Aktuell: <strong>{org.parentId ? allOrgs.find((candidate) => candidate.id === org.parentId)?.name || 'Unbekannt' : 'Obere Ebene'}</strong>
+            <p className="text-xs text-gray-500 mt-2">{autoT('ui_ef3870c3c5d7')}<strong>{org.parentId ? allOrgs.find((candidate) => candidate.id === org.parentId)?.name || 'Unbekannt' : autoT('ui_83096f5737aa')}</strong>
             </p>
           </div>
 
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Neues Ziel: <strong>{selectedMoveParentName}</strong>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{autoT('ui_394a0aa3d4e3')}<strong>{selectedMoveParentName}</strong>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2 border-t">
             <button
               className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
               onClick={() => setMovePicker({ open: false, targetParentId: defaultMoveTargetId })}
-            >
-              Abbrechen
-            </button>
+            >{autoT('ui_07af7cb30fca')}</button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue"
               disabled={!movePicker.targetParentId}
@@ -1615,29 +1614,26 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
                 setMovePicker({ open: false, targetParentId: movePicker.targetParentId });
                 await openMovePreview(movePicker.targetParentId);
               }}
-            >
-              Auswirkungen prüfen
-            </button>
+            >{autoT('ui_44f6292fbe78')}</button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={moveDialog.open} onClose={() => setMoveDialog({ open: false, loading: false, preview: null, targetParentId: null })} title={`Organisation verschieben: „${org.name}“`} maxWidth="lg">
-        {moveDialog.loading && <div className="py-8 text-center text-gray-500">Analysiere Auswirkungen des Verschiebens…</div>}
+      <Modal open={moveDialog.open} onClose={() => setMoveDialog({ open: false, loading: false, preview: null, targetParentId: null })} title={autoT('ui_97aaf31a81b5', { value0: org.name })} maxWidth="lg">
+        {moveDialog.loading && <div className="py-8 text-center text-gray-500">{autoT('ui_c498228ed2ae')}</div>}
         {!moveDialog.loading && moveDialog.preview && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              Ziel: <strong>{targetParentName}</strong>
-              <div className="mt-1 text-xs text-gray-500">Betroffene Organisationen im verschobenen Teilbaum: {moveDialog.preview.affectedOrgs}</div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{autoT('ui_d608664b9f54')}<strong>{targetParentName}</strong>
+              <div className="mt-1 text-xs text-gray-500">{autoT('ui_416e2e25af82')}{' '}{moveDialog.preview.affectedOrgs}</div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <MoveImpactList title="Wegfallende Kategorien" items={moveDialog.preview.lost.categories} />
-              <MoveImpactList title="Neu hinzukommende Kategorien" items={moveDialog.preview.gained.categories} />
-              <MoveImpactList title="Wegfallende Tags" items={moveDialog.preview.lost.tags} />
-              <MoveImpactList title="Neu hinzukommende Tags" items={moveDialog.preview.gained.tags} />
-              <MoveImpactList title="Wegfallende Kohorten" items={moveDialog.preview.lost.cohorts} />
-              <MoveImpactList title="Neu hinzukommende Kohorten" items={moveDialog.preview.gained.cohorts} />
+              <MoveImpactList title={autoT('ui_09e00d28d76d')} items={moveDialog.preview.lost.categories} />
+              <MoveImpactList title={autoT('ui_dd8592c2e725')} items={moveDialog.preview.gained.categories} />
+              <MoveImpactList title={autoT('ui_92c91f3f9745')} items={moveDialog.preview.lost.tags} />
+              <MoveImpactList title={autoT('ui_aca7bec981bf')} items={moveDialog.preview.gained.tags} />
+              <MoveImpactList title={autoT('ui_85a40fe4849e')} items={moveDialog.preview.lost.cohorts} />
+              <MoveImpactList title={autoT('ui_34e44512beaa')} items={moveDialog.preview.gained.cohorts} />
             </div>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -1645,32 +1641,30 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
             </div>
 
             <div className="space-y-2 text-sm text-gray-700">
-              <div>Aktivitäten mit ungültigen Kategorien nach dem Move: <strong>{moveDialog.preview.activityConflicts.categories.activities}</strong></div>
-              <div>Aktivitäten mit ungültigen Tags nach dem Move: <strong>{moveDialog.preview.activityConflicts.tags.activities}</strong></div>
-              <div>Aktivitäten mit ungültigen Kohorten nach dem Move: <strong>{moveDialog.preview.activityConflicts.cohorts.activities}</strong></div>
-              <div>Projekte mit ungültigen Kategorien nach dem Move: <strong>{moveDialog.preview.projectConflicts.categories.projects}</strong></div>
+              <div>{autoT('ui_e8de5044fdc1')}{' '}<strong>{moveDialog.preview.activityConflicts.categories.activities}</strong></div>
+              <div>{autoT('ui_032ec008590c')}{' '}<strong>{moveDialog.preview.activityConflicts.tags.activities}</strong></div>
+              <div>{autoT('ui_326edcb1f44e')}{' '}<strong>{moveDialog.preview.activityConflicts.cohorts.activities}</strong></div>
+              <div>{autoT('ui_9bec8c0d2012')}{' '}<strong>{moveDialog.preview.projectConflicts.categories.projects}</strong></div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <MoveImpactList title="Konflikt-Kategorien in Aktivitäten" items={moveDialog.preview.activityConflicts.categories.items} />
-              <MoveImpactList title="Konflikt-Tags in Aktivitäten" items={moveDialog.preview.activityConflicts.tags.items} />
-              <MoveImpactList title="Konflikt-Kohorten in Aktivitäten" items={moveDialog.preview.activityConflicts.cohorts.items} />
-              <MoveImpactList title="Konflikt-Kategorien in Projekten" items={moveDialog.preview.projectConflicts.categories.items} />
+              <MoveImpactList title={autoT('ui_432dba66d4d1')} items={moveDialog.preview.activityConflicts.categories.items} />
+              <MoveImpactList title={autoT('ui_72af3a336c6a')} items={moveDialog.preview.activityConflicts.tags.items} />
+              <MoveImpactList title={autoT('ui_d18f4a6126e7')} items={moveDialog.preview.activityConflicts.cohorts.items} />
+              <MoveImpactList title={autoT('ui_ea80ef79974c')} items={moveDialog.preview.projectConflicts.categories.items} />
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2 border-t">
               <button
                 className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
                 onClick={() => setMoveDialog({ open: false, loading: false, preview: null, targetParentId: null })}
-              >
-                Abbrechen
-              </button>
+              >{autoT('ui_07af7cb30fca')}</button>
               <button
                 className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue"
                 onClick={async () => {
                   try {
                     await moveOrgWithConfirmationApi(org.id, moveDialog.targetParentId, true);
-                    showToast('Organisation verschoben.', { type: 'success' });
+                    showToast(autoT('ui_51f8f87907b0'), { type: 'success' });
                     setMoveDialog({ open: false, loading: false, preview: null, targetParentId: null });
                     onMoved();
                   } catch (error: unknown) {
@@ -1678,9 +1672,7 @@ function OrgRow({ org, depth, allOrgs, onMoved, onOpenSettings, hasChildren, chi
                     showToast(String(message), { type: 'error' });
                   }
                 }}
-              >
-                Trotzdem verschieben
-              </button>
+              >{autoT('ui_7168eaa1dc95')}</button>
             </div>
           </div>
         )}

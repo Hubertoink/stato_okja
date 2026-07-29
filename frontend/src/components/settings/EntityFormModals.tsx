@@ -4,6 +4,7 @@ import { ColorPicker } from '@/components/ui/ColorPicker';
 import { type Category, type Tag } from '@/lib/taxonomy';
 import { type StaffMember, type StaffRole } from '@/lib/staff';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
+import { autoT } from '@/i18n/auto';
 
 export const STAFF_ROLE_LABEL: Partial<Record<StaffRole, string>> = {
   employee: 'Mitarbeitende',
@@ -41,32 +42,28 @@ export function TagFormModal({
     <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 pb-safe md:items-center md:p-6">
       <div className="mb-safe bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
-          {initial?.id ? 'Tag bearbeiten' : 'Neues Tag'}
+          {initial?.id ? autoT('ui_c7f5b6bae389') : autoT('ui_dacb43d1a177')}
         </h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="tag-name">
-              Name *
-            </label>
+            <label className="block text-sm font-medium mb-1" htmlFor="tag-name">{autoT('ui_d145bb830936')}</label>
             <input
               id="tag-name"
-              placeholder="z. B. Ferienprogramm"
+              placeholder={autoT('ui_9a833db2ca8f')}
               value={form.name || ''}
               onChange={(event) => update('name', event.target.value)}
               className="w-full border rounded px-3 py-2"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="tag-color">Farbe</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="tag-color">{autoT('ui_89b7957dae43')}</label>
             <ColorPicker id="tag-color" value={form.color} onChange={(color) => update('color', color as Tag['color'])} />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="tag-desc">
-              Beschreibung
-            </label>
+            <label className="block text-sm font-medium mb-1" htmlFor="tag-desc">{autoT('ui_b3c8defcacc0')}</label>
             <textarea
               id="tag-desc"
-              placeholder="Optional: kurze Beschreibung…"
+              placeholder={autoT('ui_b93e372c4a97')}
               value={form.description || ''}
               onChange={(event) => update('description', event.target.value)}
               rows={3}
@@ -81,12 +78,12 @@ export function TagFormModal({
                 type="button"
                 className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
                 onClick={onCancel}
-                title="Abbrechen"
-                aria-label="Abbrechen"
+                title={autoT('ui_07af7cb30fca')}
+                aria-label={autoT('ui_07af7cb30fca')}
               >
                 <XIcon className="w-5 h-5" />
               </button>
-              <span className="tooltip-bubble">Abbrechen</span>
+              <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
           </div>
           <div className="flex-1 flex items-center justify-center">
@@ -96,12 +93,12 @@ export function TagFormModal({
                   type="button"
                   className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 bg-white"
                   onClick={onArchive}
-                  title="Archivieren"
-                  aria-label="Archivieren"
+                  title={autoT('ui_b81f3298d960')}
+                  aria-label={autoT('ui_b81f3298d960')}
                 >
                   <ArchiveIcon className="w-5 h-5" />
                 </button>
-                <span className="tooltip-bubble">Archivieren</span>
+                <span className="tooltip-bubble">{autoT('ui_b81f3298d960')}</span>
               </span>
             ) : null}
           </div>
@@ -111,12 +108,12 @@ export function TagFormModal({
                 type="button"
                 className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
                 onClick={handleSave}
-                title="Speichern"
-                aria-label="Speichern"
+                title={autoT('ui_70b73bbc118d')}
+                aria-label={autoT('ui_70b73bbc118d')}
               >
                 <SaveIcon className="w-5 h-5" />
               </button>
-              <span className="tooltip-bubble">Speichern</span>
+              <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
             </span>
           </div>
         </div>
@@ -155,28 +152,24 @@ export function CategoryFormModal({
     <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 pb-safe md:items-center md:p-6">
       <div className="mb-safe bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
-          {initial?.id ? 'Kategorie bearbeiten' : 'Neue Kategorie'}
+          {initial?.id ? autoT('ui_a396ad29224c') : autoT('ui_f65f5413c438')}
         </h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="category-name">
-              Name *
-            </label>
+            <label className="block text-sm font-medium mb-1" htmlFor="category-name">{autoT('ui_d145bb830936')}</label>
             <input
               id="category-name"
-              placeholder="z. B. Beratung"
+              placeholder={autoT('ui_98ec9686a395')}
               value={form.name || ''}
               onChange={(event) => update('name', event.target.value)}
               className="w-full border rounded px-3 py-2"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="category-desc">
-              Beschreibung
-            </label>
+            <label className="block text-sm font-medium mb-1" htmlFor="category-desc">{autoT('ui_b3c8defcacc0')}</label>
             <textarea
               id="category-desc"
-              placeholder="Optional: kurze Beschreibung…"
+              placeholder={autoT('ui_b93e372c4a97')}
               value={form.description || ''}
               onChange={(event) => update('description', event.target.value)}
               rows={3}
@@ -185,17 +178,17 @@ export function CategoryFormModal({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">Standard-Referenz</label>
+              <label className="block text-sm font-medium mb-1">{autoT('ui_7611b749500a')}</label>
               <input
                 id="category-standard-ref"
-                placeholder="z. B. §11 Nr. 3 SGB VIII"
+                placeholder={autoT('ui_3d87605003c7')}
                 value={form.standardRef || ''}
                 onChange={(event) => update('standardRef', event.target.value)}
                 className="w-full border rounded px-3 py-2"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="category-color">Farbe</label>
+              <label className="block text-sm font-medium mb-1" htmlFor="category-color">{autoT('ui_89b7957dae43')}</label>
               <ColorPicker id="category-color" value={form.color} onChange={(color) => update('color', color as Category['color'])} />
             </div>
           </div>
@@ -207,12 +200,12 @@ export function CategoryFormModal({
                 type="button"
                 className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
                 onClick={onCancel}
-                title="Abbrechen"
-                aria-label="Abbrechen"
+                title={autoT('ui_07af7cb30fca')}
+                aria-label={autoT('ui_07af7cb30fca')}
               >
                 <XIcon className="w-5 h-5" />
               </button>
-              <span className="tooltip-bubble">Abbrechen</span>
+              <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
           </div>
           <div className="flex-1 flex items-center justify-center">
@@ -222,12 +215,12 @@ export function CategoryFormModal({
                   type="button"
                   className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 bg-white"
                   onClick={onArchive}
-                  title="Archivieren"
-                  aria-label="Archivieren"
+                  title={autoT('ui_b81f3298d960')}
+                  aria-label={autoT('ui_b81f3298d960')}
                 >
                   <ArchiveIcon className="w-5 h-5" />
                 </button>
-                <span className="tooltip-bubble">Archivieren</span>
+                <span className="tooltip-bubble">{autoT('ui_b81f3298d960')}</span>
               </span>
             ) : null}
           </div>
@@ -237,12 +230,12 @@ export function CategoryFormModal({
                 type="button"
                 className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
                 onClick={handleSave}
-                title="Speichern"
-                aria-label="Speichern"
+                title={autoT('ui_70b73bbc118d')}
+                aria-label={autoT('ui_70b73bbc118d')}
               >
                 <SaveIcon className="w-5 h-5" />
               </button>
-              <span className="tooltip-bubble">Speichern</span>
+              <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
             </span>
           </div>
         </div>
@@ -283,16 +276,14 @@ export function StaffFormModal({
     <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
       <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
-          {initial?.id ? 'Teammitglied bearbeiten' : 'Neues Teammitglied'}
+          {initial?.id ? autoT('ui_362bc3480705') : autoT('ui_561b3cbf4717')}
         </h3>
         <div className="space-y-4">
           <div>
-            <label htmlFor="staff-name" className="block text-sm font-medium mb-1">
-              Name *
-            </label>
+            <label htmlFor="staff-name" className="block text-sm font-medium mb-1">{autoT('ui_d145bb830936')}</label>
             <input
               id="staff-name"
-              placeholder="Vollständiger Name"
+              placeholder={autoT('ui_c3c4779024d4')}
               value={form.name || ''}
               onChange={(event) => update('name', event.target.value)}
               className="w-full border rounded px-3 py-2"
@@ -300,26 +291,22 @@ export function StaffFormModal({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="staff-email" className="block text-sm font-medium mb-1">
-                E-Mail
-              </label>
+              <label htmlFor="staff-email" className="block text-sm font-medium mb-1">{autoT('ui_9eeffe4b7b6e')}</label>
               <input
                 id="staff-email"
                 type="email"
-                placeholder="name@example.org"
+                placeholder={autoT('ui_24fe902c0a81')}
                 value={form.email || ''}
                 onChange={(event) => update('email', event.target.value)}
                 className="w-full border rounded px-3 py-2"
               />
             </div>
             <div>
-              <label htmlFor="staff-phone" className="block text-sm font-medium mb-1">
-                Telefon
-              </label>
+              <label htmlFor="staff-phone" className="block text-sm font-medium mb-1">{autoT('ui_40314f882822')}</label>
               <input
                 id="staff-phone"
                 type="tel"
-                placeholder="z. B. 01234 567890"
+                placeholder={autoT('ui_bf47e88b120b')}
                 value={form.phone || ''}
                 onChange={(event) => update('phone', event.target.value)}
                 className="w-full border rounded px-3 py-2"
@@ -327,9 +314,7 @@ export function StaffFormModal({
             </div>
           </div>
           <div>
-            <label htmlFor="staff-role" className="block text-sm font-medium mb-1">
-              Rolle
-            </label>
+            <label htmlFor="staff-role" className="block text-sm font-medium mb-1">{autoT('ui_6237f0afe77f')}</label>
             <select
               id="staff-role"
               value={
@@ -337,7 +322,7 @@ export function StaffFormModal({
                   ? form.roles[0]
                   : form.role && STAFF_ROLE_LABEL[form.role]
                     ? form.role
-                    : 'employee'
+                    : "employee"
               }
               onChange={(event) => update('roles', [event.target.value as StaffRole])}
               className="w-full border rounded px-3 py-2"
@@ -350,12 +335,10 @@ export function StaffFormModal({
             </select>
           </div>
           <div>
-            <label htmlFor="staff-notes" className="block text-sm font-medium mb-1">
-              Notizen
-            </label>
+            <label htmlFor="staff-notes" className="block text-sm font-medium mb-1">{autoT('ui_7e458d013900')}</label>
             <textarea
               id="staff-notes"
-              placeholder="Interne Hinweise, Verfügbarkeit…"
+              placeholder={autoT('ui_a6853cdd477f')}
               value={form.notes || ''}
               onChange={(event) => update('notes', event.target.value)}
               rows={3}
@@ -369,24 +352,24 @@ export function StaffFormModal({
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
               onClick={onCancel}
-              title="Abbrechen"
-              aria-label="Abbrechen"
+              title={autoT('ui_07af7cb30fca')}
+              aria-label={autoT('ui_07af7cb30fca')}
             >
               <XIcon className="w-5 h-5" />
             </button>
-            <span className="tooltip-bubble">Abbrechen</span>
+            <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
           </span>
           <span className="tooltip-wrapper">
             <button
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
               onClick={handleSave}
-              title="Speichern"
-              aria-label="Speichern"
+              title={autoT('ui_70b73bbc118d')}
+              aria-label={autoT('ui_70b73bbc118d')}
             >
               <SaveIcon className="w-5 h-5" />
             </button>
-            <span className="tooltip-bubble">Speichern</span>
+            <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
           </span>
         </div>
       </div>

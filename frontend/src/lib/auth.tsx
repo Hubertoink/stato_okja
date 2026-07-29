@@ -14,9 +14,12 @@ import {
   storeRefreshCsrfToken,
 } from './authStorage';
 import { applyTheme } from './theme';
+import { setPreferredLocale } from '@/i18n';
+import { normalizeAppLocale, type AppLocale } from '@/i18n/locales';
+import { autoT } from '@/i18n/auto';
 
 export type Role = 'superadmin' | 'org_admin' | 'user';
-export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
+export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
 
 type TwoFactorChallenge = {
   requiresTwoFactor: true;
@@ -69,8 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const applyResolvedUser = useCallback((nextUser: AuthUser, options?: { resetCache?: boolean }) => {
     const normalizedTheme = normalizeThemeName(nextUser.theme);
-    setUser({ ...nextUser, theme: normalizedTheme });
+    const locale = normalizeAppLocale(nextUser.locale);
+    setUser({ ...nextUser, theme: normalizedTheme, locale });
     applyTheme(normalizedTheme);
+    void setPreferredLocale(locale, { reload: true });
     if (options?.resetCache) {
       qc.clear();
     }
@@ -203,7 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         applyAuthenticatedSession(res.data);
         return { ok: true } as const;
       } catch (err: unknown) {
-        const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Codeprüfung fehlgeschlagen';
+        const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_001ad20e7a3b');
         return { ok: false, error: Array.isArray(msg as []) ? (msg as string[]).join(', ') : String(msg) } as const;
       }
     },

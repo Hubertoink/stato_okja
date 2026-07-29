@@ -7,8 +7,10 @@ import { isStrongPassword, PASSWORD_REQUIREMENTS_SHORT } from '@/lib/passwordPol
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { TermsOfUseModal } from '@/components/LegalModals';
 import { useLegalContent } from '@/lib/legalContent';
+import { useTranslation } from 'react-i18next';
 
 export default function AcceptInvite() {
+  const { t } = useTranslation(['auth', 'common']);
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [token, setToken] = useState(params.get('token') || '');
@@ -26,23 +28,23 @@ export default function AcceptInvite() {
   return (
     <div className="min-h-screen bg-mint-cream flex items-center justify-center px-4">
       <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-        <h1 className="text-xl font-semibold text-viridian mb-4">Einladung annehmen</h1>
+        <h1 className="text-xl font-semibold text-viridian mb-4">{t('invite.title')}</h1>
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium" htmlFor="invite-token">
-              Einladungs-Token
+              {t('invite.token')}
             </label>
             <input
               id="invite-token"
               value={token}
               onChange={(e) => setToken(e.target.value)}
               className="w-full border rounded px-3 py-2"
-              placeholder="Token aus E-Mail-Link"
+              placeholder={t('invite.tokenPlaceholder')}
             />
           </div>
           <div>
             <label className="block text-sm font-medium" htmlFor="invite-pass">
-              Neues Passwort
+              {t('invite.newPassword')}
             </label>
             <input
               id="invite-pass"
@@ -60,15 +62,15 @@ export default function AcceptInvite() {
               checked={termsAccepted}
               onChange={(event) => setTermsAccepted(event.target.checked)}
               className="mt-0.5 h-4 w-4"
-              aria-label="Nutzungsbedingungen akzeptieren"
+              aria-label={t('invite.acceptTermsAria')}
             />
             <span>
-              Ich habe die{' '}
-              <button type="button" onClick={() => setTermsOpen(true)} className="font-semibold text-viridian underline">Nutzungsbedingungen</button>{' '}
-              gelesen und stimme ihnen zu.
+              {t('invite.acceptTermsBefore')}{' '}
+              <button type="button" onClick={() => setTermsOpen(true)} className="font-semibold text-viridian underline">{t('common:legal.terms')}</button>{' '}
+              {t('invite.acceptTermsAfter')}
             </span>
           </div>
-          {legalContentError && <div className="text-red-600 text-sm">Die Nutzungsbedingungen konnten nicht geladen werden. Bitte lade die Seite erneut.</div>}
+          {legalContentError && <div className="text-red-600 text-sm">{t('common:termsGate.loadError')}</div>}
           {error && <div className="text-red-600 text-sm">{error}</div>}
           <button
             className="w-full bg-viridian text-white py-2 rounded disabled:opacity-60"
@@ -92,13 +94,13 @@ export default function AcceptInvite() {
               } catch (e: unknown) {
                 const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data
                   ?.message;
-                setError(String(msg || 'Aktivierung fehlgeschlagen'));
+                setError(String(msg || t('invite.activationFailed')));
               } finally {
                 setBusy(false);
               }
             }}
           >
-            Einladung aktivieren
+            {t('invite.activate')}
           </button>
         </div>
       </div>

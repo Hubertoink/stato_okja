@@ -33,6 +33,8 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
 import { useAuth } from '@/lib/auth';
 import { useActivityInlineCreation } from './useActivityInlineCreation';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/i18n/formatters';
 import {
   type ActivityFormState,
   buildActivitySavePayload,
@@ -46,6 +48,7 @@ import {
   getWeekdayLabel,
   mergeProjectStaffIds,
 } from './activityEditorShared';
+import { autoT } from '@/i18n/auto';
 
 export default function ActivityQuickAdd({
   dateISO,
@@ -58,6 +61,7 @@ export default function ActivityQuickAdd({
   project?: Project;
   activity?: Activity;
 }) {
+  const { t } = useTranslation('activities');
   // This modal mounts only while open – lock body scroll while mounted
   useBodyScrollLock(true);
   const submitLockedRef = useRef(false);
@@ -234,11 +238,11 @@ export default function ActivityQuickAdd({
     if (create.isPending || update.isPending || submitLockedRef.current) return;
 
     if (!form.date) {
-      setErrorOpen('Bitte ein Datum wählen.');
+      setErrorOpen(t('quickAdd.chooseDate'));
       return;
     }
     if (!form.projectId) {
-      setErrorOpen('Bitte ein Projekt wählen.');
+      setErrorOpen(t('quickAdd.chooseProject'));
       return;
     }
     const payloadBase = buildActivitySavePayload({
@@ -256,12 +260,12 @@ export default function ActivityQuickAdd({
     const doCreate = () =>
       create.mutate(payloadBase, {
         onSuccess: () => {
-          showToast('Aktivität gespeichert');
+          showToast(t('quickAdd.saved'));
           onClose();
         },
         onError: (error: unknown) => {
           console.error(error);
-          setErrorOpen('Speichern fehlgeschlagen.');
+          setErrorOpen(t('quickAdd.saveFailed'));
         },
       });
 
@@ -270,12 +274,12 @@ export default function ActivityQuickAdd({
         { id: activity!.id, data: payloadBase },
         {
           onSuccess: () => {
-            showToast('Aktivität aktualisiert');
+            showToast(t('quickAdd.updated'));
             onClose();
           },
           onError: (error: unknown) => {
             console.error(error);
-            setErrorOpen('Speichern fehlgeschlagen.');
+            setErrorOpen(t('quickAdd.saveFailed'));
           },
         },
       );
@@ -304,12 +308,7 @@ export default function ActivityQuickAdd({
       <div className="modal-panel-roomy bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-hidden">
         <div className="shrink-0 flex items-start justify-between gap-3 mb-2">
           <h3 className="text-xl font-semibold text-viridian">
-            Aktivität am{' '}
-            {(() => {
-              const s = (form.date || dateISO || '').slice(0, 10);
-              const [y, m, d] = s.split('-');
-              return `${d}.${m}.${y}`;
-            })()}
+            {t('quickAdd.title', { date: formatDate(form.date || dateISO, { dateStyle: 'short' }) })}
           </h3>
           <div className="flex items-center gap-2">
             <ActivityExecutionStatusControl
@@ -320,8 +319,8 @@ export default function ActivityQuickAdd({
               type="button"
               onClick={handleClose}
               className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-              title="Schließen"
-              aria-label="Schließen"
+              title={t('quickAdd.close')}
+              aria-label={t('quickAdd.close')}
             >
               <XIcon className="w-5 h-5" />
             </button>
@@ -334,7 +333,7 @@ export default function ActivityQuickAdd({
               <div>
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <label className="block text-sm font-medium" htmlFor="activity-date">
-                    Datum *
+                    {t('quickAdd.date')}
                   </label>
                   {selectedDateWeekday && (
                     <span className="pl-2 text-xs font-medium text-gray-500 whitespace-nowrap">
@@ -354,7 +353,7 @@ export default function ActivityQuickAdd({
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="location-select">
-                  Standort
+                  {t('quickAdd.location')}
                 </label>
                 <select
                   id="location-select"
@@ -364,7 +363,7 @@ export default function ActivityQuickAdd({
                   }
                   className="w-full border rounded px-3 py-2"
                 >
-                  <option value="">— Standort wählen —</option>
+                  <option value="">{t('quickAdd.selectLocation')}</option>
                   {(locations || []).map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.name}
@@ -375,7 +374,7 @@ export default function ActivityQuickAdd({
             </div>
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="activity-title">
-                Titel
+                {t('quickAdd.titleField')}
               </label>
               <input
                 id="activity-title"
@@ -384,11 +383,11 @@ export default function ActivityQuickAdd({
                   setForm({ ...form, title: e.target.value })
                 }
                 className="w-full border rounded px-3 py-2"
-                placeholder="z. B. Werkraum, Offene Tür"
+                placeholder={t('quickAdd.titlePlaceholder')}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Projekt *</label>
+              <label className="block text-sm font-medium mb-1">{t('quickAdd.project')}</label>
               {selectedProject ? (
                 <button
                   type="button"
@@ -417,14 +416,14 @@ export default function ActivityQuickAdd({
                   onClick={() => setPicker(true)}
                   className="w-full border rounded p-3 text-left text-gray-600"
                 >
-                  Projekt wählen…
+                  {t('quickAdd.selectProject')}
                 </button>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="start-time">
-                  Start
+                  {t('quickAdd.start')}
                 </label>
                 <input
                   id="start-time"
@@ -434,13 +433,13 @@ export default function ActivityQuickAdd({
                     setForm({ ...form, start: e.target.value })
                   }
                   className="w-full border rounded px-3 py-2"
-                  placeholder="HH:MM"
-                  title="Start"
+                  placeholder={autoT('ui_a4c7ee9ba5c9')}
+                  title={t('quickAdd.start')}
                 />
               </div>
               <div>
                 <label htmlFor="end-time" className="block text-sm font-medium mb-1">
-                  Ende
+                  {t('quickAdd.end')}
                 </label>
                 <input
                   id="end-time"
@@ -450,19 +449,19 @@ export default function ActivityQuickAdd({
                     setForm({ ...form, end: e.target.value })
                   }
                   className="w-full border rounded px-3 py-2"
-                  placeholder="HH:MM"
-                  title="Ende"
+                  placeholder={autoT('ui_a4c7ee9ba5c9')}
+                  title={t('quickAdd.end')}
                 />
               </div>
             </div>
             <div>
               <div className="mb-1 flex items-center justify-between gap-3">
-                <label className="block text-sm font-medium">Alterskohorten</label>
+                <label className="block text-sm font-medium">{t('quickAdd.ageCohorts')}</label>
                 {isMobile && (
                   <Toggle
                     checked={tapModeEnabled}
                     onChange={setTapModePreferred}
-                    ariaLabel="Tippen statt Tastatur"
+                    ariaLabel={t('quickAdd.tapMode')}
                     label={<ActivityTapModeIcon />}
                     className="shrink-0 gap-1 flex-row-reverse"
                   />
@@ -470,7 +469,7 @@ export default function ActivityQuickAdd({
               </div>
               {tapModeEnabled && (
                 <div className="mb-2 text-[11px] text-gray-500">
-                  Tippen +1, lang drücken oder nach unten wischen -1.
+                  {t('quickAdd.tapHelp')}
                 </div>
               )}
               <div className="space-y-2">
@@ -478,28 +477,20 @@ export default function ActivityQuickAdd({
                   <span className="text-xs text-gray-500" />
                   <span
                     className="activity-cohort-column-icon"
-                    title="Männlich"
-                    aria-label="Männlich"
-                  >
-                    m
-                  </span>
+                    title={t('quickAdd.male')}
+                    aria-label={t('quickAdd.male')}
+                  >{autoT('ui_6b0d31c0d563')}</span>
                   <span
                     className="activity-cohort-column-icon"
-                    title="Weiblich"
-                    aria-label="Weiblich"
-                  >
-                    w
-                  </span>
+                    title={t('quickAdd.female')}
+                    aria-label={t('quickAdd.female')}
+                  >{autoT('ui_aff024fe4ab0')}</span>
                   <span
                     className="activity-cohort-column-icon"
-                    title="Divers"
-                    aria-label="Divers"
-                  >
-                    d
-                  </span>
-                  <span className="text-xs text-gray-600 font-medium text-center" title="Summe" aria-label="Summe">
-                    Σ
-                  </span>
+                    title={t('quickAdd.diverse')}
+                    aria-label={t('quickAdd.diverse')}
+                  >{autoT('ui_3c363836cf4e')}</span>
+                  <span className="text-xs text-gray-600 font-medium text-center" title={t('quickAdd.total')} aria-label={t('quickAdd.total')}>{autoT('ui_ccb9fecbb241')}</span>
                 </div>
                 {(cohorts || []).map((c, rowIndex: number) => {
                   const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
@@ -584,7 +575,7 @@ export default function ActivityQuickAdd({
                       {(['m', 'w', 'd'] as const).map((g) => (
                         <ActivityCohortCountField
                           key={g}
-                          mode={tapModeEnabled ? 'tap' : 'input'}
+                          mode={tapModeEnabled ? "tap" : "input"}
                           value={entry[g] || 0}
                           onChange={(value) => update(g, value)}
                           onKeyDown={
@@ -617,7 +608,7 @@ export default function ActivityQuickAdd({
             {(!selectedProject || selectedProject.type !== 'open_door') && (
               <div>
                 <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <label className="block text-sm font-medium">Kategorien</label>
+                  <label className="block text-sm font-medium">{t('filters.categories')}</label>
                   {canCreateOwnCategories ? (
                     <button
                       type="button"
@@ -625,7 +616,7 @@ export default function ActivityQuickAdd({
                       className={addActionButtonClassName}
                     >
                       <PlusIcon className="h-4 w-4" />
-                      Hinzufügen
+                      {t('quickAdd.add')}
                     </button>
                   ) : null}
                 </div>
@@ -650,14 +641,14 @@ export default function ActivityQuickAdd({
                     );
                   })}
                   {(categories || []).length === 0 && (
-                    <span className="text-xs text-gray-400">Keine Kategorien vorhanden.</span>
+                    <span className="text-xs text-gray-400">{t('quickAdd.noCategories')}</span>
                   )}
                 </div>
               </div>
             )}
             <div>
               <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <label className="block text-sm font-medium">Tags</label>
+                <label className="block text-sm font-medium">{t('filters.tags')}</label>
                 {canCreateOwnTags ? (
                   <button
                     type="button"
@@ -665,7 +656,7 @@ export default function ActivityQuickAdd({
                     className={addActionButtonClassName}
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Hinzufügen
+                    {t('quickAdd.add')}
                   </button>
                 ) : null}
               </div>
@@ -694,7 +685,7 @@ export default function ActivityQuickAdd({
             {employeeStaff.length > 0 && (
             <div>
               <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <label className="block text-sm font-medium">Mitarbeitende</label>
+                <label className="block text-sm font-medium">{t('filters.staff')}</label>
                 {canManageStaff ? (
                   <button
                     type="button"
@@ -702,7 +693,7 @@ export default function ActivityQuickAdd({
                     className={addActionButtonClassName}
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Hinzufügen
+                    {t('quickAdd.add')}
                   </button>
                 ) : null}
               </div>
@@ -720,7 +711,7 @@ export default function ActivityQuickAdd({
                           setForm({ ...form, staffIds: Array.from(set) });
                         }}
                         className={`px-2 py-1 rounded-full text-xs border ${
-                          active ? 'bg-viridian text-white' : 'bg-white text-gray-700'
+                          active ? "bg-viridian text-white" : "bg-white text-gray-700"
                         }`}
                       >
                         {s.name}
@@ -733,7 +724,7 @@ export default function ActivityQuickAdd({
             {volunteerStaff.length > 0 && (
             <div>
               <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <label className="block text-sm font-medium">Ehrenamtliche</label>
+                <label className="block text-sm font-medium">{autoT('ui_4ac524334f49')}</label>
                 {canManageStaff ? (
                   <button
                     type="button"
@@ -741,7 +732,7 @@ export default function ActivityQuickAdd({
                     className={addActionButtonClassName}
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Hinzufügen
+                    {t('quickAdd.add')}
                   </button>
                 ) : null}
               </div>
@@ -759,7 +750,7 @@ export default function ActivityQuickAdd({
                           setForm({ ...form, staffIds: Array.from(set) });
                         }}
                         className={`px-2 py-1 rounded-full text-xs border ${
-                          active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
+                          active ? "bg-cambridge-blue text-white" : "bg-white text-gray-700"
                         }`}
                       >
                         {s.name}
@@ -772,7 +763,7 @@ export default function ActivityQuickAdd({
             {helperStaff.length > 0 && (
             <div>
               <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <label className="block text-sm font-medium">Helfer</label>
+                <label className="block text-sm font-medium">{autoT('ui_01bfae305e69')}</label>
                 {canManageStaff ? (
                   <button
                     type="button"
@@ -780,7 +771,7 @@ export default function ActivityQuickAdd({
                     className={addActionButtonClassName}
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Hinzufügen
+                    {t('quickAdd.add')}
                   </button>
                 ) : null}
               </div>
@@ -798,7 +789,7 @@ export default function ActivityQuickAdd({
                           setForm({ ...form, staffIds: Array.from(set) });
                         }}
                         className={`px-2 py-1 rounded-full text-xs border ${
-                          active ? 'bg-amber-400 text-white' : 'bg-white text-gray-700'
+                          active ? "bg-amber-400 text-white" : "bg-white text-gray-700"
                         }`}
                       >
                         {s.name}
@@ -809,14 +800,14 @@ export default function ActivityQuickAdd({
             </div>
             )}
             <div>
-              <label className="block text-sm font-medium mb-1">Notizen</label>
+              <label className="block text-sm font-medium mb-1">{t('quickAdd.notes')}</label>
               <textarea
                 value={form.notes || ''}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 rows={4}
                 className="w-full border rounded px-3 py-2"
-                placeholder="Notizen zur Aktivität"
-                aria-label="Notizen"
+                placeholder={t('quickAdd.notesPlaceholder')}
+                aria-label={t('quickAdd.notes')}
               />
             </div>
           </div>
@@ -829,8 +820,8 @@ export default function ActivityQuickAdd({
               type="button"
               className="inline-flex md:hidden items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
               onClick={handleClose}
-              title="Abbrechen"
-              aria-label="Abbrechen"
+              title={t('quickAdd.cancel')}
+              aria-label={t('quickAdd.cancel')}
             >
               <XIcon className="w-5 h-5" />
             </button>
@@ -841,8 +832,8 @@ export default function ActivityQuickAdd({
                 type="button"
                 className="danger-icon-button p-2"
                 onClick={() => setDeleteOpen(true)}
-                title="Löschen"
-                aria-label="Löschen"
+                title={t('quickAdd.delete')}
+                aria-label={t('quickAdd.delete')}
               >
                 <TrashIcon className="w-5 h-5" />
               </button>
@@ -855,8 +846,8 @@ export default function ActivityQuickAdd({
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleSave}
-              title="Speichern"
-              aria-label="Speichern"
+              title={t('quickAdd.save')}
+              aria-label={t('quickAdd.save')}
               disabled={create.isPending || update.isPending || picker || deleteOpen || Boolean(errorOpen)}
             >
               {activity ? <SaveIcon className="w-5 h-5" /> : <PlusIcon className="w-5 h-5" />}
@@ -900,34 +891,34 @@ export default function ActivityQuickAdd({
         {activityInlineCreation.modals}
         <ConfirmModal
           open={Boolean(errorOpen)}
-          title="Fehler"
+          title={t('quickAdd.error')}
           message={errorOpen || ''}
           onCancel={() => setErrorOpen(null)}
           onConfirm={() => setErrorOpen(null)}
           showCancel={false}
-          confirmLabel="OK"
+          confirmLabel={autoT('ui_9ce3bd4224c8')}
         />
         {activity && (
           <ConfirmModal
             open={deleteOpen}
-            title="Aktivität löschen?"
-            message="Diese Aktion kann nicht rückgängig gemacht werden."
+            title={t('quickAdd.deleteTitle')}
+            message={t('quickAdd.deleteMessage')}
             onCancel={() => setDeleteOpen(false)}
             onConfirm={() => {
               remove.mutate(activity.id, {
                 onSuccess: () => {
-                  showToast('Aktivität gelöscht');
+                  showToast(t('quickAdd.deleted'));
                   setDeleteOpen(false);
                   onClose();
                 },
                 onError: (e: unknown) => {
                   console.error(e);
                   setDeleteOpen(false);
-                  setErrorOpen('Löschen fehlgeschlagen.');
+                  setErrorOpen(t('quickAdd.deleteFailed'));
                 },
               });
             }}
-            confirmLabel="Löschen"
+            confirmLabel={t('quickAdd.delete')}
           />
         )}
       </div>

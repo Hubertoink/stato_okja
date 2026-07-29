@@ -1,9 +1,10 @@
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { useTranslation } from 'react-i18next';
 
 export default function LoadingOverlay({
   open,
-  title = 'Lädt…',
-  message = 'Daten werden vorbereitet…',
+  title,
+  message,
   progress,
 }: {
   open: boolean;
@@ -11,6 +12,7 @@ export default function LoadingOverlay({
   message?: string;
   progress?: { current: number; total: number };
 }) {
+  const { t } = useTranslation('common');
   useBodyScrollLock(open);
   if (!open) return null;
 
@@ -35,15 +37,15 @@ export default function LoadingOverlay({
             aria-hidden
           />
           <div className="min-w-0">
-            <div className="font-semibold text-viridian truncate">{title}</div>
-            <div className="text-sm text-gray-600 mt-0.5">{message}</div>
+            <div className="font-semibold text-viridian truncate">{title || t('loading.defaultTitle')}</div>
+            <div className="text-sm text-gray-600 mt-0.5">{message || t('loading.defaultMessage')}</div>
           </div>
         </div>
 
         {pct !== null && (
           <div className="mt-4">
             <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-              <span>Initialisierung</span>
+              <span>{t('loading.initialization')}</span>
               <span>{pct}%</span>
             </div>
             <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">

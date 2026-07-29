@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
+import { autoT } from '@/i18n/auto';
 
 export interface ProjectDocument {
   id: string;
@@ -68,7 +69,7 @@ export async function downloadProjectDocument(projectId: string, document: Pick<
   const blob = res.data instanceof Blob
     ? res.data
     : new Blob([res.data], { type: 'application/octet-stream' });
-  downloadBlob(blob, document.filename || 'projekt-dokument');
+  downloadBlob(blob, document.filename || autoT('ui_db429c66d31d'));
 }
 
 export function useProjects(params?: { search?: string; archived?: boolean }) {

@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { demoModeEnabled } from './config';
+import { autoT } from '@/i18n/auto';
 
 type DemoHoverHintPlacement = 'top' | 'bottom';
 type DemoHoverHintAlign = 'start' | 'end';
@@ -64,7 +65,7 @@ export default function DemoHoverHint({
     <div
       className={`demo-hover-hint demo-hover-hint-${placement} demo-hover-hint-align-${align} ${className}`.trim()}
       aria-describedby={isOpen ? tooltipId : undefined}
-      data-demo-hint-open={isOpen ? 'true' : undefined}
+      data-demo-hint-open={isOpen ? "true" : undefined}
       onBlurCapture={handleBlur}
       onFocusCapture={openHint}
       onKeyDownCapture={handleKeyDown}
@@ -73,7 +74,7 @@ export default function DemoHoverHint({
     >
       {children}
       <div id={tooltipId} className="demo-hover-hint-panel" role="tooltip">
-        <div className="demo-hover-hint-kicker">Demo-Hinweis</div>
+        <div className="demo-hover-hint-kicker">{autoT('ui_57888d6f71a5')}</div>
         <div className="demo-hover-hint-title">{title}</div>
         <div className="demo-hover-hint-description">{description}</div>
       </div>

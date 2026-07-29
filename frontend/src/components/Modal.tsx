@@ -2,6 +2,7 @@ import { X as XIcon } from 'lucide-react';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { useTranslation } from 'react-i18next';
 
 /**
  * A visual modal backdrop that deliberately does not handle clicks.
@@ -32,6 +33,7 @@ export default function Modal({
   /** Information and form modals keep their title and controls visible while their content scrolls. */
   variant?: 'default' | 'information' | 'form';
 }) {
+  const { t } = useTranslation('common');
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
   if (!open) return null;
@@ -49,27 +51,27 @@ export default function Modal({
   const isStructuredModal = variant === 'information' || variant === 'form';
   const content = (
     <div
-      className={`fixed inset-0 z-[70] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? 'backdrop-blur-sm' : ''}`}
+      className={`fixed inset-0 z-[70] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? "backdrop-blur-sm" : ''}`}
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        aria-label={title || 'Dialog'}
+        aria-label={title || t('dialog.ariaLabel')}
         aria-modal="true"
-        className={`w-full ${maxW} max-h-[85vh] rounded-t-3xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl bottom-sheet-animate modal-panel-roomy md:rounded-2xl ${isStructuredModal ? 'flex flex-col overflow-hidden' : 'overflow-y-auto p-4 md:p-6'} ${blur ? 'backdrop-blur-xl' : ''}`}
+        className={`w-full ${maxW} max-h-[85vh] rounded-t-3xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl bottom-sheet-animate modal-panel-roomy md:rounded-2xl ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
         role="dialog"
         tabIndex={-1}
       >
         <div
           className={isStructuredModal
-            ? 'flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 md:p-6'
-            : 'mb-4 flex items-center justify-between'}
+            ? "flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 md:p-6"
+            : "mb-4 flex items-center justify-between"}
         >
           <h3 className="text-lg font-bold gradient-text">{title}</h3>
           {showCloseButton && (
             <button
               className="inline-flex items-center justify-center rounded-xl bg-[var(--surface-2)] p-2 text-[var(--text-secondary)] transition-all duration-200 hover:scale-105 hover:bg-[var(--surface-3)]"
               onClick={onClose}
-              aria-label="Schließen"
+              aria-label={t('actions.close')}
             >
               <XIcon className="w-5 h-5" />
             </button>

@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { TagFormModal } from '@/components/settings/EntityFormModals';
+import { autoT } from '@/i18n/auto';
 
 export default function SettingsTags() {
   const [showArchived, setShowArchived] = useState(false);
@@ -30,12 +31,10 @@ export default function SettingsTags() {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4 gap-3">
         <div>
-          <h3 className="text-xl font-semibold text-viridian">Tags verwalten</h3>
-          <p className="text-gray-600">Freitext-Tags mit Farben für flexible Zuordnung</p>
+          <h3 className="text-xl font-semibold text-viridian">{autoT('ui_8be8d35e7be5')}</h3>
+          <p className="text-gray-600">{autoT('ui_c2d552b583ec')}</p>
           {!canCreateOwn && (
-            <p className="taxonomy-lock-hint">
-              Lokale Tags sind in diesem Org-Kontext gesperrt. Sichtbar bleiben geerbte und bestehende Tags, lokale Tags sind hier nur lesbar.
-            </p>
+            <p className="taxonomy-lock-hint">{autoT('ui_896bab147363')}</p>
           )}
         </div>
         <div className="flex items-center gap-3">
@@ -44,8 +43,7 @@ export default function SettingsTags() {
               checked={showArchived}
               onChange={setShowArchived}
               label={
-                <span>
-                  Archiv <span className="text-xs text-gray-500">({archivedCount})</span>
+                <span>{autoT('ui_d9431e38c8b6')}<span className="text-xs text-gray-500">({archivedCount})</span>
                 </span>
               }
             />
@@ -54,8 +52,8 @@ export default function SettingsTags() {
             <button
               className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => canCreateOwn && setModal({ mode: 'create' })}
-              aria-label="Neues Tag"
-              title="Neues Tag"
+              aria-label={autoT('ui_dacb43d1a177')}
+              title={autoT('ui_dacb43d1a177')}
               disabled={!canCreateOwn}
             >
               <svg
@@ -71,7 +69,7 @@ export default function SettingsTags() {
                 />
               </svg>
             </button>
-            <span className="tooltip-bubble">Neues Tag</span>
+            <span className="tooltip-bubble">{autoT('ui_dacb43d1a177')}</span>
           </span>
         </div>
       </div>
@@ -80,7 +78,7 @@ export default function SettingsTags() {
           const isInherited = !!t.isInherited;
           const canManage = t.canManage !== false;
           return (
-            <div key={t.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
+            <div key={t.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? "bg-gray-50 border-gray-200" : ''}`}>
               <div className="min-w-0 flex items-center gap-3">
                 <span
                   className="inline-block h-4 w-4 rounded bg-slate-400"
@@ -90,8 +88,7 @@ export default function SettingsTags() {
                   <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">
                     <span>{t.name}</span>
                     {isInherited && (
-                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">
-                        geerbt{t.sourceOrgName ? ` aus ${t.sourceOrgName}` : ''}
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">{autoT('ui_a699c6f5aade')}{t.sourceOrgName ? ` aus ${t.sourceOrgName}` : ''}
                       </span>
                     )}
                   </div>
@@ -105,22 +102,20 @@ export default function SettingsTags() {
                   <button
                     className="text-viridian hover:underline"
                     onClick={() => update.mutate({ id: t.id, data: { active: true } })}
-                  >
-                    Wiederherstellen
-                  </button>
+                  >{autoT('ui_98f492b5e015')}</button>
                 )}
                 {canManage && <button
                   className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
-                  title="Bearbeiten"
-                  aria-label={`Tag ${t.name} bearbeiten`}
+                  title={autoT('ui_104f3bfdc340')}
+                  aria-label={autoT('ui_8b7bf2fb497b', { value0: t.name })}
                   onClick={() => setModal({ mode: 'edit', tag: t })}
                 >
                   <Pencil className="w-4 h-4 text-viridian" />
                 </button>}
                 {canManage && <button
                   className="danger-icon-button p-1.5"
-                  aria-label="Löschen"
-                  title="Löschen"
+                  aria-label={autoT('ui_ffa5a8a7e21d')}
+                  title={autoT('ui_ffa5a8a7e21d')}
                   onClick={async () => {
                     setConfirm({ open: true, tag: t, loading: true });
                     try {
@@ -142,7 +137,7 @@ export default function SettingsTags() {
             </div>
           );
         })}
-        {tags.length === 0 && <div className="text-gray-500 py-6">Keine sichtbaren Tags in diesem Org-Kontext.</div>}
+        {tags.length === 0 && <div className="text-gray-500 py-6">{autoT('ui_84ccf86bfc5a')}</div>}
       </div>
       {modal && (
         <TagFormModal
@@ -179,34 +174,27 @@ export default function SettingsTags() {
       )}
       <ConfirmModal
         open={confirm.open}
-        title="Tag löschen?"
+        title={autoT('ui_54c426c7469e')}
         message={
           <div className="space-y-2">
-            <p>
-              Wenn Sie ein Tag löschen, verlieren alle Aktivitäten mit diesem Tag die Zuordnung.
-              Historische Auswertungen nach Tags ändern sich rückwirkend.
-            </p>
+            <p>{autoT('ui_cd946c08fb8f')}</p>
             {confirm.loading ? (
-              <p className="text-sm text-gray-500">Ermittle betroffene Einträge…</p>
+              <p className="text-sm text-gray-500">{autoT('ui_7a67a2dd16a7')}</p>
             ) : (
-              <p className="text-sm text-gray-700">
-                Betroffene Aktivitäten:{' '}
+              <p className="text-sm text-gray-700">{autoT('ui_8ae03f3803dd')}{' '}
                 <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong>
               </p>
             )}
-            <p className="text-sm text-gray-600">
-              Tipp: Statt zu löschen können Sie das Tag archivieren. Archivierte Tags erscheinen
-              nicht mehr in Auswahlfeldern, bleiben aber für bestehende Daten erhalten.
-            </p>
+            <p className="text-sm text-gray-600">{autoT('ui_c2f5b6241d07')}</p>
           </div>
         }
-        cancelLabel="Abbrechen"
-        secondaryLabel="Archivieren (empfohlen)"
+        cancelLabel={autoT('ui_07af7cb30fca')}
+        secondaryLabel={autoT('ui_49471caa9c1f')}
         onSecondaryConfirm={() => {
           if (confirm.tag?.id) update.mutate({ id: confirm.tag.id, data: { active: false } });
           setConfirm({ open: false });
         }}
-        confirmLabel="Endgültig löschen"
+        confirmLabel={autoT('ui_9df6718de96c')}
         onConfirm={() => {
           if (confirm.tag?.id) remove.mutate(confirm.tag.id);
           setConfirm({ open: false });

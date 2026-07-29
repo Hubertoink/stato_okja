@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, ConflictException, ForbiddenException,
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes, randomInt } from 'crypto';
-import { User } from '../users/entities/user.entity';
+import { SUPPORTED_LOCALES, type SupportedLocale, User } from '../users/entities/user.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
 import { RefreshSession } from './entities/refresh-session.entity';
@@ -38,6 +38,7 @@ export type AuthUserResponse = {
   orgName: string | null;
   avatarUrl: string | null;
   theme: string;
+  locale: SupportedLocale;
   mustChangePassword: boolean;
   termsAcceptanceRequired: boolean;
 };
@@ -72,6 +73,10 @@ const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
   'admin@example.com',
   'admin@example.net',
 ]);
+
+function resolveLocale(value?: string | null): SupportedLocale {
+  return SUPPORTED_LOCALES.includes(value as SupportedLocale) ? (value as SupportedLocale) : 'de';
+}
 
 function parseDurationToMs(raw: string | undefined, fallbackMs: number) {
   const value = String(raw || '').trim().toLowerCase();
@@ -200,9 +205,10 @@ export class AuthService {
   }
 
   private async getSessionUser(user: User): Promise<AuthUserResponse> {
-    const orgName = user.orgId
-      ? ((await this.orgs.findOne({ where: { id: user.orgId } }))?.name ?? null)
+    const org = user.orgId
+      ? await this.orgs.findOne({ where: { id: user.orgId } })
       : null;
+    const orgName = org?.name ?? null;
     const avatarUrl = normalizeUploadPath(
       (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
     );
@@ -221,6 +227,7 @@ export class AuthService {
       orgName,
       avatarUrl,
       theme,
+      locale: resolveLocale(user.locale ?? org?.defaultLocale),
       mustChangePassword: user.mustChangePassword === true,
       termsAcceptanceRequired: user.termsAcceptedVersion !== (await getTermsOfUseVersion()),
     };
@@ -862,7 +869,7 @@ export class AuthService {
 
   async updateProfile(
     userId: string,
-    patch: { name?: string; avatarUrl?: string | null; theme?: string },
+    patch: { name?: string; avatarUrl?: string | null; theme?: string; locale?: SupportedLocale },
   ) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
@@ -875,6 +882,7 @@ export class AuthService {
     if (typeof patch.theme === 'string') {
       (user as unknown as { theme?: string }).theme = patch.theme;
     }
+    if (typeof patch.locale === 'string') user.locale = resolveLocale(patch.locale);
     await this.users.save(user);
     return this.getProfile(user.id);
   }

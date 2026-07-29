@@ -1,8 +1,10 @@
+import { autoT } from '@/i18n/auto';
+
 export const PASSWORD_REQUIREMENTS_TEXT =
-  'Mindestens 12 Zeichen mit Großbuchstaben, Kleinbuchstaben, Zahl und Sonderzeichen.';
+  autoT('ui_82b43381ea8b');
 
 export const PASSWORD_REQUIREMENTS_SHORT =
-  'Mind. 12 Zeichen, Groß-/Kleinbuchstaben, Zahl und Sonderzeichen';
+  autoT('ui_961ed8d190b1');
 
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$/;
 
@@ -19,11 +21,11 @@ export function isStrongPassword(password: string) {
 export function getPasswordRequirementStates(password: string): PasswordRequirementState[] {
   const value = String(password || '');
   return [
-    { id: 'length', label: 'Mindestens 12 Zeichen', met: value.length >= 12 },
-    { id: 'uppercase', label: 'Mindestens ein Großbuchstabe', met: /[A-Z]/.test(value) },
-    { id: 'lowercase', label: 'Mindestens ein Kleinbuchstabe', met: /[a-z]/.test(value) },
-    { id: 'digit', label: 'Mindestens eine Zahl', met: /\d/.test(value) },
-    { id: 'special', label: 'Mindestens ein Sonderzeichen', met: /[^A-Za-z0-9]/.test(value) },
+    { id: 'length', label: autoT('ui_c7e2aa72d9ae'), met: value.length >= 12 },
+    { id: 'uppercase', label: autoT('ui_0731587f6de7'), met: /[A-Z]/.test(value) },
+    { id: 'lowercase', label: autoT('ui_b7ca0f07c3fa'), met: /[a-z]/.test(value) },
+    { id: 'digit', label: autoT('ui_9bc423f4549f'), met: /\d/.test(value) },
+    { id: 'special', label: autoT('ui_0af3ceef9ce2'), met: /[^A-Za-z0-9]/.test(value) },
   ];
 }
 

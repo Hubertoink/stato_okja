@@ -1,11 +1,5 @@
 import type { SurveyStatus } from '@/lib/surveys';
-
-const labels: Record<SurveyStatus, string> = {
-  draft: 'Entwurf',
-  active: 'Aktiv',
-  closed: 'Beendet',
-  archived: 'Archiviert',
-};
+import { useTranslation } from 'react-i18next';
 
 const colors: Record<SurveyStatus, string> = {
   active: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
@@ -15,5 +9,6 @@ const colors: Record<SurveyStatus, string> = {
 };
 
 export function SurveyStatusBadge({ status }: { status: SurveyStatus }) {
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${colors[status]}`}>{labels[status]}</span>;
+  const { t } = useTranslation('common');
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${colors[status]}`}>{t(`surveyStatus.${status}`)}</span>;
 }

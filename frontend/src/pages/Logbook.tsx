@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Plus, RotateCcw, Search, SlidersHorizontal, UserRound, XCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLogbookEntries } from '@/lib/logbook';
-import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import {
   loadLogbookFilters,
   saveLogbookFilters,
@@ -18,14 +17,24 @@ import { FilterChip } from '@/components/ui/FilterChip';
 import { Input } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ErrorState, LoadingState } from '@/components/ui/StatePanel';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { formatDate, formatNumber } from '@/i18n/formatters';
 
-function dateBadge(from?: string, to?: string) {
-  if (from && to) return from === to ? `Zeitraum: ${from}` : `Zeitraum: ${from} – ${to}`;
-  if (from) return `Zeitraum ab: ${from}`;
-  return to ? `Zeitraum bis: ${to}` : null;
+function filterDate(value: string) {
+  return formatDate(`${value}T12:00:00`, { dateStyle: 'short' });
+}
+
+function dateBadge(t: TFunction, from?: string, to?: string) {
+  if (from && to) return from === to
+    ? t('periodExact', { date: filterDate(from) })
+    : t('periodBetween', { from: filterDate(from), to: filterDate(to) });
+  if (from) return t('periodFrom', { date: filterDate(from) });
+  return to ? t('periodTo', { date: filterDate(to) }) : null;
 }
 
 export default function Logbook() {
+  const { t } = useTranslation(['logbook', 'common']);
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [initialFilters] = useState(loadLogbookFilters);
@@ -92,18 +101,18 @@ export default function Logbook() {
     }));
   };
   const badges = [
-    dateBadge(advanced.from, advanced.to),
-    advanced.type ? `Art: ${logbookTypeLabels[advanced.type]}` : null,
-    advanced.status ? `Status: ${logbookStatusLabels[advanced.status]}` : null,
-    advanced.projectId ? 'Projekt ausgewählt' : null,
-    advanced.includeArchived ? 'Archiv einbezogen' : null,
+    dateBadge(t, advanced.from, advanced.to),
+    advanced.type ? t('typeChip', { value: t(`types.${advanced.type}`) }) : null,
+    advanced.status ? t('statusChip', { value: t(`common:logbookStatus.${advanced.status}`) }) : null,
+    advanced.projectId ? t('projectSelected') : null,
+    advanced.includeArchived ? t('archiveIncluded') : null,
   ].filter((value): value is string => Boolean(value));
 
   return (
     <div>
       <PageHeader
         className="mb-4"
-        title="Logbuch"
+        title={t('title')}
         actions={(
         <div className="flex justify-end gap-2">
           <div className="relative">
@@ -115,7 +124,7 @@ export default function Logbook() {
                     autoFocus
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Logbuch durchsuchen…"
+                    placeholder={t('search')}
                     className="mt-0 py-2 pl-9 pr-10"
                   />
                   {search && (
@@ -123,7 +132,7 @@ export default function Logbook() {
                       type="button"
                       onClick={() => setSearch('')}
                       className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                      aria-label="Suche löschen"
+                      aria-label={t('clearSearch')}
                     >
                       <XCircle className="h-4 w-4" />
                     </button>
@@ -134,8 +143,8 @@ export default function Logbook() {
             <IconButton
               variant="secondary"
               onClick={() => setSearchOpen((open) => !open)}
-              title={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
-              aria-label={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
+              title={searchOpen ? t('closeSearch') : t('openSearch')}
+              aria-label={searchOpen ? t('closeSearch') : t('openSearch')}
             >
               <Search className="h-5 w-5" />
             </IconButton>
@@ -143,9 +152,9 @@ export default function Logbook() {
           <IconButton
             variant="secondary"
             onClick={() => setFilterDrawer(true)}
-            className={hasAdvancedFilters ? 'border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20' : ''}
-            title="Erweiterter Filter"
-            aria-label="Erweiterter Filter"
+            className={hasAdvancedFilters ? "border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20" : ''}
+            title={t('advancedFilter')}
+            aria-label={t('advancedFilter')}
           >
             <SlidersHorizontal className="h-4 w-4" />
           </IconButton>
@@ -153,8 +162,8 @@ export default function Logbook() {
             variant="primary"
             className="rounded-full md:hidden"
             onClick={() => navigate('/logbook/new')}
-            title="Eintrag erstellen"
-            aria-label="Eintrag erstellen"
+            title={t('create')}
+            aria-label={t('create')}
           >
             <Plus className="h-5 w-5" />
           </IconButton>
@@ -162,7 +171,7 @@ export default function Logbook() {
             className="hidden md:inline-flex"
             onClick={() => navigate('/logbook/new')}
           >
-            + Neuer Eintrag
+            + {t('new')}
           </Button>
         </div>
         )}
@@ -170,11 +179,11 @@ export default function Logbook() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="count">
-          {isLoading ? 'Treffer werden geladen…' : `Treffer: ${data?.total || 0}`}
+          {isLoading ? t('loadingResults') : t('results', { count: formatNumber(data?.total || 0) })}
         </Badge>
         {search.trim() && (
           <FilterChip onRemove={() => setSearch('')}>
-            Suche: {search.trim()}
+            {t('searchChip', { value: search.trim() })}
           </FilterChip>
         )}
         {badges.map((badge) => (
@@ -190,25 +199,25 @@ export default function Logbook() {
             className="min-h-0 rounded-full px-2 py-1"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Zurücksetzen
+            {t('reset')}
           </Button>
         )}
       </div>
 
       {isLoading ? (
-        <LoadingState label="Logbuch wird geladen…" />
+        <LoadingState label={t('loading')} />
       ) : isError ? (
-        <ErrorState action={{ label: 'Erneut versuchen', onClick: () => void refetch() }} />
+        <ErrorState action={{ label: t('retry'), onClick: () => void refetch() }} />
       ) : entries.length === 0 ? (
         <EmptyState
           icon={<UserRound className="h-5 w-5" />}
-          title="Noch keine passenden Einträge"
-          description="Halte Beobachtungen, Übergaben oder Debriefings direkt im Logbuch fest."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
           action={(
           <Button
             onClick={() => navigate('/logbook/new')}
           >
-            Ersten Eintrag erstellen
+            {t('createFirst')}
           </Button>
           )}
         />
@@ -228,7 +237,7 @@ export default function Logbook() {
           {olderMonths.length > 0 && !hasFilters && (
             <section className="mt-7 border-t border-gray-200/70 pt-5">
               <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                Ältere Einträge
+                {t('older')}
               </h3>
               <div className="flex flex-wrap gap-2">
                 {olderMonths.map(([key, count]) => (
@@ -239,12 +248,10 @@ export default function Logbook() {
                     className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-left text-sm font-semibold text-gray-700 shadow-sm transition hover:border-viridian hover:text-viridian"
                   >
                     <span className="block">
-                      {new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(
-                        new Date(`${key}-01T12:00:00`),
-                      )}
+                      {formatDate(`${key}-01T12:00:00`, { month: 'long', year: 'numeric' })}
                     </span>
                     <span className="mt-0.5 block text-xs font-normal text-gray-500">
-                      {count} {count === 1 ? 'Eintrag' : 'Einträge'}
+                      {t('entry', { count })}
                     </span>
                   </button>
                 ))}
@@ -253,7 +260,7 @@ export default function Logbook() {
           )}
           {currentEntries.length === 0 && olderMonths.length > 0 && !hasFilters && (
             <div className="mt-4 text-sm text-gray-500">
-              Die aktuellen Einträge wurden angezeigt; wähle einen Monat für das Archiv.
+              {t('archiveHint')}
             </div>
           )}
         </>

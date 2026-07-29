@@ -70,14 +70,16 @@ import RichTextEditor, {
   Toolbar,
   type ContentEditableEvent,
 } from 'react-simple-wysiwyg';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
 const PROJECTS_STARRED_FIRST_STORAGE_KEY = 'projects:starred-first';
 
 const PROJECT_TYPE_LABELS: Record<string, string> = {
-  open_door: 'Offene Tür',
-  project_open: 'Projekt (offen)',
-  project_closed: 'Projekt (geschlossen)',
+  open_door: autoT('ui_a80778b6b148'),
+  project_open: autoT('ui_00d882fbb5d4'),
+  project_closed: autoT('ui_8f256393653e'),
   event: 'Veranstaltung',
   outreach: 'Aufsuchend',
 };
@@ -286,7 +288,7 @@ const formatDocumentDate = (value?: string | Date | null) => {
   if (!value) return '';
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('de-DE');
+  return date.toLocaleDateString(getCurrentIntlLocale());
 };
 
 const isAllowedProjectDocumentFile = (file: File) => {
@@ -430,8 +432,8 @@ function ArchiveRestoreControls({
         <button
           type="button"
           className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 disabled:opacity-50 bg-white/80"
-          title={archived ? 'Wiederherstellen' : 'Archivieren'}
-          aria-label={archived ? 'Wiederherstellen' : 'Archivieren'}
+          title={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
+          aria-label={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           disabled={archiving || archive.isPending}
           onClick={() => {
             if (archived) {
@@ -447,15 +449,15 @@ function ArchiveRestoreControls({
             <ArchiveIcon className="w-5 h-5" />
           )}
         </button>
-        <span className="tooltip-bubble">{archived ? 'Wiederherstellen' : 'Archivieren'}</span>
+        <span className="tooltip-bubble">{archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}</span>
       </span>
       {archived && (
         <span className="tooltip-wrapper">
           <button
             type="button"
             className="inline-flex items-center justify-center p-2 rounded-full border border-red-300 text-red-700 disabled:opacity-50 bg-white/80"
-            title="Löschen"
-            aria-label="Löschen"
+            title={autoT('ui_ffa5a8a7e21d')}
+            aria-label={autoT('ui_ffa5a8a7e21d')}
             disabled={deleting || remove.isPending}
             onClick={async () => {
               // Open modal and fetch affected activities count efficiently via paged endpoint
@@ -478,34 +480,27 @@ function ArchiveRestoreControls({
           >
             <Trash2 className="w-5 h-5" />
           </button>
-          <span className="tooltip-bubble">Löschen</span>
+          <span className="tooltip-bubble">{autoT('ui_ffa5a8a7e21d')}</span>
         </span>
       )}
       <ConfirmModal
         open={confirm.open}
-        title="Projekt löschen?"
+        title={autoT('ui_b6db0f37e1f0')}
         message={
           <div className="space-y-2">
-            <p>
-              Wenn Sie ein Projekt löschen, verlieren alle Aktivitäten mit diesem Projekt die
-              Zuordnung. Historische Auswertungen nach Projekten ändern sich rückwirkend.
-            </p>
+            <p>{autoT('ui_653f984e3e69')}</p>
             {confirm.loading ? (
-              <p className="text-sm text-gray-500">Ermittle betroffene Einträge…</p>
+              <p className="text-sm text-gray-500">{autoT('ui_7a67a2dd16a7')}</p>
             ) : (
-              <p className="text-sm text-gray-700">
-                Betroffene Aktivitäten:{' '}
+              <p className="text-sm text-gray-700">{autoT('ui_8ae03f3803dd')}{' '}
                 <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong>
               </p>
             )}
-            <p className="text-sm text-gray-600">
-              Tipp: Wenn das Projekt versehentlich archiviert wurde, können Sie es stattdessen
-              wiederherstellen.
-            </p>
+            <p className="text-sm text-gray-600">{autoT('ui_7151a86620e6')}</p>
           </div>
         }
-        cancelLabel="Abbrechen"
-        secondaryLabel={archived ? 'Wiederherstellen' : undefined}
+        cancelLabel={autoT('ui_07af7cb30fca')}
+        secondaryLabel={archived ? "Wiederherstellen" : undefined}
         onSecondaryConfirm={
           archived
             ? () => {
@@ -523,7 +518,7 @@ function ArchiveRestoreControls({
               }
             : undefined
         }
-        confirmLabel="Endgültig löschen"
+        confirmLabel={autoT('ui_9df6718de96c')}
         onConfirm={() => {
           setConfirm({ open: false });
           onDeletingChange(true);
@@ -538,23 +533,16 @@ function ArchiveRestoreControls({
       />
       <ConfirmModal
         open={archiveConfirmOpen}
-        title="Projekt archivieren?"
+        title={autoT('ui_2375a78ef896')}
         message={
           <div className="space-y-2">
-            <p>
-              Archivierte Projekte erscheinen nicht mehr in der aktiven Projektliste und können
-              neuen Aktivitäten nicht mehr zugeordnet werden.
-            </p>
-            <p>
-              Bestehende Aktivitäten, Historien und Auswertungen bleiben erhalten.
-            </p>
-            <p className="text-sm text-gray-600">
-              Das Projekt kann später jederzeit wiederhergestellt werden.
-            </p>
+            <p>{autoT('ui_bc6bf15ace00')}</p>
+            <p>{autoT('ui_075386ba8fd2')}</p>
+            <p className="text-sm text-gray-600">{autoT('ui_918ee22b7790')}</p>
           </div>
         }
-        cancelLabel="Abbrechen"
-        confirmLabel="Archivieren"
+        cancelLabel={autoT('ui_07af7cb30fca')}
+        confirmLabel={autoT('ui_b81f3298d960')}
         onConfirm={() => {
           setArchiveConfirmOpen(false);
           toggleArchivedState(true);
@@ -619,7 +607,7 @@ function ProjectGridCard({
           <div className="min-w-0 flex-1">
             <div
               className={`line-clamp-2 break-words font-semibold leading-tight drop-shadow-sm ${
-                hasLongTitle ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
+                hasLongTitle ? "text-base sm:text-lg" : "text-lg sm:text-xl"
               }`}
             >
               {project.title}
@@ -628,8 +616,7 @@ function ProjectGridCard({
             {Array.isArray(project.documents) && project.documents.length > 0 && (
               <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
                 <Paperclip className="w-3 h-3" />
-                {project.documents.length} Unterlagen
-              </div>
+                {project.documents.length}{autoT('ui_1e879a942da8')}</div>
             )}
             {(category || staffNames.length > 0) && (
               <div className="mt-1 flex items-center flex-wrap gap-2">
@@ -668,20 +655,20 @@ function ProjectGridCard({
                 type="button"
                 onClick={onOpenActivities}
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 p-1.5"
-                aria-label={`Aktivitäten für ${project.title} anzeigen`}
+                aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })}
               >
                 <CalendarRange className="w-4 h-4 text-white" />
               </button>
-              <span className="tooltip-bubble">Aktivitäten anzeigen</span>
+              <span className="tooltip-bubble">{autoT('ui_8587eefe7ef8')}</span>
             </span>
             <span className="tooltip-wrapper">
               <button
                 type="button"
                 onClick={onToggleStar}
                 className={`opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full p-1.5 ${
-                  starred ? 'bg-yellow-400/90' : 'bg-white/20 hover:bg-white/30'
+                  starred ? "bg-yellow-400/90" : "bg-white/20 hover:bg-white/30"
                 }`}
-                aria-label={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
+                aria-label={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
               >
                 {starred ? (
                   <Star className="w-4 h-4 text-gray-900" />
@@ -689,18 +676,18 @@ function ProjectGridCard({
                   <StarOff className="w-4 h-4 text-white" />
                 )}
               </button>
-              <span className="tooltip-bubble">{starred ? 'Unstarren' : 'Highlight'}</span>
+              <span className="tooltip-bubble">{starred ? autoT('ui_28f4ed84c2f4') : autoT('ui_e1da9275bc5b')}</span>
             </span>
             <span className="tooltip-wrapper">
               <button
                 type="button"
                 onClick={onEdit}
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 p-1.5"
-                aria-label={`Projekt ${project.title} bearbeiten`}
+                aria-label={autoT('ui_47fd1acdc0a4', { value0: project.title })}
               >
                 <Pencil className="w-4 h-4 text-white" />
               </button>
-              <span className="tooltip-bubble">Bearbeiten</span>
+              <span className="tooltip-bubble">{autoT('ui_104f3bfdc340')}</span>
             </span>
           </div>
         </div>
@@ -748,9 +735,7 @@ function ProjectGridCard({
         )}
 
         {project.archived && (
-          <div className="mt-1 text-xs inline-block px-2 py-0.5 rounded-full bg-white/25 backdrop-blur-sm">
-            Archiviert
-          </div>
+          <div className="mt-1 text-xs inline-block px-2 py-0.5 rounded-full bg-white/25 backdrop-blur-sm">{autoT('ui_7d6b45e9c890')}</div>
         )}
       </div>
     </div>
@@ -801,9 +786,7 @@ function ProjectListRow({
           {prettyType}
         </div>
         {project.archived && (
-          <div className="absolute left-3 bottom-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-800 shadow-sm">
-            Archiviert
-          </div>
+          <div className="absolute left-3 bottom-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-800 shadow-sm">{autoT('ui_7d6b45e9c890')}</div>
         )}
       </div>
 
@@ -814,21 +797,19 @@ function ProjectListRow({
               type="button"
               onClick={onOpenActivities}
               className="text-left text-lg lg:text-xl font-semibold break-words leading-snug text-[color:var(--text-primary)] hover:text-viridian transition-colors"
-              title="Aktivitäten dieses Projekts anzeigen"
-              aria-label={`Aktivitäten für ${project.title} anzeigen`}
+              title={autoT('ui_94512e307fac')}
+              aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })}
             >
               {project.title}
             </button>
             {project.targetGroup && (
-              <div className="mt-1 text-sm font-medium text-gray-700">
-                Zielgruppe: <span className="font-normal text-gray-800">{project.targetGroup}</span>
+              <div className="mt-1 text-sm font-medium text-gray-700">{autoT('ui_e5e954075491')}<span className="font-normal text-gray-800">{project.targetGroup}</span>
               </div>
             )}
             {Array.isArray(project.documents) && project.documents.length > 0 && (
               <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700">
                 <Paperclip className="w-3.5 h-3.5 text-viridian" />
-                {project.documents.length} Unterlagen
-              </div>
+                {project.documents.length}{autoT('ui_1e879a942da8')}</div>
             )}
           </div>
 
@@ -837,38 +818,38 @@ function ProjectListRow({
               <button
                 type="button"
                 onClick={onOpenActivities}
-                aria-label={`Aktivitäten für ${project.title} anzeigen`}
+                aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })}
                 className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:border-viridian hover:text-viridian"
               >
                 <CalendarRange className="w-4 h-4" />
               </button>
-              <span className="tooltip-bubble">Aktivitäten anzeigen</span>
+              <span className="tooltip-bubble">{autoT('ui_8587eefe7ef8')}</span>
             </span>
             <span className="tooltip-wrapper">
               <button
                 type="button"
                 onClick={onToggleStar}
-                aria-label={starred ? 'Highlight entfernen' : 'Projekt highlighten'}
+                aria-label={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
                 className={`inline-flex items-center justify-center rounded-full border p-2 transition-colors ${
                   starred
-                    ? 'border-yellow-400 bg-yellow-100 text-yellow-800'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:text-yellow-700'
+                    ? "border-yellow-400 bg-yellow-100 text-yellow-800"
+                    : "border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:text-yellow-700"
                 }`}
               >
                 {starred ? <Star className="w-4 h-4" /> : <StarOff className="w-4 h-4" />}
               </button>
-              <span className="tooltip-bubble">{starred ? 'Highlight entfernen' : 'Highlight setzen'}</span>
+              <span className="tooltip-bubble">{starred ? autoT('ui_054cf53eb7ef') : autoT('ui_2ed72c09fb1f')}</span>
             </span>
             <span className="tooltip-wrapper">
               <button
                 type="button"
                 onClick={onEdit}
-                aria-label={`Projekt ${project.title} bearbeiten`}
+                aria-label={autoT('ui_47fd1acdc0a4', { value0: project.title })}
                 className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:border-viridian hover:text-viridian"
               >
                 <Pencil className="w-4 h-4" />
               </button>
-              <span className="tooltip-bubble">Bearbeiten</span>
+              <span className="tooltip-bubble">{autoT('ui_104f3bfdc340')}</span>
             </span>
           </div>
         </div>
@@ -922,8 +903,7 @@ function ProjectListRow({
             ))}
             {extraTags > 0 && (
               <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700">
-                +{extraTags} weitere
-              </span>
+                +{extraTags}{autoT('ui_4e3936d10c2b')}</span>
             )}
           </div>
         )}
@@ -1047,7 +1027,7 @@ function ProjectForm({
       const msg = e instanceof Error ? e.message : 'Bild konnte nicht verarbeitet werden.';
       setImageIssue({
         open: true,
-        title: 'Bild zu groß oder nicht unterstützt',
+        title: autoT('ui_8f4c305e8e67'),
         message: `${msg} (Max ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB, wird auf ${600}px Breite reduziert)`,
       });
     }
@@ -1257,7 +1237,7 @@ function ProjectForm({
     if (invalidType) {
       setDocumentIssue({
         open: true,
-        title: 'Dateityp nicht unterstützt',
+        title: autoT('ui_28073bd8e1ad'),
         message: 'Erlaubt sind PDF, DOC, DOCX, ODT, RTF und TXT.',
       });
       return;
@@ -1267,8 +1247,8 @@ function ProjectForm({
     if (tooLarge) {
       setDocumentIssue({
         open: true,
-        title: 'Datei zu groß',
-        message: `${tooLarge.name} ist größer als ${Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB.`,
+        title: autoT('ui_bc3dc0cda5ea'),
+        message: autoT('ui_6f5c0fb203fc', { value0: tooLarge.name, value1: Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024)) }),
       });
       return;
     }
@@ -1423,8 +1403,8 @@ function ProjectForm({
     if (typeof bytes === 'number' && Number.isFinite(bytes) && bytes > MAX_IMAGE_BYTES) {
       setImageIssue({
         open: true,
-        title: 'Bild zu groß',
-        message: `Das Projektbild ist größer als ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB. Bitte ein kleineres Bild hochladen (wird automatisch auf 600px reduziert).`,
+        title: autoT('ui_c6fddfd599e6'),
+        message: autoT('ui_56be077ab68d', { value0: Math.round(MAX_IMAGE_BYTES / (1024 * 1024)) }),
       });
       return;
     }
@@ -1454,22 +1434,22 @@ function ProjectForm({
 
   const renderDocumentManager = () => (
     <div
-      className={`rounded-xl border ${documentsExpanded ? 'p-4' : 'px-3 py-2'}`}
+      className={`rounded-xl border ${documentsExpanded ? "p-4" : "px-3 py-2"}`}
       style={{
         background: 'color-mix(in srgb, var(--surface-2) 86%, transparent)',
         borderColor: 'var(--border-subtle)',
       }}
     >
-      <div className={`flex justify-between gap-3 ${documentsExpanded ? 'items-start' : 'items-center'}`}>
+      <div className={`flex justify-between gap-3 ${documentsExpanded ? "items-start" : "items-center"}`}>
         <button
           type="button"
           onClick={() => setDocumentsExpanded((current) => !current)}
-          className={`min-w-0 flex flex-1 text-left ${documentsExpanded ? 'items-start gap-3' : 'items-center gap-2'}`}
+          className={`min-w-0 flex flex-1 text-left ${documentsExpanded ? "items-start gap-3" : "items-center gap-2"}`}
           aria-expanded={documentsExpanded}
-          aria-label={documentsExpanded ? 'Unterlagen einklappen' : 'Unterlagen ausklappen'}
+          aria-label={documentsExpanded ? autoT('ui_a940c980ecbb') : autoT('ui_f99cf303a3e3')}
         >
           <span
-            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${documentsExpanded ? 'mt-0.5' : ''}`}
+            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${documentsExpanded ? "mt-0.5" : ''}`}
             style={{
               borderColor: 'var(--border-subtle)',
               background: 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
@@ -1480,12 +1460,10 @@ function ProjectForm({
           </span>
           <span className="min-w-0">
             <span className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              <Paperclip className="w-4 h-4" style={{ color: 'var(--viridian)' }} />
-              Konzeption / Unterlagen
-            </span>
+              <Paperclip className="w-4 h-4" style={{ color: 'var(--viridian)' }} />{autoT('ui_69b8dc1598cc')}</span>
             {documentsExpanded && (
               <span className="mt-1 block text-xs" style={{ color: 'var(--text-muted)' }}>
-                {documentSummary || 'Noch keine Unterlagen hinterlegt.'}
+                {documentSummary || autoT('ui_5f0da5391bde')}
               </span>
             )}
           </span>
@@ -1502,9 +1480,7 @@ function ProjectForm({
             borderColor: 'var(--border-subtle)',
             color: 'var(--text-primary)',
           }}
-        >
-          Dateien wählen…
-        </button>
+        >{autoT('ui_68c7239005dd')}</button>
         <input
           ref={documentInputRef}
           type="file"
@@ -1541,12 +1517,8 @@ function ProjectForm({
               </span>
               <div className="min-w-0 flex-1 space-y-3">
                 <div>
-                  <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                    Unterlagen hier ablegen oder direkt ausw e4hlen
-                  </div>
-                  <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    PDF, DOC, DOCX, ODT, RTF oder TXT. Max. {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))} MB pro Datei.
-                  </div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{autoT('ui_434a0de83833')}</div>
+                  <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{autoT('ui_9f2c4aade665')}{Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))}{autoT('ui_5d914735c1b4')}</div>
                 </div>
                 <button
                   type="button"
@@ -1558,9 +1530,7 @@ function ProjectForm({
                     color: 'var(--text-primary)',
                   }}
                 >
-                  <Paperclip className="h-4 w-4" />
-                  Dateien ausw e4hlen
-                </button>
+                  <Paperclip className="h-4 w-4" />{autoT('ui_b97a9a8a68d0')}</button>
               </div>
             </div>
           </div>
@@ -1573,9 +1543,7 @@ function ProjectForm({
                 borderColor: 'var(--border-subtle)',
                 color: 'var(--text-muted)',
               }}
-            >
-              Noch keine Unterlagen hinterlegt.
-              {!initial?.id ? ' Ausgewählte Dateien werden nach dem ersten Speichern hochgeladen.' : ''}
+            >{autoT('ui_5f0da5391bde')}{!initial?.id ? autoT('ui_22e5300c4960') : ''}
             </div>
           ) : null}
 
@@ -1607,11 +1575,11 @@ function ProjectForm({
                         <div className="text-sm font-medium truncate">{document.filename}</div>
                         <div
                           className="text-xs"
-                          style={{ color: markedForRemoval ? 'inherit' : 'var(--text-muted)' }}
+                          style={{ color: markedForRemoval ? "inherit" : "var(--text-muted)" }}
                         >
                           {formatDocumentSize(document.size)}
                           {formatDocumentDate(document.createdAt) ? ` · ${formatDocumentDate(document.createdAt)}` : ''}
-                          {markedForRemoval ? ' · Wird beim Speichern entfernt' : ''}
+                          {markedForRemoval ? autoT('ui_da1ae981971a') : ''}
                         </div>
                       </div>
                     </div>
@@ -1627,9 +1595,7 @@ function ProjectForm({
                             color: 'var(--text-primary)',
                           }}
                         >
-                          <Download className="w-3.5 h-3.5" />
-                          Download
-                        </button>
+                          <Download className="w-3.5 h-3.5" />{autoT('ui_a479c9c34e87')}</button>
                       )}
                       <button
                         type="button"
@@ -1655,7 +1621,7 @@ function ProjectForm({
                               }
                         }
                       >
-                        {markedForRemoval ? 'Behalten' : 'Entfernen'}
+                        {markedForRemoval ? autoT('ui_99f6d4d377ff') : autoT('ui_f78b6376e028')}
                       </button>
                     </div>
                   </div>
@@ -1681,8 +1647,7 @@ function ProjectForm({
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">{document.name}</div>
                       <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {formatDocumentSize(document.size)} · Wird beim Speichern hochgeladen
-                      </div>
+                        {formatDocumentSize(document.size)}{autoT('ui_c606177865bd')}</div>
                     </div>
                   </div>
                   <button
@@ -1696,9 +1661,7 @@ function ProjectForm({
                       background: 'var(--surface-1)',
                       color: 'var(--text-primary)',
                     }}
-                  >
-                    Entfernen
-                  </button>
+                  >{autoT('ui_f78b6376e028')}</button>
                 </div>
               ))}
             </div>
@@ -1710,7 +1673,7 @@ function ProjectForm({
 
   const renderTagSelector = () => (
     <div>
-      <label className="block text-sm font-medium mb-1">Tags (mehrfach)</label>
+      <label className="block text-sm font-medium mb-1">{autoT('ui_482257533f55')}</label>
       <div className="flex flex-wrap gap-2">
         {(tags || []).map((t) => {
           const active = selectedTags.has(t.name);
@@ -1740,9 +1703,7 @@ function ProjectForm({
             onClick={() => setTagCreateOpen(true)}
             className={projectAddActionButtonClassName}
           >
-            <Plus className="h-4 w-4" />
-            Hinzufügen
-          </button>
+            <Plus className="h-4 w-4" />{autoT('ui_f0d37b9d26bb')}</button>
         </div>
       ) : null}
     </div>
@@ -1750,7 +1711,7 @@ function ProjectForm({
 
   const renderCategorySelector = () => (
     <div>
-      <label className="block text-sm font-medium mb-1">Kategorie</label>
+      <label className="block text-sm font-medium mb-1">{autoT('ui_358210386a4f')}</label>
       <div className="flex flex-wrap gap-2">
         {(categories || []).map((c) => {
           const active = String(form.categoryId || '') === c.id;
@@ -1777,9 +1738,7 @@ function ProjectForm({
             onClick={() => setCategoryCreateOpen(true)}
             className={projectAddActionButtonClassName}
           >
-            <Plus className="h-4 w-4" />
-            Hinzufügen
-          </button>
+            <Plus className="h-4 w-4" />{autoT('ui_f0d37b9d26bb')}</button>
         </div>
       ) : null}
     </div>
@@ -1787,7 +1746,7 @@ function ProjectForm({
 
   const renderImageManager = () => (
     <div>
-      <label className="block text-sm font-medium mb-1">Bild</label>
+      <label className="block text-sm font-medium mb-1">{autoT('ui_d42485349869')}</label>
       <input
         ref={fileInputRef}
         type="file"
@@ -1799,7 +1758,7 @@ function ProjectForm({
         <div className="space-y-2">
           <ProtectedImage
             src={form.imageUrl}
-            alt="Projektbild"
+            alt={autoT('ui_ee69bd850b3d')}
             className="w-full h-40 object-cover rounded border"
           />
           <div className="flex gap-2">
@@ -1807,16 +1766,12 @@ function ProjectForm({
               type="button"
               onClick={() => setForm((f) => ({ ...f, imageUrl: '', imageSize: null }))}
               className="px-3 py-1 rounded bg-gray-200 text-gray-700"
-            >
-              Entfernen
-            </button>
+            >{autoT('ui_f78b6376e028')}</button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="px-3 py-1 rounded bg-viridian text-white"
-            >
-              Ersetzen...
-            </button>
+            >{autoT('ui_8d7f8296772e')}</button>
           </div>
         </div>
       ) : (
@@ -1839,24 +1794,18 @@ function ProjectForm({
               <ImagePlus className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="mb-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                Bild hierher ziehen, klicken oder per Strg+V einfuegen
-              </div>
+              <div className="mb-2 font-medium" style={{ color: 'var(--text-primary)' }}>{autoT('ui_cc705d14a7c1')}</div>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className={`${projectSecondaryButtonClassName} project-form-field`}
                 >
-                  <ImagePlus className="h-4 w-4" />
-                  Datei waehlen
-                </button>
+                  <ImagePlus className="h-4 w-4" />{autoT('ui_1c309c12384c')}</button>
               </div>
             </div>
           </div>
-          <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-            Unterstuetzt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
-          </div>
+          <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>{autoT('ui_db04437ca925')}</div>
         </div>
       )}
     </div>
@@ -1939,9 +1888,7 @@ function ProjectForm({
               }}
               className={projectAddActionButtonClassName}
             >
-              <Plus className="h-4 w-4" />
-              Hinzufügen
-            </button>
+              <Plus className="h-4 w-4" />{autoT('ui_f0d37b9d26bb')}</button>
           </div>
         ) : null}
       </div>
@@ -1958,28 +1905,27 @@ function ProjectForm({
         <div className="shrink-0 flex items-start justify-between gap-3 mb-4">
           <div className="space-y-2">
             <h3 className="text-xl font-semibold text-viridian">
-              {initial?.id ? 'Projekt bearbeiten' : 'Neues Projekt'}
+              {initial?.id ? autoT('ui_82ef22dfb102') : autoT('ui_4bc9d33f94ce')}
             </h3>
             <span
               className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
               style={{
                 background: initial?.archived
-                  ? 'color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))'
-                  : 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+                  ? "color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))"
+                  : "color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))",
                 color: initial?.archived
-                  ? 'color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))'
-                  : 'var(--viridian)',
+                  ? "color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))"
+                  : "var(--viridian)",
               }}
-            >
-              Status: {initial?.archived ? 'Archiviert' : 'Aktiv'}
+            >{autoT('ui_11dc9e195292')}{initial?.archived ? autoT('ui_7d6b45e9c890') : autoT('ui_16a766caf92d')}
             </span>
           </div>
           <button
             type="button"
             onClick={handleClose}
             className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-            title="Schließen"
-            aria-label="Schließen"
+            title={autoT('ui_44424b18700e')}
+            aria-label={autoT('ui_44424b18700e')}
           >
             <XIcon className="w-5 h-5" />
           </button>
@@ -1995,19 +1941,17 @@ function ProjectForm({
               className="flex items-center gap-2 text-sm font-medium text-viridian hover:underline"
             >
               <Layers className="w-4 h-4" />
-              {showTemplates ? 'Vorlagen ausblenden' : 'Vorlage auswählen'}
+              {showTemplates ? autoT('ui_7ab64d33d06d') : autoT('ui_78704e7ad37d')}
               <span className="text-xs text-gray-500">
-                {selectedTemplateKey ? '(Vorlage ausgewählt)' : ''}
+                {selectedTemplateKey ? autoT('ui_5f38ce090c08') : ''}
               </span>
             </button>
             {showTemplates && (
               <div className="mt-3">
                 <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="text-xs text-gray-600">
-                    Wähle eine Vorlage, um Felder vorzubelegen.
-                  </div>
+                  <div className="text-xs text-gray-600">{autoT('ui_2386e1a1c341')}</div>
                   {applyingTemplate && (
-                    <div className="text-xs text-gray-500">Übernehme Vorlage…</div>
+                    <div className="text-xs text-gray-500">{autoT('ui_49454a2df970')}</div>
                   )}
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2">
@@ -2028,20 +1972,18 @@ function ProjectForm({
                       });
                     }}
                     className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden flex items-center justify-center text-sm px-3 ${
-                      selectedTemplateKey === '' ? 'border-viridian ring-2 ring-viridian/30' : 'border-gray-200'
+                      selectedTemplateKey === '' ? "border-viridian ring-2 ring-viridian/30" : "border-gray-200"
                     }`}
                     disabled={applyingTemplate}
-                    title="Ohne Vorlage"
-                  >
-                    Ohne Vorlage
-                  </button>
+                    title={autoT('ui_8165a84b8a72')}
+                  >{autoT('ui_8165a84b8a72')}</button>
                   {PROJECT_TEMPLATES.map((tpl) => (
                     <button
                       key={tpl.key}
                       type="button"
                       onClick={() => void applyTemplate(tpl)}
                       className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden relative ${
-                        selectedTemplateKey === tpl.key ? 'border-viridian ring-2 ring-viridian/30' : 'border-gray-200'
+                        selectedTemplateKey === tpl.key ? "border-viridian ring-2 ring-viridian/30" : "border-gray-200"
                       }`}
                       disabled={applyingTemplate}
                       title={tpl.label}
@@ -2070,8 +2012,8 @@ function ProjectForm({
                     onClick={() => void applyTemplate(t)}
                     className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden relative ${
                       selectedTemplateKey === `org:${t.id}`
-                        ? 'border-viridian ring-2 ring-viridian/30'
-                        : 'border-gray-200'
+                        ? "border-viridian ring-2 ring-viridian/30"
+                        : "border-gray-200"
                     }`}
                     disabled={applyingTemplate}
                     title={t.title}
@@ -2091,7 +2033,7 @@ function ProjectForm({
                         {t.title}
                       </div>
                       <div className="text-white/90 text-[11px] leading-tight drop-shadow line-clamp-2">
-                        {t.categoryName ? `Kategorie: ${t.categoryName}` : 'Vorlage'}
+                        {t.categoryName ? `Kategorie: ${t.categoryName}` : autoT('ui_4271557d9011')}
                         {t.org?.name ? ` · ${t.org.name}` : ''}
                       </div>
                     </div>
@@ -2110,7 +2052,7 @@ function ProjectForm({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Titel *</label>
+                    <label className="block text-sm font-medium mb-1">{autoT('ui_a1710a47def7')}</label>
                     <input
                       ref={titleInputRef}
                       value={form.title || ''}
@@ -2123,15 +2065,15 @@ function ProjectForm({
                       }}
                       required
                       className={`${projectFieldClassName} ${
-                        showTitleValidation && isTitleMissing ? 'project-form-field-invalid' : ''
+                        showTitleValidation && isTitleMissing ? "project-form-field-invalid" : ''
                       }`}
                     />
                     {showTitleValidation && isTitleMissing ? (
-                      <p className="mt-1 text-xs text-red-600">Bitte einen Projekttitel eingeben.</p>
+                      <p className="mt-1 text-xs text-red-600">{autoT('ui_59388bd303ec')}</p>
                     ) : null}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Typ *</label>
+                    <label className="block text-sm font-medium mb-1">{autoT('ui_79a5c2576972')}</label>
                     <select
                       value={form.type || 'project_open'}
                       onChange={(e) => {
@@ -2145,16 +2087,16 @@ function ProjectForm({
                       required
                       className={projectFieldClassName}
                     >
-                      <option value="open_door">Offene Tür</option>
-                      <option value="project_open">Projekt (offen)</option>
-                      <option value="project_closed">Projekt (geschlossen)</option>
-                      <option value="event">Veranstaltung</option>
-                      <option value="outreach">Aufsuchend</option>
+                      <option value="open_door">{autoT('ui_a80778b6b148')}</option>
+                      <option value="project_open">{autoT('ui_00d882fbb5d4')}</option>
+                      <option value="project_closed">{autoT('ui_8f256393653e')}</option>
+                      <option value="event">{autoT('ui_e6fdb4cc8ce5')}</option>
+                      <option value="outreach">{autoT('ui_3c1538690eb7')}</option>
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Zielgruppe</label>
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_10f540533857')}</label>
                   <input
                     value={form.targetGroup || ''}
                     onChange={(e) => update('targetGroup', e.target.value)}
@@ -2170,7 +2112,7 @@ function ProjectForm({
               {renderSectionHeader('Zeit')}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Startzeit</label>
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_4aa533c84189')}</label>
                   <input
                     type="time"
                     value={form.defaultStartTime || ''}
@@ -2179,7 +2121,7 @@ function ProjectForm({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Endzeit</label>
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_352471b9c9cc')}</label>
                   <input
                     type="time"
                     value={form.defaultEndTime || ''}
@@ -2197,7 +2139,7 @@ function ProjectForm({
               <div className="grid grid-cols-1 gap-4 items-start">
                 {renderImageManager()}
                 <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
-                  <label className="block text-sm font-medium mb-2" htmlFor="project-color">Farbe</label>
+                  <label className="block text-sm font-medium mb-2" htmlFor="project-color">{autoT('ui_89b7957dae43')}</label>
                   <ColorPicker
                     id="project-color"
                     value={(form.color as string) || '#7aa39a'}
@@ -2211,17 +2153,17 @@ function ProjectForm({
               {renderSectionHeader('Team & Rollen')}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {renderStaffSelectorCard({
-                  label: 'Mitarbeitende',
+                  label: autoT('ui_93d76ef57f64'),
                   field: 'defaultStaff',
                   roles: ['lead', 'employee'],
-                  emptyLabel: 'Keine Mitarbeitenden verfügbar.',
+                  emptyLabel: autoT('ui_05425eed16e6'),
                   createRole: 'employee',
                 })}
                 {renderStaffSelectorCard({
-                  label: 'Ehrenamtliche & Helfer',
+                  label: autoT('ui_03c0ef3f0a42'),
                   field: 'defaultVolunteers',
                   roles: ['volunteer', 'helper'],
-                  emptyLabel: 'Keine Ehrenamtlichen oder Helfer verfügbar.',
+                  emptyLabel: autoT('ui_191d98a5f4a2'),
                   createRole: 'volunteer',
                 })}
               </div>
@@ -2236,26 +2178,26 @@ function ProjectForm({
           <section className={projectSectionClassName} style={projectSectionStyle}>
             {renderSectionHeader('Beschreibung')}
             <div>
-              <label className="block text-sm font-medium mb-1">Beschreibung</label>
+              <label className="block text-sm font-medium mb-1">{autoT('ui_b3c8defcacc0')}</label>
               <RichTextEditor
                 value={normalizeProjectDescriptionHtml(form.description)}
                 onChange={handleDescriptionChange}
-                placeholder="Beschreibung eingeben..."
+                placeholder={autoT('ui_76aff3f51c45')}
                 containerProps={{ className: 'project-rich-text-editor' }}
               >
                 <Toolbar>
-                  <BtnUndo title="Rückgängig" />
-                  <BtnRedo title="Wiederholen" />
+                  <BtnUndo title={autoT('ui_b626f2e45925')} />
+                  <BtnRedo title={autoT('ui_6a36d3b72de1')} />
                   <Separator />
-                  <BtnStyles title="Format" />
+                  <BtnStyles title={autoT('ui_041a5dec481d')} />
                   <Separator />
-                  <BtnBold title="Fett" />
-                  <BtnItalic title="Kursiv" />
+                  <BtnBold title={autoT('ui_acf4dbde9afe')} />
+                  <BtnItalic title={autoT('ui_8a921708bc72')} />
                   <Separator />
-                  <BtnBulletList title="Liste" />
-                  <BtnNumberedList title="Nummerierte Liste" />
+                  <BtnBulletList title={autoT('ui_4231be174728')} />
+                  <BtnNumberedList title={autoT('ui_2f862a25f3a2')} />
                   <Separator />
-                  <BtnClearFormatting title="Formatierung entfernen" />
+                  <BtnClearFormatting title={autoT('ui_938bacda8725')} />
                 </Toolbar>
               </RichTextEditor>
             </div>
@@ -2270,12 +2212,12 @@ function ProjectForm({
                 type="button"
                 onClick={handleClose}
                 className="inline-flex md:hidden items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-                title="Abbrechen"
-                aria-label="Abbrechen"
+                title={autoT('ui_07af7cb30fca')}
+                aria-label={autoT('ui_07af7cb30fca')}
               >
                 <XIcon className="w-5 h-5" />
               </button>
-              <span className="tooltip-bubble">Abbrechen</span>
+              <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
             {initial?.id && (
               <ArchiveRestoreControls
@@ -2295,12 +2237,12 @@ function ProjectForm({
                 onClick={handleSave}
                 disabled={isTitleMissing || saving || applyingTemplate || archiving || deleting}
                 className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
-                title="Speichern"
-                aria-label="Speichern"
+                title={autoT('ui_70b73bbc118d')}
+                aria-label={autoT('ui_70b73bbc118d')}
               >
                 <SaveIcon className="w-5 h-5" />
               </button>
-              <span className="tooltip-bubble">Speichern</span>
+              <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
             </span>
           </div>
         </div>
@@ -2323,12 +2265,12 @@ function ProjectForm({
               next.add(name);
               update('tag', Array.from(next).join(', '));
               showToast(
-                existing?.id ? `Tag "${name}" wurde zugeordnet.` : `Tag "${name}" hinzugefügt.`,
+                existing?.id ? `Tag "${name}" wurde zugeordnet.` : autoT('ui_5a6837b1f831', { value0: name }),
                 existing?.id ? { type: 'info' } : undefined,
               );
               setTagCreateOpen(false);
             } catch {
-              showToast('Tag konnte nicht angelegt werden.', { type: 'error' });
+              showToast(autoT('ui_2cdd45e69756'), { type: 'error' });
             }
           }}
         />
@@ -2353,12 +2295,12 @@ function ProjectForm({
               showToast(
                 existing?.id
                   ? `Kategorie "${name}" wurde zugeordnet.`
-                  : `Kategorie "${name}" hinzugefügt.`,
+                  : autoT('ui_1335fd92fa57', { value0: name }),
                 existing?.id ? { type: 'info' } : undefined,
               );
               setCategoryCreateOpen(false);
             } catch {
-              showToast('Kategorie konnte nicht angelegt werden.', { type: 'error' });
+              showToast(autoT('ui_0e7e0d8eb6c9'), { type: 'error' });
             }
           }}
         />
@@ -2390,10 +2332,10 @@ function ProjectForm({
                     : [staffCreateState.role],
               });
               mergeNameIntoField(staffCreateState.field, created.name);
-              showToast(`Teammitglied "${created.name}" hinzugefügt.`);
+              showToast(autoT('ui_4e679520fcfa', { value0: created.name }));
               setStaffCreateState((current) => ({ ...current, open: false }));
             } catch {
-              showToast('Teammitglied konnte nicht angelegt werden.', { type: 'error' });
+              showToast(autoT('ui_0d661fd89ebb'), { type: 'error' });
             }
           }}
         />
@@ -2412,9 +2354,7 @@ function ProjectForm({
               type="button"
               className="px-3 py-2 rounded bg-viridian text-white"
               onClick={() => setImageIssue((s) => ({ ...s, open: false }))}
-            >
-              Ok
-            </button>
+            >{autoT('ui_b0a98216a324')}</button>
           </div>
         </div>
       </Modal>
@@ -2432,9 +2372,7 @@ function ProjectForm({
               type="button"
               className="px-3 py-2 rounded bg-viridian text-white"
               onClick={() => setDocumentIssue((s) => ({ ...s, open: false }))}
-            >
-              Ok
-            </button>
+            >{autoT('ui_b0a98216a324')}</button>
           </div>
         </div>
       </Modal>
@@ -2601,13 +2539,12 @@ export default function Projects() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6 mt-1">
-        <h2 className="text-3xl font-bold text-viridian">Angebote & Projekte</h2>
+        <h2 className="text-3xl font-bold text-viridian">{autoT('ui_44772dcbbde7')}</h2>
         <button
           onClick={() => setModal({ mode: 'create', requestId: createClientRequestId() })}
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-viridian bg-viridian px-4 py-2 text-sm font-medium text-white transition-colors hover:border-cambridge-blue hover:bg-cambridge-blue"
         >
-          <Plus className="h-4 w-4" /> Neues Projekt
-        </button>
+          <Plus className="h-4 w-4" />{autoT('ui_4bc9d33f94ce')}</button>
       </div>
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -2617,7 +2554,7 @@ export default function Projects() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Suchen…"
+              placeholder={autoT('ui_d26ce4a1305c')}
               className="w-full rounded-xl border border-gray-300 py-2 pl-9 pr-10"
             />
             {search.trim() && (
@@ -2625,8 +2562,8 @@ export default function Projects() {
                 type="button"
                 onClick={() => setSearch('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                aria-label="Suche löschen"
-                title="Suche löschen"
+                aria-label={autoT('ui_1d33e9091bc9')}
+                title={autoT('ui_1d33e9091bc9')}
               >
                 <XCircle className="h-4 w-4" />
               </button>
@@ -2636,12 +2573,12 @@ export default function Projects() {
             type="button"
             onClick={() => setStarredFirst((current) => !current)}
             aria-pressed={starredFirst}
-            aria-label={starredFirst ? 'Highlights zuerst deaktivieren' : 'Highlights zuerst aktivieren'}
-            title={starredFirst ? 'Highlights zuerst deaktivieren' : 'Highlights zuerst aktivieren'}
+            aria-label={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
+            title={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
             className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${
               starredFirst
-                ? 'border-yellow-300 bg-yellow-100 text-yellow-700 shadow-sm'
-                : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                ? "border-yellow-300 bg-yellow-100 text-yellow-700 shadow-sm"
+                : "border-gray-300 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             }`}
           >
             {starredFirst ? <Star className="h-4 w-4" /> : <StarOff className="h-4 w-4" />}
@@ -2651,8 +2588,7 @@ export default function Projects() {
               checked={showArchived}
               onChange={setShowArchived}
               label={
-                <span>
-                  Archiv <span className="text-xs text-gray-500">({archivedCount})</span>
+                <span>{autoT('ui_d9431e38c8b6')}<span className="text-xs text-gray-500">({archivedCount})</span>
                 </span>
               }
             />
@@ -2660,7 +2596,7 @@ export default function Projects() {
         </div>
 
         <div className="hidden md:flex items-center gap-3 self-start md:self-auto">
-          <span className="text-sm font-medium text-gray-700">Ansicht</span>
+          <span className="text-sm font-medium text-gray-700">{autoT('ui_5c388792c607')}</span>
           <div className="inline-flex items-center rounded-xl border border-gray-300 bg-white p-1 shadow-sm">
             <button
               type="button"
@@ -2668,36 +2604,32 @@ export default function Projects() {
               aria-pressed={desktopView === 'grid'}
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 desktopView === 'grid'
-                  ? 'bg-viridian text-white shadow-sm'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? "bg-viridian text-white shadow-sm"
+                  : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <LayoutGrid className="w-4 h-4" />
-              Karten
-            </button>
+              <LayoutGrid className="w-4 h-4" />{autoT('ui_295ce85597c5')}</button>
             <button
               type="button"
               onClick={() => setDesktopView('list')}
               aria-pressed={desktopView === 'list'}
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 desktopView === 'list'
-                  ? 'bg-viridian text-white shadow-sm'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? "bg-viridian text-white shadow-sm"
+                  : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <List className="w-4 h-4" />
-              Liste
-            </button>
+              <List className="w-4 h-4" />{autoT('ui_4231be174728')}</button>
           </div>
         </div>
       </div>
 
       {isLoading && !data ? (
-        <div className="text-gray-500">Lade…</div>
+        <div className="text-gray-500">{autoT('ui_8877cfeced3f')}</div>
       ) : (
         <div
           className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${
-            isDesktopListView ? 'md:grid-cols-1' : 'lg:grid-cols-3'
+            isDesktopListView ? "md:grid-cols-1" : "lg:grid-cols-3"
           }`}
         >
           {sortedProjects.map((p) => {
@@ -2761,7 +2693,7 @@ export default function Projects() {
               />
             );
           })}
-          {sortedProjects.length === 0 && <div className="text-gray-500">Keine Projekte gefunden.</div>}
+          {sortedProjects.length === 0 && <div className="text-gray-500">{autoT('ui_ecf08df8331a')}</div>}
         </div>
       )}
 
@@ -2787,7 +2719,7 @@ export default function Projects() {
               }
 
               if (!savedProject?.id) {
-                throw new Error('Projekt konnte nicht gespeichert werden.');
+                throw new Error(autoT('ui_2bbd88460037'));
               }
 
               const documentResult = await syncProjectDocuments(savedProject.id, submission);
@@ -2795,19 +2727,19 @@ export default function Projects() {
 
               if (documentResult.removedFailed || documentResult.uploadedFailed) {
                 showToast(
-                  `${modal.mode === 'create' ? 'Projekt erstellt' : 'Projekt aktualisiert'}. ${documentResult.uploadedSuccess} Dateien hochgeladen, ${documentResult.removedSuccess} entfernt. Einige Dokumentaktionen sind fehlgeschlagen.`,
+                  autoT('ui_726210fb4613', { value0: modal.mode === 'create' ? autoT('ui_0699464a8d98') : autoT('ui_8ed74a6d7e2e'), value1: documentResult.uploadedSuccess, value2: documentResult.removedSuccess }),
                   { type: 'error', durationMs: 5500 },
                 );
               } else if (documentResult.uploadedSuccess || documentResult.removedSuccess) {
                 showToast(
-                  `${modal.mode === 'create' ? 'Projekt erstellt' : 'Projekt aktualisiert'}. ${documentResult.uploadedSuccess} Dateien hochgeladen, ${documentResult.removedSuccess} entfernt.`,
+                  autoT('ui_f08e2c468069', { value0: modal.mode === 'create' ? autoT('ui_0699464a8d98') : autoT('ui_8ed74a6d7e2e'), value1: documentResult.uploadedSuccess, value2: documentResult.removedSuccess }),
                   { type: 'success' },
                 );
               } else {
-                showToast(modal.mode === 'create' ? 'Projekt erstellt' : 'Projekt aktualisiert');
+                showToast(modal.mode === 'create' ? autoT('ui_0699464a8d98') : autoT('ui_8ed74a6d7e2e'));
               }
             } catch (error) {
-              const message = error instanceof Error ? error.message : 'Projekt konnte nicht gespeichert werden.';
+              const message = error instanceof Error ? error.message : autoT('ui_2bbd88460037');
               showToast(message, { type: 'error', durationMs: 5000 });
             } finally {
               setModalBusy(false);

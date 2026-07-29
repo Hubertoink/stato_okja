@@ -4,13 +4,15 @@ import { Clock3, Save, Trash2, X } from 'lucide-react';
 import type { OrganizationClosureDay } from '@/lib/orgs';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { ModalBackdrop } from '@/components/Modal';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 function formatDateLabel(date: string): string {
   const [year, month, day] = date.split('-').map((value) => Number(value));
   const parsed = new Date(year, (month || 1) - 1, day || 1);
   if (Number.isNaN(parsed.getTime())) return date;
 
-  return new Intl.DateTimeFormat('de-DE', {
+  return new Intl.DateTimeFormat(getCurrentIntlLocale(), {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
@@ -56,7 +58,7 @@ export default function CalendarClosureModal({
     >
       <ModalBackdrop className="modal-overlay bg-black/45" />
       <div
-        aria-label="Einrichtung geschlossen"
+        aria-label={autoT('ui_afd5e7713414')}
         aria-modal="true"
         className="calendar-closure-modal w-full rounded-t-2xl border px-4 py-4 shadow-2xl md:max-w-md md:rounded-2xl md:px-6 md:py-6"
         style={{
@@ -70,9 +72,7 @@ export default function CalendarClosureModal({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-faint)' }}>
-              Einrichtung geschlossen
-            </div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-faint)' }}>{autoT('ui_afd5e7713414')}</div>
             <h3 className="mt-1 text-lg font-semibold">{dateLabel}</h3>
           </div>
           <button
@@ -80,16 +80,14 @@ export default function CalendarClosureModal({
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
             style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
             onClick={onClose}
-            aria-label="Schließen"
-            title="Schließen"
+            aria-label={autoT('ui_44424b18700e')}
+            title={autoT('ui_44424b18700e')}
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-          Markiere diesen Kalendertag als geschlossen. Optional kannst du eine Schließzeit für Teilschließungen hinterlegen.
-        </p>
+        <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{autoT('ui_aaa8dd1e7161')}</p>
 
         <label className="mt-5 flex items-center gap-3 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
           <input
@@ -98,16 +96,14 @@ export default function CalendarClosureModal({
             onChange={(event) => setFullDay(event.target.checked)}
             className="h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
           />
-          <span className="text-sm font-medium">Ganztägig geschlossen</span>
+          <span className="text-sm font-medium">{autoT('ui_865b5487eec6')}</span>
         </label>
 
         {!fullDay && (
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="mb-2 inline-flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                <Clock3 className="h-4 w-4" />
-                Von
-              </div>
+                <Clock3 className="h-4 w-4" />{autoT('ui_a4b078f9eb7b')}</div>
               <input
                 type="time"
                 value={from}
@@ -122,9 +118,7 @@ export default function CalendarClosureModal({
             </label>
             <label className="rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="mb-2 inline-flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                <Clock3 className="h-4 w-4" />
-                Bis
-              </div>
+                <Clock3 className="h-4 w-4" />{autoT('ui_0afaa0e566a1')}</div>
               <input
                 type="time"
                 value={to}
@@ -140,9 +134,7 @@ export default function CalendarClosureModal({
           </div>
         )}
 
-        <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Diese Markierung blockiert keine Aktivitäten. Sie dient nur der Kalenderdarstellung und der optionalen Statistikfilterung.
-        </div>
+        <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>{autoT('ui_4275a5b67e40')}</div>
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -159,7 +151,7 @@ export default function CalendarClosureModal({
                 disabled={deleting}
               >
                 <Trash2 className="h-4 w-4" />
-                {deleting ? 'Lösche…' : 'Schließung entfernen'}
+                {deleting ? autoT('ui_2b5a5dd9afbb') : autoT('ui_c7728aae980f')}
               </button>
             ) : null}
           </div>
@@ -169,9 +161,7 @@ export default function CalendarClosureModal({
               className="inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors"
               style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
               onClick={onClose}
-            >
-              Abbrechen
-            </button>
+            >{autoT('ui_07af7cb30fca')}</button>
             <button
               type="button"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-viridian px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cambridge-blue disabled:cursor-not-allowed disabled:opacity-60"
@@ -179,7 +169,7 @@ export default function CalendarClosureModal({
               onClick={() => onSave(fullDay ? { from: null, to: null } : { from, to })}
             >
               <Save className="h-4 w-4" />
-              {saving ? 'Speichere…' : closureDay ? 'Aktualisieren' : 'Speichern'}
+              {saving ? autoT('ui_b202bdfb661a') : closureDay ? "Aktualisieren" : autoT('ui_70b73bbc118d')}
             </button>
           </div>
         </div>

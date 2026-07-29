@@ -2,8 +2,9 @@ import type { ReactNode } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from './Button';
 import { EmptyState } from './EmptyState';
+import { autoT } from '@/i18n/auto';
 
-export function LoadingState({ label = 'Daten werden geladen…' }: { label?: string }) {
+export function LoadingState({ label = autoT('ui_ca66f165dc36') }: { label?: string }) {
   return (
     <div className="flex min-h-28 items-center justify-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 text-sm text-[var(--text-secondary)]">
       <Loader2 className="h-4 w-4 animate-spin text-viridian" />
@@ -15,7 +16,7 @@ export function LoadingState({ label = 'Daten werden geladen…' }: { label?: st
 export function ErrorState({
   action,
   description = 'Bitte versuche es erneut.',
-  title = 'Daten konnten nicht geladen werden',
+  title = autoT('ui_9d933cd9b4bb'),
 }: {
   action?: { label: string; onClick: () => void };
   description?: ReactNode;

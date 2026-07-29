@@ -3,6 +3,7 @@ import Modal from '@/components/Modal';
 import { listOrgs, createOrgApi, type OrgDto } from '@/lib/orgs';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
+import { autoT } from '@/i18n/auto';
 
 export default function AssignOrgModal({
   open,
@@ -116,13 +117,13 @@ export default function AssignOrgModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Organisation zuweisen – ${userName}`} maxWidth="md">
+    <Modal open={open} onClose={onClose} title={autoT('ui_3c189622881d', { value0: userName })} maxWidth="md">
       <div className="space-y-3">
         <input
           value={q}
           onChange={(e)=> setQ(e.target.value)}
           className="w-full border rounded px-3 py-2"
-          placeholder="Organisation suchen…"
+          placeholder={autoT('ui_94116b877ab6')}
           autoFocus
         />
         {/* Quick create toggle */}
@@ -131,25 +132,25 @@ export default function AssignOrgModal({
             type="button"
             className="text-sm text-viridian underline"
             onClick={()=> setCreating(v=>!v)}
-          >{creating ? 'Neue Organisation verbergen' : 'Neue Organisation erstellen'}</button>
+          >{creating ? autoT('ui_50a05604e20c') : autoT('ui_7080a85ff9d5')}</button>
         </div>
         {creating && (
           <div className="rounded border p-3 bg-white">
-            <label className="block text-sm font-medium mb-1">Name</label>
+            <label className="block text-sm font-medium mb-1">{autoT('ui_709a23220f2c')}</label>
             <input
               value={newName}
               onChange={(e)=> setNewName(e.target.value)}
               onKeyDown={(e)=> { if (e.key === 'Enter') { e.preventDefault(); handleCreate(); } }}
               className="w-full border rounded px-3 py-2 mb-2"
-              placeholder="z. B. JH Hochstätt"
+              placeholder={autoT('ui_62c2a0bd008d')}
             />
-            <label className="block text-sm font-medium mb-1">Übergeordnet</label>
+            <label className="block text-sm font-medium mb-1">{autoT('ui_734823106a0b')}</label>
             <select
               value={(user?.role !== 'superadmin' && !newParentId) ? ((user?.orgId as string | undefined) ?? '') : newParentId}
               onChange={(e)=> setNewParentId(e.target.value)}
               className="w-full border rounded px-3 py-2"
             >
-              {user?.role === 'superadmin' && <option value="">— Top-Level —</option>}
+              {user?.role === 'superadmin' && <option value="">{autoT('ui_b2e9a7616515')}</option>}
               {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
             <div className="mt-3 flex items-center gap-2">
@@ -158,12 +159,12 @@ export default function AssignOrgModal({
                 onClick={handleCreate}
                 disabled={!newName.trim()}
                 className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
-              >Erstellen</button>
+              >{autoT('ui_dbc9fb8c7424')}</button>
               <button
                 type="button"
                 onClick={()=> setCreating(false)}
                 className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
-              >Abbrechen</button>
+              >{autoT('ui_07af7cb30fca')}</button>
             </div>
           </div>
         )}
@@ -171,10 +172,10 @@ export default function AssignOrgModal({
         {/* Recently used */}
         {recentOrgs.length > 0 && (
           <div>
-            <div className="text-xs text-gray-500 mb-1">Zuletzt verwendet</div>
+            <div className="text-xs text-gray-500 mb-1">{autoT('ui_72885290a91b')}</div>
             <div className="flex flex-wrap gap-2">
               {recentOrgs.map(o => (
-                <button key={o.id} className={`px-2 py-1 rounded-full text-xs border ${selected===o.id?'bg-cambridge-blue text-white':'bg-white text-gray-700'}`} onClick={()=> setSelected(o.id)}>{o.name}</button>
+                <button key={o.id} className={`px-2 py-1 rounded-full text-xs border ${selected===o.id?"bg-cambridge-blue text-white":"bg-white text-gray-700"}`} onClick={()=> setSelected(o.id)}>{o.name}</button>
               ))}
             </div>
           </div>
@@ -182,8 +183,8 @@ export default function AssignOrgModal({
 
         {/* List */}
         <div className="max-h-[40vh] overflow-y-auto scrollbar-hide rounded border divide-y">
-          {loading && <div className="p-3 text-gray-500">Lade Organisationen…</div>}
-          {!loading && filtered.length === 0 && <div className="p-3 text-gray-500">Keine Treffer</div>}
+          {loading && <div className="p-3 text-gray-500">{autoT('ui_240c23fcdd31')}</div>}
+          {!loading && filtered.length === 0 && <div className="p-3 text-gray-500">{autoT('ui_921d42241b62')}</div>}
           {!loading && filtered.map(o => (
             <label key={o.id} className="flex items-center gap-2 px-3 py-2 cursor-pointer active:bg-azure-web">
               <input type="radio" className="accent-viridian" checked={selected===o.id} onChange={()=> setSelected(o.id)} />
@@ -196,8 +197,8 @@ export default function AssignOrgModal({
         </div>
 
         <div className="mt-3 sticky bottom-0 bg-gray-50 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 flex items-center justify-end gap-2 border-t">
-          <button className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors" onClick={onClose}>Abbrechen</button>
-          <button className="px-3 py-1.5 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 transition-colors" disabled={selected === (currentOrgId ?? null)} onClick={handleAssign}>Zuweisen</button>
+          <button className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors" onClick={onClose}>{autoT('ui_07af7cb30fca')}</button>
+          <button className="px-3 py-1.5 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 transition-colors" disabled={selected === (currentOrgId ?? null)} onClick={handleAssign}>{autoT('ui_a4ed9add9edd')}</button>
         </div>
       </div>
     </Modal>

@@ -8,6 +8,7 @@ import { useCreateActivity } from '@/lib/activities';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useToast } from '@/components/Toast';
 import type { TallySession } from './useQuickTallySession';
+import { autoT } from '@/i18n/auto';
 
 interface QuickTallyReviewModalProps {
   session: TallySession;
@@ -168,11 +169,11 @@ export default function QuickTallyReviewModal({
         type: project?.type || 'open_door',
       } as Record<string, unknown>);
 
-      showToast('Aktivität erfolgreich gespeichert!', { type: 'success' });
+      showToast(autoT('ui_62fbe1c2ddfe'), { type: 'success' });
       onSaved();
     } catch (error) {
       console.error('Failed to save activity:', error);
-      showToast('Fehler beim Speichern. Bitte erneut versuchen.', { type: 'error' });
+      showToast(autoT('ui_668612cbdcd6'), { type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -185,7 +186,7 @@ export default function QuickTallyReviewModal({
         style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
       >
         <div className="sticky top-0 border-b px-4 md:px-6 py-4 flex items-center justify-between" style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)' }}>
-          <h3 className="text-xl font-bold text-viridian">Erfassung abschließen</h3>
+          <h3 className="text-xl font-bold text-viridian">{autoT('ui_f6d3cc8bec17')}</h3>
           <button
             type="button"
             onClick={onClose}
@@ -215,22 +216,22 @@ export default function QuickTallyReviewModal({
           </div>
 
           <div className="bg-mint-green rounded-lg p-4">
-            <h4 className="font-semibold text-viridian mb-3">Zusammenfassung</h4>
+            <h4 className="font-semibold text-viridian mb-3">{autoT('ui_dc230696907d')}</h4>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div className="summary-metric-card py-2">
-                <div className="summary-metric-label text-xs">♂ Männlich</div>
+                <div className="summary-metric-label text-xs">{autoT('ui_37c1e4b405c4')}</div>
                 <div className="text-xl font-bold text-viridian">{totals.m}</div>
               </div>
               <div className="summary-metric-card py-2">
-                <div className="summary-metric-label text-xs">♀ Weiblich</div>
+                <div className="summary-metric-label text-xs">{autoT('ui_2d18dfa3e9fd')}</div>
                 <div className="text-xl font-bold text-viridian">{totals.w}</div>
               </div>
               <div className="summary-metric-card py-2">
-                <div className="summary-metric-label text-xs">⚧ Divers</div>
+                <div className="summary-metric-label text-xs">{autoT('ui_d4deea2b7d14')}</div>
                 <div className="text-xl font-bold text-viridian">{totals.d}</div>
               </div>
               <div className="summary-metric-card-total py-2">
-                <div className="summary-metric-label text-xs">Gesamt</div>
+                <div className="summary-metric-label text-xs">{autoT('ui_2a8a291a83fb')}</div>
                 <div className="text-2xl font-bold text-viridian">{totals.total}</div>
               </div>
             </div>
@@ -238,7 +239,7 @@ export default function QuickTallyReviewModal({
 
           {cohortBreakdown.length > 0 && (
             <div>
-              <h4 className="font-semibold text-viridian mb-2">Nach Alterskohorte</h4>
+              <h4 className="font-semibold text-viridian mb-2">{autoT('ui_acf8763813f6')}</h4>
               <div className="space-y-1">
                 {cohortBreakdown.map(({ cohort, counts, total }) => (
                   <div
@@ -249,13 +250,12 @@ export default function QuickTallyReviewModal({
                     <div>
                       <span className="font-medium">{cohort.name}</span>
                       <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
-                        ({cohort.minAge}–{cohort.maxAge} J.)
-                      </span>
+                        ({cohort.minAge}–{cohort.maxAge}{autoT('ui_a89b17fb6a17')}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <span title="Männlich">m {counts.m}</span>
-                      <span title="Weiblich">w {counts.w}</span>
-                      <span title="Divers">d {counts.d}</span>
+                      <span title={autoT('ui_897ccce3f38f')}>{autoT('ui_6b0d31c0d563')}{' '}{counts.m}</span>
+                      <span title={autoT('ui_aeff6199c838')}>{autoT('ui_aff024fe4ab0')}{' '}{counts.w}</span>
+                      <span title={autoT('ui_9a2dd276e60f')}>{autoT('ui_3c363836cf4e')}{' '}{counts.d}</span>
                       <span className="font-bold text-viridian">= {total}</span>
                     </div>
                   </div>
@@ -265,7 +265,7 @@ export default function QuickTallyReviewModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">Startzeit</label>
+            <label className="block text-sm font-medium mb-1">{autoT('ui_4aa533c84189')}</label>
             <input
               type="time"
               value={startTime}
@@ -276,7 +276,7 @@ export default function QuickTallyReviewModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Endzeit</label>
+            <label className="block text-sm font-medium mb-1">{autoT('ui_352471b9c9cc')}</label>
             <input
               type="time"
               value={endTime}
@@ -287,12 +287,12 @@ export default function QuickTallyReviewModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Titel (optional)</label>
+            <label className="block text-sm font-medium mb-1">{autoT('ui_81bb3e27efd1')}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="z. B. Werkraum, Offene Tür"
+              placeholder={autoT('ui_b2459f8b2a18')}
               className="w-full border rounded-lg px-4 py-3"
               style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
             />
@@ -300,7 +300,7 @@ export default function QuickTallyReviewModal({
 
           {!isOpenDoor && (categories || []).length > 0 && (
             <div>
-              <label className="block text-sm font-medium mb-2">Kategorien</label>
+              <label className="block text-sm font-medium mb-2">{autoT('ui_4e1e15e17610')}</label>
               <div className="flex flex-wrap gap-2">
                 {(categories || []).map((c) => {
                   const active = selectedCategoryIds.includes(c.id);
@@ -328,7 +328,7 @@ export default function QuickTallyReviewModal({
 
           {(tags || []).length > 0 && (
             <div>
-              <label className="block text-sm font-medium mb-2">Tags</label>
+              <label className="block text-sm font-medium mb-2">{autoT('ui_848eed0fbd54')}</label>
               <div className="flex flex-wrap gap-2">
                 {(tags || []).map((t) => {
                   const active = selectedTagIds.includes(t.id);
@@ -360,7 +360,7 @@ export default function QuickTallyReviewModal({
               : s.role === 'lead' || s.role === 'employee'
           ).length > 0 && (
             <div>
-              <label className="block text-sm font-medium mb-2">Mitarbeitende</label>
+              <label className="block text-sm font-medium mb-2">{autoT('ui_93d76ef57f64')}</label>
               <div className="flex flex-wrap gap-2">
                 {(staff || [])
                   .filter((s) =>
@@ -399,7 +399,7 @@ export default function QuickTallyReviewModal({
               : s.role === 'volunteer' || s.role === 'helper'
           ).length > 0 && (
             <div>
-              <label className="block text-sm font-medium mb-2">Ehrenamtliche</label>
+              <label className="block text-sm font-medium mb-2">{autoT('ui_4ac524334f49')}</label>
               <div className="flex flex-wrap gap-2">
                 {(staff || [])
                   .filter((s) =>
@@ -433,14 +433,12 @@ export default function QuickTallyReviewModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Notizen / Besondere Vorkommnisse
-            </label>
+            <label className="block text-sm font-medium mb-1">{autoT('ui_6139cff2b081')}</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="z.B. Konflikt zwischen Besuchern, besonderes Ereignis, Feedback..."
+              placeholder={autoT('ui_d73e0e0799f9')}
               className="w-full border rounded-lg px-4 py-3 resize-none"
               style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
             />
@@ -449,9 +447,7 @@ export default function QuickTallyReviewModal({
           {totals.total === 0 && (
             <div className="flex items-center gap-2 text-amber-600 rounded-lg p-3" style={{ backgroundColor: 'rgba(245, 158, 11, 0.12)' }}>
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">
-                Keine Teilnehmenden erfasst. Bitte prüfen.
-              </span>
+              <span className="text-sm">{autoT('ui_1ecada05b583')}</span>
             </div>
           )}
 
@@ -461,9 +457,7 @@ export default function QuickTallyReviewModal({
               onClick={onClose}
               className="flex-1 border px-6 py-3 rounded-lg font-medium transition-colors"
               style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-1)' }}
-            >
-              Zurück
-            </button>
+            >{autoT('ui_4080624342b2')}</button>
             <button
               type="button"
               onClick={handleSave}
@@ -472,14 +466,10 @@ export default function QuickTallyReviewModal({
             >
               {saving ? (
                 <>
-                  <span className="animate-spin">⏳</span>
-                  Speichern...
-                </>
+                  <span className="animate-spin">⏳</span>{autoT('ui_3b922c6b470b')}</>
               ) : (
                 <>
-                  <Save className="w-5 h-5" />
-                  Speichern
-                </>
+                  <Save className="w-5 h-5" />{autoT('ui_70b73bbc118d')}</>
               )}
             </button>
           </div>

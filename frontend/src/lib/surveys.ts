@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
+import { autoT } from '@/i18n/auto';
 
 export type SurveyStatus = 'draft' | 'active' | 'closed' | 'archived';
 export type SurveyQuestionType = 'single_choice' | 'multiple_choice' | 'scale' | 'text';
@@ -145,7 +146,7 @@ export function parseSurveyTemplate(
     typeof value.template.title !== 'string' ||
     !Array.isArray(value.template.questions)
   ) {
-    throw new Error('Keine gültige StatO-Umfragevorlage.');
+    throw new Error(autoT('ui_3860b23f6277'));
   }
   return {
     title: value.template.title,

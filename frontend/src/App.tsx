@@ -16,6 +16,8 @@ import { OrgScopeProvider } from './lib/orgScope';
 import PostLoginPrefetch from '@/components/PostLoginPrefetch';
 import { canAccessDevTools } from './lib/devToolsConfig';
 import TermsAcceptanceGate from '@/components/TermsAcceptanceGate';
+import { useTranslation } from 'react-i18next';
+import { autoT } from '@/i18n/auto';
 
 function isChunkLoadError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
@@ -94,17 +96,19 @@ function RouteBoundary({ children, label }: { children: ReactNode; label: string
 }
 
 function AppLoading({ label }: { label: string }) {
+  const { t } = useTranslation('common');
   return (
     <div className="flex min-h-screen items-start justify-center px-4 pt-24">
       <div className="modern-card flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600">
         <span className="h-3 w-3 animate-pulse rounded-full bg-viridian" aria-hidden="true" />
-        <span>{label} wird geladen...</span>
+        <span>{t('loading.route', { label })}</span>
       </div>
     </div>
   );
 }
 
 function App() {
+  const { t } = useTranslation('common');
   // App-level providers
   useEffect(() => {
     const handleChunkError = (event: ErrorEvent | PromiseRejectionEvent) => {
@@ -131,7 +135,7 @@ function App() {
           <Route
             path="/accept-invite"
             element={
-              <RouteBoundary label="Einladung">
+              <RouteBoundary label={t('routes.invitation')}>
                 <AcceptInvite />
               </RouteBoundary>
             }
@@ -140,7 +144,7 @@ function App() {
           <Route
             path="/reset-password-request"
             element={
-              <RouteBoundary label="Passwort-Reset">
+              <RouteBoundary label={t('routes.passwordReset')}>
                 <ResetRequest />
               </RouteBoundary>
             }
@@ -148,7 +152,7 @@ function App() {
           <Route
             path="/reset-password"
             element={
-              <RouteBoundary label="Passwort-Reset">
+              <RouteBoundary label={t('routes.passwordReset')}>
                 <ResetPassword />
               </RouteBoundary>
             }
@@ -156,7 +160,7 @@ function App() {
           <Route
             path="/survey/:token"
             element={
-              <RouteBoundary label="Umfrage">
+              <RouteBoundary label={t('routes.survey')}>
                 <PublicSurvey />
               </RouteBoundary>
             }
@@ -198,9 +202,10 @@ function ScrollToTopOnPathChange() {
 }
 
 function AuthedRoutes() {
+  const { t } = useTranslation('common');
   const { user, loading } = useAuth();
 
-  if (loading) return <AppLoading label="Stato" />;
+  if (loading) return <AppLoading label={autoT('ui_148c60ecba84')} />;
 
   if (!user) return <Login />;
 
@@ -212,7 +217,7 @@ function AuthedRoutes() {
           <Route
             path="me"
             element={
-              <RouteBoundary label="Profil">
+              <RouteBoundary label={t('routes.profile')}>
                 <MyProfile />
               </RouteBoundary>
             }
@@ -233,7 +238,7 @@ function AuthedRoutes() {
           <Route
             path="dashboard"
             element={
-              <RouteBoundary label="Dashboard">
+              <RouteBoundary label={t('navigation.dashboard')}>
                 <Dashboard />
               </RouteBoundary>
             }
@@ -241,7 +246,7 @@ function AuthedRoutes() {
           <Route
             path="activities"
             element={
-              <RouteBoundary label="Aktivitäten">
+              <RouteBoundary label={t('navigation.activities')}>
                 <Activities />
               </RouteBoundary>
             }
@@ -250,7 +255,7 @@ function AuthedRoutes() {
           <Route
             path="activities/new/select-project"
             element={
-              <RouteBoundary label="Projektwahl">
+              <RouteBoundary label={t('routes.projectSelection')}>
                 <ProjectPickerPage />
               </RouteBoundary>
             }
@@ -258,7 +263,7 @@ function AuthedRoutes() {
           <Route
             path="activities/new"
             element={
-              <RouteBoundary label="Neue Aktivität">
+              <RouteBoundary label={t('routes.newActivity')}>
                 <ActivityCreatePage />
               </RouteBoundary>
             }
@@ -266,7 +271,7 @@ function AuthedRoutes() {
           <Route
             path="activities/:id"
             element={
-              <RouteBoundary label="Aktivität">
+              <RouteBoundary label={t('routes.activity')}>
                 <ActivityDetailPage />
               </RouteBoundary>
             }
@@ -274,7 +279,7 @@ function AuthedRoutes() {
           <Route
             path="activities/:id/edit"
             element={
-              <RouteBoundary label="Aktivität bearbeiten">
+              <RouteBoundary label={t('routes.editActivity')}>
                 <ActivityEditPage />
               </RouteBoundary>
             }
@@ -282,7 +287,7 @@ function AuthedRoutes() {
           <Route
             path="logbook"
             element={
-              <RouteBoundary label="Logbuch">
+              <RouteBoundary label={t('navigation.logbook')}>
                 <Logbook />
               </RouteBoundary>
             }
@@ -290,7 +295,7 @@ function AuthedRoutes() {
           <Route
             path="logbook/new"
             element={
-              <RouteBoundary label="Neuer Logbucheintrag">
+              <RouteBoundary label={t('routes.newLogbookEntry')}>
                 <LogbookEditorRoute />
               </RouteBoundary>
             }
@@ -298,7 +303,7 @@ function AuthedRoutes() {
           <Route
             path="logbook/:id"
             element={
-              <RouteBoundary label="Logbucheintrag">
+              <RouteBoundary label={t('routes.logbookEntry')}>
                 <LogbookEntryPage />
               </RouteBoundary>
             }
@@ -306,7 +311,7 @@ function AuthedRoutes() {
           <Route
             path="logbook/:id/edit"
             element={
-              <RouteBoundary label="Logbucheintrag bearbeiten">
+              <RouteBoundary label={t('routes.editLogbookEntry')}>
                 <LogbookEditorRoute />
               </RouteBoundary>
             }
@@ -314,7 +319,7 @@ function AuthedRoutes() {
           <Route
             path="projects"
             element={
-              <RouteBoundary label="Projekte">
+              <RouteBoundary label={t('navigation.projects')}>
                 <Projects />
               </RouteBoundary>
             }
@@ -322,7 +327,7 @@ function AuthedRoutes() {
           <Route
             path="calendar"
             element={
-              <RouteBoundary label="Kalender">
+              <RouteBoundary label={t('navigation.calendar')}>
                 <Calendar />
               </RouteBoundary>
             }
@@ -330,7 +335,7 @@ function AuthedRoutes() {
           <Route
             path="statistics"
             element={
-              <RouteBoundary label="Statistik">
+              <RouteBoundary label={t('navigation.statistics')}>
                 <Statistics />
               </RouteBoundary>
             }
@@ -338,7 +343,7 @@ function AuthedRoutes() {
           <Route
             path="surveys"
             element={
-              <RouteBoundary label="Umfragen">
+              <RouteBoundary label={t('navigation.surveys')}>
                 <Surveys />
               </RouteBoundary>
             }
@@ -346,7 +351,7 @@ function AuthedRoutes() {
           <Route
             path="surveys/:id"
             element={
-              <RouteBoundary label="Umfrage">
+              <RouteBoundary label={t('routes.survey')}>
                 <SurveyDetail />
               </RouteBoundary>
             }
@@ -354,7 +359,7 @@ function AuthedRoutes() {
           <Route
             path="me"
             element={
-              <RouteBoundary label="Profil">
+              <RouteBoundary label={t('routes.profile')}>
                 <MyProfile />
               </RouteBoundary>
             }
@@ -362,7 +367,7 @@ function AuthedRoutes() {
           <Route
             path="settings"
             element={
-              <RouteBoundary label="Einstellungen">
+              <RouteBoundary label={t('navigation.settings')}>
                 <Settings />
               </RouteBoundary>
             }
@@ -372,7 +377,7 @@ function AuthedRoutes() {
             <Route
               path="admin/orgs"
               element={
-                <RouteBoundary label="Organisationen">
+                <RouteBoundary label={t('userMenu.organizations')}>
                   <AdminOrgSetup />
                 </RouteBoundary>
               }
@@ -382,7 +387,7 @@ function AuthedRoutes() {
             <Route
               path="admin/dev-tools"
               element={
-                <RouteBoundary label="Dev-Tools">
+                <RouteBoundary label={t('routes.devTools')}>
                   <SettingsTestData />
                 </RouteBoundary>
               }
@@ -392,7 +397,7 @@ function AuthedRoutes() {
             <Route
               path="admin/audit"
               element={
-                <RouteBoundary label="Audit">
+                <RouteBoundary label={t('routes.audit')}>
                   <SuperAdminAudit />
                 </RouteBoundary>
               }
@@ -402,7 +407,7 @@ function AuthedRoutes() {
             <Route
               path="admin/system-data"
               element={
-                <RouteBoundary label="Systemdaten">
+                <RouteBoundary label={t('routes.systemData')}>
                   <SuperAdminSystemData />
                 </RouteBoundary>
               }
@@ -412,7 +417,7 @@ function AuthedRoutes() {
             <Route
               path="admin/users"
               element={
-                <RouteBoundary label="Benutzerverwaltung">
+                <RouteBoundary label={t('routes.userManagement')}>
                   <OrgUserManagement />
                 </RouteBoundary>
               }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { autoT } from '@/i18n/auto';
 
 export function FilterChip({
   children,
@@ -16,7 +17,7 @@ export function FilterChip({
           type="button"
           onClick={onRemove}
           className="rounded-full p-0.5 text-viridian/75 transition-colors hover:bg-[var(--interactive-soft-strong)] hover:text-viridian"
-          aria-label="Filter entfernen"
+          aria-label={autoT('ui_65768a88a10d')}
         >
           <X className="h-3.5 w-3.5" />
         </button>

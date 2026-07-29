@@ -1,5 +1,6 @@
 import { api } from './api';
 import { useQuery } from '@tanstack/react-query';
+import { autoT } from '@/i18n/auto';
 
 type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
 export type UserProvisioningMode = 'email' | 'local';
@@ -23,7 +24,7 @@ export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   appName: 'StatO',
   orgName: null,
   loginTitle: 'StatO',
-  loginSubtitle: 'OKJA Statistik & Dokumentation',
+  loginSubtitle: autoT('ui_86922bad66e8'),
   liveRefreshIntervalMs: 15000,
   twoFactorEnabled: false,
   initialSetupRequired: false,

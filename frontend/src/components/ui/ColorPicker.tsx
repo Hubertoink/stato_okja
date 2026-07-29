@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Dices } from 'lucide-react';
+import { autoT } from '@/i18n/auto';
 
 type Hsl = { h: number; s: number; l: number };
 type PopoverPosition = { top: number; left: number; arrowLeft: number; placement: 'top' | 'bottom' };
@@ -151,19 +152,17 @@ export function ColorPicker({
         style={{
           top: popoverPosition?.top ?? -9999,
           left: popoverPosition?.left ?? -9999,
-          visibility: popoverPosition ? 'visible' : 'hidden',
+          visibility: popoverPosition ? "visible" : "hidden",
         }}
         role="dialog"
-        aria-label="Farbe auswählen"
+        aria-label={autoT('ui_39911bfb39a0')}
       >
         <div
-          className={`absolute h-4 w-4 rotate-45 border-[var(--border-strong)] bg-[var(--surface-elevated)] ${popoverPosition?.placement === 'top' ? '-bottom-2 border-b border-r' : '-top-2 border-l border-t'}`}
+          className={`absolute h-4 w-4 rotate-45 border-[var(--border-strong)] bg-[var(--surface-elevated)] ${popoverPosition?.placement === 'top' ? "-bottom-2 border-b border-r" : "-top-2 border-l border-t"}`}
           style={{ left: (popoverPosition?.arrowLeft ?? 128) - 8 }}
         />
         <div className="relative space-y-3">
-          <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-hue`}>
-            Farbton
-          </label>
+          <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-hue`}>{autoT('ui_42054d9bac54')}</label>
           <input
             id={`${inputId}-hue`}
             type="range"
@@ -176,9 +175,7 @@ export function ColorPicker({
           />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-saturation`}>
-                Sättigung
-              </label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-saturation`}>{autoT('ui_d84091b7ee26')}</label>
               <input
                 id={`${inputId}-saturation`}
                 type="range"
@@ -191,9 +188,7 @@ export function ColorPicker({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-lightness`}>
-                Helligkeit
-              </label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`${inputId}-lightness`}>{autoT('ui_b2a967edf1bd')}</label>
               <input
                 id={`${inputId}-lightness`}
                 type="range"
@@ -211,8 +206,7 @@ export function ColorPicker({
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--viridian)]"
             onClick={() => onChange(randomColor())}
           >
-            <Dices className="h-4 w-4" aria-hidden="true" /> Zufällige Farbe
-          </button>
+            <Dices className="h-4 w-4" aria-hidden="true" />{autoT('ui_441b70b4bf10')}</button>
         </div>
       </div>,
       document.body,
@@ -228,7 +222,7 @@ export function ColorPicker({
             className="w-10 shrink-0 border-r border-black/10 transition-opacity hover:opacity-85 disabled:cursor-not-allowed"
             style={{ backgroundColor: currentColor }}
             onClick={() => setOpen((current) => !current)}
-            aria-label="Farbauswahl öffnen"
+            aria-label={autoT('ui_200292c7b396')}
             aria-expanded={open}
             aria-controls={`${inputId}-popover`}
             disabled={disabled}
@@ -243,15 +237,15 @@ export function ColorPicker({
             spellCheck={false}
             maxLength={7}
             className="min-w-0 flex-1 bg-transparent px-3 font-mono text-sm uppercase text-[var(--text-primary)] outline-none disabled:cursor-not-allowed"
-            aria-label="Farbwert als Hexadezimalzahl"
+            aria-label={autoT('ui_231d0fcb14d9')}
             disabled={disabled}
           />
           <button
             type="button"
             className="grid w-10 shrink-0 place-items-center border-l border-[var(--border-subtle)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--viridian)] disabled:cursor-not-allowed"
             onClick={() => onChange(randomColor())}
-            aria-label="Zufällige Farbe erzeugen"
-            title="Zufällige Farbe erzeugen"
+            aria-label={autoT('ui_1d3aa77beda1')}
+            title={autoT('ui_1d3aa77beda1')}
             disabled={disabled}
           >
             <Dices className="h-4 w-4" aria-hidden="true" />

@@ -10,8 +10,12 @@ import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { useNavigate } from 'react-router-dom';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import LanguageSelect from '@/components/LanguageSelect';
+import { autoT } from '@/i18n/auto';
 
 export default function Login() {
+  const { t } = useTranslation(['auth', 'common']);
   const { login, verifyTwoFactor, resendTwoFactor, completeInitialSetup } = useAuth();
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('admin');
@@ -59,14 +63,14 @@ export default function Login() {
         setTwoFactorCode(codeFromUrl);
       }
     } else if (typeof codeFromUrl === 'string' && /^\d{6}$/.test(codeFromUrl)) {
-      setError('Bitte zuerst mit E-Mail und Passwort anmelden. Danach kann der Code aus dem E-Mail-Link automatisch uebernommen werden.');
+      setError(t('login.twoFactorLinkRequiresLogin'));
     }
 
     if (codeFromUrl) {
       url.searchParams.delete('twoFactorCode');
       window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
     }
-  }, []);
+  }, [t]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -108,7 +112,7 @@ export default function Login() {
       return;
     }
     if (setupPassword !== setupPasswordConfirmation) {
-      setError('Die Passwörter stimmen nicht überein.');
+      setError(t('login.passwordsDoNotMatch'));
       return;
     }
     setBusy(true);
@@ -133,15 +137,18 @@ export default function Login() {
             {branding.loginTitle}
           </h1>
           <p className="text-gray-500 mt-2 font-medium">{branding.loginSubtitle}</p>
+          <div className="mt-4 flex justify-center">
+            <LanguageSelect />
+          </div>
         </div>
 
         {branding.initialSetupRequired ? (
           <form className="space-y-6" onSubmit={onInitialSetup}>
             <div className="rounded-2xl border border-viridian/20 bg-viridian/5 px-4 py-3 text-sm text-gray-600">
-              Lege jetzt das Passwort für den Administratorzugang fest. Es wird nicht in der Server-Konfiguration gespeichert.
+              {t('login.initialSetupInfo')}
             </div>
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">Admin-Passwort</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">{t('login.adminPassword')}</label>
               <input
                 type="password"
                 required
@@ -149,20 +156,20 @@ export default function Login() {
                 value={setupPassword}
                 onChange={(event) => setSetupPassword(event.target.value)}
                 className="input-modern w-full"
-                placeholder="Mindestens 12 Zeichen"
+                placeholder={t('login.minimumTwelve')}
                 autoComplete="new-password"
               />
               <PasswordRequirementsHint password={setupPassword} className="mt-2" />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">Passwort wiederholen</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">{t('login.repeatPassword')}</label>
               <input
                 type="password"
                 required
                 value={setupPasswordConfirmation}
                 onChange={(event) => setSetupPasswordConfirmation(event.target.value)}
                 className="input-modern w-full"
-                placeholder="Passwort wiederholen"
+                placeholder={t('login.repeatPassword')}
                 autoComplete="new-password"
               />
             </div>
@@ -177,7 +184,7 @@ export default function Login() {
                 Boolean(setupPasswordValidationMessage)
               }
             >
-              Adminzugang einrichten
+              {t('login.setupAdmin')}
             </button>
             {error && <div className="chip chip-danger mt-2 w-full justify-center">{error}</div>}
           </form>
@@ -186,15 +193,15 @@ export default function Login() {
           {!challengeToken ? (
             <>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">E-Mail</label>
-                <input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="input-modern w-full" placeholder="email@example.com" />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">{t('login.email')}</label>
+                <input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="input-modern w-full" placeholder={autoT('ui_9395988394d4')} />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Passwort</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">{t('login.password')}</label>
                 <div className="relative">
                   <input
-                    type={showPwd ? 'text' : 'password'}
+                    type={showPwd ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e)=>setPassword(e.target.value)}
@@ -205,8 +212,8 @@ export default function Login() {
                   <button
                     type="button"
                     className="absolute inset-y-0 right-2 px-2 flex items-center text-gray-400 hover:text-viridian transition-colors"
-                    aria-label={showPwd ? 'Passwort ausblenden' : 'Passwort anzeigen'}
-                    title={showPwd ? 'Passwort ausblenden' : 'Passwort anzeigen'}
+                    aria-label={showPwd ? t('login.hidePassword') : t('login.showPassword')}
+                    title={showPwd ? t('login.hidePassword') : t('login.showPassword')}
                     onClick={() => setShowPwd((v) => !v)}
                   >
                     {showPwd ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
@@ -215,23 +222,23 @@ export default function Login() {
               </div>
               {branding.twoFactorEnabled && (
                 <div className="rounded-2xl border border-viridian/20 bg-viridian/5 px-4 py-3 text-sm text-gray-600">
-                  Nach dem Passwortversand wird ein zusätzlicher Sicherheitscode per E-Mail abgefragt.
+                  {t('login.twoFactorInfo')}
                 </div>
               )}
               <button type="submit" className="btn-modern w-full py-3" disabled={busy}>
-                Anmelden
+                {t('login.login')}
               </button>
             </>
           ) : (
             <>
               <div className="rounded-2xl border border-viridian/20 bg-viridian/5 px-4 py-3 text-sm text-gray-600">
-                Wir haben einen 6-stelligen Sicherheitscode an <span className="font-semibold text-gray-800">{twoFactorEmailHint || 'deine E-Mail-Adresse'}</span> gesendet.
+                {t('login.twoFactorSent', { email: twoFactorEmailHint || t('login.emailAddress') })}
                 <div className="mt-2 text-xs text-gray-500">
-                  Wenn du den E-Mail-Link mit dem Clipboard-Symbol im gleichen Browser oeffnest, wird der Code automatisch eingetragen.
+                  {t('login.twoFactorClipboard')}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Sicherheitscode</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">{t('login.securityCode')}</label>
                 <input
                   inputMode="numeric"
                   pattern="[0-9]*"
@@ -239,12 +246,12 @@ export default function Login() {
                   value={twoFactorCode}
                   onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   className="input-modern w-full tracking-[0.35em] text-center text-2xl"
-                  placeholder="000000"
+                  placeholder={autoT('ui_c984aed014ae')}
                   autoComplete="one-time-code"
                 />
               </div>
               <button type="submit" className="btn-modern w-full py-3" disabled={busy || twoFactorCode.length !== 6}>
-                Code prüfen
+                {t('login.verifyCode')}
               </button>
               <div className="flex items-center justify-between gap-3 text-sm">
                 <button
@@ -258,7 +265,7 @@ export default function Login() {
                     setError(null);
                   }}
                 >
-                  Zurück
+                  {t('login.back')}
                 </button>
                 <button
                   type="button"
@@ -282,18 +289,18 @@ export default function Login() {
                     }
                   }}
                 >
-                  {resendBusy ? 'Code wird gesendet...' : 'Code erneut senden'}
+                  {resendBusy ? t('login.sendingCode') : t('login.resendCode')}
                 </button>
               </div>
             </>
           )}
           {branding.forgotPasswordEnabled ? (
             <div className="text-center text-sm mt-2">
-              <a className="text-viridian hover:text-cambridge-blue transition-colors font-medium" href="/reset-password-request">Passwort vergessen?</a>
+              <a className="text-viridian hover:text-cambridge-blue transition-colors font-medium" href="/reset-password-request">{t('login.forgotPassword')}</a>
             </div>
           ) : (
             <div className="text-center text-sm mt-2 text-gray-500">
-              Passwort vergessen? Bitte an den Superadmin wenden.
+              {t('login.forgotPasswordDisabled')}
             </div>
           )}
 
@@ -307,7 +314,7 @@ export default function Login() {
             onClick={() => setImprintModalOpen(true)}
             className="font-medium underline underline-offset-2 hover:text-viridian transition-colors"
           >
-            Impressum
+            {t('common:legal.imprint')}
           </button>
           <span aria-hidden="true">·</span>
           <button
@@ -315,7 +322,7 @@ export default function Login() {
             onClick={() => setPrivacyModalOpen(true)}
             className="font-medium underline underline-offset-2 hover:text-viridian transition-colors"
           >
-            Datenschutz
+            {t('common:legal.privacy')}
           </button>
           <span aria-hidden="true">·</span>
           <button
@@ -323,7 +330,7 @@ export default function Login() {
             onClick={() => setTermsModalOpen(true)}
             className="font-medium underline underline-offset-2 hover:text-viridian transition-colors"
           >
-            Nutzungsbedingungen
+            {t('common:legal.terms')}
           </button>
           <span aria-hidden="true">·</span>
           <button
@@ -331,12 +338,12 @@ export default function Login() {
             onClick={() => setCookieModalOpen(true)}
             className="font-medium underline underline-offset-2 hover:text-viridian transition-colors"
           >
-            Cookies
+            {t('common:legal.cookies')}
           </button>
         </div>
 
         <p className="text-center text-sm text-gray-400 mt-4">
-          © {new Date().getFullYear()} StatO - <a href="mailto:hubertoink@outlook.com" className="hover:text-viridian transition-colors">OKJA Team</a>
+          © {new Date().getFullYear()}{' '}{autoT('ui_65966d2d167a')}{' '}<a href="mailto:hubertoink@outlook.com" className="hover:text-viridian transition-colors">{autoT('ui_dba32cb2a55d')}</a>
         </p>
       </div>
 

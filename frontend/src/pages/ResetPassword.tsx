@@ -3,8 +3,10 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { resetPassword, validateResetToken } from '@/lib/password';
 import { isStrongPassword, PASSWORD_REQUIREMENTS_SHORT } from '@/lib/passwordPolicy';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
+import { useTranslation } from 'react-i18next';
 
 export default function ResetPassword() {
+  const { t } = useTranslation('auth');
   const [sp] = useSearchParams();
   const navigate = useNavigate();
   const token = sp.get('token') || '';
@@ -38,7 +40,7 @@ export default function ResetPassword() {
     e.preventDefault();
     setError(null);
     if (!token) {
-      setError('Ungültiger Link');
+      setError(t('resetPassword.invalidLink'));
       return;
     }
     if (!isStrongPassword(password)) {
@@ -46,7 +48,7 @@ export default function ResetPassword() {
       return;
     }
     if (password !== confirm) {
-      setError('Passwörter stimmen nicht überein');
+      setError(t('resetPassword.passwordsDoNotMatch'));
       return;
     }
     try {
@@ -54,35 +56,35 @@ export default function ResetPassword() {
       setOk(true);
       setTimeout(() => navigate('/'), 1500);
     } catch (e: unknown) {
-      setError('Zurücksetzen fehlgeschlagen');
+      setError(t('resetPassword.failed'));
     }
   }
 
   return (
     <div className="min-h-screen bg-mint-cream flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-viridian mb-4">Neues Passwort setzen</h2>
+        <h2 className="text-2xl font-bold text-viridian mb-4">{t('resetPassword.title')}</h2>
         {tokenStatus === 'checking' ? (
-          <p className="text-sm text-gray-700" aria-live="polite">Link wird geprüft…</p>
+          <p className="text-sm text-gray-700" aria-live="polite">{t('resetPassword.checking')}</p>
         ) : tokenStatus === 'invalid' ? (
           <div className="space-y-4" aria-live="polite">
             <p className="text-sm text-red-700">
-              Dieser Passwort-Reset-Link ist abgelaufen, ungültig oder wurde bereits ersetzt.
+              {t('resetPassword.invalid')}
             </p>
             <a href="/reset-password-request" className="text-sm font-medium text-viridian hover:underline">
-              Neuen Reset-Link anfordern
+              {t('resetPassword.requestNew')}
             </a>
             <p className="text-xs text-gray-600">
-              <a href="/" className="text-viridian hover:underline">Zurück zum Login</a>
+              <a href="/" className="text-viridian hover:underline">{t('resetPassword.backToLogin')}</a>
             </p>
           </div>
         ) : ok ? (
           <div className="space-y-4">
-            <p className="text-sm text-gray-700">Passwort gesetzt. Du wirst weitergeleitet…</p>
+            <p className="text-sm text-gray-700">{t('resetPassword.success')}</p>
             <p className="text-xs text-gray-600">
-              Falls nichts passiert:{' '}
+              {t('resetPassword.fallback')}{' '}
               <a href="/" className="text-viridian hover:underline">
-                Zum Login
+                {t('resetPassword.login')}
               </a>
             </p>
           </div>
@@ -90,7 +92,7 @@ export default function ResetPassword() {
           <form className="space-y-4" onSubmit={onSubmit}>
             <div>
               <label className="block text-sm font-medium mb-2" htmlFor="new-pass">
-                Neues Passwort
+                {t('resetPassword.newPassword')}
               </label>
               <input
                 id="new-pass"
@@ -100,13 +102,13 @@ export default function ResetPassword() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full border border-gray-300 rounded px-4 py-2"
                 placeholder={PASSWORD_REQUIREMENTS_SHORT}
-                title="Neues Passwort"
+                title={t('resetPassword.newPassword')}
               />
               <PasswordRequirementsHint password={password} className="mt-2" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" htmlFor="new-pass-confirm">
-                Bestätigung
+                {t('resetPassword.confirmation')}
               </label>
               <input
                 id="new-pass-confirm"
@@ -115,18 +117,18 @@ export default function ResetPassword() {
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 className="w-full border border-gray-300 rounded px-4 py-2"
-                placeholder="Wiederholen"
-                title="Passwort bestätigen"
+                placeholder={t('resetPassword.repeat')}
+                title={t('resetPassword.confirmPassword')}
               />
             </div>
             <button type="submit" className="w-full bg-viridian text-white py-2 rounded">
-              Speichern
+              {t('resetPassword.save')}
             </button>
             {error && <div className="text-red-600 text-sm">{error}</div>}
             <p className="text-xs text-gray-600">
-              Abbrechen?{' '}
+              {t('resetPassword.cancel')}{' '}
               <a href="/" className="text-viridian hover:underline">
-                Zurück zum Login
+                {t('resetPassword.backToLogin')}
               </a>
             </p>
           </form>

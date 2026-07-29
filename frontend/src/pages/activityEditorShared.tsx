@@ -3,6 +3,7 @@ import type { ActivityExecutionStatus } from '@/lib/activityExecutionStatus';
 import type { Project } from '@/lib/projects';
 import type { StaffMember, StaffRole } from '@/lib/staff';
 import type { Tag } from '@/lib/taxonomy';
+import { formatDate } from '@/i18n/formatters';
 
 type NamedEntity = {
   id: string;
@@ -49,7 +50,7 @@ export function getWeekdayLabel(value?: string): string {
   const date = new Date(year, month - 1, day);
   if (Number.isNaN(date.getTime())) return '';
 
-  return new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(date);
+  return formatDate(date, { weekday: 'long' });
 }
 
 export function getCohortSums(

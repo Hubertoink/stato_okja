@@ -23,20 +23,20 @@ export default function Toggle({ checked, onChange, label, ariaLabel, disabled, 
       type="button"
       role="switch"
       aria-checked={checked}
-        aria-label={ariaLabel || ((typeof label === 'string' ? label : 'Umschalten') as string)}
+        aria-label={ariaLabel || ((typeof label === 'string' ? label : "Umschalten") as string)}
       disabled={disabled}
       onClick={() => !disabled && onChange(!checked)}
-      className={`inline-flex items-center gap-2 select-none ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-viridian rounded ${className || ''}`}
+      className={`inline-flex items-center gap-2 select-none ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-viridian rounded ${className || ''}`}
     >
       <span
         className="relative inline-flex items-center h-6 w-11 rounded-full border transition-colors duration-150 ease-out"
         style={trackStyle}
       >
         <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full shadow transition-transform duration-150 ease-out ${checked ? 'translate-x-5' : ''}`}
+          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full shadow transition-transform duration-150 ease-out ${checked ? "translate-x-5" : ''}`}
           style={{
-            backgroundColor: checked ? 'var(--mint-cream)' : 'var(--azure-web)',
-            border: checked ? '1px solid var(--viridian)' : '1px solid var(--outer-space)'
+            backgroundColor: checked ? "var(--mint-cream)" : "var(--azure-web)",
+            border: checked ? "1px solid var(--viridian)" : "1px solid var(--outer-space)"
           }}
         />
       </span>

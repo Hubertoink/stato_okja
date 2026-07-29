@@ -14,6 +14,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getEmailValidationMessage } from '@/lib/emailValidation';
+import { autoT } from '@/i18n/auto';
 
 export default function OrgUserManagement() {
   const { user } = useAuth();
@@ -56,7 +57,7 @@ export default function OrgUserManagement() {
       setUsers(list);
     } catch (e: unknown) {
       if (reloadRequestRef.current !== requestId) return;
-      const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Fehler beim Laden der Benutzer';
+      const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_211e58a9e2c6');
       setError(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg));
     } finally {
       if (reloadRequestRef.current === requestId) setLoading(false);
@@ -155,12 +156,12 @@ export default function OrgUserManagement() {
       await reload();
       showToast(
         localProvisioning
-          ? 'Benutzer lokal angelegt. Das temporäre Passwort muss beim ersten Login geändert werden.'
-          : 'Einladung per E-Mail versendet.',
+          ? autoT('ui_3e9d9ed6bfed')
+          : autoT('ui_a6b3076de73d'),
         { type: 'success' },
       );
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Einladung fehlgeschlagen';
+      const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_afe7111f97a8');
       showToast(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg), { type: 'error', durationMs: 3500 });
     } finally {
       setCreating(false);
@@ -185,20 +186,18 @@ export default function OrgUserManagement() {
       <div className="flex items-start justify-between gap-3 mb-6 sm:items-center">
         <div>
           <h2 className="text-2xl font-bold text-viridian flex items-center gap-2">
-            <Users className="w-6 h-6" />
-            Benutzer verwalten
-          </h2>
+            <Users className="w-6 h-6" />{autoT('ui_1ea1e1f1bc9e')}</h2>
           <p className="text-sm text-gray-600 mt-1">
-            {isScopedOrgView ? activeOrgName : 'Alle Benutzer im System'}
+            {isScopedOrgView ? activeOrgName : autoT('ui_fafb0377a7fa')}
           </p>
         </div>
         <button
           className="inline-flex shrink-0 items-center justify-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
           onClick={() => { resetCreateForm(); setCreateModalOpen(true); }}
-          aria-label={publicConfig.userProvisioningMode === 'local' ? 'Benutzer lokal anlegen' : 'Benutzer einladen'}
+          aria-label={publicConfig.userProvisioningMode === 'local' ? autoT('ui_464d554f6c6d') : autoT('ui_744a87e36886')}
         >
           <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">{publicConfig.userProvisioningMode === 'local' ? 'Benutzer anlegen' : 'Benutzer einladen'}</span>
+          <span className="hidden sm:inline">{publicConfig.userProvisioningMode === 'local' ? autoT('ui_1614f4af1460') : autoT('ui_744a87e36886')}</span>
         </button>
       </div>
 
@@ -207,15 +206,15 @@ export default function OrgUserManagement() {
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-wrap">
             <div>
-              <h3 className="font-semibold text-gray-800">Benutzerliste</h3>
-              <span className="text-xs text-gray-500">{users.length} Benutzer{users.length !== 1 ? '' : ''}</span>
+              <h3 className="font-semibold text-gray-800">{autoT('ui_f73f37bacbdd')}</h3>
+              <span className="text-xs text-gray-500">{users.length}{' '}{autoT('ui_bd26f3d230af')}{users.length !== 1 ? '' : ''}</span>
             </div>
             {/* Search */}
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Suchen…"
+                placeholder={autoT('ui_d26ce4a1305c')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="border rounded-lg pl-9 pr-3 py-2 text-sm w-full sm:w-48 focus:ring-2 focus:ring-viridian focus:border-viridian"
@@ -227,9 +226,7 @@ export default function OrgUserManagement() {
         <div className="p-2">
           {loading && (
             <div className="flex items-center justify-center py-8 text-gray-500">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-viridian mr-2"></div>
-              Lade Benutzer…
-            </div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-viridian mr-2"></div>{autoT('ui_fdfb01fa6df9')}</div>
           )}
           
           {error && (
@@ -241,17 +238,15 @@ export default function OrgUserManagement() {
               <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 mb-4">
                 {searchQuery
-                  ? 'Keine Benutzer gefunden'
-                  : `Noch keine Benutzer${isScopedOrgView ? ` in ${activeOrgName}` : ''}`}
+                  ? autoT('ui_dddda7684ac4')
+                  : autoT('ui_15ef9a8b600f', { value0: isScopedOrgView ? ` in ${activeOrgName}` : '' })}
               </p>
               {!searchQuery && (
                 <button
                   className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg"
                   onClick={() => { resetCreateForm(); setCreateModalOpen(true); }}
                 >
-                  <Plus className="w-4 h-4" />
-                  Ersten Benutzer einladen
-                </button>
+                  <Plus className="w-4 h-4" />{autoT('ui_ef5bcd6a81e1')}</button>
               )}
             </div>
           )}
@@ -277,27 +272,27 @@ export default function OrgUserManagement() {
       </div>
 
       {/* Create User Modal */}
-      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title={publicConfig.userProvisioningMode === 'local' ? 'Neuen Benutzer lokal anlegen' : 'Neuen Benutzer einladen'} maxWidth="md">
+      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title={publicConfig.userProvisioningMode === 'local' ? autoT('ui_d18b3ef3514d') : autoT('ui_be454fe3dbfd')} maxWidth="md">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_709a23220f2c')}</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
-                placeholder="Max Mustermann"
+                placeholder={autoT('ui_57d950a48336')}
               />
-              <p className="text-xs text-gray-500 mt-1">Optional – wird sonst aus der E-Mail abgeleitet</p>
+              <p className="text-xs text-gray-500 mt-1">{autoT('ui_14c8987e027b')}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">E-Mail *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_9811c39359c5')}</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={`border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian ${emailValidationMessage ? 'border-red-500' : ''}`}
-                placeholder="user@organisation.de"
+                className={`border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian ${emailValidationMessage ? "border-red-500" : ''}`}
+                placeholder={autoT('ui_15c8c90e4b60')}
                 autoFocus
                 aria-invalid={Boolean(emailValidationMessage)}
               />
@@ -307,7 +302,7 @@ export default function OrgUserManagement() {
 
           {publicConfig.userProvisioningMode === 'local' && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Temporäres Passwort *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_c07dc032f12a')}</label>
               <input
                 type="password"
                 value={temporaryPassword}
@@ -316,31 +311,31 @@ export default function OrgUserManagement() {
                 autoComplete="new-password"
               />
               <PasswordRequirementsHint password={temporaryPassword} className="mt-2" />
-              <p className="text-xs text-gray-600 mt-2">Sicher an die Person weitergeben. Beim ersten Login muss es geändert werden.</p>
+              <p className="text-xs text-gray-600 mt-2">{autoT('ui_3402fb901043')}</p>
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Organisation *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_695feaaed412')}</label>
               <select
                 className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
                 value={targetOrgId}
                 onChange={(e) => setTargetOrgId(e.target.value)}
               >
-                <option value="">Bitte auswählen…</option>
+                <option value="">{autoT('ui_4b0896060a4d')}</option>
                 {availableOrgs.map(o => (<option key={o.id} value={o.id}>{o.name}</option>))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Rolle</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_6237f0afe77f')}</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as 'org_admin' | 'user')}
                 className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
               >
-                <option value="user">Benutzer</option>
-                <option value="org_admin">Administrator</option>
+                <option value="user">{autoT('ui_bd26f3d230af')}</option>
+                <option value="org_admin">{autoT('ui_1eda23758be9')}</option>
               </select>
             </div>
           </div>
@@ -349,11 +344,11 @@ export default function OrgUserManagement() {
           <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
             <div className="flex items-start gap-2 mb-2">
               <UserIcon className="w-4 h-4 mt-0.5 text-gray-500" />
-              <div><strong>Benutzer:</strong> Kann Aktivitäten und Daten erfassen</div>
+              <div><strong>{autoT('ui_e8321efba4c2')}</strong>{' '}{autoT('ui_c9319abe9cdf')}</div>
             </div>
             <div className="flex items-start gap-2">
               <Shield className="w-4 h-4 mt-0.5 text-viridian" />
-              <div><strong>Administrator:</strong> Kann zusätzlich Benutzer verwalten und Unterorganisationen anlegen</div>
+              <div><strong>{autoT('ui_9e2aeb7aa5cc')}</strong>{' '}{autoT('ui_32a6e772e5c4')}</div>
             </div>
           </div>
 
@@ -362,9 +357,7 @@ export default function OrgUserManagement() {
             <button
               className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
               onClick={() => setCreateModalOpen(false)}
-            >
-              Abbrechen
-            </button>
+            >{autoT('ui_07af7cb30fca')}</button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
               disabled={!email.trim() || Boolean(emailValidationMessage) || !targetOrgId || creating || (publicConfig.userProvisioningMode === 'local' && (!temporaryPassword || Boolean(getPasswordValidationMessage(temporaryPassword))))}
@@ -372,7 +365,7 @@ export default function OrgUserManagement() {
             >
               {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
               {publicConfig.userProvisioningMode === 'local' ? <KeyRound className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
-              {publicConfig.userProvisioningMode === 'local' ? 'Benutzer lokal anlegen' : 'Einladung erstellen'}
+              {publicConfig.userProvisioningMode === 'local' ? autoT('ui_464d554f6c6d') : autoT('ui_39e31ae7a854')}
             </button>
           </div>
         </div>
@@ -397,7 +390,7 @@ export default function OrgUserManagement() {
             await updateUserApi(assignUser.id, { orgId });
             setAssignUser(null);
             await reload();
-            showToast('Organisation zugewiesen', { type: 'success' });
+            showToast(autoT('ui_fd4267b6a968'), { type: 'success' });
           } catch (err: unknown) {
             const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Zuweisung fehlgeschlagen';
             showToast(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg), { type: 'error' });
@@ -432,7 +425,7 @@ function UserRow({
   const isSuperadmin = userData.role === 'superadmin';
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState<'org_admin' | 'user'>(userData.role === 'org_admin' ? 'org_admin' : 'user');
-  const roleLabel = isSuperadmin ? 'Superadmin' : userData.role === 'org_admin' ? 'Admin' : 'Benutzer';
+  const roleLabel = isSuperadmin ? 'Superadmin' : userData.role === 'org_admin' ? 'Admin' : autoT('ui_bd26f3d230af');
   const roleBadgeClass = isSuperadmin
     ? 'bg-viridian text-white'
     : userData.role === 'org_admin'
@@ -461,7 +454,7 @@ function UserRow({
               <span className={`text-xs px-2.5 py-1 rounded-full ${roleBadgeClass}`}>
                 {roleLabel}
               </span>
-              {isCurrentUser && <span className="text-xs font-medium text-viridian">Du</span>}
+              {isCurrentUser && <span className="text-xs font-medium text-viridian">{autoT('ui_848149853921')}</span>}
             </div>
             <div className="mt-1 break-all text-sm text-gray-600">{userData.email}</div>
             {userData.org?.name && (
@@ -478,13 +471,11 @@ function UserRow({
             <button
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
               onClick={() => {
-                setPendingRole(userData.role === 'org_admin' ? 'org_admin' : 'user');
+                setPendingRole(userData.role === 'org_admin' ? "org_admin" : "user");
                 setRoleModalOpen(true);
               }}
             >
-              <Shield className="w-4 h-4" />
-              Rolle
-            </button>
+              <Shield className="w-4 h-4" />{autoT('ui_6237f0afe77f')}</button>
           )}
 
           {(currentUser.role === 'superadmin' || currentUser.role === 'org_admin') && !isCurrentUser && (
@@ -492,9 +483,7 @@ function UserRow({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
               onClick={onAssign}
             >
-              <Building2 className="w-4 h-4" />
-              Organisation
-            </button>
+              <Building2 className="w-4 h-4" />{autoT('ui_6e99c1d3b150')}</button>
           )}
 
           {currentUser.role === 'superadmin' && (
@@ -513,9 +502,7 @@ function UserRow({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
               onClick={onDelete}
             >
-              <Trash2 className="w-4 h-4" />
-              Entfernen
-            </button>
+              <Trash2 className="w-4 h-4" />{autoT('ui_f78b6376e028')}</button>
           )}
         </div>
       </li>
@@ -535,7 +522,7 @@ function UserRow({
           <div className="min-w-0">
             <div className="font-medium truncate">
               {userData.name || userData.email.split('@')[0]}
-              {isCurrentUser && <span className="ml-2 text-xs text-viridian">(Du)</span>}
+              {isCurrentUser && <span className="ml-2 text-xs text-viridian">{autoT('ui_12e5369c8fb1')}</span>}
             </div>
             <div className="text-sm text-gray-500 truncate">{userData.email}</div>
             {userData.org?.name && (
@@ -556,22 +543,20 @@ function UserRow({
           {!isSuperadmin && !isCurrentUser && (
             <button
               className="inline-flex items-center gap-1.5 border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 transition-colors"
-              title="Rolle ändern"
+              title={autoT('ui_3cde967bbfd0')}
               onClick={() => {
-                setPendingRole(userData.role === 'org_admin' ? 'org_admin' : 'user');
+                setPendingRole(userData.role === 'org_admin' ? "org_admin" : "user");
                 setRoleModalOpen(true);
               }}
             >
-              <Shield className="w-3.5 h-3.5 text-gray-600" />
-              Rolle ändern
-            </button>
+              <Shield className="w-3.5 h-3.5 text-gray-600" />{autoT('ui_3cde967bbfd0')}</button>
           )}
 
           {/* Org assign button */}
           {(currentUser.role === 'superadmin' || currentUser.role === 'org_admin') && !isCurrentUser && (
             <button
               className="p-2 rounded hover:bg-gray-200 transition-colors"
-              title="Organisation zuweisen"
+              title={autoT('ui_f132125032ab')}
               onClick={onAssign}
             >
               <Building2 className="w-4 h-4 text-gray-600" />
@@ -595,7 +580,7 @@ function UserRow({
           {!isCurrentUser && (
             <button
               className="p-2 rounded hover:bg-red-100 transition-colors"
-              title="Benutzer entfernen"
+              title={autoT('ui_2a1dd54ba9b6')}
               onClick={onDelete}
             >
               <Trash2 className="w-4 h-4 text-red-600" />
@@ -608,53 +593,45 @@ function UserRow({
       <Modal
         open={roleModalOpen}
         onClose={() => setRoleModalOpen(false)}
-        title="Rolle ändern"
+        title={autoT('ui_3cde967bbfd0')}
         maxWidth="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-700">
-            Rolle von <span className="font-medium">{userData.name || userData.email}</span> ändern.
-          </p>
+          <p className="text-sm text-gray-700">{autoT('ui_c82711ef6dd2')}<span className="font-medium">{userData.name || userData.email}</span>{autoT('ui_42347fb498a0')}</p>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Neue Rolle</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_1fca361cd80f')}</label>
             <select
               className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
               value={pendingRole}
               onChange={(e) => setPendingRole(e.target.value as 'org_admin' | 'user')}
             >
-              <option value="user">Benutzer</option>
-              <option value="org_admin">Administrator</option>
+              <option value="user">{autoT('ui_bd26f3d230af')}</option>
+              <option value="org_admin">{autoT('ui_1eda23758be9')}</option>
             </select>
-            <p className="text-xs text-gray-500 mt-2">
-              Änderungen an Rollen können Berechtigungen stark beeinflussen.
-            </p>
+            <p className="text-xs text-gray-500 mt-2">{autoT('ui_bba2b9362a66')}</p>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t">
             <button
               className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
               onClick={() => setRoleModalOpen(false)}
-            >
-              Abbrechen
-            </button>
+            >{autoT('ui_07af7cb30fca')}</button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={pendingRole === (userData.role === 'org_admin' ? 'org_admin' : 'user')}
+              disabled={pendingRole === (userData.role === 'org_admin' ? "org_admin" : "user")}
               onClick={async () => {
                 try {
                   await updateUserApi(userData.id, { role: pendingRole });
                   setRoleModalOpen(false);
                   await onReload();
-                  showToast('Rolle geändert', { type: 'success' });
+                  showToast(autoT('ui_d524dd5d7012'), { type: 'success' });
                 } catch (err: unknown) {
-                  const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Rolle ändern fehlgeschlagen';
+                  const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_bcdd0620f5b9');
                   showToast(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg), { type: 'error' });
                 }
               }}
-            >
-              Rolle ändern
-            </button>
+            >{autoT('ui_3cde967bbfd0')}</button>
           </div>
         </div>
       </Modal>
@@ -712,16 +689,16 @@ function PasswordResetButton({
 
   const resetButtonLabel =
     resetConfig.passwordResetMode === 'admin_temp_password'
-      ? 'Temporäres Passwort'
+      ? autoT('ui_20641e4ae914')
       : resetConfig.passwordResetMode === 'hybrid'
-        ? 'Passwort zurücksetzen'
+        ? autoT('ui_ac8579f409c2')
         : 'Reset';
   const resetButtonTitle =
     resetConfig.passwordResetMode === 'admin_temp_password'
-      ? 'Temporäres Passwort setzen'
+      ? autoT('ui_7a28e7c4548f')
       : resetConfig.passwordResetMode === 'hybrid'
-        ? 'Passwort zurücksetzen'
-        : 'Passwort-Reset senden';
+        ? autoT('ui_ac8579f409c2')
+        : autoT('ui_c7bd5292502e');
 
   const resetFields = () => {
     setTemporaryPassword('');
@@ -734,11 +711,11 @@ function PasswordResetButton({
     setBusy(true);
     try {
       await adminResetPassword({ userId, mode: 'email' });
-      showToast('Reset-Link gesendet', { type: 'success' });
+      showToast(autoT('ui_4d9d929e45c9'), { type: 'success' });
       setOpen(false);
       resetFields();
     } catch {
-      showToast('Senden fehlgeschlagen', { type: 'error' });
+      showToast(autoT('ui_e06f0adb7deb'), { type: 'error' });
     } finally {
       setBusy(false);
     }
@@ -754,11 +731,11 @@ function PasswordResetButton({
 
   const submitTemporaryPassword = async () => {
     if (!temporaryPassword) {
-      showToast('Temporäres Passwort erforderlich', { type: 'error' });
+      showToast(autoT('ui_ac48d3d8da29'), { type: 'error' });
       return;
     }
     if (temporaryPassword !== confirmTemporaryPassword) {
-      showToast('Passwörter stimmen nicht überein', { type: 'error' });
+      showToast(autoT('ui_8e0c2f68198c'), { type: 'error' });
       return;
     }
     if (temporaryPasswordValidationMessage) {
@@ -772,7 +749,7 @@ function PasswordResetButton({
         mode: 'temporary_password',
         temporaryPassword,
       });
-      showToast('Temporäres Passwort gesetzt. Bitte sicher weitergeben.', { type: 'success' });
+      showToast(autoT('ui_3719f800953a'), { type: 'success' });
       setOpen(false);
       resetFields();
     } catch (err: unknown) {
@@ -810,17 +787,15 @@ function PasswordResetButton({
           setOpen(false);
           resetFields();
         }}
-        title="Passwort zurücksetzen"
+        title={autoT('ui_ac8579f409c2')}
         maxWidth="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-700">
-            Passwort für <span className="font-medium">{userName}</span> zurücksetzen.
-          </p>
+          <p className="text-sm text-gray-700">{autoT('ui_181ea833463f')}<span className="font-medium">{userName}</span>{autoT('ui_8d140d8bf587')}</p>
 
           {resetConfig.passwordResetMode === 'hybrid' && (
             <div className="space-y-2">
-              <div className="text-sm font-medium text-gray-700">Methode</div>
+              <div className="text-sm font-medium text-gray-700">{autoT('ui_5dcc6d55e88c')}</div>
               <label className="flex items-start gap-2 rounded-lg border border-gray-200 px-3 py-3">
                 <input
                   type="radio"
@@ -830,8 +805,8 @@ function PasswordResetButton({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block font-medium text-gray-800">Temporäres Passwort setzen</span>
-                  <span className="block text-xs text-gray-500">Der Benutzer meldet sich damit an und muss es danach sofort ändern.</span>
+                  <span className="block font-medium text-gray-800">{autoT('ui_7a28e7c4548f')}</span>
+                  <span className="block text-xs text-gray-500">{autoT('ui_b40566514b14')}</span>
                 </span>
               </label>
               <label className="flex items-start gap-2 rounded-lg border border-gray-200 px-3 py-3">
@@ -843,8 +818,8 @@ function PasswordResetButton({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block font-medium text-gray-800">Reset-Link per E-Mail senden</span>
-                  <span className="block text-xs text-gray-500">Nutzt den bestehenden E-Mail-Reset-Flow.</span>
+                  <span className="block font-medium text-gray-800">{autoT('ui_0cbccb90f14d')}</span>
+                  <span className="block text-xs text-gray-500">{autoT('ui_f78cd0b8b81d')}</span>
                 </span>
               </label>
             </div>
@@ -852,28 +827,26 @@ function PasswordResetButton({
 
           {resetMode === 'temporary_password' && (
             <div className="space-y-3">
-              <div className="rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-900">
-                Das Passwort muss stark sein und der Benutzer wird nach dem Login auf die Passwortänderung umgeleitet.
-              </div>
+              <div className="rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-900">{autoT('ui_ddb790431110')}</div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Temporäres Passwort</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_20641e4ae914')}</label>
                 <input
                   type="text"
                   value={temporaryPassword}
                   onChange={(event) => setTemporaryPassword(event.target.value)}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
-                  placeholder="Temporäres Passwort"
+                  placeholder={autoT('ui_20641e4ae914')}
                 />
                 <PasswordRequirementsHint password={temporaryPassword} className="mt-2" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bestätigung</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_35229a5f4490')}</label>
                 <input
                   type="text"
                   value={confirmTemporaryPassword}
                   onChange={(event) => setConfirmTemporaryPassword(event.target.value)}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
-                  placeholder="Passwort wiederholen"
+                  placeholder={autoT('ui_3794271cb105')}
                 />
               </div>
               <button
@@ -884,16 +857,12 @@ function PasswordResetButton({
                   setTemporaryPassword(generated);
                   setConfirmTemporaryPassword(generated);
                 }}
-              >
-                Starkes temporäres Passwort generieren
-              </button>
+              >{autoT('ui_6669229e0285')}</button>
             </div>
           )}
 
           {resetMode === 'email' && (
-            <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-600">
-              Es wird ein normaler Reset-Link per E-Mail ausgelöst.
-            </div>
+            <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-600">{autoT('ui_ca1c655804a0')}</div>
           )}
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t">
@@ -903,9 +872,7 @@ function PasswordResetButton({
                 setOpen(false);
                 resetFields();
               }}
-            >
-              Abbrechen
-            </button>
+            >{autoT('ui_07af7cb30fca')}</button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={busy || (resetMode === 'temporary_password' && Boolean(temporaryPasswordValidationMessage))}
@@ -913,7 +880,7 @@ function PasswordResetButton({
                 void submit();
               }}
             >
-              {resetMode === 'temporary_password' ? 'Temporäres Passwort setzen' : 'Reset-Link senden'}
+              {resetMode === 'temporary_password' ? autoT('ui_7a28e7c4548f') : autoT('ui_691ad4def207')}
             </button>
           </div>
         </div>
@@ -926,15 +893,11 @@ function PasswordResetButton({
 function RemoveUserModal({ user, onClose, onRemoved }: { user: UserDto | null; onClose: () => void; onRemoved: () => void }) {
   if (!user) return null;
   return (
-    <Modal open={true} onClose={onClose} title="Benutzer entfernen" maxWidth="sm">
-      <p className="text-sm text-gray-700">
-        Möchtest du <span className="font-medium">{user.name || user.email}</span> wirklich entfernen?
-      </p>
-      <p className="text-xs text-gray-500 mt-2">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+    <Modal open={true} onClose={onClose} title={autoT('ui_2a1dd54ba9b6')} maxWidth="sm">
+      <p className="text-sm text-gray-700">{autoT('ui_278bb06ac706')}<span className="font-medium">{user.name || user.email}</span>{autoT('ui_9c7ba5c37be5')}</p>
+      <p className="text-xs text-gray-500 mt-2">{autoT('ui_c7cd00d4551a')}</p>
       <div className="mt-4 flex items-center justify-end gap-2">
-        <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200" onClick={onClose}>
-          Abbrechen
-        </button>
+        <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200" onClick={onClose}>{autoT('ui_07af7cb30fca')}</button>
         <button
           className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
           onClick={async () => {
@@ -944,12 +907,10 @@ function RemoveUserModal({ user, onClose, onRemoved }: { user: UserDto | null; o
               onRemoved();
             } catch (err: unknown) {
               const e = err as { response?: { data?: { message?: unknown } } };
-              alert(String(e?.response?.data?.message || 'Entfernen fehlgeschlagen'));
+              alert(String(e?.response?.data?.message || autoT('ui_bbe17e081ceb')));
             }
           }}
-        >
-          Entfernen
-        </button>
+        >{autoT('ui_f78b6376e028')}</button>
       </div>
     </Modal>
   );

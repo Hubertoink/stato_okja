@@ -40,6 +40,10 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { formatDate, formatNumber } from '@/i18n/formatters';
+import { autoT } from '@/i18n/auto';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
 
@@ -91,92 +95,20 @@ function preloadExportModal() {
   void import('@/components/ExportModal');
 }
 
-const ACTIVITY_AUDIT_FIELD_LABELS: Record<string, string> = {
-  title: 'Titel',
-  date: 'Datum',
-  startTime: 'Beginn',
-  endTime: 'Ende',
-  durationMinutes: 'Dauer (Min.)',
-  type: 'Typ',
-  project: 'Projekt',
-  location: 'Standort',
-  countMale: 'Teilnehmende m',
-  countFemale: 'Teilnehmende w',
-  countDiverse: 'Teilnehmende d',
-  countTotal: 'Teilnehmende gesamt',
-  notes: 'Notizen',
-  goals: 'Ziele',
-  categories: 'Kategorien',
-  tags: 'Tags',
-  staff: 'Mitarbeitende',
-  cohorts: 'Kohorten',
-};
-
-const ACTIVITY_AUDIT_TYPE_LABELS: Record<string, string> = {
-  open_door: 'Offene Tür',
-  project_open: 'Projekt (offen)',
-  project_closed: 'Projekt (geschlossen)',
-  event: 'Veranstaltung',
-  outreach: 'Aufsuchend',
-};
-
-const AUDIT_ENTITY_LABELS: Record<string, string> = {
-  activity: 'Aktivität',
-  project: 'Projekt',
-  tag: 'Tag',
-  category: 'Kategorie',
-  cohort: 'Kohorte',
-  auth: 'Anmeldung',
-  user: 'Benutzer',
-  staff: 'Mitarbeiter',
-  location: 'Einrichtung',
-  organization: 'Organisation',
-  project_template: 'Vorlage',
-  logbook_entry: 'Logbucheintrag',
-  logbook_comment: 'Logbuch-Kommentar',
-};
-
 const RECENT_ACTIONS_PER_GROUP = 10;
 const RECENT_ACTION_FETCH_LIMIT = 25;
 
-const AUDIT_ACTION_PRESENTATION: Record<
+const AUDIT_ACTION_STYLE: Record<
   AuditLogAction,
   {
-    label: string;
-    emptyState: string;
     icon: typeof LogIn;
     iconClassName: string;
-    summary: string;
   }
 > = {
-  login: {
-    label: 'Anmeldungen',
-    emptyState: 'Noch keine Anmeldungen im Feed.',
-    icon: LogIn,
-    iconClassName: 'text-sky-600',
-    summary: 'Die neuesten Login-Events, separat von Inhaltsänderungen.',
-  },
-  create: {
-    label: 'Neu angelegt',
-    emptyState: 'Noch keine neuen Einträge im Feed.',
-    icon: PlusCircle,
-    iconClassName: 'text-green-600',
-    summary: 'Neu angelegte Inhalte und Datensätze.',
-  },
-  update: {
-    label: 'Bearbeitet',
-    emptyState: 'Noch keine Bearbeitungen im Feed.',
-    icon: Pencil,
-    iconClassName: 'text-blue-600',
-    summary: 'Aktualisierte Inhalte inklusive Feldänderungen.',
-  },
-  delete: {
-    label: 'Gelöscht',
-    emptyState: 'Noch keine Löschungen im Feed.',
-    icon: Trash2,
-    iconClassName: 'text-red-500',
-    summary: 'Entfernte Datensätze und Inhalte.',
-  },
+  login: { icon: LogIn, iconClassName: 'text-sky-600' },
+  create: { icon: PlusCircle, iconClassName: 'text-green-600' },
+  update: { icon: Pencil, iconClassName: 'text-blue-600' },
+  delete: { icon: Trash2, iconClassName: 'text-red-500' },
 };
 
 const AUDIT_ACTION_ORDER: AuditLogAction[] = ['login', 'create', 'update', 'delete'];
@@ -194,24 +126,24 @@ function filterDuplicateAuditEntries(items: AuditLog[]) {
   });
 }
 
-function formatAuditDiffLabel(entityType: string, key: string) {
-  if (entityType === 'activity') return ACTIVITY_AUDIT_FIELD_LABELS[key] || key;
+function formatAuditDiffLabel(entityType: string, key: string, t: TFunction) {
+  if (entityType === 'activity') return t(`fields.${key}`, { defaultValue: key });
   return key;
 }
 
-function formatAuditDiffValue(entityType: string, key: string, value: unknown): string {
+function formatAuditDiffValue(entityType: string, key: string, value: unknown, t: TFunction): string {
   if (Array.isArray(value)) {
     const items = value
-      .map((entry) => formatAuditDiffValue(entityType, key, entry))
+      .map((entry) => formatAuditDiffValue(entityType, key, entry, t))
       .filter((entry) => entry !== '—');
     return items.length > 0 ? items.join(', ') : '—';
   }
   if (value === null || typeof value === 'undefined' || value === '') return '—';
-  if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
+  if (typeof value === 'boolean') return value ? t('yes') : t('no');
   if (typeof value === 'number')
-    return Number.isFinite(value) ? value.toLocaleString('de-DE') : '—';
+    return Number.isFinite(value) ? formatNumber(value) : '—';
   if (entityType === 'activity' && key === 'type' && typeof value === 'string') {
-    return ACTIVITY_AUDIT_TYPE_LABELS[value] || value;
+    return t(`activities:types.${value}`, { defaultValue: value });
   }
   if (typeof value === 'string') return value;
   try {
@@ -222,6 +154,7 @@ function formatAuditDiffValue(entityType: string, key: string, value: unknown): 
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation(['dashboard', 'activities']);
   const { openQuickTally } = useOutletContext<{ openQuickTally: () => void }>();
   const scopeKey = useOrgScopeKey();
   const { scope } = useOrgScope();
@@ -329,6 +262,12 @@ export default function Dashboard() {
     };
   }, [user?.role]);
 
+  const auditActionPresentation = {
+    login: { ...AUDIT_ACTION_STYLE.login, label: t('recent.groups.login.label'), emptyState: t('recent.groups.login.empty'), summary: t('recent.groups.login.summary') },
+    create: { ...AUDIT_ACTION_STYLE.create, label: t('recent.groups.create.label'), emptyState: t('recent.groups.create.empty'), summary: t('recent.groups.create.summary') },
+    update: { ...AUDIT_ACTION_STYLE.update, label: t('recent.groups.update.label'), emptyState: t('recent.groups.update.empty'), summary: t('recent.groups.update.summary') },
+    delete: { ...AUDIT_ACTION_STYLE.delete, label: t('recent.groups.delete.label'), emptyState: t('recent.groups.delete.empty'), summary: t('recent.groups.delete.summary') },
+  };
   const recentActionGroups = useMemo(() => {
     const auditByAction: Record<AuditLogAction, AuditLog[]> = {
       login: loginAudit,
@@ -343,13 +282,13 @@ export default function Dashboard() {
         action,
         items: deduplicatedItems.slice(0, RECENT_ACTIONS_PER_GROUP),
         visibleCount: Math.min(deduplicatedItems.length, RECENT_ACTIONS_PER_GROUP),
-        presentation: AUDIT_ACTION_PRESENTATION[action],
+        presentation: auditActionPresentation[action],
       };
     });
-  }, [createAudit, deleteAudit, loginAudit, updateAudit]);
+  }, [createAudit, deleteAudit, loginAudit, t, updateAudit]);
   const hasRecentActionEntries = recentActionGroups.some((group) => group.items.length > 0);
 
-  const fmt = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
+  const fmt = (n?: number) => (typeof n === 'number' ? formatNumber(n) : '0');
   // keep date helpers only where needed; recent actions use locale string
 
   // Build Daily Log: last 5 activities in the last 14 days that have notes and/or tags
@@ -432,10 +371,10 @@ export default function Dashboard() {
   };
 
   const renderRecentActionEntry = (entry: AuditLog) => {
-    const who = entry.userName || 'Jemand';
-    const what = AUDIT_ENTITY_LABELS[entry.entityType] || entry.entityType;
+    const who = entry.userName || t('recent.someone');
+    const what = t(`entities.${entry.entityType}`, { defaultValue: entry.entityType });
     const title = entry.entityTitle ? ` „${entry.entityTitle}“` : '';
-    const when = new Date(entry.createdAt).toLocaleString('de-DE');
+    const when = formatDate(entry.createdAt, { dateStyle: 'medium', timeStyle: 'short' });
     const ackDone =
       entry.entityType === 'activity' &&
       entry.action === 'update' &&
@@ -444,21 +383,21 @@ export default function Dashboard() {
         : null;
     const verb =
       entry.action === 'login'
-        ? 'angemeldet'
+        ? ''
         : entry.action === 'create'
-          ? 'angelegt'
+          ? t('recent.verbs.create')
           : ackDone !== null
             ? ackDone
-              ? 'als besprochen markiert'
-              : 'als unbesprochen markiert'
+              ? t('recent.verbs.discussed')
+              : t('recent.verbs.undiscussed')
             : entry.action === 'update'
-              ? 'bearbeitet'
-              : 'gelöscht';
+              ? t('recent.verbs.update')
+              : t('recent.verbs.delete');
     const orgName = entry.orgName || (entry.orgId ? orgMap[entry.orgId] : undefined);
     const titleLine =
       entry.action === 'login'
-        ? `${who} hat sich angemeldet.`
-        : `${who} hat ${what}${title} ${verb}.`;
+        ? t('recent.loginSentence', { who })
+        : t('recent.actionSentence', { who, what, title, verb });
 
     return (
       <div key={entry.id} className="recent-actions-entry rounded-lg px-3 py-2.5 sm:px-4 sm:py-3">
@@ -467,12 +406,12 @@ export default function Dashboard() {
           <p className="recent-actions-entry-meta text-xs">{when}</p>
           {entry.action === 'login' && entry.entityTitle && (
             <span className="recent-actions-chip mt-1 inline-block rounded px-1.5 py-0.5 text-[11px]">
-              Account: {entry.entityTitle}
+              {t('recent.account', { name: entry.entityTitle })}
             </span>
           )}
           {orgName && (
             <span className="recent-actions-chip mt-1 ml-0 inline-block rounded px-1.5 py-0.5 text-[11px] sm:ml-1">
-              Organisation: {orgName}
+              {t('recent.organization', { name: orgName })}
             </span>
           )}
           {entry.diff && Object.keys(entry.diff).length > 0 && (
@@ -481,10 +420,10 @@ export default function Dashboard() {
                 ([key, value]) => (
                   <li key={key}>
                     <span className="font-medium">
-                      {formatAuditDiffLabel(entry.entityType, key)}:
+                      {formatAuditDiffLabel(entry.entityType, key, t)}:
                     </span>{' '}
-                    {formatAuditDiffValue(entry.entityType, key, value.from)} →{' '}
-                    {formatAuditDiffValue(entry.entityType, key, value.to)}
+                    {formatAuditDiffValue(entry.entityType, key, value.from, t)} →{' '}
+                    {formatAuditDiffValue(entry.entityType, key, value.to, t)}
                   </li>
                 ),
               )}
@@ -516,17 +455,17 @@ export default function Dashboard() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" />
+      <PageHeader title={t('title')} />
 
       {/* Today's Opening Hours */}
       {openingHours && (
         <div className="dashboard-accent-panel rounded-xl p-4 mb-6 flex items-center gap-3">
           <Clock className="w-5 h-5 flex-shrink-0" />
           <span className="font-medium">
-            Heute:{' '}
+            {t('today')}:{' '}
             {todayOpeningHours?.open
-              ? `${todayOpeningHours.from || '–'} – ${todayOpeningHours.to || '–'} Uhr`
-              : 'Geschlossen'}
+              ? `${todayOpeningHours.from || '–'} – ${todayOpeningHours.to || '–'}${t('clockSuffix') ? ` ${t('clockSuffix')}` : ''}`
+              : t('closed')}
           </span>
         </div>
       )}
@@ -534,26 +473,26 @@ export default function Dashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="kpi-card">
-          <h3 className="text-sm text-gray-500 font-medium mb-2">Aktivitäten (Monat)</h3>
+          <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.activities')}</h3>
           <p className="text-3xl font-bold text-gray-800">{fmt(summary?.totalActivities)}</p>
         </div>
 
         <div className="kpi-card">
-          <h3 className="text-sm text-gray-500 font-medium mb-2">Teilnehmende (Monat)</h3>
+          <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.participants')}</h3>
           <p className="text-3xl font-bold text-gray-800">{fmt(summary?.totalParticipants)}</p>
         </div>
 
         <div className="kpi-card">
-          <h3 className="text-sm text-gray-500 font-medium mb-2">Durchschnitt pro Aktivität</h3>
+          <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.average')}</h3>
           <p className="text-3xl font-bold text-gray-800">
-            {summary?.averageParticipants?.toLocaleString('de-DE') || '0'}
+            {typeof summary?.averageParticipants === 'number' ? formatNumber(summary.averageParticipants) : autoT('ui_b6589fc6ab0d')}
           </p>
         </div>
 
         <div className="kpi-card">
-          <h3 className="text-sm text-gray-500 font-medium mb-2">Gesamt-Stunden</h3>
+          <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.hours')}</h3>
           <p className="text-3xl font-bold text-gray-800">
-            {summary?.totalHours?.toLocaleString('de-DE') || '0'}
+            {typeof summary?.totalHours === 'number' ? formatNumber(summary.totalHours) : autoT('ui_b6589fc6ab0d')}
           </p>
         </div>
       </div>
@@ -579,8 +518,8 @@ export default function Dashboard() {
                 <Users className="w-8 h-8" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold">Tageserfassung</h3>
-                <p className="text-white/80 text-sm">Schnelle Anwesenheitserfassung am Tablet</p>
+                <h3 className="text-xl font-semibold">{t('tally.title')}</h3>
+                <p className="text-white/80 text-sm">{t('tally.subtitle')}</p>
               </div>
             </div>
             <button
@@ -588,7 +527,7 @@ export default function Dashboard() {
               className="dashboard-accent-button px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
             >
               <Users className="w-5 h-5" />
-              Erfassung starten
+              {t('tally.start')}
             </button>
           </div>
         </div>
@@ -596,7 +535,7 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <SurfaceCard className="mb-8">
-        <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">Schnellzugriff</h3>
+        <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">{t('quick.title')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             className="w-full"
@@ -609,14 +548,14 @@ export default function Dashboard() {
               }
             }}
           >
-            Neue Aktivität erfassen
+            {t('quick.activity')}
           </Button>
           <Button
             className="w-full"
             variant="secondary"
             onClick={() => navigate('/statistics')}
           >
-            Statistik anzeigen
+            {t('quick.statistics')}
           </Button>
           <Button
             className="w-full"
@@ -625,7 +564,7 @@ export default function Dashboard() {
             onMouseEnter={preloadExportModal}
             onFocus={preloadExportModal}
           >
-            Daten exportieren
+            {t('quick.export')}
           </Button>
         </div>
       </SurfaceCard>
@@ -633,21 +572,21 @@ export default function Dashboard() {
       <SurfaceCard className="mb-8" padding="md">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-[var(--text-primary)]">Logbuch</h3>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">{t('logbook.title')}</h3>
           </div>
           <Button
             size="sm"
             onClick={() => navigate('/logbook/new')}
           >
             <Plus className="h-4 w-4" />
-            Eintrag
+            {t('logbook.entry')}
           </Button>
         </div>
         {recentLogbookEntries.length === 0 ? (
           <EmptyState
             className="py-6"
-            description="Halte wichtige Beobachtungen direkt für das Team fest."
-            title="Noch keine Logbucheinträge"
+            description={t('logbook.emptyDescription')}
+            title={t('logbook.emptyTitle')}
           />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -663,10 +602,10 @@ export default function Dashboard() {
                     <span className="truncate font-semibold text-gray-800">{entry.title}</span>
                     <span
                       className="flex shrink-0 items-center text-xs text-gray-500"
-                      title={new Date(entry.occurredAt).toLocaleString('de-DE')}
+                      title={formatDate(entry.occurredAt, { dateStyle: 'medium', timeStyle: 'short' })}
                     >
                       <CalendarIcon className="mr-1 h-3.5 w-3.5" />
-                      {new Date(entry.occurredAt).toLocaleDateString('de-DE', {
+                      {formatDate(entry.occurredAt, {
                         weekday: 'long',
                         day: '2-digit',
                         month: '2-digit',
@@ -703,19 +642,19 @@ export default function Dashboard() {
           onClick={() => navigate('/logbook')}
           className="mt-4 text-sm font-semibold text-viridian hover:underline"
         >
-          Alle Logbucheinträge anzeigen
+          {t('logbook.showAll')}
         </button>
       </SurfaceCard>
 
       {/* Daily Log */}
       <div className="modern-card p-6 mb-8">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Daily Log
-          <span className="ml-2 text-xs text-gray-400 font-normal">(letzte 14 Tage)</span>
+          {t('daily.title')}
+          <span className="ml-2 text-xs text-gray-400 font-normal">{t('daily.period')}</span>
         </h3>
         {dailyLog.length === 0 ? (
           <div className="text-gray-500">
-            Keine Aktivitäten mit Notizen oder Tags im aktuellen Zeitraum.
+            {t('daily.empty')}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -728,12 +667,12 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2 shrink-0">
                     <span
                       className="text-xs text-gray-500 flex items-center"
-                      title={new Date(item.createdAt || '').toLocaleString('de-DE')}
+                      title={formatDate(item.createdAt || '', { dateStyle: 'medium', timeStyle: 'short' })}
                     >
                       <CalendarIcon className="w-3.5 h-3.5 mr-1" />
                       {(() => {
                         const d = new Date(item.createdAt || '');
-                        return d.toLocaleDateString('de-DE', {
+                        return formatDate(d, {
                           weekday: 'long',
                           day: '2-digit',
                           month: '2-digit',
@@ -754,12 +693,12 @@ export default function Dashboard() {
                           setDoneMap((m) => ({ ...m, [item.id]: !next }));
                         }
                       }}
-                      className={`p-1.5 rounded-full transition-all duration-200 ${doneMap[item.id] ? 'bg-accent-green/10 text-accent-green' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                      className={`p-1.5 rounded-full transition-all duration-200 ${doneMap[item.id] ? "bg-accent-green/10 text-accent-green" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}
                       title={
-                        doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'
+                        doneMap[item.id] ? t('daily.markUndiscussed') : t('daily.markDiscussed')
                       }
                       aria-label={
-                        doneMap[item.id] ? 'Als unbesprochen markieren' : 'Als besprochen markieren'
+                        doneMap[item.id] ? t('daily.markUndiscussed') : t('daily.markDiscussed')
                       }
                     >
                       {doneMap[item.id] ? (
@@ -773,11 +712,11 @@ export default function Dashboard() {
                 <div className="text-xs text-gray-700 mb-2">
                   {(() => {
                     const labelMap: Record<string, string> = {
-                      open_door: 'Offene Tür',
-                      project_open: 'Projekt (offen)',
-                      project_closed: 'Projekt (geschlossen)',
-                      event: 'Veranstaltung',
-                      outreach: 'Aufsuchend',
+                      open_door: t('activities:types.open_door'),
+                      project_open: t('activities:types.project_open'),
+                      project_closed: t('activities:types.project_closed'),
+                      event: t('activities:types.event'),
+                      outreach: t('activities:types.outreach'),
                     };
                     const typeBgClass: Record<string, string> = {
                       open_door: 'bg-emerald-700 text-white',
@@ -797,7 +736,7 @@ export default function Dashboard() {
                     );
                   })()}
                   {item.project && (
-                    <span className="inline-block text-gray-600">Projekt: {item.project}</span>
+                    <span className="inline-block text-gray-600">{t('daily.project', { name: item.project })}</span>
                   )}
                 </div>
                 {item.notes && (
@@ -828,7 +767,7 @@ export default function Dashboard() {
 
       {/* Recent Actions */}
       <div className="modern-card p-4 sm:p-6">
-        <h3 className="mb-3 text-lg font-bold text-gray-800 sm:mb-4 sm:text-xl">Letzte Aktionen</h3>
+        <h3 className="mb-3 text-lg font-bold text-gray-800 sm:mb-4 sm:text-xl">{t('recent.title')}</h3>
         <div className="space-y-3">
           {recentActionGroups.map((group) => {
             const GroupIcon = group.presentation.icon;
@@ -884,7 +823,7 @@ export default function Dashboard() {
             );
           })}
           {!hasRecentActionEntries && (
-            <div className="recent-actions-empty text-sm">Noch keine Aktionen vorhanden.</div>
+            <div className="recent-actions-empty text-sm">{t('recent.empty')}</div>
           )}
         </div>
       </div>
@@ -910,10 +849,10 @@ export default function Dashboard() {
             <Modal
               open={exportOpen}
               onClose={() => setExportOpen(false)}
-              title="Daten exportieren"
+              title={t('quick.export')}
               maxWidth="md"
             >
-              <div className="py-6 text-sm text-gray-600">Exportmodul wird geladen…</div>
+              <div className="py-6 text-sm text-gray-600">{t('exportLoading')}</div>
             </Modal>
           }
         >

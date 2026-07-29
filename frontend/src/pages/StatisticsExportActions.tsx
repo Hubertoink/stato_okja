@@ -1,4 +1,5 @@
 import { FileDown } from 'lucide-react';
+import { autoT } from '@/i18n/auto';
 
 type StatisticsExportOption = {
   label: string;
@@ -40,7 +41,7 @@ export function StatisticsExportActions({
           <button
             key={`${option.label}-${option.meta}`}
             type="button"
-            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60${index > 0 ? ' mt-1' : ''}`}
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60${index > 0 ? "mt-1" : ''}`}
             onClick={option.onClick}
             disabled={isExporting}
           >
@@ -49,7 +50,7 @@ export function StatisticsExportActions({
           </button>
         ))}
         {isExporting && (
-          <div className="px-3 pt-2 text-xs text-gray-500">Export wird vorbereitet…</div>
+          <div className="px-3 pt-2 text-xs text-gray-500">{autoT('ui_bfbe8402858e')}</div>
         )}
       </div>
     </div>

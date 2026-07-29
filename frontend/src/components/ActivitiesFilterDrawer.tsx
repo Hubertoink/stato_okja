@@ -11,10 +11,11 @@ import { useProjects } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import { useStaff } from '@/lib/staff';
 import {
-  ACTIVITY_EXECUTION_STATUS_LABELS,
   ACTIVITY_EXECUTION_STATUS_OPTIONS,
   normalizeActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
+import { useTranslation } from 'react-i18next';
+import { compareLocalized } from '@/i18n/formatters';
 
 export default function ActivitiesFilterDrawer({
   open,
@@ -27,6 +28,7 @@ export default function ActivitiesFilterDrawer({
   onClose: () => void;
   onApply: (f: ActivitiesFilter) => void;
 }) {
+  const { t } = useTranslation('activities');
   const { scope, scopeKey, ready } = useOrgScopedQueryState();
   const [f, setF] = useState<ActivitiesFilter>(initial);
   useEffect(() => {
@@ -110,36 +112,36 @@ export default function ActivitiesFilterDrawer({
 
   const apply = () => onApply(f);
   const sortedStaff = useMemo(
-    () => [...staff].sort((left, right) => left.name.localeCompare(right.name, 'de')),
+    () => [...staff].sort((left, right) => compareLocalized(left.name, right.name)),
     [staff],
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Filter" maxWidth="4xl">
+    <Modal open={open} onClose={onClose} title={t('filterDrawer.title')} maxWidth="4xl">
       <div className="space-y-4">
         {/* Zeitraum */}
         <section>
-          <h4 className="font-semibold text-viridian mb-2">Zeitraum</h4>
+          <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.period')}</h4>
           <div className="grid grid-cols-2 gap-3">
             <input
               type="date"
               className="border rounded px-2 py-1"
               value={f.from || ''}
-              aria-label="Von-Datum"
+              aria-label={t('filterDrawer.fromDate')}
               onChange={(e) => setF({ ...f, from: e.target.value || undefined })}
             />
             <input
               type="date"
               className="border rounded px-2 py-1"
               value={f.to || ''}
-              aria-label="Bis-Datum"
+              aria-label={t('filterDrawer.toDate')}
               onChange={(e) => setF({ ...f, to: e.target.value || undefined })}
             />
           </div>
           <div className="flex flex-wrap gap-2 mt-2 text-xs">
             {[
               {
-                label: 'Aktueller Monat',
+                label: t('filterDrawer.currentMonth'),
                 range: (() => {
                   const n = new Date();
                   const y = n.getFullYear();
@@ -151,7 +153,7 @@ export default function ActivitiesFilterDrawer({
                 })(),
               },
               {
-                label: 'Letzte 30 Tage',
+                label: t('filterDrawer.lastThirtyDays'),
                 range: (() => {
                   const t = new Date();
                   const f = new Date();
@@ -179,25 +181,17 @@ export default function ActivitiesFilterDrawer({
 
         {/* Typen */}
         <section>
-          <h4 className="font-semibold text-viridian mb-2">Tätigkeitstypen</h4>
+          <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.activityTypes')}</h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-            {['open_door', 'project_open', 'project_closed', 'event', 'outreach'].map((t) => (
-              <label key={t} className="inline-flex items-center gap-2">
+            {['open_door', 'project_open', 'project_closed', 'event', 'outreach'].map((typeKey) => (
+              <label key={typeKey} className="inline-flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={!!f.types?.includes(t)}
-                  onChange={() => toggleIn('types', t)}
+                  checked={!!f.types?.includes(typeKey)}
+                  onChange={() => toggleIn('types', typeKey)}
                 />
                 <span>
-                  {(
-                    {
-                      open_door: 'Offene Tür',
-                      project_open: 'Projekt (offen)',
-                      project_closed: 'Projekt (geschlossen)',
-                      event: 'Veranstaltung',
-                      outreach: 'Aufsuchend',
-                    } as Record<string, string>
-                  )[t] || t}
+                  {t(`types.${typeKey}`)}
                 </span>
               </label>
             ))}
@@ -206,10 +200,10 @@ export default function ActivitiesFilterDrawer({
 
         {/* Einrichtungen & Projekte */}
         <section>
-          <h4 className="font-semibold text-viridian mb-2">Einrichtungen & Projekte</h4>
+          <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.locationsProjects')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div>
-              <div className="text-xs text-gray-600 mb-1">Einrichtungen</div>
+              <div className="text-xs text-gray-600 mb-1">{t('filters.locations')}</div>
               <div className="max-h-48 md:max-h-64 overflow-auto border rounded p-2 space-y-1">
                 {locations.map((l) => (
                   <label key={l.id} className="flex items-center gap-2">
@@ -224,7 +218,7 @@ export default function ActivitiesFilterDrawer({
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-600 mb-1">Projekte</div>
+              <div className="text-xs text-gray-600 mb-1">{t('filters.projects')}</div>
               <div className="max-h-48 md:max-h-64 overflow-auto border rounded p-2 space-y-1">
                 {projects.map((p) => (
                   <label key={p.id} className="flex items-center gap-2">
@@ -242,7 +236,7 @@ export default function ActivitiesFilterDrawer({
         </section>
 
         <section>
-          <h4 className="font-semibold text-viridian mb-2">Mitarbeitende</h4>
+          <h4 className="font-semibold text-viridian mb-2">{t('filters.staff')}</h4>
           <div className="max-h-48 md:max-h-64 overflow-auto border rounded p-2 space-y-1 text-sm">
             {sortedStaff.length > 0 ? (
               sortedStaff.map((member) => (
@@ -256,24 +250,24 @@ export default function ActivitiesFilterDrawer({
                 </label>
               ))
             ) : (
-              <div className="text-sm text-gray-500 px-1 py-2">Keine Mitarbeitenden verfügbar.</div>
+              <div className="text-sm text-gray-500 px-1 py-2">{t('filterDrawer.noStaff')}</div>
             )}
           </div>
         </section>
 
         {/* Kategorien & Tags */}
         <section>
-          <h4 className="font-semibold text-viridian mb-2">Kategorien & Tags</h4>
+          <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.categoriesTags')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div>
-              <div className="text-xs text-gray-600 mb-1">Kategorien</div>
+              <div className="text-xs text-gray-600 mb-1">{t('filters.categories')}</div>
               <div className="flex flex-wrap gap-2">
                 {(() => {
                   const active = !!f.uncategorized;
                   const present = hasUncategorized;
                   const base = present
-                    ? 'bg-azure-web text-viridian'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed';
+                    ? "bg-azure-web text-viridian"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed";
                   const disabled = !present && !active;
                   return (
                     <button
@@ -284,16 +278,16 @@ export default function ActivitiesFilterDrawer({
                       disabled={disabled}
                       title={
                         disabled
-                          ? 'Keine unkategorisierten Aktivitäten vorhanden'
+                          ? t('filterDrawer.noUncategorized')
                           : undefined
                       }
                       className={`text-xs px-2 py-1 rounded-full border ${
                         active
-                          ? 'bg-viridian text-white border-viridian'
+                          ? "bg-viridian text-white border-viridian"
                           : `${base} border-transparent`
-                      } ${present ? '' : 'opacity-80'}`}
+                      } ${present ? '' : "opacity-80"}`}
                     >
-                      Unkategorisiert
+                      {t('filters.uncategorized')}
                     </button>
                   );
                 })()}
@@ -301,8 +295,8 @@ export default function ActivitiesFilterDrawer({
                   const active = !!f.categoryIds?.includes(c.id);
                   const present = availabilityLoaded ? availableCategoryIds.has(c.id) : true;
                   const base = present
-                    ? 'bg-azure-web text-viridian'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed';
+                    ? "bg-azure-web text-viridian"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed";
                   const disabled = !present && !active;
                   return (
                     <button
@@ -311,12 +305,12 @@ export default function ActivitiesFilterDrawer({
                         if (!disabled) toggleIn('categoryIds', c.id);
                       }}
                       disabled={disabled}
-                      title={disabled ? 'Keine Aktivitäten mit dieser Kategorie vorhanden' : undefined}
+                      title={disabled ? t('filterDrawer.noCategoryActivities') : undefined}
                       className={`text-xs px-2 py-1 rounded-full border ${
                         active
-                          ? 'bg-viridian text-white border-viridian'
+                          ? "bg-viridian text-white border-viridian"
                           : `${base} border-transparent`
-                      } ${present ? '' : 'opacity-80'}`}
+                      } ${present ? '' : "opacity-80"}`}
                     >
                       {c.name}
                     </button>
@@ -325,30 +319,30 @@ export default function ActivitiesFilterDrawer({
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-600 mb-1">Tags</div>
+              <div className="text-xs text-gray-600 mb-1">{t('filters.tags')}</div>
               <div className="flex flex-wrap gap-2">
-                {tags.map((t) => {
-                  const active = !!f.tagIds?.includes(t.id);
-                  const present = availabilityLoaded ? availableTagIds.has(t.id) : true;
+                {tags.map((tag) => {
+                  const active = !!f.tagIds?.includes(tag.id);
+                  const present = availabilityLoaded ? availableTagIds.has(tag.id) : true;
                   const base = present
-                    ? 'bg-azure-web text-viridian'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed';
+                    ? "bg-azure-web text-viridian"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed";
                   const disabled = !present && !active;
                   return (
                     <button
-                      key={t.id}
+                      key={tag.id}
                       onClick={() => {
-                        if (!disabled) toggleIn('tagIds', t.id);
+                        if (!disabled) toggleIn('tagIds', tag.id);
                       }}
                       disabled={disabled}
-                      title={disabled ? 'Keine Aktivitäten mit diesem Tag vorhanden' : undefined}
+                      title={disabled ? t('filterDrawer.noTagActivities') : undefined}
                       className={`text-xs px-2 py-1 rounded-full border ${
                         active
-                          ? 'bg-viridian text-white border-viridian'
+                          ? "bg-viridian text-white border-viridian"
                           : `${base} border-transparent`
-                      } ${present ? '' : 'opacity-80'}`}
+                      } ${present ? '' : "opacity-80"}`}
                     >
-                      {t.name}
+                      {tag.name}
                     </button>
                   );
                 })}
@@ -359,7 +353,7 @@ export default function ActivitiesFilterDrawer({
 
         {/* Weitere Filter */}
         <section>
-          <h4 className="font-semibold text-viridian mb-2">Weitere Filter</h4>
+          <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.moreFilters')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <label className="inline-flex items-center gap-2">
               <input
@@ -367,17 +361,17 @@ export default function ActivitiesFilterDrawer({
                 checked={!!f.hasNotes}
                 onChange={(e) => setF({ ...f, hasNotes: e.target.checked })}
               />
-              <span>Nur mit Notizen</span>
+              <span>{t('filters.onlyNotes')}</span>
             </label>
             <div>
-              <div className="text-xs text-gray-600 mb-1">Status</div>
+              <div className="text-xs text-gray-600 mb-1">{t('filters.status')}</div>
               <div className="flex flex-wrap gap-2">
                 {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((status) => {
                   const active = !!f.executionStatuses?.includes(status);
                   const present = availabilityLoaded ? availableExecutionStatuses.has(status) : true;
                   const base = present
-                    ? 'bg-azure-web text-viridian'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed';
+                    ? "bg-azure-web text-viridian"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed";
                   const disabled = !present && !active;
                   return (
                     <button
@@ -387,27 +381,27 @@ export default function ActivitiesFilterDrawer({
                         if (!disabled) toggleExecutionStatus(status);
                       }}
                       disabled={disabled}
-                      title={disabled ? 'Keine Aktivitäten mit diesem Status vorhanden' : undefined}
+                      title={disabled ? t('filterDrawer.noStatusActivities') : undefined}
                       className={`text-xs px-2 py-1 rounded-full border ${
                         active
-                          ? 'bg-cambridge-blue text-white border-cambridge-blue'
+                          ? "bg-cambridge-blue text-white border-cambridge-blue"
                           : `${base} border-transparent`
-                      } ${present ? '' : 'opacity-80'}`}
+                      } ${present ? '' : "opacity-80"}`}
                     >
-                      {ACTIVITY_EXECUTION_STATUS_LABELS[status]}
+                      {t(`filterDrawer.${status}`)}
                     </button>
                   );
                 })}
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-600 mb-1">Alterskohorten</div>
+              <div className="text-xs text-gray-600 mb-1">{t('filterDrawer.ageCohorts')}</div>
               <div className="flex flex-wrap gap-2">
                 {cohorts.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => toggleIn('cohortIds', c.id)}
-                    className={`text-xs px-2 py-1 rounded-full border ${f.cohortIds?.includes(c.id) ? 'bg-cambridge-blue text-white border-cambridge-blue' : 'bg-azure-web text-viridian border-transparent'}`}
+                    className={`text-xs px-2 py-1 rounded-full border ${f.cohortIds?.includes(c.id) ? "bg-cambridge-blue text-white border-cambridge-blue" : "bg-azure-web text-viridian border-transparent"}`}
                   >
                     {c.name}
                   </button>
@@ -416,13 +410,13 @@ export default function ActivitiesFilterDrawer({
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <div className="text-xs text-gray-600 mb-1">Teilnehmende gesamt</div>
+                <div className="text-xs text-gray-600 mb-1">{t('filterDrawer.participantsTotal')}</div>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     min={0}
                     className="border rounded px-2 py-1 w-full"
-                    placeholder="min"
+                    placeholder={t('filterDrawer.min')}
                     value={f.participantsMin ?? ''}
                     onChange={(e) =>
                       setF({
@@ -435,7 +429,7 @@ export default function ActivitiesFilterDrawer({
                     type="number"
                     min={0}
                     className="border rounded px-2 py-1 w-full"
-                    placeholder="max"
+                    placeholder={t('filterDrawer.max')}
                     value={f.participantsMax ?? ''}
                     onChange={(e) =>
                       setF({
@@ -447,13 +441,13 @@ export default function ActivitiesFilterDrawer({
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-600 mb-1">Dauer (Minuten)</div>
+                <div className="text-xs text-gray-600 mb-1">{t('filterDrawer.durationMinutes')}</div>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     min={0}
                     className="border rounded px-2 py-1 w-full"
-                    placeholder="min"
+                    placeholder={t('filterDrawer.min')}
                     value={f.durationMin ?? ''}
                     onChange={(e) =>
                       setF({
@@ -466,7 +460,7 @@ export default function ActivitiesFilterDrawer({
                     type="number"
                     min={0}
                     className="border rounded px-2 py-1 w-full"
-                    placeholder="max"
+                    placeholder={t('filterDrawer.max')}
                     value={f.durationMax ?? ''}
                     onChange={(e) =>
                       setF({
@@ -489,14 +483,14 @@ export default function ActivitiesFilterDrawer({
               className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
               onClick={onClose}
             >
-              Schließen
+              {t('filterDrawer.close')}
             </button>
             <button
               type="button"
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
               onClick={apply}
             >
-              Übernehmen
+              {t('filterDrawer.apply')}
             </button>
           </div>
         </div>

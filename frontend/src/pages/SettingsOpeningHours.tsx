@@ -4,18 +4,12 @@ import { getOpeningHours, updateOpeningHours, OpeningHours, DayOpeningHours, DEF
 import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import { Save as SaveIcon, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
-const DAYS: Array<{ key: keyof OpeningHours; labelDe: string }> = [
-  { key: 'monday', labelDe: 'Montag' },
-  { key: 'tuesday', labelDe: 'Dienstag' },
-  { key: 'wednesday', labelDe: 'Mittwoch' },
-  { key: 'thursday', labelDe: 'Donnerstag' },
-  { key: 'friday', labelDe: 'Freitag' },
-  { key: 'saturday', labelDe: 'Samstag' },
-  { key: 'sunday', labelDe: 'Sonntag' },
-];
+const DAYS: Array<keyof OpeningHours> = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 export default function SettingsOpeningHours() {
+  const { t } = useTranslation(['settings', 'common']);
   const { user } = useAuth();
   const { scope } = useOrgScope();
   const qc = useQueryClient();
@@ -66,8 +60,8 @@ export default function SettingsOpeningHours() {
       <div className="bg-white rounded-lg shadow p-6">
         <p className="text-gray-600">
           {user?.role === 'superadmin'
-            ? 'Bitte wähle eine Organisation aus dem Dropdown oben rechts, um deren Öffnungszeiten zu bearbeiten.'
-            : 'Keine Organisation ausgewählt.'}
+            ? t('openingHours.selectOrg')
+            : t('openingHours.noOrg')}
         </p>
       </div>
     );
@@ -79,9 +73,9 @@ export default function SettingsOpeningHours() {
         <div>
           <h3 className="text-xl font-semibold text-viridian flex items-center gap-2">
             <Clock className="w-5 h-5" />
-            Öffnungszeiten
+            {t('openingHours.title')}
           </h3>
-          <p className="text-gray-600">Öffnungszeiten der Organisation (werden im Kalender und Dashboard angezeigt)</p>
+          <p className="text-gray-600">{t('openingHours.subtitle')}</p>
         </div>
         <button
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition disabled:opacity-50"
@@ -89,15 +83,15 @@ export default function SettingsOpeningHours() {
           onClick={() => mutation.mutate()}
         >
           <SaveIcon className="w-5 h-5" />
-          Speichern
+          {t('common:actions.save')}
         </button>
       </div>
 
       {isLoading ? (
-        <p className="text-gray-500">Laden...</p>
+        <p className="text-gray-500">{t('openingHours.loading')}</p>
       ) : (
         <div className="space-y-3">
-          {DAYS.map(({ key, labelDe }) => {
+          {DAYS.map((key) => {
             const day = hours[key];
             return (
               <div key={key} className="flex flex-col gap-3 py-3 border-b last:border-0 sm:flex-row sm:items-center">
@@ -109,14 +103,14 @@ export default function SettingsOpeningHours() {
                     checked={day.open}
                     onChange={(e) => updateDay(key, { open: e.target.checked })}
                   />
-                  <span className="font-medium text-gray-800 w-24">{labelDe}</span>
+                  <span className="font-medium text-gray-800 w-24">{t(`openingHours.days.${key}`)}</span>
                 </label>
 
                 {/* Time inputs */}
                 {day.open ? (
                   <div className="flex w-full items-center gap-2 sm:w-auto sm:flex-wrap">
                     <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-initial">
-                      <label className="text-sm text-gray-600">Von:</label>
+                      <label className="text-sm text-gray-600">{t('openingHours.from')}</label>
                       <input
                         type="time"
                         className="min-w-0 flex-1 border rounded px-2 py-1 text-sm sm:w-auto sm:flex-none"
@@ -126,7 +120,7 @@ export default function SettingsOpeningHours() {
                     </div>
                     <span className="shrink-0 text-gray-400">–</span>
                     <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-initial">
-                      <label className="text-sm text-gray-600">Bis:</label>
+                      <label className="text-sm text-gray-600">{t('openingHours.to')}</label>
                       <input
                         type="time"
                         className="min-w-0 flex-1 border rounded px-2 py-1 text-sm sm:w-auto sm:flex-none"
@@ -136,7 +130,7 @@ export default function SettingsOpeningHours() {
                     </div>
                   </div>
                 ) : (
-                  <span className="text-gray-400 italic">Geschlossen</span>
+                  <span className="text-gray-400 italic">{t('openingHours.closed')}</span>
                 )}
               </div>
             );
@@ -145,10 +139,10 @@ export default function SettingsOpeningHours() {
       )}
 
       {mutation.isSuccess && (
-        <p className="mt-4 text-sm text-green-600">✓ Öffnungszeiten gespeichert</p>
+        <p className="mt-4 text-sm text-green-600">{t('openingHours.saved')}</p>
       )}
       {mutation.isError && (
-        <p className="mt-4 text-sm text-red-600">Fehler beim Speichern</p>
+        <p className="mt-4 text-sm text-red-600">{t('openingHours.saveError')}</p>
       )}
     </div>
   );

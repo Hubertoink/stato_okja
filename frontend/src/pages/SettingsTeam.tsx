@@ -12,6 +12,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { STAFF_ROLE_LABEL, StaffFormModal } from '@/components/settings/EntityFormModals';
+import { autoT } from '@/i18n/auto';
 
 export default function SettingsTeam() {
   const [showArchived, setShowArchived] = useState(false);
@@ -51,8 +52,8 @@ export default function SettingsTeam() {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4 gap-3">
         <div>
-          <h3 className="text-xl font-semibold text-viridian">Team-Mitglieder</h3>
-          <p className="text-gray-600">Mitarbeitende, Ehrenamtliche, Helfer</p>
+          <h3 className="text-xl font-semibold text-viridian">{autoT('ui_9261e2edbfdf')}</h3>
+          <p className="text-gray-600">{autoT('ui_cb2d31be2f67')}</p>
         </div>
         <div className="flex items-center gap-3">
           {archivedCount > 0 && (
@@ -60,8 +61,7 @@ export default function SettingsTeam() {
               checked={showArchived}
               onChange={setShowArchived}
               label={
-                <span>
-                  Archiv <span className="text-xs text-gray-500">({archivedCount})</span>
+                <span>{autoT('ui_d9431e38c8b6')}<span className="text-xs text-gray-500">({archivedCount})</span>
                 </span>
               }
             />
@@ -70,8 +70,8 @@ export default function SettingsTeam() {
             <button
               className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow"
               onClick={() => setModal({ mode: 'create' })}
-              aria-label="Neues Mitglied"
-              title="Neues Mitglied"
+              aria-label={autoT('ui_bb42e5a2eb95')}
+              title={autoT('ui_bb42e5a2eb95')}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -86,7 +86,7 @@ export default function SettingsTeam() {
                 />
               </svg>
             </button>
-            <span className="tooltip-bubble">Neues Mitglied</span>
+            <span className="tooltip-bubble">{autoT('ui_bb42e5a2eb95')}</span>
           </span>
         </div>
       </div>
@@ -102,11 +102,11 @@ export default function SettingsTeam() {
               <div className="mt-2">
                 <span
                   className={`inline-block px-2 py-0.5 rounded-full text-xs ${roleBadgeClass(
-                    (m.role || (Array.isArray(m.roles) ? m.roles[0] : 'employee')) as StaffRole,
+                    (m.role || (Array.isArray(m.roles) ? m.roles[0] : "employee")) as StaffRole,
                   )}`}
                 >
                   {STAFF_ROLE_LABEL[
-                    (m.role || (Array.isArray(m.roles) ? m.roles[0] : 'employee')) as StaffRole
+                    (m.role || (Array.isArray(m.roles) ? m.roles[0] : "employee")) as StaffRole
                   ] || '–'}
                 </span>
               </div>
@@ -114,8 +114,8 @@ export default function SettingsTeam() {
             <div className="flex gap-2 shrink-0 self-start md:self-center">
               <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
-                title="Bearbeiten"
-                aria-label={`Teammitglied ${m.name} bearbeiten`}
+                title={autoT('ui_104f3bfdc340')}
+                aria-label={autoT('ui_3829918a22c4', { value0: m.name })}
                 onClick={() => setModal({ mode: 'edit', member: m })}
               >
                 <Pencil className="w-4 h-4 text-viridian" />
@@ -133,14 +133,12 @@ export default function SettingsTeam() {
                       },
                     )
                   }
-                >
-                  Wiederherstellen
-                </button>
+                >{autoT('ui_98f492b5e015')}</button>
               )}
               <button
                 className="danger-icon-button p-1.5"
-                title="Löschen"
-                aria-label={`Teammitglied ${m.name} löschen`}
+                title={autoT('ui_ffa5a8a7e21d')}
+                aria-label={autoT('ui_b607bbd2d882', { value0: m.name })}
                 onClick={async () => {
                   setConfirm({ open: true, member: m, loading: true });
                   try {
@@ -162,7 +160,7 @@ export default function SettingsTeam() {
           </div>
         ))}
         {members.length === 0 && (
-          <div className="text-gray-500 py-6">Noch keine Team-Mitglieder.</div>
+          <div className="text-gray-500 py-6">{autoT('ui_2f421a476157')}</div>
         )}
       </div>
 
@@ -192,35 +190,28 @@ export default function SettingsTeam() {
       )}
       <ConfirmModal
         open={confirm.open}
-        title="Teammitglied löschen?"
+        title={autoT('ui_e521836a88a3')}
         message={
           <div className="space-y-2">
-            <p>
-              Wenn Sie ein Teammitglied löschen, verlieren Aktivitäten mit diesem Bezug die
-              Zuordnung. Historische Auswertungen ändern sich rückwirkend.
-            </p>
+            <p>{autoT('ui_bdba6855be5c')}</p>
             {confirm.loading ? (
-              <p className="text-sm text-gray-500">Ermittle betroffene Einträge…</p>
+              <p className="text-sm text-gray-500">{autoT('ui_7a67a2dd16a7')}</p>
             ) : (
-              <p className="text-sm text-gray-700">
-                Betroffene Aktivitäten:{' '}
+              <p className="text-sm text-gray-700">{autoT('ui_8ae03f3803dd')}{' '}
                 <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong>
               </p>
             )}
-            <p className="text-sm text-gray-600">
-              Tipp: Statt zu löschen können Sie das Mitglied archivieren. Archivierte Einträge
-              erscheinen nicht mehr in Auswahlfeldern, bleiben aber für bestehende Daten erhalten.
-            </p>
+            <p className="text-sm text-gray-600">{autoT('ui_ec837b4d76ed')}</p>
           </div>
         }
-        cancelLabel="Abbrechen"
-        secondaryLabel="Archivieren (empfohlen)"
+        cancelLabel={autoT('ui_07af7cb30fca')}
+        secondaryLabel={autoT('ui_49471caa9c1f')}
         onSecondaryConfirm={async () => {
           if (confirm.member?.id) await archive.mutateAsync({ id: confirm.member.id });
           setConfirm({ open: false });
           await refetch();
         }}
-        confirmLabel="Endgültig löschen"
+        confirmLabel={autoT('ui_9df6718de96c')}
         onConfirm={async () => {
           if (confirm.member?.id) await api.delete(`/staff/${confirm.member.id}`);
           setConfirm({ open: false });

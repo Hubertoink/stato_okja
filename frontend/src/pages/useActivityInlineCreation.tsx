@@ -3,6 +3,7 @@ import { CategoryFormModal, StaffFormModal, TagFormModal } from '@/components/se
 import type { StaffRole } from '@/lib/staff';
 import type { ActivityFormState } from './activityEditorShared';
 import { appendUniqueId, findNamedEntity } from './activityEditorShared';
+import { autoT } from '@/i18n/auto';
 
 type ToastType = 'success' | 'error' | 'info';
 type ToastFn = (message: string, opts?: { type?: ToastType; durationMs?: number }) => void;
@@ -131,12 +132,12 @@ export function useActivityInlineCreation({
       if (!categoryId) throw new Error('missing-category-id');
       setForm((current) => ({ ...current, categoryIds: appendUniqueId(current.categoryIds, categoryId) }));
       showToast(
-        existing?.id ? `Kategorie "${name}" wurde zugeordnet.` : `Kategorie "${name}" hinzugefügt.`,
+        existing?.id ? `Kategorie "${name}" wurde zugeordnet.` : autoT('ui_1335fd92fa57', { value0: name }),
         existing?.id ? { type: 'info' } : undefined,
       );
       setCategoryCreateOpen(false);
     } catch {
-      showToast('Kategorie konnte nicht angelegt werden.', { type: 'error' });
+      showToast(autoT('ui_0e7e0d8eb6c9'), { type: 'error' });
     }
   };
 
@@ -167,12 +168,12 @@ export function useActivityInlineCreation({
       if (!tagId) throw new Error('missing-tag-id');
       setForm((current) => ({ ...current, tagIds: appendUniqueId(current.tagIds, tagId) }));
       showToast(
-        existing?.id ? `Tag "${name}" wurde zugeordnet.` : `Tag "${name}" hinzugefügt.`,
+        existing?.id ? `Tag "${name}" wurde zugeordnet.` : autoT('ui_5a6837b1f831', { value0: name }),
         existing?.id ? { type: 'info' } : undefined,
       );
       setTagCreateOpen(false);
     } catch {
-      showToast('Tag konnte nicht angelegt werden.', { type: 'error' });
+      showToast(autoT('ui_2cdd45e69756'), { type: 'error' });
     }
   };
 
@@ -197,10 +198,10 @@ export function useActivityInlineCreation({
             : [staffCreateState.role],
       });
       addStaffId(created.id);
-      showToast(`Teammitglied "${created.name}" hinzugefügt.`);
+      showToast(autoT('ui_4e679520fcfa', { value0: created.name }));
       setStaffCreateState((current) => ({ ...current, open: false }));
     } catch {
-      showToast('Teammitglied konnte nicht angelegt werden.', { type: 'error' });
+      showToast(autoT('ui_0d661fd89ebb'), { type: 'error' });
     }
   };
 

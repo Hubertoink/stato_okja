@@ -1,21 +1,11 @@
 import { CheckCircle2, ChevronRight, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { type LogbookEntry, useSetLogbookStatus } from '@/lib/logbook';
-import { logbookTypeLabels } from '@/lib/logbookLabels';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
 import { Badge } from '@/components/ui/Badge';
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString('de-DE', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/i18n/formatters';
 
 function AuthorBadge({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
   return (
@@ -29,6 +19,7 @@ function AuthorBadge({ name, avatarUrl }: { name: string; avatarUrl?: string | n
 }
 
 export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; onOpen: (id: string) => void }) {
+  const { t } = useTranslation(['logbook', 'common']);
   const { user } = useAuth();
   const status = useSetLogbookStatus();
   const canManage = user?.role === 'superadmin' || user?.role === 'org_admin' || user?.id === entry.createdByUserId;
@@ -49,9 +40,9 @@ export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; on
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
-            <span>{formatDate(entry.occurredAt)}</span>
-            <Badge variant="neutral">{logbookTypeLabels[entry.type]}</Badge>
-            {entry.visibility === 'admins' ? <Badge className="bg-violet-100 text-violet-700">Intern</Badge> : null}
+            <span>{formatDate(entry.occurredAt, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            <Badge variant="neutral">{t(`types.${entry.type}`)}</Badge>
+            {entry.visibility === 'admins' ? <Badge className="bg-violet-100 text-violet-700">{t('card.internal')}</Badge> : null}
           </div>
           <h3 className="truncate text-base font-semibold text-[var(--text-primary)] sm:text-lg">{entry.title}</h3>
         </div>
@@ -60,14 +51,14 @@ export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; on
       <p className="mb-4 line-clamp-3 whitespace-pre-wrap text-sm text-[var(--text-secondary)]">{entry.body}</p>
       {(entry.project?.title || entry.activity?.title) ? (
         <div className="mb-3 flex flex-wrap gap-2 text-xs">
-          {entry.project?.title ? <span className="rounded bg-[var(--surface-2)] px-2 py-1 text-[var(--text-secondary)]">Projekt: {entry.project.title}</span> : null}
-          {entry.activity?.title ? <span className="rounded bg-[var(--surface-2)] px-2 py-1 text-[var(--text-secondary)]">Aktivität: {entry.activity.title}</span> : null}
+          {entry.project?.title ? <span className="rounded bg-[var(--surface-2)] px-2 py-1 text-[var(--text-secondary)]">{t('card.project', { name: entry.project.title })}</span> : null}
+          {entry.activity?.title ? <span className="rounded bg-[var(--surface-2)] px-2 py-1 text-[var(--text-secondary)]">{t('card.activity', { name: entry.activity.title })}</span> : null}
         </div>
       ) : null}
       <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3 text-xs text-[var(--text-secondary)]">
         <div className="min-w-0">
           <AuthorBadge name={entry.createdByName} avatarUrl={entry.createdByUser?.avatarUrl ?? (entry.createdByUserId === user?.id ? user?.avatarUrl : null)} />
-          {entry.documentationUpdatedAt ? <span className="mt-1 block text-[11px] text-[var(--text-faint)]">Geändert am {formatDate(entry.documentationUpdatedAt)}</span> : null}
+          {entry.documentationUpdatedAt ? <span className="mt-1 block text-[11px] text-[var(--text-faint)]">{t('card.changed', { date: formatDate(entry.documentationUpdatedAt, { dateStyle: 'short', timeStyle: 'short' }) })}</span> : null}
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{entry.commentCount || 0}</span>
@@ -76,9 +67,9 @@ export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; on
               type="button"
               onClick={(event) => { event.stopPropagation(); status.mutate({ id: entry.id, status: 'discussed' }); }}
               className="flex items-center gap-1 rounded-md px-2 py-1 font-medium text-green-700 transition-colors hover:bg-green-50"
-              title="Als besprochen markieren"
+              title={t('card.markDiscussed')}
             >
-              <CheckCircle2 className="h-4 w-4" />Besprochen
+              <CheckCircle2 className="h-4 w-4" />{t('card.discussed')}
             </button>
           ) : null}
           <ChevronRight className="h-4 w-4" />

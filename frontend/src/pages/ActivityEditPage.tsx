@@ -43,8 +43,11 @@ import {
   getStaffGroupMembers,
   getWeekdayLabel,
 } from './activityEditorShared';
+import { useTranslation } from 'react-i18next';
+import { autoT } from '@/i18n/auto';
 
 export default function ActivityEditPage() {
+  const { t } = useTranslation(['activities', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -179,7 +182,7 @@ export default function ActivityEditPage() {
       { id: activity.id, data: payload as Partial<Activity> & Record<string, unknown> },
       {
         onSuccess: () => {
-          showToast('Aktivität aktualisiert');
+          showToast(t('quickAdd.updated'));
           navigate(-1);
         },
       },
@@ -194,7 +197,7 @@ export default function ActivityEditPage() {
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4 mt-1">
-        <h2 className="text-2xl font-bold text-viridian">Aktivität bearbeiten</h2>
+        <h2 className="text-2xl font-bold text-viridian">{t('common:routes.editActivity')}</h2>
         <div className="flex items-center gap-2">
           <ActivityExecutionStatusControl
             value={form.executionStatus}
@@ -204,8 +207,8 @@ export default function ActivityEditPage() {
             type="button"
             className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
             onClick={handleClose}
-            title="Abbrechen"
-            aria-label="Abbrechen"
+            title={t('common:actions.cancel')}
+            aria-label={t('common:actions.cancel')}
           >
             <XIcon className="w-5 h-5" />
           </button>
@@ -216,7 +219,7 @@ export default function ActivityEditPage() {
         <div>
           <div className="mb-1 flex items-center justify-between gap-2">
             <label className="block text-sm font-medium" htmlFor="activity-date-edit-page">
-              Datum *
+              {t('quickAdd.date')}
             </label>
             {selectedDateWeekday && (
               <span className="pl-2 text-xs font-medium text-gray-500 whitespace-nowrap">
@@ -235,7 +238,7 @@ export default function ActivityEditPage() {
 
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="location-select-edit">
-            Standort *
+            {t('quickAdd.location')} *
           </label>
           <select
             id="location-select-edit"
@@ -243,7 +246,7 @@ export default function ActivityEditPage() {
             onChange={(e) => setForm({ ...form, locationId: e.target.value || undefined })}
             className="w-full border rounded px-3 py-2"
           >
-            <option value="">— Standort wählen —</option>
+            <option value="">{t('quickAdd.selectLocation')}</option>
             {(locations || []).map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
@@ -253,17 +256,17 @@ export default function ActivityEditPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Titel</label>
+          <label className="block text-sm font-medium mb-1">{t('quickAdd.titleField')}</label>
           <input
             value={form.title || ''}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="w-full border rounded px-3 py-2"
-            placeholder="z. B. Werkraum, Offene Tür"
+            placeholder={t('quickAdd.titlePlaceholder')}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Projekt *</label>
+          <label className="block text-sm font-medium mb-1">{t('quickAdd.project')}</label>
           {selectedProject ? (
             <button
               type="button"
@@ -292,7 +295,7 @@ export default function ActivityEditPage() {
               onClick={() => setPicker(true)}
               className="w-full border rounded p-3 text-left text-gray-600"
             >
-              Projekt wählen…
+              {t('quickAdd.selectProject')}
             </button>
           )}
         </div>
@@ -300,7 +303,7 @@ export default function ActivityEditPage() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="start-time-edit">
-              Start
+              {t('quickAdd.start')}
             </label>
             <input
               id="start-time-edit"
@@ -308,13 +311,13 @@ export default function ActivityEditPage() {
               value={form.start || ''}
               onChange={(e) => setForm({ ...form, start: e.target.value })}
               className="w-full border rounded px-3 py-2"
-              placeholder="HH:MM"
-              title="Start"
+              placeholder={autoT('ui_a4c7ee9ba5c9')}
+              title={t('quickAdd.start')}
             />
           </div>
           <div>
             <label htmlFor="end-time-edit" className="block text-sm font-medium mb-1">
-              Ende
+              {t('quickAdd.end')}
             </label>
             <input
               id="end-time-edit"
@@ -322,8 +325,8 @@ export default function ActivityEditPage() {
               value={form.end || ''}
               onChange={(e) => setForm({ ...form, end: e.target.value })}
               className="w-full border rounded px-3 py-2"
-              placeholder="HH:MM"
-              title="Ende"
+              placeholder={autoT('ui_a4c7ee9ba5c9')}
+              title={t('quickAdd.end')}
             />
           </div>
         </div>
@@ -331,23 +334,23 @@ export default function ActivityEditPage() {
         {/* Cohorts */}
         <div>
           <div className="mb-1 flex items-center justify-between gap-3">
-            <label className="block text-sm font-medium">Alterskohorten</label>
+            <label className="block text-sm font-medium">{autoT('ui_4d34ac48c54e')}</label>
             {isMobile && (
               <Toggle
                 checked={tapModeEnabled}
                 onChange={setTapModePreferred}
-                ariaLabel="Tippen statt Tastatur"
+                ariaLabel={autoT('ui_b0e6c7b8314b')}
                 label={<ActivityTapModeIcon />}
                 className="shrink-0 gap-1 flex-row-reverse"
               />
             )}
           </div>
           <div className="text-xs text-gray-600 mb-2">
-            Summe aktuell: m:{cohortSums.m ?? 0} · w:{cohortSums.w ?? 0} · d:{cohortSums.d ?? 0}
+            {t('quickAdd.currentTotal', { male: cohortSums.m ?? 0, female: cohortSums.w ?? 0, diverse: cohortSums.d ?? 0 })}
           </div>
           {tapModeEnabled && (
             <div className="mb-2 text-[11px] text-gray-500">
-              Tippen +1, lang drücken oder nach unten wischen -1.
+              {t('quickAdd.tapHelp')}
             </div>
           )}
           <div className="space-y-2">
@@ -355,28 +358,20 @@ export default function ActivityEditPage() {
               <span className="text-xs text-gray-500" />
               <span
                 className="activity-cohort-column-icon"
-                title="Männlich"
-                aria-label="Männlich"
-              >
-                m
-              </span>
+                title={t('quickAdd.male')}
+                aria-label={t('quickAdd.male')}
+              >{autoT('ui_6b0d31c0d563')}</span>
               <span
                 className="activity-cohort-column-icon"
-                title="Weiblich"
-                aria-label="Weiblich"
-              >
-                w
-              </span>
+                title={t('quickAdd.female')}
+                aria-label={t('quickAdd.female')}
+              >{autoT('ui_aff024fe4ab0')}</span>
               <span
                 className="activity-cohort-column-icon"
-                title="Divers"
-                aria-label="Divers"
-              >
-                d
-              </span>
-              <span className="text-xs text-gray-600 font-medium text-center" title="Summe" aria-label="Summe">
-                Σ
-              </span>
+                title={t('quickAdd.diverse')}
+                aria-label={t('quickAdd.diverse')}
+              >{autoT('ui_3c363836cf4e')}</span>
+              <span className="text-xs text-gray-600 font-medium text-center" title={t('quickAdd.total')} aria-label={t('quickAdd.total')}>{autoT('ui_ccb9fecbb241')}</span>
             </div>
             {(cohorts || []).map((c: Cohort, rowIndex: number) => {
               const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
@@ -451,7 +446,7 @@ export default function ActivityEditPage() {
                   {(['m', 'w', 'd'] as const).map((g) => (
                     <ActivityCohortCountField
                       key={g}
-                      mode={tapModeEnabled ? 'tap' : 'input'}
+                      mode={tapModeEnabled ? "tap" : "input"}
                       value={entry[g] || 0}
                       onChange={(value) => updateC(g, value)}
                       onKeyDown={tapModeEnabled ? undefined : (e) => handleKeyDown(e, rowIndex, g)}
@@ -480,7 +475,7 @@ export default function ActivityEditPage() {
         {selectedProject?.type !== 'open_door' && (
           <div>
             <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <label className="block text-sm font-medium">Kategorien</label>
+              <label className="block text-sm font-medium">{t('filters.categories')}</label>
               {canCreateOwnCategories ? (
                 <button
                   type="button"
@@ -488,7 +483,7 @@ export default function ActivityEditPage() {
                   className={addActionButtonClassName}
                 >
                   <PlusIcon className="h-4 w-4" />
-                  Hinzufügen
+                  {t('quickAdd.add')}
                 </button>
               ) : null}
             </div>
@@ -519,7 +514,7 @@ export default function ActivityEditPage() {
         {/* Tags */}
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <label className="block text-sm font-medium">Tags</label>
+            <label className="block text-sm font-medium">{t('filters.tags')}</label>
             {canCreateOwnTags ? (
               <button
                 type="button"
@@ -527,7 +522,7 @@ export default function ActivityEditPage() {
                 className={addActionButtonClassName}
               >
                 <PlusIcon className="h-4 w-4" />
-                Hinzufügen
+                {t('quickAdd.add')}
               </button>
             ) : null}
           </div>
@@ -558,7 +553,7 @@ export default function ActivityEditPage() {
         {employeeStaff.length > 0 && (
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <label className="block text-sm font-medium">Mitarbeitende</label>
+            <label className="block text-sm font-medium">{t('filters.staff')}</label>
             {canManageStaff ? (
               <button
                 type="button"
@@ -566,7 +561,7 @@ export default function ActivityEditPage() {
                 className={addActionButtonClassName}
               >
                 <PlusIcon className="h-4 w-4" />
-                Hinzufügen
+                {t('quickAdd.add')}
               </button>
             ) : null}
           </div>
@@ -584,7 +579,7 @@ export default function ActivityEditPage() {
                       setForm({ ...form, staffIds: Array.from(set) });
                     }}
                     className={`px-2 py-1 rounded-full text-xs border ${
-                      active ? 'bg-viridian text-white' : 'bg-white text-gray-700'
+                      active ? "bg-viridian text-white" : "bg-white text-gray-700"
                     }`}
                   >
                     {s.name}
@@ -597,7 +592,7 @@ export default function ActivityEditPage() {
         {volunteerStaff.length > 0 && (
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <label className="block text-sm font-medium">Ehrenamtliche</label>
+            <label className="block text-sm font-medium">{autoT('ui_4ac524334f49')}</label>
             {canManageStaff ? (
               <button
                 type="button"
@@ -605,7 +600,7 @@ export default function ActivityEditPage() {
                 className={addActionButtonClassName}
               >
                 <PlusIcon className="h-4 w-4" />
-                Hinzufügen
+                {t('quickAdd.add')}
               </button>
             ) : null}
           </div>
@@ -623,7 +618,7 @@ export default function ActivityEditPage() {
                       setForm({ ...form, staffIds: Array.from(set) });
                     }}
                     className={`px-2 py-1 rounded-full text-xs border ${
-                      active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
+                      active ? "bg-cambridge-blue text-white" : "bg-white text-gray-700"
                     }`}
                   >
                     {s.name}
@@ -636,7 +631,7 @@ export default function ActivityEditPage() {
         {helperStaff.length > 0 && (
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <label className="block text-sm font-medium">Helfer</label>
+            <label className="block text-sm font-medium">{autoT('ui_01bfae305e69')}</label>
             {canManageStaff ? (
               <button
                 type="button"
@@ -644,7 +639,7 @@ export default function ActivityEditPage() {
                 className={addActionButtonClassName}
               >
                 <PlusIcon className="h-4 w-4" />
-                Hinzufügen
+                {t('quickAdd.add')}
               </button>
             ) : null}
           </div>
@@ -662,7 +657,7 @@ export default function ActivityEditPage() {
                       setForm({ ...form, staffIds: Array.from(set) });
                     }}
                     className={`px-2 py-1 rounded-full text-xs border ${
-                      active ? 'bg-amber-400 text-white' : 'bg-white text-gray-700'
+                      active ? "bg-amber-400 text-white" : "bg-white text-gray-700"
                     }`}
                   >
                     {s.name}
@@ -676,7 +671,7 @@ export default function ActivityEditPage() {
         {/* Notes */}
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="activity-notes-edit">
-            Notizen
+            {t('quickAdd.notes')}
           </label>
           <textarea
             id="activity-notes-edit"
@@ -684,8 +679,8 @@ export default function ActivityEditPage() {
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             rows={3}
             className="w-full border rounded px-3 py-2"
-            placeholder="Notizen zur Aktivität"
-            aria-label="Notizen zur Aktivität"
+            placeholder={t('quickAdd.notesPlaceholder')}
+            aria-label={t('quickAdd.notes')}
           />
         </div>
 
@@ -697,7 +692,7 @@ export default function ActivityEditPage() {
             disabled={update.isPending || picker || deleteOpen}
           >
             <SaveIcon className="h-4 w-4" />
-            {update.isPending ? 'Wird gespeichert…' : 'Speichern'}
+            {update.isPending ? t('common:language.saving') : t('quickAdd.save')}
           </button>
           <div className="order-2 flex items-center justify-between gap-2 sm:contents">
             <button
@@ -706,14 +701,14 @@ export default function ActivityEditPage() {
               onClick={() => setDeleteOpen(true)}
             >
               <TrashIcon className="h-4 w-4" />
-              Löschen
+              {t('quickAdd.delete')}
             </button>
             <button
               type="button"
               onClick={() => navigate(-1)}
               className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100 sm:order-2"
             >
-              Abbrechen
+              {t('common:actions.cancel')}
             </button>
           </div>
         </div>
@@ -753,23 +748,23 @@ export default function ActivityEditPage() {
       {activity && (
         <ConfirmModal
           open={deleteOpen}
-          title="Aktivität löschen?"
-          message="Diese Aktion kann nicht rückgängig gemacht werden."
+          title={t('quickAdd.deleteTitle')}
+          message={t('quickAdd.deleteMessage')}
           onCancel={() => setDeleteOpen(false)}
           onConfirm={() => {
             remove.mutate(activity.id, {
               onSuccess: () => {
-                showToast('Aktivität gelöscht');
+                showToast(t('quickAdd.deleted'));
                 setDeleteOpen(false);
                 navigate(returnTo, { replace: true });
               },
               onError: () => {
                 setDeleteOpen(false);
-                showToast('Löschen fehlgeschlagen');
+                showToast(t('quickAdd.deleteFailed'));
               },
             });
           }}
-          confirmLabel="Löschen"
+          confirmLabel={t('quickAdd.delete')}
         />
       )}
     </div>

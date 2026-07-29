@@ -5,6 +5,7 @@ import type { LogbookAdvancedFilters } from '@/lib/logbookFilterStorage';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import { Button } from '@/components/ui/Button';
 import { FieldLabel, Input, Select } from '@/components/ui/Field';
+import { useTranslation } from 'react-i18next';
 
 export default function LogbookFilterDrawer({
   open,
@@ -17,6 +18,7 @@ export default function LogbookFilterDrawer({
   onClose: () => void;
   onApply: (filters: LogbookAdvancedFilters) => void;
 }) {
+  const { t } = useTranslation(['logbook', 'common']);
   const [filters, setFilters] = useState<LogbookAdvancedFilters>(initial);
   const { data: projects = [] } = useProjects();
 
@@ -25,13 +27,13 @@ export default function LogbookFilterDrawer({
   }, [initial, open]);
 
   return (
-    <Modal open={open} onClose={onClose} title="Logbuch filtern" maxWidth="lg">
+    <Modal open={open} onClose={onClose} title={t('filter.title')} maxWidth="lg">
       <div className="space-y-5">
         <section>
-          <h4 className="mb-2 font-semibold text-viridian">Zeitraum</h4>
+          <h4 className="mb-2 font-semibold text-viridian">{t('filter.period')}</h4>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FieldLabel>
-              Von
+              {t('filter.from')}
               <Input
                 type="date"
                 value={filters.from || ''}
@@ -41,7 +43,7 @@ export default function LogbookFilterDrawer({
               />
             </FieldLabel>
             <FieldLabel>
-              Bis
+              {t('filter.to')}
               <Input
                 type="date"
                 value={filters.to || ''}
@@ -55,7 +57,7 @@ export default function LogbookFilterDrawer({
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FieldLabel>
-            Eintragsart
+            {t('filter.type')}
             <Select
               value={filters.type || ''}
               onChange={(event) =>
@@ -65,16 +67,16 @@ export default function LogbookFilterDrawer({
                 })
               }
             >
-              <option value="">Alle Eintragsarten</option>
-              {Object.entries(logbookTypeLabels).map(([value, label]) => (
+              <option value="">{t('filter.allTypes')}</option>
+              {Object.keys(logbookTypeLabels).map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(`types.${value}`)}
                 </option>
               ))}
             </Select>
           </FieldLabel>
           <FieldLabel>
-            Status
+            {t('filter.status')}
             <Select
               value={filters.status || ''}
               onChange={(event) => {
@@ -87,10 +89,10 @@ export default function LogbookFilterDrawer({
                 });
               }}
             >
-              <option value="">Alle Status</option>
-              {Object.entries(logbookStatusLabels).map(([value, label]) => (
+              <option value="">{t('filter.allStatuses')}</option>
+              {Object.keys(logbookStatusLabels).map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(`common:logbookStatus.${value}`)}
                 </option>
               ))}
             </Select>
@@ -99,14 +101,14 @@ export default function LogbookFilterDrawer({
 
         <section>
           <FieldLabel>
-            Projekt
+            {t('filter.project')}
             <Select
               value={filters.projectId || ''}
               onChange={(event) =>
                 setFilters({ ...filters, projectId: event.target.value || undefined })
               }
             >
-              <option value="">Alle Projekte</option>
+              <option value="">{t('filter.allProjects')}</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.title}
@@ -124,7 +126,7 @@ export default function LogbookFilterDrawer({
               setFilters({ ...filters, includeArchived: event.target.checked || undefined })
             }
           />
-          Archivierte Einträge einbeziehen
+          {t('filter.archived')}
         </label>
 
         <div className="flex justify-end gap-3 border-t border-[var(--border-subtle)] pt-4">
@@ -132,12 +134,12 @@ export default function LogbookFilterDrawer({
             variant="secondary"
             onClick={onClose}
           >
-            Abbrechen
+            {t('common:actions.cancel')}
           </Button>
           <Button
             onClick={() => onApply(filters)}
           >
-            Übernehmen
+            {t('filter.apply')}
           </Button>
         </div>
       </div>

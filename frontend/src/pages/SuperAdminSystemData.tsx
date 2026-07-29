@@ -18,6 +18,8 @@ import {
   usePurgeSystemData,
   useSystemDataSummary,
 } from '@/lib/systemData';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 function formatBytes(bytes: number) {
   const value = Number(bytes) || 0;
@@ -33,7 +35,7 @@ function formatDateTime(value?: string | null) {
   if (!value) return 'Unbekannt';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('de-DE');
+  return date.toLocaleString(getCurrentIntlLocale());
 }
 
 function SummaryCard({
@@ -61,9 +63,9 @@ function SummaryCard({
 }
 
 function formatUploadReferenceLabel(upload: SystemDataUploadItem) {
-  if (!upload.referenceCount) return 'Keine Verknüpfung';
+  if (!upload.referenceCount) return autoT('ui_9222dc860dea');
   const parts: string[] = [];
-  if (upload.referenceBreakdown.projects) parts.push(`${upload.referenceBreakdown.projects} Projekte`);
+  if (upload.referenceBreakdown.projects) parts.push(autoT('ui_984cf3517a3a', { value0: upload.referenceBreakdown.projects }));
   if (upload.referenceBreakdown.projectDocuments) parts.push(`${upload.referenceBreakdown.projectDocuments} Projektdokumente`);
   if (upload.referenceBreakdown.projectTemplates) parts.push(`${upload.referenceBreakdown.projectTemplates} Vorlagen`);
   if (upload.referenceBreakdown.userAvatars) parts.push(`${upload.referenceBreakdown.userAvatars} Avatare`);
@@ -76,11 +78,11 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
   if (upload.referenceDetails.projects.length) {
     blocks.push(
       <div key="projects" className="space-y-1">
-        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Projekte</div>
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">{autoT('ui_3930f79f07e5')}</div>
         {upload.referenceDetails.projects.map((project) => (
           <div key={project.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
             <div className="font-medium text-gray-900">{project.title}</div>
-            <div className="text-gray-500 break-all">ID: {project.id}</div>
+            <div className="text-gray-500 break-all">{autoT('ui_d789a1e992ad')}{' '}{project.id}</div>
           </div>
         ))}
       </div>,
@@ -90,12 +92,12 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
   if (upload.referenceDetails.projectDocuments.length) {
     blocks.push(
       <div key="project-documents" className="space-y-1">
-        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Projektdokumente</div>
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">{autoT('ui_bf0baf670db3')}</div>
         {upload.referenceDetails.projectDocuments.map((document) => (
           <div key={document.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
             <div className="font-medium text-gray-900">{document.filename}</div>
-            <div className="text-gray-500">{document.projectTitle || 'Ohne Projekt'}</div>
-            <div className="text-gray-500 break-all">Projekt-ID: {document.projectId}</div>
+            <div className="text-gray-500">{document.projectTitle || autoT('ui_5b4a4a84148c')}</div>
+            <div className="text-gray-500 break-all">{autoT('ui_17ae70e559aa')}{' '}{document.projectId}</div>
           </div>
         ))}
       </div>,
@@ -105,11 +107,11 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
   if (upload.referenceDetails.projectTemplates.length) {
     blocks.push(
       <div key="templates" className="space-y-1">
-        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Vorlagen</div>
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">{autoT('ui_ab41f3ac9b6f')}</div>
         {upload.referenceDetails.projectTemplates.map((template) => (
           <div key={template.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
             <div className="font-medium text-gray-900">{template.title}</div>
-            <div className="text-gray-500 break-all">ID: {template.id}</div>
+            <div className="text-gray-500 break-all">{autoT('ui_d789a1e992ad')}{' '}{template.id}</div>
           </div>
         ))}
       </div>,
@@ -119,7 +121,7 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
   if (upload.referenceDetails.userAvatars.length) {
     blocks.push(
       <div key="avatars" className="space-y-1">
-        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Benutzer-Avatare</div>
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">{autoT('ui_5b0a6e00f3c3')}</div>
         {upload.referenceDetails.userAvatars.map((user) => (
           <div key={user.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
             <div className="font-medium text-gray-900">{user.name || user.email}</div>
@@ -181,7 +183,7 @@ function CommandSnippet({
           type="button"
           className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
           onClick={() => onCopy(command, label)}
-          title="Befehl kopieren"
+          title={autoT('ui_46792f87a58b')}
         >
           <Copy className="w-4 h-4" />
         </button>
@@ -277,8 +279,8 @@ export default function SuperAdminSystemData() {
   if (user.role !== 'superadmin') {
     return (
       <div className="p-6">
-        <h2 className="text-2xl font-bold text-viridian">Datenverwaltung</h2>
-        <div className="mt-2 text-gray-700">Nicht erlaubt.</div>
+        <h2 className="text-2xl font-bold text-viridian">{autoT('ui_f76dcf52c14e')}</h2>
+        <div className="mt-2 text-gray-700">{autoT('ui_9bac42e57f50')}</div>
       </div>
     );
   }
@@ -287,9 +289,9 @@ export default function SuperAdminSystemData() {
     try {
       const file = await exportMutation.mutateAsync();
       downloadSystemDataExport(file);
-      showToast('Datenexport erstellt.', { type: 'success' });
+      showToast(autoT('ui_674b13e53f9d'), { type: 'success' });
     } catch (error) {
-      showToast(getApiErrorMessage(error, 'Export fehlgeschlagen.'), { type: 'error', durationMs: 4000 });
+      showToast(getApiErrorMessage(error, autoT('ui_a9695d3efead')), { type: 'error', durationMs: 4000 });
     }
   };
 
@@ -299,7 +301,7 @@ export default function SuperAdminSystemData() {
       await navigator.clipboard.writeText(command);
       showToast(`${label} kopiert.`, { type: 'success' });
     } catch {
-      showToast('Befehl konnte nicht kopiert werden.', { type: 'error', durationMs: 3500 });
+      showToast(autoT('ui_480a5c78a233'), { type: 'error', durationMs: 3500 });
     }
   };
 
@@ -317,10 +319,10 @@ export default function SuperAdminSystemData() {
 
     try {
       await inspectImportMutation.mutateAsync(file);
-      showToast('Backup geprüft. Restore kann gestartet werden.', { type: 'success' });
+      showToast(autoT('ui_16de1a991444'), { type: 'success' });
     } catch (error) {
       setRestoreFile(null);
-      showToast(getApiErrorMessage(error, 'ZIP-Prüfung fehlgeschlagen.'), { type: 'error', durationMs: 4500 });
+      showToast(getApiErrorMessage(error, autoT('ui_689bfa6cfdf6')), { type: 'error', durationMs: 4500 });
     }
   };
 
@@ -347,9 +349,9 @@ export default function SuperAdminSystemData() {
         warnings: result.warnings,
       });
       await summaryQuery.refetch();
-      showToast('Backup wurde vollständig wiederhergestellt.', { type: 'success', durationMs: 5000 });
+      showToast(autoT('ui_773edec9f96d'), { type: 'success', durationMs: 5000 });
     } catch (error) {
-      showToast(getApiErrorMessage(error, 'Import fehlgeschlagen.'), { type: 'error', durationMs: 5000 });
+      showToast(getApiErrorMessage(error, autoT('ui_d0d1813dcc84')), { type: 'error', durationMs: 5000 });
     }
   };
 
@@ -369,9 +371,9 @@ export default function SuperAdminSystemData() {
         warnings: result.warnings,
       });
       await summaryQuery.refetch();
-      showToast('Alle Nicht-Superadmin-Daten wurden gelöscht.', { type: 'success', durationMs: 4500 });
+      showToast(autoT('ui_c9f6169b6b47'), { type: 'success', durationMs: 4500 });
     } catch (error) {
-      showToast(getApiErrorMessage(error, 'Löschen fehlgeschlagen.'), { type: 'error', durationMs: 4500 });
+      showToast(getApiErrorMessage(error, autoT('ui_ef3183f1c913')), { type: 'error', durationMs: 4500 });
     }
   };
 
@@ -388,16 +390,16 @@ export default function SuperAdminSystemData() {
 
       if (result.failures.length) {
         showToast(
-          `${result.deletedCount} Uploads gelöscht, ${result.failures.length} fehlgeschlagen.`,
+          autoT('ui_d122687ef603', { value0: result.deletedCount, value1: result.failures.length }),
           { type: 'error', durationMs: 5500 },
         );
         return;
       }
 
-      const referenceSuffix = result.clearedReferences > 0 ? ` ${result.clearedReferences} Verknüpfungen entfernt.` : '';
-      showToast(`${result.deletedCount} Uploads gelöscht.${referenceSuffix}`, { type: 'success', durationMs: 4500 });
+      const referenceSuffix = result.clearedReferences > 0 ? autoT('ui_3bdf7311696f', { value0: result.clearedReferences }) : '';
+      showToast(autoT('ui_0fa39bb896b6', { value0: result.deletedCount, value1: referenceSuffix }), { type: 'success', durationMs: 4500 });
     } catch (error) {
-      showToast(getApiErrorMessage(error, 'Uploads konnten nicht gelöscht werden.'), { type: 'error', durationMs: 4500 });
+      showToast(getApiErrorMessage(error, autoT('ui_74bce8319875')), { type: 'error', durationMs: 4500 });
     }
   };
 
@@ -433,48 +435,40 @@ export default function SuperAdminSystemData() {
     <div className="space-y-8">
       <div>
         <div>
-          <h2 className="text-3xl font-bold text-viridian">Datenverwaltung</h2>
-          <p className="text-gray-600 mt-1">
-            Globaler Superadmin-Bereich für vollständigen Datenexport und irreversible Gesamtlöschung.
-          </p>
+          <h2 className="text-3xl font-bold text-viridian">{autoT('ui_f76dcf52c14e')}</h2>
+          <p className="text-gray-600 mt-1">{autoT('ui_7732f3b2ee0b')}</p>
         </div>
       </div>
 
       <div className="system-data-banner system-data-banner-info rounded-2xl px-5 py-4 text-sm flex gap-3">
         <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
-        <div>
-          Diese Funktionen arbeiten immer global und ignorieren den aktuell gewählten Organisations-Scope. Superadmins bleiben erhalten und werden nach einer Gesamtlöschung automatisch aus allen Organisationen gelöst.
-        </div>
+        <div>{autoT('ui_38834ab67269')}</div>
       </div>
 
       {summaryQuery.isLoading && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
-          Lade Datenübersicht…
-        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">{autoT('ui_18ed7ab75722')}</div>
       )}
       {summaryQuery.error && (
         <div className="system-data-banner system-data-banner-danger rounded-xl p-4">
-          {getApiErrorMessage(summaryQuery.error, 'Fehler beim Laden der Datenübersicht.')}
+          {getApiErrorMessage(summaryQuery.error, autoT('ui_8bd1f06b03b3'))}
         </div>
       )}
 
       {summary && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <SummaryCard icon={Database} label="Tabellen" value={summary.totals.managedTables} accent="bg-blue-100 text-blue-600" />
-            <SummaryCard icon={FileArchive} label="Datensätze" value={summary.totals.databaseRows} accent="bg-emerald-100 text-emerald-600" />
-            <SummaryCard icon={HardDrive} label="Upload-Dateien" value={summary.totals.uploadFiles} accent="bg-amber-100 text-amber-600" />
-            <SummaryCard icon={ShieldCheck} label="Superadmins" value={summary.superadmins.length} accent="bg-violet-100 text-violet-600" />
+            <SummaryCard icon={Database} label={autoT('ui_9e5124234d89')} value={summary.totals.managedTables} accent="bg-blue-100 text-blue-600" />
+            <SummaryCard icon={FileArchive} label={autoT('ui_8649d4bf00f4')} value={summary.totals.databaseRows} accent="bg-emerald-100 text-emerald-600" />
+            <SummaryCard icon={HardDrive} label={autoT('ui_33f00eccfdf5')} value={summary.totals.uploadFiles} accent="bg-amber-100 text-amber-600" />
+            <SummaryCard icon={ShieldCheck} label={autoT('ui_cdf35a364852')} value={summary.superadmins.length} accent="bg-violet-100 text-violet-600" />
           </div>
 
           <div className="space-y-6">
               <section className="system-data-panel bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="system-data-panel-header px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-start justify-between gap-4 flex-wrap">
                   <div>
-                    <h3 className="system-data-panel-title font-semibold text-gray-900">Vollständiger Export</h3>
-                    <p className="system-data-panel-copy text-sm text-gray-500 mt-1">
-                      ZIP mit bereinigter Excel-Arbeitsmappe, manifest.json, JSON- und CSV-Dateien je Tabelle sowie allen Upload-Dateien.
-                    </p>
+                    <h3 className="system-data-panel-title font-semibold text-gray-900">{autoT('ui_c9c6393da8da')}</h3>
+                    <p className="system-data-panel-copy text-sm text-gray-500 mt-1">{autoT('ui_9479ab856d30')}</p>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <button
@@ -482,9 +476,7 @@ export default function SuperAdminSystemData() {
                       className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
                       onClick={() => setIsUploadsOpen(true)}
                     >
-                      <ImageIcon className="w-4 h-4" />
-                      Uploads verwalten
-                    </button>
+                      <ImageIcon className="w-4 h-4" />{autoT('ui_3bc20ff592c5')}</button>
                     <button
                       type="button"
                       className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-viridian text-white hover:bg-viridian/90 transition-colors disabled:opacity-60"
@@ -492,7 +484,7 @@ export default function SuperAdminSystemData() {
                       disabled={exportMutation.isPending}
                     >
                       <Download className="w-4 h-4" />
-                      {exportMutation.isPending ? 'Export läuft…' : 'ZIP herunterladen'}
+                      {exportMutation.isPending ? autoT('ui_05bfaadf5a25') : autoT('ui_593b90e6ae9f')}
                     </button>
                   </div>
                 </div>
@@ -500,25 +492,23 @@ export default function SuperAdminSystemData() {
                 <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-3">
                     <div className="rounded-xl bg-gray-50 px-4 py-3">
-                      <div className="text-xs uppercase tracking-wide text-gray-500">Upload-Speicher</div>
+                      <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_96e5ba918d19')}</div>
                       <div className="text-xl font-semibold text-gray-800 mt-1">{formatBytes(summary.totals.uploadBytes)}</div>
                     </div>
                     <div className="rounded-xl bg-gray-50 px-4 py-3">
-                      <div className="text-xs uppercase tracking-wide text-gray-500">Bestätigung nach Export</div>
-                      <div className="text-sm text-gray-700 mt-1">Der Export verändert keine Daten und benötigt keine Passwort-Freigabe.</div>
+                      <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_4ec326999878')}</div>
+                      <div className="text-sm text-gray-700 mt-1">{autoT('ui_7b5aa1f65072')}</div>
                     </div>
                   </div>
 
                   <div className="rounded-xl border border-gray-200 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 text-sm font-medium text-gray-800">
-                      Tabellenübersicht
-                    </div>
+                    <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 text-sm font-medium text-gray-800">{autoT('ui_336bcb615f1a')}</div>
                     <div className="max-h-72 overflow-y-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="text-xs uppercase tracking-wide text-gray-500">
-                            <th className="text-left px-4 py-3 font-semibold">Tabelle</th>
-                            <th className="text-right px-4 py-3 font-semibold">Zeilen</th>
+                            <th className="text-left px-4 py-3 font-semibold">{autoT('ui_13b2e5f4ca0b')}</th>
+                            <th className="text-right px-4 py-3 font-semibold">{autoT('ui_eff65c6a4278')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -545,15 +535,13 @@ export default function SuperAdminSystemData() {
                   <div className="flex items-start gap-3">
                     <Server className="system-data-info-icon w-5 h-5 mt-0.5 shrink-0" />
                     <div>
-                      <h3 className="font-semibold">Betriebsbackup</h3>
-                      <p className="text-sm mt-1">
-                        Technischer Docker-Backup-Pfad fuer Postgres und Upload-Volume. Fuer Mittwald bevorzugt als Container-Cronjob ueber den Service backup.
-                      </p>
+                      <h3 className="font-semibold">{autoT('ui_4bc5e0b95782')}</h3>
+                      <p className="text-sm mt-1">{autoT('ui_f14862fcf8ac')}</p>
                     </div>
                   </div>
                   <span className="system-data-collapse-toggle system-data-collapse-toggle-info inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shrink-0">
                     {isBackupOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    {isBackupOpen ? 'Einklappen' : 'Ausklappen'}
+                    {isBackupOpen ? autoT('ui_4244f9d32df2') : autoT('ui_94b77e4e53f8')}
                   </span>
                 </button>
 
@@ -561,45 +549,41 @@ export default function SuperAdminSystemData() {
                   <div className="p-5 space-y-5">
                     <div className="flex justify-start">
                       <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-                        <Clock className="w-4 h-4" />
-                        Automatisierbar
-                      </div>
+                        <Clock className="w-4 h-4" />{autoT('ui_ec6ea23a910a')}</div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="rounded-xl bg-gray-50 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Ausfuehrung</div>
-                        <div className="mt-1 text-sm font-medium text-gray-800">Backup-Container</div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_5e3e5ab19c0b')}</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">{autoT('ui_aedd223ac97d')}</div>
                       </div>
                       <div className="rounded-xl bg-gray-50 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Sicherung</div>
-                        <div className="mt-1 text-sm font-medium text-gray-800">Postgres-Dump + Uploads</div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_aea7b978f052')}</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">{autoT('ui_9f54fc5f20c3')}</div>
                       </div>
                       <div className="rounded-xl bg-gray-50 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Aufbewahrung</div>
-                        <div className="mt-1 text-sm font-medium text-gray-800">14 Tage lokal im Beispiel</div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_b5cbb12dbde1')}</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">{autoT('ui_fa87c21b6066')}</div>
                       </div>
                       <div className="rounded-xl bg-gray-50 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Mittwald Cronjob</div>
-                        <div className="mt-1 text-sm font-medium text-gray-800">Container backup</div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_85363b18c4d4')}</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">{autoT('ui_ab72b7301ddf')}</div>
                       </div>
                     </div>
 
                     <div className="system-data-banner system-data-banner-info rounded-xl px-4 py-3 text-sm flex gap-3">
                       <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
-                      <div>
-                        Der Webbereich startet keine Docker-Kommandos selbst. Bei Mittwald den Cronjob-Typ Container waehlen, Container backup verknuepfen und das backup-data Volume zusaetzlich per Projektbackup sichern.
-                      </div>
+                      <div>{autoT('ui_3e0f3945ca8a')}</div>
                     </div>
 
                     <div className="space-y-3">
-                      <CommandSnippet label="Einfaches Host-Backup" command={EASY_BACKUP_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Einfaches Host-Restore" command={EASY_RESTORE_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Mittwald Container-Cronjob" command={CONTAINER_BACKUP_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Erweitertes Host-Backup" command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Erweitertes Host-Restore" command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Daily Ops / Scheduler" command={DAILY_OPS_COMMAND} onCopy={handleCopyCommand} />
-                      <CommandSnippet label="Aufgabenplaner XML" command={TASK_SCHEDULER_XML} onCopy={handleCopyCommand} />
+                      <CommandSnippet label={autoT('ui_db682a12e8e1')} command={EASY_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label={autoT('ui_e6d91c009ff9')} command={EASY_RESTORE_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label={autoT('ui_8f436819fca0')} command={CONTAINER_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label={autoT('ui_e7699d891a4e')} command={TECHNICAL_BACKUP_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label={autoT('ui_8cdb1e27ec83')} command={TECHNICAL_RESTORE_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label={autoT('ui_c484c7219247')} command={DAILY_OPS_COMMAND} onCopy={handleCopyCommand} />
+                      <CommandSnippet label={autoT('ui_f61b0dc08654')} command={TASK_SCHEDULER_XML} onCopy={handleCopyCommand} />
                     </div>
                   </div>
                 )}
@@ -613,14 +597,12 @@ export default function SuperAdminSystemData() {
                   aria-expanded={isImportOpen}
                 >
                   <div>
-                    <h3 className="font-semibold">Vollständiger Import</h3>
-                    <p className="text-sm mt-1">
-                      Spielt ein exportiertes ZIP als Voll-Restore ein und ersetzt den aktuellen Datenbestand komplett.
-                    </p>
+                    <h3 className="font-semibold">{autoT('ui_898a7769ec9f')}</h3>
+                    <p className="text-sm mt-1">{autoT('ui_e1be8b4aae0d')}</p>
                   </div>
                   <span className="system-data-collapse-toggle system-data-collapse-toggle-import inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shrink-0">
                     {isImportOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    {isImportOpen ? 'Einklappen' : 'Ausklappen'}
+                    {isImportOpen ? autoT('ui_4244f9d32df2') : autoT('ui_94b77e4e53f8')}
                   </span>
                 </button>
 
@@ -628,16 +610,12 @@ export default function SuperAdminSystemData() {
                   <div className="p-5 space-y-4">
                     <div className="system-data-banner system-data-banner-warning rounded-xl px-4 py-3 text-sm flex gap-3">
                       <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                      <div>
-                        Replace-All-Restore: Bestehende Organisations-, Benutzer-, Projekt-, Aktivitäts- und Upload-Daten werden vollständig ersetzt.
-                      </div>
+                      <div>{autoT('ui_bedd96388d96')}</div>
                     </div>
 
                     <div className="flex justify-end">
                       <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors cursor-pointer">
-                        <Upload className="w-4 h-4" />
-                        ZIP auswählen
-                        <input
+                        <Upload className="w-4 h-4" />{autoT('ui_5c6e7cf0face')}<input
                           type="file"
                           accept=".zip,application/zip"
                           className="hidden"
@@ -650,20 +628,20 @@ export default function SuperAdminSystemData() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="rounded-xl bg-gray-50 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Ausgewählte Datei</div>
-                        <div className="mt-1 text-sm font-medium text-gray-800 break-all">{restoreFile?.name || 'Noch keine ZIP ausgewählt'}</div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_4aca1f2407c3')}</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800 break-all">{restoreFile?.name || autoT('ui_573141c0c5cd')}</div>
                       </div>
                       <div className="rounded-xl bg-gray-50 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Prüfstatus</div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_89db570b7a2c')}</div>
                         <div className="mt-1 text-sm font-medium text-gray-800">
-                          {inspectImportMutation.isPending ? 'ZIP wird geprüft…' : importPreview ? 'ZIP geprüft und restorebereit' : 'Noch nicht geprüft'}
+                          {inspectImportMutation.isPending ? autoT('ui_b1e530ffebdb') : importPreview ? autoT('ui_97010e526cce') : autoT('ui_0f5448773b4a')}
                         </div>
                       </div>
                     </div>
 
                     {inspectImportMutation.error && (
                       <div className="system-data-banner system-data-banner-danger rounded-xl px-4 py-3 text-sm">
-                        {getApiErrorMessage(inspectImportMutation.error, 'ZIP-Prüfung fehlgeschlagen.')}
+                        {getApiErrorMessage(inspectImportMutation.error, autoT('ui_689bfa6cfdf6'))}
                       </div>
                     )}
 
@@ -671,29 +649,27 @@ export default function SuperAdminSystemData() {
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="rounded-xl bg-gray-50 px-4 py-3">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Exportiert am</div>
+                            <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_3fb902f6a06d')}</div>
                             <div className="mt-1 text-sm font-medium text-gray-800">{formatDateTime(importPreview.generatedAt)}</div>
                           </div>
                           <div className="rounded-xl bg-gray-50 px-4 py-3">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Datensätze</div>
+                            <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_8649d4bf00f4')}</div>
                             <div className="mt-1 text-sm font-medium text-gray-800">{importPreview.totals.databaseRows}</div>
                           </div>
                           <div className="rounded-xl bg-gray-50 px-4 py-3">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Uploads</div>
+                            <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_227cc640570a')}</div>
                             <div className="mt-1 text-sm font-medium text-gray-800">{importPreview.totals.uploadFiles} · {formatBytes(importPreview.totals.uploadBytes)}</div>
                           </div>
                         </div>
 
                         <div className="rounded-xl border border-gray-200 overflow-hidden">
-                          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 text-sm font-medium text-gray-800">
-                            Importvorschau
-                          </div>
+                          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 text-sm font-medium text-gray-800">{autoT('ui_99165b573393')}</div>
                           <div className="max-h-64 overflow-y-auto">
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="text-xs uppercase tracking-wide text-gray-500">
-                                  <th className="text-left px-4 py-3 font-semibold">Tabelle</th>
-                                  <th className="text-right px-4 py-3 font-semibold">Zeilen</th>
+                                  <th className="text-left px-4 py-3 font-semibold">{autoT('ui_13b2e5f4ca0b')}</th>
+                                  <th className="text-right px-4 py-3 font-semibold">{autoT('ui_eff65c6a4278')}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-100">
@@ -719,20 +695,20 @@ export default function SuperAdminSystemData() {
                     )}
 
                     <label className="block text-sm text-gray-700">
-                      <span className="font-medium">Aktuelles Passwort</span>
+                      <span className="font-medium">{autoT('ui_f562caab0113')}</span>
                       <input
                         type="password"
                         value={restorePassword}
                         onChange={(event) => setRestorePassword(event.target.value)}
                         className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-300"
-                        placeholder="Passwort zur Restore-Freigabe eingeben"
+                        placeholder={autoT('ui_ee02f637d645')}
                         autoComplete="current-password"
                       />
                     </label>
 
                     <label className="block text-sm text-gray-700">
-                      <span className="font-medium">Bestätigungstext</span>
-                      <span className="block text-xs text-gray-500 mt-1">Bitte exakt {restoreConfirmationTarget || 'BACKUP IMPORTIEREN'} eingeben.</span>
+                      <span className="font-medium">{autoT('ui_7ad9424fbbf8')}</span>
+                      <span className="block text-xs text-gray-500 mt-1">{autoT('ui_066046320569')}{' '}{restoreConfirmationTarget || 'BACKUP IMPORTIEREN'}{' '}{autoT('ui_17009e659aae')}</span>
                       <input
                         type="text"
                         value={restoreConfirmationText}
@@ -757,15 +733,15 @@ export default function SuperAdminSystemData() {
                       }
                     >
                       <Upload className="w-4 h-4" />
-                      {importMutation.isPending ? 'Restore läuft…' : 'Backup vollständig wiederherstellen'}
+                      {importMutation.isPending ? autoT('ui_c7a1025df6b2') : autoT('ui_6cf64bf7c7be')}
                     </button>
 
                     {lastImportSummary && (
                       <div className="system-data-banner system-data-banner-success rounded-xl px-4 py-3 text-sm space-y-1">
-                        <div>{lastImportSummary.importedTables} Tabellen wiederhergestellt.</div>
-                        <div>{lastImportSummary.importedUploadFiles} Upload-Dateien importiert ({formatBytes(lastImportSummary.importedUploadBytes)}).</div>
+                        <div>{lastImportSummary.importedTables}{' '}{autoT('ui_9a3007f40160')}</div>
+                        <div>{lastImportSummary.importedUploadFiles}{' '}{autoT('ui_f3f01f5130a2')}{formatBytes(lastImportSummary.importedUploadBytes)}).</div>
                         {lastImportSummary.warnings.length > 0 && (
-                          <div className="system-data-warning-copy">Hinweise: {lastImportSummary.warnings.join(' | ')}</div>
+                          <div className="system-data-warning-copy">{autoT('ui_1ddcdcfe7c82')}{' '}{lastImportSummary.warnings.join(' | ')}</div>
                         )}
                       </div>
                     )}
@@ -783,15 +759,13 @@ export default function SuperAdminSystemData() {
                 <div className="flex items-start gap-3">
                   <ShieldAlert className="system-data-danger-icon w-5 h-5 mt-0.5 shrink-0" />
                   <div>
-                    <h3 className="font-semibold">Gesamtlöschung</h3>
-                    <p className="text-sm mt-1">
-                      Löscht alle Organisations-, Benutzer-, Projekt-, Aktivitäts-, Audit- und Upload-Daten. Erhalten bleiben ausschließlich Superadmins.
-                    </p>
+                    <h3 className="font-semibold">{autoT('ui_c8494881431f')}</h3>
+                    <p className="text-sm mt-1">{autoT('ui_bd8eeddd94d7')}</p>
                   </div>
                 </div>
                 <span className="system-data-collapse-toggle system-data-collapse-toggle-danger inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shrink-0">
                   {isPurgeOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  {isPurgeOpen ? 'Einklappen' : 'Ausklappen'}
+                  {isPurgeOpen ? autoT('ui_4244f9d32df2') : autoT('ui_94b77e4e53f8')}
                 </span>
               </button>
 
@@ -799,13 +773,11 @@ export default function SuperAdminSystemData() {
               <div className="p-5 space-y-4">
                 <div className="system-data-banner system-data-banner-danger rounded-xl px-4 py-3 text-sm flex gap-3">
                   <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                  <div>
-                    Irreversibel. Vorher immer den Export ausführen. Nach der Löschung wird der Scope auf den globalen Superadmin-Bereich zurückgesetzt.
-                  </div>
+                  <div>{autoT('ui_f674d30bba3a')}</div>
                 </div>
 
                 <div className="rounded-xl bg-gray-50 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-gray-500">Erhaltene Superadmins</div>
+                  <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_dbed35d3b261')}</div>
                   <div className="mt-2 space-y-1 text-sm text-gray-700">
                     {summary.superadmins.map((admin) => (
                       <div key={admin.id}>{admin.name || 'Superadmin'} · {admin.email}</div>
@@ -814,20 +786,20 @@ export default function SuperAdminSystemData() {
                 </div>
 
                 <label className="block text-sm text-gray-700">
-                  <span className="font-medium">Aktuelles Passwort</span>
+                  <span className="font-medium">{autoT('ui_f562caab0113')}</span>
                   <input
                     type="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300"
-                    placeholder="Passwort zur Bestätigung eingeben"
+                    placeholder={autoT('ui_1c6b0f99d34f')}
                     autoComplete="current-password"
                   />
                 </label>
 
                 <label className="block text-sm text-gray-700">
-                  <span className="font-medium">Bestätigungstext</span>
-                  <span className="block text-xs text-gray-500 mt-1">Bitte exakt {summary.confirmationText} eingeben.</span>
+                  <span className="font-medium">{autoT('ui_7ad9424fbbf8')}</span>
+                  <span className="block text-xs text-gray-500 mt-1">{autoT('ui_066046320569')}{' '}{summary.confirmationText}{' '}{autoT('ui_17009e659aae')}</span>
                   <input
                     type="text"
                     value={confirmationText}
@@ -845,16 +817,15 @@ export default function SuperAdminSystemData() {
                   disabled={purgeMutation.isPending || !password.trim() || !isConfirmationValid}
                 >
                   <Trash2 className="w-4 h-4" />
-                  {purgeMutation.isPending ? 'Löschung läuft…' : 'Alle Nicht-Superadmin-Daten löschen'}
+                  {purgeMutation.isPending ? autoT('ui_7f0db1dc1f8e') : autoT('ui_223bdd6ba83d')}
                 </button>
 
                 {lastPurgeSummary && (
                   <div className="system-data-banner system-data-banner-success rounded-xl px-4 py-3 text-sm space-y-1">
-                    <div>{lastPurgeSummary.deletedUsers} Benutzerkonten gelöscht.</div>
-                    <div>{lastPurgeSummary.deletedUploadFiles} Upload-Dateien entfernt ({formatBytes(lastPurgeSummary.deletedUploadBytes)}).</div>
+                    <div>{lastPurgeSummary.deletedUsers}{' '}{autoT('ui_6b3987082d96')}</div>
+                    <div>{lastPurgeSummary.deletedUploadFiles}{' '}{autoT('ui_01fe33a9112c')}{formatBytes(lastPurgeSummary.deletedUploadBytes)}).</div>
                     {lastPurgeSummary.warnings.length > 0 && (
-                      <div className="system-data-warning-copy">
-                        Hinweise: {lastPurgeSummary.warnings.join(' | ')}
+                      <div className="system-data-warning-copy">{autoT('ui_1ddcdcfe7c82')}{lastPurgeSummary.warnings.join(' | ')}
                       </div>
                     )}
                   </div>
@@ -868,28 +839,27 @@ export default function SuperAdminSystemData() {
 
       <ConfirmModal
         open={uploadsToDelete.length > 0}
-        title={uploadsToDelete.length > 1 ? 'Ausgewählte Uploads wirklich löschen?' : 'Upload wirklich löschen?'}
+        title={uploadsToDelete.length > 1 ? autoT('ui_ce8a18dd748a') : autoT('ui_c2812441c488')}
         message={
           <div className="space-y-3">
             <p>
               {uploadsToDelete.length > 1
-                ? `${uploadsToDelete.length} Dateien werden dauerhaft aus dem Upload-Speicher entfernt.`
+                ? autoT('ui_275317a6f9c2', { value0: uploadsToDelete.length })
                 : `${uploadsToDelete[0]?.filename || 'Datei'} wird dauerhaft aus dem Upload-Speicher entfernt.`}
             </p>
             {uploadsToDelete.length === 1 && uploadsToDelete[0] && (
-              <p className="text-sm text-gray-700">
-                Aktuelle Verknüpfungen: <span className="font-medium">{formatUploadReferenceLabel(uploadsToDelete[0])}</span>
+              <p className="text-sm text-gray-700">{autoT('ui_c47b9b034c94')}<span className="font-medium">{formatUploadReferenceLabel(uploadsToDelete[0])}</span>
               </p>
             )}
             {uploadsToDelete.some((upload) => upload.referenceCount > 0) ? (
-              <p className="text-amber-700 font-medium">Bekannte Referenzen in Projekten, Vorlagen und Avataren werden dabei automatisch entfernt.</p>
+              <p className="text-amber-700 font-medium">{autoT('ui_9c38c2ee7555')}</p>
             ) : (
-              <p className="text-gray-600">Es liegen derzeit keine bekannten Verknüpfungen vor.</p>
+              <p className="text-gray-600">{autoT('ui_1ac3dda11ed6')}</p>
             )}
           </div>
         }
-        confirmLabel={deleteUploadsMutation.isPending ? 'Lösche…' : uploadsToDelete.length > 1 ? 'Auswahl löschen' : 'Upload löschen'}
-        cancelLabel="Abbrechen"
+        confirmLabel={deleteUploadsMutation.isPending ? autoT('ui_2b5a5dd9afbb') : uploadsToDelete.length > 1 ? autoT('ui_e65c67367259') : autoT('ui_4449808ab212')}
+        cancelLabel={autoT('ui_07af7cb30fca')}
         onConfirm={() => {
           void handleDeleteUploads();
         }}
@@ -900,15 +870,15 @@ export default function SuperAdminSystemData() {
 
       <ConfirmModal
         open={restoreConfirmOpen}
-        title="Vollständigen Restore bestätigen"
+        title={autoT('ui_76d319d88297')}
         message={
           <div className="space-y-3">
-            <p>Wirklich alle aktuellen Daten durch das ausgewählte Backup ersetzen?</p>
-            <p className="text-amber-700 font-medium">Der aktuelle Datenbestand wird vollständig überschrieben.</p>
+            <p>{autoT('ui_375ba6117b95')}</p>
+            <p className="text-amber-700 font-medium">{autoT('ui_551526eae0bd')}</p>
           </div>
         }
-        confirmLabel={importMutation.isPending ? 'Restore läuft…' : 'Restore jetzt ausführen'}
-        cancelLabel="Abbrechen"
+        confirmLabel={importMutation.isPending ? autoT('ui_c7a1025df6b2') : autoT('ui_079c5cf6a6d4')}
+        cancelLabel={autoT('ui_07af7cb30fca')}
         onConfirm={() => {
           void handleImport();
         }}
@@ -919,15 +889,15 @@ export default function SuperAdminSystemData() {
 
       <ConfirmModal
         open={purgeConfirmOpen}
-        title="Gesamtlöschung bestätigen"
+        title={autoT('ui_e4e382e32cc8')}
         message={
           <div className="space-y-3">
-            <p>Wirklich alle Nicht-Superadmin-Daten dauerhaft löschen?</p>
-            <p className="text-red-700 font-medium">Dieser Vorgang kann nicht rückgängig gemacht werden.</p>
+            <p>{autoT('ui_34f615d0bbcc')}</p>
+            <p className="text-red-700 font-medium">{autoT('ui_77fa648094e2')}</p>
           </div>
         }
-        confirmLabel={purgeMutation.isPending ? 'Löschung läuft…' : 'Endgültig löschen'}
-        cancelLabel="Abbrechen"
+        confirmLabel={purgeMutation.isPending ? autoT('ui_7f0db1dc1f8e') : autoT('ui_9df6718de96c')}
+        cancelLabel={autoT('ui_07af7cb30fca')}
         onConfirm={() => {
           void handlePurge();
         }}
@@ -941,38 +911,36 @@ export default function SuperAdminSystemData() {
         onClose={() => {
           if (!deleteUploadsMutation.isPending) setIsUploadsOpen(false);
         }}
-        title="Upload-Verwaltung"
+        title={autoT('ui_85c43bca9767')}
         maxWidth="6xl"
       >
         <div className="space-y-5">
           <div className="system-data-banner system-data-banner-info rounded-xl px-4 py-3 text-sm flex gap-3">
             <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
-            <div>
-              Sichtbar sind alle Dateien aus dem Upload-Speicher. Die Referenzzahl zählt bekannte Verknüpfungen aus Projekten, Projektvorlagen und Benutzer-Avataren.
-            </div>
+            <div>{autoT('ui_0ab6b488b49b')}</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="rounded-xl bg-gray-50 px-4 py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Dateien</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_a41c619eeffb')}</div>
               <div className="mt-1 text-xl font-semibold text-gray-800">{filteredUploads.length}</div>
             </div>
             <div className="rounded-xl bg-gray-50 px-4 py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Mit Verknüpfung</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_31c1de18ee51')}</div>
               <div className="mt-1 text-xl font-semibold text-gray-800">{uploadStats.referenced}</div>
             </div>
             <div className="rounded-xl bg-gray-50 px-4 py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Ohne Verknüpfung</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_ac91155e0624')}</div>
               <div className="mt-1 text-xl font-semibold text-gray-800">{uploadStats.orphaned}</div>
             </div>
             <div className="rounded-xl bg-gray-50 px-4 py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Gefilterter Speicher</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_5f97c6f17eeb')}</div>
               <div className="mt-1 text-xl font-semibold text-gray-800">{formatBytes(uploadStats.bytes)}</div>
             </div>
           </div>
 
           <label className="block text-sm text-gray-700">
-            <span className="font-medium">Dateien filtern</span>
+            <span className="font-medium">{autoT('ui_c7ee23bb9cc5')}</span>
             <div className="mt-2 relative">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -980,7 +948,7 @@ export default function SuperAdminSystemData() {
                 value={uploadSearch}
                 onChange={(event) => setUploadSearch(event.target.value)}
                 className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-viridian/20 focus:border-viridian/40"
-                placeholder="Dateiname oder Pfad suchen"
+                placeholder={autoT('ui_228982e1f60e')}
               />
             </div>
           </label>
@@ -988,12 +956,10 @@ export default function SuperAdminSystemData() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${showOrphanedOnly ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${showOrphanedOnly ? "border-amber-300 bg-amber-50 text-amber-700" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
               onClick={() => setShowOrphanedOnly((current) => !current)}
             >
-              {showOrphanedOnly ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-              Nur unverknüpfte Uploads
-            </button>
+              {showOrphanedOnly ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}{autoT('ui_f5c27f457c97')}</button>
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
@@ -1001,7 +967,7 @@ export default function SuperAdminSystemData() {
               disabled={!filteredUploads.length}
             >
               {allFilteredSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-              {allFilteredSelected ? 'Gefilterte Auswahl aufheben' : 'Gefilterte auswählen'}
+              {allFilteredSelected ? autoT('ui_8305635fe472') : autoT('ui_590a14424612')}
             </button>
             <button
               type="button"
@@ -1009,27 +975,22 @@ export default function SuperAdminSystemData() {
               onClick={() => setUploadsToDelete(selectedUploads)}
               disabled={!selectedUploads.length || deleteUploadsMutation.isPending}
             >
-              <Trash2 className="w-4 h-4" />
-              Ausgewählte löschen ({selectedUploads.length})
+              <Trash2 className="w-4 h-4" />{autoT('ui_7864577e5ee3')}{selectedUploads.length})
             </button>
           </div>
 
           {uploadsQuery.isLoading && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-gray-500">
-              Upload-Liste wird geladen…
-            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-gray-500">{autoT('ui_1fd1d1ffab6b')}</div>
           )}
 
           {uploadsQuery.error && (
             <div className="system-data-banner system-data-banner-danger rounded-xl px-4 py-3 text-sm">
-              {getApiErrorMessage(uploadsQuery.error, 'Upload-Liste konnte nicht geladen werden.')}
+              {getApiErrorMessage(uploadsQuery.error, autoT('ui_4daaa1912d91'))}
             </div>
           )}
 
           {!uploadsQuery.isLoading && !uploadsQuery.error && filteredUploads.length === 0 && (
-            <div className="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-gray-500">
-              Keine Upload-Dateien für den aktuellen Filter gefunden.
-            </div>
+            <div className="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-gray-500">{autoT('ui_67ff223e9782')}</div>
           )}
 
           {filteredUploads.length > 0 && (
@@ -1047,9 +1008,7 @@ export default function SuperAdminSystemData() {
                           className="rounded border-gray-300 text-viridian focus:ring-viridian/30"
                           checked={isSelected}
                           onChange={() => toggleUploadSelection(upload.relativePath)}
-                        />
-                        Markieren
-                      </label>
+                        />{autoT('ui_bc4e896ee3c2')}</label>
                       {upload.referenceCount > 0 && (
                         <button
                           type="button"
@@ -1057,7 +1016,7 @@ export default function SuperAdminSystemData() {
                           onClick={() => toggleExpandedUpload(upload.relativePath)}
                         >
                           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          {isExpanded ? 'Details ausblenden' : 'Details anzeigen'}
+                          {isExpanded ? autoT('ui_ffb39dcd1d39') : autoT('ui_696e24e12eb2')}
                         </button>
                       )}
                     </div>
@@ -1073,8 +1032,8 @@ export default function SuperAdminSystemData() {
                       <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-gray-100 text-gray-700 font-medium text-xs">
                         {formatBytes(upload.size)}
                       </span>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${upload.referenceCount ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {upload.referenceCount ? `${upload.referenceCount} Verknüpfungen` : 'Unverknüpft'}
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${upload.referenceCount ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                        {upload.referenceCount ? autoT('ui_b7efbd005cd8', { value0: upload.referenceCount }) : autoT('ui_3ae893fbd38a')}
                       </span>
                     </div>
 
@@ -1094,9 +1053,7 @@ export default function SuperAdminSystemData() {
                       onClick={() => setUploadsToDelete([upload])}
                       disabled={deleteUploadsMutation.isPending}
                     >
-                      <Trash2 className="w-4 h-4" />
-                      Datei löschen
-                    </button>
+                      <Trash2 className="w-4 h-4" />{autoT('ui_6491dcdaf491')}</button>
                   </div>
                 );
               })}

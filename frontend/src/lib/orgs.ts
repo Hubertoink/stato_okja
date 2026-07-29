@@ -1,6 +1,8 @@
 import { api } from './api';
 
-export interface OrgDto { id: string; name: string; parentId?: string | null; path?: string | null }
+import type { AppLocale } from '@/i18n/locales';
+
+export interface OrgDto { id: string; name: string; parentId?: string | null; path?: string | null; defaultLocale?: AppLocale }
 
 interface OrgTaxonomyTypeSetting {
   allowOwn: boolean;
@@ -127,6 +129,11 @@ export async function listOrgs(): Promise<OrgDto[]> {
 
 export async function createOrgApi(name: string, parentId?: string | null): Promise<OrgDto> {
   const res = await api.post<OrgDto>('/orgs', { name, parentId: typeof parentId === 'undefined' ? undefined : parentId });
+  return res.data;
+}
+
+export async function updateOrgDefaultLocale(orgId: string, locale: AppLocale): Promise<OrgDto> {
+  const res = await api.patch<OrgDto>(`/orgs/${orgId}/default-locale`, { locale });
   return res.data;
 }
 

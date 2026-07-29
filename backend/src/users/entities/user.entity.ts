@@ -1,6 +1,9 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import type { Organization } from '../../orgs/entities/organization.entity';
 
+export const SUPPORTED_LOCALES = ['de', 'en'] as const;
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+
 export type UserRole = 'superadmin' | 'org_admin' | 'user';
 
 const userTimestampColumnType =
@@ -39,6 +42,9 @@ export class User {
 
   @Column({ type: 'varchar', length: 50, default: 'Default Theme' })
   theme!: string;
+
+  @Column({ type: 'varchar', length: 8, nullable: true })
+  locale!: SupportedLocale | null;
 
   // Login brute-force protection
   @Column({ type: 'int', default: 0 })

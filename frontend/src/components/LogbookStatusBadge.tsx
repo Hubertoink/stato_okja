@@ -1,6 +1,6 @@
 import type { LogbookEntryStatus } from '@/lib/logbook';
-import { logbookStatusLabels } from '@/lib/logbookLabels';
 import { Badge } from '@/components/ui/Badge';
+import { useTranslation } from 'react-i18next';
 
 const statusVariant = {
   open: 'info',
@@ -16,9 +16,10 @@ export default function LogbookStatusBadge({
   status: LogbookEntryStatus;
   className?: string;
 }) {
+  const { t } = useTranslation('common');
   return (
     <Badge className={className} variant={statusVariant[status]}>
-      {logbookStatusLabels[status]}
+      {t(`logbookStatus.${status}`)}
     </Badge>
   );
 }

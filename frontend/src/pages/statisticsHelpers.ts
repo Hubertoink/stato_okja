@@ -1,3 +1,5 @@
+import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { autoT } from '@/i18n/auto';
 type StatisticsTimeseriesEntry = {
   date: string;
   totalParticipants: number;
@@ -27,13 +29,13 @@ type TopDayChartEntry = {
 };
 
 const WEEKDAY_CHART_OPTIONS: WeekdayChartOption[] = [
-  { value: 0, shortLabel: 'So', label: 'Sonntag' },
-  { value: 1, shortLabel: 'Mo', label: 'Montag' },
-  { value: 2, shortLabel: 'Di', label: 'Dienstag' },
-  { value: 3, shortLabel: 'Mi', label: 'Mittwoch' },
-  { value: 4, shortLabel: 'Do', label: 'Donnerstag' },
-  { value: 5, shortLabel: 'Fr', label: 'Freitag' },
-  { value: 6, shortLabel: 'Sa', label: 'Samstag' },
+  { value: 0, shortLabel: 'So', label: autoT('ui_f8e9c756eaa2') },
+  { value: 1, shortLabel: 'Mo', label: autoT('ui_8bb0f19f592e') },
+  { value: 2, shortLabel: 'Di', label: autoT('ui_b2ce6b5d7cb1') },
+  { value: 3, shortLabel: 'Mi', label: autoT('ui_ea3552526134') },
+  { value: 4, shortLabel: 'Do', label: autoT('ui_7c3df2c5fe25') },
+  { value: 5, shortLabel: 'Fr', label: autoT('ui_0ca5853904f5') },
+  { value: 6, shortLabel: 'Sa', label: autoT('ui_85ad5644425c') },
 ];
 
 function parseStatisticsCalendarDate(value?: string | null) {
@@ -73,7 +75,7 @@ function formatStatisticsDateCompact(iso: string) {
 
   const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
   const shortYear = String(year).slice(-2);
-  const shortMonth = new Intl.DateTimeFormat('de-DE', { month: 'short' })
+  const shortMonth = new Intl.DateTimeFormat(getCurrentIntlLocale(), { month: 'short' })
     .format(date)
     .replace('.', '');
   const paddedDay = String(day).padStart(2, '0');
@@ -95,7 +97,7 @@ export function formatStatisticsAggregationTickLabel(
     const [year, month] = safeValue.split('-');
     const date = new Date(Number(year), Number(month) - 1, 15);
     if (!isNaN(date.getTime())) {
-      const monthLabel = new Intl.DateTimeFormat('de-DE', { month: 'short' })
+      const monthLabel = new Intl.DateTimeFormat(getCurrentIntlLocale(), { month: 'short' })
         .format(date)
         .replace('.', '');
       return `${monthLabel} ${year.slice(-2)}`;
@@ -124,11 +126,11 @@ export function formatStatisticsAggregationTooltipLabel(
     const date = new Date(Number(match[1]), Number(match[2]) - 1, 15);
     if (isNaN(date.getTime())) return safeValue;
 
-    const monthLabel = new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(date);
+    const monthLabel = new Intl.DateTimeFormat(getCurrentIntlLocale(), { month: 'long' }).format(date);
     return `${monthLabel} ${match[1]}`;
   }
 
-  return `Datum: ${formatStatisticsDateCompact(safeValue)}`;
+  return autoT('ui_1ae0fe72e0f6', { value0: formatStatisticsDateCompact(safeValue) });
 }
 
 export function buildTopDayChartData(

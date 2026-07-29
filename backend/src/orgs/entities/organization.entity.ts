@@ -47,6 +47,8 @@ export interface OrganizationTaxonomySettingsUpdatePayload {
   childDefaults?: OrganizationChildTaxonomyDefaults | null;
 }
 
+export const DEFAULT_ORGANIZATION_LOCALE = 'de';
+
 @Entity('organizations')
 export class Organization {
   @PrimaryGeneratedColumn('uuid')
@@ -54,6 +56,9 @@ export class Organization {
 
   @Column({ type: 'varchar', length: 200 })
   name!: string;
+
+  @Column({ type: 'varchar', length: 8, default: DEFAULT_ORGANIZATION_LOCALE })
+  defaultLocale!: string;
 
   @OneToMany('User', (u: User) => u.org)
   users!: User[];

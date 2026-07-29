@@ -1,3 +1,5 @@
+import { autoT } from '@/i18n/auto';
+
 const BACKGROUND_STORAGE_KEY = 'stato:background' as const;
 
 export type BackgroundId = 'stato' | 'bg2' | 'bg3';
@@ -13,9 +15,9 @@ const bg2Url = new URL('../../assets/Background_2.jpg', import.meta.url).href;
 const bg3Url = new URL('../../assets/Background_3.jpg', import.meta.url).href;
 
 export const BACKGROUNDS: BackgroundOption[] = [
-	{ id: 'stato', label: 'Stato', url: statoUrl },
-	{ id: 'bg2', label: 'Hintergrund 2', url: bg2Url },
-	{ id: 'bg3', label: 'Hintergrund 3', url: bg3Url },
+	{ id: 'stato', label: autoT('ui_148c60ecba84'), url: statoUrl },
+	{ id: 'bg2', label: autoT('ui_17920a2ce45f'), url: bg2Url },
+	{ id: 'bg3', label: autoT('ui_2c47fcc26611'), url: bg3Url },
 ];
 
 function isBackgroundId(value: unknown): value is BackgroundId {

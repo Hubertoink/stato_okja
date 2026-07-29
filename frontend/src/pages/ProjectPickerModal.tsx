@@ -6,6 +6,8 @@ import { Link } from 'react-router-dom';
 import { Grid2x2, Rows3, Star, X as XIcon } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
 import ProtectedImage from '@/components/ProtectedImage';
+import { useTranslation } from 'react-i18next';
+import { compareLocalized } from '@/i18n/formatters';
 
 function backgroundColorForProject(project: Project) {
   return project.color || colorFromStringHash(project.title);
@@ -18,6 +20,7 @@ export default function ProjectPickerModal({
   onPick: (p: Project) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation(['common', 'activities']);
   // This component mounts only when open – lock body scroll while mounted
   useBodyScrollLock(true);
   const [search, setSearch] = useState('');
@@ -29,7 +32,7 @@ export default function ProjectPickerModal({
       const sa = starred.has(a.id) ? 1 : 0;
       const sb = starred.has(b.id) ? 1 : 0;
       if (sa !== sb) return sb - sa; // starred first
-      return a.title.localeCompare(b.title, 'de');
+      return compareLocalized(a.title, b.title);
     });
   }, [data]);
   // Lade Kompakt-Einstellung aus localStorage, damit sie beim Wiederkommen erhalten bleibt
@@ -49,13 +52,13 @@ export default function ProjectPickerModal({
     }
   };
   const typeLabel: Record<string, string> = {
-    open_door: 'Offene Tür',
-    project_open: 'Projekt (offen)',
-    project_closed: 'Projekt (geschlossen)',
-    event: 'Veranstaltung',
-    outreach: 'Aufsuchend',
+    open_door: t('activities:types.open_door'),
+    project_open: t('activities:types.project_open'),
+    project_closed: t('activities:types.project_closed'),
+    event: t('activities:types.event'),
+    outreach: t('activities:types.outreach'),
   };
-  const compactToggleLabel = compact ? 'Normale Ansicht aktivieren' : 'Kompakte Ansicht aktivieren';
+  const compactToggleLabel = compact ? t('projectPicker.normalView') : t('projectPicker.compactView');
 
   return (
     <div
@@ -64,11 +67,11 @@ export default function ProjectPickerModal({
     >
       <div className="bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] md:max-h-[90vh] md:flex md:flex-col md:overflow-hidden bottom-sheet-animate">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xl font-semibold text-viridian">Projekt wählen</h3>
+          <h3 className="text-xl font-semibold text-viridian">{t('projectPicker.title')}</h3>
           <button
             className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
             onClick={onClose}
-            aria-label="Schließen"
+            aria-label={t('actions.close')}
           >
             <XIcon className="w-5 h-5" />
           </button>
@@ -77,13 +80,13 @@ export default function ProjectPickerModal({
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Suchen…"
+            placeholder={t('actions.search')}
             className="flex-1 border rounded px-3 py-2"
           />
           <button
             type="button"
             onClick={() => toggleCompact(!compact)}
-            className={`inline-flex md:hidden items-center justify-center h-10 w-10 rounded border transition-colors ${compact ? 'border-viridian bg-viridian text-white' : 'border-gray-300 bg-white text-gray-700'}`}
+            className={`inline-flex md:hidden items-center justify-center h-10 w-10 rounded border transition-colors ${compact ? "border-viridian bg-viridian text-white" : "border-gray-300 bg-white text-gray-700"}`}
             aria-label={compactToggleLabel}
             title={compactToggleLabel}
           >
@@ -95,7 +98,7 @@ export default function ProjectPickerModal({
               checked={compact}
               onChange={(e) => toggleCompact(e.target.checked)}
             />
-            Kompakt
+            {t('projectPicker.compact')}
           </label>
         </div>
 
@@ -122,8 +125,8 @@ export default function ProjectPickerModal({
                       <span
                         className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${
                           p.imageUrl
-                            ? 'bg-black/45 text-white'
-                            : 'bg-white/80 text-gray-800 border border-white/60'
+                            ? "bg-black/45 text-white"
+                            : "bg-white/80 text-gray-800 border border-white/60"
                         }`}
                       >
                         {typeLabel[p.type] || p.type}
@@ -142,15 +145,15 @@ export default function ProjectPickerModal({
               ))}
               {projects.length === 0 && (
                 <div className="col-span-full py-10 md:py-14 text-center">
-                  <div className="text-gray-500">Keine Projekte gefunden.</div>
+                  <div className="text-gray-500">{t('projectPicker.empty')}</div>
                   <div className="mt-2 text-xs text-gray-600">
-                    Erstelle dein erstes Projekt –
+                    {t('projectPicker.emptyHint')}
                     <Link
                       to="/projects"
                       className="text-viridian hover:underline ml-1"
                       onClick={onClose}
                     >
-                      zur Projekte-Seite
+                      {t('projectPicker.projectsPage')}
                     </Link>
                   </div>
                 </div>
@@ -185,7 +188,7 @@ export default function ProjectPickerModal({
               ))}
               {projects.length === 0 && (
                 <li className="col-span-full px-3 py-10 md:py-14 text-center text-gray-500">
-                  Keine Projekte gefunden.
+                  {t('projectPicker.empty')}
                 </li>
               )}
             </ul>
@@ -193,7 +196,7 @@ export default function ProjectPickerModal({
         </div>
         <div className="mt-4 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 md:border-t md:border-gray-100">
           <div className="text-xs text-gray-600">
-            Tipp: Tippe zum Auswählen. Suche nach Titel oder Zielgruppe.
+            {t('projectPicker.tip')}
           </div>
         </div>
       </div>

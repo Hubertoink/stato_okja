@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import Modal from './Modal';
+import { useTranslation } from 'react-i18next';
 
 export default function ExportProgressModal({
   message,
@@ -7,11 +8,12 @@ export default function ExportProgressModal({
   /** A non-empty message keeps the progress dialog visible. */
   message: string | null;
 }) {
+  const { t } = useTranslation('common');
   return (
     <Modal
       open={message !== null}
       onClose={() => undefined}
-      title="Export wird erstellt"
+      title={t('exportProgress.title')}
       maxWidth="sm"
       showCloseButton={false}
     >
@@ -21,7 +23,7 @@ export default function ExportProgressModal({
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className="font-semibold text-gray-900">Bitte einen Moment warten</p>
+            <p className="font-semibold text-gray-900">{t('exportProgress.wait')}</p>
             <p className="mt-1 text-sm leading-6 text-gray-600">{message}</p>
           </div>
         </div>
@@ -29,7 +31,7 @@ export default function ExportProgressModal({
           <div className="h-full w-2/3 rounded-full bg-viridian animate-pulse" />
         </div>
         <p className="text-xs leading-5 text-gray-500">
-          Je nach Datenmenge kann der Download einige Sekunden dauern. Das Fenster schließt sich automatisch.
+          {t('exportProgress.hint')}
         </p>
       </div>
     </Modal>

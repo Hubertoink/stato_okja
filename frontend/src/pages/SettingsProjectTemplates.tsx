@@ -18,6 +18,7 @@ import {
   useOwnedProjectTemplates,
   useUpdateProjectTemplate,
 } from '@/lib/projectTemplatesApi';
+import { autoT } from '@/i18n/auto';
 
 type TagWithColor = { name: string; color: string };
 
@@ -124,16 +125,16 @@ export default function SettingsProjectTemplates() {
       };
       if (editing) {
         await update.mutateAsync({ id: editing.id, data: payload });
-        showToast('Vorlage gespeichert.', { type: 'success' });
+        showToast(autoT('ui_c054f3db67e1'), { type: 'success' });
       } else {
         await create.mutateAsync(payload);
-        showToast('Vorlage angelegt.', { type: 'success' });
+        showToast(autoT('ui_4926705f0258'), { type: 'success' });
       }
       setModalOpen(false);
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
-        'Speichern fehlgeschlagen';
+        autoT('ui_d47d5fa09375');
       showToast(String(msg), { type: 'error', durationMs: 3500 });
     }
   }, [create, editing, form, showToast, update]);
@@ -153,9 +154,9 @@ export default function SettingsProjectTemplates() {
         categoryColor: created.color || newCatColor,
       }));
       setNewCatModal(false);
-      showToast('Kategorie angelegt.', { type: 'success' });
+      showToast(autoT('ui_eced6187d679'), { type: 'success' });
     } catch {
-      showToast('Anlegen fehlgeschlagen', { type: 'error' });
+      showToast(autoT('ui_fe851ffd3df5'), { type: 'error' });
     }
   }, [createCategory, newCatColor, newCatName, showToast]);
 
@@ -175,9 +176,9 @@ export default function SettingsProjectTemplates() {
         ],
       }));
       setNewTagModal(false);
-      showToast('Tag angelegt.', { type: 'success' });
+      showToast(autoT('ui_3869634d238b'), { type: 'success' });
     } catch {
-      showToast('Anlegen fehlgeschlagen', { type: 'error' });
+      showToast(autoT('ui_fe851ffd3df5'), { type: 'error' });
     }
   }, [createTag, newTagColor, newTagName, showToast]);
 
@@ -233,7 +234,7 @@ export default function SettingsProjectTemplates() {
       const msg = e instanceof Error ? e.message : 'Bild konnte nicht verarbeitet werden.';
       setImageIssue({
         open: true,
-        title: 'Bild zu groß oder nicht unterstützt',
+        title: autoT('ui_8f4c305e8e67'),
         message: `${msg} (Max ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB, wird auf ${600}px Breite reduziert)`,
       });
     }
@@ -274,8 +275,8 @@ export default function SettingsProjectTemplates() {
   if (!canManage) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-semibold text-viridian mb-2">Projekt-Vorlagen</h3>
-        <p className="text-gray-600">Nur Admins können Vorlagen verwalten.</p>
+        <h3 className="text-xl font-semibold text-viridian mb-2">{autoT('ui_5bc191008e77')}</h3>
+        <p className="text-gray-600">{autoT('ui_9a69bd6689f9')}</p>
       </div>
     );
   }
@@ -286,7 +287,7 @@ export default function SettingsProjectTemplates() {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="mb-4">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="min-w-0 text-xl font-semibold text-viridian">Projekt-Vorlagen</h3>
+          <h3 className="min-w-0 text-xl font-semibold text-viridian">{autoT('ui_5bc191008e77')}</h3>
           <span className="tooltip-wrapper shrink-0">
             <button
               type="button"
@@ -295,8 +296,8 @@ export default function SettingsProjectTemplates() {
                 setEditing(null);
                 setModalOpen(true);
               }}
-              aria-label="Neue Vorlage"
-              title="Neue Vorlage"
+              aria-label={autoT('ui_ff11b97abdfe')}
+              title={autoT('ui_ff11b97abdfe')}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -311,16 +312,14 @@ export default function SettingsProjectTemplates() {
                 />
               </svg>
             </button>
-            <span className="tooltip-bubble">Neue Vorlage</span>
+            <span className="tooltip-bubble">{autoT('ui_ff11b97abdfe')}</span>
           </span>
         </div>
-        <p className="mt-2 pr-1 text-sm text-gray-600">
-          Vorlagen gelten für die aktuell ausgewählte Organisation (Org-Scope) und werden automatisch an Unterorganisationen vererbt.
-        </p>
+        <p className="mt-2 pr-1 text-sm text-gray-600">{autoT('ui_0cfa5c2d4716')}</p>
       </div>
 
       {owned.length === 0 ? (
-        <div className="text-sm text-gray-600">Noch keine Vorlagen in dieser Organisation.</div>
+        <div className="text-sm text-gray-600">{autoT('ui_670e22e8eb1e')}</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {owned.map((t) => (
@@ -329,7 +328,7 @@ export default function SettingsProjectTemplates() {
                 {t.imageUrl ? (
                   <ProtectedImage src={t.imageUrl} alt={t.title} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">kein Bild</div>
+                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">{autoT('ui_418c831061d0')}</div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -337,15 +336,15 @@ export default function SettingsProjectTemplates() {
                   <div className="min-w-0">
                     <div className="font-medium truncate">{t.title}</div>
                     <div className="text-xs text-gray-600 truncate">
-                      {t.categoryName ? `Kategorie: ${t.categoryName}` : 'Keine Kategorie'}
-                      {t.archived ? ' · Archiviert' : ''}
+                      {t.categoryName ? `Kategorie: ${t.categoryName}` : autoT('ui_533219d38fd5')}
+                      {t.archived ? autoT('ui_329e2c494f0a') : ''}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       className="p-2 rounded border hover:bg-gray-50"
-                      title="Bearbeiten"
+                      title={autoT('ui_104f3bfdc340')}
                       onClick={() => {
                         setEditing(t);
                         setModalOpen(true);
@@ -356,7 +355,7 @@ export default function SettingsProjectTemplates() {
                     <button
                       type="button"
                       className="danger-icon-button p-2"
-                      title="Löschen"
+                      title={autoT('ui_ffa5a8a7e21d')}
                       onClick={() => setConfirm({ open: true, id: t.id, title: t.title })}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -395,7 +394,7 @@ export default function SettingsProjectTemplates() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-viridian">
-                {editing ? 'Vorlage bearbeiten' : 'Neue Vorlage'}
+                {editing ? autoT('ui_bd648e366f1c') : autoT('ui_ff11b97abdfe')}
               </h3>
               <button
                 type="button"
@@ -408,7 +407,7 @@ export default function SettingsProjectTemplates() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Titel *</label>
+                <label className="block text-sm font-medium mb-1">{autoT('ui_a1710a47def7')}</label>
                 <input
                   value={form.title || ''}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -416,21 +415,21 @@ export default function SettingsProjectTemplates() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Typ *</label>
+                <label className="block text-sm font-medium mb-1">{autoT('ui_79a5c2576972')}</label>
                 <select
                   value={(form.type as string) || 'project_open'}
                   onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as ProjectTemplateDto['type'] }))}
                   className="w-full border rounded px-3 py-2"
                 >
-                  <option value="open_door">Offene Tür</option>
-                  <option value="project_open">Projekt (offen)</option>
-                  <option value="project_closed">Projekt (geschlossen)</option>
-                  <option value="event">Veranstaltung</option>
-                  <option value="outreach">Aufsuchend</option>
+                  <option value="open_door">{autoT('ui_a80778b6b148')}</option>
+                  <option value="project_open">{autoT('ui_00d882fbb5d4')}</option>
+                  <option value="project_closed">{autoT('ui_8f256393653e')}</option>
+                  <option value="event">{autoT('ui_e6fdb4cc8ce5')}</option>
+                  <option value="outreach">{autoT('ui_3c1538690eb7')}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Zielgruppe</label>
+                <label className="block text-sm font-medium mb-1">{autoT('ui_10f540533857')}</label>
                 <input
                   value={form.targetGroup || ''}
                   onChange={(e) => setForm((f) => ({ ...f, targetGroup: e.target.value }))}
@@ -439,12 +438,12 @@ export default function SettingsProjectTemplates() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">Bild</label>
+                <label className="block text-sm font-medium mb-1">{autoT('ui_d42485349869')}</label>
                 {form.imageUrl ? (
                   <div className="space-y-2">
                     <ProtectedImage
                       src={form.imageUrl}
-                      alt="Vorlagenbild"
+                      alt={autoT('ui_eebe4ea94d11')}
                       className="w-full h-40 object-cover rounded border"
                     />
                     <div className="flex gap-2">
@@ -452,31 +451,23 @@ export default function SettingsProjectTemplates() {
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, imageUrl: '' }))}
                         className="px-3 py-1 rounded bg-gray-200 text-gray-700"
-                      >
-                        Entfernen
-                      </button>
+                      >{autoT('ui_f78b6376e028')}</button>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         className="px-3 py-1 rounded bg-viridian text-white"
-                      >
-                        Ersetzen…
-                      </button>
+                      >{autoT('ui_2eed64bc2cdc')}</button>
                     </div>
                   </div>
                 ) : (
                   <div className="border-2 border-dashed rounded p-3 text-sm text-gray-600 bg-azure-web/30">
-                    <div className="mb-2">
-                      Bild hierher ziehen, klicken zum Auswählen oder per Strg+V einfügen
-                    </div>
+                    <div className="mb-2">{autoT('ui_5457c04aec2f')}</div>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         className="px-3 py-1 rounded bg-white border"
-                      >
-                        Datei wählen…
-                      </button>
+                      >{autoT('ui_95a5c1d24bec')}</button>
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -488,9 +479,7 @@ export default function SettingsProjectTemplates() {
                         }}
                       />
                     </div>
-                    <div className="text-xs text-gray-500 mt-2">
-                      Unterstützt JPG/PNG/WEBP. Wird auf max. 600px Breite reduziert. Max. 3MB.
-                    </div>
+                    <div className="text-xs text-gray-500 mt-2">{autoT('ui_e5a846f4d2de')}</div>
                   </div>
                 )}
 
@@ -507,14 +496,12 @@ export default function SettingsProjectTemplates() {
                         type="button"
                         className="px-3 py-2 rounded bg-viridian text-white"
                         onClick={closeImageIssue}
-                      >
-                        Ok
-                      </button>
+                      >{autoT('ui_b0a98216a324')}</button>
                     </div>
                   </div>
                 </Modal>
                 <div className="mt-3">
-                  <label className="block text-sm font-medium mb-1" htmlFor="project-template-color">Farbe</label>
+                  <label className="block text-sm font-medium mb-1" htmlFor="project-template-color">{autoT('ui_89b7957dae43')}</label>
                   <ColorPicker
                     id="project-template-color"
                     value={(form.color as string) || '#7aa39a'}
@@ -526,7 +513,7 @@ export default function SettingsProjectTemplates() {
               {/* Tags Section */}
               <div className="md:col-span-2">
                 <div className="mb-1 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <label className="block text-sm font-medium">Tags (mehrfach)</label>
+                  <label className="block text-sm font-medium">{autoT('ui_482257533f55')}</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -535,9 +522,7 @@ export default function SettingsProjectTemplates() {
                       setNewTagModal(true);
                     }}
                     className="text-xs text-viridian hover:underline"
-                  >
-                    + Neuen Tag anlegen
-                  </button>
+                  >{autoT('ui_05cfcf480f8a')}</button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {(tags || []).map((t) => {
@@ -583,8 +568,7 @@ export default function SettingsProjectTemplates() {
                   })}
                 </div>
                 {(form.selectedTags || []).length > 0 && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    Ausgewählt: {(form.selectedTags || []).map((t) => t.name).join(', ')}
+                  <div className="text-xs text-gray-500 mt-1">{autoT('ui_bde366d01f86')}{(form.selectedTags || []).map((t) => t.name).join(', ')}
                   </div>
                 )}
               </div>
@@ -593,7 +577,7 @@ export default function SettingsProjectTemplates() {
               {(form.type as string) !== 'open_door' && (
                 <div className="md:col-span-2">
                   <div className="mb-1 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <label className="block text-sm font-medium">Kategorie</label>
+                    <label className="block text-sm font-medium">{autoT('ui_358210386a4f')}</label>
                     <button
                       type="button"
                       onClick={() => {
@@ -602,9 +586,7 @@ export default function SettingsProjectTemplates() {
                         setNewCatModal(true);
                       }}
                       className="text-xs text-viridian hover:underline"
-                    >
-                      + Neue Kategorie anlegen
-                    </button>
+                    >{autoT('ui_c9b868afb94c')}</button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {(categories || []).map((c) => {
@@ -642,7 +624,7 @@ export default function SettingsProjectTemplates() {
               )}
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">Beschreibung</label>
+                <label className="block text-sm font-medium mb-1">{autoT('ui_b3c8defcacc0')}</label>
                 <textarea
                   value={form.description || ''}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -658,7 +640,7 @@ export default function SettingsProjectTemplates() {
                     checked={!!form.archived}
                     onChange={(e) => setForm((f) => ({ ...f, archived: e.target.checked }))}
                   />
-                  <span>Archiviert (nicht in Auswahl anzeigen)</span>
+                  <span>{autoT('ui_b196834dac08')}</span>
                 </label>
               </div>
             </div>
@@ -668,18 +650,14 @@ export default function SettingsProjectTemplates() {
               <button
                 className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
                 onClick={() => setModalOpen(false)}
-              >
-                Abbrechen
-              </button>
+              >{autoT('ui_07af7cb30fca')}</button>
               <button
                 className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
                 disabled={!String(form.title || '').trim() || create.isPending || update.isPending}
                 onClick={() => {
                   void handleTemplateSave();
                 }}
-              >
-                Speichern
-              </button>
+              >{autoT('ui_70b73bbc118d')}</button>
             </div>
           </div>
         </div>
@@ -689,10 +667,10 @@ export default function SettingsProjectTemplates() {
       {newCatModal && (
         <div className="fixed inset-0 bg-black/30 z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h4 className="text-lg font-semibold text-viridian mb-4">Neue Kategorie</h4>
+            <h4 className="text-lg font-semibold text-viridian mb-4">{autoT('ui_f65f5413c438')}</h4>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Name *</label>
+                <label className="block text-sm font-medium mb-1">{autoT('ui_d145bb830936')}</label>
                 <input
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
@@ -701,7 +679,7 @@ export default function SettingsProjectTemplates() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" htmlFor="new-template-category-color">Farbe</label>
+                <label className="block text-sm font-medium mb-1" htmlFor="new-template-category-color">{autoT('ui_89b7957dae43')}</label>
                 <ColorPicker id="new-template-category-color" value={newCatColor} onChange={setNewCatColor} />
               </div>
             </div>
@@ -709,18 +687,14 @@ export default function SettingsProjectTemplates() {
               <button
                 className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
                 onClick={() => setNewCatModal(false)}
-              >
-                Abbrechen
-              </button>
+              >{autoT('ui_07af7cb30fca')}</button>
               <button
                 className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
                 disabled={!newCatName.trim() || createCategory.isPending}
                 onClick={() => {
                   void handleNewCategorySave();
                 }}
-              >
-                Anlegen
-              </button>
+              >{autoT('ui_846460c3195a')}</button>
             </div>
           </div>
         </div>
@@ -730,10 +704,10 @@ export default function SettingsProjectTemplates() {
       {newTagModal && (
         <div className="fixed inset-0 bg-black/30 z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h4 className="text-lg font-semibold text-viridian mb-4">Neuer Tag</h4>
+            <h4 className="text-lg font-semibold text-viridian mb-4">{autoT('ui_0b768aa07583')}</h4>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Name *</label>
+                <label className="block text-sm font-medium mb-1">{autoT('ui_d145bb830936')}</label>
                 <input
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
@@ -742,7 +716,7 @@ export default function SettingsProjectTemplates() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" htmlFor="new-template-tag-color">Farbe</label>
+                <label className="block text-sm font-medium mb-1" htmlFor="new-template-tag-color">{autoT('ui_89b7957dae43')}</label>
                 <ColorPicker id="new-template-tag-color" value={newTagColor} onChange={setNewTagColor} />
               </div>
             </div>
@@ -750,18 +724,14 @@ export default function SettingsProjectTemplates() {
               <button
                 className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
                 onClick={() => setNewTagModal(false)}
-              >
-                Abbrechen
-              </button>
+              >{autoT('ui_07af7cb30fca')}</button>
               <button
                 className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
                 disabled={!newTagName.trim() || createTag.isPending}
                 onClick={() => {
                   void handleNewTagSave();
                 }}
-              >
-                Anlegen
-              </button>
+              >{autoT('ui_846460c3195a')}</button>
             </div>
           </div>
         </div>
@@ -769,23 +739,23 @@ export default function SettingsProjectTemplates() {
 
       <ConfirmModal
         open={confirm.open}
-        title="Vorlage löschen?"
+        title={autoT('ui_23de9c87e566')}
         message={
           <div>
-            <p>Vorlage „{confirm.title}" wirklich löschen?</p>
-            <p className="text-sm text-gray-600">Hinweis: Bestehende Projekte bleiben unverändert.</p>
+            <p>{autoT('ui_70416fb04f8f')}{confirm.title}{autoT('ui_b7a74edc9c13')}</p>
+            <p className="text-sm text-gray-600">{autoT('ui_36b62c9b5db8')}</p>
           </div>
         }
-        cancelLabel="Abbrechen"
-        confirmLabel="Löschen"
+        cancelLabel={autoT('ui_07af7cb30fca')}
+        confirmLabel={autoT('ui_ffa5a8a7e21d')}
         onCancel={() => setConfirm({ open: false })}
         onConfirm={async () => {
           if (!confirm.id) return;
           try {
             await del.mutateAsync(confirm.id);
-            showToast('Vorlage gelöscht.', { type: 'success' });
+            showToast(autoT('ui_c845e13728e8'), { type: 'success' });
           } catch {
-            showToast('Löschen fehlgeschlagen', { type: 'error' });
+            showToast(autoT('ui_0b03e19f666a'), { type: 'error' });
           } finally {
             setConfirm({ open: false });
           }

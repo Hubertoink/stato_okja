@@ -31,6 +31,8 @@ import DemoHoverHint from '@/demo/DemoHoverHint';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -189,14 +191,14 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
         >
           {statusLabel && <div className="mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{statusLabel}</div>}
           <div className="font-semibold mb-1 text-viridian">{label}</div>
-          {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Zeit:</span> {time}</div>}
+          {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">{autoT('ui_73fa39c5d9ea')}</span> {time}</div>}
           {!statusLabel && (
             <div className="calendar-tooltip-body">
-              <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
-              <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
+              <span className="calendar-tooltip-meta">{autoT('ui_d276941633af')}</span> {total}
+              <span className="calendar-tooltip-meta ml-1 text-[10px]">{autoT('ui_c2a30a5a251c')}{m}{autoT('ui_115f6e7d14bf')}{w}{autoT('ui_7578fb7a5a2f')}{d})</span>
             </div>
           )}
-          {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Ort:</span> {loc}</div>}
+          {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">{autoT('ui_a86509c3ecb8')}</span> {loc}</div>}
         </div>
       </div>,
       document.body,
@@ -214,14 +216,14 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
       >
         {statusLabel && <div className="mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{statusLabel}</div>}
         <div className="font-semibold mb-1 text-viridian">{label}</div>
-        {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Zeit:</span> {time}</div>}
+        {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">{autoT('ui_73fa39c5d9ea')}</span> {time}</div>}
         {!statusLabel && (
           <div className="calendar-tooltip-body">
-            <span className="calendar-tooltip-meta">Teilnehmende:</span> {total}
-            <span className="calendar-tooltip-meta ml-1 text-[10px]">(m:{m}, w:{w}, d:{d})</span>
+            <span className="calendar-tooltip-meta">{autoT('ui_d276941633af')}</span> {total}
+            <span className="calendar-tooltip-meta ml-1 text-[10px]">{autoT('ui_c2a30a5a251c')}{m}{autoT('ui_115f6e7d14bf')}{w}{autoT('ui_7578fb7a5a2f')}{d})</span>
           </div>
         )}
-        {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">Ort:</span> {loc}</div>}
+        {loc && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">{autoT('ui_a86509c3ecb8')}</span> {loc}</div>}
         {/* Tooltip arrow */}
         <div
           className={`absolute w-2 h-2 -translate-x-1/2 ${layout.arrowClass}`}
@@ -282,7 +284,7 @@ function formatLongDate(iso: string) {
   const [year, month, day] = iso.split('-').map((value) => Number(value));
   const date = new Date(year, (month || 1) - 1, day || 1);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString('de-DE', {
+  return date.toLocaleDateString(getCurrentIntlLocale(), {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
@@ -360,10 +362,10 @@ export default function Calendar() {
     if (calendarView === 'three-day') {
       const start = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
       const end = addDays(start, 2);
-      return `${start.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} – ${end.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+      return `${start.toLocaleDateString(getCurrentIntlLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })} – ${end.toLocaleDateString(getCurrentIntlLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
     }
 
-    const base = cursor.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+    const base = cursor.toLocaleDateString(getCurrentIntlLocale(), { month: 'long', year: 'numeric' });
     if (calendarView === 'week') {
       const kw = getISOWeek(cursor);
       return `${base} (KW ${kw})`;
@@ -492,7 +494,7 @@ export default function Calendar() {
   const selectedClosureDay = closureDate ? closureDaysByDate.get(closureDate) ?? null : null;
   const saveClosureMutation = useMutation({
     mutationFn: async ({ date, payload }: { date: string; payload: Pick<OrganizationClosureDay, 'from' | 'to'> }) => {
-      if (!effectiveOrgId) throw new Error('Keine Organisation ausgewählt');
+      if (!effectiveOrgId) throw new Error(autoT('ui_68f9820435c7'));
       return upsertClosureDay(effectiveOrgId, date, payload);
     },
     onSuccess: async (nextClosureDays) => {
@@ -507,7 +509,7 @@ export default function Calendar() {
   });
   const deleteClosureMutation = useMutation({
     mutationFn: async (date: string) => {
-      if (!effectiveOrgId) throw new Error('Keine Organisation ausgewählt');
+      if (!effectiveOrgId) throw new Error(autoT('ui_68f9820435c7'));
       return deleteClosureDay(effectiveOrgId, date);
     },
     onSuccess: async (nextClosureDays) => {
@@ -541,8 +543,8 @@ export default function Calendar() {
     if (!closureDay) return null;
     const from = closureDay.from ? String(closureDay.from).slice(0, 5) : '';
     const to = closureDay.to ? String(closureDay.to).slice(0, 5) : '';
-    if (from && to) return compact ? `Geschl. ${from}-${to}` : `Einrichtung geschlossen ${from} - ${to}`;
-    return compact ? 'Geschlossen' : 'Einrichtung ganztägig geschlossen';
+    if (from && to) return compact ? `Geschl. ${from}-${to}` : autoT('ui_21a3a897af4f', { value0: from, value1: to });
+    return compact ? autoT('ui_91703e9a95cd') : autoT('ui_547e019d2a0f');
   };
 
   const renderClosureBadge = (iso: string, compact = false) => {
@@ -552,7 +554,7 @@ export default function Calendar() {
 
     return (
       <div
-        className={`calendar-closure-badge rounded border font-semibold truncate max-w-full ${compact ? 'mb-0.5 px-1 py-[1px] text-[9px] md:text-[10px]' : 'mb-1 px-1.5 py-0.5 text-[10px]'}`}
+        className={`calendar-closure-badge rounded border font-semibold truncate max-w-full ${compact ? "mb-0.5 px-1 py-[1px] text-[9px] md:text-[10px]" : "mb-1 px-1.5 py-0.5 text-[10px]"}`}
         title={label}
       >
         {label}
@@ -622,7 +624,7 @@ export default function Calendar() {
     const queryStates = [
       {
         key: 'activities',
-        label: 'activities-ready',
+        label: autoT('ui_eae4f4c6eabe'),
         status: activitiesQ.status,
         isError: activitiesQ.isError,
         isFetching: activitiesQ.isFetching,
@@ -630,7 +632,7 @@ export default function Calendar() {
       },
       {
         key: 'openingHours',
-        label: 'opening-hours-ready',
+        label: autoT('ui_bbcd3d6cea44'),
         status: openingHoursQ.status,
         isError: openingHoursQ.isError,
         isFetching: openingHoursQ.isFetching,
@@ -640,7 +642,7 @@ export default function Calendar() {
         ? [
             {
               key: 'schoolHolidays',
-              label: 'school-holidays-ready',
+              label: autoT('ui_5494a7742047'),
               status: schoolRangesStatus === 'success' ? 'success' : schoolRangesStatus === 'error' ? 'error' : 'pending',
               isError: schoolRangesStatus === 'error',
               isFetching: schoolRangesStatus === 'loading',
@@ -765,9 +767,9 @@ export default function Calendar() {
     return hit?.name ?? null;
   };
   const typeLabel: Record<string, string> = {
-    open_door: 'Offene Tür',
-    project_open: 'Projekt (offen)',
-    project_closed: 'Projekt (geschlossen)',
+    open_door: autoT('ui_a80778b6b148'),
+    project_open: autoT('ui_00d882fbb5d4'),
+    project_closed: autoT('ui_8f256393653e'),
     event: 'Veranstaltung',
     outreach: 'Aufsuchend',
   };
@@ -934,7 +936,7 @@ export default function Calendar() {
         {visible.map((a: Activity, i: number) => {
           const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
           const bgClass = isCancelledActivity(a.executionStatus)
-            ? 'bg-rose-600/35'
+            ? "bg-rose-600/35"
             : pickBgClass(a.project?.title || a.title || typeLabel[a.type] || '', a.type);
           const hasImg = Boolean(a.project?.imageUrl);
           const compactStatusPrefix = isCancelledActivity(a.executionStatus)
@@ -963,7 +965,7 @@ export default function Calendar() {
                 {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
                 <span
                   className={`relative z-10 font-medium ${
-                    hasImg ? 'text-white drop-shadow-sm' : 'text-gray-900'
+                    hasImg ? "text-white drop-shadow-sm" : "text-gray-900"
                   }`}
                 >
                   {compactStatusPrefix}{label}
@@ -976,8 +978,8 @@ export default function Calendar() {
                   e.stopPropagation();
                   setEdit(a);
                 }}
-                aria-label={`${label} bearbeiten`}
-                title="Bearbeiten"
+                aria-label={autoT('ui_a5726df86245', { value0: label })}
+                title={autoT('ui_104f3bfdc340')}
               >
                 <Pencil className="h-2.5 w-2.5" />
               </button>
@@ -1007,7 +1009,7 @@ export default function Calendar() {
           const title = a.project?.title || typeLabel[a.type] || a.type;
           const subtitle = a.title ? a.title : undefined;
           const bgClass = isCancelledActivity(a.executionStatus)
-            ? 'bg-rose-600/30'
+            ? "bg-rose-600/30"
             : pickBgClass(a.project?.title || a.title || typeLabel[a.type] || '', a.type);
           const time = fmtTimeRange(a.startTime, a.endTime);
           const counts = a.countTotal ?? 0;
@@ -1036,28 +1038,25 @@ export default function Calendar() {
                 )}
                 {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
                 {isCancelledActivity(a.executionStatus) && (
-                  <div className="relative z-10 mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
-                    Ausgefallen
-                  </div>
+                  <div className="relative z-10 mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{autoT('ui_af6ed3ac625b')}</div>
                 )}
                 <div
-                  className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-800'}`}
+                  className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? "text-white drop-shadow-sm" : "text-gray-800"}`}
                 >
                   {title}
                   {subtitle ? ` (${subtitle})` : ''}
                 </div>
                 {time && (
                   <div
-                    className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
+                    className={`relative z-10 text-[10px] ${hasImg ? "text-white drop-shadow-sm" : "text-gray-700"}`}
                   >
-                    {time} Uhr
-                  </div>
+                    {time}{autoT('ui_1c78be3b65a1')}</div>
                 )}
                 {!isCancelledActivity(a.executionStatus) && (
                   <div
-                    className={`relative z-10 text-[10px] ${hasImg ? 'text-white drop-shadow-sm' : 'text-gray-700'}`}
+                    className={`relative z-10 text-[10px] ${hasImg ? "text-white drop-shadow-sm" : "text-gray-700"}`}
                   >
-                    {counts} (m:{m}, w:{w}, d:{d})
+                    {counts}{' '}{autoT('ui_c2a30a5a251c')}{m}{autoT('ui_115f6e7d14bf')}{w}{autoT('ui_7578fb7a5a2f')}{d})
                   </div>
                 )}
               </button>
@@ -1068,8 +1067,8 @@ export default function Calendar() {
                   e.stopPropagation();
                   setEdit(a);
                 }}
-                aria-label={`${title}${subtitle ? ` (${subtitle})` : ''} bearbeiten`}
-                title="Bearbeiten"
+                aria-label={autoT('ui_66ebe55bf6b2', { value0: title, value1: subtitle ? ` (${subtitle})` : '' })}
+                title={autoT('ui_104f3bfdc340')}
               >
                 <Pencil className="h-3 w-3" />
               </button>
@@ -1085,13 +1084,11 @@ export default function Calendar() {
       {/* Mobile: stacked layout; Desktop: row layout */}
       <div className="flex flex-col gap-2 mb-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center justify-between md:block">
-          <PageHeader className="mb-0" description={label} title="Kalender" />
+          <PageHeader className="mb-0" description={label} title={autoT('ui_33fe92f625e5')} />
           {/* Navigation controls on mobile - inline with title */}
           <div className="flex gap-1.5 md:hidden">
             {showTodayButton && (
-              <Button className="rounded-lg px-2.5 py-1.5" size="sm" onClick={gotoToday}>
-                Heute
-              </Button>
+              <Button className="rounded-lg px-2.5 py-1.5" size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
             )}
             <button
               className="calendar-control px-2 py-1.5 rounded text-sm"
@@ -1109,16 +1106,14 @@ export default function Calendar() {
         </div>
         {/* Desktop controls */}
         <DemoHoverHint
-          title="Kalendersteuerung"
-          description="Wechselt zwischen Monaten und Wochen. Der Heute-Knopf erscheint nur, wenn der aktuelle Zeitraum nicht bereits sichtbar ist."
+          title={autoT('ui_ce3e61ff4f3d')}
+          description={autoT('ui_185ae16ec6ca')}
           placement="bottom"
           align="end"
         >
           <div className="hidden md:flex gap-2">
             {showTodayButton && (
-              <Button onClick={gotoToday}>
-                Heute
-              </Button>
+              <Button onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
             )}
             <button
               className="calendar-control px-3 py-2 rounded"
@@ -1132,53 +1127,45 @@ export default function Calendar() {
             >
               »
             </button>
-            <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label="Kalenderansicht">
+            <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label={autoT('ui_d256a4d045f0')}>
               <button
                 type="button"
                 className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                  calendarView === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                  calendarView === 'month' ? "stats-kpi-toggle-button-active font-medium" : ''
                 }`}
                 onClick={() => setView('month')}
                 aria-pressed={calendarView === 'month'}
-              >
-                Monat
-              </button>
+              >{autoT('ui_da13625eeb37')}</button>
               <button
                 type="button"
                 className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                  calendarView === 'week' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                  calendarView === 'week' ? "stats-kpi-toggle-button-active font-medium" : ''
                 }`}
                 onClick={() => setView('week')}
                 aria-pressed={calendarView === 'week'}
-              >
-                Woche
-              </button>
+              >{autoT('ui_7b2207dc85a6')}</button>
             </div>
           </div>
         </DemoHoverHint>
 
         <div className="flex flex-wrap items-center gap-2 md:hidden">
-          <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label="Kalenderansicht mobil">
+          <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label={autoT('ui_a950dd6ca6dd')}>
             <button
               type="button"
               className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                calendarView === 'month' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                calendarView === 'month' ? "stats-kpi-toggle-button-active font-medium" : ''
               }`}
               onClick={() => setView('month')}
               aria-pressed={calendarView === 'month'}
-            >
-              Monat
-            </button>
+            >{autoT('ui_da13625eeb37')}</button>
             <button
               type="button"
               className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                calendarView === 'three-day' ? 'stats-kpi-toggle-button-active font-medium' : ''
+                calendarView === 'three-day' ? "stats-kpi-toggle-button-active font-medium" : ''
               }`}
               onClick={() => setView('three-day')}
               aria-pressed={calendarView === 'three-day'}
-            >
-              3 Tage
-            </button>
+            >{autoT('ui_6d3823976a67')}</button>
           </div>
         </div>
       </div>
@@ -1186,8 +1173,8 @@ export default function Calendar() {
       {/* Month grid */}
       {calendarView === 'month' && (
         <DemoHoverHint
-          title="Kalenderflaeche"
-          description="Ein Klick auf ein Tagesfeld zeigt im Desktop die Aktivitaeten direkt unter dem Kalender. Plus- und Schliesszeit-Buttons erscheinen im Desktop beim Hover; mobil bleiben sie in der Monatsuebersicht ausgeblendet."
+          title={autoT('ui_3039d2d9f789')}
+          description={autoT('ui_65141582ceec')}
           placement="bottom"
           className="demo-hover-hint-anchor-top"
         >
@@ -1215,13 +1202,13 @@ export default function Calendar() {
                 <div
                   key={idx}
                   onClick={isMobile ? undefined : () => openActivitiesForDate(iso)}
-                  className={`calendar-day-cell group relative min-h-[6.25rem] md:min-h-[8rem] border p-1 text-left transition-colors ${!isMobile ? 'cursor-pointer' : ''} ${
+                  className={`calendar-day-cell group relative min-h-[6.25rem] md:min-h-[8rem] border p-1 text-left transition-colors ${!isMobile ? "cursor-pointer" : ''} ${
                     isOtherMonth
-                      ? 'calendar-day-cell-other'
+                      ? "calendar-day-cell-other"
                       : isToday
-                        ? 'calendar-day-cell-today'
+                        ? "calendar-day-cell-today"
                         : ''
-                  } ${!isMobile && selectedDateISO === iso ? 'calendar-day-cell-selected' : ''}`}
+                  } ${!isMobile && selectedDateISO === iso ? "calendar-day-cell-selected" : ''}`}
                 >
                   {/* Top row: Day number + desktop actions overlay */}
                   <div className="mb-0.5 flex items-start gap-1">
@@ -1231,9 +1218,9 @@ export default function Calendar() {
                         e.stopPropagation();
                         openActivitiesForDate(iso);
                       }}
-                      className={`calendar-day-number text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? 'calendar-day-number-other' : ''}`}
-                      title={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
-                      aria-label={`Aktivitäten am ${day.toLocaleDateString('de-DE')} anzeigen`}
+                      className={`calendar-day-number text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? "calendar-day-number-other" : ''}`}
+                      title={autoT('ui_79478f44f6bc', { value0: day.toLocaleDateString(getCurrentIntlLocale()) })}
+                      aria-label={autoT('ui_79478f44f6bc', { value0: day.toLocaleDateString(getCurrentIntlLocale()) })}
                     >
                       {day.getDate()}
                     </button>
@@ -1246,9 +1233,9 @@ export default function Calendar() {
                               e.stopPropagation();
                               setClosureDate(iso);
                             }}
-                            className={`calendar-closure-button inline-flex h-5 w-5 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? 'calendar-closure-button-active' : ''}`}
-                            aria-label={`Schließzeit für ${day.toLocaleDateString('de-DE')} bearbeiten`}
-                            title={closureDaysByDate.has(iso) ? 'Schließung bearbeiten' : 'Tag als geschlossen markieren'}
+                            className={`calendar-closure-button inline-flex h-5 w-5 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? "calendar-closure-button-active" : ''}`}
+                            aria-label={autoT('ui_5610323eaf16', { value0: day.toLocaleDateString(getCurrentIntlLocale()) })}
+                            title={closureDaysByDate.has(iso) ? autoT('ui_c0daf52ece46') : autoT('ui_c482e66bfcf5')}
                           >
                             <Building2 className="h-3 w-3" />
                           </button>
@@ -1260,8 +1247,8 @@ export default function Calendar() {
                             openAddActivityForDate(iso);
                           }}
                           className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
-                          aria-label={`Aktivität zu ${day.toLocaleDateString('de-DE')} hinzufügen`}
-                          title="Aktivität zu diesem Tag hinzufügen"
+                          aria-label={autoT('ui_2ac59b1cffe8', { value0: day.toLocaleDateString(getCurrentIntlLocale()) })}
+                          title={autoT('ui_812c73b64c56')}
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </button>
@@ -1304,8 +1291,8 @@ export default function Calendar() {
       {/* Day-range view */}
       {calendarView !== 'month' && (
         <DemoHoverHint
-          title="Kalenderflaeche"
-          description="Die mobile 3-Tage-Ansicht zeigt Schliesszeit- und Plus-Buttons direkt pro Tag. So kannst du Tage als geschlossen markieren oder neue Aktivitaeten hinzufuegen, ohne in die Monatsuebersicht zu wechseln."
+          title={autoT('ui_3039d2d9f789')}
+          description={autoT('ui_c5b8bfc6b844')}
           placement="bottom"
           className="demo-hover-hint-anchor-top"
         >
@@ -1317,7 +1304,7 @@ export default function Calendar() {
             {visibleDays.map((d) => (
               <div key={d.toISOString()} className="px-2 py-2 text-center">
                 <div>
-                  {d.toLocaleDateString('de-DE', {
+                  {d.toLocaleDateString(getCurrentIntlLocale(), {
                     weekday: 'short',
                     day: '2-digit',
                     month: '2-digit',
@@ -1342,7 +1329,7 @@ export default function Calendar() {
                 <div
                   key={iso}
                   onClick={isMobile ? undefined : () => openActivitiesForDate(iso)}
-                  className={`calendar-day-cell group min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left transition-colors ${!isMobile ? 'cursor-pointer' : ''} ${isToday ? 'calendar-day-cell-today' : ''} ${!isMobile && selectedDateISO === iso ? 'calendar-day-cell-selected' : ''}`}
+                  className={`calendar-day-cell group min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left transition-colors ${!isMobile ? "cursor-pointer" : ''} ${isToday ? "calendar-day-cell-today" : ''} ${!isMobile && selectedDateISO === iso ? "calendar-day-cell-selected" : ''}`}
                 >
                   <div className="mb-1 flex items-start justify-between gap-2">
                     <button
@@ -1352,10 +1339,10 @@ export default function Calendar() {
                         openActivitiesForDate(iso);
                       }}
                       className="rounded px-1 -mx-1 text-xs font-medium text-gray-700 hover:bg-black/5 hover:text-viridian hover:underline underline-offset-2"
-                      title={`Aktivitäten am ${d.toLocaleDateString('de-DE')} anzeigen`}
-                      aria-label={`Aktivitäten am ${d.toLocaleDateString('de-DE')} anzeigen`}
+                      title={autoT('ui_79478f44f6bc', { value0: d.toLocaleDateString(getCurrentIntlLocale()) })}
+                      aria-label={autoT('ui_79478f44f6bc', { value0: d.toLocaleDateString(getCurrentIntlLocale()) })}
                     >
-                      {d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                      {d.toLocaleDateString(getCurrentIntlLocale(), { day: '2-digit', month: '2-digit' })}
                     </button>
                     {showCalendarDayActions && (
                       <div className="calendar-day-actions flex shrink-0 items-center gap-1">
@@ -1366,9 +1353,9 @@ export default function Calendar() {
                               e.stopPropagation();
                               setClosureDate(iso);
                             }}
-                            className={`calendar-closure-button inline-flex h-6 w-6 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? 'calendar-closure-button-active' : ''}`}
-                            aria-label={`Schließzeit für ${d.toLocaleDateString('de-DE')} bearbeiten`}
-                            title={closureDaysByDate.has(iso) ? 'Schließung bearbeiten' : 'Tag als geschlossen markieren'}
+                            className={`calendar-closure-button inline-flex h-6 w-6 items-center justify-center rounded-md border shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${closureDaysByDate.has(iso) ? "calendar-closure-button-active" : ''}`}
+                            aria-label={autoT('ui_5610323eaf16', { value0: d.toLocaleDateString(getCurrentIntlLocale()) })}
+                            title={closureDaysByDate.has(iso) ? autoT('ui_c0daf52ece46') : autoT('ui_c482e66bfcf5')}
                           >
                             <Building2 className="h-3.5 w-3.5" />
                           </button>
@@ -1380,8 +1367,8 @@ export default function Calendar() {
                             openAddActivityForDate(iso);
                           }}
                           className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white/92 text-viridian shadow-sm opacity-100 transition-all md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-white"
-                          aria-label={`Aktivität zu ${d.toLocaleDateString('de-DE')} hinzufügen`}
-                          title="Aktivität zu diesem Tag hinzufügen"
+                          aria-label={autoT('ui_2ac59b1cffe8', { value0: d.toLocaleDateString(getCurrentIntlLocale()) })}
+                          title={autoT('ui_812c73b64c56')}
                         >
                           <Plus className="h-4 w-4" />
                         </button>
@@ -1419,23 +1406,20 @@ export default function Calendar() {
 
       {selectedDateISO && !isMobile && (
         <DemoHoverHint
-          title="Tagesliste"
-          description="Nach dem Klick auf einen Tag erscheinen hier die Aktivitaeten dieses Tages. Ueber Pfeil, Plus und Stift wechselst du zur Liste, legst neu an oder bearbeitest direkt."
+          title={autoT('ui_9782bba5a775')}
+          description={autoT('ui_7dcbe2d48e03')}
           placement="bottom"
           className="demo-hover-hint-anchor-top"
         >
           <section className="calendar-day-list activities-desktop-table-shell mt-4 hidden overflow-hidden rounded-lg border shadow md:block" aria-live="polite">
           <div className="calendar-day-list-header flex flex-col gap-3 border-b bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
-              <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                Tagesauswahl
-              </div>
+              <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{autoT('ui_5d1c7b4d0cde')}</div>
               <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Aktivitäten am {selectedDateLabel}
+                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{autoT('ui_892ed2e65fe7')}{selectedDateLabel}
                 </h3>
                 <span className="inline-flex items-center rounded-full border border-gray-200 bg-white/80 px-2 py-1 text-xs text-gray-700">
-                  {selectedDayActivities.length} {selectedDayActivities.length === 1 ? 'Eintrag' : 'Einträge'}
+                  {selectedDayActivities.length} {selectedDayActivities.length === 1 ? autoT('ui_d28fd7140d15') : autoT('ui_303e11fd9d2b')}
                 </span>
               </div>
             </div>
@@ -1444,14 +1428,12 @@ export default function Calendar() {
                 type="button"
                 className="calendar-control inline-flex h-10 w-10 items-center justify-center rounded-lg"
                 onClick={() => openFilteredActivitiesForDate(selectedDateISO)}
-                aria-label={`Aktivitäten am ${selectedDateLabel} in der Aktivitätenliste öffnen`}
-                title="In Aktivitäten öffnen"
+                aria-label={autoT('ui_64e1a53052c0', { value0: selectedDateLabel })}
+                title={autoT('ui_6e613f438423')}
               >
                 <ArrowRight className="h-4 w-4" />
               </button>
-              <Button onClick={() => openAddActivityForDate(selectedDateISO)}>
-                + Neue Aktivität
-              </Button>
+              <Button onClick={() => openAddActivityForDate(selectedDateISO)}>{autoT('ui_400d9bb7617f')}</Button>
             </div>
           </div>
 
@@ -1460,25 +1442,15 @@ export default function Calendar() {
               <table className="calendar-day-list-table activities-desktop-table w-full min-w-0 table-fixed">
                 <thead className="bg-azure-web">
                   <tr>
-                    <th className="activities-col-date px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">
-                      Zeit
-                    </th>
-                    <th className="activities-col-type px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">
-                      Typ
-                    </th>
-                    <th className="activities-col-title px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">
-                      Titel / Projekt
-                    </th>
+                    <th className="activities-col-date px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">{autoT('ui_d34f8dd0e537')}</th>
+                    <th className="activities-col-type px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">{autoT('ui_edcaf9aaa282')}</th>
+                    <th className="activities-col-title px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">{autoT('ui_e4dfe345c454')}</th>
                     <th className="activities-col-participants px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">
-                      <span className="hidden xl:inline">Teilnehmende</span>
-                      <span className="xl:hidden" title="Teilnehmende">TN</span>
+                      <span className="hidden xl:inline">{autoT('ui_a8a4d6b019af')}</span>
+                      <span className="xl:hidden" title={autoT('ui_a8a4d6b019af')}>{autoT('ui_f79fa2d4a0a2')}</span>
                     </th>
-                    <th className="activities-col-duration hidden px-2 py-3 text-left text-sm font-semibold text-gray-700 xl:table-cell xl:px-4">
-                      Dauer
-                    </th>
-                    <th className="activities-col-action px-2 py-3 text-center text-sm font-semibold text-gray-700 lg:px-4">
-                      Aktion
-                    </th>
+                    <th className="activities-col-duration hidden px-2 py-3 text-left text-sm font-semibold text-gray-700 xl:table-cell xl:px-4">{autoT('ui_f6e58177bf91')}</th>
+                    <th className="activities-col-action px-2 py-3 text-center text-sm font-semibold text-gray-700 lg:px-4">{autoT('ui_276e2316b951')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1516,8 +1488,7 @@ export default function Calendar() {
                           ) : (
                             <>
                               <span className="font-medium">{total}</span>
-                              <span className="ml-1 hidden text-xs text-gray-500 xl:inline">
-                                (m:{male}, w:{female}, d:{diverse})
+                              <span className="ml-1 hidden text-xs text-gray-500 xl:inline">{autoT('ui_c2a30a5a251c')}{male}{autoT('ui_115f6e7d14bf')}{female}{autoT('ui_7578fb7a5a2f')}{diverse})
                               </span>
                             </>
                           )}
@@ -1550,8 +1521,8 @@ export default function Calendar() {
                             type="button"
                             className="activity-edit-button relative z-10 p-2"
                             onClick={() => setEdit(activity)}
-                            aria-label={`${title !== '-' ? title : projectTitle} bearbeiten`}
-                            title="Bearbeiten"
+                            aria-label={autoT('ui_a5726df86245', { value0: title !== '-' ? title : projectTitle })}
+                            title={autoT('ui_104f3bfdc340')}
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
@@ -1565,8 +1536,8 @@ export default function Calendar() {
           ) : (
             <EmptyState
               className="rounded-none border-x-0 border-b-0"
-              description="Wähle einen anderen Tag oder lege eine neue Aktivität an."
-              title="Keine Aktivitäten an diesem Tag"
+              description={autoT('ui_506f38210d2d')}
+              title={autoT('ui_d424d681036b')}
             />
           )}
         </section>
@@ -1633,8 +1604,7 @@ export default function Calendar() {
                   className="calendar-tooltip-panel text-xs rounded-xl px-3.5 py-2.5 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border"
                 >
                   <div className="font-semibold mb-1.5 border-b pb-1 text-viridian" style={{ borderColor: 'var(--border-strong)' }}>
-                    +{moreTooltip.activities.length} weitere Aktivitäten
-                  </div>
+                    +{moreTooltip.activities.length}{autoT('ui_d055c3b1006a')}</div>
                   <div className="space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(50vh - 60px)' }}>
                     {moreTooltip.activities.map((a, i) => {
                       const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
@@ -1663,8 +1633,7 @@ export default function Calendar() {
                 style={{ maxHeight: layout.maxHeight }}
               >
                 <div className="font-semibold mb-1.5 shrink-0 border-b pb-1 text-viridian" style={{ borderColor: 'var(--border-strong)' }}>
-                  +{moreTooltip.activities.length} weitere Aktivitäten
-                </div>
+                  +{moreTooltip.activities.length}{autoT('ui_d055c3b1006a')}</div>
                 <div className="space-y-1 overflow-y-auto min-h-0 flex-1 pr-1">
                   {moreTooltip.activities.map((a, i) => {
                     const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;

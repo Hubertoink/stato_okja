@@ -43,8 +43,11 @@ import {
   getWeekdayLabel,
   mergeProjectStaffIds,
 } from './activityEditorShared';
+import { useTranslation } from 'react-i18next';
+import { autoT } from '@/i18n/auto';
 
 export default function ActivityCreatePage() {
+  const { t } = useTranslation(['activities', 'common']);
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const location = useLocation();
@@ -175,11 +178,11 @@ export default function ActivityCreatePage() {
     if (create.isPending || submitLockedRef.current) return;
 
     if (!form.date) {
-      setErrorOpen('Bitte ein Datum wählen.');
+      setErrorOpen(t('quickAdd.chooseDate'));
       return;
     }
     if (!form.projectId) {
-      setErrorOpen('Bitte ein Projekt wählen.');
+      setErrorOpen(t('quickAdd.chooseProject'));
       return;
     }
     const payload = buildActivitySavePayload({
@@ -192,10 +195,10 @@ export default function ActivityCreatePage() {
     submitLockedRef.current = true;
     create.mutate(payload, {
       onSuccess: () => {
-        showToast('Aktivität gespeichert');
+        showToast(t('quickAdd.saved'));
         navigate(-1);
       },
-      onError: () => setErrorOpen('Speichern fehlgeschlagen.'),
+      onError: () => setErrorOpen(t('quickAdd.saveFailed')),
     });
   };
 
@@ -239,7 +242,7 @@ export default function ActivityCreatePage() {
   return (
     <div className={`max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 ${containerPad}`}>
       <div className="flex items-center justify-between mb-4 mt-1">
-        <h2 className="text-2xl font-bold text-viridian">Neue Aktivität</h2>
+        <h2 className="text-2xl font-bold text-viridian">{t('actions.new')}</h2>
         <div className="flex items-center gap-2">
           <ActivityExecutionStatusControl
             value={form.executionStatus}
@@ -249,8 +252,8 @@ export default function ActivityCreatePage() {
             type="button"
             className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
             onClick={handleCancel}
-            title="Abbrechen"
-            aria-label="Abbrechen"
+            title={t('common:actions.cancel')}
+            aria-label={t('common:actions.cancel')}
           >
             <XIcon className="w-5 h-5" />
           </button>
@@ -268,7 +271,7 @@ export default function ActivityCreatePage() {
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">
               <label className="block text-sm font-medium" htmlFor="activity-date">
-                Datum *
+                {t('quickAdd.date')}
               </label>
               {selectedDateWeekday && (
                 <span className="pl-2 text-xs font-medium text-gray-500 whitespace-nowrap">
@@ -286,7 +289,7 @@ export default function ActivityCreatePage() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="location-select">
-              Standort
+              {t('quickAdd.location')}
             </label>
             <select
               id="location-select"
@@ -294,7 +297,7 @@ export default function ActivityCreatePage() {
               onChange={(e) => setForm({ ...form, locationId: e.target.value || undefined })}
               className="w-full border rounded px-3 py-2"
             >
-              <option value="">— Standort wählen —</option>
+              <option value="">{t('quickAdd.selectLocation')}</option>
               {(locations || []).map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
@@ -306,19 +309,19 @@ export default function ActivityCreatePage() {
 
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="activity-title">
-            Titel
+            {t('quickAdd.titleField')}
           </label>
           <input
             id="activity-title"
             value={form.title || ''}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="w-full border rounded px-3 py-2"
-            placeholder="z. B. Werkraum, Offene Tür"
+            placeholder={t('quickAdd.titlePlaceholder')}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Projekt *</label>
+          <label className="block text-sm font-medium mb-1">{t('quickAdd.project')}</label>
           {selectedProject ? (
             <button
               type="button"
@@ -347,7 +350,7 @@ export default function ActivityCreatePage() {
               onClick={() => setPicker(true)}
               className="w-full border rounded p-3 text-left text-gray-600"
             >
-              Projekt wählen…
+              {t('quickAdd.selectProject')}
             </button>
           )}
         </div>
@@ -355,7 +358,7 @@ export default function ActivityCreatePage() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="start-time">
-              Start
+              {t('quickAdd.start')}
             </label>
             <input
               id="start-time"
@@ -363,13 +366,13 @@ export default function ActivityCreatePage() {
               value={form.start || ''}
               onChange={(e) => setForm({ ...form, start: e.target.value })}
               className="w-full border rounded px-3 py-2"
-              placeholder="HH:MM"
-              title="Start"
+              placeholder={autoT('ui_a4c7ee9ba5c9')}
+              title={t('quickAdd.start')}
             />
           </div>
           <div>
             <label htmlFor="end-time" className="block text-sm font-medium mb-1">
-              Ende
+              {t('quickAdd.end')}
             </label>
             <input
               id="end-time"
@@ -377,8 +380,8 @@ export default function ActivityCreatePage() {
               value={form.end || ''}
               onChange={(e) => setForm({ ...form, end: e.target.value })}
               className="w-full border rounded px-3 py-2"
-              placeholder="HH:MM"
-              title="Ende"
+              placeholder={autoT('ui_a4c7ee9ba5c9')}
+              title={t('quickAdd.end')}
             />
           </div>
         </div>
@@ -386,12 +389,12 @@ export default function ActivityCreatePage() {
         {/* Cohort breakdown per gender */}
         <div>
           <div className="mb-1 flex items-center justify-between gap-3">
-            <label className="block text-sm font-medium">Alterskohorten</label>
+            <label className="block text-sm font-medium">{autoT('ui_4d34ac48c54e')}</label>
             {isMobile && (
               <Toggle
                 checked={tapModeEnabled}
                 onChange={setTapModePreferred}
-                ariaLabel="Tippen statt Tastatur"
+                ariaLabel={autoT('ui_b0e6c7b8314b')}
                 label={<ActivityTapModeIcon />}
                 className="shrink-0 gap-1 flex-row-reverse"
               />
@@ -399,7 +402,7 @@ export default function ActivityCreatePage() {
           </div>
           {tapModeEnabled && (
             <div className="mb-2 text-[11px] text-gray-500">
-              Tippen +1, lang drücken oder nach unten wischen -1.
+              {t('quickAdd.tapHelp')}
             </div>
           )}
           <div className="space-y-2">
@@ -407,28 +410,20 @@ export default function ActivityCreatePage() {
               <span className="text-xs text-gray-500" />
               <span
                 className="activity-cohort-column-icon"
-                title="Männlich"
-                aria-label="Männlich"
-              >
-                m
-              </span>
+                title={t('quickAdd.male')}
+                aria-label={t('quickAdd.male')}
+              >{autoT('ui_6b0d31c0d563')}</span>
               <span
                 className="activity-cohort-column-icon"
-                title="Weiblich"
-                aria-label="Weiblich"
-              >
-                w
-              </span>
+                title={t('quickAdd.female')}
+                aria-label={t('quickAdd.female')}
+              >{autoT('ui_aff024fe4ab0')}</span>
               <span
                 className="activity-cohort-column-icon"
-                title="Divers"
-                aria-label="Divers"
-              >
-                d
-              </span>
-              <span className="text-xs text-gray-600 font-medium text-center" title="Summe" aria-label="Summe">
-                Σ
-              </span>
+                title={t('quickAdd.diverse')}
+                aria-label={t('quickAdd.diverse')}
+              >{autoT('ui_3c363836cf4e')}</span>
+              <span className="text-xs text-gray-600 font-medium text-center" title={t('quickAdd.total')} aria-label={t('quickAdd.total')}>{autoT('ui_ccb9fecbb241')}</span>
             </div>
             {(cohorts || []).map((c: Cohort, rowIndex: number) => {
               const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
@@ -503,7 +498,7 @@ export default function ActivityCreatePage() {
                   {(['m', 'w', 'd'] as const).map((g) => (
                     <ActivityCohortCountField
                       key={g}
-                      mode={tapModeEnabled ? 'tap' : 'input'}
+                      mode={tapModeEnabled ? "tap" : "input"}
                       value={entry[g] || 0}
                       onChange={(value) => updateEntry(g, value)}
                       onKeyDown={tapModeEnabled ? undefined : (e) => handleKeyDown(e, rowIndex, g)}
@@ -532,7 +527,7 @@ export default function ActivityCreatePage() {
         {selectedProject?.type !== 'open_door' && (
           <div>
             <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <label className="block text-sm font-medium">Kategorien</label>
+              <label className="block text-sm font-medium">{t('filters.categories')}</label>
               {canCreateOwnCategories ? (
                 <button
                   type="button"
@@ -540,7 +535,7 @@ export default function ActivityCreatePage() {
                   className={addActionButtonClassName}
                 >
                   <PlusIcon className="h-4 w-4" />
-                  Hinzufügen
+                  {t('quickAdd.add')}
                 </button>
               ) : null}
             </div>
@@ -565,7 +560,7 @@ export default function ActivityCreatePage() {
                 );
               })}
               {(categories || []).length === 0 && (
-                <span className="text-xs text-gray-400">Keine Kategorien vorhanden.</span>
+                <span className="text-xs text-gray-400">{t('quickAdd.noCategories')}</span>
               )}
             </div>
           </div>
@@ -573,7 +568,7 @@ export default function ActivityCreatePage() {
 
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <label className="block text-sm font-medium">Tags</label>
+            <label className="block text-sm font-medium">{t('filters.tags')}</label>
             {canCreateOwnTags ? (
               <button
                 type="button"
@@ -581,7 +576,7 @@ export default function ActivityCreatePage() {
                 className={addActionButtonClassName}
               >
                 <PlusIcon className="h-4 w-4" />
-                Hinzufügen
+                {t('quickAdd.add')}
               </button>
             ) : null}
           </div>
@@ -612,7 +607,7 @@ export default function ActivityCreatePage() {
         {employeeStaff.length > 0 && (
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <label className="block text-sm font-medium">Mitarbeitende</label>
+            <label className="block text-sm font-medium">{t('filters.staff')}</label>
             {canManageStaff ? (
               <button
                 type="button"
@@ -620,7 +615,7 @@ export default function ActivityCreatePage() {
                 className={addActionButtonClassName}
               >
                 <PlusIcon className="h-4 w-4" />
-                Hinzufügen
+                {t('quickAdd.add')}
               </button>
             ) : null}
           </div>
@@ -638,7 +633,7 @@ export default function ActivityCreatePage() {
                       setForm({ ...form, staffIds: Array.from(set) });
                     }}
                     className={`px-2 py-1 rounded-full text-xs border ${
-                      active ? 'bg-viridian text-white' : 'bg-white text-gray-700'
+                      active ? "bg-viridian text-white" : "bg-white text-gray-700"
                     }`}
                   >
                     {s.name}
@@ -652,7 +647,7 @@ export default function ActivityCreatePage() {
         {volunteerStaff.length > 0 && (
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <label className="block text-sm font-medium">Ehrenamtliche</label>
+            <label className="block text-sm font-medium">{autoT('ui_4ac524334f49')}</label>
             {canManageStaff ? (
               <button
                 type="button"
@@ -660,7 +655,7 @@ export default function ActivityCreatePage() {
                 className={addActionButtonClassName}
               >
                 <PlusIcon className="h-4 w-4" />
-                Hinzufügen
+                {t('quickAdd.add')}
               </button>
             ) : null}
           </div>
@@ -678,7 +673,7 @@ export default function ActivityCreatePage() {
                       setForm({ ...form, staffIds: Array.from(set) });
                     }}
                     className={`px-2 py-1 rounded-full text-xs border ${
-                      active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
+                      active ? "bg-cambridge-blue text-white" : "bg-white text-gray-700"
                     }`}
                   >
                     {s.name}
@@ -692,7 +687,7 @@ export default function ActivityCreatePage() {
         {helperStaff.length > 0 && (
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <label className="block text-sm font-medium">Helfer</label>
+            <label className="block text-sm font-medium">{autoT('ui_01bfae305e69')}</label>
             {canManageStaff ? (
               <button
                 type="button"
@@ -700,7 +695,7 @@ export default function ActivityCreatePage() {
                 className={addActionButtonClassName}
               >
                 <PlusIcon className="h-4 w-4" />
-                Hinzufügen
+                {t('quickAdd.add')}
               </button>
             ) : null}
           </div>
@@ -718,7 +713,7 @@ export default function ActivityCreatePage() {
                       setForm({ ...form, staffIds: Array.from(set) });
                     }}
                     className={`px-2 py-1 rounded-full text-xs border ${
-                      active ? 'bg-amber-400 text-white' : 'bg-white text-gray-700'
+                      active ? "bg-amber-400 text-white" : "bg-white text-gray-700"
                     }`}
                   >
                     {s.name}
@@ -731,7 +726,7 @@ export default function ActivityCreatePage() {
 
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="activity-notes">
-            Notizen
+            {t('quickAdd.notes')}
           </label>
           <textarea
             id="activity-notes"
@@ -739,8 +734,8 @@ export default function ActivityCreatePage() {
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             rows={3}
             className="w-full border rounded px-3 py-2"
-            placeholder="Notizen zur Aktivität"
-            aria-label="Notizen"
+            placeholder={t('quickAdd.notesPlaceholder')}
+            aria-label={t('quickAdd.notes')}
           />
         </div>
 
@@ -751,7 +746,7 @@ export default function ActivityCreatePage() {
             onClick={handleCancel}
             className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
           >
-            Abbrechen
+            {t('common:actions.cancel')}
           </button>
           <button
             type="submit"
@@ -759,7 +754,7 @@ export default function ActivityCreatePage() {
             disabled={create.isPending || picker || Boolean(errorOpen)}
           >
             <SaveIcon className="h-4 w-4" />
-            {create.isPending ? 'Wird gespeichert…' : 'Speichern'}
+            {create.isPending ? t('common:language.saving') : t('quickAdd.save')}
           </button>
         </div>
       </form>
@@ -802,12 +797,12 @@ export default function ActivityCreatePage() {
 
       <ConfirmModal
         open={Boolean(errorOpen)}
-        title="Fehler"
+        title={t('quickAdd.error')}
         message={errorOpen || ''}
         onCancel={() => setErrorOpen(null)}
         onConfirm={() => setErrorOpen(null)}
         showCancel={false}
-        confirmLabel="OK"
+        confirmLabel={autoT('ui_9ce3bd4224c8')}
       />
     </div>
   );

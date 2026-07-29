@@ -10,6 +10,7 @@ import type { LogbookComment, LogbookEntry, LogbookEntryInput, LogbookEntryStatu
 import type { StaffMember, StaffRole } from '../lib/staff';
 import type { Survey, SurveyAnalytics, SurveyInput, SurveyQuestion, SurveyResponse, SurveyTrend } from '../lib/surveys';
 import type { Category, Cohort, Tag } from '../lib/taxonomy';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 type DemoActivityRecord = Omit<Activity, 'project' | 'location' | 'categories' | 'tags' | 'staff'> & {
   orgId: string;
@@ -545,7 +546,7 @@ function activitySeed(
         date,
         projectById.get('project-community-event')!,
         {
-          title: `Community Event ${cursor.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}`,
+          title: `Community Event ${cursor.toLocaleDateString(getCurrentIntlLocale(), { month: 'long', year: 'numeric' })}`,
           locationId: 'loc-house',
           total: 35 + (hashNumber(`${monthKey}:event`) % 55),
         },
@@ -792,10 +793,10 @@ function surveyRounds(survey: DemoSurvey) {
 
 export function listDemoSurveys(params: DemoQueryParams = {}) {
   const archived = readBoolean(params.archived) || false;
-  const search = String(params.search || '').trim().toLocaleLowerCase('de-DE');
+  const search = String(params.search || '').trim().toLocaleLowerCase(getCurrentIntlLocale());
   return store.surveys
     .filter((survey) => survey.id === surveySeriesId(survey) && survey.archived === archived)
-    .filter((survey) => !search || survey.title.toLocaleLowerCase('de-DE').includes(search))
+    .filter((survey) => !search || survey.title.toLocaleLowerCase(getCurrentIntlLocale()).includes(search))
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .map((root) => {
       const rounds = surveyRounds(root);

@@ -1,8 +1,10 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { germanStates as states, type StateCode } from '@/lib/holidays';
+import { useTranslation } from 'react-i18next';
 
 export default function SettingsHolidays() {
+  const { t } = useTranslation('settings');
   const [selected, setSelected] = useState<StateCode | ''>('');
   const [showSchool, setShowSchool] = useState(false);
 
@@ -28,19 +30,18 @@ export default function SettingsHolidays() {
 
   const label = useMemo(() => {
     const s = states.find((x) => x.code === selected);
-    return s ? s.name : 'Kein Bundesland ausgewählt';
-  }, [selected]);
+    return s ? s.name : t('holidays.none');
+  }, [selected, t]);
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
-      <h3 className="text-xl font-semibold text-viridian mb-2">Feiertage im Kalender</h3>
+      <h3 className="text-xl font-semibold text-viridian mb-2">{t('holidays.title')}</h3>
       <p className="text-gray-600 mb-4">
-        Wähle dein Bundesland, damit gesetzliche Feiertage im Kalender angezeigt werden. Optional
-        können Schulferien eingeblendet werden.
+        {t('holidays.intro')}
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <label className="text-gray-700 font-medium">Bundesland</label>
+        <label className="text-gray-700 font-medium">{t('holidays.state')}</label>
         <select
           className="border rounded px-3 py-2"
           value={selected}
@@ -48,7 +49,7 @@ export default function SettingsHolidays() {
             setSelected(e.target.value as StateCode | '')
           }
         >
-          <option value="">– Auswahl –</option>
+          <option value="">{t('holidays.select')}</option>
           {states.map((s) => (
             <option key={s.code} value={s.code}>
               {s.name}
@@ -61,7 +62,7 @@ export default function SettingsHolidays() {
             checked={showSchool}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowSchool(e.target.checked)}
           />
-          Schulferien anzeigen (wenn verfügbar)
+          {t('holidays.school')}
         </label>
       </div>
 
@@ -69,18 +70,15 @@ export default function SettingsHolidays() {
         {selected ? (
           <>
             <div>
-              Aktuelle Auswahl:{' '}
-              <span className="font-medium">
-                {label} ({selected})
-              </span>
-              {showSchool ? ' · Schulferien: an' : ''}
+              {t('holidays.current', { value: `${label} (${selected})` })}
+              {showSchool ? t('holidays.schoolOn') : ''}
             </div>
             <div className="text-gray-500 mt-1">
-              Die Auswahl wird lokal gespeichert und beim Kalender berücksichtigt.
+              {t('holidays.saved')}
             </div>
           </>
         ) : (
-          <div>Es ist noch kein Bundesland ausgewählt.</div>
+          <div>{t('holidays.noSelection')}</div>
         )}
       </div>
     </div>

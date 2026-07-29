@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
@@ -55,6 +56,8 @@ import { SurveyStatusBadge } from '@/components/SurveyStatusBadge';
 import { StatisticsExportActions } from './StatisticsExportActions';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import Modal from '@/components/Modal';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 const SURVEY_EXPORT_SCALE = 2;
 const SURVEY_EXPORT_MARGIN_MM = 10;
@@ -102,18 +105,18 @@ function canvasToBlob(canvas: HTMLCanvasElement) {
 
 function exportFilename(title: string, extension: 'png' | 'pdf' | 'xlsx') {
   const segment = title
-    .toLocaleLowerCase('de-DE')
+    .toLocaleLowerCase(getCurrentIntlLocale())
     .trim()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9äöüß_-]+/gi, '')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-  return `stato-umfrage-${segment || 'auswertung'}.${extension}`;
+  return autoT('ui_f89a0fd4ac03', { value0: segment || autoT('ui_1d3ced9367ba'), value1: extension });
 }
 
 function formatDate(value?: string | null) {
   return value
-    ? new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+    ? new Date(value).toLocaleString(getCurrentIntlLocale(), { dateStyle: 'medium', timeStyle: 'short' })
     : '–';
 }
 
@@ -128,7 +131,7 @@ function displayEnd(survey: Survey) {
 function formatRoundMonthYear(survey: Survey) {
   const date = survey.startedAt || survey.startsAt || survey.closedAt || survey.endsAt || null;
   return date
-    ? new Date(date).toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })
+    ? new Date(date).toLocaleDateString(getCurrentIntlLocale(), { month: 'short', year: 'numeric' })
     : null;
 }
 
@@ -154,7 +157,7 @@ function SurveyChartTooltip({
   return (
     <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 py-2 text-sm shadow-sm">
       <p className="font-medium text-[var(--text-primary)]">{entry.payload?.name}</p>
-      <p className="mt-1 text-viridian">{entry.value ?? 0} Antworten</p>
+      <p className="mt-1 text-viridian">{entry.value ?? 0}{' '}{autoT('ui_062c3d5e1537')}</p>
     </div>
   );
 }
@@ -181,7 +184,8 @@ function SurveyQr({ url, onReady }: { url: string; onReady?: (src: string) => vo
     <img
       className="mx-auto h-44 w-44 rounded-xl bg-white p-2"
       src={src}
-      alt="QR-Code zur Umfrage"
+      alt={autoT('ui_0aabcaa4a531')}
+      data-survey-qr
     />
   ) : (
     <div className="mx-auto h-44 w-44 animate-pulse rounded-xl bg-[var(--surface-3)]" />
@@ -203,21 +207,15 @@ function SurveyQuestionsPreview({ questions }: { questions: SurveyQuestion[] }) 
     <>
       <section className="mt-6 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-5">
         <div>
-          <h3 className="font-semibold text-viridian">Fragen</h3>
+          <h3 className="font-semibold text-viridian">{autoT('ui_0eb5ac7cb670')}</h3>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            {questions.length} {questions.length === 1 ? 'Frage' : 'Fragen'} in dieser Umfrage
-          </p>
+            {questions.length} {questions.length === 1 ? autoT('ui_2e4bccb00f59') : autoT('ui_0eb5ac7cb670')}{autoT('ui_a39c9658d2c8')}</p>
         </div>
-        <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-          Fragen ansehen
-        </Button>
+        <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>{autoT('ui_4dd094221b03')}</Button>
       </section>
-      <Modal open={open} onClose={() => setOpen(false)} title="Fragen der Umfrage" maxWidth="3xl">
+      <Modal open={open} onClose={() => setOpen(false)} title={autoT('ui_d0a6bde76cc5')} maxWidth="3xl">
         <div className="space-y-3">
-          <p className="text-sm text-[var(--text-secondary)]">
-            Die Fragen sind für alle Umfragerunden dieser Reihe gleich und können hier nur
-            eingesehen werden.
-          </p>
+          <p className="text-sm text-[var(--text-secondary)]">{autoT('ui_eb351ae6146f')}</p>
           {questions.map((question, index) => (
             <div
               key={question.id}
@@ -225,7 +223,7 @@ function SurveyQuestionsPreview({ questions }: { questions: SurveyQuestion[] }) 
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-xs font-semibold text-viridian">Frage {index + 1}</p>
+                  <p className="text-xs font-semibold text-viridian">{autoT('ui_2e4bccb00f59')}{' '}{index + 1}</p>
                   <p className="mt-1 font-medium text-[var(--text-primary)]">{question.label}</p>
                 </div>
                 <span className="rounded-full bg-[var(--surface-elevated)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
@@ -256,15 +254,13 @@ function SurveyQuestionsPreview({ questions }: { questions: SurveyQuestion[] }) 
                 </div>
               ) : null}
               <p className="mt-3 text-xs text-[var(--text-secondary)]">
-                {question.required ? 'Antwort erforderlich' : 'Antwort freiwillig'}
+                {question.required ? autoT('ui_6460d6877930') : autoT('ui_1131d8e5e80b')}
               </p>
             </div>
           ))}
         </div>
         <div className="mt-5 flex justify-end">
-          <Button variant="secondary" onClick={() => setOpen(false)}>
-            Schließen
-          </Button>
+          <Button variant="secondary" onClick={() => setOpen(false)}>{autoT('ui_44424b18700e')}</Button>
         </div>
       </Modal>
     </>
@@ -297,66 +293,65 @@ function SurveyOverview({
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <SurfaceCard>
-        <h2 className="text-lg font-semibold text-viridian">Umfrage</h2>
+        <h2 className="text-lg font-semibold text-viridian">{autoT('ui_adf758641fca')}</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-[var(--text-secondary)]">Status</dt>
+            <dt className="text-[var(--text-secondary)]">{autoT('ui_bae7d5be7082')}</dt>
             <dd className="mt-1">
               <SurveyStatusBadge status={survey.status} />
             </dd>
           </div>
           <div>
-            <dt className="text-[var(--text-secondary)]">Teilnahmemodus</dt>
+            <dt className="text-[var(--text-secondary)]">{autoT('ui_71c2851c9840')}</dt>
             <dd className="mt-1 font-medium">
               {survey.allowMultiplePerDevice
-                ? 'Mehrere Antworten pro Gerät'
-                : 'Eine Antwort pro Browser'}
+                ? autoT('ui_d1e0f2d60f99')
+                : autoT('ui_845b3a841059')}
             </dd>
           </div>
           <div>
-            <dt className="text-[var(--text-secondary)]">Start</dt>
+            <dt className="text-[var(--text-secondary)]">{autoT('ui_952f375412e8')}</dt>
             <dd className="mt-1">{displayStart(survey)}</dd>
           </div>
           <div>
-            <dt className="text-[var(--text-secondary)]">Ende</dt>
+            <dt className="text-[var(--text-secondary)]">{autoT('ui_920e9c468e40')}</dt>
             <dd className="mt-1">{displayEnd(survey)}</dd>
           </div>
           {survey.rawResponsesPurgeAt ? (
             <div className="sm:col-span-2">
-              <dt className="text-[var(--text-secondary)]">Einzelantworten werden gelöscht am</dt>
+              <dt className="text-[var(--text-secondary)]">{autoT('ui_ad3b9e06ace7')}</dt>
               <dd className="mt-1">{formatDate(survey.rawResponsesPurgeAt)}</dd>
             </div>
           ) : null}
         </dl>
         <p className="mt-5 whitespace-pre-wrap text-sm text-[var(--text-secondary)]">
-          {survey.introduction || 'Keine Einleitung hinterlegt.'}
+          {survey.introduction || autoT('ui_fcde2b7ead39')}
         </p>
         <div className="mt-6 border-t border-[var(--border-subtle)] pt-5">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="font-semibold text-viridian">Umfragerunden</h3>
+            <h3 className="font-semibold text-viridian">{autoT('ui_a116cfcb0a17')}</h3>
             <span className="text-sm text-[var(--text-secondary)]">
-              {rounds.length} {rounds.length === 1 ? 'Runde' : 'Runden'}
+              {rounds.length} {rounds.length === 1 ? autoT('ui_101d931d6b66') : autoT('ui_c042750d784a')}
             </span>
           </div>
           <div>
             <table className="w-full table-fixed text-left text-sm">
               <thead className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)]">
                 <tr>
-                  <th className="w-[36%] px-2 py-2 sm:w-[28%]">Runde</th>
-                  <th className="w-[32%] px-2 py-2 sm:w-[38%]">Status</th>
-                  <th className="w-[22%] px-2 py-2 text-right sm:w-[26%]">Antworten</th>
-                  <th className="w-[10%] px-2 py-2 sm:w-12"><span className="sr-only">Aktionen</span></th>
+                  <th className="w-[36%] px-2 py-2 sm:w-[28%]">{autoT('ui_101d931d6b66')}</th>
+                  <th className="w-[32%] px-2 py-2 sm:w-[38%]">{autoT('ui_bae7d5be7082')}</th>
+                  <th className="w-[22%] px-2 py-2 text-right sm:w-[26%]">{autoT('ui_062c3d5e1537')}</th>
+                  <th className="w-[10%] px-2 py-2 sm:w-12"><span className="sr-only">{autoT('ui_445e0c4cac2f')}</span></th>
                 </tr>
               </thead>
               <tbody>
                 {rounds.map((round) => (
                   <tr
                     key={round.id}
-                    className={`group cursor-pointer border-b border-[var(--border-subtle)] last:border-0 ${round.id === selectedRoundId ? 'bg-[var(--interactive-soft)]' : 'hover:bg-[var(--surface-2)]'}`}
+                    className={`group cursor-pointer border-b border-[var(--border-subtle)] last:border-0 ${round.id === selectedRoundId ? "bg-[var(--interactive-soft)]" : "hover:bg-[var(--surface-2)]"}`}
                     onClick={() => onSelectRound(round.id)}
                   >
-                    <td className="px-2 py-3 font-medium">
-                      Runde {round.roundNumber || 1}
+                    <td className="px-2 py-3 font-medium">{autoT('ui_101d931d6b66')}{round.roundNumber || 1}
                       {formatRoundMonthYear(round) ? (
                         <span className="ml-1 whitespace-nowrap text-xs font-normal text-[var(--text-secondary)]">
                           ({formatRoundMonthYear(round)})
@@ -367,7 +362,7 @@ function SurveyOverview({
                       <SurveyStatusBadge status={round.status} />
                     </td>
                     <td className="px-2 py-3 text-right">{round.responsesCount}</td>
-                    <td className="px-2 py-2 text-right">{round.status === 'draft' && (round.roundNumber || 1) > 1 ? <span className="tooltip-wrapper inline-flex"><Button size="icon" variant="ghost" className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700" aria-label={`Umfragerunde ${round.roundNumber} löschen`} title="Umfragerunde löschen" onClick={(event) => { event.stopPropagation(); onDeleteDraftRound(round); }}><Trash2 className="h-4 w-4" /></Button><span className="tooltip-bubble">Umfragerunde löschen</span></span> : null}</td>
+                    <td className="px-2 py-2 text-right">{round.status === 'draft' && (round.roundNumber || 1) > 1 ? <span className="tooltip-wrapper inline-flex"><Button size="icon" variant="ghost" className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700" aria-label={autoT('ui_55e51cea1246', { value0: round.roundNumber })} title={autoT('ui_f67f0f08e572')} onClick={(event) => { event.stopPropagation(); onDeleteDraftRound(round); }}><Trash2 className="h-4 w-4" /></Button><span className="tooltip-bubble">{autoT('ui_f67f0f08e572')}</span></span> : null}</td>
                   </tr>
                 ))}
               </tbody>
@@ -383,16 +378,15 @@ function SurveyOverview({
               <div className="w-9" />
               <div>
                 <QrCode className="mx-auto mb-2 h-5 w-5 text-viridian" />
-                <h2 className="font-semibold text-viridian">QR-Code & Link</h2>
-                <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                  Runde {survey.roundNumber || 1}
+                <h2 className="font-semibold text-viridian">{autoT('ui_187917d94802')}</h2>
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">{autoT('ui_101d931d6b66')}{survey.roundNumber || 1}
                 </p>
               </div>
               <StatisticsExportActions
-                triggerLabel="QR-Code herunterladen"
-                menuTitle="QR-Code herunterladen"
+                triggerLabel={autoT('ui_58fe20b5d493')}
+                menuTitle={autoT('ui_58fe20b5d493')}
                 isExporting={false}
-                options={[{ label: 'Als PNG', meta: 'Bild', onClick: onDownloadQr }]}
+                options={[{ label: autoT('ui_eac2deaf6270'), meta: 'Bild', onClick: onDownloadQr }]}
               />
             </div>
             <div className="mt-3">
@@ -401,27 +395,24 @@ function SurveyOverview({
             <p className="mt-3 break-all text-xs text-[var(--text-secondary)]">{link}</p>
             <div className="mt-4 grid gap-2">
               <Button variant="secondary" onClick={onCopy}>
-                <Copy className="h-4 w-4" /> Link kopieren
-              </Button>
+                <Copy className="h-4 w-4" />{autoT('ui_e8b631dd387f')}</Button>
               <Button variant="secondary" onClick={onPrint}>
-                <Printer className="h-4 w-4" /> QR-Code drucken
-              </Button>
+                <Printer className="h-4 w-4" />{autoT('ui_004acce76d13')}</Button>
               <Button
                 variant="secondary"
                 onClick={() => window.open(link, '_blank', 'noopener,noreferrer')}
               >
-                <ExternalLink className="h-4 w-4" /> Teilnahme öffnen
-              </Button>
+                <ExternalLink className="h-4 w-4" />{autoT('ui_b9abb6d595a4')}</Button>
             </div>
           </>
         ) : (
           <div className="flex min-h-72 flex-col items-center justify-center px-5">
             <QrCode className="mb-3 h-6 w-6 text-[var(--text-faint)]" />
-            <h2 className="font-semibold text-viridian">Teilnahme nicht aktiv</h2>
+            <h2 className="font-semibold text-viridian">{autoT('ui_43824020203e')}</h2>
             <p className="mt-2 max-w-xs text-sm text-[var(--text-secondary)]">
               {survey.status === 'closed'
-                ? 'Diese Umfragerunde ist beendet. QR-Code und Teilnahmelink werden nicht mehr angezeigt.'
-                : 'Starte diese Umfragerunde, um QR-Code und Teilnahmelink bereitzustellen.'}
+                ? autoT('ui_9b9391ac8de0')
+                : autoT('ui_0ee8148b648e')}
             </p>
           </div>
         )}
@@ -431,6 +422,7 @@ function SurveyOverview({
 }
 
 export default function SurveyDetail() {
+  const { t } = useTranslation('surveys');
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -475,26 +467,26 @@ export default function SurveyDetail() {
     [survey?.questions],
   );
   if (surveyQuery.isLoading && !survey)
-    return <p className="text-sm text-[var(--text-secondary)]">Umfrage wird geladen…</p>;
+    return <p className="text-sm text-[var(--text-secondary)]">{autoT('ui_b3580a144a65')}</p>;
   if (!survey)
     return (
       <EmptyState
-        title="Umfrage nicht gefunden"
-        description="Sie wurde möglicherweise gelöscht oder gehört zu einer anderen Einrichtung."
-        action={<Button onClick={() => navigate('/surveys')}>Zur Übersicht</Button>}
+        title={autoT('ui_2ce107281759')}
+        description={autoT('ui_28f553cb85f4')}
+        action={<Button onClick={() => navigate('/surveys')}>{autoT('ui_90d08e27d59c')}</Button>}
       />
     );
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link);
-      showToast('Öffentlicher Link kopiert.');
+      showToast(autoT('ui_3d38ec837a48'));
     } catch {
-      showToast('Link konnte nicht kopiert werden.', { type: 'error' });
+      showToast(autoT('ui_51ddb4e34042'), { type: 'error' });
     }
   };
   const downloadQr = () => {
     if (!qrDataUrl) {
-      showToast('Der QR-Code wird noch erstellt. Bitte versuche es gleich noch einmal.', {
+      showToast(autoT('ui_af190090cb83'), {
         type: 'error',
       });
       return;
@@ -503,11 +495,11 @@ export default function SurveyDetail() {
     anchor.href = qrDataUrl;
     anchor.download = exportFilename(`${survey.title}-qr-code`, 'png');
     anchor.click();
-    showToast('QR-Code als PNG heruntergeladen.');
+    showToast(autoT('ui_44b6a849b248'));
   };
   const print = () => {
     const sourceImage = window.document.querySelector<HTMLImageElement>(
-      'img[alt="QR-Code zur Umfrage"]',
+      'img[data-survey-qr]',
     );
     const popup = window.open('', '_blank');
     if (!popup) return;
@@ -542,8 +534,8 @@ export default function SurveyDetail() {
     setActiveAnalyticsExport(exportKey);
     setExportProgress(
       format === 'pdf'
-        ? 'Auswertung wird für das PDF aufbereitet …'
-        : 'Auswertung wird als Bild aufbereitet …',
+        ? autoT('ui_f89215c5d261')
+        : autoT('ui_41bc3dcad7cc'),
     );
     try {
       const { JsPDF, html2canvas } = await loadSurveyExportDependencies();
@@ -557,7 +549,7 @@ export default function SurveyDetail() {
       });
       const fileTitle = `${survey.title}-${questionLabel}`;
       if (format === 'png') {
-        setExportProgress('Bilddatei wird gespeichert …');
+        setExportProgress(autoT('ui_8b3d272f0e55'));
         downloadBlob(await canvasToBlob(canvas), exportFilename(fileTitle, 'png'));
         return;
       }
@@ -587,11 +579,11 @@ export default function SurveyDetail() {
         undefined,
         'FAST',
       );
-      setExportProgress('PDF wird gespeichert …');
+      setExportProgress(autoT('ui_0acf469c6a6c'));
       pdf.save(exportFilename(fileTitle, 'pdf'));
     } catch (error) {
       console.error('Survey analytics export failed', error);
-      showToast('Die Auswertung konnte nicht exportiert werden.', { type: 'error' });
+      showToast(autoT('ui_95224f10980a'), { type: 'error' });
     } finally {
       setActiveAnalyticsExport(null);
       setExportProgress(null);
@@ -599,13 +591,13 @@ export default function SurveyDetail() {
   };
   const exportCompleteAnalytics = async (format: 'pdf' | 'xlsx') => {
     if (!analytics) {
-      showToast('Die Auswertung wird noch geladen.', { type: 'error' });
+      showToast(autoT('ui_0d35286dbcf2'), { type: 'error' });
       return;
     }
     setActiveCompleteAnalyticsExport(format);
     setExportProgress(
       format === 'pdf'
-        ? 'Gesamte Auswertung wird für das PDF aufbereitet …'
+        ? autoT('ui_35beb65aa9cb')
         : 'Excel-Datei wird vorbereitet …',
     );
     try {
@@ -613,19 +605,19 @@ export default function SurveyDetail() {
         const xlsx = await import('xlsx-js-style');
         const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
         const overview = [
-          ['Umfrage', survey.title],
-          ['Gültige Antworten', analytics.responsesCount],
-          ['Erwartete Teilnehmende', analytics.expectedParticipants ?? '–'],
+          [autoT('ui_adf758641fca'), survey.title],
+          [autoT('ui_ccb381b8f440'), analytics.responsesCount],
+          [autoT('ui_fc91708230d3'), analytics.expectedParticipants ?? '–'],
           [
-            'Rücklaufquote',
+            autoT('ui_54de2ae8fb71'),
             analytics.responseRate === null || typeof analytics.responseRate === 'undefined'
               ? '–'
               : `${analytics.responseRate} %`,
           ],
-          ['Erstellt am', new Date(analytics.generatedAt).toLocaleString('de-DE')],
+          ['Erstellt am', new Date(analytics.generatedAt).toLocaleString(getCurrentIntlLocale())],
         ];
         const results: Array<Array<string | number>> = [
-          ['Frage', 'Antwortformat', 'Antwort / Ausprägung', 'Anzahl', 'Median'],
+          [autoT('ui_2e4bccb00f59'), autoT('ui_191796a6bbf2'), autoT('ui_7ff76bb5e133'), autoT('ui_a0015435c276'), autoT('ui_b887ba2a5f48')],
         ];
         const texts = [['Frage', 'Freitextantwort']];
         analytics.questions.forEach((result) => {
@@ -668,18 +660,18 @@ export default function SurveyDetail() {
         const resultsSheet = utils.aoa_to_sheet(results);
         overviewSheet['!cols'] = [{ wch: 26 }, { wch: 48 }];
         resultsSheet['!cols'] = [{ wch: 44 }, { wch: 20 }, { wch: 40 }, { wch: 12 }, { wch: 12 }];
-        utils.book_append_sheet(workbook, overviewSheet, 'Übersicht');
-        utils.book_append_sheet(workbook, resultsSheet, 'Auswertung');
+        utils.book_append_sheet(workbook, overviewSheet, autoT('ui_cb27327d0207'));
+        utils.book_append_sheet(workbook, resultsSheet, autoT('ui_b794c8c5b654'));
         if (texts.length > 1) {
           const textSheet = utils.aoa_to_sheet(texts);
           textSheet['!cols'] = [{ wch: 44 }, { wch: 90 }];
-          utils.book_append_sheet(workbook, textSheet, 'Freitext');
+          utils.book_append_sheet(workbook, textSheet, autoT('ui_e0e8dce3beb7'));
         }
-        writeFile(workbook, exportFilename(`${survey.title}-auswertung`, 'xlsx'));
+        writeFile(workbook, exportFilename(autoT('ui_98f8c12a4c91', { value0: survey.title }), 'xlsx'));
         return;
       }
       const nodes = [
-        { node: analyticsSummaryRef.current, label: 'Zusammenfassung' },
+        { node: analyticsSummaryRef.current, label: autoT('ui_dc230696907d') },
         ...analytics.questions.map((result) => ({
           node: analyticsCardRefs.current[result.id],
           label: result.label,
@@ -689,7 +681,7 @@ export default function SurveyDetail() {
       const { JsPDF, html2canvas } = await loadSurveyExportDependencies();
       let pdf: InstanceType<typeof JsPDF> | null = null;
       for (const [index, entry] of nodes.entries()) {
-        setExportProgress(`Auswertung ${index + 1} von ${nodes.length} wird aufbereitet …`);
+        setExportProgress(autoT('ui_00988b3b2777', { value0: index + 1, value1: nodes.length }));
         await new Promise(requestAnimationFrame);
         const canvas = await html2canvas(entry.node, {
           scale: SURVEY_EXPORT_SCALE,
@@ -725,11 +717,11 @@ export default function SurveyDetail() {
           'FAST',
         );
       }
-      setExportProgress('PDF wird gespeichert …');
-      pdf?.save(exportFilename(`${survey.title}-auswertung`, 'pdf'));
+      setExportProgress(autoT('ui_0acf469c6a6c'));
+      pdf?.save(exportFilename(autoT('ui_98f8c12a4c91', { value0: survey.title }), 'pdf'));
     } catch (error) {
       console.error('Complete survey analytics export failed', error);
-      showToast('Die Auswertung konnte nicht exportiert werden.', { type: 'error' });
+      showToast(autoT('ui_95224f10980a'), { type: 'error' });
     } finally {
       setActiveCompleteAnalyticsExport(null);
       setExportProgress(null);
@@ -737,7 +729,7 @@ export default function SurveyDetail() {
   };
   const runDelete = async () => {
     if (!responseToDelete || !deleteReason.trim()) {
-      showToast('Bitte gib einen Löschgrund an.', { type: 'error' });
+      showToast(autoT('ui_ac10a4165a98'), { type: 'error' });
       return;
     }
     try {
@@ -746,23 +738,24 @@ export default function SurveyDetail() {
         responseId: responseToDelete,
         reason: deleteReason,
       });
-      showToast('Einzelantwort gelöscht.');
+      showToast(autoT('ui_33a91b387240'));
       setResponseToDelete(null);
       setDeleteReason('');
     } catch {
-      showToast('Antwort konnte nicht gelöscht werden.', { type: 'error' });
+      showToast(autoT('ui_0be9529a9010'), { type: 'error' });
     }
   };
   const createNextRound = () =>
     createRound.mutate(id, {
-      onSuccess: (round: any) => {
+      onSuccess: (createdRound) => {
+        const round = createdRound as Survey;
         setSelectedRoundId(round.id);
         setTab('overview');
         showToast(`Umfragerunde ${round.roundNumber || rounds.length + 1} als Entwurf angelegt.`);
       },
-      onError: (error: any) =>
+      onError: (error: unknown) =>
         showToast(
-          error?.response?.data?.message || 'Neue Umfragerunde konnte nicht angelegt werden.',
+          (error as { response?: { data?: { message?: string } } })?.response?.data?.message || t('newRoundError'),
           { type: 'error' },
         ),
     });
@@ -772,11 +765,11 @@ export default function SurveyDetail() {
       {
         onSuccess: () => {
           if (selectedRoundId === round.id) setSelectedRoundId(id);
-          showToast(`Umfragerunde ${round.roundNumber} gelöscht.`);
+          showToast(autoT('ui_4440c31d01dd', { value0: round.roundNumber }));
         },
-        onError: (error: any) =>
+        onError: (error: unknown) =>
           showToast(
-            error?.response?.data?.message || 'Umfragerunde konnte nicht gelöscht werden.',
+            (error as { response?: { data?: { message?: string } } })?.response?.data?.message || autoT('ui_577e8e9a0ff7'),
             { type: 'error' },
           ),
       },
@@ -788,82 +781,69 @@ export default function SurveyDetail() {
     <div className="space-y-5">
       <PageHeader
         title={rounds[0]?.title || survey.title}
-        description={`${survey.questions.length} Fragen · Runde ${survey.roundNumber || 1} · ${survey.responsesCount} Antworten`}
+        description={autoT('ui_7a8c10d7f5fd', { value0: survey.questions.length, value1: survey.roundNumber || 1, value2: survey.responsesCount })}
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="secondary" onClick={() => navigate('/surveys')}>
-              <ArrowLeft className="h-4 w-4" /> Übersicht
-            </Button>
+              <ArrowLeft className="h-4 w-4" />{autoT('ui_cb27327d0207')}</Button>
             <Button
               onClick={createNextRound}
               disabled={createRound.isPending || survey.status === 'active'}
             >
-              <Plus className="h-4 w-4" /> Neue Umfragerunde
-            </Button>
+              <Plus className="h-4 w-4" />{autoT('ui_21c33a3efef0')}</Button>
             {survey.status === 'draft' ? (
               <Button
                 onClick={() =>
                   start.mutate(survey.id, {
-                    onSuccess: () => showToast('Umfragerunde gestartet.'),
-                    onError: (error: any) =>
+                    onSuccess: () => showToast(autoT('ui_2f743b651728')),
+                    onError: (error: unknown) =>
                       showToast(
-                        error?.response?.data?.message || 'Umfrage konnte nicht gestartet werden.',
+                        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || autoT('ui_4fea9281bb1b'),
                         { type: 'error' },
                       ),
                   })
                 }
               >
-                <Play className="h-4 w-4" /> Starten
-              </Button>
+                <Play className="h-4 w-4" />{autoT('ui_2beb73505ac3')}</Button>
             ) : null}
             {survey.status === 'active' ? (
               <Button variant="danger" onClick={() => setCloseConfirmOpen(true)}>
-                <CheckCircle2 className="h-4 w-4" /> Beenden
-              </Button>
+                <CheckCircle2 className="h-4 w-4" />{autoT('ui_ce9e650ed816')}</Button>
             ) : null}
             {canEdit ? (
               <Button variant="secondary" onClick={() => setEdit(true)}>
-                <Pencil className="h-4 w-4" /> Bearbeiten
-              </Button>
+                <Pencil className="h-4 w-4" />{autoT('ui_104f3bfdc340')}</Button>
             ) : null}
           </div>
         }
       />
       <div className="grid grid-cols-4 gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-1">
         <button
-          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'overview' ? 'bg-[var(--surface-elevated)] text-viridian shadow-sm' : 'text-[var(--text-secondary)]'}`}
+          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'overview' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
           onClick={() => setTab('overview')}
-        >
-          Überblick
-        </button>
+        >{autoT('ui_8f963287afb8')}</button>
         <button
-          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'responses' ? 'bg-[var(--surface-elevated)] text-viridian shadow-sm' : 'text-[var(--text-secondary)]'}`}
+          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'responses' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
           onClick={() => setTab('responses')}
         >
-          <span className="sm:hidden">Antworten</span>
-          <span className="hidden sm:inline">Einzelantworten</span>
+          <span className="sm:hidden">{autoT('ui_062c3d5e1537')}</span>
+          <span className="hidden sm:inline">{autoT('ui_56ca593e977d')}</span>
         </button>
         <button
-          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'analytics' ? 'bg-[var(--surface-elevated)] text-viridian shadow-sm' : 'text-[var(--text-secondary)]'}`}
+          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'analytics' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
           onClick={() => setTab('analytics')}
-        >
-          Auswertung
-        </button>
+        >{autoT('ui_b794c8c5b654')}</button>
         <button
-          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'trend' ? 'bg-[var(--surface-elevated)] text-viridian shadow-sm' : 'text-[var(--text-secondary)]'}`}
+          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'trend' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
           onClick={() => setTab('trend')}
-        >
-          Verlauf
-        </button>
+        >{autoT('ui_35bec7db746f')}</button>
       </div>
       {showRoundPicker ? (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
           <label
             className="text-sm font-medium text-[var(--text-secondary)]"
             htmlFor="survey-round"
-          >
-            Umfragerunde
-          </label>
+          >{autoT('ui_c1b845f3cb2b')}</label>
           <Select
             id="survey-round"
             className="mt-0 min-w-[16rem] max-w-sm"
@@ -871,11 +851,8 @@ export default function SurveyDetail() {
             onChange={(event) => setSelectedRoundId(event.target.value)}
           >
             {rounds.map((round) => (
-              <option key={round.id} value={round.id}>
-                Runde {round.roundNumber || 1} ·{' '}
-                {formatDate(round.closedAt || round.startsAt || null)} · {round.responsesCount}{' '}
-                Antworten
-              </option>
+              <option key={round.id} value={round.id}>{autoT('ui_101d931d6b66')}{round.roundNumber || 1} ·{' '}
+                {formatDate(round.closedAt || round.startsAt || null)} · {round.responsesCount}{' '}{autoT('ui_062c3d5e1537')}</option>
             ))}
           </Select>
         </div>
@@ -897,18 +874,18 @@ export default function SurveyDetail() {
       {tab === 'responses' ? (
         <SurfaceCard>
           {responsesQuery.isLoading ? (
-            <p className="text-sm text-[var(--text-secondary)]">Einzelantworten werden geladen…</p>
+            <p className="text-sm text-[var(--text-secondary)]">{autoT('ui_a47836db8df6')}</p>
           ) : !responsesQuery.data?.rawResponsesAvailable ? (
             <EmptyState
               icon={<Archive className="h-5 w-5" />}
-              title="Einzelantworten wurden anonymisiert gelöscht"
-              description="Nach Ablauf der 30-Tage-Prüffrist bleiben nur die aggregierten Ergebnisse erhalten."
+              title={autoT('ui_249cf0e46f58')}
+              description={autoT('ui_4353bea7fd0d')}
             />
           ) : (responsesQuery.data?.responses.length || 0) === 0 ? (
             <EmptyState
               icon={<Users className="h-5 w-5" />}
-              title="Noch keine Antworten"
-              description="Sobald jemand teilnimmt, erscheinen die anonymen Antworten hier."
+              title={autoT('ui_5c03e9bf45ac')}
+              description={autoT('ui_036b5ffc749e')}
             />
           ) : (
             <div className="overflow-x-auto">
@@ -916,7 +893,7 @@ export default function SurveyDetail() {
                 <thead className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)]">
                   <tr>
                     <th className="px-2 py-3">#</th>
-                    <th className="px-2 py-3">Eingang</th>
+                    <th className="px-2 py-3">{autoT('ui_4dadb7f4ebb6')}</th>
                     {survey.questions.map((question) => (
                       <th key={question.id} className="px-2 py-3">
                         {question.label}
@@ -945,8 +922,8 @@ export default function SurveyDetail() {
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700"
-                          aria-label="Antwort löschen"
-                          title="Antwort löschen"
+                          aria-label={autoT('ui_4cb587fdb765')}
+                          title={autoT('ui_4cb587fdb765')}
                           onClick={() => setResponseToDelete(response.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -967,26 +944,25 @@ export default function SurveyDetail() {
               type="button"
               className="inline-flex items-center gap-2 rounded-lg bg-cambridge-blue px-4 py-2 text-sm text-white transition-colors hover:bg-viridian"
               onClick={() => setCompleteExportOpen(true)}
-              title="Auswertung exportieren"
+              title={autoT('ui_8dbb5c1c7f40')}
             >
-              <FileDown className="h-4 w-4" /> Export
-            </button>
+              <FileDown className="h-4 w-4" />{autoT('ui_f3e4fadb9e37')}</button>
           </div>
           <div ref={analyticsSummaryRef} className="grid gap-4 sm:grid-cols-3">
             <SurfaceCard padding="sm">
-              <div className="text-xs text-[var(--text-secondary)]">Gültige Antworten</div>
+              <div className="text-xs text-[var(--text-secondary)]">{autoT('ui_ccb381b8f440')}</div>
               <div className="mt-1 text-2xl font-bold text-viridian">
                 {analytics?.responsesCount ?? 0}
               </div>
             </SurfaceCard>
             <SurfaceCard padding="sm">
-              <div className="text-xs text-[var(--text-secondary)]">Erwartete Teilnehmende</div>
+              <div className="text-xs text-[var(--text-secondary)]">{autoT('ui_fc91708230d3')}</div>
               <div className="mt-1 text-2xl font-bold text-viridian">
                 {analytics?.expectedParticipants ?? '–'}
               </div>
             </SurfaceCard>
             <SurfaceCard padding="sm">
-              <div className="text-xs text-[var(--text-secondary)]">Rücklaufquote</div>
+              <div className="text-xs text-[var(--text-secondary)]">{autoT('ui_54de2ae8fb71')}</div>
               <div className="mt-1 text-2xl font-bold text-viridian">
                 {analytics?.responseRate !== null && typeof analytics?.responseRate !== 'undefined'
                   ? `${analytics.responseRate} %`
@@ -997,14 +973,14 @@ export default function SurveyDetail() {
           {analytics?.suppressed ? (
             <EmptyState
               icon={<Archive className="h-5 w-5" />}
-              title="Dauerhafte Auswertung nicht verfügbar"
-              description="Nach der Prüffrist wurden die Einzelantworten gelöscht. Für eine dauerhafte Auswertung waren weniger als fünf Antworten eingegangen."
+              title={autoT('ui_a9031418ca8b')}
+              description={autoT('ui_1f4fc65b60a1')}
             />
           ) : !analytics || analytics.questions.length === 0 ? (
             <EmptyState
               icon={<BarChart3 className="h-5 w-5" />}
-              title="Noch keine Auswertung"
-              description="Die Diagramme erscheinen, sobald Antworten eingegangen sind."
+              title={autoT('ui_374c516cd86d')}
+              description={autoT('ui_8b17c7d7eb11')}
             />
           ) : (
             analytics.questions.map((result) => {
@@ -1012,16 +988,16 @@ export default function SurveyDetail() {
               const exportActions = (
                 <StatisticsExportActions
                   triggerLabel={`${result.label} exportieren`}
-                  menuTitle="Auswertung exportieren"
+                  menuTitle={autoT('ui_8dbb5c1c7f40')}
                   isExporting={activeAnalyticsExport?.startsWith(`${result.id}:`) ?? false}
                   options={[
                     {
-                      label: 'Als PNG',
+                      label: autoT('ui_eac2deaf6270'),
                       meta: 'Bild',
                       onClick: () => void exportAnalyticsCard(result.id, result.label, 'png'),
                     },
                     {
-                      label: 'Als PDF',
+                      label: autoT('ui_d2ca42015ecd'),
                       meta: 'A4',
                       onClick: () => void exportAnalyticsCard(result.id, result.label, 'pdf'),
                     },
@@ -1042,8 +1018,7 @@ export default function SurveyDetail() {
                         <div>
                           <h2 className="font-semibold text-viridian">{result.label}</h2>
                           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                            {result.answeredCount} Textantworten
-                          </p>
+                            {result.answeredCount}{autoT('ui_6db5b569b339')}</p>
                         </div>
                         {exportActions}
                       </div>
@@ -1058,9 +1033,7 @@ export default function SurveyDetail() {
                             </div>
                           ))
                         ) : (
-                          <p className="text-sm text-[var(--text-secondary)]">
-                            Keine Freitextantworten.
-                          </p>
+                          <p className="text-sm text-[var(--text-secondary)]">{autoT('ui_0ec97f4e3a8f')}</p>
                         )}
                       </div>
                     </SurfaceCard>
@@ -1092,8 +1065,7 @@ export default function SurveyDetail() {
                       <h2 className="font-semibold text-viridian">{result.label}</h2>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-[var(--text-secondary)]">
-                          {result.answeredCount} Antworten
-                          {result.median ? ` · Median ${result.median}` : ''}
+                          {result.answeredCount}{autoT('ui_062c3d5e1537')}{result.median ? ` · Median ${result.median}` : ''}
                         </span>
                         {exportActions}
                       </div>
@@ -1128,26 +1100,23 @@ export default function SurveyDetail() {
       {tab === 'trend' ? (
         <div className="space-y-5">
           {trendQuery.isLoading ? (
-            <p className="text-sm text-[var(--text-secondary)]">Verlauf wird geladen…</p>
+            <p className="text-sm text-[var(--text-secondary)]">{autoT('ui_05c879a14797')}</p>
           ) : !trendQuery.data?.rounds.length ? (
             <EmptyState
               icon={<BarChart3 className="h-5 w-5" />}
-              title="Noch kein Verlauf"
-              description="Sobald mehrere Umfragerunden angelegt wurden, erscheinen hier die Entwicklungen."
+              title={autoT('ui_88edadaf8ed0')}
+              description={autoT('ui_eebd0a308479')}
             />
           ) : (
             <>
               <SurfaceCard>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <div>
-                    <h2 className="font-semibold text-viridian">Verlauf der Umfragerunden</h2>
-                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                      Verglichen werden nur identische Fragen derselben Umfragereihe.
-                    </p>
+                    <h2 className="font-semibold text-viridian">{autoT('ui_e7b9a4f53c47')}</h2>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">{autoT('ui_d4f4165a09bd')}</p>
                   </div>
                   <span className="text-sm text-[var(--text-secondary)]">
-                    {trendQuery.data.rounds.length} Runden
-                  </span>
+                    {trendQuery.data.rounds.length}{autoT('ui_c042750d784a')}</span>
                 </div>
                 <div className="mt-4 h-56">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1166,14 +1135,14 @@ export default function SurveyDetail() {
                       <Line
                         type="monotone"
                         dataKey="antworten"
-                        name="Antworten"
+                        name={autoT('ui_062c3d5e1537')}
                         stroke="#0f766e"
                         strokeWidth={2}
                       />
                       <Line
                         type="monotone"
                         dataKey="ruecklauf"
-                        name="Rücklaufquote (%)"
+                        name={autoT('ui_46440c082ca2')}
                         stroke="#2563eb"
                         strokeWidth={2}
                       />
@@ -1192,9 +1161,7 @@ export default function SurveyDetail() {
                   return (
                     <SurfaceCard key={question.id}>
                       <h2 className="font-semibold text-viridian">{question.label}</h2>
-                      <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                        Mittelwert und Median je Umfragerunde.
-                      </p>
+                      <p className="mt-1 text-sm text-[var(--text-secondary)]">{autoT('ui_e598620ca100')}</p>
                       <div className="mt-4 h-64">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={data}>
@@ -1239,9 +1206,7 @@ export default function SurveyDetail() {
                   return (
                     <SurfaceCard key={question.id}>
                       <h2 className="font-semibold text-viridian">{question.label}</h2>
-                      <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                        Anteil der Antworten je Auswahl in Prozent.
-                      </p>
+                      <p className="mt-1 text-sm text-[var(--text-secondary)]">{autoT('ui_fec57a250155')}</p>
                       <div className="mt-4 h-64">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={data}>
@@ -1274,9 +1239,7 @@ export default function SurveyDetail() {
                 return (
                   <SurfaceCard key={question.id}>
                     <h2 className="font-semibold text-viridian">{question.label}</h2>
-                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                      Anzahl der Freitextantworten je Umfragerunde.
-                    </p>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">{autoT('ui_ef7b6cec0340')}</p>
                     <div className="mt-4 h-56">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={data}>
@@ -1287,7 +1250,7 @@ export default function SurveyDetail() {
                           <Line
                             type="monotone"
                             dataKey="antworten"
-                            name="Antworten"
+                            name={autoT('ui_062c3d5e1537')}
                             stroke="#0f766e"
                             strokeWidth={2}
                             connectNulls
@@ -1305,24 +1268,20 @@ export default function SurveyDetail() {
       <SurveyEditor open={edit} survey={survey} onClose={() => setEdit(false)} />
       <ConfirmModal
         open={!!responseToDelete}
-        title="Einzelantwort löschen"
+        title={autoT('ui_26677a5c7c34')}
         message={
           <div className="space-y-3">
-            <p>
-              Die Antwort wird endgültig entfernt. Die Auswertung wird anschließend neu berechnet.
-            </p>
-            <label className="block text-sm font-medium">
-              Löschgrund
-              <Input
+            <p>{autoT('ui_82dbe021c67e')}</p>
+            <label className="block text-sm font-medium">{autoT('ui_40e1cfb6677f')}<Input
                 className="mt-1"
                 value={deleteReason}
                 onChange={(event) => setDeleteReason(event.target.value)}
-                placeholder="z. B. Testantwort oder Spam"
+                placeholder={autoT('ui_528e0c7f9ce9')}
               />
             </label>
           </div>
         }
-        confirmLabel="Endgültig löschen"
+        confirmLabel={autoT('ui_9df6718de96c')}
         onConfirm={() => void runDelete()}
         onCancel={() => {
           setResponseToDelete(null);
@@ -1331,14 +1290,14 @@ export default function SurveyDetail() {
       />
       <ConfirmModal
         open={closeConfirmOpen}
-        title="Umfrage beenden?"
-        message="Die Teilnahme über den öffentlichen Link und den QR-Code wird sofort geschlossen. Bereits eingegangene Antworten bleiben für die Auswertung erhalten."
-        confirmLabel="Umfrage beenden"
+        title={autoT('ui_15af943f95ba')}
+        message={autoT('ui_bf364d05658c')}
+        confirmLabel={autoT('ui_08b39170adbb')}
         onConfirm={() => {
           setCloseConfirmOpen(false);
           close.mutate(survey.id, {
-            onSuccess: () => showToast('Umfrage beendet.'),
-            onError: () => showToast('Umfrage konnte nicht beendet werden.', { type: 'error' }),
+            onSuccess: () => showToast(autoT('ui_b6599411b4b2')),
+            onError: () => showToast(autoT('ui_7cca36c94c68'), { type: 'error' }),
           });
         }}
         onCancel={() => setCloseConfirmOpen(false)}
@@ -1346,11 +1305,11 @@ export default function SurveyDetail() {
       <Modal
         open={completeExportOpen}
         onClose={() => setCompleteExportOpen(false)}
-        title="Auswertung exportieren"
+        title={autoT('ui_8dbb5c1c7f40')}
         maxWidth="xl"
       >
         <div className="space-y-4 text-sm text-gray-700">
-          <p>Die gesamte Auswertung wird mit allen aktuellen Antworten exportiert.</p>
+          <p>{autoT('ui_351754dd5117')}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
@@ -1361,10 +1320,8 @@ export default function SurveyDetail() {
                 void exportCompleteAnalytics('pdf');
               }}
             >
-              <div className="font-semibold text-gray-900">PDF-Bericht</div>
-              <div className="mt-1 text-xs text-gray-600">
-                Zusammenfassung und jede Frage auf einer eigenen, gut lesbaren Seite.
-              </div>
+              <div className="font-semibold text-gray-900">{autoT('ui_104827f9e0c7')}</div>
+              <div className="mt-1 text-xs text-gray-600">{autoT('ui_e05743742ed0')}</div>
             </button>
             <button
               type="button"
@@ -1375,10 +1332,8 @@ export default function SurveyDetail() {
                 void exportCompleteAnalytics('xlsx');
               }}
             >
-              <div className="font-semibold text-viridian">StatO-Excel</div>
-              <div className="mt-1 text-xs text-gray-600">
-                Arbeitsmappe mit Übersicht, aggregierten Werten und vorhandenen Freitexten.
-              </div>
+              <div className="font-semibold text-viridian">{autoT('ui_3f995f9a80f3')}</div>
+              <div className="mt-1 text-xs text-gray-600">{autoT('ui_21fdb98658a3')}</div>
             </button>
           </div>
         </div>

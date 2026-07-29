@@ -5,12 +5,15 @@ import { ArrowLeft, Grid2x2, Rows3, Star } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
 import { colorFromStringHash } from '@/lib/colors';
 import ProtectedImage from '@/components/ProtectedImage';
+import { useTranslation } from 'react-i18next';
+import { compareLocalized } from '@/i18n/formatters';
 
 function backgroundColorForProject(project: Project) {
   return project.color || colorFromStringHash(project.title);
 }
 
 export default function ProjectPickerPage() {
+  const { t } = useTranslation(['common', 'activities']);
   const [params] = useSearchParams();
   const date = params.get('date') || undefined;
   const navigate = useNavigate();
@@ -23,7 +26,7 @@ export default function ProjectPickerPage() {
       const sa = starred.has(a.id) ? 1 : 0;
       const sb = starred.has(b.id) ? 1 : 0;
       if (sa !== sb) return sb - sa; // starred first
-      return a.title.localeCompare(b.title, 'de');
+      return compareLocalized(a.title, b.title);
     });
   }, [data]);
   // Lade Kompakt-Einstellung aus localStorage, damit sie beim Wiederkommen erhalten bleibt
@@ -43,13 +46,13 @@ export default function ProjectPickerPage() {
     }
   };
   const typeLabel: Record<string, string> = {
-    open_door: 'Offene Tür',
-    project_open: 'Projekt (offen)',
-    project_closed: 'Projekt (geschlossen)',
-    event: 'Veranstaltung',
-    outreach: 'Aufsuchend',
+    open_door: t('activities:types.open_door'),
+    project_open: t('activities:types.project_open'),
+    project_closed: t('activities:types.project_closed'),
+    event: t('activities:types.event'),
+    outreach: t('activities:types.outreach'),
   };
-  const compactToggleLabel = compact ? 'Normale Ansicht aktivieren' : 'Kompakte Ansicht aktivieren';
+  const compactToggleLabel = compact ? t('projectPicker.normalView') : t('projectPicker.compactView');
 
   const onPick = (p: Project) => {
     const qp = new URLSearchParams();
@@ -66,11 +69,11 @@ export default function ProjectPickerPage() {
           type="button"
           onClick={() => navigate(-1)}
           className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/15"
-          aria-label="Zurück"
+          aria-label={t('actions.back')}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-lg font-semibold">Projekt wählen</h2>
+        <h2 className="text-lg font-semibold">{t('projectPicker.title')}</h2>
       </div>
 
       <div className="px-4 py-3">
@@ -78,13 +81,13 @@ export default function ProjectPickerPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Suchen…"
+            placeholder={t('actions.search')}
             className="flex-1 border rounded px-3 py-2"
           />
           <button
             type="button"
             onClick={() => toggleCompact(!compact)}
-            className={`inline-flex sm:hidden items-center justify-center h-10 w-10 rounded border transition-colors ${compact ? 'border-viridian bg-viridian text-white' : 'border-gray-300 bg-white text-gray-700'}`}
+            className={`inline-flex sm:hidden items-center justify-center h-10 w-10 rounded border transition-colors ${compact ? "border-viridian bg-viridian text-white" : "border-gray-300 bg-white text-gray-700"}`}
             aria-label={compactToggleLabel}
             title={compactToggleLabel}
           >
@@ -96,7 +99,7 @@ export default function ProjectPickerPage() {
               checked={compact}
               onChange={(e) => toggleCompact(e.target.checked)}
             />
-            Kompakt
+            {t('projectPicker.compact')}
           </label>
         </div>
 
@@ -120,7 +123,7 @@ export default function ProjectPickerPage() {
                   )}
                   <div className="absolute top-1 left-1 z-10">
                     <span
-                      className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${p.imageUrl ? 'bg-black/45 text-white' : 'bg-white/80 text-gray-800 border border-white/60'}`}
+                      className={`inline-block text-[11px] leading-4 px-2 py-0.5 rounded ${p.imageUrl ? "bg-black/45 text-white" : "bg-white/80 text-gray-800 border border-white/60"}`}
                     >
                       {typeLabel[p.type] || p.type}
                     </span>
@@ -138,7 +141,7 @@ export default function ProjectPickerPage() {
             ))}
             {(projects || []).length === 0 && (
               <div className="col-span-full text-center py-6 text-gray-500">
-                Keine Projekte gefunden.
+                {t('projectPicker.empty')}
               </div>
             )}
           </div>
@@ -170,7 +173,7 @@ export default function ProjectPickerPage() {
               </li>
             ))}
             {(projects || []).length === 0 && (
-              <li className="px-3 py-6 text-center text-gray-500">Keine Projekte gefunden.</li>
+              <li className="px-3 py-6 text-center text-gray-500">{t('projectPicker.empty')}</li>
             )}
           </ul>
         )}

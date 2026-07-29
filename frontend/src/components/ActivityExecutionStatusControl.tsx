@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, CheckCircle2, ChevronDown } from 'lucide-react';
 import {
-  ACTIVITY_EXECUTION_STATUS_LABELS,
   ACTIVITY_EXECUTION_STATUS_OPTIONS,
   type ActivityExecutionStatus,
   normalizeActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
+import { useTranslation } from 'react-i18next';
 
 function StatusIcon({ status, className = '' }: { status: ActivityExecutionStatus; className?: string }) {
   if (status === 'cancelled') {
@@ -22,6 +22,7 @@ export default function ActivityExecutionStatusControl({
   value?: string | null;
   onChange: (status: ActivityExecutionStatus) => void;
 }) {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const status = normalizeActivityExecutionStatus(value);
@@ -58,17 +59,17 @@ export default function ActivityExecutionStatusControl({
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title={`Status: ${ACTIVITY_EXECUTION_STATUS_LABELS[status]}`}
+        title={t('executionStatus.title', { status: t(`executionStatus.${status}`) })}
       >
         <StatusIcon status={status} className="h-4 w-4" />
-        <span className="hidden sm:inline">Status</span>
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="hidden sm:inline">{t('executionStatus.label')}</span>
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ''}`} />
       </button>
 
       {open && (
         <div className="activity-status-menu absolute right-0 top-full z-30 mt-2 w-52 rounded-2xl p-2">
           <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
-            Aktivitätsstatus
+            {t('executionStatus.menuTitle')}
           </div>
           {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((option) => {
             const active = option === status;
@@ -77,7 +78,7 @@ export default function ActivityExecutionStatusControl({
                 key={option}
                 type="button"
                 className={`activity-status-menu-item flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-                  active ? 'activity-status-menu-item--active' : ''
+                  active ? "activity-status-menu-item--active" : ''
                 }`}
                 onClick={() => {
                   onChange(option);
@@ -89,9 +90,9 @@ export default function ActivityExecutionStatusControl({
                 <span className="inline-flex items-center gap-2">
                   <StatusIcon
                     status={option}
-                    className={`h-4 w-4 ${option === 'cancelled' ? 'text-rose-600' : 'text-emerald-600'}`}
+                    className={`h-4 w-4 ${option === 'cancelled' ? "text-rose-600" : "text-emerald-600"}`}
                   />
-                  {ACTIVITY_EXECUTION_STATUS_LABELS[option]}
+                  {t(`executionStatus.${option}`)}
                 </span>
                 {active ? <Check className="h-4 w-4 text-viridian" /> : null}
               </button>

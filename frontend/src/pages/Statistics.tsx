@@ -63,11 +63,13 @@ import { StatisticsPieChartCard } from './StatisticsPieChartCard';
 import CustomKpiCards from '@/components/CustomKpiCards';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 const TYPE_LABEL: Record<string, string> = {
-  open_door: 'Offene Tür',
-  project_open: 'Projekt (offen)',
-  project_closed: 'Projekt (geschlossen)',
+  open_door: autoT('ui_a80778b6b148'),
+  project_open: autoT('ui_00d882fbb5d4'),
+  project_closed: autoT('ui_8f256393653e'),
   event: 'Veranstaltung',
   outreach: 'Aufsuchend',
 };
@@ -87,18 +89,18 @@ const MOBILE_TYPE_CHIP_VISIBLE_COUNT = 4;
 const MOBILE_PROJECT_CHIP_VISIBLE_COUNT = 5;
 
 const WEEKDAY_OPTIONS = [
-  { value: 1, shortLabel: 'Mo', label: 'Montag' },
-  { value: 2, shortLabel: 'Di', label: 'Dienstag' },
-  { value: 3, shortLabel: 'Mi', label: 'Mittwoch' },
-  { value: 4, shortLabel: 'Do', label: 'Donnerstag' },
-  { value: 5, shortLabel: 'Fr', label: 'Freitag' },
-  { value: 6, shortLabel: 'Sa', label: 'Samstag' },
-  { value: 0, shortLabel: 'So', label: 'Sonntag' },
+  { value: 1, shortLabel: 'Mo', label: autoT('ui_8bb0f19f592e') },
+  { value: 2, shortLabel: 'Di', label: autoT('ui_b2ce6b5d7cb1') },
+  { value: 3, shortLabel: 'Mi', label: autoT('ui_ea3552526134') },
+  { value: 4, shortLabel: 'Do', label: autoT('ui_7c3df2c5fe25') },
+  { value: 5, shortLabel: 'Fr', label: autoT('ui_0ca5853904f5') },
+  { value: 6, shortLabel: 'Sa', label: autoT('ui_85ad5644425c') },
+  { value: 0, shortLabel: 'So', label: autoT('ui_f8e9c756eaa2') },
 ] as const;
 
 const CLOSURE_FILTER_LABELS: Record<OrganizationClosureStateFilter, string> = {
-  closed: 'Nur Schließtage',
-  open: 'Ohne Schließtage',
+  closed: autoT('ui_9a7a7c0c602f'),
+  open: autoT('ui_032b3f37a45b'),
 };
 function normalizeWeekdays(weekdays: number[]) {
   return Array.from(
@@ -283,7 +285,7 @@ function addPdfPageHeader(pdf: jsPDF, orgTitle: string, dateRange: string) {
   pdf.text(`Bericht: ${orgTitle}`, 14, 18);
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(12);
-  pdf.text(dateRange ? `Zeitraum: ${dateRange}` : 'Gesamter Zeitraum', 14, 26);
+  pdf.text(dateRange ? autoT('ui_15fd2f861910', { value0: dateRange }) : autoT('ui_38fc1281b47b'), 14, 26);
 }
 
 function collectPdfBreakpoints(root: HTMLDivElement, canvas: HTMLCanvasElement) {
@@ -543,7 +545,7 @@ export default function Statistics() {
     const queryStates = [
       {
         key: 'summary',
-        label: 'summary-ready',
+        label: autoT('ui_a89f502a92fb'),
         status: overviewQ.status,
         isError: overviewQ.isError,
         isFetching: overviewQ.isFetching,
@@ -551,7 +553,7 @@ export default function Statistics() {
       },
       {
         key: 'byType',
-        label: 'by-type-ready',
+        label: autoT('ui_a0ce6f7243f7'),
         status: overviewQ.status,
         isError: overviewQ.isError,
         isFetching: overviewQ.isFetching,
@@ -559,7 +561,7 @@ export default function Statistics() {
       },
       {
         key: 'gender',
-        label: 'gender-ready',
+        label: autoT('ui_88ff505da05e'),
         status: overviewQ.status,
         isError: overviewQ.isError,
         isFetching: overviewQ.isFetching,
@@ -567,7 +569,7 @@ export default function Statistics() {
       },
       {
         key: 'timeseries',
-        label: 'timeseries-ready',
+        label: autoT('ui_b07fe6e94a2e'),
         status: overviewQ.status,
         isError: overviewQ.isError,
         isFetching: overviewQ.isFetching,
@@ -575,7 +577,7 @@ export default function Statistics() {
       },
       {
         key: 'byCohort',
-        label: 'by-cohort-ready',
+        label: autoT('ui_6b4c4723b3eb'),
         status: overviewQ.status,
         isError: overviewQ.isError,
         isFetching: overviewQ.isFetching,
@@ -583,7 +585,7 @@ export default function Statistics() {
       },
       {
         key: 'byCategory',
-        label: 'by-category-ready',
+        label: autoT('ui_c685feebfa6d'),
         status: overviewQ.status,
         isError: overviewQ.isError,
         isFetching: overviewQ.isFetching,
@@ -715,10 +717,10 @@ export default function Statistics() {
 
   // Monatsnamen für die Anzeige
   const MONTH_NAMES = [
-    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+    autoT('ui_626267415e7c'), autoT('ui_9aaceea74e57'), autoT('ui_0b30c927854e'), autoT('ui_a0393902db1f'), autoT('ui_afe526a6c998'), autoT('ui_7e1115bd02bb'),
+    autoT('ui_aeb2d1b92e62'), autoT('ui_69d97c5797dc'), autoT('ui_1c542e79c9b4'), autoT('ui_ef2a59835205'), autoT('ui_3c5bf776f5ef'), autoT('ui_dbaab22b8b0f')
   ];
-  const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+  const MONTH_NAMES_SHORT = [autoT('ui_efed3690ea22'), autoT('ui_dc8415ccfe52'), autoT('ui_365b0a1446a1'), autoT('ui_befde54a108c'), autoT('ui_afe526a6c998'), autoT('ui_6d90df3be4d0'), autoT('ui_b737558468d7'), autoT('ui_75629af51d7c'), autoT('ui_fdd289e370bd'), autoT('ui_45071a113a68'), autoT('ui_bb9bfefd5391'), autoT('ui_99ae802ea663')];
 
   const formatWeekdayDisplay = (weekdays: number[]) =>
     normalizeWeekdays(weekdays)
@@ -872,7 +874,7 @@ export default function Statistics() {
       };
       return `${fmtDate(from)} – ${fmtDate(to)}`;
     }
-    if (!selectedYear) return 'Alle Zeiträume';
+    if (!selectedYear) return autoT('ui_eb3ab8ef013a');
     if (selectedMonth !== null) {
       return `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
     }
@@ -969,7 +971,7 @@ export default function Statistics() {
 
   const genderData = gender
     ? [
-        { name: 'männlich', value: gender.male, color: '#60a5fa' },
+        { name: autoT('ui_221d26dc16fc'), value: gender.male, color: '#60a5fa' },
         { name: 'weiblich', value: gender.female, color: '#f472b6' },
         { name: 'divers', value: gender.diverse, color: '#a78bfa' },
       ]
@@ -1060,7 +1062,7 @@ export default function Statistics() {
     setActivitiesPage(1);
     }, [from, to, projectId, selectedType, selectedExecutionStatuses, selectedClosureState, selectedWeekdays]);
 
-  const fmtNumber = (n?: number) => (typeof n === 'number' ? n.toLocaleString('de-DE') : '0');
+  const fmtNumber = (n?: number) => (typeof n === 'number' ? n.toLocaleString(getCurrentIntlLocale()) : '0');
 
   const topDays = useMemo(() => {
     return buildTopDayChartData(timeseries, showAverage);
@@ -1257,11 +1259,11 @@ export default function Statistics() {
   };
 
   const exportActivitiesAsExcel = async (activities: Activity[]) => {
-    setExportProgress('Excel-Datei wird vorbereitet …');
+    setExportProgress(autoT('ui_fdc6078908bb'));
     await new Promise(requestAnimationFrame);
     const rows = toActivityExportRows(activities);
     const sheetRows: Array<Array<string | number>> = [
-      ['Datum', 'Typ', 'Titel', 'Projekt', 'TN ges.', 'm', 'w', 'd', 'Dauer (min)'],
+      [autoT('ui_df5c3008c765'), autoT('ui_edcaf9aaa282'), autoT('ui_950701e758d1'), autoT('ui_20bda6d2e725'), autoT('ui_a24fe1e6fcc2'), autoT('ui_6b0d31c0d563'), autoT('ui_aff024fe4ab0'), autoT('ui_3c363836cf4e'), autoT('ui_d62550d402f1')],
       ...rows.map((row) => [
         row.date,
         row.type,
@@ -1320,14 +1322,14 @@ export default function Statistics() {
     }
 
     const workbook = utils.book_new();
-    utils.book_append_sheet(workbook, worksheet, 'Aktivitäten');
-    setExportProgress('Excel-Datei wird gespeichert …');
+    utils.book_append_sheet(workbook, worksheet, autoT('ui_b6bf5f1a2033'));
+    setExportProgress(autoT('ui_69d8049e6f66'));
     await new Promise(requestAnimationFrame);
     writeFile(workbook, getActivitiesExportFileName('xlsx'));
   };
 
   const exportControllingDataAsExcel = async (activities: Activity[]) => {
-    setExportProgress('Controllingdaten werden vorbereitet …');
+    setExportProgress(autoT('ui_2395ed5ba683'));
     await new Promise(requestAnimationFrame);
 
     const xlsx = await import('xlsx-js-style');
@@ -1349,8 +1351,8 @@ export default function Statistics() {
     ]);
     const activityRows: Array<Array<string | number>> = [
       [
-        'Datum', 'Status', 'Typ', 'Titel', 'Projekt', 'Teilnehmende', 'm', 'w', 'd',
-        ...cohortHeaders, 'Dauer (min)', 'Kategorien', 'Tags', 'Notizen',
+        autoT('ui_df5c3008c765'), autoT('ui_bae7d5be7082'), autoT('ui_edcaf9aaa282'), autoT('ui_950701e758d1'), autoT('ui_20bda6d2e725'), autoT('ui_a8a4d6b019af'), autoT('ui_6b0d31c0d563'), autoT('ui_aff024fe4ab0'), autoT('ui_3c363836cf4e'),
+        ...cohortHeaders, autoT('ui_d62550d402f1'), autoT('ui_4e1e15e17610'), autoT('ui_848eed0fbd54'), autoT('ui_7e458d013900'),
       ],
       ...rows.map((activity) => {
         const perCohort: Record<string, { m: number; w: number; d: number }> = Object.fromEntries(
@@ -1365,7 +1367,7 @@ export default function Statistics() {
         });
         return [
           formatActivityDateGerman(activity.date),
-          activity.executionStatus === 'cancelled' ? 'Ausgefallen' : 'Durchgeführt',
+          activity.executionStatus === 'cancelled' ? 'Ausgefallen' : autoT('ui_f91abe615749'),
           getActivityTypeLabel(activity.type),
           activity.title || '',
           activity.project?.title || '',
@@ -1453,10 +1455,10 @@ export default function Statistics() {
     }
 
     const workbook = utils.book_new();
-    utils.book_append_sheet(workbook, activitySheet, 'Aktivitäten');
-    const usedSheetNames = new Set<string>(['Aktivitäten']);
+    utils.book_append_sheet(workbook, activitySheet, autoT('ui_b6bf5f1a2033'));
+    const usedSheetNames = new Set<string>([autoT('ui_b6bf5f1a2033')]);
     const uniqueSheetName = (value: string) => {
-      const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || 'Projekt').slice(0, 31);
+      const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || autoT('ui_20bda6d2e725')).slice(0, 31);
       let name = base;
       let suffix = 2;
       while (usedSheetNames.has(name)) {
@@ -1483,18 +1485,18 @@ export default function Statistics() {
       const project = projectsById.get(id);
       const ratio = totalParticipants > 0
         ? `${Math.round((totalMale / totalParticipants) * 100)} % m · ${Math.round((totalFemale / totalParticipants) * 100)} % w · ${Math.round((totalDiverse / totalParticipants) * 100)} % d`
-        : 'Keine Teilnehmendendaten';
+        : autoT('ui_f489591ec2c6');
       const projectRows: Array<Array<string | number>> = [
-        ['Projekt-KPI', 'Wert'],
-        ['Projekt', project?.title || projectActivities[0].project?.title || 'Unbenanntes Projekt'],
-        ['Zeitraum', exportRangeLabel],
-        ['Aktivitäten', projectActivities.length],
-        ['Teilnehmende gesamt', totalParticipants],
+        [autoT('ui_5347abc77ca3'), autoT('ui_9d3fb5bb5707')],
+        [autoT('ui_20bda6d2e725'), project?.title || projectActivities[0].project?.title || autoT('ui_7ad11e328f86')],
+        [autoT('ui_fe359159c8ad'), exportRangeLabel],
+        [autoT('ui_b6bf5f1a2033'), projectActivities.length],
+        [autoT('ui_59c83f1c873f'), totalParticipants],
         ['Ø Besucher*innen', projectActivities.length ? Math.round((totalParticipants / projectActivities.length) * 10) / 10 : 0],
-        ['Geschlechterverhältnis', ratio],
+        [autoT('ui_0f4989b791e1'), ratio],
         ['Ø Dauer (min)', durations.length ? Math.round((durations.reduce((sum, value) => sum + value, 0) / durations.length) * 10) / 10 : '–'],
         [],
-        ['Datum', 'Typ', 'Titel', 'Teilnehmende', 'm', 'w', 'd', 'Dauer (min)'],
+        [autoT('ui_df5c3008c765'), autoT('ui_edcaf9aaa282'), autoT('ui_950701e758d1'), autoT('ui_a8a4d6b019af'), autoT('ui_6b0d31c0d563'), autoT('ui_aff024fe4ab0'), autoT('ui_3c363836cf4e'), autoT('ui_d62550d402f1')],
         ...projectActivities.map((activity) => [
           formatActivityDateGerman(activity.date), getActivityTypeLabel(activity.type), activity.title || '',
           getActivityParticipantTotal(activity), activity.countMale || 0, activity.countFemale || 0,
@@ -1510,13 +1512,13 @@ export default function Statistics() {
         });
       }
       projectSheet['!cols'] = [{ wch: 20 }, { wch: 26 }, { wch: 30 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 14 }];
-      utils.book_append_sheet(workbook, projectSheet, uniqueSheetName(project?.title || projectActivities[0].project?.title || 'Projekt'));
+      utils.book_append_sheet(workbook, projectSheet, uniqueSheetName(project?.title || projectActivities[0].project?.title || autoT('ui_20bda6d2e725')));
     }
 
-    setExportProgress('Logbuch wird ergänzt …');
+    setExportProgress(autoT('ui_eb5ec187a1c8'));
     const logbookEntries = await fetchAllLogbookEntries({ from: from || undefined, to: to || undefined, projectId: projectId || undefined });
     const logbookRows: Array<Array<string | number>> = [
-      ['Datum', 'Typ', 'Titel', 'Status', 'Projekt', 'Eintrag', 'Highlights', 'Herausforderungen', 'Nächste Schritte'],
+      [autoT('ui_df5c3008c765'), autoT('ui_edcaf9aaa282'), autoT('ui_950701e758d1'), autoT('ui_bae7d5be7082'), autoT('ui_20bda6d2e725'), autoT('ui_d28fd7140d15'), autoT('ui_1f9c9c4e9b69'), autoT('ui_24cb5c6fa8e6'), autoT('ui_76231e1d047c')],
       ...logbookEntries.map((entry: LogbookEntry) => [
         formatActivityDateGerman(entry.occurredAt), entry.type, entry.title, entry.status,
         entry.project?.title || '', entry.body || '', entry.highlights || '', entry.challenges || '', entry.nextSteps || '',
@@ -1530,13 +1532,13 @@ export default function Statistics() {
     logbookSheet['!cols'] = [{ wch: 14 }, { wch: 15 }, { wch: 30 }, { wch: 16 }, { wch: 26 }, { wch: 50 }, { wch: 32 }, { wch: 32 }, { wch: 32 }];
     utils.book_append_sheet(workbook, logbookSheet, uniqueSheetName('Logbuch'));
 
-    setExportProgress('Excel-Datei wird gespeichert …');
+    setExportProgress(autoT('ui_69d8049e6f66'));
     await new Promise(requestAnimationFrame);
     writeFile(workbook, getControllingExportFileName());
   };
 
   const exportActivitiesAsPdf = async (activities: Activity[]) => {
-    setExportProgress('PDF-Dokument wird erstellt …');
+    setExportProgress(autoT('ui_27e7c797926f'));
     await new Promise(requestAnimationFrame);
     const rows = toActivityExportRows(activities);
     const { JsPDF } = await loadPdfExportDependencies();
@@ -1548,18 +1550,18 @@ export default function Statistics() {
     const rowPaddingY = 1.5;
     const lineHeight = 3.8;
     const columns = [
-      { key: 'date', label: 'Datum', width: 18, align: 'left' as const },
-      { key: 'type', label: 'Typ', width: 31, align: 'left' as const },
-      { key: 'title', label: 'Titel', width: 64, align: 'left' as const },
-      { key: 'project', label: 'Projekt', width: 58, align: 'left' as const },
-      { key: 'total', label: 'TN ges.', width: 17, align: 'right' as const },
-      { key: 'male', label: 'm', width: 11, align: 'right' as const },
-      { key: 'female', label: 'w', width: 11, align: 'right' as const },
-      { key: 'diverse', label: 'd', width: 11, align: 'right' as const },
-      { key: 'duration', label: 'Dauer', width: 18, align: 'right' as const },
+      { key: 'date', label: autoT('ui_df5c3008c765'), width: 18, align: 'left' as const },
+      { key: 'type', label: autoT('ui_edcaf9aaa282'), width: 31, align: 'left' as const },
+      { key: 'title', label: autoT('ui_950701e758d1'), width: 64, align: 'left' as const },
+      { key: 'project', label: autoT('ui_20bda6d2e725'), width: 58, align: 'left' as const },
+      { key: 'total', label: autoT('ui_a24fe1e6fcc2'), width: 17, align: 'right' as const },
+      { key: 'male', label: autoT('ui_6b0d31c0d563'), width: 11, align: 'right' as const },
+      { key: 'female', label: autoT('ui_aff024fe4ab0'), width: 11, align: 'right' as const },
+      { key: 'diverse', label: autoT('ui_3c363836cf4e'), width: 11, align: 'right' as const },
+      { key: 'duration', label: autoT('ui_f6e58177bf91'), width: 18, align: 'right' as const },
     ];
     const totalTableWidth = columns.reduce((sum, column) => sum + column.width, 0);
-    const orgTitle = user?.orgName || 'Organisation';
+    const orgTitle = user?.orgName || autoT('ui_6e99c1d3b150');
     let pageNumber = 1;
 
     const drawTableHeader = (startY: number) => {
@@ -1583,12 +1585,12 @@ export default function Statistics() {
     const drawPageFrame = () => {
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(15);
-      pdf.text('Alle Aktivitäten (gefiltert)', margin, 15);
+      pdf.text(autoT('ui_44eeeedb9e8f'), margin, 15);
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(10.5);
       pdf.text(orgTitle, margin, 21);
       pdf.text(exportRangeLabel, margin, 26);
-      pdf.text(`${rows.length.toLocaleString('de-DE')} Einträge`, pageWidth - margin, 21, { align: 'right' });
+      pdf.text(autoT('ui_9a3150b4e9ec', { value0: rows.length.toLocaleString(getCurrentIntlLocale()) }), pageWidth - margin, 21, { align: 'right' });
       pdf.text(`Seite ${pageNumber}`, pageWidth - margin, 26, { align: 'right' });
       return drawTableHeader(tableTop);
     };
@@ -1598,8 +1600,8 @@ export default function Statistics() {
     if (rows.length === 0) {
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(10);
-      pdf.text('Keine Aktivitäten für die aktuelle Filterung.', margin, currentY + 8);
-      setExportProgress('PDF wird gespeichert …');
+      pdf.text(autoT('ui_a64587b9ad76'), margin, currentY + 8);
+      setExportProgress(autoT('ui_0acf469c6a6c'));
       await new Promise(requestAnimationFrame);
       pdf.save(getActivitiesExportFileName('pdf'));
       return;
@@ -1654,14 +1656,14 @@ export default function Statistics() {
       currentY += rowHeight;
     });
 
-    setExportProgress('PDF wird gespeichert …');
+    setExportProgress(autoT('ui_0acf469c6a6c'));
     await new Promise(requestAnimationFrame);
     pdf.save(getActivitiesExportFileName('pdf'));
   };
 
   async function exportActivitiesTable(format: ActivitiesExportFormat) {
     setActiveActivitiesExport(format);
-    setExportProgress('Alle gefilterten Aktivitäten werden geladen …');
+    setExportProgress(autoT('ui_cde99ee62070'));
 
     try {
       const activities = await fetchAllFilteredActivities();
@@ -1681,7 +1683,7 @@ export default function Statistics() {
 
   async function exportControllingData() {
     setIsControllingExporting(true);
-    setExportProgress('Alle gefilterten Aktivitäten werden geladen …');
+    setExportProgress(autoT('ui_cde99ee62070'));
 
     try {
       const activities = await fetchAllFilteredActivities();
@@ -1700,7 +1702,7 @@ export default function Statistics() {
 
     const exportKey = `${chartId}:${format}`;
     setActiveChartExport(exportKey);
-    setExportProgress(format === 'pdf' ? 'Diagramm wird für das PDF aufbereitet …' : 'Diagramm wird als Bild aufbereitet …');
+    setExportProgress(format === 'pdf' ? autoT('ui_70aa98ab3b7d') : 'Diagramm wird als Bild aufbereitet …');
 
     try {
       const { JsPDF, html2canvas } = await loadPdfExportDependencies();
@@ -1715,7 +1717,7 @@ export default function Statistics() {
       });
 
       if (format === 'png') {
-        setExportProgress('Bilddatei wird gespeichert …');
+        setExportProgress(autoT('ui_8b3d272f0e55'));
         await new Promise(requestAnimationFrame);
         const blob = await canvasToBlob(canvas);
         downloadBlob(blob, getChartFileName(chartTitle, 'png'));
@@ -1749,7 +1751,7 @@ export default function Statistics() {
         undefined,
         'FAST',
       );
-      setExportProgress('PDF wird gespeichert …');
+      setExportProgress(autoT('ui_0acf469c6a6c'));
       await new Promise(requestAnimationFrame);
       pdf.save(getChartFileName(chartTitle, 'pdf'));
     } catch (error) {
@@ -1766,16 +1768,16 @@ export default function Statistics() {
     return (
       <StatisticsExportActions
         triggerLabel={`${chartTitle} exportieren`}
-        menuTitle="Diagramm exportieren"
+        menuTitle={autoT('ui_ef0c79fa89b2')}
         isExporting={isExporting}
         options={[
           {
-            label: 'Als PNG',
+            label: autoT('ui_eac2deaf6270'),
             meta: 'Bild',
             onClick: () => void exportChart(chartId, chartTitle, 'png'),
           },
           {
-            label: 'Als PDF',
+            label: autoT('ui_d2ca42015ecd'),
             meta: 'A4',
             onClick: () => void exportChart(chartId, chartTitle, 'pdf'),
           },
@@ -1789,17 +1791,17 @@ export default function Statistics() {
 
     return (
       <StatisticsExportActions
-        triggerLabel="Aktivitäten exportieren"
-        menuTitle="Aktivitäten exportieren"
+        triggerLabel={autoT('ui_1f89e26bb68a')}
+        menuTitle={autoT('ui_1f89e26bb68a')}
         isExporting={isExporting}
         options={[
           {
-            label: 'Als PDF',
+            label: autoT('ui_d2ca42015ecd'),
             meta: 'Komplett',
             onClick: () => void exportActivitiesTable('pdf'),
           },
           {
-            label: 'Als Excel',
+            label: autoT('ui_27c7a74a3136'),
             meta: 'Komplett',
             onClick: () => void exportActivitiesTable('xlsx'),
           },
@@ -1815,10 +1817,10 @@ export default function Statistics() {
     try {
       // The on-screen table is intentionally paginated. The PDF must instead
       // render the complete matching dataset before html2canvas captures it.
-      setExportProgress('Alle gefilterten Aktivitäten werden geladen …');
+      setExportProgress(autoT('ui_cde99ee62070'));
       setPdfActivities(await fetchAllFilteredActivities());
       setPdfMode(true);
-      setExportProgress('Bericht wird für das PDF aufbereitet …');
+      setExportProgress(autoT('ui_c49a3f591c68'));
       const { JsPDF, html2canvas } = await loadPdfExportDependencies();
       await new Promise(requestAnimationFrame);
       const el = reportRef.current;
@@ -1831,11 +1833,11 @@ export default function Statistics() {
       });
 
       const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      setExportProgress('PDF-Seiten werden erstellt …');
+      setExportProgress(autoT('ui_cd0d0b4b7c4d'));
       await new Promise(requestAnimationFrame);
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const orgTitle = user?.orgName || 'Organisation';
+      const orgTitle = user?.orgName || autoT('ui_6e99c1d3b150');
       const dateRange = [from, to].filter(Boolean).join(' bis ');
       const availableWidth = pageWidth - PDF_MARGIN_MM * 2;
       const availableHeight = pageHeight - PDF_HEADER_HEIGHT_MM - PDF_MARGIN_MM;
@@ -1865,7 +1867,7 @@ export default function Statistics() {
         );
       });
 
-      setExportProgress('PDF wird gespeichert …');
+      setExportProgress(autoT('ui_0acf469c6a6c'));
       await new Promise(requestAnimationFrame);
       pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
     } finally {
@@ -1877,7 +1879,7 @@ export default function Statistics() {
 
   return (
     <div className="relative">
-      <PageHeader title="Statistiken & Auswertungen" />
+      <PageHeader title={autoT('ui_23ad8442dc9f')} />
 
       {/* Time Range Selector */}
       <SurfaceCard className="mb-6">
@@ -1897,20 +1899,18 @@ export default function Statistics() {
                 <div className="rounded-2xl border p-4 shadow-sm" style={mobileFilterCardStyle}>
                   <div className="flex items-start gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${mobileLabelTextClass}`}>
-                        Zeitraum & Filter
-                      </div>
+                      <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${mobileLabelTextClass}`}>{autoT('ui_a0ee12af77e5')}</div>
                       <div className={`mt-1 text-lg font-semibold truncate ${mobilePrimaryTextClass}`}>
                         {formatRangeDisplay()}
                       </div>
                       <div className={`mt-1 text-sm ${mobileSecondaryTextClass}`}>
                         {isCustomRange
-                          ? 'Individueller Zeitraum'
+                          ? autoT('ui_bd97404ed7e9')
                           : filterMode === 'month'
-                            ? 'Monatsansicht'
+                            ? "Monatsansicht"
                             : selectedYear
-                              ? 'Jahresansicht'
-                              : 'Gesamter Zeitraum'}
+                              ? "Jahresansicht"
+                              : autoT('ui_38fc1281b47b')}
                       </div>
                     </div>
                     <button
@@ -1919,7 +1919,7 @@ export default function Statistics() {
                       onClick={() => setMobileFiltersExpanded((current) => !current)}
                       aria-expanded={mobileFiltersExpanded}
                     >
-                      {mobileFiltersExpanded ? 'Weniger' : 'Filter'}
+                      {mobileFiltersExpanded ? autoT('ui_cc193d70551f') : autoT('ui_d7decf1aa22b')}
                       {mobileFiltersExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </button>
                   </div>
@@ -1940,17 +1940,17 @@ export default function Statistics() {
                       }
                       onClick={() => setTypePickerOpen(true)}
                       aria-haspopup="dialog"
-                      title="Typ auswählen"
+                      title={autoT('ui_4324a8f20ad4')}
                     >
                       <span
                         aria-hidden
                         className="h-2.5 w-2.5 rounded-full border"
                         style={{
-                          backgroundColor: selectedType ? colorForActivityType(selectedType) : '#6b7280',
-                          borderColor: selectedType ? translucent(colorForActivityType(selectedType), 'aa') : 'rgba(0,0,0,0.08)',
+                          backgroundColor: selectedType ? colorForActivityType(selectedType) : "#6b7280",
+                          borderColor: selectedType ? translucent(colorForActivityType(selectedType), 'aa') : "rgba(0,0,0,0.08)",
                         }}
                       />
-                      {selectedType ? TYPE_LABEL[selectedType] : 'Alle Typen'}
+                      {selectedType ? TYPE_LABEL[selectedType] : autoT('ui_172a950cc0da')}
                       <ChevronDown className="h-3.5 w-3.5 opacity-70" />
                     </button>
 
@@ -1969,7 +1969,7 @@ export default function Statistics() {
                         title={selectedProjectRecord.title}
                       >
                         {selectedProjectRecord.imageUrl ? (
-                          <span className={`h-5 w-5 overflow-hidden rounded-full border ${isDarkTheme ? 'border-white/10 bg-white/10' : 'border-gray-300 bg-gray-100'}`}>
+                          <span className={`h-5 w-5 overflow-hidden rounded-full border ${isDarkTheme ? "border-white/10 bg-white/10" : "border-gray-300 bg-gray-100"}`}>
                             <ProtectedImage src={selectedProjectRecord.imageUrl} alt="" className="h-full w-full object-cover" />
                           </span>
                         ) : (
@@ -1991,11 +1991,9 @@ export default function Statistics() {
                         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${mobileSurfaceClass} ${mobileSurfaceHoverClass}`}
                         onClick={() => setProjectPickerOpen(true)}
                         aria-haspopup="dialog"
-                        title="Projekt auswählen"
+                        title={autoT('ui_42da26b250b4')}
                       >
-                        <span aria-hidden className="h-2.5 w-2.5 rounded-full border border-black/10 bg-gray-400" />
-                        Alle Projekte
-                        <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                        <span aria-hidden className="h-2.5 w-2.5 rounded-full border border-black/10 bg-gray-400" />{autoT('ui_b857d350e38e')}<ChevronDown className="h-3.5 w-3.5 opacity-70" />
                       </button>
                     )}
 
@@ -2023,11 +2021,9 @@ export default function Statistics() {
                         type="button"
                         className="inline-flex items-center gap-2 rounded-full border border-viridian/20 bg-viridian/10 px-3 py-1.5 text-sm font-medium text-viridian"
                         onClick={resetAdvancedFilters}
-                        title="Erweiterte Filter zurücksetzen"
+                        title={autoT('ui_9ba399b38183')}
                       >
-                        <XIcon className="h-3.5 w-3.5" />
-                        Zurücksetzen
-                      </button>
+                        <XIcon className="h-3.5 w-3.5" />{autoT('ui_a4565af537e2')}</button>
                     )}
                   </div>
 
@@ -2036,55 +2032,45 @@ export default function Statistics() {
                       type="button"
                       className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
                         hasAdvancedFilter
-                          ? 'border-viridian bg-viridian/5 text-viridian'
+                          ? "border-viridian bg-viridian/5 text-viridian"
                           : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
                       }`}
                       onClick={openAdvancedFilters}
                     >
-                      <SlidersHorizontal className="h-4 w-4" />
-                      Details
-                    </button>
+                      <SlidersHorizontal className="h-4 w-4" />{autoT('ui_dc3decbb9384')}</button>
                     <button
                       type="button"
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian"
                       onClick={() => setReportExportOpen(true)}
-                      title="Auswertung exportieren"
+                      title={autoT('ui_8dbb5c1c7f40')}
                     >
-                      <FileDown className="h-4 w-4" />
-                      Export
-                    </button>
+                      <FileDown className="h-4 w-4" />{autoT('ui_f3e4fadb9e37')}</button>
                   </div>
                 </div>
 
                 {mobileFiltersExpanded && (
                   <div className={`space-y-5 border-t pt-4 ${mobileDividerClass}`}>
                     <section className="space-y-3">
-                      <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${mobileLabelTextClass}`}>
-                        Zeitraum
-                      </div>
+                      <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${mobileLabelTextClass}`}>{autoT('ui_fe359159c8ad')}</div>
                       <div className={`inline-flex items-center rounded-xl p-1 ${mobileMutedSurfaceClass}`}>
                         <button
                           type="button"
                           className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                             filterMode === 'year' && !isCustomRange
-                              ? 'bg-white shadow text-viridian font-medium'
+                              ? "bg-white shadow text-viridian font-medium"
                               : `${mobileSecondaryTextClass} hover:text-viridian`
                           }`}
                           onClick={switchToYearView}
-                        >
-                          Jahr
-                        </button>
+                        >{autoT('ui_956a6e5ab6c7')}</button>
                         <button
                           type="button"
                           className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                             filterMode === 'month' && !isCustomRange
-                              ? 'bg-white shadow text-viridian font-medium'
+                              ? "bg-white shadow text-viridian font-medium"
                               : `${mobileSecondaryTextClass} hover:text-viridian`
                           }`}
                           onClick={switchToMonthView}
-                        >
-                          Monat
-                        </button>
+                        >{autoT('ui_da13625eeb37')}</button>
                       </div>
 
                       {filterMode === 'month' && !isCustomRange ? (
@@ -2094,7 +2080,7 @@ export default function Statistics() {
                               type="button"
                               className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border ${mobileSurfaceClass}`}
                               onClick={() => navigateMonth('prev')}
-                              title="Vorheriger Monat"
+                              title={autoT('ui_9c52ab5061fe')}
                             >
                               <ChevronLeft className="h-4 w-4" />
                             </button>
@@ -2108,7 +2094,7 @@ export default function Statistics() {
                               type="button"
                               className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border ${mobileSurfaceClass}`}
                               onClick={() => navigateMonth('next')}
-                              title="Nächster Monat"
+                              title={autoT('ui_ad21607e5b49')}
                             >
                               <ChevronRight className="h-4 w-4" />
                             </button>
@@ -2124,9 +2110,9 @@ export default function Statistics() {
                                   type="button"
                                   className={`rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                                     isActive
-                                      ? 'bg-viridian text-white'
+                                      ? "bg-viridian text-white"
                                       : isCurrent
-                                        ? 'bg-viridian/10 text-viridian'
+                                        ? "bg-viridian/10 text-viridian"
                                         : mobileSoftSurfaceClass
                                   }`}
                                   onClick={() => selectMonth(month)}
@@ -2143,20 +2129,18 @@ export default function Statistics() {
                             type="button"
                             className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
                               !selectedYear && !isCustomRange
-                                ? 'bg-viridian text-white'
+                                ? "bg-viridian text-white"
                                 : mobileMutedSurfaceClass
                             }`}
                             onClick={() => selectYear('')}
-                          >
-                            Alle
-                          </button>
+                          >{autoT('ui_4c7a986ffe2b')}</button>
                           {activityYears.map((y) => (
                             <button
                               key={y}
                               type="button"
                               className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
                                 selectedYear === y && !isCustomRange
-                                  ? 'bg-viridian text-white'
+                                  ? "bg-viridian text-white"
                                   : mobileMutedSurfaceClass
                               }`}
                               onClick={() => selectYear(y)}
@@ -2170,7 +2154,7 @@ export default function Statistics() {
 
                     <section className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
-                        <div className={`text-sm font-medium ${mobilePrimaryTextClass}`}>Typen</div>
+                        <div className={`text-sm font-medium ${mobilePrimaryTextClass}`}>{autoT('ui_de9f4ac20f7f')}</div>
                         {useMobileTypeCollapse && (
                           <button
                             type="button"
@@ -2180,14 +2164,11 @@ export default function Statistics() {
                           >
                             {mobileTypeFilterExpanded ? (
                               <>
-                                <ChevronUp className="h-3.5 w-3.5" />
-                                Weniger
-                              </>
+                                <ChevronUp className="h-3.5 w-3.5" />{autoT('ui_cc193d70551f')}</>
                             ) : (
                               <>
                                 <ChevronDown className="h-3.5 w-3.5" />
-                                {hiddenMobileTypeCount} mehr
-                              </>
+                                {hiddenMobileTypeCount}{autoT('ui_1960ac5a2d44')}</>
                             )}
                           </button>
                         )}
@@ -2199,12 +2180,10 @@ export default function Statistics() {
                           onClick={() => setSelectedType('')}
                           className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
                             !selectedType
-                              ? 'bg-viridian text-white border-viridian'
+                              ? "bg-viridian text-white border-viridian"
                               : mobileSurfaceClass
                           }`}
-                        >
-                          Alle Typen
-                        </button>
+                        >{autoT('ui_172a950cc0da')}</button>
                         {(useMobileTypeCollapse ? visibleMobileTypes : STATISTICS_TYPE_OPTIONS).map((type) => {
                           const active = selectedType === type;
                           const typeColor = colorForActivityType(type);
@@ -2214,7 +2193,7 @@ export default function Statistics() {
                               type="button"
                               onClick={() => setSelectedType(type)}
                               className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
-                                active ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/20' : 'text-gray-800'
+                                active ? "text-white shadow ring-2 ring-offset-1 ring-viridian/20" : "text-gray-800"
                               }`}
                               style={{
                                 backgroundColor: active ? typeColor : translucent(typeColor, '14'),
@@ -2225,8 +2204,8 @@ export default function Statistics() {
                                 aria-hidden
                                 className="h-2.5 w-2.5 rounded-full border"
                                 style={{
-                                  backgroundColor: active ? 'rgba(255,255,255,0.9)' : typeColor,
-                                  borderColor: active ? 'rgba(255,255,255,0.35)' : translucent(typeColor, 'aa'),
+                                  backgroundColor: active ? "rgba(255,255,255,0.9)" : typeColor,
+                                  borderColor: active ? "rgba(255,255,255,0.35)" : translucent(typeColor, 'aa'),
                                 }}
                               />
                               {TYPE_LABEL[type]}
@@ -2239,7 +2218,7 @@ export default function Statistics() {
                     {projectsAll.length > 0 && (
                       <section className="space-y-3">
                         <div className="flex items-center justify-between gap-3">
-                          <div className={`text-sm font-medium ${mobilePrimaryTextClass}`}>Projekte</div>
+                          <div className={`text-sm font-medium ${mobilePrimaryTextClass}`}>{autoT('ui_3930f79f07e5')}</div>
                           {useMobileProjectCollapse && sortedProjects.length > 0 && (
                             <button
                               type="button"
@@ -2249,23 +2228,18 @@ export default function Statistics() {
                             >
                               {mobileProjectFilterExpanded ? (
                                 <>
-                                  <ChevronUp className="h-3.5 w-3.5" />
-                                  Weniger
-                                </>
+                                  <ChevronUp className="h-3.5 w-3.5" />{autoT('ui_cc193d70551f')}</>
                               ) : (
                                 <>
                                   <ChevronDown className="h-3.5 w-3.5" />
-                                  {hiddenMobileProjectCount} mehr
-                                </>
+                                  {hiddenMobileProjectCount}{autoT('ui_1960ac5a2d44')}</>
                               )}
                             </button>
                           )}
                         </div>
 
                         {sortedProjects.length === 0 ? (
-                          <div className={`rounded-xl border border-dashed px-4 py-3 text-sm ${mobileDashedSurfaceClass}`}>
-                            Für den gewählten Typ sind keine Projekte verfügbar.
-                          </div>
+                          <div className={`rounded-xl border border-dashed px-4 py-3 text-sm ${mobileDashedSurfaceClass}`}>{autoT('ui_63c009ada12c')}</div>
                         ) : (
                           <div className="flex flex-wrap gap-2">
                             <button
@@ -2273,12 +2247,10 @@ export default function Statistics() {
                               onClick={() => setProjectId('')}
                               className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
                                 !projectId
-                                  ? 'bg-viridian text-white border-viridian'
+                                  ? "bg-viridian text-white border-viridian"
                                   : mobileSurfaceClass
                               }`}
-                            >
-                              Alle Projekte
-                            </button>
+                            >{autoT('ui_b857d350e38e')}</button>
                             {(useMobileProjectCollapse ? visibleMobileProjects : sortedProjects).map((p) => {
                               const active = projectId === p.id;
                               const color = typeof p.color === 'string' && p.color.trim() ? p.color.trim() : undefined;
@@ -2292,8 +2264,8 @@ export default function Statistics() {
                                   onClick={() => setProjectId(p.id)}
                                   className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
                                     active
-                                      ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/20'
-                                      : 'text-gray-800'
+                                      ? "text-white shadow ring-2 ring-offset-1 ring-viridian/20"
+                                      : "text-gray-800"
                                   }`}
                                   style={{
                                     backgroundColor: active
@@ -2308,7 +2280,7 @@ export default function Statistics() {
                                   {imageUrl ? (
                                     <span
                                       className={`h-6 w-6 overflow-hidden rounded-full border ${
-                                        active ? 'border-white/35 bg-white/15' : 'border-gray-300 bg-gray-100'
+                                        active ? "border-white/35 bg-white/15" : "border-gray-300 bg-gray-100"
                                       }`}
                                     >
                                       <ProtectedImage src={imageUrl} alt="" className="h-full w-full object-cover" />
@@ -2319,7 +2291,7 @@ export default function Statistics() {
                                       className="h-2.5 w-2.5 rounded-full border"
                                       style={{
                                         backgroundColor: overlayColor,
-                                        borderColor: active ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.08)',
+                                        borderColor: active ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.08)",
                                       }}
                                     />
                                   )}
@@ -2345,24 +2317,20 @@ export default function Statistics() {
                     type="button"
                     className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                       filterMode === 'year' && !isCustomRange
-                        ? 'bg-white shadow text-viridian font-medium'
-                        : 'text-gray-600 hover:text-gray-800'
+                        ? "bg-white shadow text-viridian font-medium"
+                        : "text-gray-600 hover:text-gray-800"
                     }`}
                     onClick={switchToYearView}
-                  >
-                    Jahr
-                  </button>
+                  >{autoT('ui_956a6e5ab6c7')}</button>
                   <button
                     type="button"
                     className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                       filterMode === 'month' && !isCustomRange
-                        ? 'bg-white shadow text-viridian font-medium'
-                        : 'text-gray-600 hover:text-gray-800'
+                        ? "bg-white shadow text-viridian font-medium"
+                        : "text-gray-600 hover:text-gray-800"
                     }`}
                     onClick={switchToMonthView}
-                  >
-                    Monat
-                  </button>
+                  >{autoT('ui_da13625eeb37')}</button>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
@@ -2372,7 +2340,7 @@ export default function Statistics() {
                         type="button"
                         className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
                         onClick={() => navigateMonth('prev')}
-                        title="Vorheriger Monat"
+                        title={autoT('ui_9c52ab5061fe')}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </button>
@@ -2386,7 +2354,7 @@ export default function Statistics() {
                         type="button"
                         className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
                         onClick={() => navigateMonth('next')}
-                        title="Nächster Monat"
+                        title={autoT('ui_ad21607e5b49')}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </button>
@@ -2397,21 +2365,19 @@ export default function Statistics() {
                         type="button"
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
                           !selectedYear && !isCustomRange
-                            ? 'bg-viridian text-white'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                            ? "bg-viridian text-white"
+                            : "bg-gray-100 hover:bg-gray-200 text-gray-800"
                         }`}
                         onClick={() => selectYear('')}
-                      >
-                        Alle
-                      </button>
+                      >{autoT('ui_4c7a986ffe2b')}</button>
                       {activityYears.map((y) => (
                         <button
                           key={y}
                           type="button"
                           className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
                             selectedYear === y && !isCustomRange
-                              ? 'bg-viridian text-white'
-                              : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                              ? "bg-viridian text-white"
+                              : "bg-gray-100 hover:bg-gray-200 text-gray-800"
                           }`}
                           onClick={() => selectYear(y)}
                         >
@@ -2431,7 +2397,7 @@ export default function Statistics() {
                         type="button"
                         className="p-0.5 hover:bg-viridian/20 rounded"
                         onClick={resetAdvancedFilters}
-                        title="Zurücksetzen"
+                        title={autoT('ui_a4565af537e2')}
                       >
                         <XIcon className="h-3.5 w-3.5" />
                       </button>
@@ -2441,11 +2407,11 @@ export default function Statistics() {
                     type="button"
                     className={`p-2 rounded-lg border transition-colors touch-manipulation ${
                       hasAdvancedFilter
-                        ? 'border-viridian text-viridian bg-viridian/5'
-                        : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                        ? "border-viridian text-viridian bg-viridian/5"
+                        : "border-gray-300 text-gray-600 hover:bg-gray-50"
                     }`}
                     onClick={openAdvancedFilters}
-                    title="Erweiterter Filter"
+                    title={autoT('ui_c78a00fa35d9')}
                   >
                     <SlidersHorizontal className="h-4 w-4" />
                   </button>
@@ -2456,11 +2422,11 @@ export default function Statistics() {
                     type="button"
                     className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation"
                     onClick={() => setReportExportOpen(true)}
-                    title="Exportieren"
+                    title={autoT('ui_4e4a0d7117ee')}
                   >
                     <FileDown className="h-4 w-4" />
-                    <span className="hidden sm:inline">Export</span>
-                    <span className="sm:hidden">Export</span>
+                    <span className="hidden sm:inline">{autoT('ui_f3e4fadb9e37')}</span>
+                    <span className="sm:hidden">{autoT('ui_f3e4fadb9e37')}</span>
                   </button>
                 </div>
               </div>
@@ -2478,10 +2444,10 @@ export default function Statistics() {
                           type="button"
                           className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
                             isActive
-                              ? 'bg-viridian text-white'
+                              ? "bg-viridian text-white"
                               : isCurrent
-                                ? 'bg-viridian/10 text-viridian hover:bg-viridian/20'
-                                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                                ? "bg-viridian/10 text-viridian hover:bg-viridian/20"
+                                : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                           }`}
                           onClick={() => selectMonth(month)}
                         >
@@ -2494,19 +2460,17 @@ export default function Statistics() {
               )}
 
               <div className="mt-5">
-                <div className="text-sm font-medium text-gray-700 mb-2">Typen</div>
+                <div className="text-sm font-medium text-gray-700 mb-2">{autoT('ui_de9f4ac20f7f')}</div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedType('')}
                     className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                       !selectedType
-                        ? 'bg-viridian text-white border-viridian'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        ? "bg-viridian text-white border-viridian"
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                     }`}
-                  >
-                    Alle Typen
-                  </button>
+                  >{autoT('ui_172a950cc0da')}</button>
                   {STATISTICS_TYPE_OPTIONS.map((type) => {
                     const active = selectedType === type;
                     return (
@@ -2516,8 +2480,8 @@ export default function Statistics() {
                         onClick={() => setSelectedType(type)}
                         className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                           active
-                            ? 'bg-viridian text-white border-viridian'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            ? "bg-viridian text-white border-viridian"
+                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                         }`}
                       >
                         {TYPE_LABEL[type]}
@@ -2529,11 +2493,9 @@ export default function Statistics() {
 
               {projectsAll.length > 0 && (
                 <div className="mt-5">
-                  <div className="text-sm font-medium text-gray-700 mb-2">Projekte</div>
+                  <div className="text-sm font-medium text-gray-700 mb-2">{autoT('ui_3930f79f07e5')}</div>
                   {sortedProjects.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-                      Für den gewählten Typ sind keine Projekte verfügbar.
-                    </div>
+                    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">{autoT('ui_63c009ada12c')}</div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -2541,12 +2503,10 @@ export default function Statistics() {
                         onClick={() => setProjectId('')}
                         className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                           !projectId
-                            ? 'bg-viridian text-white border-viridian'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            ? "bg-viridian text-white border-viridian"
+                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                         }`}
-                      >
-                        Alle Projekte
-                      </button>
+                      >{autoT('ui_b857d350e38e')}</button>
                       {(useDesktopProjectCollapse ? visibleDesktopProjects : sortedProjects).map((p) => {
                         const active = projectId === p.id;
                         const color = typeof p.color === 'string' && p.color.trim() ? p.color.trim() : undefined;
@@ -2560,8 +2520,8 @@ export default function Statistics() {
                             onClick={() => setProjectId(p.id)}
                             className={`relative overflow-hidden px-3 py-1.5 rounded-full text-sm border flex items-center gap-2 max-w-full transition-colors ${
                               active
-                                ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/30'
-                                : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
+                                ? "text-white shadow ring-2 ring-offset-1 ring-viridian/30"
+                                : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
                             }`}
                             style={{
                               backgroundColor: active ? overlayColor : undefined,
@@ -2573,7 +2533,7 @@ export default function Statistics() {
                               {imageUrl ? (
                                 <span
                                   className={`w-5 h-5 rounded-full overflow-hidden border flex-shrink-0 ${
-                                    active ? 'border-white/40 bg-white/15' : 'border-gray-300 bg-gray-100'
+                                    active ? "border-white/40 bg-white/15" : "border-gray-300 bg-gray-100"
                                   }`}
                                 >
                                   <ProtectedImage src={imageUrl} alt="" className="w-full h-full object-cover" />
@@ -2584,11 +2544,11 @@ export default function Statistics() {
                                   className="w-2.5 h-2.5 rounded-full border flex-shrink-0"
                                   style={{
                                     backgroundColor: overlayColor,
-                                    borderColor: active ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.08)',
+                                    borderColor: active ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.08)",
                                   }}
                                 />
                               )}
-                              <span className={`truncate ${active ? 'drop-shadow' : ''}`}>{p.title}</span>
+                              <span className={`truncate ${active ? "drop-shadow" : ''}`}>{p.title}</span>
                             </span>
                           </button>
                         );
@@ -2602,15 +2562,13 @@ export default function Statistics() {
                         >
                           {desktopProjectFilterExpanded ? (
                             <>
-                              <ChevronUp className="h-4 w-4" />
-                              Weniger anzeigen
-                            </>
+                              <ChevronUp className="h-4 w-4" />{autoT('ui_34a01cec7c0e')}</>
                           ) : (
                             <>
                               <ChevronDown className="h-4 w-4" />
                               {hiddenDesktopProjectCount > 0
-                                ? `${hiddenDesktopProjectCount} weitere Projekte anzeigen`
-                                : 'Weitere Projekte anzeigen'}
+                                ? autoT('ui_21c0aa06dc5f', { value0: hiddenDesktopProjectCount })
+                                : autoT('ui_263563d98bdc')}
                             </>
                           )}
                         </button>
@@ -2631,32 +2589,28 @@ export default function Statistics() {
             <button
               type="button"
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                !showAverage ? 'stats-kpi-toggle-button-active font-medium' : 'stats-kpi-toggle-button'
+                !showAverage ? "stats-kpi-toggle-button-active font-medium" : "stats-kpi-toggle-button"
               }`}
               onClick={() => setShowAverage(false)}
-            >
-              Absolut
-            </button>
+            >{autoT('ui_ffa660db79fb')}</button>
             <button
               type="button"
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                showAverage ? 'stats-kpi-toggle-button-active font-medium' : 'stats-kpi-toggle-button'
+                showAverage ? "stats-kpi-toggle-button-active font-medium" : "stats-kpi-toggle-button"
               }`}
               onClick={() => setShowAverage(true)}
-            >
-              Ø Werte
-            </button>
+            >{autoT('ui_388b22eb70db')}</button>
           </div>
         </div>
-        <div className={`grid grid-cols-1 gap-6 mb-8 ${selectedClosureState === 'closed' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`} data-pdf-section>
+        <div className={`grid grid-cols-1 gap-6 mb-8 ${selectedClosureState === 'closed' ? "md:grid-cols-5" : "md:grid-cols-4"}`} data-pdf-section>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
               {showAverage
-                ? averageActivitiesPerWeek.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                ? averageActivitiesPerWeek.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
                 : fmtNumber(summary?.totalActivities)}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? 'Ø Aktivitäten / Woche' : 'Aktivitäten'}
+              {showAverage ? autoT('ui_a5ae4475a508') : autoT('ui_b6bf5f1a2033')}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
@@ -2666,25 +2620,25 @@ export default function Statistics() {
                 : fmtNumber(summary?.totalParticipants)}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? 'Ø Teilnehmende / Aktivität' : 'Teilnehmende'}
+              {showAverage ? autoT('ui_ce999918d5c2') : autoT('ui_a8a4d6b019af')}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-cambridge-blue">
-              {totalParticipantsPerHour.toLocaleString('de-DE', { maximumFractionDigits: 1 })}
+              {totalParticipantsPerHour.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? 'Ø Teilnehmende / Stunde' : 'Teilnehmende / Stunde'}
+              {showAverage ? autoT('ui_86f83c37babf') : autoT('ui_bb662b9cd669')}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
               {showAverage
-                ? averageHoursPerActivity.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                ? averageHoursPerActivity.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
                 : summary?.totalHours?.toLocaleString('de-DE')}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? 'Ø Stunden / Aktivität' : 'Gesamt-Stunden'}
+              {showAverage ? autoT('ui_ddd5d008e490') : autoT('ui_02f31c07bda8')}
             </p>
           </div>
           {selectedClosureState === 'closed' && (
@@ -2692,7 +2646,7 @@ export default function Statistics() {
               <p className="text-4xl font-bold text-amber-500">
                 {fmtNumber(summary?.closureDaysCount ?? 0)}
               </p>
-              <p className="text-sm text-gray-600 mt-2">Schließtage</p>
+              <p className="text-sm text-gray-600 mt-2">{autoT('ui_13c97516c9d9')}</p>
             </div>
           )}
         </div>
@@ -2709,10 +2663,10 @@ export default function Statistics() {
         />
 
         {/* Charts */}
-        <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
+        <div className={`grid gap-6 ${pdfMode ? "grid-cols-2" : "grid-cols-1 lg:grid-cols-2"}`}>
           <StatisticsPieChartCard
-            title="Verteilung nach Tätigkeitstyp"
-            exportActions={renderChartExportActions('activity-types', 'Verteilung nach Tätigkeitstyp')}
+            title={autoT('ui_7a55d1e6e986')}
+            exportActions={renderChartExportActions('activity-types', autoT('ui_7a55d1e6e986'))}
             bodyClassName="h-80 md:h-[23rem]"
             chartRef={setChartCardRef('activity-types')}
             data={byTypeData}
@@ -2730,7 +2684,7 @@ export default function Statistics() {
           />
 
           <StatisticsPieChartCard
-            title="Geschlechterverteilung"
+            title={autoT('ui_2b8c8cd6a28c')}
             exportActions={renderChartExportActions('gender-distribution', 'Geschlechterverteilung')}
             bodyClassName="h-80 md:h-[23rem]"
             chartRef={setChartCardRef('gender-distribution')}
@@ -2757,44 +2711,38 @@ export default function Statistics() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-viridian">
-                {showAverage ? 'Zeitverlauf Ø Teilnehmende' : 'Zeitverlauf Teilnehmende'}
+                {showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5')}
               </h3>
               <div className="flex items-center gap-2">
                 {renderChartExportActions(
                   'participants-trend',
-                  showAverage ? 'Zeitverlauf Ø Teilnehmende' : 'Zeitverlauf Teilnehmende',
+                  showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5'),
                 )}
                 <div className="stats-kpi-toggle flex items-center gap-1 rounded-lg p-1">
                   <button
                     onClick={() => setTimeAggregation('day')}
                     className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
                       timeAggregation === 'day'
-                        ? 'stats-kpi-toggle-button-active font-medium'
-                        : 'stats-kpi-toggle-button'
+                        ? "stats-kpi-toggle-button-active font-medium"
+                        : "stats-kpi-toggle-button"
                     }`}
-                  >
-                    Tag
-                  </button>
+                  >{autoT('ui_982963c1c41c')}</button>
                   <button
                     onClick={() => setTimeAggregation('week')}
                     className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
                       timeAggregation === 'week'
-                        ? 'stats-kpi-toggle-button-active font-medium'
-                        : 'stats-kpi-toggle-button'
+                        ? "stats-kpi-toggle-button-active font-medium"
+                        : "stats-kpi-toggle-button"
                     }`}
-                  >
-                    Woche
-                  </button>
+                  >{autoT('ui_7b2207dc85a6')}</button>
                   <button
                     onClick={() => setTimeAggregation('month')}
                     className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
                       timeAggregation === 'month'
-                        ? 'stats-kpi-toggle-button-active font-medium'
-                        : 'stats-kpi-toggle-button'
+                        ? "stats-kpi-toggle-button-active font-medium"
+                        : "stats-kpi-toggle-button"
                     }`}
-                  >
-                    Monat
-                  </button>
+                  >{autoT('ui_da13625eeb37')}</button>
                 </div>
               </div>
             </div>
@@ -2823,8 +2771,8 @@ export default function Statistics() {
                     itemStyle={chartTooltipItemStyle}
                     cursor={lineChartCursor}
                     formatter={(value: number) => [
-                      value.toLocaleString('de-DE', { maximumFractionDigits: 1 }),
-                      showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'
+                      value.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 }),
+                      showAverage ? autoT('ui_c649f425302c') : autoT('ui_a8a4d6b019af')
                     ]}
                     labelFormatter={(value) =>
                       formatStatisticsAggregationTooltipLabel(String(value), timeAggregation)
@@ -2834,14 +2782,14 @@ export default function Statistics() {
                   <Line
                     type="monotone"
                     dataKey="totalParticipants"
-                    name={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
+                    name={showAverage ? autoT('ui_c649f425302c') : autoT('ui_a8a4d6b019af')}
                     stroke="#10b981"
                     strokeWidth={2}
                     isAnimationActive={!isParticipantsTrendExporting}
-                    activeDot={{ r: 6, fill: '#10b981', stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: '#10b981', stroke: isDarkTheme ? "#ecf3ff" : "#ffffff", strokeWidth: 2 }}
                     dot={
                       isParticipantsTrendExporting
-                        ? { r: 4, fill: '#10b981', stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }
+                        ? { r: 4, fill: '#10b981', stroke: isDarkTheme ? "#ecf3ff" : "#ffffff", strokeWidth: 2 }
                         : timeAggregation !== 'day'
                     }
                   >
@@ -2855,13 +2803,13 @@ export default function Statistics() {
           </div>
 
           <StatisticsPieChartCard
-            title={showAverage ? 'Ø Alterskohorten' : 'Alterskohorten'}
+            title={showAverage ? autoT('ui_784a48af8419') : autoT('ui_4d34ac48c54e')}
             exportActions={renderChartExportActions(
               'cohorts',
-              showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
+              showAverage ? "Ø Alterskohorten" : "Alterskohorten",
             )}
             cardClassName="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
-            bodyClassName={pdfMode ? 'h-72' : 'h-80 md:h-[23rem]'}
+            bodyClassName={pdfMode ? "h-72" : "h-80 md:h-[23rem]"}
             chartRef={setChartCardRef('cohorts')}
             data={cohortPieData}
             centerY={cohortPieCenterY}
@@ -2878,11 +2826,11 @@ export default function Statistics() {
           />
 
           <StatisticsBarChartCard
-            title="Top Kategorien"
+            title={autoT('ui_14a39a02cc68')}
             exportActions={renderChartExportActions('top-categories', 'Top Kategorien')}
             chartRef={setChartCardRef('top-categories')}
             data={topCategoryChartData}
-            bodyClassName={pdfMode ? 'h-64' : 'h-80 md:h-[23rem]'}
+            bodyClassName={pdfMode ? "h-64" : "h-80 md:h-[23rem]"}
             margin={compactBarChartMarginWithBottom}
             gridStroke={chartGridColor}
             axisTick={chartAxisTick}
@@ -2892,17 +2840,17 @@ export default function Statistics() {
             tooltipLabelStyle={chartTooltipLabelStyle}
             tooltipItemStyle={chartTooltipItemStyle}
             tooltipCursor={barChartCursor}
-            tooltipFormatter={(value) => value.toLocaleString('de-DE')}
+            tooltipFormatter={(value) => value.toLocaleString(getCurrentIntlLocale())}
             barDataKey="count"
             labelDataKey="count"
-            barName="Aktivitäten"
+            barName={autoT('ui_b6bf5f1a2033')}
             valueLabelContent={<ValueLabel />}
             getCellFill={(_item, index) => fallbackBarColors[index % fallbackBarColors.length]}
             getCellKey={(_item, index) => `bc-${index}`}
           />
 
           <StatisticsBarChartCard
-            title="Top Tags"
+            title={autoT('ui_0fb32d3b3eaa')}
             exportActions={renderChartExportActions('top-tags', 'Top Tags')}
             chartRef={setChartCardRef('top-tags')}
             data={topTags}
@@ -2916,10 +2864,10 @@ export default function Statistics() {
             tooltipLabelStyle={chartTooltipLabelStyle}
             tooltipItemStyle={chartTooltipItemStyle}
             tooltipCursor={barChartCursor}
-            tooltipFormatter={(value) => value.toLocaleString('de-DE')}
+            tooltipFormatter={(value) => value.toLocaleString(getCurrentIntlLocale())}
             barDataKey="count"
             labelDataKey="count"
-            barName="Aktivitäten"
+            barName={autoT('ui_b6bf5f1a2033')}
             valueLabelContent={<ValueLabel />}
             getCellFill={(item, index) =>
               tagColor.get(item.id) || fallbackBarColors[index % fallbackBarColors.length]
@@ -2929,7 +2877,7 @@ export default function Statistics() {
 
           {projectId ? (
             <StatisticsBarChartCard
-              title="Top Tage"
+              title={autoT('ui_77e6509147ca')}
               exportActions={renderChartExportActions('top-days', 'Top Tage')}
               chartRef={setChartCardRef('top-days')}
               data={topDays}
@@ -2944,23 +2892,23 @@ export default function Statistics() {
               tooltipItemStyle={chartTooltipItemStyle}
               tooltipCursor={barChartCursor}
               tooltipFormatter={(value) =>
-                value.toLocaleString('de-DE', {
+                value.toLocaleString(getCurrentIntlLocale(), {
                   maximumFractionDigits: showAverage ? 1 : 0,
                 })
               }
               tooltipLabelFormatter={(_label, payload) =>
                 `Wochentag: ${payload?.[0]?.payload?.fullName ?? '—'}`
               }
-              barDataKey={showAverage ? 'chartValue' : 'count'}
-              labelDataKey={showAverage ? 'chartValue' : 'count'}
-              barName={showAverage ? 'Ø Teilnehmende' : 'Teilnehmende'}
+              barDataKey={showAverage ? "chartValue" : "count"}
+              labelDataKey={showAverage ? "chartValue" : "count"}
+              barName={showAverage ? autoT('ui_c649f425302c') : autoT('ui_a8a4d6b019af')}
               barFill="#10b981"
               valueLabelContent={<ValueLabel />}
             />
           ) : (
             <StatisticsBarChartCard
-              title="Top Projekte"
-              exportActions={renderChartExportActions('top-projects', 'Top Projekte')}
+              title={autoT('ui_70494e6a6cd0')}
+              exportActions={renderChartExportActions('top-projects', autoT('ui_70494e6a6cd0'))}
               chartRef={setChartCardRef('top-projects')}
               data={topProjects}
               bodyClassName="h-64"
@@ -2973,10 +2921,10 @@ export default function Statistics() {
               tooltipLabelStyle={chartTooltipLabelStyle}
               tooltipItemStyle={chartTooltipItemStyle}
               tooltipCursor={barChartCursor}
-              tooltipFormatter={(value) => value.toLocaleString('de-DE')}
+              tooltipFormatter={(value) => value.toLocaleString(getCurrentIntlLocale())}
               barDataKey="count"
               labelDataKey="count"
-              barName="Aktivitäten"
+              barName={autoT('ui_b6bf5f1a2033')}
               valueLabelContent={<ValueLabel />}
               getCellFill={(item, index) =>
                 projectColor.get(item.id) || fallbackBarColors[index % fallbackBarColors.length]
@@ -2990,18 +2938,14 @@ export default function Statistics() {
         {/* Aktivitäten-Tabelle (nach Diagrammen) */}
         <div className="group/chart-card bg-white rounded-lg shadow p-6 mt-8" data-pdf-section>
           <div className="flex items-center justify-between mb-4 gap-3">
-            <h3 className="text-lg font-semibold text-viridian">
-              Alle Aktivitäten (gefiltert)
-              <span className="ml-2 text-sm font-normal text-gray-500">
-                {totalActivities} Einträge
-              </span>
+            <h3 className="text-lg font-semibold text-viridian">{autoT('ui_44eeeedb9e8f')}<span className="ml-2 text-sm font-normal text-gray-500">
+                {totalActivities}{autoT('ui_303e11fd9d2b')}</span>
             </h3>
             <div className="flex items-center gap-2" data-chart-export-ignore="true">
               {!pdfMode && renderActivitiesExportActions()}
               {!pdfMode && totalActivityPages > 1 && (
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">
-                    Seite {activitiesPage} von {totalActivityPages}
+                  <span className="text-gray-500">{autoT('ui_633082b8c84b')}{activitiesPage}{' '}{autoT('ui_445584edc4cc')}{' '}{totalActivityPages}
                   </span>
                 </div>
               )}
@@ -3011,15 +2955,15 @@ export default function Statistics() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-azure-web text-gray-700">
-                  <th className="px-3 py-2 text-left">Datum</th>
-                  <th className="px-3 py-2 text-left">Typ</th>
-                  <th className="px-3 py-2 text-left">Titel</th>
-                  <th className="px-3 py-2 text-left">Projekt</th>
-                  <th className="px-3 py-2 text-right">TN ges.</th>
-                  <th className="px-3 py-2 text-right">m</th>
-                  <th className="px-3 py-2 text-right">w</th>
-                  <th className="px-3 py-2 text-right">d</th>
-                  <th className="px-3 py-2 text-right">Dauer (min)</th>
+                  <th className="px-3 py-2 text-left">{autoT('ui_df5c3008c765')}</th>
+                  <th className="px-3 py-2 text-left">{autoT('ui_edcaf9aaa282')}</th>
+                  <th className="px-3 py-2 text-left">{autoT('ui_950701e758d1')}</th>
+                  <th className="px-3 py-2 text-left">{autoT('ui_20bda6d2e725')}</th>
+                  <th className="px-3 py-2 text-right">{autoT('ui_a24fe1e6fcc2')}</th>
+                  <th className="px-3 py-2 text-right">{autoT('ui_6b0d31c0d563')}</th>
+                  <th className="px-3 py-2 text-right">{autoT('ui_aff024fe4ab0')}</th>
+                  <th className="px-3 py-2 text-right">{autoT('ui_3c363836cf4e')}</th>
+                  <th className="px-3 py-2 text-right">{autoT('ui_d62550d402f1')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -3052,16 +2996,12 @@ export default function Statistics() {
                 })}
                 {!pdfMode && activitiesPageQ.isLoading && reportActivities.length === 0 && (
                   <tr>
-                    <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
-                      Aktivitäten werden geladen.
-                    </td>
+                    <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>{autoT('ui_c2b2d9c3136c')}</td>
                   </tr>
                 )}
                 {!pdfMode && !activitiesPageQ.isLoading && reportActivities.length === 0 && (
                   <tr>
-                    <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
-                      Keine Aktivitäten im Zeitraum.
-                    </td>
+                    <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>{autoT('ui_afc08a0675e3')}</td>
                   </tr>
                 )}
               </tbody>
@@ -3071,16 +3011,15 @@ export default function Statistics() {
           {/* Pagination Controls */}
           {!pdfMode && totalActivityPages > 1 && (
             <div className="mt-4 border-t border-gray-100 pt-4" data-chart-export-ignore="true">
-              <div className="mb-3 text-xs text-gray-500 sm:mb-0">
-                Zeige {((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, totalActivities)} von {totalActivities}
+              <div className="mb-3 text-xs text-gray-500 sm:mb-0">{autoT('ui_6e7156111137')}{((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, totalActivities)}{' '}{autoT('ui_445584edc4cc')}{' '}{totalActivities}
               </div>
-              <div className={`flex gap-1 ${isMobile ? 'flex-wrap items-center justify-start' : 'items-center justify-end'}`}>
+              <div className={`flex gap-1 ${isMobile ? "flex-wrap items-center justify-start" : "items-center justify-end"}`}>
                 <button
                   onClick={() => setActivitiesPage(1)}
                   disabled={activitiesPage === 1}
                   className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Erste Seite"
-                  aria-label="Erste Seite"
+                  title={autoT('ui_f4b057452fde')}
+                  aria-label={autoT('ui_f4b057452fde')}
                 >
                   ««
                 </button>
@@ -3088,8 +3027,8 @@ export default function Statistics() {
                   onClick={() => setActivitiesPage((p) => Math.max(1, p - 1))}
                   disabled={activitiesPage === 1}
                   className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Vorherige Seite"
-                  aria-label="Vorherige Seite"
+                  title={autoT('ui_f6bc60bc537b')}
+                  aria-label={autoT('ui_f6bc60bc537b')}
                 >
                   «
                 </button>
@@ -3121,8 +3060,8 @@ export default function Statistics() {
                         onClick={() => setActivitiesPage(p)}
                         className={`px-3 py-1 text-xs rounded border ${
                           p === current
-                            ? 'bg-viridian text-white border-viridian'
-                            : 'border-gray-200 hover:bg-gray-50'
+                            ? "bg-viridian text-white border-viridian"
+                            : "border-gray-200 hover:bg-gray-50"
                         }`}
                       >
                         {p}
@@ -3135,8 +3074,8 @@ export default function Statistics() {
                   onClick={() => setActivitiesPage((p) => Math.min(totalActivityPages, p + 1))}
                   disabled={activitiesPage === totalActivityPages}
                   className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Nächste Seite"
-                  aria-label="Nächste Seite"
+                  title={autoT('ui_d3e6a4a47b5f')}
+                  aria-label={autoT('ui_d3e6a4a47b5f')}
                 >
                   »
                 </button>
@@ -3144,8 +3083,8 @@ export default function Statistics() {
                   onClick={() => setActivitiesPage(totalActivityPages)}
                   disabled={activitiesPage === totalActivityPages}
                   className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Letzte Seite"
-                  aria-label="Letzte Seite"
+                  title={autoT('ui_58365134024f')}
+                  aria-label={autoT('ui_58365134024f')}
                 >
                   »»
                 </button>
@@ -3156,16 +3095,16 @@ export default function Statistics() {
 
         {/* Konsolidiert (kompakt) */}
         <div className="bg-white rounded-lg shadow p-6 mt-6" data-pdf-section>
-          <h3 className="text-lg font-semibold mb-4 text-viridian">Konsolidiert</h3>
+          <h3 className="text-lg font-semibold mb-4 text-viridian">{autoT('ui_c0d622468344')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div data-pdf-section>
-              <h4 className="font-medium text-gray-700 mb-2">Nach Tätigkeitstyp</h4>
+              <h4 className="font-medium text-gray-700 mb-2">{autoT('ui_83cd7cada281')}</h4>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-azure-web text-gray-700">
-                    <th className="px-3 py-2 text-left">Typ</th>
-                    <th className="px-3 py-2 text-right">Aktivitäten</th>
-                    <th className="px-3 py-2 text-right">Teilnehmende</th>
+                    <th className="px-3 py-2 text-left">{autoT('ui_edcaf9aaa282')}</th>
+                    <th className="px-3 py-2 text-right">{autoT('ui_b6bf5f1a2033')}</th>
+                    <th className="px-3 py-2 text-right">{autoT('ui_a8a4d6b019af')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -3175,9 +3114,9 @@ export default function Statistics() {
                       map.set(entry.type || 'unknown', { c: entry.count, p: entry.totalParticipants });
                     });
                     const typeLabel: Record<string, string> = {
-                      open_door: 'Offene Tür',
-                      project_open: 'Projekt (offen)',
-                      project_closed: 'Projekt (geschlossen)',
+                      open_door: autoT('ui_a80778b6b148'),
+                      project_open: autoT('ui_00d882fbb5d4'),
+                      project_closed: autoT('ui_8f256393653e'),
                       event: 'Veranstaltung',
                       outreach: 'Aufsuchend',
                       unknown: 'Unbekannt',
@@ -3194,12 +3133,12 @@ export default function Statistics() {
               </table>
             </div>
             <div data-pdf-section>
-              <h4 className="font-medium text-gray-700 mb-2">Nach Kategorie</h4>
+              <h4 className="font-medium text-gray-700 mb-2">{autoT('ui_06f3a091a49c')}</h4>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-azure-web text-gray-700">
-                    <th className="px-3 py-2 text-left">Kategorie</th>
-                    <th className="px-3 py-2 text-right">Aktivitäten</th>
+                    <th className="px-3 py-2 text-left">{autoT('ui_358210386a4f')}</th>
+                    <th className="px-3 py-2 text-right">{autoT('ui_b6bf5f1a2033')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -3219,26 +3158,22 @@ export default function Statistics() {
       <Modal
         open={typePickerOpen}
         onClose={() => setTypePickerOpen(false)}
-        title="Typ auswählen"
+        title={autoT('ui_4324a8f20ad4')}
         maxWidth="sm"
       >
         <div className="space-y-4">
-          <p className={`text-sm ${mobileSecondaryTextClass}`}>
-            Wähle den Tätigkeitstyp direkt aus der Übersicht.
-          </p>
+          <p className={`text-sm ${mobileSecondaryTextClass}`}>{autoT('ui_269234dabd92')}</p>
           <div className="grid grid-cols-1 gap-2">
             <button
               type="button"
               className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${
-                !selectedType ? 'border-viridian bg-viridian text-white' : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
+                !selectedType ? "border-viridian bg-viridian text-white" : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
               }`}
               onClick={() => {
                 setSelectedType('');
                 setTypePickerOpen(false);
               }}
-            >
-              Alle Typen
-            </button>
+            >{autoT('ui_172a950cc0da')}</button>
             {STATISTICS_TYPE_OPTIONS.map((type) => {
               const active = selectedType === type;
               const typeColor = colorForActivityType(type);
@@ -3247,10 +3182,10 @@ export default function Statistics() {
                   key={type}
                   type="button"
                   className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${
-                    active ? 'text-white' : mobilePrimaryTextClass
+                    active ? "text-white" : mobilePrimaryTextClass
                   }`}
                   style={{
-                    backgroundColor: active ? typeColor : translucent(typeColor, isDarkTheme ? '20' : '14'),
+                    backgroundColor: active ? typeColor : translucent(typeColor, isDarkTheme ? "20" : "14"),
                     borderColor: active ? typeColor : translucent(typeColor, '66'),
                   }}
                   onClick={() => {
@@ -3263,8 +3198,8 @@ export default function Statistics() {
                       aria-hidden
                       className="h-2.5 w-2.5 rounded-full border"
                       style={{
-                        backgroundColor: active ? 'rgba(255,255,255,0.9)' : typeColor,
-                        borderColor: active ? 'rgba(255,255,255,0.35)' : translucent(typeColor, 'aa'),
+                        backgroundColor: active ? "rgba(255,255,255,0.9)" : typeColor,
+                        borderColor: active ? "rgba(255,255,255,0.35)" : translucent(typeColor, 'aa'),
                       }}
                     />
                     {TYPE_LABEL[type]}
@@ -3279,39 +3214,35 @@ export default function Statistics() {
       <Modal
         open={projectPickerOpen}
         onClose={() => setProjectPickerOpen(false)}
-        title="Projekt auswählen"
+        title={autoT('ui_42da26b250b4')}
         maxWidth="lg"
       >
         <div className="space-y-4">
           <p className={`text-sm ${mobileSecondaryTextClass}`}>
             {selectedType
-              ? `Es werden nur Projekte für ${TYPE_LABEL[selectedType]} angezeigt.`
-              : 'Wähle direkt aus allen verfügbaren Projekten.'}
+              ? autoT('ui_1368c874cd5a', { value0: TYPE_LABEL[selectedType] })
+              : autoT('ui_f88f628b1024')}
           </p>
 
           <div className="grid grid-cols-1 gap-2">
             <button
               type="button"
               className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${
-                !projectId ? 'border-viridian bg-viridian text-white' : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
+                !projectId ? "border-viridian bg-viridian text-white" : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
               }`}
               onClick={() => {
                 setProjectId('');
                 setProjectPickerOpen(false);
               }}
-            >
-              Alle Projekte
-            </button>
+            >{autoT('ui_b857d350e38e')}</button>
 
             {sortedProjects.length === 0 ? (
-              <div className={`rounded-xl border border-dashed px-4 py-4 text-sm ${mobileDashedSurfaceClass}`}>
-                Für den gewählten Typ sind aktuell keine Projekte verfügbar.
-              </div>
+              <div className={`rounded-xl border border-dashed px-4 py-4 text-sm ${mobileDashedSurfaceClass}`}>{autoT('ui_4e5aca6ae1f5')}</div>
             ) : (
               sortedProjects.map((project) => {
                 const active = projectId === project.id;
                 const projectColorValue =
-                  typeof project.color === 'string' && project.color.trim() ? project.color.trim() : '#0f766e';
+                  typeof project.color === 'string' && project.color.trim() ? project.color.trim() : "#0f766e";
                 const imageUrl =
                   typeof project.imageUrl === 'string' && project.imageUrl.trim() ? project.imageUrl.trim() : undefined;
 
@@ -3320,7 +3251,7 @@ export default function Statistics() {
                     key={project.id}
                     type="button"
                     className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                      active ? 'text-white' : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
+                      active ? "text-white" : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
                     }`}
                     style={
                       active
@@ -3330,7 +3261,7 @@ export default function Statistics() {
                           }
                         : imageUrl || project.color
                           ? {
-                              backgroundColor: translucent(projectColorValue, isDarkTheme ? '18' : '10'),
+                              backgroundColor: translucent(projectColorValue, isDarkTheme ? "18" : "10"),
                               borderColor: project.color || 'var(--border-strong)',
                             }
                           : undefined
@@ -3342,7 +3273,7 @@ export default function Statistics() {
                   >
                     <div className="flex items-center gap-3">
                       {imageUrl ? (
-                        <span className={`h-10 w-10 overflow-hidden rounded-full border ${active ? 'border-white/30 bg-white/10' : isDarkTheme ? 'border-white/10 bg-white/10' : 'border-gray-300 bg-gray-100'}`}>
+                        <span className={`h-10 w-10 overflow-hidden rounded-full border ${active ? "border-white/30 bg-white/10" : isDarkTheme ? "border-white/10 bg-white/10" : "border-gray-300 bg-gray-100"}`}>
                           <ProtectedImage src={imageUrl} alt="" className="h-full w-full object-cover" />
                         </span>
                       ) : (
@@ -3351,13 +3282,13 @@ export default function Statistics() {
                           className="h-10 w-10 rounded-full border"
                           style={{
                             backgroundColor: projectColorValue,
-                            borderColor: active ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.08)',
+                            borderColor: active ? "rgba(255,255,255,0.32)" : "rgba(0,0,0,0.08)",
                           }}
                         />
                       )}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{project.title}</span>
-                        <span className={`block truncate text-xs ${active ? 'text-white/80' : mobileSecondaryTextClass}`}>
+                        <span className={`block truncate text-xs ${active ? "text-white/80" : mobileSecondaryTextClass}`}>
                           {TYPE_LABEL[project.type] || project.type}
                         </span>
                       </span>
@@ -3373,27 +3304,27 @@ export default function Statistics() {
       <Modal
         open={reportExportOpen}
         onClose={() => setReportExportOpen(false)}
-        title="Auswertung exportieren"
+        title={autoT('ui_8dbb5c1c7f40')}
         maxWidth="xl"
       >
         <div className="space-y-4 text-sm text-gray-700">
-          <p>Der aktuell gesetzte Zeitraum und alle aktiven Filter werden übernommen.</p>
+          <p>{autoT('ui_fabb2abae3a4')}</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <button
               type="button"
               className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50"
               onClick={() => { setReportExportOpen(false); void exportPdf(); }}
             >
-              <div className="font-semibold text-gray-900">PDF-Bericht</div>
-              <div className="mt-1 text-xs text-gray-600">Vollständiger Statistikbericht inklusive aller gefilterten Aktivitäten auf mehreren Seiten.</div>
+              <div className="font-semibold text-gray-900">{autoT('ui_104827f9e0c7')}</div>
+              <div className="mt-1 text-xs text-gray-600">{autoT('ui_49b7d61d6e43')}</div>
             </button>
             <button
               type="button"
               className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green"
               onClick={() => { setReportExportOpen(false); void exportActivitiesTable('xlsx'); }}
             >
-              <div className="font-semibold text-viridian">Stato-Excel</div>
-              <div className="mt-1 text-xs text-gray-600">Aktivitäten als Arbeitsmappe für die weitere Auswertung.</div>
+              <div className="font-semibold text-viridian">{autoT('ui_db0d32742b50')}</div>
+              <div className="mt-1 text-xs text-gray-600">{autoT('ui_c40ca967212f')}</div>
             </button>
             <button
               type="button"
@@ -3401,8 +3332,8 @@ export default function Statistics() {
               disabled={isControllingExporting}
               onClick={() => { setReportExportOpen(false); void exportControllingData(); }}
             >
-              <div className="font-semibold text-viridian">Controllingdaten</div>
-              <div className="mt-1 text-xs text-gray-600">Vollständige Arbeitsmappe mit Kohorten, Projekt-KPIs und Logbuch.</div>
+              <div className="font-semibold text-viridian">{autoT('ui_601dd4ee44ea')}</div>
+              <div className="mt-1 text-xs text-gray-600">{autoT('ui_b56d47e133a3')}</div>
             </button>
           </div>
         </div>
@@ -3412,17 +3343,15 @@ export default function Statistics() {
       <Modal
         open={customFilterOpen}
         onClose={() => setCustomFilterOpen(false)}
-        title="Erweiterter Filter"
+        title={autoT('ui_c78a00fa35d9')}
         maxWidth="md"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Wähle Zeitraum, Wochentage und Status für die Statistik-Auswertung.
-          </p>
+          <p className="text-sm text-gray-600">{autoT('ui_d7aaf75d8532')}</p>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Von</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_a4b078f9eb7b')}</label>
               <input
                 type="date"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
@@ -3431,7 +3360,7 @@ export default function Statistics() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bis</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_0afaa0e566a1')}</label>
               <input
                 type="date"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
@@ -3441,12 +3370,10 @@ export default function Statistics() {
             </div>
           </div>
 
-          <p className="text-xs text-gray-500">
-            Leer lassen = aktuelle Auswahl oben links beibehalten. Ein eigener Zeitraum wird nur angewendet, wenn hier ein Datum gesetzt ist.
-          </p>
+          <p className="text-xs text-gray-500">{autoT('ui_3a315ae104b5')}</p>
 
             <div className="pt-2 border-t">
-              <div className="text-xs font-medium text-gray-500 mb-2">Schnellauswahl</div>
+              <div className="text-xs font-medium text-gray-500 mb-2">{autoT('ui_37b72d9d418d')}</div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -3457,9 +3384,7 @@ export default function Statistics() {
                     setTempFrom(formatLocalDateInputValue(firstDay));
                     setTempTo(formatLocalDateInputValue(today));
                   }}
-                >
-                  Diesen Monat
-                </button>
+                >{autoT('ui_f172e749dcc9')}</button>
                 <button
                   type="button"
                   className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -3470,9 +3395,7 @@ export default function Statistics() {
                     setTempFrom(formatLocalDateInputValue(lastMonth));
                     setTempTo(formatLocalDateInputValue(lastDay));
                   }}
-                >
-                  Letzten Monat
-                </button>
+                >{autoT('ui_46ae17ce0436')}</button>
                 <button
                   type="button"
                   className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -3482,9 +3405,7 @@ export default function Statistics() {
                     setTempFrom(formatLocalDateInputValue(threeMonthsAgo));
                     setTempTo(formatLocalDateInputValue(today));
                   }}
-                >
-                  Letzte 3 Monate
-                </button>
+                >{autoT('ui_2c02931c55c8')}</button>
                 <button
                   type="button"
                   className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -3494,9 +3415,7 @@ export default function Statistics() {
                     setTempFrom(formatLocalDateInputValue(sixMonthsAgo));
                     setTempTo(formatLocalDateInputValue(today));
                   }}
-                >
-                  Letzte 6 Monate
-                </button>
+                >{autoT('ui_dca13e4c1f6d')}</button>
                 <button
                   type="button"
                   className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -3506,21 +3425,19 @@ export default function Statistics() {
                     setTempFrom(formatLocalDateInputValue(yearAgo));
                     setTempTo(formatLocalDateInputValue(today));
                   }}
-                >
-                  Letztes Jahr
-                </button>
+                >{autoT('ui_6e1af626e810')}</button>
               </div>
             </div>
 
           <div className="pt-2 border-t">
-            <div className="text-xs font-medium text-gray-500 mb-2">Status</div>
+            <div className="text-xs font-medium text-gray-500 mb-2">{autoT('ui_bae7d5be7082')}</div>
             <div className="flex flex-wrap gap-2">
               {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((status) => {
                 const active = tempSelectedExecutionStatuses.includes(status);
                 const activeClass =
                   status === 'cancelled'
-                    ? 'border-rose-600 bg-rose-600 text-white'
-                    : 'border-viridian bg-viridian text-white';
+                    ? "border-rose-600 bg-rose-600 text-white"
+                    : "border-viridian bg-viridian text-white";
 
                 return (
                   <button
@@ -3529,7 +3446,7 @@ export default function Statistics() {
                     className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                       active
                         ? activeClass
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
                     }`}
                     onClick={() => {
                       setTempSelectedExecutionStatuses((current) => {
@@ -3541,31 +3458,29 @@ export default function Statistics() {
                     }}
                     aria-pressed={active}
                   >
-                    {status === 'cancelled' ? 'Ausgefallen' : 'Stattgefunden'}
+                    {status === 'cancelled' ? autoT('ui_af6ed3ac625b') : autoT('ui_3074a0ce7457')}
                   </button>
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Standard: nur stattgefundene Aktivitäten. Wähle zusätzlich ausgefallene Aktivitäten aus, wenn sie in der Auswertung erscheinen sollen.
-            </p>
+            <p className="mt-2 text-xs text-gray-500">{autoT('ui_99b2f97806df')}</p>
           </div>
 
           <div className="pt-2 border-t">
-            <div className="text-xs font-medium text-gray-500 mb-2">Einrichtung geschlossen</div>
+            <div className="text-xs font-medium text-gray-500 mb-2">{autoT('ui_afd5e7713414')}</div>
             <div className="flex flex-wrap gap-2">
               {[
-                { key: 'all', label: 'Alle Tage', value: undefined },
-                { key: 'closed', label: 'Nur Schließtage', value: 'closed' as const },
-                { key: 'open', label: 'Ohne Schließtage', value: 'open' as const },
+                { key: 'all', label: autoT('ui_a462abf80085'), value: undefined },
+                { key: 'closed', label: autoT('ui_9a7a7c0c602f'), value: 'closed' as const },
+                { key: 'open', label: autoT('ui_032b3f37a45b'), value: 'open' as const },
               ].map((option) => {
                 const active = tempSelectedClosureState === option.value;
                 const activeClass =
                   option.value === 'closed'
-                    ? 'border-amber-600 bg-amber-600 text-white'
+                    ? "border-amber-600 bg-amber-600 text-white"
                     : option.value === 'open'
-                      ? 'border-slate-700 bg-slate-700 text-white'
-                      : 'border-viridian bg-viridian text-white';
+                      ? "border-slate-700 bg-slate-700 text-white"
+                      : "border-viridian bg-viridian text-white";
 
                 return (
                   <button
@@ -3574,7 +3489,7 @@ export default function Statistics() {
                     className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                       active
                         ? activeClass
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
                     }`}
                     onClick={() => setTempSelectedClosureState(option.value)}
                     aria-pressed={active}
@@ -3584,21 +3499,17 @@ export default function Statistics() {
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Filtert Aktivitäten danach, ob ihr Datum als geschlossener Kalendertag markiert wurde.
-            </p>
+            <p className="mt-2 text-xs text-gray-500">{autoT('ui_e303090e1632')}</p>
           </div>
 
           <div className="pt-2 border-t">
             <div className="flex items-center justify-between gap-3 mb-2">
-              <div className="text-xs font-medium text-gray-500">Wochentage</div>
+              <div className="text-xs font-medium text-gray-500">{autoT('ui_1d474635b5d2')}</div>
               <button
                 type="button"
                 className="text-xs font-medium text-viridian hover:text-cambridge-blue transition-colors"
                 onClick={() => setTempSelectedWeekdays([])}
-              >
-                Alle Tage
-              </button>
+              >{autoT('ui_a462abf80085')}</button>
             </div>
             <div className="flex flex-wrap gap-2">
               {WEEKDAY_OPTIONS.map((weekday) => {
@@ -3609,8 +3520,8 @@ export default function Statistics() {
                     type="button"
                     className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                       active
-                        ? 'border-viridian bg-viridian text-white'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        ? "border-viridian bg-viridian text-white"
+                        : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
                     }`}
                     onClick={() => {
                       setTempSelectedWeekdays((current) => {
@@ -3628,7 +3539,7 @@ export default function Statistics() {
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-gray-500">Keine Auswahl = alle Tage.</p>
+            <p className="mt-2 text-xs text-gray-500">{autoT('ui_c05c93e50e33')}</p>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
@@ -3636,16 +3547,12 @@ export default function Statistics() {
               type="button"
               className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
               onClick={() => setCustomFilterOpen(false)}
-            >
-              Abbrechen
-            </button>
+            >{autoT('ui_07af7cb30fca')}</button>
             <button
               type="button"
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
               onClick={applyCustomRange}
-            >
-              Übernehmen
-            </button>
+            >{autoT('ui_594308426372')}</button>
           </div>
         </div>
       </Modal>

@@ -11,6 +11,7 @@ import QuickTallyButton from './QuickTallyButton';
 import QuickTallyReviewModal from './QuickTallyReviewModal';
 import { useQuickTallySession } from './useQuickTallySession';
 import ProtectedImage from '@/components/ProtectedImage';
+import { autoT } from '@/i18n/auto';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -117,8 +118,8 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                   <Users className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">Tageserfassung</h3>
-                  <p className="text-white/80 text-sm">Schnelle Anwesenheitserfassung</p>
+                  <h3 className="text-xl font-bold">{autoT('ui_24241c791f18')}</h3>
+                  <p className="text-white/80 text-sm">{autoT('ui_9d3b08a654ef')}</p>
                 </div>
               </div>
               {onClose && (
@@ -137,7 +138,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
           <div className="p-6 space-y-5">
             {/* Project Selection Button */}
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Projekt *</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{autoT('ui_9d1d722dddcb')}</label>
               <button
                 type="button"
                 onClick={() => setProjectPickerOpen(true)}
@@ -159,7 +160,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-viridian text-lg truncate">{selectedProject.title}</div>
-                      <div className="text-sm" style={{ color: 'var(--text-muted)' }}>Tippen zum Ändern</div>
+                      <div className="text-sm" style={{ color: 'var(--text-muted)' }}>{autoT('ui_e9655c8d79d0')}</div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-viridian transition-colors" />
                   </div>
@@ -169,8 +170,8 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                       <Users className="w-8 h-8" style={{ color: 'var(--text-faint)' }} />
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium" style={{ color: 'var(--text-secondary)' }}>Projekt wählen</div>
-                      <div className="text-sm text-gray-400">Tippen zur Auswahl</div>
+                      <div className="font-medium" style={{ color: 'var(--text-secondary)' }}>{autoT('ui_6d8cf02eea43')}</div>
+                      <div className="text-sm text-gray-400">{autoT('ui_115be4a395a4')}</div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-viridian transition-colors" />
                   </div>
@@ -180,13 +181,13 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
 
             {/* Location */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Standort</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{autoT('ui_f06eb42b42fa')}</label>
               <select
                 value={selectedLocationId}
                 onChange={(e) => setSelectedLocationId(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-lg focus:ring-2 focus:ring-viridian focus:border-viridian transition-colors"
               >
-                <option value="">— Standort wählen —</option>
+                <option value="">{autoT('ui_5e092df4790a')}</option>
                 {(locations || []).map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
@@ -198,14 +199,14 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
             {/* Start Time */}
             <div>
               <div className="flex items-center justify-between gap-3 mb-2">
-                <label className="block text-sm font-medium text-gray-700">Startzeit</label>
+                <label className="block text-sm font-medium text-gray-700">{autoT('ui_4aa533c84189')}</label>
                 <button
                   type="button"
                   onClick={() => setStartTime(getRoundedCurrentTime())}
                   className="inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors"
                   style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
-                  aria-label="Aktuelle Uhrzeit übernehmen"
-                  title="Jetzt setzen"
+                  aria-label={autoT('ui_126c9c6936b1')}
+                  title={autoT('ui_474f2135efbe')}
                 >
                   <Clock3 className="w-4 h-4" />
                 </button>
@@ -218,8 +219,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-lg focus:ring-2 focus:ring-viridian focus:border-viridian transition-colors"
               />
               {selectedProject?.defaultStartTime && (
-                <div className="mt-1.5 text-xs text-gray-500">
-                  Standardzeit aus Projekt: {selectedProject.defaultStartTime}
+                <div className="mt-1.5 text-xs text-gray-500">{autoT('ui_b8f9520248af')}{selectedProject.defaultStartTime}
                 </div>
               )}
             </div>
@@ -231,9 +231,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
               disabled={!selectedProjectId}
               className="w-full theme-accent-solid-button px-6 py-4 rounded-xl text-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2"
             >
-              <Play className="w-5 h-5" />
-              Erfassung starten
-            </button>
+              <Play className="w-5 h-5" />{autoT('ui_7cef5e428fb1')}</button>
           </div>
         </div>
 
@@ -261,7 +259,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
             </div>
             <div>
               <h3 className="font-bold text-lg">{sessionProject?.title || 'Tageserfassung'}</h3>
-              <p className="text-white/80 text-sm">seit {session.startTime} • {totals.total} Teilnehmende</p>
+              <p className="text-white/80 text-sm">{autoT('ui_af1b4714651b')}{' '}{session.startTime} • {totals.total}{' '}{autoT('ui_a8a4d6b019af')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -270,7 +268,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                 type="button"
                 onClick={onMinimize}
                 className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                title="Minimieren"
+                title={autoT('ui_209bcbdc731e')}
               >
                 <Minimize2 className="w-5 h-5" />
               </button>
@@ -279,7 +277,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
               type="button"
               onClick={handleCancel}
               className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              title="Abbrechen"
+              title={autoT('ui_07af7cb30fca')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -293,21 +291,17 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
           <table className="w-full">
             <thead className="sticky top-0" style={{ backgroundColor: 'var(--surface-2)' }}>
               <tr className="border-b-2" style={{ borderColor: 'var(--border-strong)' }}>
-                <th className="text-left py-3 pr-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                  Kohorte
+                <th className="text-left py-3 pr-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{autoT('ui_b134a27dd6b6')}</th>
+                <th className="py-3 px-1 text-center" title={autoT('ui_897ccce3f38f')}>
+                  <span className="text-xl font-semibold lowercase">{autoT('ui_6b0d31c0d563')}</span>
                 </th>
-                <th className="py-3 px-1 text-center" title="Männlich">
-                  <span className="text-xl font-semibold lowercase">m</span>
+                <th className="py-3 px-1 text-center" title={autoT('ui_aeff6199c838')}>
+                  <span className="text-xl font-semibold lowercase">{autoT('ui_aff024fe4ab0')}</span>
                 </th>
-                <th className="py-3 px-1 text-center" title="Weiblich">
-                  <span className="text-xl font-semibold lowercase">w</span>
+                <th className="py-3 px-1 text-center" title={autoT('ui_9a2dd276e60f')}>
+                  <span className="text-xl font-semibold lowercase">{autoT('ui_3c363836cf4e')}</span>
                 </th>
-                <th className="py-3 px-1 text-center" title="Divers">
-                  <span className="text-xl font-semibold lowercase">d</span>
-                </th>
-                <th className="py-3 pl-2 text-right text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                  Σ
-                </th>
+                <th className="py-3 pl-2 text-right text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{autoT('ui_ccb9fecbb241')}</th>
               </tr>
             </thead>
             <tbody>
@@ -319,14 +313,13 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                     <td className="py-4 pr-2">
                       <div className="font-semibold">{cohort.name}</div>
                       <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {cohort.minAge}–{cohort.maxAge} Jahre
-                      </div>
+                        {cohort.minAge}–{cohort.maxAge}{autoT('ui_b0bf2144b683')}</div>
                     </td>
                     <td className="py-4 px-1 text-center">
                       <QuickTallyButton
                         value={counts.m}
                         onChange={(v) => handleCountChange(cohort.id, 'm', v)}
-                        label={`${cohort.name} männlich`}
+                        label={autoT('ui_fa207fa300e3', { value0: cohort.name })}
                       />
                     </td>
                     <td className="py-4 px-1 text-center">
@@ -360,19 +353,19 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
           {/* Totals */}
           <div className="grid grid-cols-4 gap-2 text-center mb-4">
             <div className="summary-metric-card py-2">
-              <div className="summary-metric-label text-xs">♂ Männlich</div>
+              <div className="summary-metric-label text-xs">{autoT('ui_37c1e4b405c4')}</div>
               <div className="text-2xl font-bold text-viridian">{totals.m}</div>
             </div>
             <div className="summary-metric-card py-2">
-              <div className="summary-metric-label text-xs">♀ Weiblich</div>
+              <div className="summary-metric-label text-xs">{autoT('ui_2d18dfa3e9fd')}</div>
               <div className="text-2xl font-bold text-viridian">{totals.w}</div>
             </div>
             <div className="summary-metric-card py-2">
-              <div className="summary-metric-label text-xs">⚧ Divers</div>
+              <div className="summary-metric-label text-xs">{autoT('ui_d4deea2b7d14')}</div>
               <div className="text-2xl font-bold text-viridian">{totals.d}</div>
             </div>
             <div className="summary-metric-card-total py-2">
-              <div className="summary-metric-label text-xs">Gesamt</div>
+              <div className="summary-metric-label text-xs">{autoT('ui_2a8a291a83fb')}</div>
               <div className="text-3xl font-bold text-viridian">{totals.total}</div>
             </div>
           </div>
@@ -384,14 +377,10 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
             disabled={totals.total === 0}
             className="w-full theme-accent-solid-button px-6 py-4 rounded-xl text-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2"
           >
-            <CheckCircle className="w-5 h-5" />
-            Abschließen & Speichern
-          </button>
+            <CheckCircle className="w-5 h-5" />{autoT('ui_89ecbd9fe689')}</button>
 
           {/* Help hint */}
-          <p className="mt-2 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-            Tippen = +1 • Lange drücken oder Wischen ↓ = -1 • Rechtsklick = -1
-          </p>
+          <p className="mt-2 text-xs text-center" style={{ color: 'var(--text-muted)' }}>{autoT('ui_2302d28bb566')}</p>
         </div>
       </div>
 
@@ -405,10 +394,10 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
 
       <ConfirmModal
         open={cancelConfirmOpen}
-        title="Session abbrechen?"
-        message="Alle Zählungen gehen verloren."
-        confirmLabel="Session abbrechen"
-        cancelLabel="Weiterzählen"
+        title={autoT('ui_d7257aae5fc4')}
+        message={autoT('ui_d29cc43f20b2')}
+        confirmLabel={autoT('ui_49b2ff4fb379')}
+        cancelLabel={autoT('ui_65e8581d6b47')}
         onConfirm={confirmCancel}
         onCancel={() => setCancelConfirmOpen(false)}
       />
@@ -433,7 +422,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
     <div className="group fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 right-4 md:right-6 z-50">
       <div
         className="pointer-events-none absolute bottom-full right-0 hidden w-[28rem] max-w-[calc(100vw-2rem)] pb-3 translate-y-2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block"
-        aria-label="Schnellerfassung fortsetzen"
+        aria-label={autoT('ui_3d43fbbf12d5')}
       >
         <section
           className="overflow-hidden rounded-2xl border shadow-2xl"
@@ -444,9 +433,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
               <p className="truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {sessionProject?.title || 'Tageserfassung'}
               </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Direkt weiterzählen
-              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{autoT('ui_0ec2fd1cb1d4')}</p>
             </div>
             <span className="rounded-full bg-[var(--interactive-soft)] px-2.5 py-1 text-sm font-bold text-viridian tabular-nums">
               {totals.total}
@@ -455,10 +442,10 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
 
           <div className="max-h-[min(22rem,calc(100vh-12rem))] overflow-x-hidden overflow-y-auto px-3 py-2">
             <div className="grid grid-cols-[minmax(0,1fr)_2.5rem_2.5rem_2.5rem] items-center gap-1 px-1 pb-1 text-center text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-              <span className="text-left">Kohorte</span>
-              <span title="Männlich">m</span>
-              <span title="Weiblich">w</span>
-              <span title="Divers">d</span>
+              <span className="text-left">{autoT('ui_b134a27dd6b6')}</span>
+              <span title={autoT('ui_897ccce3f38f')}>{autoT('ui_6b0d31c0d563')}</span>
+              <span title={autoT('ui_aeff6199c838')}>{autoT('ui_aff024fe4ab0')}</span>
+              <span title={autoT('ui_9a2dd276e60f')}>{autoT('ui_3c363836cf4e')}</span>
             </div>
             {(cohorts || []).map((cohort) => {
               const counts = session.counts[cohort.id] || { m: 0, w: 0, d: 0 };
@@ -466,12 +453,12 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
                 <div key={cohort.id} className="grid grid-cols-[minmax(0,1fr)_2.5rem_2.5rem_2.5rem] items-center gap-1 border-t py-2" style={{ borderColor: 'var(--border-subtle)' }}>
                   <div className="min-w-0 pr-1">
                     <div className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{cohort.name}</div>
-                    <div className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>Σ {getCohortTotal(cohort.id)}</div>
+                    <div className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{autoT('ui_ccb9fecbb241')}{' '}{getCohortTotal(cohort.id)}</div>
                   </div>
                   <QuickTallyButton
                     value={counts.m}
                     onChange={(value) => updateCount(cohort.id, 'm', value)}
-                    label={`${cohort.name} männlich`}
+                    label={autoT('ui_fa207fa300e3', { value0: cohort.name })}
                     className="!min-h-10 !min-w-10 h-10 w-10 rounded-lg border px-1 py-1 text-sm"
                     valueClassName="text-base"
                   />
@@ -499,8 +486,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
               type="button"
               onClick={onRestore}
               className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-viridian transition-colors hover:bg-[var(--interactive-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-            >
-              Vollbild-Erfassung öffnen <ChevronRight className="h-4 w-4" />
+            >{autoT('ui_474e16d80f82')}<ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </section>
@@ -520,8 +506,8 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
             {sessionProject?.title || 'Tageserfassung'}
           </div>
           <div className="text-xs text-white/80">
-            {totals.total} Teilnehmende <span className="hidden md:inline">• Hover zum Weiterzählen</span>
-            <span className="md:hidden">• Tippen zum Fortsetzen</span>
+            {totals.total}{' '}{autoT('ui_a8a4d6b019af')}{' '}<span className="hidden md:inline">{autoT('ui_43962ef3cfd4')}</span>
+            <span className="md:hidden">{autoT('ui_183305a4e1a9')}</span>
           </div>
         </div>
       </button>

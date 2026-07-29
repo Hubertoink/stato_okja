@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { Building2, Users, CalendarDays, FolderKanban, LogIn, UserCheck, HardDrive } from 'lucide-react';
+import { autoT } from '@/i18n/auto';
 
 type AuditMetricsResponse = {
   global: {
@@ -83,8 +84,8 @@ export default function SuperAdminAudit() {
   if (user.role !== 'superadmin') {
     return (
       <div className="p-6">
-        <h2 className="text-2xl font-bold text-viridian">Audit</h2>
-        <div className="mt-2 text-gray-700">Nicht erlaubt.</div>
+        <h2 className="text-2xl font-bold text-viridian">{autoT('ui_fa1703dd78a0')}</h2>
+        <div className="mt-2 text-gray-700">{autoT('ui_9bac42e57f50')}</div>
       </div>
     );
   }
@@ -94,36 +95,32 @@ export default function SuperAdminAudit() {
       {/* Header */}
       <div>
         <div>
-          <h2 className="text-3xl font-bold text-viridian">Audit & Metriken</h2>
-          <p className="text-gray-600 mt-1">Plattformweite Kennzahlen für die Systemübersicht.</p>
+          <h2 className="text-3xl font-bold text-viridian">{autoT('ui_14888b4249de')}</h2>
+          <p className="text-gray-600 mt-1">{autoT('ui_d4922dd11449')}</p>
         </div>
       </div>
 
       {isLoading && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
-          Lade Metriken…
-        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">{autoT('ui_ec8dc51c204f')}</div>
       )}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
-          Fehler beim Laden der Metriken.
-        </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">{autoT('ui_7413c458dc71')}</div>
       )}
 
       {data && (
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard icon={Building2} label="Organisationen" value={data.global.totalOrgs} accent="bg-blue-100 text-blue-600" />
-            <KpiCard icon={Users} label="Benutzer" value={data.global.totalUsers} accent="bg-emerald-100 text-emerald-600" />
-            <KpiCard icon={CalendarDays} label="Aktivitäten" value={data.global.totalActivities} accent="bg-amber-100 text-amber-600" />
-            <KpiCard icon={FolderKanban} label="Projekte" value={data.global.totalProjects} accent="bg-purple-100 text-purple-600" />
+            <KpiCard icon={Building2} label={autoT('ui_4048d8ed39f2')} value={data.global.totalOrgs} accent="bg-blue-100 text-blue-600" />
+            <KpiCard icon={Users} label={autoT('ui_bd26f3d230af')} value={data.global.totalUsers} accent="bg-emerald-100 text-emerald-600" />
+            <KpiCard icon={CalendarDays} label={autoT('ui_b6bf5f1a2033')} value={data.global.totalActivities} accent="bg-amber-100 text-amber-600" />
+            <KpiCard icon={FolderKanban} label={autoT('ui_3930f79f07e5')} value={data.global.totalProjects} accent="bg-purple-100 text-purple-600" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiCard icon={LogIn} label="Logins (letzte 7 Tage)" value={data.global.loginsLast7Days} accent="bg-sky-100 text-sky-600" />
-            <KpiCard icon={UserCheck} label="Aktive User (30 Tage)" value={data.global.activeUsersLast30Days} accent="bg-teal-100 text-teal-600" />
-            <KpiCard icon={HardDrive} label="Gesamtspeicher" value={formatBytes(totalStorage)} accent="bg-rose-100 text-rose-600" />
+            <KpiCard icon={LogIn} label={autoT('ui_86af4201fc3a')} value={data.global.loginsLast7Days} accent="bg-sky-100 text-sky-600" />
+            <KpiCard icon={UserCheck} label={autoT('ui_9be8d4388e20')} value={data.global.activeUsersLast30Days} accent="bg-teal-100 text-teal-600" />
+            <KpiCard icon={HardDrive} label={autoT('ui_5b8043b052a9')} value={formatBytes(totalStorage)} accent="bg-rose-100 text-rose-600" />
           </div>
 
           {/* Tables */}
@@ -131,24 +128,24 @@ export default function SuperAdminAudit() {
             {/* Orgs Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
-                <h3 className="font-semibold text-gray-900">Organisationen</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Sortiert nach Speicherverbrauch (Anhänge + Projektbilder)</p>
+                <h3 className="font-semibold text-gray-900">{autoT('ui_4048d8ed39f2')}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{autoT('ui_64b2ad3e9759')}</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
-                      <th className="text-left px-4 py-3 font-semibold">Name</th>
-                      <th className="text-right px-3 py-3 font-semibold">User</th>
-                      <th className="text-right px-3 py-3 font-semibold">Aktivitäten</th>
-                      <th className="text-right px-3 py-3 font-semibold">Projekte</th>
-                      <th className="text-right px-4 py-3 font-semibold">Speicher</th>
+                      <th className="text-left px-4 py-3 font-semibold">{autoT('ui_709a23220f2c')}</th>
+                      <th className="text-right px-3 py-3 font-semibold">{autoT('ui_9f8a2389a20c')}</th>
+                      <th className="text-right px-3 py-3 font-semibold">{autoT('ui_b6bf5f1a2033')}</th>
+                      <th className="text-right px-3 py-3 font-semibold">{autoT('ui_3930f79f07e5')}</th>
+                      <th className="text-right px-4 py-3 font-semibold">{autoT('ui_9f8e6d6309c2')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {orgsTop.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-gray-500">Keine Organisationen vorhanden.</td>
+                        <td colSpan={5} className="px-4 py-6 text-center text-gray-500">{autoT('ui_4204973208fd')}</td>
                       </tr>
                     )}
                     {orgsTop.map((o) => (
@@ -168,22 +165,22 @@ export default function SuperAdminAudit() {
             {/* Top Users Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
-                <h3 className="font-semibold text-gray-900">Top User (Logins)</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Letzte 30 Tage, basierend auf Audit-Events</p>
+                <h3 className="font-semibold text-gray-900">{autoT('ui_7a334a2fea9c')}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{autoT('ui_dc7d6956122a')}</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
-                      <th className="text-left px-4 py-3 font-semibold">Name</th>
-                      <th className="text-left px-4 py-3 font-semibold">E-Mail</th>
-                      <th className="text-right px-4 py-3 font-semibold">Logins</th>
+                      <th className="text-left px-4 py-3 font-semibold">{autoT('ui_709a23220f2c')}</th>
+                      <th className="text-left px-4 py-3 font-semibold">{autoT('ui_9eeffe4b7b6e')}</th>
+                      <th className="text-right px-4 py-3 font-semibold">{autoT('ui_9a11f6c8d302')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {(data.topUsers30d ?? []).length === 0 && (
                       <tr>
-                        <td colSpan={3} className="px-4 py-6 text-center text-gray-500">Noch keine Login-Daten vorhanden.</td>
+                        <td colSpan={3} className="px-4 py-6 text-center text-gray-500">{autoT('ui_1c4ca5a98acd')}</td>
                       </tr>
                     )}
                     {(data.topUsers30d ?? []).map((u) => (

@@ -13,6 +13,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { CategoryFormModal } from '@/components/settings/EntityFormModals';
+import { autoT } from '@/i18n/auto';
 
 export default function SettingsCategories() {
   const [showArchived, setShowArchived] = useState(false);
@@ -70,11 +71,9 @@ export default function SettingsCategories() {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4 gap-3">
         <div>
-          <h3 className="text-xl font-semibold text-viridian">Kategorien verwalten</h3>
+          <h3 className="text-xl font-semibold text-viridian">{autoT('ui_dacba0c14909')}</h3>
           {!canCreateOwn && (
-            <p className="taxonomy-lock-hint">
-              Lokale Kategorien sind in diesem Org-Kontext gesperrt. Sichtbar bleiben geerbte und bestehende Kategorien, neue lokale Kategorien sowie Bearbeiten, Archivieren und Löschen lokaler Kategorien sind hier nicht erlaubt.
-            </p>
+            <p className="taxonomy-lock-hint">{autoT('ui_881ee8504f25')}</p>
           )}
           <div className="text-xs text-gray-600 mt-1">
             <button
@@ -88,14 +87,12 @@ export default function SettingsCategories() {
               disabled={!canCreateOwn || defaultsMissing.length === 0}
               title={
                 !canCreateOwn
-                  ? 'Standard-Kategorien sind gesperrt, solange lokale Kategorien in diesem Org-Kontext nicht erlaubt sind'
+                  ? autoT('ui_006c7006dae2')
                   : defaultsMissing.length === 0
-                  ? 'Alle Standard-Kategorien sind bereits vorhanden'
+                  ? autoT('ui_ddd56354a8c9')
                   : undefined
               }
-            >
-              Standard‑Kategorien erstellen
-              {defaultsMissing.length > 0 ? ` (${defaultsMissing.length})` : ''}
+            >{autoT('ui_85373191e34a')}{defaultsMissing.length > 0 ? ` (${defaultsMissing.length})` : ''}
             </button>
           </div>
         </div>
@@ -105,8 +102,7 @@ export default function SettingsCategories() {
               checked={showArchived}
               onChange={setShowArchived}
               label={
-                <span>
-                  Archiv <span className="text-xs text-gray-500">({archivedCount})</span>
+                <span>{autoT('ui_d9431e38c8b6')}<span className="text-xs text-gray-500">({archivedCount})</span>
                 </span>
               }
             />
@@ -115,8 +111,8 @@ export default function SettingsCategories() {
             <button
               className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => canCreateOwn && setModal({ mode: 'create' })}
-              aria-label="Neue Kategorie"
-              title="Neue Kategorie"
+              aria-label={autoT('ui_f65f5413c438')}
+              title={autoT('ui_f65f5413c438')}
               disabled={!canCreateOwn}
             >
               <svg
@@ -132,7 +128,7 @@ export default function SettingsCategories() {
                 />
               </svg>
             </button>
-            <span className="tooltip-bubble">Neue Kategorie</span>
+            <span className="tooltip-bubble">{autoT('ui_f65f5413c438')}</span>
           </span>
         </div>
       </div>
@@ -141,7 +137,7 @@ export default function SettingsCategories() {
           const isInherited = !!c.isInherited;
           const canManage = c.canManage !== false;
           return (
-            <div key={c.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? 'bg-gray-50 border-gray-200' : ''}`}>
+            <div key={c.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? "bg-gray-50 border-gray-200" : ''}`}>
               <div className="min-w-0 flex items-center gap-3">
                 <span
                   className="inline-block h-4 w-4 rounded bg-slate-400"
@@ -151,8 +147,7 @@ export default function SettingsCategories() {
                   <div className="font-medium text-viridian flex items-center gap-2 flex-wrap">
                     <span>{c.name}</span>
                     {isInherited && (
-                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">
-                        geerbt{c.sourceOrgName ? ` aus ${c.sourceOrgName}` : ''}
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-cambridge-blue/15 text-cambridge-blue">{autoT('ui_a699c6f5aade')}{c.sourceOrgName ? ` aus ${c.sourceOrgName}` : ''}
                       </span>
                     )}
                   </div>
@@ -166,22 +161,20 @@ export default function SettingsCategories() {
                   <button
                     className="text-viridian hover:underline"
                     onClick={() => update.mutate({ id: c.id, data: { active: true } })}
-                  >
-                    Wiederherstellen
-                  </button>
+                  >{autoT('ui_98f492b5e015')}</button>
                 )}
                 {canManage && <button
                   className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
-                  title="Bearbeiten"
-                  aria-label={`Kategorie ${c.name} bearbeiten`}
+                  title={autoT('ui_104f3bfdc340')}
+                  aria-label={autoT('ui_fcff1db7c402', { value0: c.name })}
                   onClick={() => setModal({ mode: 'edit', category: c })}
                 >
                   <Pencil className="w-4 h-4 text-viridian" />
                 </button>}
                 {canManage && <button
                   className="danger-icon-button p-1.5"
-                  aria-label="Löschen"
-                  title="Löschen"
+                  aria-label={autoT('ui_ffa5a8a7e21d')}
+                  title={autoT('ui_ffa5a8a7e21d')}
                   onClick={async () => {
                     setConfirm({ open: true, category: c, loading: true });
                     try {
@@ -204,7 +197,7 @@ export default function SettingsCategories() {
           );
         })}
         {categories.length === 0 && (
-          <div className="text-gray-500 py-6">Keine sichtbaren Kategorien in diesem Org-Kontext.</div>
+          <div className="text-gray-500 py-6">{autoT('ui_0b0bf37c9175')}</div>
         )}
       </div>
 
@@ -242,35 +235,28 @@ export default function SettingsCategories() {
       )}
       <ConfirmModal
         open={confirm.open}
-        title="Kategorie löschen?"
+        title={autoT('ui_9a14f7499249')}
         message={
           <div className="space-y-2">
-            <p>
-              Wenn Sie eine Kategorie löschen, verlieren alle Aktivitäten mit dieser Kategorie die
-              Zuordnung. Historische Auswertungen nach Kategorien ändern sich rückwirkend.
-            </p>
+            <p>{autoT('ui_e88ad590cc58')}</p>
             {confirm.loading ? (
-              <p className="text-sm text-gray-500">Ermittle betroffene Einträge…</p>
+              <p className="text-sm text-gray-500">{autoT('ui_7a67a2dd16a7')}</p>
             ) : (
-              <p className="text-sm text-gray-700">
-                Betroffene Aktivitäten:{' '}
+              <p className="text-sm text-gray-700">{autoT('ui_8ae03f3803dd')}{' '}
                 <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong>
               </p>
             )}
-            <p className="text-sm text-gray-600">
-              Tipp: Statt zu löschen können Sie die Kategorie archivieren. Archivierte Kategorien
-              erscheinen nicht mehr in Auswahlfeldern, bleiben aber für bestehende Daten erhalten.
-            </p>
+            <p className="text-sm text-gray-600">{autoT('ui_bb97b7129505')}</p>
           </div>
         }
-        cancelLabel="Abbrechen"
-        secondaryLabel="Archivieren (empfohlen)"
+        cancelLabel={autoT('ui_07af7cb30fca')}
+        secondaryLabel={autoT('ui_49471caa9c1f')}
         onSecondaryConfirm={() => {
           if (confirm.category?.id)
             update.mutate({ id: confirm.category.id, data: { active: false } });
           setConfirm({ open: false });
         }}
-        confirmLabel="Endgültig löschen"
+        confirmLabel={autoT('ui_9df6718de96c')}
         onConfirm={() => {
           if (confirm.category?.id) remove.mutate(confirm.category.id);
           setConfirm({ open: false });
@@ -281,36 +267,28 @@ export default function SettingsCategories() {
       {/* Seed standard categories */}
       <ConfirmModal
         open={seedConfirm.open}
-        title="Standard‑Kategorien erstellen"
+        title={autoT('ui_85373191e34a')}
         message={
           <div className="space-y-2 text-sm">
             {defaultsMissing.length > 0 ? (
               <>
-                <p>
-                  Wähle aus, welche Standard-Kategorien angelegt werden sollen. Bereits
-                  vorhandene Kategorien werden weiterhin übersprungen.
-                </p>
+                <p>{autoT('ui_3874c984ab37')}</p>
                 <div className="flex items-center justify-between gap-3 text-xs">
                   <span className="text-gray-500">
-                    {selectedDefaultsMissing.length} von {defaultsMissing.length} ausgewählt
-                  </span>
+                    {selectedDefaultsMissing.length}{' '}{autoT('ui_445584edc4cc')}{' '}{defaultsMissing.length}{autoT('ui_1e8652188b4a')}</span>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       className="text-viridian hover:underline disabled:text-gray-400"
                       onClick={() => setSelectedDefaultNames(defaultsMissing.map((c) => c.name))}
                       disabled={selectedDefaultsMissing.length === defaultsMissing.length}
-                    >
-                      Alle
-                    </button>
+                    >{autoT('ui_4c7a986ffe2b')}</button>
                     <button
                       type="button"
                       className="text-gray-600 hover:underline disabled:text-gray-400"
                       onClick={() => setSelectedDefaultNames([])}
                       disabled={selectedDefaultsMissing.length === 0}
-                    >
-                      Keine
-                    </button>
+                    >{autoT('ui_3ce60e7427c1')}</button>
                   </div>
                 </div>
                 <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
@@ -343,15 +321,15 @@ export default function SettingsCategories() {
                   })}
                 </div>
                 {selectedDefaultsMissing.length === 0 && (
-                  <p className="text-xs text-red-600">Bitte mindestens eine Kategorie auswählen.</p>
+                  <p className="text-xs text-red-600">{autoT('ui_ed4b61a9a5b9')}</p>
                 )}
               </>
             ) : (
-              <p>Alle Standard‑Kategorien sind bereits vorhanden.</p>
+              <p>{autoT('ui_cc7ded44ce8b')}</p>
             )}
           </div>
         }
-        confirmLabel={seedConfirm.busy ? 'Erstelle…' : `Erstellen${selectedDefaultsMissing.length > 0 ? ` (${selectedDefaultsMissing.length})` : ''}`}
+        confirmLabel={seedConfirm.busy ? autoT('ui_75c41091cabe') : `${autoT('ui_dbc9fb8c7424')}${selectedDefaultsMissing.length > 0 ? ` (${selectedDefaultsMissing.length})` : ''}`}
         onConfirm={async () => {
           if (seedConfirm.busy) {
             return;
@@ -373,7 +351,7 @@ export default function SettingsCategories() {
         }}
         onCancel={() => setSeedConfirm({ open: false })}
         showCancel={true}
-        cancelLabel="Abbrechen"
+        cancelLabel={autoT('ui_07af7cb30fca')}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import { useId } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useEmbeddedImageSrc } from '@/components/ProtectedImage';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 type StatisticsBarChartDatum = {
   name: string;
@@ -145,7 +146,7 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
               formatter={(value, name, entry) =>
                 tooltipFormatter
                   ? tooltipFormatter(Number(value), String(name), entry as { payload?: T })
-                  : Number(value).toLocaleString('de-DE')
+                  : Number(value).toLocaleString(getCurrentIntlLocale())
               }
               labelFormatter={
                 tooltipLabelFormatter

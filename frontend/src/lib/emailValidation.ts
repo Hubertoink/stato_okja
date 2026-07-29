@@ -1,13 +1,15 @@
+import { autoT } from '@/i18n/auto';
+
 const ASCII_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function getEmailValidationMessage(value: string): string | null {
   const email = String(value || '').trim();
   if (!email) return null;
-  if (/[^\x00-\x7F]/.test(email)) {
-    return 'E-Mail-Adressen dürfen keine Umlaute oder andere Nicht-ASCII-Zeichen enthalten.';
+  if ([...email].some((character) => character.charCodeAt(0) > 0x7f)) {
+    return autoT('ui_1823bc28b1c6');
   }
   if (!ASCII_EMAIL_PATTERN.test(email)) {
-    return 'Bitte eine gültige E-Mail-Adresse eingeben.';
+    return autoT('ui_18434e4fc152');
   }
   return null;
 }

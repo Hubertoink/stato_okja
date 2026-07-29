@@ -56,14 +56,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Button, IconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
-
-const ACTIVITY_TYPE_LABELS: Record<string, string> = {
-  open_door: 'Offene Tür',
-  project_open: 'Projekt (offen)',
-  project_closed: 'Projekt (geschlossen)',
-  event: 'Veranstaltung',
-  outreach: 'Aufsuchend',
-};
+import { useTranslation } from 'react-i18next';
+import { formatDate, formatNumber } from '@/i18n/formatters';
+import { autoT } from '@/i18n/auto';
 
 function formatSelectedFilterBadge(
   label: string,
@@ -89,9 +84,7 @@ function formatSelectedFilterBadge(
 }
 
 function formatActivityDate(date?: string | null) {
-  const iso = (date || '').slice(0, 10);
-  const [year, month, day] = iso.split('-');
-  return `${day}.${month}.${year}`;
+  return date ? formatDate(date, { dateStyle: 'short' }) : '';
 }
 
 function toLocalIsoDate(date: Date) {
@@ -115,14 +108,15 @@ function ActivitiesPaginationControls({
   onLast: () => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation('activities');
   return (
-    <div className={`flex items-center ${compact ? 'gap-1.5' : 'gap-2'}`}>
+    <div className={`flex items-center ${compact ? "gap-1.5" : "gap-2"}`}>
       <button
         className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
         onClick={onFirst}
         disabled={page <= 1}
-        title="Erste Seite"
-        aria-label="Erste Seite"
+        title={t('pagination.first')}
+        aria-label={t('pagination.first')}
       >
         <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -130,20 +124,20 @@ function ActivitiesPaginationControls({
         className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
         onClick={onPrevious}
         disabled={page <= 1}
-        title="Vorherige Seite"
-        aria-label="Vorherige Seite"
+        title={t('pagination.previous')}
+        aria-label={t('pagination.previous')}
       >
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
       </button>
-      <span className={`${compact ? 'text-xs' : 'text-sm'} text-gray-700`}>
+      <span className={`${compact ? "text-xs" : "text-sm"} text-gray-700`}>
         {page} / {pageCount}
       </span>
       <button
         className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
         onClick={onNext}
         disabled={page >= pageCount}
-        title="Nächste Seite"
-        aria-label="Nächste Seite"
+        title={t('pagination.next')}
+        aria-label={t('pagination.next')}
       >
         <ChevronRight className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -151,8 +145,8 @@ function ActivitiesPaginationControls({
         className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
         onClick={onLast}
         disabled={page >= pageCount}
-        title="Letzte Seite"
-        aria-label="Letzte Seite"
+        title={t('pagination.last')}
+        aria-label={t('pagination.last')}
       >
         <ChevronsRight className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -161,6 +155,7 @@ function ActivitiesPaginationControls({
 }
 
 export default function Activities() {
+  const { t } = useTranslation('activities');
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -294,22 +289,24 @@ export default function Activities() {
   };
   const formatFilterDate = (iso?: string) => {
     if (!iso) return '';
-    const [year, month, day] = iso.split('-');
-    if (!year || !month || !day) return iso;
-    return `${day}.${month}.${year}`;
+    return formatActivityDate(iso) || iso;
   };
   const rangeBadgeLabel = (() => {
     const from = formatFilterDate(advanced.from);
     const to = formatFilterDate(advanced.to);
-    if (from && to) return from === to ? `Zeitraum: ${from}` : `Zeitraum: ${from} – ${to}`;
-    if (from) return `Zeitraum: ab ${from}`;
-    if (to) return `Zeitraum: bis ${to}`;
-    return 'Zeitraum';
+    if (from && to) return from === to ? t('filters.rangeExact', { date: from }) : t('filters.rangeBetween', { from, to });
+    if (from) return t('filters.rangeFrom', { date: from });
+    if (to) return t('filters.rangeTo', { date: to });
+    return t('filters.range');
   })();
   const exportCount = total;
-  const exportCountLabel = new Intl.NumberFormat('de-DE').format(exportCount);
-  const exportItemLabel = exportCount === 1 ? 'Aktivität' : 'Aktivitäten';
-  const typeNameById = useMemo(() => new Map(Object.entries(ACTIVITY_TYPE_LABELS)), []);
+  const exportCountLabel = formatNumber(exportCount);
+  const exportItemLabel = t('export.activity', { count: exportCount });
+  const activityTypeLabels = useMemo<Record<string, string>>(() => ({
+    open_door: t('types.open_door'), project_open: t('types.project_open'), project_closed: t('types.project_closed'),
+    event: t('types.event'), outreach: t('types.outreach'),
+  }), [t]);
+  const typeNameById = useMemo(() => new Map(Object.entries(activityTypeLabels)), [activityTypeLabels]);
   const locationNameById = useMemo(
     () => new Map(locations.map((location) => [location.id, location.name] as const)),
     [locations],
@@ -335,32 +332,32 @@ export default function Activities() {
     [cohorts],
   );
   const typesBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge('Typen', advanced.types, typeNameById),
-    [advanced.types, typeNameById],
+    () => formatSelectedFilterBadge(t('filters.types'), advanced.types, typeNameById),
+    [advanced.types, t, typeNameById],
   );
   const locationsBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge('Einrichtungen', advanced.locationIds, locationNameById),
-    [advanced.locationIds, locationNameById],
+    () => formatSelectedFilterBadge(t('filters.locations'), advanced.locationIds, locationNameById),
+    [advanced.locationIds, locationNameById, t],
   );
   const projectsBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge('Projekte', advanced.projectIds, projectNameById),
-    [advanced.projectIds, projectNameById],
+    () => formatSelectedFilterBadge(t('filters.projects'), advanced.projectIds, projectNameById),
+    [advanced.projectIds, projectNameById, t],
   );
   const categoriesBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge('Kategorien', advanced.categoryIds, categoryNameById),
-    [advanced.categoryIds, categoryNameById],
+    () => formatSelectedFilterBadge(t('filters.categories'), advanced.categoryIds, categoryNameById),
+    [advanced.categoryIds, categoryNameById, t],
   );
   const tagsBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge('Tags', advanced.tagIds, tagNameById),
-    [advanced.tagIds, tagNameById],
+    () => formatSelectedFilterBadge(t('filters.tags'), advanced.tagIds, tagNameById),
+    [advanced.tagIds, tagNameById, t],
   );
   const staffBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge('Mitarbeitende', advanced.staffIds, staffNameById),
-    [advanced.staffIds, staffNameById],
+    () => formatSelectedFilterBadge(t('filters.staff'), advanced.staffIds, staffNameById),
+    [advanced.staffIds, staffNameById, t],
   );
   const cohortsBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge('Kohorten', advanced.cohortIds, cohortNameById),
-    [advanced.cohortIds, cohortNameById],
+    () => formatSelectedFilterBadge(t('filters.cohorts'), advanced.cohortIds, cohortNameById),
+    [advanced.cohortIds, cohortNameById, t],
   );
   const executionStatusBadgeLabel = useMemo(() => {
     if (!advanced.executionStatuses?.length) return null;
@@ -409,20 +406,20 @@ export default function Activities() {
       `${cohort.name} (d)`,
     ]);
     const header = [
-      'Datum',
-      'Status',
-      'Typ',
-      'Titel',
-      'Projekt',
-      'Teilnehmende',
-      'm',
-      'w',
-      'd',
+      autoT('ui_df5c3008c765'),
+      autoT('ui_bae7d5be7082'),
+      autoT('ui_edcaf9aaa282'),
+      autoT('ui_950701e758d1'),
+      autoT('ui_20bda6d2e725'),
+      autoT('ui_a8a4d6b019af'),
+      autoT('ui_6b0d31c0d563'),
+      autoT('ui_aff024fe4ab0'),
+      autoT('ui_3c363836cf4e'),
       ...cohortHeaders,
-      'Dauer (min)',
-      'Kategorien',
-      'Tags',
-      'Notizen',
+      autoT('ui_d62550d402f1'),
+      autoT('ui_4e1e15e17610'),
+      autoT('ui_848eed0fbd54'),
+      autoT('ui_7e458d013900'),
     ];
     const rows = [header as (string | number)[]];
     const durationFrom = (activity: ExportRow) => {
@@ -463,7 +460,7 @@ export default function Activities() {
         ACTIVITY_EXECUTION_STATUS_LABELS[
           activity.executionStatus === 'cancelled' ? 'cancelled' : 'completed'
         ],
-        ACTIVITY_TYPE_LABELS[activity.type] || activity.type,
+        activityTypeLabels[activity.type] || activity.type,
         activity.title || '',
         activity.project?.title || '',
         total,
@@ -499,9 +496,9 @@ export default function Activities() {
     try {
       setExportModalOpen(false);
       setExporting(true);
-      setExportProgress('Aktivitäten werden geladen …');
+      setExportProgress(t('export.loadingActivities'));
       const list = await loadExportRows();
-      setExportProgress('Excel-Datei wird vorbereitet …');
+      setExportProgress(t('export.preparingFile'));
       await new Promise(requestAnimationFrame);
       const { rows, statusCol, typeCol, firstNumberCol, durationCol, categoriesCol, tagsCol, notesCol } =
         buildExportSheet(list);
@@ -624,10 +621,10 @@ export default function Activities() {
       }
 
       const wb = utils.book_new();
-      utils.book_append_sheet(wb, ws, 'Aktivitäten');
+      utils.book_append_sheet(wb, ws, autoT('ui_b6bf5f1a2033'));
 
       if (variant === 'styled') {
-        setExportProgress('Projekt-KPIs werden zusammengestellt …');
+        setExportProgress(autoT('ui_6cbf19e20da4'));
         const durationFrom = (activity: ExportRow) => {
           if (typeof activity.durationMinutes === 'number' && activity.durationMinutes >= 0) return activity.durationMinutes;
           const parseTime = (time?: string | null) => {
@@ -645,9 +642,9 @@ export default function Activities() {
             if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } }, alignment: { vertical: 'center', wrapText: true } };
           }
         };
-        const usedSheetNames = new Set<string>(['Aktivitäten']);
+        const usedSheetNames = new Set<string>([autoT('ui_b6bf5f1a2033')]);
         const uniqueSheetName = (value: string) => {
-          const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || 'Projekt').slice(0, 31);
+          const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || autoT('ui_20bda6d2e725')).slice(0, 31);
           let name = base;
           let suffix = 2;
           while (usedSheetNames.has(name)) {
@@ -675,21 +672,21 @@ export default function Activities() {
           const project = projectsById.get(projectId);
           const ratio = totalParticipants > 0
             ? `${Math.round((totalMale / totalParticipants) * 100)} % m · ${Math.round((totalFemale / totalParticipants) * 100)} % w · ${Math.round((totalDiverse / totalParticipants) * 100)} % d`
-            : 'Keine Teilnehmendendaten';
+            : autoT('ui_f489591ec2c6');
           const projectRows: Array<Array<string | number>> = [
-            ['Projekt-KPI', 'Wert'],
-            ['Projekt', project?.title || projectActivities[0]?.project?.title || 'Unbenanntes Projekt'],
-            ['Zeitraum', rangeBadgeLabel],
-            ['Aktivitäten', projectActivities.length],
-            ['Teilnehmende gesamt', totalParticipants],
+            [autoT('ui_5347abc77ca3'), autoT('ui_9d3fb5bb5707')],
+            [autoT('ui_20bda6d2e725'), project?.title || projectActivities[0]?.project?.title || autoT('ui_7ad11e328f86')],
+            [autoT('ui_fe359159c8ad'), rangeBadgeLabel],
+            [autoT('ui_b6bf5f1a2033'), projectActivities.length],
+            [autoT('ui_59c83f1c873f'), totalParticipants],
             ['Ø Besucher*innen', projectActivities.length ? Math.round((totalParticipants / projectActivities.length) * 10) / 10 : 0],
-            ['Geschlechterverhältnis', ratio],
+            [autoT('ui_0f4989b791e1'), ratio],
             ['Ø Dauer (min)', durations.length ? Math.round((durations.reduce((sum, value) => sum + value, 0) / durations.length) * 10) / 10 : '–'],
             [],
-            ['Datum', 'Typ', 'Titel', 'Teilnehmende', 'm', 'w', 'd', 'Dauer (min)'],
+            [autoT('ui_df5c3008c765'), autoT('ui_edcaf9aaa282'), autoT('ui_950701e758d1'), autoT('ui_a8a4d6b019af'), autoT('ui_6b0d31c0d563'), autoT('ui_aff024fe4ab0'), autoT('ui_3c363836cf4e'), autoT('ui_d62550d402f1')],
             ...projectActivities.map((activity) => [
               (activity.date || '').slice(0, 10),
-              ACTIVITY_TYPE_LABELS[activity.type] || activity.type,
+              activityTypeLabels[activity.type] || activity.type,
               activity.title || '',
               (activity.countTotal ?? ((activity.countMale || 0) + (activity.countFemale || 0) + (activity.countDiverse || 0))) || 0,
               activity.countMale || 0,
@@ -705,10 +702,10 @@ export default function Activities() {
             if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } } };
           }
           projectSheet['!cols'] = [{ wch: 20 }, { wch: 26 }, { wch: 30 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 14 }];
-          utils.book_append_sheet(wb, projectSheet, uniqueSheetName(project?.title || projectActivities[0]?.project?.title || 'Projekt'));
+          utils.book_append_sheet(wb, projectSheet, uniqueSheetName(project?.title || projectActivities[0]?.project?.title || autoT('ui_20bda6d2e725')));
         }
 
-        setExportProgress('Logbuch wird ergänzt …');
+        setExportProgress(autoT('ui_eb5ec187a1c8'));
         const projectFilter = advanced.projectIds?.length === 1 ? advanced.projectIds[0] : undefined;
         const allLogbookEntries = await fetchAllLogbookEntries({ from: advanced.from, to: advanced.to, projectId: projectFilter });
         const selectedProjectIds = advanced.projectIds || [];
@@ -716,7 +713,7 @@ export default function Activities() {
           ? allLogbookEntries.filter((entry) => entry.projectId && selectedProjectIds.includes(entry.projectId))
           : allLogbookEntries;
         const logbookRows: Array<Array<string | number>> = [
-          ['Datum', 'Typ', 'Titel', 'Status', 'Projekt', 'Eintrag', 'Highlights', 'Herausforderungen', 'Nächste Schritte'],
+          [autoT('ui_df5c3008c765'), autoT('ui_edcaf9aaa282'), autoT('ui_950701e758d1'), autoT('ui_bae7d5be7082'), autoT('ui_20bda6d2e725'), autoT('ui_d28fd7140d15'), autoT('ui_1f9c9c4e9b69'), autoT('ui_24cb5c6fa8e6'), autoT('ui_76231e1d047c')],
           ...logbookEntries.map((entry: LogbookEntry) => [
             (entry.occurredAt || '').slice(0, 10), entry.type, entry.title, entry.status,
             entry.project?.title || '', entry.body || '', entry.highlights || '', entry.challenges || '', entry.nextSteps || '',
@@ -728,13 +725,13 @@ export default function Activities() {
         logbookSheet['!cols'] = [{ wch: 14 }, { wch: 15 }, { wch: 30 }, { wch: 16 }, { wch: 26 }, { wch: 50 }, { wch: 32 }, { wch: 32 }, { wch: 32 }];
         utils.book_append_sheet(wb, logbookSheet, uniqueSheetName('Logbuch'));
       }
-      setExportProgress('Datei wird gespeichert …');
+      setExportProgress(t('export.savingFile'));
       await new Promise(requestAnimationFrame);
       writeFile(
         wb,
         variant === 'styled'
-          ? `Aktivitäten_Stato_${new Date().toISOString().slice(0, 10)}.xlsx`
-          : `Aktivitäten_Rohdaten_${new Date().toISOString().slice(0, 10)}.xlsx`,
+          ? `Stato_activities_${new Date().toISOString().slice(0, 10)}.xlsx`
+          : `Stato_activity_data_${new Date().toISOString().slice(0, 10)}.xlsx`,
       );
     } finally {
       setExporting(false);
@@ -749,11 +746,11 @@ export default function Activities() {
   return (
     <div>
       <PageHeader
-        title="Aktivitäten"
+        title={t('title')}
         actions={(
           <DemoHoverHint
-          title="Aktivitaeten-Werkzeuge"
-          description="Hier suchst, exportierst, filterst und erstellst du Aktivitaeten. Der erweiterte Filter kombiniert Zeitraum, Typen, Projekte, Tags und Status."
+          title={autoT('ui_06724a5f3126')}
+          description={autoT('ui_10651012f6b2')}
           placement="bottom"
           align="end"
         >
@@ -764,8 +761,8 @@ export default function Activities() {
                 <div
                   className={`absolute top-full mt-2 z-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-2 shadow-xl backdrop-blur-md ${
                     isMobile
-                      ? '-right-1 w-[min(16rem,calc(100vw-1.25rem))] max-w-[calc(100vw-1.25rem)]'
-                      : 'right-0 w-[min(18rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)]'
+                      ? "-right-1 w-[min(16rem,calc(100vw-1.25rem))] max-w-[calc(100vw-1.25rem)]"
+                      : "right-0 w-[min(18rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)]"
                   }`}
                 >
                   <div className="relative">
@@ -774,7 +771,7 @@ export default function Activities() {
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Titel / Projekt suchen"
+                      placeholder={t('search.placeholder')}
                       className="mt-0 py-2 pl-9 pr-10"
                       autoFocus
                     />
@@ -783,8 +780,8 @@ export default function Activities() {
                         type="button"
                         onClick={clearSearch}
                         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                        aria-label="Suche löschen"
-                        title="Suche löschen"
+                        aria-label={t('search.clear')}
+                        title={t('search.clear')}
                       >
                         <XCircle className="w-4 h-4" />
                       </button>
@@ -794,8 +791,8 @@ export default function Activities() {
               )}
               <IconButton
                 variant="secondary"
-                title={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
-                aria-label={searchOpen ? 'Suche ausblenden' : 'Suche öffnen'}
+                title={searchOpen ? t('search.close') : t('search.open')}
+                aria-label={searchOpen ? t('search.close') : t('search.open')}
                 onClick={() => setSearchOpen((open) => !open)}
               >
                 <Search className="w-5 h-5" />
@@ -804,8 +801,8 @@ export default function Activities() {
           <IconButton
             variant="secondary"
             className="relative md:hidden"
-            title="Excel-Export"
-            aria-label="Excel-Export"
+            title={t('export.title')}
+            aria-label={t('export.title')}
             disabled={exporting || exportCount === 0}
             onClick={() => setExportModalOpen(true)}
           >
@@ -814,8 +811,8 @@ export default function Activities() {
           <Button
             variant="secondary"
             className="hidden md:inline-flex"
-            title="Excel-Export"
-            aria-label="Excel-Export"
+            title={t('export.title')}
+            aria-label={t('export.title')}
             disabled={exporting || exportCount === 0}
             onClick={() => setExportModalOpen(true)}
           >
@@ -823,10 +820,10 @@ export default function Activities() {
           </Button>
           <IconButton
             variant="secondary"
-            className={`touch-manipulation ${hasAdvancedFilters ? 'border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20' : ''}`}
+            className={`touch-manipulation ${hasAdvancedFilters ? "border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20" : ''}`}
             onClick={() => setFilterDrawer(true)}
-            title="Erweiterter Filter"
-            aria-label="Erweiterter Filter"
+            title={t('filters.advanced')}
+            aria-label={t('filters.advanced')}
           >
             <SlidersHorizontal className="h-4 w-4" />
           </IconButton>
@@ -838,8 +835,8 @@ export default function Activities() {
               if (isMobile) navigate('/activities/new/select-project');
               else setPicker(true);
             }}
-            title="Neue Aktivität"
-            aria-label="Neue Aktivität"
+            title={t('actions.new')}
+            aria-label={t('actions.new')}
           >
             <Plus className="w-5 h-5" />
           </IconButton>
@@ -848,7 +845,7 @@ export default function Activities() {
             className="hidden md:inline-flex"
             onClick={() => setPicker(true)}
           >
-            + Neue Aktivität
+            + {t('actions.new')}
           </Button>
             </div>
           </div>
@@ -858,24 +855,24 @@ export default function Activities() {
 
       {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
       <DemoHoverHint
-        title="Filteruebersicht"
-        description="Diese Leiste zeigt Trefferzahl und aktive Filter. Einzelne Filterchips lassen sich entfernen, der Reset-Knopf setzt die Ansicht zurueck."
+        title={autoT('ui_c3a80d1a3f64')}
+        description={autoT('ui_6b1b1e7aeefd')}
         placement="bottom"
       >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex flex-wrap gap-2 text-xs">
             <Badge variant="count">
-              {activitiesLoading ? 'Treffer werden geladen…' : `Treffer: ${exportCountLabel}`}
+              {activitiesLoading ? t('filters.resultsLoading') : t('filters.results', { count: exportCountLabel })}
             </Badge>
           {searchTerm.trim() ? (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-azure-web text-viridian">
-              <span>Suche: {searchTerm.trim()}</span>
+              <span>{t('search.label', { value: searchTerm.trim() })}</span>
               <button
                 type="button"
                 onClick={clearSearch}
                 className="rounded-full text-viridian/80 hover:text-viridian"
-                aria-label="Suche entfernen"
-                title="Suche entfernen"
+                aria-label={t('search.clear')}
+                title={t('search.clear')}
               >
                 <XCircle className="w-3.5 h-3.5" />
               </button>
@@ -890,7 +887,7 @@ export default function Activities() {
           {categoriesBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{categoriesBadgeLabel}</span> : null}
           {advanced.uncategorized ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Unkategorisiert
+              {t('filters.uncategorized')}
             </span>
           ) : null}
           {tagsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{tagsBadgeLabel}</span> : null}
@@ -901,38 +898,36 @@ export default function Activities() {
           ) : null}
           {advanced.hasNotes ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Nur mit Notizen
+              {t('filters.onlyNotes')}
             </span>
           ) : null}
           {(typeof advanced.participantsMin === 'number' ||
             typeof advanced.participantsMax === 'number') && (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Teilnehmende:{' '}
-              {typeof advanced.participantsMin === 'number' &&
+              {t('filters.participants', { value: typeof advanced.participantsMin === 'number' &&
               typeof advanced.participantsMax === 'number'
                 ? `${advanced.participantsMin}–${advanced.participantsMax}`
                 : typeof advanced.participantsMin === 'number'
                   ? `≥ ${advanced.participantsMin}`
-                  : `≤ ${advanced.participantsMax}`}
+                  : `≤ ${advanced.participantsMax}` })}
             </span>
           )}
           {(typeof advanced.durationMin === 'number' ||
             typeof advanced.durationMax === 'number') && (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              Dauer:{' '}
-              {typeof advanced.durationMin === 'number' && typeof advanced.durationMax === 'number'
-                ? `${advanced.durationMin}–${advanced.durationMax} Min.`
+              {t('filters.duration', { value: typeof advanced.durationMin === 'number' && typeof advanced.durationMax === 'number'
+                ? `${advanced.durationMin}–${advanced.durationMax}`
                 : typeof advanced.durationMin === 'number'
-                  ? `≥ ${advanced.durationMin} Min.`
-                  : `≤ ${advanced.durationMax} Min.`}
+                  ? `≥ ${advanced.durationMin}`
+                  : `≤ ${advanced.durationMax}` })}
             </span>
           )}
           {hasAdvancedFilters && (
             <button
               type="button"
               className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-azure-web text-viridian hover:bg-cambridge-blue/20 transition-colors"
-              title="Filter zurücksetzen"
-              aria-label="Filter zurücksetzen"
+              title={t('filters.reset')}
+              aria-label={t('filters.reset')}
               onClick={() => {
                 setAdvanced({});
                 setOrder('desc');
@@ -963,8 +958,8 @@ export default function Activities() {
       {/* Activity List */}
       {/* Desktop Table */}
       <DemoHoverHint
-        title="Aktivitaetenliste"
-        description="Die Tabelle zeigt die gefilterten Eintraege mit Datum, Typ, Teilnehmenden und Status. Ueber das Stift-Symbol oeffnest du die Bearbeitung."
+        title={autoT('ui_dab1e02ef964')}
+        description={autoT('ui_a20ea17f2e7c')}
         placement="bottom"
         className="demo-hover-hint-anchor-top"
       >
@@ -976,13 +971,13 @@ export default function Activities() {
                 <button
                   type="button"
                   className="inline-flex items-center gap-1 hover:text-viridian"
-                  title="Nach Datum sortieren"
+                  title={t('table.sortDate')}
                   onClick={() => {
-                    setOrder((o) => (o === 'desc' ? 'asc' : 'desc'));
+                    setOrder((o) => (o === 'desc' ? "asc" : "desc"));
                     setPage(1);
                   }}
                 >
-                  Datum
+                  {t('table.date')}
                   {order === 'desc' ? (
                     <ArrowDownWideNarrow className="w-4 h-4" />
                   ) : (
@@ -990,18 +985,18 @@ export default function Activities() {
                   )}
                 </button>
               </th>
-              <th className="activities-col-type px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700">Typ</th>
+              <th className="activities-col-type px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700">{t('table.type')}</th>
               <th className="activities-col-title px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
-                Titel / Projekt
+                {t('table.titleProject')}
               </th>
               <th className="activities-col-participants px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
-                Teilnehmende
+                {t('table.participants')}
               </th>
-              <th className="activities-col-duration px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 hidden lg:table-cell">Dauer</th>
+              <th className="activities-col-duration px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 hidden lg:table-cell">{t('table.duration')}</th>
               <th className="activities-col-meta px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 hidden xl:table-cell">
-                Kategorien, Tags & Notizen
+                {t('table.categoriesTagsNotes')}
               </th>
-              <th className="activities-col-action px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">Aktion</th>
+              <th className="activities-col-action px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">{t('table.action')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -1011,7 +1006,7 @@ export default function Activities() {
                   {(() => {
                     const isToday = (a.date || '').slice(0, 10) === todayIso;
                     return (
-                      <span className={isToday ? 'font-semibold text-viridian' : 'text-gray-700'}>
+                      <span className={isToday ? "font-semibold text-viridian" : "text-gray-700"}>
                         {formatActivityDate(a.date)}
                       </span>
                     );
@@ -1019,16 +1014,7 @@ export default function Activities() {
                 </td>
                 <td className="activities-col-type px-3 lg:px-6 py-4 text-sm">
                   {(() => {
-                    const label =
-                      (
-                        {
-                          open_door: 'Offene Tür',
-                          project_open: 'Projekt (offen)',
-                          project_closed: 'Projekt (geschlossen)',
-                          event: 'Veranstaltung',
-                          outreach: 'Aufsuchend',
-                        } as Record<string, string>
-                      )[a.type] || a.type;
+                    const label = activityTypeLabels[a.type] || a.type;
                     const typeBgClass: Record<string, string> = {
                       open_door: 'bg-emerald-700 text-white',
                       project_open: 'bg-viridian text-white',
@@ -1057,8 +1043,7 @@ export default function Activities() {
                   ) : (
                     <>
                       <span className="font-medium">{a.countTotal ?? 0}</span>
-                      <span className="text-gray-500 text-xs ml-1 hidden lg:inline">
-                        (m:{a.countMale ?? 0}, w:{a.countFemale ?? 0}, d:{a.countDiverse ?? 0})
+                      <span className="text-gray-500 text-xs ml-1 hidden lg:inline">{autoT('ui_c2a30a5a251c')}{a.countMale ?? 0}{autoT('ui_115f6e7d14bf')}{a.countFemale ?? 0}{autoT('ui_7578fb7a5a2f')}{a.countDiverse ?? 0})
                       </span>
                     </>
                   )}
@@ -1145,8 +1130,8 @@ export default function Activities() {
                     type="button"
                     onClick={() => setEditId(a.id)}
                     className="activity-edit-button relative z-10 p-2"
-                    title="Bearbeiten"
-                    aria-label="Bearbeiten"
+                    title={t('actions.edit')}
+                    aria-label={t('actions.edit')}
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
@@ -1156,7 +1141,7 @@ export default function Activities() {
             {activities.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-3 lg:px-6 py-6 text-center text-gray-500 text-sm">
-                  Keine Aktivitäten im Zeitraum.
+                  {t('table.noActivities')}
                 </td>
               </tr>
             )}
@@ -1165,10 +1150,10 @@ export default function Activities() {
         </div>
       </DemoHoverHint>
       {/* Pagination Controls */}
-      <div className={`mt-4 mb-4 flex items-center gap-3 md:mb-0 ${total > 0 ? 'justify-between' : 'justify-end'}`}>
+      <div className={`mt-4 mb-4 flex items-center gap-3 md:mb-0 ${total > 0 ? "justify-between" : "justify-end"}`}>
         {total > 0 ? (
           <div className="text-sm text-gray-600">
-            {`Seite ${page} von ${pageCount} · ${total} Einträge`}
+            {t('pagination.summary', { page, pageCount, total: formatNumber(total) })}
           </div>
         ) : null}
         <ActivitiesPaginationControls
@@ -1185,7 +1170,7 @@ export default function Activities() {
       {activitiesIsError && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
           <span>
-            Aktivitäten konnten nicht geladen werden. Bitte erneut versuchen.
+            {t('table.loadError')}
           </span>
           <button
             type="button"
@@ -1194,15 +1179,15 @@ export default function Activities() {
               void refetchActivities();
             }}
           >
-            Erneut laden
+            {t('actions.retry')}
           </button>
         </div>
       )}
 
       {/* Mobile Cards */}
       <DemoHoverHint
-        title="Aktivitaetenliste"
-        description="Auf kleinen Bildschirmen oeffnet ein Tipp auf die Karte die Aktivitaet. Die Demo-Hinweise erscheinen bei Mausbedienung."
+        title={autoT('ui_dab1e02ef964')}
+        description={autoT('ui_ae48dac7af3d')}
       >
         <div className="relative min-h-[12rem] pt-2 md:hidden">
         <div className="space-y-3">
@@ -1212,7 +1197,7 @@ export default function Activities() {
               className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-azure-web/50 focus:outline-none focus:ring-2 focus:ring-viridian/40 relative overflow-hidden"
               role="button"
               tabIndex={0}
-              aria-label="Aktivität öffnen"
+              aria-label={t('actions.open')}
               onClick={() => {
                 if (isMobile)
                   navigate(`/activities/${a.id}`, {
@@ -1262,21 +1247,13 @@ export default function Activities() {
                   {(() => {
                     const isToday = (a.date || '').slice(0, 10) === todayIso;
                     return (
-                      <div className={`text-sm ${isToday ? 'font-semibold text-viridian' : 'text-gray-500'}`}>
+                      <div className={`text-sm ${isToday ? "font-semibold text-viridian" : "text-gray-500"}`}>
                         {formatActivityDate(a.date)}
                       </div>
                     );
                   })()}
                   <div className="font-semibold text-viridian">
-                    {(
-                      {
-                        open_door: 'Offene Tür',
-                        project_open: 'Projekt (offen)',
-                        project_closed: 'Projekt (geschlossen)',
-                        event: 'Veranstaltung',
-                        outreach: 'Aufsuchend',
-                      } as Record<string, string>
-                    )[a.type] || a.type}
+                    {activityTypeLabels[a.type] || a.type}
                   </div>
                 </div>
                 {(() => {
@@ -1295,8 +1272,7 @@ export default function Activities() {
                     })();
                   return duration ? (
                     <span className="text-xs px-2 py-1 bg-viridian text-white rounded">
-                      {duration} min
-                    </span>
+                      {duration}{autoT('ui_b6c935d4f3c7')}</span>
                   ) : null;
                 })()}
               </div>
@@ -1315,7 +1291,7 @@ export default function Activities() {
                     const total = (a.countTotal ?? m + w + d) || 0;
                     return (
                       <>
-                        Teilnehmende: {total} (m:{m}, w:{w}, d:{d})
+                        {t('mobile.participants', { total, male: m, female: w, diverse: d })}
                       </>
                     );
                   })()
@@ -1355,17 +1331,17 @@ export default function Activities() {
           {activities.length === 0 && !activitiesLoading && !activitiesFetching && (
             <EmptyState
               className="mx-3 mb-3"
-              description="Passe den Zeitraum oder die Filter an, um weitere Aktivitäten zu sehen."
-              title="Keine Aktivitäten im Zeitraum"
+              description={t('table.adjustFilters')}
+              title={t('table.noActivities')}
             />
           )}
         </div>
         </div>
       </DemoHoverHint>
-      <div className={`mt-4 flex items-center gap-3 md:hidden ${total > 0 ? 'justify-between' : 'justify-end'}`}>
+      <div className={`mt-4 flex items-center gap-3 md:hidden ${total > 0 ? "justify-between" : "justify-end"}`}>
         {total > 0 ? (
           <div className="text-sm text-gray-600">
-            {`Seite ${page} von ${pageCount} · ${total} Einträge`}
+            {t('pagination.summary', { page, pageCount, total: formatNumber(total) })}
           </div>
         ) : null}
         <ActivitiesPaginationControls
@@ -1410,18 +1386,15 @@ export default function Activities() {
         onClose={() => {
           if (!exporting) setExportModalOpen(false);
         }}
-        title="Excel-Export"
+        title={t('export.title')}
         maxWidth="md"
       >
         <div className="space-y-4 text-sm text-gray-700">
           <p>
-            Es werden <span className="font-semibold text-viridian">{exportCountLabel}</span>{' '}
-            {exportItemLabel} mit den aktuell gesetzten Filtern exportiert.
+            {t('export.modalIntro', { count: exportCountLabel, item: exportItemLabel })}
           </p>
           <p className="text-gray-600">
-            Du kannst zwischen einer reinen Datendatei und einer Stato-formatierten Excel-Datei
-            wählen. Beide Varianten enthalten Status, Teilnehmende, Kategorien, Tags und Notizen;
-            das Stato-Format ergänzt Projekt-KPIs und das Logbuch.
+            {t('export.modalText')}
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             <button
@@ -1430,9 +1403,9 @@ export default function Activities() {
               onClick={() => void handleExportConfirm('raw')}
               disabled={exporting || exportCount === 0}
             >
-              <div className="font-semibold text-gray-900">Nur Daten (.xlsx)</div>
+              <div className="font-semibold text-gray-900">{t('export.rawTitle')}</div>
               <div className="mt-1 text-xs text-gray-600">
-                Schlichte Tabelle ohne zusätzliche Farbgestaltung. Gut für Weiterverarbeitung und eigene Pivot-Auswertungen.
+                {t('export.rawDescription')}
               </div>
             </button>
             <button
@@ -1441,9 +1414,9 @@ export default function Activities() {
               onClick={() => void handleExportConfirm('styled')}
               disabled={exporting || exportCount === 0}
             >
-              <div className="font-semibold text-viridian">Stato-Format (.xlsx)</div>
+              <div className="font-semibold text-viridian">{t('export.styledTitle')}</div>
               <div className="mt-1 text-xs text-gray-600">
-                Mit Header-Farben, Statusmarkierung und zusätzlichen Reitern je Projekt mit KPIs sowie einem Logbuch-Reiter.
+                {t('export.styledDescription')}
               </div>
             </button>
           </div>
@@ -1454,7 +1427,7 @@ export default function Activities() {
               onClick={() => setExportModalOpen(false)}
               disabled={exporting}
             >
-              Abbrechen
+              {t('export.cancel')}
             </button>
           </div>
         </div>

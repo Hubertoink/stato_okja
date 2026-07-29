@@ -9,6 +9,7 @@ import {
   ACTIVITY_EXECUTION_STATUS_LABELS,
   normalizeActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
+import { autoT } from '@/i18n/auto';
 
 type ColInfo = { wch?: number };
 type WorkSheet = Record<string, unknown> & {
@@ -40,9 +41,9 @@ function computeDurationMinutes(a: Activity): number {
 
 function typeLabel(code?: string | null): string {
   const map: Record<string, string> = {
-    open_door: 'Offene Tür',
-    project_open: 'Projekt (offen)',
-    project_closed: 'Projekt (geschlossen)',
+    open_door: autoT('ui_a80778b6b148'),
+    project_open: autoT('ui_00d882fbb5d4'),
+    project_closed: autoT('ui_8f256393653e'),
     event: 'Veranstaltung',
     outreach: 'Aufsuchend',
   };
@@ -114,32 +115,32 @@ export default function ExportModal({
 
     return [
       {
-        label: 'Dieses Jahr',
+        label: autoT('ui_903ce165f687'),
         from: isoDate(new Date(year, 0, 1)),
         to: today,
       },
       {
-        label: 'Diesen Monat',
+        label: autoT('ui_f172e749dcc9'),
         from: isoDate(new Date(year, month, 1)),
         to: today,
       },
       {
-        label: 'Letzten Monat',
+        label: autoT('ui_46ae17ce0436'),
         from: isoDate(lastMonthStart),
         to: isoDate(lastMonthEnd),
       },
       {
-        label: 'Letzte 3 Monate',
+        label: autoT('ui_2c02931c55c8'),
         from: isoDate(new Date(year, month - 3, day)),
         to: today,
       },
       {
-        label: 'Letzte 6 Monate',
+        label: autoT('ui_dca13e4c1f6d'),
         from: isoDate(new Date(year, month - 6, day)),
         to: today,
       },
       {
-        label: 'Letztes Jahr',
+        label: autoT('ui_6e1af626e810'),
         from: isoDate(new Date(lastYear, 0, 1)),
         to: isoDate(new Date(lastYear, 11, 31)),
       },
@@ -213,24 +214,24 @@ export default function ExportModal({
   const downloadRaw = async () => {
     const rows: string[][] = [];
     const header = [
-      'datum',
-      'status',
-      'start',
-      'ende',
-      'dauer_min',
-      'typ',
-      'titel',
-      'projekt',
-      'projekt_typ',
-      'kategorien',
-      'tags',
-      'ort',
-      'mitarbeitende',
-      'teilnehmende_total',
-      'm',
-      'w',
-      'd',
-      'notizen',
+      autoT('ui_34117b8ea553'),
+      autoT('ui_48a3661d8464'),
+      autoT('ui_2b020927d3c6'),
+      autoT('ui_4c1e1f650759'),
+      autoT('ui_a536e9cb79a2'),
+      autoT('ui_2b88004726d6'),
+      autoT('ui_b7d49c2f437c'),
+      autoT('ui_d77644e1c62f'),
+      autoT('ui_62f7a7aef8a4'),
+      autoT('ui_f5cbdf65b7d5'),
+      autoT('ui_9b6ef5a1a499'),
+      autoT('ui_f99cb097dafb'),
+      autoT('ui_445829d2c92b'),
+      autoT('ui_ed9839e8f1c1'),
+      autoT('ui_6b0d31c0d563'),
+      autoT('ui_aff024fe4ab0'),
+      autoT('ui_3c363836cf4e'),
+      autoT('ui_7cb4078ba70e'),
       ...cohortColumns.map((c) => `kohorte:${c.name}`),
     ];
     rows.push(header);
@@ -272,8 +273,8 @@ export default function ExportModal({
       { key: string; projekt: string; kategorie: string; typ: string; items: Activity[] }
     >();
     for (const a of activities) {
-      const key = a.project?.id || `ohne-projekt:${a.project?.title || a.type}`;
-      const projekt = a.project?.title || 'Ohne Projekt';
+      const key = a.project?.id || autoT('ui_cef927f53a80', { value0: a.project?.title || a.type });
+      const projekt = a.project?.title || autoT('ui_5b4a4a84148c');
       const kategorie = projectMainCategoryName(a);
       const typ = typeLabel(a.project?.type || a.type || '');
       const gk = groups.get(key);
@@ -284,18 +285,18 @@ export default function ExportModal({
     // Dynamic cohort columns by name
     const cohortNames = Array.from(cohortIndex.values()).map((c) => c.name);
     const header = [
-      'projekt',
-      'kategorie',
-      'typ',
-      'anzahl',
-      'stattgefunden',
-      'ausgefallen',
-      'dauer_avg_min',
-      'm_avg',
-      'w_avg',
-      'd_avg',
+      autoT('ui_d77644e1c62f'),
+      autoT('ui_f3649f6e7c37'),
+      autoT('ui_2b88004726d6'),
+      autoT('ui_e90a0a712c36'),
+      autoT('ui_b098b52ea66a'),
+      autoT('ui_7e0cccc305b3'),
+      autoT('ui_05fd97d50ead'),
+      autoT('ui_2af27cb5619b'),
+      autoT('ui_ed2b859becc9'),
+      autoT('ui_3ef29aafb867'),
       ...cohortNames.map((n) => `kohorte:${n}_avg`),
-      'gesamt_avg',
+      autoT('ui_f974160ee3f9'),
     ];
     const rows: (string | number)[][] = [header];
 
@@ -376,8 +377,8 @@ export default function ExportModal({
       { key: string; projekt: string; kategorie: string; typ: string; items: Activity[] }
     >();
     for (const a of activities) {
-      const key = a.project?.id || `ohne-projekt:${a.project?.title || a.type}`;
-      const projekt = a.project?.title || 'Ohne Projekt';
+      const key = a.project?.id || autoT('ui_cef927f53a80', { value0: a.project?.title || a.type });
+      const projekt = a.project?.title || autoT('ui_5b4a4a84148c');
       const kategorie = projectMainCategoryName(a);
       const typ = typeLabel(a.project?.type || a.type || '');
       const gk = groups.get(key);
@@ -389,19 +390,19 @@ export default function ExportModal({
     // Two header rows: group labels (row 1) + column titles (row 2)
     const spacerColLabel = '';
     const subHeader = [
-      'Projekt',
-      'Kategorie',
-      'Typ',
-      'Anzahl',
-      'Stattgefunden',
-      'Ausgefallen',
-      'Ø Dauer (Min.)',
-      'Ø m',
-      'Ø w',
-      'Ø d',
+      autoT('ui_20bda6d2e725'),
+      autoT('ui_358210386a4f'),
+      autoT('ui_edcaf9aaa282'),
+      autoT('ui_a0015435c276'),
+      autoT('ui_3074a0ce7457'),
+      autoT('ui_af6ed3ac625b'),
+      autoT('ui_86cfa6aedf1a'),
+      autoT('ui_42d7d7b3373e'),
+      autoT('ui_578836fdf9b1'),
+      autoT('ui_bed447b89d14'),
       spacerColLabel,
       ...cohortNames.map((n) => `Ø ${n}`),
-      'Ø Gesamt',
+      autoT('ui_923bb5d3bd98'),
     ];
     const topHeader: string[] = new Array(subHeader.length).fill('');
     // Place group labels: Geschlecht over m/w/d, Alterskohorten over cohort columns
@@ -484,24 +485,24 @@ export default function ExportModal({
     };
     // Raw sheet
     const rawHeader = [
-      'Datum',
-      'Status',
-      'Start',
-      'Ende',
-      'Dauer (Minuten)',
-      'Typ',
-      'Titel',
-      'Projekt',
-      'Projekt-Typ',
-      'Kategorien',
-      'Tags',
-      'Ort',
-      'Mitarbeitende',
-      'Teilnehmende (Total)',
-      'M',
-      'W',
-      'D',
-      'Notizen',
+      autoT('ui_df5c3008c765'),
+      autoT('ui_bae7d5be7082'),
+      autoT('ui_952f375412e8'),
+      autoT('ui_920e9c468e40'),
+      autoT('ui_3e2b606422c8'),
+      autoT('ui_edcaf9aaa282'),
+      autoT('ui_950701e758d1'),
+      autoT('ui_20bda6d2e725'),
+      autoT('ui_34fb1b25fac4'),
+      autoT('ui_4e1e15e17610'),
+      autoT('ui_848eed0fbd54'),
+      autoT('ui_d95f9e67114d'),
+      autoT('ui_93d76ef57f64'),
+      autoT('ui_1fd116ed38b8'),
+      autoT('ui_c63ae6dd4fc9'),
+      autoT('ui_e2415cb7f63d'),
+      autoT('ui_50c9e8d5fc98'),
+      autoT('ui_7e458d013900'),
       ...cohortColumns.map((c) => `Kohorte: ${c.name}`),
     ];
     const rawRows = activities.map((a) => {
@@ -615,8 +616,8 @@ export default function ExportModal({
     }
 
     const wb = utils.book_new();
-    utils.book_append_sheet(wb, rawSheet, 'Rohdaten');
-    utils.book_append_sheet(wb, consSheet, 'Konsolidiert');
+    utils.book_append_sheet(wb, rawSheet, autoT('ui_ba3d8c7e9fce'));
+    utils.book_append_sheet(wb, consSheet, autoT('ui_c0d622468344'));
     const arrayBuffer = write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
     const blob = new Blob([arrayBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -629,7 +630,7 @@ export default function ExportModal({
     successLabel: string,
   ) => {
     if (!from || !to) {
-      setSaveStatus('Bitte einen gültigen Datumsbereich auswählen.');
+      setSaveStatus(autoT('ui_15ec3fbfb3f5'));
       return;
     }
 
@@ -646,12 +647,10 @@ export default function ExportModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Datenexport" maxWidth="lg">
+    <Modal open={open} onClose={onClose} title={autoT('ui_03423082c4e8')} maxWidth="lg">
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="text-sm text-gray-600">
-            Von
-            <input
+          <label className="text-sm text-gray-600">{autoT('ui_a4b078f9eb7b')}<input
               type="date"
               className="block mt-1 w-full border rounded px-3 py-2"
               value={from}
@@ -663,9 +662,7 @@ export default function ExportModal({
               }}
             />
           </label>
-          <label className="text-sm text-gray-600">
-            Bis
-            <input
+          <label className="text-sm text-gray-600">{autoT('ui_0afaa0e566a1')}<input
               type="date"
               className="block mt-1 w-full border rounded px-3 py-2"
               value={to}
@@ -676,7 +673,7 @@ export default function ExportModal({
           </label>
         </div>
         <div className="space-y-2">
-          <div className="text-xs font-medium text-gray-500">Schnellauswahl</div>
+          <div className="text-xs font-medium text-gray-500">{autoT('ui_37b72d9d418d')}</div>
           <div className="flex flex-wrap gap-2">
             {dateRangePresets.map((preset) => {
               const active = from === preset.from && to === preset.to;
@@ -686,8 +683,8 @@ export default function ExportModal({
                   type="button"
                   className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                     active
-                      ? 'bg-viridian text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? "bg-viridian text-white shadow-sm"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                   onClick={() => applyDateRangePreset(preset)}
                   aria-pressed={active}
@@ -698,51 +695,35 @@ export default function ExportModal({
             })}
           </div>
         </div>
-        <div className="text-xs text-gray-500">
-          Zeitraum: {from} bis {effectiveTo} · Aktivitäten: {activities.length}
+        <div className="text-xs text-gray-500">{autoT('ui_deec288a9b9b')}{from}{' '}{autoT('ui_1094cd06521b')}{' '}{effectiveTo}{' '}{autoT('ui_fd8ac07baabd')}{' '}{activities.length}
         </div>
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-          Der Export wird direkt als normaler Browser-Download gestartet und im Standard-Downloadordner gespeichert.
-        </div>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">{autoT('ui_a8d6d9cbf768')}</div>
         <div>
-          <h4 className="font-semibold text-viridian mb-1">Rohdaten (CSV)</h4>
-          <p className="text-sm text-gray-600 mb-3">
-            Alle Felder je Aktivität. Geeignet für eigene Auswertungen.
-          </p>
+          <h4 className="font-semibold text-viridian mb-1">{autoT('ui_42b453dcfd49')}</h4>
+          <p className="text-sm text-gray-600 mb-3">{autoT('ui_7400b87b587a')}</p>
           <button
             className="px-4 py-2 rounded bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={() => void runExport(downloadRaw, 'CSV-Rohdaten')}
             disabled={isSaving}
-          >
-            CSV herunterladen
-          </button>
+          >{autoT('ui_dc7957624c14')}</button>
         </div>
         <div className="border-t pt-4">
-          <h4 className="font-semibold text-viridian mb-1">Konsolidiert (CSV)</h4>
-          <p className="text-sm text-gray-600 mb-3">
-            Gruppiert nach Projekt mit Anzahl, Statusverteilung, durchschnittlicher Dauer, Ø m/w/d
-            und Ø je Alterskohorte.
-          </p>
+          <h4 className="font-semibold text-viridian mb-1">{autoT('ui_6f58664227a9')}</h4>
+          <p className="text-sm text-gray-600 mb-3">{autoT('ui_4189c160fbd9')}</p>
           <button
             className="px-4 py-2 rounded bg-cambridge-blue text-white hover:bg-viridian disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={() => void runExport(downloadConsolidated, 'Konsolidierte CSV')}
             disabled={isSaving}
-          >
-            CSV herunterladen
-          </button>
+          >{autoT('ui_dc7957624c14')}</button>
         </div>
         <div className="border-t pt-4">
-          <h4 className="font-semibold text-viridian mb-1">Excel (XLSX)</h4>
-          <p className="text-sm text-gray-600 mb-3">
-            Zwei Blätter: Rohdaten und Konsolidiert inklusive Status. Bessere Darstellung in Excel.
-          </p>
+          <h4 className="font-semibold text-viridian mb-1">{autoT('ui_0e2d6a433d92')}</h4>
+          <p className="text-sm text-gray-600 mb-3">{autoT('ui_f992f9605f17')}</p>
           <button
             className="px-4 py-2 rounded bg-azure-web text-viridian hover:bg-mint-green disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={() => void runExport(downloadExcel, 'Excel-Datei')}
             disabled={isSaving}
-          >
-            XLSX herunterladen
-          </button>
+          >{autoT('ui_d53e67acd6a6')}</button>
         </div>
         {saveStatus && <div className="text-sm text-gray-600">{saveStatus}</div>}
       </div>

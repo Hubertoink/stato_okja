@@ -10,21 +10,24 @@ import { Camera, ChevronDown, ChevronUp, Eye, EyeOff, GripVertical, RotateCcw, S
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getMobileNavLayout, MOBILE_NAV_ITEM_IDS, resetMobileNavLayout, saveMobileNavLayout, type MobileNavItemId } from '@/lib/mobileNavigation';
+import { useTranslation } from 'react-i18next';
+import { setPreferredLocale } from '@/i18n';
+import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 export default function MyProfile() {
   const { user, refresh, updateSessionUser } = useAuth();
   const mustChangePassword = user?.mustChangePassword === true;
   return (
     <div>
-      <h2 className="text-3xl font-bold text-viridian mb-6">Meine Daten</h2>
+      <h2 className="text-3xl font-bold text-viridian mb-6">{autoT('ui_a63fc74cb067')}</h2>
       {mustChangePassword && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
-          Dein Passwort wurde temporär durch einen Superadmin gesetzt. Bitte ändere es jetzt, bevor du StatO weiter benutzt.
-        </div>
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">{autoT('ui_db4f8d3761bb')}</div>
       )}
       <div className="grid grid-cols-1 gap-6">
         {!mustChangePassword && (
-          <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} />
+          <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} locale={user?.locale || 'de'} />
         )}
         {!mustChangePassword && <MobileNavigationSettings userId={user?.id} />}
         <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={updateSessionUser} />
@@ -34,12 +37,18 @@ export default function MyProfile() {
   );
 }
 
-const mobileNavLabels: Record<MobileNavItemId, string> = {
-  dashboard: 'Home', activities: 'Aktivitäten', logbook: 'Logbuch', calendar: 'Kalender',
-  projects: 'Projekte', surveys: 'Umfragen', statistics: 'Statistiken', settings: 'Einstellungen',
-};
-
 function MobileNavigationSettings({ userId }: { userId?: string }) {
+  const { t } = useTranslation('common');
+  const mobileNavLabels: Record<MobileNavItemId, string> = {
+    dashboard: t('navigation.dashboard'),
+    activities: t('navigation.activities'),
+    logbook: t('navigation.logbook'),
+    calendar: t('navigation.calendar'),
+    projects: t('navigation.projects'),
+    surveys: t('navigation.surveys'),
+    statistics: t('navigation.statistics'),
+    settings: t('navigation.settings'),
+  };
   const [bottom, setBottom] = useState<MobileNavItemId[]>(() => getMobileNavLayout(userId).bottom);
   const [dragged, setDragged] = useState<MobileNavItemId | null>(null);
   useEffect(() => setBottom(getMobileNavLayout(userId).bottom), [userId]);
@@ -68,31 +77,31 @@ function MobileNavigationSettings({ userId }: { userId?: string }) {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-viridian">Mobile Navigation</h3>
-          <p className="mt-1 text-sm text-gray-600">Lege fest, welche vier Punkte unten sichtbar sind. Alles andere erscheint unter „Mehr“.</p>
+          <h3 className="text-lg font-semibold text-viridian">{autoT('ui_23f0292a1de9')}</h3>
+          <p className="mt-1 text-sm text-gray-600">{autoT('ui_393e7b57db57')}</p>
         </div>
         <button type="button" onClick={() => { resetMobileNavLayout(userId); setBottom(getMobileNavLayout(userId).bottom); }} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100">
-          <RotateCcw className="h-4 w-4" />Zurücksetzen
-        </button>
+          <RotateCcw className="h-4 w-4" />{autoT('ui_a4565af537e2')}</button>
       </div>
       <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <MobileNavigationList title="Unten angezeigt" ids={bottom} dragged={dragged} setDragged={setDragged} onDrop={swapWithBottom} onMove={(id) => {
+        <MobileNavigationList labels={mobileNavLabels} title={autoT('ui_71156a85ad75')} ids={bottom} dragged={dragged} setDragged={setDragged} onDrop={swapWithBottom} onMove={(id) => {
           const replacement = more[0];
           if (replacement) persist(bottom.map((item) => item === id ? replacement : item));
-        }} actionLabel="Zu Mehr" emphasis />
-        <MobileNavigationList title="Unter „Mehr“" ids={more} dragged={dragged} setDragged={setDragged} onDrop={swapWithBottom} onMove={(id) => persist([...bottom.slice(0, 3), id])} actionLabel="Nach unten" />
+        }} actionLabel={autoT('ui_30ef5576c197')} emphasis />
+        <MobileNavigationList labels={mobileNavLabels} title={autoT('ui_3b1556f1c066')} ids={more} dragged={dragged} setDragged={setDragged} onDrop={swapWithBottom} onMove={(id) => persist([...bottom.slice(0, 3), id])} actionLabel={autoT('ui_006cca9235b0')} />
       </div>
-      <p className="mt-3 text-xs text-gray-500">Tipp: Ziehe einen Punkt auf einen Platz in der unteren Leiste, um beide auszutauschen. Die Buttons funktionieren auch bequem auf Touch-Geräten.</p>
+      <p className="mt-3 text-xs text-gray-500">{autoT('ui_dafbef2f8f5e')}</p>
     </div>
   );
 }
 
-function MobileNavigationList({ title, ids, dragged, setDragged, onDrop, onMove, actionLabel, emphasis = false }: {
+function MobileNavigationList({ labels, title, ids, dragged, setDragged, onDrop, onMove, actionLabel, emphasis = false }: {
+  labels: Record<MobileNavItemId, string>;
   title: string; ids: MobileNavItemId[]; dragged: MobileNavItemId | null; setDragged: (id: MobileNavItemId | null) => void;
   onDrop: (source: MobileNavItemId, target: MobileNavItemId) => void; onMove: (id: MobileNavItemId) => void;
   actionLabel: string; emphasis?: boolean;
 }) {
-  return <section><h4 className="mb-2 text-sm font-semibold text-gray-700">{title}</h4><div className={`space-y-2 rounded-xl border p-2 ${emphasis ? 'border-viridian/30 bg-viridian/5' : 'border-gray-200 bg-gray-50'}`}>{ids.map((id) => <div key={id} draggable onDragStart={() => setDragged(id)} onDragEnd={() => setDragged(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (dragged) onDrop(dragged, id); setDragged(null); }} className="flex min-h-11 items-center gap-2 rounded-lg bg-white px-3 text-sm font-medium text-gray-800 shadow-sm"><GripVertical className="h-4 w-4 text-gray-400" /><span className="flex-1">{mobileNavLabels[id]}</span><button type="button" onClick={() => onMove(id)} className={`text-xs font-semibold ${emphasis ? 'text-gray-500 hover:text-viridian' : 'text-viridian'}`}>{actionLabel}</button></div>)}</div></section>;
+  return <section><h4 className="mb-2 text-sm font-semibold text-gray-700">{title}</h4><div className={`space-y-2 rounded-xl border p-2 ${emphasis ? "border-viridian/30 bg-viridian/5" : "border-gray-200 bg-gray-50"}`}>{ids.map((id) => <div key={id} draggable onDragStart={() => setDragged(id)} onDragEnd={() => setDragged(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (dragged) onDrop(dragged, id); setDragged(null); }} className="flex min-h-11 items-center gap-2 rounded-lg bg-white px-3 text-sm font-medium text-gray-800 shadow-sm"><GripVertical className="h-4 w-4 text-gray-400" /><span className="flex-1">{labels[id]}</span><button type="button" onClick={() => onMove(id)} className={`text-xs font-semibold ${emphasis ? "text-gray-500 hover:text-viridian" : "text-viridian"}`}>{actionLabel}</button></div>)}</div></section>;
 }
 
 type AuthSession = {
@@ -107,7 +116,7 @@ type AuthSession = {
 
 function formatSessionDate(value: string) {
   try {
-    return new Intl.DateTimeFormat('de-DE', {
+    return new Intl.DateTimeFormat(getCurrentIntlLocale(), {
       dateStyle: 'short',
       timeStyle: 'short',
     }).format(new Date(value));
@@ -153,7 +162,7 @@ function SessionsSection() {
         logout();
         return;
       }
-      setNotice('Sitzung widerrufen. Der betreffende Browser wird bei seiner nächsten Aktion abgemeldet.');
+      setNotice(autoT('ui_e575d71ccb88'));
       await loadSessions();
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Sitzung konnte nicht widerrufen werden';
@@ -167,37 +176,36 @@ function SessionsSection() {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-viridian mb-2">Aktive Sitzungen</h3>
-          <p className="text-sm text-gray-600">Hier kannst du Browser-Sitzungen widerrufen. Dieses Gerät wird gesondert markiert.</p>
+          <h3 className="text-lg font-semibold text-viridian mb-2">{autoT('ui_9d01dab45fb0')}</h3>
+          <p className="text-sm text-gray-600">{autoT('ui_bad420c44035')}</p>
         </div>
         <ShieldCheck className="w-5 h-5 text-viridian shrink-0" />
       </div>
       {err && <div className="mt-4 text-sm text-red-600">{err}</div>}
       {notice && <div className="mt-4 text-sm text-green-700" role="status">{notice}</div>}
       <div className="mt-4 space-y-3">
-        {loading && <div className="text-sm text-gray-500">Sitzungen werden geladen…</div>}
-        {!loading && sessions.length === 0 && <div className="text-sm text-gray-500">Keine aktiven Refresh-Sitzungen gefunden.</div>}
+        {loading && <div className="text-sm text-gray-500">{autoT('ui_e65200c0481e')}</div>}
+        {!loading && sessions.length === 0 && <div className="text-sm text-gray-500">{autoT('ui_385bec66030b')}</div>}
         {sessions.map((session) => (
           <div key={session.id} className="rounded-lg border border-gray-200 px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
                 <span className="truncate">{session.userAgent || 'Unbekannter Client'}</span>
-                {session.isCurrent && <span className="shrink-0 rounded-full bg-viridian/10 px-2 py-0.5 text-xs font-semibold text-viridian">Dieses Gerät</span>}
+                {session.isCurrent && <span className="shrink-0 rounded-full bg-viridian/10 px-2 py-0.5 text-xs font-semibold text-viridian">{autoT('ui_cb82eeaa77b5')}</span>}
               </div>
-              <div className="mt-1 text-xs text-gray-500">
-                Zuletzt genutzt: {formatSessionDate(session.lastUsedAt)} · Ablauf: {formatSessionDate(session.expiresAt)}
+              <div className="mt-1 text-xs text-gray-500">{autoT('ui_598a1c3abd10')}{formatSessionDate(session.lastUsedAt)}{' '}{autoT('ui_2cd5cfc80c85')}{' '}{formatSessionDate(session.expiresAt)}
               </div>
-              {session.ipAddress && <div className="mt-1 text-xs text-gray-500">IP: {session.ipAddress}</div>}
+              {session.ipAddress && <div className="mt-1 text-xs text-gray-500">{autoT('ui_97322c15b2fa')}{' '}{session.ipAddress}</div>}
             </div>
             <button
               type="button"
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
               disabled={busyId === session.id}
               onClick={() => void revokeSession(session.id)}
-              title={session.isCurrent ? 'Diese Sitzung beenden' : 'Sitzung widerrufen'}
+              title={session.isCurrent ? autoT('ui_e5f0d590864f') : autoT('ui_d53c36e80d08')}
             >
               <Trash2 className="w-4 h-4" />
-              {session.isCurrent ? 'Diese Sitzung beenden' : 'Widerrufen'}
+              {session.isCurrent ? autoT('ui_e5f0d590864f') : autoT('ui_2c7ccedb30fe')}
             </button>
           </div>
         ))}
@@ -206,32 +214,36 @@ function SessionsSection() {
   );
 }
 
-function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userName: string; avatarUrl: string | null; email: string; theme: string; onUpdated: ()=>Promise<void>|void }) {
+function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, locale }: { userName: string; avatarUrl: string | null; email: string; theme: string; locale: AppLocale; onUpdated: ()=>Promise<void>|void }) {
+  const { t } = useTranslation('common');
   const [name, setName] = useState(userName);
   const [image, setImage] = useState<string | null>(normalizeUploadPath(avatarUrl) || null);
   const [savingName, setSavingName] = useState(false);
   const [savingAppearance, setSavingAppearance] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
+  const [savingLocale, setSavingLocale] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>(theme);
+  const [selectedLocale, setSelectedLocale] = useState<AppLocale>(locale);
   const [selectedBackground, setSelectedBackground] = useState<BackgroundId>(getStoredBackgroundId());
   const [appearanceExpanded, setAppearanceExpanded] = useState(false);
   const [avatarActionOpen, setAvatarActionOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const selectedBackgroundLabel = BACKGROUNDS.find((background) => background.id === selectedBackground)?.label || 'Standard';
+  const selectedBackgroundLabel = BACKGROUNDS.find((background) => background.id === selectedBackground)?.label || autoT('ui_2dfa66079d9b');
   const nameChanged = name.trim() !== userName.trim();
 
   useEffect(() => setName(userName), [userName]);
   useEffect(() => setImage(normalizeUploadPath(avatarUrl) || null), [avatarUrl]);
   useEffect(() => setSelectedTheme(theme), [theme]);
+  useEffect(() => setSelectedLocale(locale), [locale]);
 
   function errorMessage(error: unknown) {
     const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Aktualisierung fehlgeschlagen';
     return Array.isArray(message as string[]) ? (message as string[]).join(', ') : String(message);
   }
 
-  async function persistProfile(patch: { name?: string; avatarUrl?: string | null; theme?: string }, successMessage: string) {
+  async function persistProfile(patch: { name?: string; avatarUrl?: string | null; theme?: string; locale?: AppLocale }, successMessage: string) {
     setMsg(null);
     setErr(null);
     try {
@@ -255,7 +267,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
   return (
     <>
       <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-viridian mb-4">Profil</h3>
+      <h3 className="text-lg font-semibold text-viridian mb-4">{autoT('ui_669fe25a324e')}</h3>
       <div className="flex flex-col gap-5 md:flex-row md:items-start">
         <div className="w-full shrink-0 space-y-2 text-center md:w-auto md:text-left">
           <input
@@ -285,21 +297,21 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
               type="button"
               className="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-azure-web text-gray-500 transition-transform hover:scale-[1.02] md:h-28 md:w-28"
               onClick={()=> setAvatarActionOpen(true)}
-              aria-label={image ? 'Profilbild ändern' : 'Profilbild auswählen'}
-              title={image ? 'Profilbild ändern' : 'Profilbild auswählen'}
+              aria-label={image ? autoT('ui_738c85f6e1ca') : autoT('ui_80417a3b01af')}
+              title={image ? autoT('ui_738c85f6e1ca') : autoT('ui_80417a3b01af')}
             >
-              {image ? <ProtectedImage src={image} alt="Profilbild" className="w-full h-full object-cover" /> : <span className="text-sm">{savingAvatar ? 'Lädt…' : 'Kein Bild'}</span>}
+              {image ? <ProtectedImage src={image} alt={autoT('ui_ff0b65e56977')} className="w-full h-full object-cover" /> : <span className="text-sm">{savingAvatar ? autoT('ui_3489bcab5055') : autoT('ui_bdc5d92d00ca')}</span>}
               <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                 <Camera className="h-4 w-4" />
-                {image ? 'Optionen' : 'Wählen'}
+                {image ? autoT('ui_3789b70204b6') : autoT('ui_06cea5c40f66')}
               </span>
             </button>
           </div>
-          <div className="text-xs text-gray-500">Avatar antippen oder anklicken. PNG/JPG, max. 10&nbsp;MB</div>
+          <div className="text-xs text-gray-500">{autoT('ui_055ae355b1aa')}</div>
         </div>
         <div className="w-full flex-1 space-y-3">
           <div>
-            <label className="block text-sm font-medium">Name</label>
+            <label className="block text-sm font-medium">{autoT('ui_709a23220f2c')}</label>
             <div className="flex gap-2">
               <input className="border rounded px-3 py-2 w-full" value={name} onChange={(e)=> setName(e.target.value)} />
               {nameChanged && (
@@ -313,14 +325,41 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
                     setSavingName(false);
                   }}
                 >
-                  {savingName ? 'Speichert…' : 'Speichern'}
+                  {savingName ? autoT('ui_5fd2cc2355ae') : autoT('ui_70b73bbc118d')}
                 </button>
               )}
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium">E-Mail</label>
+            <label className="block text-sm font-medium">{autoT('ui_9eeffe4b7b6e')}</label>
             <input className="border rounded px-3 py-2 w-full bg-gray-50 text-gray-600" value={email} disabled />
+          </div>
+          <div>
+            <label className="block text-sm font-medium" htmlFor="profile-locale">{t('language.label')}</label>
+            <select
+              id="profile-locale"
+              className="mt-1 w-full rounded border px-3 py-2"
+              value={selectedLocale}
+              disabled={savingLocale}
+              onChange={async (event) => {
+                const nextLocale = event.target.value as AppLocale;
+                const previousLocale = selectedLocale;
+                setSelectedLocale(nextLocale);
+                setSavingLocale(true);
+                const saved = await persistProfile({ locale: nextLocale }, t('language.saved'));
+                if (saved) {
+                  await setPreferredLocale(nextLocale, { reload: true });
+                } else {
+                  setSelectedLocale(previousLocale);
+                }
+                setSavingLocale(false);
+              }}
+            >
+              {APP_LOCALES.map((option) => (
+                <option key={option} value={option}>{t(`language.options.${option}`)}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">{savingLocale ? t('language.saving') : t('language.help')}</p>
           </div>
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
             <button
@@ -330,8 +369,8 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
               aria-expanded={appearanceExpanded}
             >
               <div>
-                <div className="text-sm font-medium">Darstellung anpassen</div>
-                <div className="mt-1 text-xs text-gray-500">Theme: {selectedTheme} · Hintergrund: {selectedBackgroundLabel}</div>
+                <div className="text-sm font-medium">{autoT('ui_76a523492a64')}</div>
+                <div className="mt-1 text-xs text-gray-500">{autoT('ui_0485a0265960')}{' '}{selectedTheme}{' '}{autoT('ui_f18a95c05f75')}{' '}{selectedBackgroundLabel}</div>
               </div>
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--text-secondary)]">
                 {appearanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -341,7 +380,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
             {appearanceExpanded && (
               <div className="mt-4 space-y-4 border-t border-[var(--border-subtle)] pt-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Design-Theme</label>
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_b1f7fecaf7ce')}</label>
                   <ThemePicker
                     value={selectedTheme}
                     onChange={(nextTheme) => {
@@ -358,10 +397,10 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
                       });
                     }}
                   />
-                  {savingAppearance && <div className="mt-2 text-xs text-gray-500">Darstellung wird gespeichert…</div>}
+                  {savingAppearance && <div className="mt-2 text-xs text-gray-500">{autoT('ui_ec67d4590e12')}</div>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Hintergrund</label>
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_6ea4ea25fb03')}</label>
                   <BackgroundPicker
                     value={selectedBackground}
                     onChange={(bg) => {
@@ -381,10 +420,10 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
       </div>
       </div>
 
-      <Modal open={avatarActionOpen} onClose={() => setAvatarActionOpen(false)} title="Profilbild" maxWidth="sm">
+      <Modal open={avatarActionOpen} onClose={() => setAvatarActionOpen(false)} title={autoT('ui_ff0b65e56977')} maxWidth="sm">
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            {image ? 'Du kannst dein aktuelles Profilbild ersetzen oder entfernen.' : 'Wähle ein Profilbild aus.'}
+            {image ? autoT('ui_e26b6ffc4701') : autoT('ui_a6bcd2a318e5')}
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
@@ -395,7 +434,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
                 requestAnimationFrame(() => fileInputRef.current?.click());
               }}
             >
-              {image ? 'Bild ersetzen' : 'Bild auswählen'}
+              {image ? autoT('ui_175c40ccf77b') : autoT('ui_16d5cad2c08f')}
             </button>
             {image && (
               <button
@@ -412,9 +451,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme }: { userNam
                     setSavingAvatar(false);
                   });
                 }}
-              >
-                Bild löschen
-              </button>
+              >{autoT('ui_11f8554a1e3a')}</button>
             )}
           </div>
         </div>
@@ -433,19 +470,17 @@ function PasswordSection({ mustChangePassword, onPasswordChanged }: { mustChange
   return (
     <>
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-viridian mb-3">Passwort ändern</h3>
+        <h3 className="text-lg font-semibold text-viridian mb-3">{autoT('ui_fc577f211bd3')}</h3>
         <p className="text-sm text-gray-600 mb-4">
           {mustChangePassword
-            ? 'Bitte öffne den Dialog und ersetze dein temporäres Passwort durch ein eigenes Passwort.'
-            : 'Das Passwortformular wird nur bei Bedarf geöffnet und erscheint nicht dauerhaft auf der Profilseite.'}
+            ? autoT('ui_c939c917ca71')
+            : autoT('ui_6ac58132e6f2')}
         </p>
         <button
           type="button"
           className="bg-viridian text-white px-4 py-2 rounded disabled:opacity-60"
           onClick={() => setOpen(true)}
-        >
-          Passwort ändern
-        </button>
+        >{autoT('ui_fc577f211bd3')}</button>
       </div>
 
       <PasswordChangeModal
@@ -494,15 +529,13 @@ function PasswordChangeModal({
   }, [open]);
 
   return (
-    <Modal open={open} onClose={onClose} title="Passwort ändern" maxWidth="md">
+    <Modal open={open} onClose={onClose} title={autoT('ui_fc577f211bd3')} maxWidth="md">
       {mustChangePassword && (
-        <p className="mb-4 text-sm text-gray-600">
-          Verwende dein temporäres Passwort als aktuelles Passwort und vergebe danach ein eigenes neues Passwort.
-        </p>
+        <p className="mb-4 text-sm text-gray-600">{autoT('ui_bbf7bc22b497')}</p>
       )}
       <div className="space-y-3">
         <div>
-          <label className="block text-sm font-medium">Aktuelles Passwort</label>
+          <label className="block text-sm font-medium">{autoT('ui_f562caab0113')}</label>
           <PasswordInput
             value={currentPassword}
             visible={showCurrentPassword}
@@ -511,7 +544,7 @@ function PasswordChangeModal({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium">Neues Passwort</label>
+          <label className="block text-sm font-medium">{autoT('ui_cc5213bdfc29')}</label>
           <PasswordInput
             value={newPassword}
             visible={showNewPassword}
@@ -521,7 +554,7 @@ function PasswordChangeModal({
           <PasswordRequirementsHint password={newPassword} className="mt-2" />
         </div>
         <div>
-          <label className="block text-sm font-medium">Neues Passwort (Bestätigung)</label>
+          <label className="block text-sm font-medium">{autoT('ui_7133e8c0e8b1')}</label>
           <PasswordInput
             value={confirmPassword}
             visible={showConfirmPassword}
@@ -536,9 +569,7 @@ function PasswordChangeModal({
             type="button"
             className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
             onClick={onClose}
-          >
-            Abbrechen
-          </button>
+          >{autoT('ui_07af7cb30fca')}</button>
           <button
             className="bg-viridian text-white px-4 py-2 rounded disabled:opacity-60"
             disabled={busy || !currentPassword || !newPassword || newPassword!==confirmPassword || Boolean(passwordValidationMessage)}
@@ -546,16 +577,16 @@ function PasswordChangeModal({
               setMsg(null); setErr(null); setBusy(true);
               try {
                 const response = await api.post<{ ok: true; user: AuthUser }>('/auth/change-password', { currentPassword, newPassword });
-                setMsg('Passwort wurde aktualisiert.');
+                setMsg(autoT('ui_5dca18ea873e'));
                 setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
                 onPasswordChanged(response.data.user);
                 onClose();
               } catch (e: unknown) {
-                const m = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Änderung fehlgeschlagen';
+                const m = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_a987db72eb1d');
                 setErr(Array.isArray(m as []) ? (m as string[]).join(', ') : String(m));
               } finally { setBusy(false); }
             }}
-          >Passwort speichern</button>
+          >{autoT('ui_9389a7c1d3e8')}</button>
         </div>
       </div>
     </Modal>
@@ -576,7 +607,7 @@ function PasswordInput({
   return (
     <div className="relative">
       <input
-        type={visible ? 'text' : 'password'}
+        type={visible ? "text" : "password"}
         className="border rounded px-3 py-2 pr-11 w-full"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -585,8 +616,8 @@ function PasswordInput({
         type="button"
         onClick={onToggleVisibility}
         className="absolute inset-y-0 right-0 flex items-center justify-center w-11 text-gray-500 hover:text-viridian"
-        aria-label={visible ? 'Passwort verbergen' : 'Passwort anzeigen'}
-        title={visible ? 'Passwort verbergen' : 'Passwort anzeigen'}
+        aria-label={visible ? autoT('ui_79de9effdeda') : autoT('ui_07039cae9ab7')}
+        title={visible ? autoT('ui_79de9effdeda') : autoT('ui_07039cae9ab7')}
       >
         {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </button>
@@ -603,7 +634,7 @@ function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)
             key={t.name}
             type="button"
             onClick={()=> onChange(t.name)}
-            className={`border rounded p-2 text-left ${value===t.name ? 'ring-2 ring-viridian' : ''}`}
+            className={`border rounded p-2 text-left ${value===t.name ? "ring-2 ring-viridian" : ''}`}
           >
             <div className="font-medium text-sm">{t.name}</div>
             <div className="text-xs text-gray-500 mb-2">{t.description}</div>
@@ -613,7 +644,7 @@ function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)
           </button>
         ))}
       </div>
-      <div className="text-xs text-gray-500">Auswahl wird sofort als Vorschau angewendet und beim Speichern dauerhaft übernommen.</div>
+      <div className="text-xs text-gray-500">{autoT('ui_f39141ec73c7')}</div>
     </div>
   );
 }
@@ -627,7 +658,7 @@ function BackgroundPicker({ value, onChange }: { value: BackgroundId; onChange: 
             key={b.id}
             type="button"
             onClick={() => onChange(b.id)}
-            className={`border rounded p-2 text-left ${value === b.id ? 'ring-2 ring-viridian' : ''}`}
+            className={`border rounded p-2 text-left ${value === b.id ? "ring-2 ring-viridian" : ''}`}
           >
             <div className="font-medium text-sm mb-2">{b.label}</div>
             <div
@@ -637,7 +668,7 @@ function BackgroundPicker({ value, onChange }: { value: BackgroundId; onChange: 
           </button>
         ))}
       </div>
-      <div className="text-xs text-gray-500">Auswahl wird sofort angewendet und lokal gespeichert.</div>
+      <div className="text-xs text-gray-500">{autoT('ui_8df4abf93cee')}</div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { autoT } from '@/i18n/auto';
 
 interface QuickTallyButtonProps {
   value: number;
@@ -165,8 +166,8 @@ export default function QuickTallyButton({
         font-bold text-xl
         transition-all duration-150
         ${disabled
-            ? 'cursor-not-allowed'
-            : 'active:scale-95 cursor-pointer'
+            ? "cursor-not-allowed"
+            : "active:scale-95 cursor-pointer"
         }
         ${className || ''}
       `}
@@ -174,7 +175,7 @@ export default function QuickTallyButton({
           ? { backgroundColor: 'var(--input-disabled-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-faint)' }
           : { backgroundColor: 'var(--surface-1)', borderColor: 'var(--cambridge-blue)', color: 'var(--viridian)' }
         }
-      aria-label={label ? `${label}: ${value}` : `Zähler: ${value}`}
+      aria-label={label ? `${label}: ${value}` : autoT('ui_4d730a6286e0', { value0: value })}
     >
       <span className={`text-2xl tabular-nums ${valueClassName || ''}`}>{value}</span>
     </button>

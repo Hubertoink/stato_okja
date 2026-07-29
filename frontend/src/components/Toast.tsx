@@ -44,7 +44,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <div
           key={t.id}
           className={`pointer-events-auto rounded-lg shadow-lg px-4 py-2 text-white text-sm animate-[toast-in_0.2s_ease-out] ${
-            t.type === 'error' ? 'bg-red-600' : t.type === 'info' ? 'bg-gray-700' : 'bg-viridian'
+            t.type === 'error' ? "bg-red-600" : t.type === 'info' ? "bg-gray-700" : "bg-viridian"
           }`}
           role="status"
           aria-live="polite"

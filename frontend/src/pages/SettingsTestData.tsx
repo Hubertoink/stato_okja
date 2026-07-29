@@ -16,40 +16,42 @@ import {
   setDevMetricsEnabled,
   useDevMetricsStore,
 } from '@/lib/devMetrics';
+import { autoT } from '@/i18n/auto';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 const PRESETS: Array<{ id: TestDataPreset; label: string; projects: number; activities: number; monthsBack: number; description: string }> = [
   {
     id: 'small',
-    label: 'Klein',
+    label: autoT('ui_0e696640a2f6'),
     projects: 8,
     activities: 250,
     monthsBack: 4,
-    description: 'Für schnellen UI-Test und funktionale Klickpfade.',
+    description: autoT('ui_143c37fa08bb'),
   },
   {
     id: 'realistic',
-    label: 'Realistisch',
+    label: autoT('ui_a6644ffb0ab9'),
     projects: 20,
     activities: 1200,
     monthsBack: 12,
-    description: 'Guter Alltagsmix für Dashboard, Kalender, Statistik und Export.',
+    description: autoT('ui_5832775d18ad'),
   },
   {
     id: 'large',
-    label: 'Groß',
+    label: autoT('ui_1528b61e3915'),
     projects: 50,
     activities: 8000,
     monthsBack: 24,
-    description: 'Für Lasttest, Scroll-Verhalten und große Auswertungen.',
+    description: autoT('ui_07d45838f3b7'),
   },
 ];
 
 function formatResult(result: GenerateTestDataResult) {
-  return `${result.created.projects} Projekte, ${result.created.activities} Aktivitäten über ${result.config.monthsBack} Monate.`;
+  return autoT('ui_6c6379a4c9c9', { value0: result.created.projects, value1: result.created.activities, value2: result.config.monthsBack });
 }
 
 function formatTime(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString('de-DE', {
+  return new Date(timestamp).toLocaleTimeString(getCurrentIntlLocale(), {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -113,8 +115,8 @@ export default function SettingsTestData() {
   if (!canUse) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-semibold text-viridian mb-2">Dev Tools</h3>
-        <p className="text-gray-600">Dev Tools sind nur mit aktivem Feature-Flag und als Superadmin sichtbar.</p>
+        <h3 className="text-xl font-semibold text-viridian mb-2">{autoT('ui_90a22a75b20f')}</h3>
+        <p className="text-gray-600">{autoT('ui_34bcc331b116')}</p>
       </div>
     );
   }
@@ -123,10 +125,8 @@ export default function SettingsTestData() {
     <div className="bg-white rounded-lg shadow p-6 space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-xl font-semibold text-viridian">Dev Tools</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Live-Logs, Flow-Benchmarks und Testdaten für die aktuell gewählte Organisation.
-          </p>
+          <h3 className="text-xl font-semibold text-viridian">{autoT('ui_90a22a75b20f')}</h3>
+          <p className="text-sm text-gray-600 mt-1">{autoT('ui_76f94040820a')}</p>
         </div>
         <div className="hidden md:flex items-center justify-center rounded-2xl bg-azure-web text-viridian w-12 h-12">
           <Database className="w-6 h-6" />
@@ -136,36 +136,32 @@ export default function SettingsTestData() {
       <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <div className="font-semibold text-gray-800">Datenlade-Observability</div>
-            <div className="text-sm text-gray-600 mt-1">
-              Protokolliert HTTP-Requests, Query-Ladezeiten und Prefetch-Flows lokal im Browser.
-            </div>
+            <div className="font-semibold text-gray-800">{autoT('ui_eae92ae88cfd')}</div>
+            <div className="text-sm text-gray-600 mt-1">{autoT('ui_ef662c10352d')}</div>
           </div>
           <label className="inline-flex items-center gap-3 text-sm text-gray-700">
             <input
               type="checkbox"
               checked={metrics.enabled}
               onChange={(e) => setDevMetricsEnabled(e.target.checked)}
-            />
-            Logging aktiv
-          </label>
+            />{autoT('ui_48058f12fc3b')}</label>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="rounded-xl bg-gray-50 px-4 py-3">
-            <div className="text-xs uppercase tracking-wide text-gray-500">Events</div>
+            <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_c5497bca5846')}</div>
             <div className="text-2xl font-semibold text-gray-800 mt-1">{metrics.events.length}</div>
           </div>
           <div className="rounded-xl bg-gray-50 px-4 py-3">
-            <div className="text-xs uppercase tracking-wide text-gray-500">Flows</div>
+            <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_12426551fbb7')}</div>
             <div className="text-2xl font-semibold text-gray-800 mt-1">{metrics.flows.length}</div>
           </div>
           <div className="rounded-xl bg-gray-50 px-4 py-3">
-            <div className="text-xs uppercase tracking-wide text-gray-500">Fehler</div>
+            <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_b9eb6bf70731')}</div>
             <div className="text-2xl font-semibold text-gray-800 mt-1">{errorCount}</div>
           </div>
           <div className="rounded-xl bg-gray-50 px-4 py-3">
-            <div className="text-xs uppercase tracking-wide text-gray-500">Letztes Update</div>
+            <div className="text-xs uppercase tracking-wide text-gray-500">{autoT('ui_72e9eb7873ff')}</div>
             <div className="text-lg font-semibold text-gray-800 mt-1">{formatTime(metrics.updatedAt)}</div>
           </div>
         </div>
@@ -176,32 +172,24 @@ export default function SettingsTestData() {
             className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-300 text-gray-700"
             onClick={() => clearDevMetrics()}
           >
-            <Eraser className="w-4 h-4" />
-            Logs leeren
-          </button>
+            <Eraser className="w-4 h-4" />{autoT('ui_0083ce76a3aa')}</button>
           <button
             type="button"
             className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-300 text-gray-700"
             onClick={() => downloadMetricsSnapshot()}
           >
-            <Download className="w-4 h-4" />
-            JSON exportieren
-          </button>
+            <Download className="w-4 h-4" />{autoT('ui_632f72361c03')}</button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
           <div className="flex items-center gap-2 text-gray-800 font-semibold">
-            <Gauge className="w-4 h-4 text-viridian" />
-            Flow-Benchmarks
-          </div>
-          <div className="text-sm text-gray-600">
-            Besonders relevant ist aktuell der automatische Warmup-Flow nach Login oder Scope-Wechsel.
-          </div>
+            <Gauge className="w-4 h-4 text-viridian" />{autoT('ui_ec1893f0b5c2')}</div>
+          <div className="text-sm text-gray-600">{autoT('ui_4efcaaa24d33')}</div>
           <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
             {recentFlows.length === 0 && (
-              <div className="text-sm text-gray-500">Noch keine Flow-Daten vorhanden.</div>
+              <div className="text-sm text-gray-500">{autoT('ui_31a00660c558')}</div>
             )}
             {recentFlows.map((flow) => (
               <div key={flow.id} className="rounded-xl border border-gray-200 p-3 space-y-2">
@@ -211,7 +199,7 @@ export default function SettingsTestData() {
                     <div className="text-xs text-gray-500">{formatTime(flow.startedAt)}</div>
                   </div>
                   <div className="text-right">
-                    <div className={`text-xs font-medium ${flow.status === 'error' ? 'text-red-700' : flow.status === 'success' ? 'text-viridian' : flow.status === 'cancelled' ? 'text-gray-500' : 'text-amber-700'}`}>
+                    <div className={`text-xs font-medium ${flow.status === 'error' ? "text-red-700" : flow.status === 'success' ? "text-viridian" : flow.status === 'cancelled' ? "text-gray-500" : "text-amber-700"}`}>
                       {flow.status}
                     </div>
                     <div className="text-sm text-gray-700">{formatDuration(flow.durationMs)}</div>
@@ -223,7 +211,7 @@ export default function SettingsTestData() {
                       <div key={`${flow.id}-${index}`} className="text-xs text-gray-600 flex items-center justify-between gap-3">
                         <span>
                           {mark.label}
-                          {mark.meta?.fetched === false ? ' · cache' : ''}
+                          {mark.meta?.fetched === false ? autoT('ui_00cdf6405458') : ''}
                         </span>
                         <span>{formatDuration(mark.sinceStartMs)}</span>
                       </div>
@@ -237,25 +225,19 @@ export default function SettingsTestData() {
 
         <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
           <div className="flex items-center gap-2 text-gray-800 font-semibold">
-            <Activity className="w-4 h-4 text-viridian" />
-            Live-Datenladelog
-          </div>
+            <Activity className="w-4 h-4 text-viridian" />{autoT('ui_9f6c79105bbf')}</div>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="text-sm text-gray-600">
-              Enthält HTTP-Requests, Query-Ladephasen und Flow-Events aus der aktuellen Browser-Session.
-            </div>
+            <div className="text-sm text-gray-600">{autoT('ui_acdb897cfeb4')}</div>
             <label className="inline-flex items-center gap-2 text-xs text-gray-600">
               <input
                 type="checkbox"
                 checked={showCacheHitEvents}
                 onChange={(e) => setShowCacheHitEvents(e.target.checked)}
-              />
-              Cache-Hits anzeigen
-            </label>
+              />{autoT('ui_02997d6c2782')}</label>
           </div>
           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
             {recentEvents.length === 0 && (
-              <div className="text-sm text-gray-500">Keine sichtbaren Events vorhanden.</div>
+              <div className="text-sm text-gray-500">{autoT('ui_e4794cbf3a4b')}</div>
             )}
             {recentEvents.map((event) => (
               <div key={event.id} className="rounded-xl border border-gray-200 p-3">
@@ -263,7 +245,7 @@ export default function SettingsTestData() {
                   <div>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="uppercase tracking-wide text-[10px] text-gray-500">{event.kind}</span>
-                      <span className={`text-[10px] font-medium ${event.status === 'error' ? 'text-red-700' : event.status === 'success' ? 'text-viridian' : event.status === 'start' ? 'text-amber-700' : event.status === 'cancelled' ? 'text-gray-500' : 'text-gray-500'}`}>
+                      <span className={`text-[10px] font-medium ${event.status === 'error' ? "text-red-700" : event.status === 'success' ? "text-viridian" : event.status === 'start' ? "text-amber-700" : event.status === 'cancelled' ? "text-gray-500" : "text-gray-500"}`}>
                         {event.status}
                       </span>
                     </div>
@@ -283,18 +265,14 @@ export default function SettingsTestData() {
 
       <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
         <div>
-          <div className="font-semibold text-gray-800">Testdaten</div>
-          <div className="text-sm text-gray-600 mt-1">
-            Erzeugt realistische Projekte und Aktivitäten für funktionale und Performance-Tests.
-          </div>
+          <div className="font-semibold text-gray-800">{autoT('ui_5c436b432f8e')}</div>
+          <div className="text-sm text-gray-600 mt-1">{autoT('ui_95d3924fdd5d')}</div>
         </div>
 
       {requiresScopedOrg && !hasValidScope && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex gap-3">
           <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-          <div>
-            Für Superadmin ist ein konkreter Org-Scope nötig. Bitte oben zuerst eine Organisation auswählen und danach hier die Testdaten starten.
-          </div>
+          <div>{autoT('ui_c14627014854')}</div>
         </div>
       )}
 
@@ -306,23 +284,20 @@ export default function SettingsTestData() {
             onClick={() => setPreset(entry.id)}
             className={`rounded-2xl border p-4 text-left transition-colors ${
               preset === entry.id
-                ? 'border-viridian bg-mint-green/30'
-                : 'border-gray-200 hover:border-cambridge-blue hover:bg-gray-50'
+                ? "border-viridian bg-mint-green/30"
+                : "border-gray-200 hover:border-cambridge-blue hover:bg-gray-50"
             }`}
           >
             <div className="font-semibold text-gray-800">{entry.label}</div>
             <div className="text-sm text-gray-600 mt-1">{entry.description}</div>
             <div className="text-xs text-gray-500 mt-3">
-              {entry.projects} Projekte · {entry.activities} Aktivitäten · {entry.monthsBack} Monate
-            </div>
+              {entry.projects}{' '}{autoT('ui_10cea68cc868')}{' '}{entry.activities}{' '}{autoT('ui_5963f7713a74')}{' '}{entry.monthsBack}{autoT('ui_1c561ae3103f')}</div>
           </button>
         ))}
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-        <div className="text-sm text-gray-700">
-          Preset <span className="font-semibold">{selectedPreset.label}</span>: {selectedPreset.projects} Projekte, {selectedPreset.activities} Aktivitäten, Zeitraum {selectedPreset.monthsBack} Monate.
-        </div>
+        <div className="text-sm text-gray-700">{autoT('ui_bca788763dd4')}<span className="font-semibold">{selectedPreset.label}</span>: {selectedPreset.projects}{' '}{autoT('ui_ec531cafb0c1')}{' '}{selectedPreset.activities}{' '}{autoT('ui_50b8dfb643b2')}{' '}{selectedPreset.monthsBack}{autoT('ui_02610d17e92c')}</div>
         <label className="flex items-start gap-3 text-sm text-gray-700">
           <input
             type="checkbox"
@@ -330,9 +305,7 @@ export default function SettingsTestData() {
             checked={clearExisting}
             onChange={(e) => setClearExisting(e.target.checked)}
           />
-          <span>
-            Zuvor erzeugte Testdaten dieser Organisation vor dem neuen Lauf löschen.
-          </span>
+          <span>{autoT('ui_4d616dd351ad')}</span>
         </label>
       </div>
 
@@ -347,7 +320,7 @@ export default function SettingsTestData() {
               {
                 onSuccess: (result) => {
                   setLastResult(result);
-                  showToast('Testdaten wurden erzeugt.', { type: 'success', durationMs: 3000 });
+                  showToast(autoT('ui_e77d0dab46ac'), { type: 'success', durationMs: 3000 });
                 },
                 onError: (error) => {
                   const message =
@@ -363,7 +336,7 @@ export default function SettingsTestData() {
           }}
         >
           <Wand2 className="w-4 h-4" />
-          {generate.isPending ? 'Erzeuge Testdaten...' : 'Testdaten erzeugen'}
+          {generate.isPending ? autoT('ui_ad6ab740a177') : autoT('ui_111cc1f884f6')}
         </button>
 
         <button
@@ -375,14 +348,14 @@ export default function SettingsTestData() {
               onSuccess: (result) => {
                 setLastResult(null);
                 showToast(
-                  `${result.deletedProjects} Projekte und ${result.deletedActivities} Aktivitäten entfernt.`,
+                  autoT('ui_96825c5cd5fb', { value0: result.deletedProjects, value1: result.deletedActivities }),
                   { type: 'success', durationMs: 3500 },
                 );
               },
               onError: (error) => {
                 const message =
                   (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
-                  'Aufräumen der Testdaten fehlgeschlagen.';
+                  autoT('ui_c845c2554514');
                 showToast(Array.isArray(message) ? message.join(', ') : String(message), {
                   type: 'error',
                   durationMs: 4500,
@@ -392,24 +365,22 @@ export default function SettingsTestData() {
           }}
         >
           <Trash2 className="w-4 h-4" />
-          {cleanup.isPending ? 'Entferne Testdaten...' : 'Erzeugte Testdaten löschen'}
+          {cleanup.isPending ? autoT('ui_4f647d16becc') : autoT('ui_e34d4ce09e95')}
         </button>
       </div>
 
       <div className="rounded-xl border border-gray-200 p-4 text-sm text-gray-600 space-y-2">
-        <div className="font-medium text-gray-800">Hinweise</div>
-        <div>Die Funktion ergänzt bei Bedarf automatisch Kategorien, Tags, Orte, Kohorten und ein kleines Test-Team in der gewählten Organisation.</div>
-        <div>Gelöscht werden nur zuvor erzeugte Testdaten mit interner Markierung, keine normalen Bestandsdaten.</div>
+        <div className="font-medium text-gray-800">{autoT('ui_5a3fdb4f3578')}</div>
+        <div>{autoT('ui_1240dde481bb')}</div>
+        <div>{autoT('ui_d1ddf1f34c0e')}</div>
       </div>
 
       {lastResult && (
         <div className="rounded-xl border border-mint-green bg-mint-green/20 px-4 py-3 text-sm text-gray-700">
-          <div className="font-medium text-gray-800">Letzter Lauf für {lastResult.orgName}</div>
+          <div className="font-medium text-gray-800">{autoT('ui_43bc2c80593e')}{' '}{lastResult.orgName}</div>
           <div className="mt-1">{formatResult(lastResult)}</div>
           {(lastResult.cleanedUp.deletedProjects > 0 || lastResult.cleanedUp.deletedActivities > 0) && (
-            <div className="mt-1 text-gray-600">
-              Vorher entfernt: {lastResult.cleanedUp.deletedProjects} Projekte, {lastResult.cleanedUp.deletedActivities} Aktivitäten.
-            </div>
+            <div className="mt-1 text-gray-600">{autoT('ui_946ceba0eaba')}{lastResult.cleanedUp.deletedProjects}{' '}{autoT('ui_ec531cafb0c1')}{' '}{lastResult.cleanedUp.deletedActivities}{autoT('ui_a99093373d48')}</div>
           )}
         </div>
       )}

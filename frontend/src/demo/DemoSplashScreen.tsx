@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import logoUrl from '../../assets/Stato_Logo.png';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { autoT } from '@/i18n/auto';
 
 const MIN_VISIBLE_MS = 1250;
 
 export default function DemoSplashScreen({
   open,
-  message = 'Demo-Daten werden vorbereitet...',
+  message = autoT('ui_55a5e5e63dd3'),
   progress,
 }: {
   open: boolean;
@@ -50,14 +51,14 @@ export default function DemoSplashScreen({
     <div className="demo-splash fixed inset-0 z-[90] flex items-center justify-center px-6" role="status" aria-live="polite">
       <div className="demo-splash-stage w-full max-w-sm text-center">
         <div className="demo-splash-logo-wrap mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white shadow-lg">
-          <img src={logoUrl} alt="StatO" className="demo-splash-logo h-16 w-16 object-contain" />
+          <img src={logoUrl} alt={autoT('ui_3abd120bdece')} className="demo-splash-logo h-16 w-16 object-contain" />
         </div>
-        <div className="text-sm font-semibold uppercase tracking-[0.24em] text-white/70">StatO Demo</div>
-        <div className="mt-2 text-2xl font-bold text-white">Wird vorbereitet</div>
+        <div className="text-sm font-semibold uppercase tracking-[0.24em] text-white/70">{autoT('ui_228f4da2e30d')}</div>
+        <div className="mt-2 text-2xl font-bold text-white">{autoT('ui_140ad8bf7054')}</div>
         <div className="mt-2 min-h-[1.25rem] text-sm text-white/80">{message}</div>
         <div className="demo-splash-progress mt-6" aria-hidden>
           <span
-            className={pct === null ? 'demo-splash-progress-bar demo-splash-progress-bar-indeterminate' : 'demo-splash-progress-bar'}
+            className={pct === null ? "demo-splash-progress-bar demo-splash-progress-bar-indeterminate" : "demo-splash-progress-bar"}
             style={pct === null ? undefined : { width: `${pct}%` }}
           />
         </div>

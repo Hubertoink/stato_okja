@@ -1,3 +1,5 @@
+import { autoT } from '@/i18n/auto';
+
 function sanitizeStatisticsExportSegment(value: string) {
   return value
     .toLowerCase()
@@ -9,7 +11,7 @@ function sanitizeStatisticsExportSegment(value: string) {
 }
 
 export function buildStatisticsExportRangeLabel(from?: string, to?: string) {
-  return [from, to].filter(Boolean).join(' bis ') || 'Gesamter Zeitraum';
+  return [from, to].filter(Boolean).join(' bis ') || autoT('ui_38fc1281b47b');
 }
 
 export function buildStatisticsChartFileName({
@@ -25,7 +27,7 @@ export function buildStatisticsChartFileName({
 }) {
   const parts = [
     'stato',
-    sanitizeStatisticsExportSegment(orgName || 'organisation'),
+    sanitizeStatisticsExportSegment(orgName || autoT('ui_9bf0ba98625e')),
     sanitizeStatisticsExportSegment(chartTitle) || 'diagramm',
     sanitizeStatisticsExportSegment(exportRangeLabel) || 'gesamt',
   ].filter(Boolean);
@@ -43,9 +45,9 @@ export function buildStatisticsActivitiesFileName({
   extension: string;
 }) {
   const parts = [
-    'stato',
-    sanitizeStatisticsExportSegment(orgName || 'organisation'),
-    'aktivitaeten-gefiltert',
+    autoT('ui_d606c1241fc1'),
+    sanitizeStatisticsExportSegment(orgName || autoT('ui_9bf0ba98625e')),
+    autoT('ui_77f2cf89904b'),
     sanitizeStatisticsExportSegment(exportRangeLabel) || 'gesamt',
   ].filter(Boolean);
 
@@ -61,7 +63,7 @@ export function buildStatisticsControllingFileName({
 }) {
   const parts = [
     'stato',
-    sanitizeStatisticsExportSegment(orgName || 'organisation'),
+    sanitizeStatisticsExportSegment(orgName || autoT('ui_9bf0ba98625e')),
     'controllingdaten',
     sanitizeStatisticsExportSegment(exportRangeLabel) || 'gesamt',
   ].filter(Boolean);

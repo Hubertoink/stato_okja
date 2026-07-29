@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { getStoredAuthToken, subscribeToAuthEvents } from './authStorage';
 import { refreshAccessToken } from './api';
+import { autoT } from '@/i18n/auto';
 
 const LAST_ACTIVITY_KEY = 'stato:lastActivityMs';
 
@@ -93,13 +94,13 @@ export function useSessionTimeout(opts: {
       const remaining = IDLE_TIMEOUT_MS - (now - last);
 
       if (remaining <= 0) {
-        onNotify?.('Aus Sicherheitsgründen abgemeldet (Inaktivität).');
+        onNotify?.(autoT('ui_2e487613b21e'));
         onLogout('idle');
         return;
       }
 
       idleTimerId.current = window.setTimeout(() => {
-        onNotify?.('Aus Sicherheitsgründen abgemeldet (Inaktivität).');
+        onNotify?.(autoT('ui_2e487613b21e'));
         onLogout('idle');
       }, remaining);
     };

@@ -1,6 +1,7 @@
 import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { AxiosError, AxiosHeaders } from 'axios';
 import * as demo from './store';
+import { autoT } from '@/i18n/auto';
 
 type HandlerResult = { status?: number; data?: unknown; headers?: Record<string, string> };
 
@@ -98,7 +99,7 @@ function handleAuth(method: string, path: string, body: Record<string, unknown>)
   if (method === 'post' && path === '/auth/login') return ok({ access_token: 'demo-token', user: demo.getDemoUser() });
   if (method === 'post' && path === '/auth/verify-two-factor') return ok({ access_token: 'demo-token', user: demo.getDemoUser() });
   if (method === 'post' && path === '/auth/resend-two-factor') return ok({ requiresTwoFactor: true, challengeToken: 'demo', emailHint: demo.getDemoUser().email, expiresInSeconds: 300 });
-  if (method === 'post' && path === '/auth/invite') throw new DemoHttpError(403, 'Im Demo-Modus können keine Benutzer eingeladen werden.');
+  if (method === 'post' && path === '/auth/invite') throw new DemoHttpError(403, autoT('ui_56a878e5ad61'));
   if (method === 'get' && path === '/auth/public-config') return ok(demo.getDemoPublicConfig());
   if (method === 'post' && (path === '/auth/change-password' || path === '/auth/request-password-reset' || path === '/auth/validate-reset-token' || path === '/auth/reset-password')) return ok({ ok: true });
   return undefined;
@@ -133,7 +134,7 @@ function handleTaxonomy(method: string, segments: string[], params: Record<strin
 function handleOrgs(method: string, segments: string[], params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult | undefined {
   if (segments[0] !== 'orgs') return undefined;
   if (method === 'get' && segments.length === 1) return ok(demo.listDemoOrgs());
-  if (method === 'post' && segments.length === 1) throw new DemoHttpError(403, 'Im Demo-Modus können keine Organisationen angelegt werden.');
+  if (method === 'post' && segments.length === 1) throw new DemoHttpError(403, autoT('ui_d9f9c2039ba3'));
   if (method === 'get' && segments[1] === 'subtree') return ok(demo.listDemoOrgs());
   const orgId = segments[1] ? decodeURIComponent(segments[1]) : '';
   if (method === 'get' && segments[2] === 'users') return ok(demo.listDemoUsers());
@@ -173,7 +174,7 @@ function handleProjects(method: string, segments: string[], params: Record<strin
   const projectId = segments[1] ? decodeURIComponent(segments[1]) : '';
   if (method === 'get' && projectId) {
     const project = demo.getDemoProject(projectId);
-    if (!project) throw new DemoHttpError(404, 'Projekt nicht gefunden');
+    if (!project) throw new DemoHttpError(404, autoT('ui_479d6709944b'));
     return ok(project);
   }
   if (method === 'patch' && segments[2] === 'archive') return ok(demo.updateDemoProject(projectId, { archived: body.archived === true }));
@@ -225,7 +226,7 @@ function handleSurveys(method: string, segments: string[], params: Record<string
   if (!id) return undefined;
   if (method === 'get' && segments.length === 2) {
     const survey = demo.getDemoSurvey(id);
-    if (!survey) throw new DemoHttpError(404, 'Umfrage nicht gefunden');
+    if (!survey) throw new DemoHttpError(404, autoT('ui_2ce107281759'));
     return ok(survey);
   }
   if (method === 'patch' && segments.length === 2) return ok(demo.updateDemoSurvey(id, body));

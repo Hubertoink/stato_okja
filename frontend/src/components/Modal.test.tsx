@@ -1,8 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import Modal from './Modal';
+import Modal, { ModalBackdrop } from './Modal';
 
 describe('Modal', () => {
+  it('keeps visual backdrops from intercepting dialog interactions', () => {
+    const { container } = render(<ModalBackdrop />);
+
+    expect(container.querySelector('[aria-hidden="true"]')).toHaveClass('pointer-events-none');
+  });
+
   it('keeps the header separate from the scrolling content for information modals', () => {
     render(
       <Modal open onClose={vi.fn()} title="Information" variant="information">

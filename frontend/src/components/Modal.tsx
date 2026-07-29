@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
  * disappear from an incidental click outside the panel.
  */
 export function ModalBackdrop({ className = '' }: { className?: string }) {
-  return <div aria-hidden="true" className={`absolute inset-0 ${className}`} />;
+  return <div aria-hidden="true" className={`pointer-events-none absolute inset-0 ${className}`} />;
 }
 
 export default function Modal({

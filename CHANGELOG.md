@@ -20,6 +20,23 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.13] - 2026-07-29
+
+### Added
+- Die StatO-Oberfläche ist jetzt vollständig auf Deutsch und Englisch
+  verfügbar. Benutzer können ihre bevorzugte Sprache im Profil wählen;
+  Organisationsadministratoren können zusätzlich eine Standardsprache für
+  ihre Einrichtung festlegen.
+- Datums- und Zahlenformate sowie systemweite Beschriftungen folgen der
+  gewählten Sprache.
+
+### Fixed
+- Der Dialog „Einrichtung geschlossen“ im Kalender lässt sich wieder
+  vollständig bedienen. Der visuelle Hintergrund blockiert weder
+  Schaltflächen noch Formularfelder.
+
+---
+
 ## [1.0.12] - 2026-07-28
 
 ### Fixed

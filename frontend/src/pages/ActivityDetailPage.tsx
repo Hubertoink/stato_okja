@@ -12,7 +12,7 @@ import {
   Pencil,
   BookOpen,
 } from 'lucide-react';
-import { getBgClass } from '@/lib/colorPalette';
+import { getBadgeBackgroundColor } from '@/lib/colorPalette';
 import { isCancelledActivity } from '@/lib/activityExecutionStatus';
 
 const typeLabel: Record<string, string> = {
@@ -171,7 +171,8 @@ export default function ActivityDetailPage() {
               {activity.categories.map((c) => (
                 <span
                   key={c.id}
-                  className={`px-2 py-1 rounded-full text-xs text-white ${getBgClass(c.color as string, 'bg-slate-400')}`}
+                  className="px-2 py-1 rounded-full text-xs text-white"
+                  style={{ backgroundColor: getBadgeBackgroundColor(c.color) }}
                   title={c.name}
                 >
                   {c.name}
@@ -190,7 +191,8 @@ export default function ActivityDetailPage() {
               {activity.tags.map((t) => (
                 <span
                   key={t.id}
-                  className={`px-2 py-1 rounded-full text-xs text-white ${getBgClass(t.color as string, 'bg-slate-500')}`}
+                  className="px-2 py-1 rounded-full text-xs text-white"
+                  style={{ backgroundColor: getBadgeBackgroundColor(t.color, '#64748b') }}
                   title={t.name}
                 >
                   {t.name}

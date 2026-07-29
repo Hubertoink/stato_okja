@@ -35,7 +35,7 @@ import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
 import Modal from '@/components/Modal';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import { colorForActivityType } from '@/lib/colors';
-import { getBgClass } from '@/lib/colorPalette';
+import { getBadgeBackgroundColor } from '@/lib/colorPalette';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useLocations } from '@/lib/locations';
 import { usePublicConfig } from '@/lib/publicConfig';
@@ -1083,10 +1083,8 @@ export default function Activities() {
                     {(a.categories || []).map((c) => (
                       <span
                         key={c.id}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white ${getBgClass(
-                          c.color as string,
-                          'bg-slate-400',
-                        )}`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white"
+                        style={{ backgroundColor: getBadgeBackgroundColor(c.color) }}
                         title={c.name}
                       >
                         {c.name}
@@ -1095,10 +1093,8 @@ export default function Activities() {
                     {(a.tags || []).map((t) => (
                       <span
                         key={t.id}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white ${getBgClass(
-                          t.color as string,
-                          'bg-slate-500',
-                        )}`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white"
+                        style={{ backgroundColor: getBadgeBackgroundColor(t.color, '#64748b') }}
                         title={t.name}
                       >
                         <TagIcon className="w-3 h-3" /> {t.name}
@@ -1329,10 +1325,8 @@ export default function Activities() {
                 {(a.categories || []).map((c) => (
                   <span
                     key={c.id}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white ${getBgClass(
-                      c.color as string,
-                      'bg-slate-400',
-                    )}`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white"
+                    style={{ backgroundColor: getBadgeBackgroundColor(c.color) }}
                     title={c.name}
                   >
                     {c.name}
@@ -1341,10 +1335,8 @@ export default function Activities() {
                 {(a.tags || []).map((t) => (
                   <span
                     key={t.id}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white ${getBgClass(
-                      t.color as string,
-                      'bg-slate-500',
-                    )}`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white"
+                    style={{ backgroundColor: getBadgeBackgroundColor(t.color, '#64748b') }}
                     title={t.name}
                   >
                     <TagIcon className="w-3 h-3" /> {t.name}

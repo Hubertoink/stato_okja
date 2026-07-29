@@ -80,3 +80,10 @@ export function getBgClass(color?: string | null, fallback: string = 'bg-slate-4
   const norm = color.trim().toLowerCase();
   return HEX_TO_TW_BG[norm] || HEX_TO_TW_BG_TAG[norm] || fallback;
 }
+
+// Colors picked with the free color picker are not limited to the legacy
+// Tailwind palette. Use this value as an inline background color for badges.
+export function getBadgeBackgroundColor(color?: string | null, fallback: string = '#94a3b8'): string {
+  const normalized = color?.trim();
+  return normalized && /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : fallback;
+}

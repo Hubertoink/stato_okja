@@ -1416,7 +1416,7 @@ export default function Calendar() {
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{autoT('ui_5d1c7b4d0cde')}</div>
               <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{autoT('ui_892ed2e65fe7')}{selectedDateLabel}
+                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{autoT('ui_892ed2e65fe7', { value0: selectedDateLabel })}
                 </h3>
                 <span className="inline-flex items-center rounded-full border border-gray-200 bg-white/80 px-2 py-1 text-xs text-gray-700">
                   {selectedDayActivities.length} {selectedDayActivities.length === 1 ? autoT('ui_d28fd7140d15') : autoT('ui_303e11fd9d2b')}

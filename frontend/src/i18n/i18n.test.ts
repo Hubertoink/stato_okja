@@ -32,4 +32,9 @@ describe('i18n resources', () => {
     expect(normalizeAppLocale('en-US')).toBe('en');
     expect(normalizeAppLocale('fr')).toBe('de');
   });
+
+  it('keeps the selected calendar date separated from its heading', () => {
+    expect(autoResources.de.ui_892ed2e65fe7).toBe('Aktivitäten am {{value0}}');
+    expect(autoResources.en.ui_892ed2e65fe7).toBe('Activities on {{value0}}');
+  });
 });

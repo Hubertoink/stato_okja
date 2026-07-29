@@ -20,6 +20,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.15] - 2026-07-29
+
+### Fixed
+- In der Tagesauswahl des Kalenders steht wieder ein korrektes Leerzeichen
+  zwischen „Aktivitäten am“ und dem formatierten Datum.
+
+---
+
 ## [1.0.14] - 2026-07-29
 
 ### Fixed

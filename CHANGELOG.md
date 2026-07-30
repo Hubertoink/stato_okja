@@ -20,6 +20,20 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.17] - 2026-07-30
+
+### Added
+- Generator für individuelle `.env.onprem`-Konfigurationen inklusive lokaler
+  Secret-Erzeugung und begleitender On-Prem-Dokumentation.
+
+### Fixed
+- Aktionsflächen und Bearbeiten-Symbole bleiben in allen dunklen Themes
+  kontrastreich und konsistent.
+- Logbucheinträge auf dem Dashboard erhalten wieder ein sichtbares Hover- und
+  Fokus-Highlight.
+
+---
+
 ## [1.0.16] - 2026-07-30
 
 ### Added

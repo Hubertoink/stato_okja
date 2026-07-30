@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useActivity } from '@/lib/activities';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
+import ProtectedImage from '@/components/ProtectedImage';
 import {
   X as XIcon,
   Calendar as CalendarIcon,
@@ -31,8 +32,11 @@ export default function ActivityDetailPage() {
 
   if (!activity) return null;
   const typeLabel: Record<string, string> = {
-    open_door: t('types.open_door'), project_open: t('types.project_open'),
-    project_closed: t('types.project_closed'), event: t('types.event'), outreach: t('types.outreach'),
+    open_door: t('types.open_door'),
+    project_open: t('types.project_open'),
+    project_closed: t('types.project_closed'),
+    event: t('types.event'),
+    outreach: t('types.outreach'),
   };
 
   const dateLabel = (() => {
@@ -66,7 +70,9 @@ export default function ActivityDetailPage() {
     };
     const s = parse(activity.startTime);
     const e = parse(activity.endTime);
-    return s !== undefined && e !== undefined && e >= s ? t('detail.minutes', { count: e - s }) : '';
+    return s !== undefined && e !== undefined && e >= s
+      ? t('detail.minutes', { count: e - s })
+      : '';
   })();
 
   const roleBadgeClass = (roles?: string[] | null, role?: string | null) => {
@@ -93,7 +99,11 @@ export default function ActivityDetailPage() {
         <div className="flex items-center gap-2">
           {!!activity.id && (
             <button
-              onClick={() => navigate(`/logbook/new?activityId=${encodeURIComponent(activity.id)}${activity.projectId ? `&projectId=${encodeURIComponent(activity.projectId)}` : ''}`)}
+              onClick={() =>
+                navigate(
+                  `/logbook/new?activityId=${encodeURIComponent(activity.id)}${activity.projectId ? `&projectId=${encodeURIComponent(activity.projectId)}` : ''}`,
+                )
+              }
               aria-label={t('detail.documentInLogbook')}
               title={t('detail.documentInLogbook')}
               className="inline-flex items-center justify-center p-2 rounded-full bg-white border text-viridian"
@@ -122,120 +132,149 @@ export default function ActivityDetailPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 md:p-6 space-y-3">
-        {isCancelledActivity(activity.executionStatus) && (
-          <div className="activity-status-banner rounded-xl px-3 py-2">
-            <ActivityExecutionStatusBadge status={activity.executionStatus} compact />
-          </div>
-        )}
-        <div className="flex items-center gap-2 text-sm text-gray-700">
-          <CalendarIcon className="w-4 h-4" /> {dateLabel}
-        </div>
-        {!!timeStr && (
+      <div className="relative overflow-hidden rounded-lg bg-white p-4 shadow md:p-6">
+        {activity.project?.imageUrl ? (
+          <>
+            <ProtectedImage
+              src={activity.project.imageUrl}
+              alt=""
+              aria-hidden
+              className="absolute inset-y-0 right-0 h-full w-28 object-cover opacity-70 md:hidden"
+            />
+            <div
+              className="activity-image-fade-mobile absolute inset-y-0 right-0 w-28 md:hidden"
+              aria-hidden
+            />
+          </>
+        ) : activity.project?.color ? (
+          <>
+            <div
+              className="absolute inset-y-0 right-0 w-28 opacity-40 md:hidden"
+              style={{ backgroundColor: activity.project.color }}
+              aria-hidden
+            />
+            <div
+              className="activity-image-fade-mobile absolute inset-y-0 right-0 w-28 md:hidden"
+              aria-hidden
+            />
+          </>
+        ) : null}
+        <div className="relative z-10 space-y-3">
+          {isCancelledActivity(activity.executionStatus) && (
+            <div className="activity-status-banner rounded-xl px-3 py-2">
+              <ActivityExecutionStatusBadge status={activity.executionStatus} compact />
+            </div>
+          )}
           <div className="flex items-center gap-2 text-sm text-gray-700">
-            <Clock3 className="w-4 h-4" /> {timeStr}{t('detail.clockSuffix') ? ` ${t('detail.clockSuffix')}` : ''}
-            {duration ? ` · ${duration}` : ''}
+            <CalendarIcon className="w-4 h-4" /> {dateLabel}
           </div>
-        )}
-        {activity.location?.name && (
-          <div className="flex items-center gap-2 text-sm text-gray-700">
-            <MapPin className="w-4 h-4" /> {activity.location.name}
-          </div>
-        )}
+          {!!timeStr && (
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <Clock3 className="w-4 h-4" /> {timeStr}
+              {t('detail.clockSuffix') ? ` ${t('detail.clockSuffix')}` : ''}
+              {duration ? ` · ${duration}` : ''}
+            </div>
+          )}
+          {activity.location?.name && (
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <MapPin className="w-4 h-4" /> {activity.location.name}
+            </div>
+          )}
 
-        {activity.project && (
-          <div className="flex items-center gap-2 text-sm text-gray-700">
-            <Boxes className="w-4 h-4" />
-            <div>{activity.project.title}</div>
-          </div>
-        )}
+          {activity.project && (
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <Boxes className="w-4 h-4" />
+              <div>{activity.project.title}</div>
+            </div>
+          )}
 
-        <div className="text-sm text-gray-700">
-          <div className="font-medium mb-1">{t('detail.participants')}</div>
-          {isCancelledActivity(activity.executionStatus) ? (
-            <ActivityExecutionStatusBadge status={activity.executionStatus} />
-          ) : (
+          <div className="text-sm text-gray-700">
+            <div className="font-medium mb-1">{t('detail.participants')}</div>
+            {isCancelledActivity(activity.executionStatus) ? (
+              <ActivityExecutionStatusBadge status={activity.executionStatus} />
+            ) : (
+              <div>
+                {t('detail.participantBreakdown', {
+                  total: activity.countTotal ?? 0,
+                  male: activity.countMale ?? 0,
+                  female: activity.countFemale ?? 0,
+                  diverse: activity.countDiverse ?? 0,
+                })}
+              </div>
+            )}
+          </div>
+
+          {activity.categories && activity.categories.length > 0 && (
             <div>
-              {t('detail.participantBreakdown', {
-                total: activity.countTotal ?? 0,
-                male: activity.countMale ?? 0,
-                female: activity.countFemale ?? 0,
-                diverse: activity.countDiverse ?? 0,
-              })}
+              <div className="text-sm font-medium text-gray-700 mb-1">{t('detail.categories')}</div>
+              <div className="flex flex-wrap gap-2">
+                {activity.categories.map((c) => (
+                  <span
+                    key={c.id}
+                    className="px-2 py-1 rounded-full text-xs text-white"
+                    style={{ backgroundColor: getBadgeBackgroundColor(c.color) }}
+                    title={c.name}
+                  >
+                    {c.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activity.tags && activity.tags.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                <TagIcon className="w-4 h-4" /> {t('detail.tags')}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {activity.tags.map((t) => (
+                  <span
+                    key={t.id}
+                    className="px-2 py-1 rounded-full text-xs text-white"
+                    style={{ backgroundColor: getBadgeBackgroundColor(t.color, '#64748b') }}
+                    title={t.name}
+                  >
+                    {t.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activity.staff && activity.staff.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                <Users className="w-4 h-4" /> {t('detail.staff')}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {activity.staff.map((s) => {
+                  const obj = s as unknown as Record<string, unknown>;
+                  const roles = Array.isArray(obj.roles)
+                    ? (obj.roles as unknown[]).filter((x): x is string => typeof x === 'string')
+                    : undefined;
+                  const role = typeof obj.role === 'string' ? (obj.role as string) : undefined;
+                  return (
+                    <span
+                      key={s.id}
+                      className={`px-2 py-1 rounded-full text-xs ${roleBadgeClass(roles, role)}`}
+                      title={s.name}
+                    >
+                      {s.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {activity.notes && (
+            <div>
+              <div className="text-sm font-medium text-gray-700 mb-1">{t('detail.notes')}</div>
+              <div className="text-sm text-gray-700 whitespace-pre-wrap">{activity.notes}</div>
             </div>
           )}
         </div>
-
-        {activity.categories && activity.categories.length > 0 && (
-          <div>
-            <div className="text-sm font-medium text-gray-700 mb-1">{t('detail.categories')}</div>
-            <div className="flex flex-wrap gap-2">
-              {activity.categories.map((c) => (
-                <span
-                  key={c.id}
-                  className="px-2 py-1 rounded-full text-xs text-white"
-                  style={{ backgroundColor: getBadgeBackgroundColor(c.color) }}
-                  title={c.name}
-                >
-                  {c.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activity.tags && activity.tags.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-              <TagIcon className="w-4 h-4" /> {t('detail.tags')}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {activity.tags.map((t) => (
-                <span
-                  key={t.id}
-                  className="px-2 py-1 rounded-full text-xs text-white"
-                  style={{ backgroundColor: getBadgeBackgroundColor(t.color, '#64748b') }}
-                  title={t.name}
-                >
-                  {t.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activity.staff && activity.staff.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-              <Users className="w-4 h-4" /> {t('detail.staff')}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {activity.staff.map((s) => {
-                const obj = s as unknown as Record<string, unknown>;
-                const roles = Array.isArray(obj.roles)
-                  ? (obj.roles as unknown[]).filter((x): x is string => typeof x === 'string')
-                  : undefined;
-                const role = typeof obj.role === 'string' ? (obj.role as string) : undefined;
-                return (
-                  <span
-                    key={s.id}
-                    className={`px-2 py-1 rounded-full text-xs ${roleBadgeClass(roles, role)}`}
-                    title={s.name}
-                  >
-                    {s.name}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {activity.notes && (
-          <div>
-            <div className="text-sm font-medium text-gray-700 mb-1">{t('detail.notes')}</div>
-            <div className="text-sm text-gray-700 whitespace-pre-wrap">{activity.notes}</div>
-          </div>
-        )}
       </div>
     </div>
   );

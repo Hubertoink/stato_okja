@@ -595,7 +595,7 @@ export default function Dashboard() {
                 key={entry.id}
                 type="button"
                 onClick={() => navigate(`/logbook?entry=${encodeURIComponent(entry.id)}`)}
-                className="rounded-xl border border-gray-100 bg-white p-4 text-left transition hover:border-viridian/30 hover:bg-viridian/5"
+                className="dashboard-logbook-entry rounded-xl p-4 text-left"
               >
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">

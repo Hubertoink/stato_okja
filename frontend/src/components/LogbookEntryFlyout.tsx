@@ -208,6 +208,7 @@ export default function LogbookEntryFlyout({
             {canManage && !archived && entry && (
               <IconButton
                 variant="secondary"
+                className="logbook-edit-button"
                 onClick={() => navigate(`/logbook/${entry.id}/edit`)}
                 aria-label={autoT('ui_104f3bfdc340')}
                 title={autoT('ui_104f3bfdc340')}

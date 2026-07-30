@@ -1576,17 +1576,17 @@ code {
   color: #fecaca;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-edit-button {
-  background: rgba(17, 26, 43, 0.84);
-  color: #9fc4ff;
-  border-color: rgba(110, 168, 255, 0.22);
+:root[data-color-mode='dark'] .activity-edit-button {
+  background: var(--surface-elevated);
+  color: var(--viridian);
+  border-color: var(--interactive-soft-border);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .activity-edit-button:hover {
-  background: rgba(110, 168, 255, 0.16);
-  border-color: rgba(110, 168, 255, 0.34);
-  color: #ecf3ff;
+:root[data-color-mode='dark'] .activity-edit-button:hover {
+  background: var(--interactive-soft-strong);
+  border-color: var(--interactive-soft-border);
+  color: var(--text-primary);
 }
 
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .calendar-closure-button {
@@ -2204,6 +2204,55 @@ code {
   transform: translateY(-1px);
 }
 
+/* Keep the action readable on every dark family instead of falling back to a
+   bright white tile inside the coloured dashboard panel. */
+:root[data-color-mode='dark'] .dashboard-accent-button,
+:root[data-color-mode='dark'] .theme-accent-button {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text-primary) 10%, transparent),
+    0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-color-mode='dark'] .dashboard-accent-button:hover,
+:root[data-color-mode='dark'] .theme-accent-button:hover {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+.dashboard-logbook-entry {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.dashboard-logbook-entry:hover,
+.dashboard-logbook-entry:focus-visible {
+  border-color: var(--interactive-soft-border);
+  background: var(--interactive-soft);
+}
+
+.dashboard-logbook-entry:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-logbook-entry:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.logbook-edit-button {
+  color: var(--viridian);
+}
+
+.logbook-edit-button:hover {
+  color: var(--viridian);
+}
+
 .dashboard-accent-solid-button {
   background: var(--viridian);
   color: #ffffff;
@@ -2298,52 +2347,51 @@ code {
   }
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-archive-button {
-  border-color: rgba(252, 165, 165, 0.72);
-  background: rgba(127, 29, 29, 0.3);
+:root[data-color-mode='dark'] .logbook-archive-button {
+  border-color: color-mix(in srgb, #fca5a5 62%, var(--border-subtle));
+  background: color-mix(in srgb, #7f1d1d 42%, var(--surface-1));
   color: #fecaca;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes'])
-  .logbook-archive-button:hover:not(:disabled) {
-  border-color: rgba(254, 202, 202, 0.96);
-  background: rgba(153, 27, 27, 0.5);
+:root[data-color-mode='dark'] .logbook-archive-button:hover:not(:disabled) {
+  border-color: #fecaca;
+  background: color-mix(in srgb, #991b1b 56%, var(--surface-1));
   color: #fee2e2;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill {
-  border-color: rgba(110, 231, 183, 0.52);
-  background: rgba(6, 78, 59, 0.48);
+:root[data-color-mode='dark'] .logbook-status-pill {
+  border-color: color-mix(in srgb, #6ee7b7 52%, var(--border-subtle));
+  background: color-mix(in srgb, #064e3b 48%, var(--surface-1));
   color: #d1fae5;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill:hover {
-  border-color: rgba(167, 243, 208, 0.8);
-  background: rgba(6, 95, 70, 0.65);
+:root[data-color-mode='dark'] .logbook-status-pill:hover {
+  border-color: #a7f3d0;
+  background: color-mix(in srgb, #065f46 62%, var(--surface-1));
   color: #ecfdf5;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill--follow_up {
-  border-color: rgba(253, 230, 138, 0.64);
-  background: rgba(120, 53, 15, 0.44);
+:root[data-color-mode='dark'] .logbook-status-pill--follow_up {
+  border-color: color-mix(in srgb, #fde68a 64%, var(--border-subtle));
+  background: color-mix(in srgb, #78350f 44%, var(--surface-1));
   color: #fef3c7;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill--follow_up:hover {
-  border-color: rgba(254, 243, 199, 0.84);
-  background: rgba(146, 64, 14, 0.58);
+:root[data-color-mode='dark'] .logbook-status-pill--follow_up:hover {
+  border-color: #fef3c7;
+  background: color-mix(in srgb, #92400e 58%, var(--surface-1));
   color: #fffbeb;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill--discussed {
-  border-color: rgba(134, 239, 172, 0.58);
-  background: rgba(20, 83, 45, 0.44);
+:root[data-color-mode='dark'] .logbook-status-pill--discussed {
+  border-color: color-mix(in srgb, #86efac 58%, var(--border-subtle));
+  background: color-mix(in srgb, #14532d 44%, var(--surface-1));
   color: #dcfce7;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .logbook-status-pill--discussed:hover {
-  border-color: rgba(220, 252, 231, 0.8);
-  background: rgba(21, 128, 61, 0.52);
+:root[data-color-mode='dark'] .logbook-status-pill--discussed:hover {
+  border-color: #dcfce7;
+  background: color-mix(in srgb, #15803d 52%, var(--surface-1));
   color: #f0fdf4;
 }
 

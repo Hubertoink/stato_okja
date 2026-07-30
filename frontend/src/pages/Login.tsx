@@ -340,15 +340,15 @@ export default function Login() {
           </button>
         </div>
 
-        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-400">
+        <div className="relative mt-4 flex items-center justify-center text-sm text-gray-400">
           <button
             type="button"
             onClick={() => setLanguageModalOpen(true)}
-            className="rounded-md p-1 transition-colors hover:bg-gray-100 hover:text-viridian"
+            className="absolute left-0 inline-flex items-center justify-center rounded-md bg-viridian/10 p-1.5 text-viridian transition-colors hover:bg-viridian/20 hover:text-cambridge-blue"
             aria-label={t('common:language.label')}
             title={t('common:language.label')}
           >
-            <Globe2 className="h-4 w-4" aria-hidden="true" />
+            <Globe2 className="h-5 w-5" aria-hidden="true" />
           </button>
           <p>
             © {new Date().getFullYear()}{' '}{autoT('ui_65966d2d167a')}{' '}<a href="mailto:hubertoink@outlook.com" className="hover:text-viridian transition-colors">{autoT('ui_dba32cb2a55d')}</a>

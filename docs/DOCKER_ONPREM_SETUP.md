@@ -138,6 +138,12 @@ Release. Vor einem Update immer ein Backup erstellen.
 
 ## Manuelle Installation
 
+### `.env.onprem` komfortabel erzeugen
+
+Für eine individuelle Konfiguration steht der statische [`.env.onprem` Generator](./ENV_GENERATOR.md) zur Verfügung. Er erzeugt die Datei ausschließlich lokal im Browser, einschließlich individueller Datenbank- und JWT-Secrets. Die erzeugte Datei anschließend als `.env.onprem` im Installationsverzeichnis ablegen; sie darf niemals committed werden.
+
+Der Generator ergänzt den Installer, ersetzt ihn aber nicht: Bei einer frischen Standardinstallation erzeugen `install-onprem.sh` und `install-onprem.ps1` die Secrets selbst.
+
 ### Schritt 1: Repo auf den Zielserver bringen
 
 Beispiel:

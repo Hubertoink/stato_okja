@@ -20,6 +20,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.0.16] - 2026-07-30
+
+### Added
+- Sprachumschaltung und lokalisierte Rechtstexte stehen auch auf der
+  Anmeldeseite zur Verfügung.
+
+### Changed
+- Das Sprachsymbol im Login-Footer ist linksbündig angeordnet und hebt sich
+  in der Akzentfarbe stärker ab.
+
+---
+
 ## [1.0.15] - 2026-07-29
 
 ### Fixed

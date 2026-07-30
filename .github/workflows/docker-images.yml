@@ -68,6 +68,9 @@ jobs:
       - name: Check release version
         run: npm run version:check
 
+      - name: Test On-Prem environment generator
+        run: npm run test:env-generator
+
       - name: Test and build backend
         run: |
           npm run test --workspace=backend -- --runInBand

@@ -22,6 +22,7 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "test": "npm run test:backend && npm run test:frontend",
+    "test:env-generator": "node --test docs/env-generator/env-generator.test.mjs",
     "test:backend": "cd backend && npm run test",
     "test:frontend": "cd frontend && npm run test",
     "type-check:ts7": "npm run -w backend type-check:ts7 && npm run -w frontend type-check:ts7"

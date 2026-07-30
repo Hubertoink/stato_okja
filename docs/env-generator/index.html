@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>StatO .env.onprem Generator</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="generator">
+      <section class="intro">
+        <h1>.env.onprem Generator</h1>
+        <p>Erstelle eine individuelle StatO-On-Prem-Konfiguration für deine Organisation.</p>
+        <p class="privacy"><strong>Privat und lokal:</strong> Die Konfiguration und Secrets entstehen ausschließlich in deinem Browser. Es gibt keine Übertragung und keine Speicherung durch StatO.</p>
+      </section>
+
+      <div class="layout">
+        <form id="env-generator-form" class="panel" novalidate>
+          <fieldset>
+            <legend>Installation</legend>
+            <div class="field-grid">
+              <label class="wide">Betriebsart
+                <select name="installationMode">
+                  <option value="local">Lokales Netzwerk / HTTP</option>
+                  <option value="internal-tls">Internes HTTPS mit Caddy</option>
+                </select>
+              </label>
+              <label>Öffentliche Adresse <input name="appOrigin" type="url" value="http://localhost" required aria-describedby="origin-help" /></label>
+              <label>HTTP-Port <input name="httpPort" inputmode="numeric" value="80" required /></label>
+              <p id="origin-help" class="wide">Bei internem HTTPS wird die Adresse aus DNS-Name und HTTPS-Port abgeleitet.</p>
+              <div id="tls-settings" class="field-grid wide" hidden>
+                <label>DNS-Name <input name="publicHost" placeholder="stato.intern.example.de" /></label>
+                <label>HTTPS-Port <input name="httpsPort" inputmode="numeric" value="443" required /></label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Organisation und Betrieb</legend>
+            <div class="field-grid">
+              <label>Organisationsname <input name="organizationName" value="Meine Organisation" required /></label>
+              <label>Anwendungsname <input name="appName" value="StatO" required /></label>
+              <label>Superadmin-E-Mail <input name="superadminEmail" type="email" value="admin@stato.local" required /></label>
+              <label>Image-Version (optional) <input name="imageTag" placeholder="z. B. 1.0.16" /></label>
+              <label>Zeitzone <input name="timezone" value="Europe/Berlin" required /></label>
+              <label>Backup-Aufbewahrung (Tage) <input name="backupRetentionDays" inputmode="numeric" value="14" required /></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Anmeldung und E-Mail</legend>
+            <label class="toggle"><input name="enableEmail" type="checkbox" /> E-Mail-Versand (Einladungen und Passwort-Reset) konfigurieren</label>
+            <label class="toggle"><input name="enableTwoFactor" type="checkbox" disabled /> Zwei-Faktor-Authentifizierung aktivieren</label>
+            <div id="email-settings" class="field-grid" hidden>
+              <label>SMTP-Host <input name="smtpHost" placeholder="mail.example.org" /></label>
+              <label>SMTP-Port <input name="smtpPort" inputmode="numeric" value="587" /></label>
+              <label>SMTP-Benutzer <input name="smtpUser" type="email" placeholder="mailer@example.org" /></label>
+              <label>SMTP-Passwort <input name="smtpPass" type="password" autocomplete="new-password" /></label>
+              <label class="wide">SMTP-Absender <input name="smtpFrom" type="email" placeholder="no-reply@example.org" /></label>
+            </div>
+            <label>Benutzerbereitstellung <span aria-hidden="true">(bei deaktiviertem E-Mail-Versand: lokal)</span>
+              <select name="provisioningMode">
+                <option value="email">Per E-Mail einladen</option>
+                <option value="local">Temporäres Passwort durch Admin</option>
+              </select>
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Sicherheitswerte</legend>
+            <div class="secret">
+              <label>Datenbankpasswort <input name="databasePassword" type="text" spellcheck="false" required /></label>
+              <button id="regenerate-database-password" type="button" class="secondary">Neu erzeugen</button>
+            </div>
+            <div class="secret">
+              <label>JWT-Secret <input name="jwtSecret" type="text" spellcheck="false" required /></label>
+              <button id="regenerate-jwt-secret" type="button" class="secondary">Neu erzeugen</button>
+            </div>
+          </fieldset>
+        </form>
+
+        <section class="panel output-panel" aria-label="Generierte Konfiguration">
+          <h2>Deine <code>.env.onprem</code></h2>
+          <div id="validation-errors" class="errors" role="alert" hidden></div>
+          <pre id="env-output" aria-live="polite"></pre>
+          <div class="actions">
+            <button id="download-button" type="button">.env.onprem herunterladen</button>
+            <button id="copy-button" type="button" class="secondary">In Zwischenablage kopieren</button>
+          </div>
+          <p class="version" id="generator-version"></p>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="./env-generator.js"></script>
+  </body>
+</html>

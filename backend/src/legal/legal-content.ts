@@ -16,6 +16,32 @@ type LegalManifest = {
   documents: Record<LegalDocumentKey, LegalManifestDocument>;
 };
 
+function normalizeLegalLocale(locale?: string | null): string | null {
+  const normalized = String(locale || '').trim().toLowerCase().split('-')[0];
+  return /^[a-z]{2,8}$/.test(normalized) ? normalized : null;
+}
+
+function localizedFilenameCandidates(defaultFilename: string, locale?: string | null): string[] {
+  const normalizedLocale = normalizeLegalLocale(locale);
+  if (!normalizedLocale) return [defaultFilename];
+
+  const match = /^(.*?)(?:\.([a-z]{2,8}))?(\.[^.]+)$/i.exec(defaultFilename);
+  if (!match) return [defaultFilename];
+
+  const [, baseName, , extension] = match;
+  return [
+    `${baseName} (${normalizedLocale})${extension}`,
+    `${baseName}.${normalizedLocale}${extension}`,
+    defaultFilename,
+  ];
+}
+
+function resolveLegalDocumentFile(directory: string, defaultFilename: string, locale?: string | null): string {
+  return localizedFilenameCandidates(defaultFilename, locale)
+    .map((filename) => resolve(directory, filename))
+    .find((path) => existsSync(path)) || resolve(directory, defaultFilename);
+}
+
 export type PublicLegalContent = {
   termsVersion: string;
   updatedAt: string;
@@ -69,13 +95,13 @@ function parseManifest(raw: string): LegalManifest {
 }
 
 /** Reads the deployment-specific legal text files without rendering HTML. */
-export async function getPublicLegalContent(): Promise<PublicLegalContent> {
+export async function getPublicLegalContent(locale?: string): Promise<PublicLegalContent> {
   const directory = getLegalContentDirectory();
   const manifest = parseManifest(await readFile(resolve(directory, 'manifest.json'), 'utf8'));
   const documentEntries = await Promise.all(
     LEGAL_DOCUMENT_KEYS.map(async (key) => {
       const document = manifest.documents[key];
-      const content = await readFile(resolve(directory, document.file), 'utf8');
+      const content = await readFile(resolveLegalDocumentFile(directory, document.file, locale), 'utf8');
       return [key, { title: document.title, content }] as const;
     }),
   );

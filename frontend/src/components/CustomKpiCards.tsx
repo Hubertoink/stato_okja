@@ -263,11 +263,12 @@ export default function CustomKpiCards({
   surface,
   from,
   to,
-  title = 'Eigene KPIs',
+  title,
   className = '',
   showManager = true,
   refreshOptions,
 }: CustomKpiCardsProps) {
+  const resolvedTitle = title ?? autoT('ui_88fe92182f1a');
   const [isDarkTheme, setIsDarkTheme] = useState(() => isDarkKpiTheme());
   const colorOptions = isDarkTheme ? DARK_KPI_COLOR_OPTIONS : LIGHT_KPI_COLOR_OPTIONS;
   const defaultBackgroundColor = colorOptions[0];
@@ -371,7 +372,7 @@ export default function CustomKpiCards({
   return (
     <section className={className} data-pdf-section>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+        <h3 className="text-lg font-semibold text-gray-800">{resolvedTitle}</h3>
         {showManager && (
           <button
             type="button"

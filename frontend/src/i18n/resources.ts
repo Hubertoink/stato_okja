@@ -13,6 +13,7 @@ export const resources = {
         organizationHelp: 'Wird für neue Benutzer dieser Organisation verwendet.',
         organizationSaved: 'Standardsprache gespeichert',
         organizationError: 'Standardsprache konnte nicht gespeichert werden.',
+        modalTitle: 'Sprache auswählen',
         options: { de: 'Deutsch', en: 'Englisch' },
       },
       navigation: {
@@ -27,6 +28,7 @@ export const resources = {
         devTools: 'Dev Tools', audit: 'Audit', dataManagement: 'Datenverwaltung', users: 'Benutzer', logout: 'Abmelden',
       },
       legal: { imprint: 'Impressum', privacy: 'Datenschutz', terms: 'Nutzungsbedingungen', cookies: 'Cookies' },
+      sessions: { expand: 'Aktive Sitzungen ausklappen', collapse: 'Aktive Sitzungen einklappen' },
       actions: {
         ok: 'OK', cancel: 'Abbrechen', close: 'Schließen', back: 'Zurück', save: 'Speichern',
         delete: 'Löschen', edit: 'Bearbeiten', add: 'Hinzufügen', search: 'Suchen…',
@@ -333,6 +335,7 @@ export const resources = {
         organizationHelp: 'Used for new users in this organization.',
         organizationSaved: 'Default language saved',
         organizationError: 'The default language could not be saved.',
+        modalTitle: 'Select language',
         options: { de: 'German', en: 'English' },
       },
       navigation: {
@@ -347,6 +350,7 @@ export const resources = {
         devTools: 'Dev Tools', audit: 'Audit log', dataManagement: 'Data management', users: 'Users', logout: 'Sign out',
       },
       legal: { imprint: 'Imprint', privacy: 'Privacy', terms: 'Terms of use', cookies: 'Cookies' },
+      sessions: { expand: 'Expand active sessions', collapse: 'Collapse active sessions' },
       actions: {
         ok: 'OK', cancel: 'Cancel', close: 'Close', back: 'Back', save: 'Save',
         delete: 'Delete', edit: 'Edit', add: 'Add', search: 'Search…',

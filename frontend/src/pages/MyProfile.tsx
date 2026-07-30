@@ -127,6 +127,8 @@ function formatSessionDate(value: string) {
 
 function SessionsSection() {
   const { logout } = useAuth();
+  const { t } = useTranslation('common');
+  const [expanded, setExpanded] = useState(false);
   const [sessions, setSessions] = useState<AuthSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -148,8 +150,9 @@ function SessionsSection() {
   }
 
   useEffect(() => {
+    if (!expanded) return;
     void loadSessions();
-  }, []);
+  }, [expanded]);
 
   async function revokeSession(sessionId: string) {
     setBusyId(sessionId);
@@ -176,11 +179,21 @@ function SessionsSection() {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-viridian mb-2">{autoT('ui_9d01dab45fb0')}</h3>
-          <p className="text-sm text-gray-600">{autoT('ui_bad420c44035')}</p>
+          <h3 className="text-lg font-semibold text-viridian">{autoT('ui_9d01dab45fb0')}</h3>
+          {expanded ? <p className="mt-2 text-sm text-gray-600">{autoT('ui_bad420c44035')}</p> : null}
         </div>
-        <ShieldCheck className="w-5 h-5 text-viridian shrink-0" />
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-lg p-1 text-viridian hover:bg-viridian/10"
+          onClick={() => setExpanded((current) => !current)}
+          aria-expanded={expanded}
+          aria-label={expanded ? t('sessions.collapse') : t('sessions.expand')}
+        >
+          <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
+          {expanded ? <ChevronUp className="h-5 w-5" aria-hidden="true" /> : <ChevronDown className="h-5 w-5" aria-hidden="true" />}
+        </button>
       </div>
+      {expanded ? <>
       {err && <div className="mt-4 text-sm text-red-600">{err}</div>}
       {notice && <div className="mt-4 text-sm text-green-700" role="status">{notice}</div>}
       <div className="mt-4 space-y-3">
@@ -210,6 +223,7 @@ function SessionsSection() {
           </div>
         ))}
       </div>
+      </> : null}
     </div>
   );
 }

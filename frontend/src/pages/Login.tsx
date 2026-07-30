@@ -9,9 +9,9 @@ import { CookieNoticeModal, ImprintModal, PrivacyNoticeModal, TermsOfUseModal } 
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { useNavigate } from 'react-router-dom';
-import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
+import { Eye as EyeIcon, EyeOff as EyeOffIcon, Globe2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import LanguageSelect from '@/components/LanguageSelect';
+import LanguagePickerModal from '@/components/LanguagePickerModal';
 import { autoT } from '@/i18n/auto';
 
 export default function Login() {
@@ -33,6 +33,7 @@ export default function Login() {
   const [cookieModalOpen, setCookieModalOpen] = useState(false);
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const [languageModalOpen, setLanguageModalOpen] = useState(false);
   const navigate = useNavigate();
   const setupPasswordValidationMessage = getPasswordValidationMessage(setupPassword);
 
@@ -137,9 +138,6 @@ export default function Login() {
             {branding.loginTitle}
           </h1>
           <p className="text-gray-500 mt-2 font-medium">{branding.loginSubtitle}</p>
-          <div className="mt-4 flex justify-center">
-            <LanguageSelect />
-          </div>
         </div>
 
         {branding.initialSetupRequired ? (
@@ -342,15 +340,27 @@ export default function Login() {
           </button>
         </div>
 
-        <p className="text-center text-sm text-gray-400 mt-4">
-          © {new Date().getFullYear()}{' '}{autoT('ui_65966d2d167a')}{' '}<a href="mailto:hubertoink@outlook.com" className="hover:text-viridian transition-colors">{autoT('ui_dba32cb2a55d')}</a>
-        </p>
+        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-400">
+          <button
+            type="button"
+            onClick={() => setLanguageModalOpen(true)}
+            className="rounded-md p-1 transition-colors hover:bg-gray-100 hover:text-viridian"
+            aria-label={t('common:language.label')}
+            title={t('common:language.label')}
+          >
+            <Globe2 className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <p>
+            © {new Date().getFullYear()}{' '}{autoT('ui_65966d2d167a')}{' '}<a href="mailto:hubertoink@outlook.com" className="hover:text-viridian transition-colors">{autoT('ui_dba32cb2a55d')}</a>
+          </p>
+        </div>
       </div>
 
       <ImprintModal open={imprintModalOpen} onClose={() => setImprintModalOpen(false)} />
       <PrivacyNoticeModal open={privacyModalOpen} onClose={() => setPrivacyModalOpen(false)} />
       <TermsOfUseModal open={termsModalOpen} onClose={() => setTermsModalOpen(false)} />
       <CookieNoticeModal open={cookieModalOpen} onClose={() => setCookieModalOpen(false)} />
+      <LanguagePickerModal open={languageModalOpen} onClose={() => setLanguageModalOpen(false)} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Req, Res, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, Res, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AuthService, type AuthenticatedSessionResponse } from './auth.service';
@@ -173,8 +173,8 @@ export class AuthController {
   }
 
   @Get('legal')
-  legalContent() {
-    return getPublicLegalContent();
+  legalContent(@Query('locale') locale?: string) {
+    return getPublicLegalContent(locale);
   }
 
   @Throttle(AUTH_RATE_LIMIT)

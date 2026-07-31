@@ -471,25 +471,25 @@ export default function Dashboard() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="kpi-card">
+      <div className="dashboard-kpi-grid">
+        <div className="kpi-card dashboard-kpi-card">
           <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.activities')}</h3>
           <p className="text-3xl font-bold text-gray-800">{fmt(summary?.totalActivities)}</p>
         </div>
 
-        <div className="kpi-card">
+        <div className="kpi-card dashboard-kpi-card">
           <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.participants')}</h3>
           <p className="text-3xl font-bold text-gray-800">{fmt(summary?.totalParticipants)}</p>
         </div>
 
-        <div className="kpi-card">
+        <div className="kpi-card dashboard-kpi-card">
           <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.average')}</h3>
           <p className="text-3xl font-bold text-gray-800">
             {typeof summary?.averageParticipants === 'number' ? formatNumber(summary.averageParticipants) : autoT('ui_b6589fc6ab0d')}
           </p>
         </div>
 
-        <div className="kpi-card">
+        <div className="kpi-card dashboard-kpi-card">
           <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.hours')}</h3>
           <p className="text-3xl font-bold text-gray-800">
             {typeof summary?.totalHours === 'number' ? formatNumber(summary.totalHours) : autoT('ui_b6589fc6ab0d')}

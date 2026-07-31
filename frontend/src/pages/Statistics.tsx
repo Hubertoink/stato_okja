@@ -2602,8 +2602,11 @@ export default function Statistics() {
             >{autoT('ui_388b22eb70db')}</button>
           </div>
         </div>
-        <div className={`grid grid-cols-1 gap-6 mb-8 ${selectedClosureState === 'closed' ? "md:grid-cols-5" : "md:grid-cols-4"}`} data-pdf-section>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
+        <div
+          className={`statistics-kpi-grid ${selectedClosureState === 'closed' ? "statistics-kpi-grid--with-closure" : ''}`}
+          data-pdf-section
+        >
+          <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
               {showAverage
                 ? averageActivitiesPerWeek.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
@@ -2613,7 +2616,7 @@ export default function Statistics() {
               {showAverage ? autoT('ui_a5ae4475a508') : autoT('ui_b6bf5f1a2033')}
             </p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
+          <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-cambridge-blue">
               {showAverage
                 ? summary?.averageParticipants?.toLocaleString('de-DE', { maximumFractionDigits: 1 })
@@ -2623,7 +2626,7 @@ export default function Statistics() {
               {showAverage ? autoT('ui_ce999918d5c2') : autoT('ui_a8a4d6b019af')}
             </p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
+          <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-cambridge-blue">
               {totalParticipantsPerHour.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })}
             </p>
@@ -2631,7 +2634,7 @@ export default function Statistics() {
               {showAverage ? autoT('ui_86f83c37babf') : autoT('ui_bb662b9cd669')}
             </p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
+          <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
             <p className="text-4xl font-bold text-viridian">
               {showAverage
                 ? averageHoursPerActivity.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
@@ -2642,7 +2645,7 @@ export default function Statistics() {
             </p>
           </div>
           {selectedClosureState === 'closed' && (
-            <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
               <p className="text-4xl font-bold text-amber-500">
                 {fmtNumber(summary?.closureDaysCount ?? 0)}
               </p>

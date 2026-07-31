@@ -4,7 +4,7 @@ Diese Datei ist die zentrale Git-Referenz fuer die im Repository verwendeten Env
 
 ## Quellen im Repository
 
-- `.env.onprem.example`: produktionsnahes On-Prem-Beispiel
+- `deploy/onprem/stato.env.example`: produktionsnahes On-Prem-Beispiel
 - `env.production.example`: Hosted-/Off-Prem-Beispiel
 - `backend/.env.example`: lokale Entwicklungswerte
 - `backend/BACKEND_CONTAINER_ENV.md`: Backend-spezifische Detailreferenz
@@ -20,7 +20,7 @@ Wichtig:
 | Modus | Typische Datei | Zweck |
 | --- | --- | --- |
 | Entwicklung | `backend/.env.example` | Lokale Node- und Frontend-Entwicklung |
-| On-Prem | `.env.onprem.example` | Frontend, Backend und Postgres in eigenem Compose-Stack |
+| On-Prem | `deploy/onprem/stato.env.example` | Frontend, Backend und Postgres in eigenem Compose-Stack |
 | Hosted / Off-Prem | `env.production.example` | Deployment hinter Reverse Proxy oder externer Plattform |
 
 ## Server und HTTP
@@ -192,6 +192,6 @@ DB_SYNCHRONIZE=false
 - `docs/DOCKER_ONPREM_SETUP.md`
 - `docs/LOCAL_SETUP_ONPREM.md`
 - `docs/GO_LIVE_MITTWALD.md`
-- `.env.onprem.example`
+- `deploy/onprem/stato.env.example`
 - `env.production.example`
 - `backend/.env.example`

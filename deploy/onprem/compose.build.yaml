@@ -1,0 +1,22 @@
+# Optional source-build override for development or air-gapped environments.
+# Use it only together with compose.yaml; normal On-Prem installs use the
+# published release images and never need a local source checkout.
+services:
+  backend:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: frontend/Dockerfile
+      args:
+        NGINX_MODE: proxy
+        VITE_ENABLE_DEV_TOOLS: ${VITE_ENABLE_DEV_TOOLS:-false}
+        VITE_ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
+
+  backup:
+    build:
+      context: ../..
+      dockerfile: backup/Dockerfile

@@ -48,18 +48,20 @@ StatO speichert keine personenbezogenen Daten von teilnehmenden jungen Menschen.
 
 ### On-Prem mit Docker
 
-Voraussetzung sind Git, Docker und das Docker-Compose-Plugin. Der Installer lädt `main`, erzeugt individuelle Secrets und startet den Stack.
+Voraussetzung sind Docker und das Docker-Compose-Plugin. Der Installer lädt ein
+versioniertes Release-Bundle, prüft dessen SHA-256-Summe, erzeugt individuelle Secrets und legt
+die echte Konfiguration getrennt unter `config/stato.env` ab.
 
 Linux/macOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.sh | sh
+curl -fsSL https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.sh | sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.ps1 | iex
+irm https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.ps1 | iex
 ```
 
 Danach ist StatO standardmäßig unter `http://localhost` beziehungsweise der IP-Adresse des Servers erreichbar. Die vollständige Anleitung, einschließlich SMTP, Domain und Branding, steht in der [Docker-On-Prem-Anleitung](docs/DOCKER_ONPREM_SETUP.md).

@@ -10,8 +10,8 @@ Ziel ist ein Betrieb ohne Mittwald, ohne externe StatO-API und ohne lokale Node-
 
 Die Anleitung orientiert sich an den vorhandenen Repo-Dateien:
 
-- [docker-compose.onprem.yml](../docker-compose.onprem.yml)
-- [.env.onprem.example](../.env.onprem.example)
+- [deploy/onprem/compose.yaml](../deploy/onprem/compose.yaml)
+- [deploy/onprem/stato.env.example](../deploy/onprem/stato.env.example)
 - [frontend/Dockerfile](../frontend/Dockerfile)
 - [backend/BACKEND_CONTAINER_ENV.md](../backend/BACKEND_CONTAINER_ENV.md)
 
@@ -57,24 +57,23 @@ Empfohlen für Produktion:
 
 Für den On-Prem-Betrieb werden primär diese Dateien genutzt:
 
-- [docker-compose.onprem.yml](../docker-compose.onprem.yml): startet Postgres, Backend und Frontend
-- [.env.onprem.example](../.env.onprem.example): Beispiel für produktionsnahe Variablen
+- [deploy/onprem/compose.yaml](../deploy/onprem/compose.yaml): produktive Runtime ohne lokale Builds
+- [deploy/onprem/stato.env.example](../deploy/onprem/stato.env.example): Vorlage für die lokale Konfiguration
 - [frontend/nginx.proxy.conf](../frontend/nginx.proxy.conf): Frontend im Proxy-Modus
 
-Wichtig: Im On-Prem-Compose ist der Frontend-Build bereits auf `NGINX_MODE=proxy` gesetzt. Das Frontend spricht also standardmäßig nicht gegen eine öffentliche API, sondern gegen den internen Backend-Service.
+Wichtig: Das veröffentlichte Frontend ist im Proxy-Modus gebaut und spricht standardmäßig gegen den internen Backend-Service. Die Root-Dateien `docker-compose.onprem.yml` und `.env.onprem.example` bleiben vorübergehend nur für bereits bestehende Source-Checkout-Installationen erhalten.
 
 ## Schnellinstallation mit einem Befehl
 
-Die Installer pruefen Git, Docker und Docker Compose, holen den Branch `main`,
-erzeugen beim ersten Lauf eine lokale `.env.onprem` mit individuellen
-Zufalls-Secrets und starten alle Container. Eine bereits vorhandene
-`.env.onprem` wird bei erneuter Ausfuehrung nicht ueberschrieben.
+Die Installer prüfen Docker und Docker Compose, laden ein versioniertes
+Release-Bundle mit geprüfter SHA-256-Summe, erzeugen beim ersten Lauf eine
+lokale `config/stato.env` mit individuellen Zufalls-Secrets und starten alle
+Container. Quellcode, Git und ein lokaler Docker-Build sind nicht erforderlich.
 
-Die persistenten On-Prem-Daten liegen in einem stabil benannten Docker-Volume.
-Existiert dieser bereits, während `.env.onprem` fehlt, bricht der Installer ab,
-statt neue Secrets und eine unklare Ersteinrichtung auszugeben. In diesem
-Fall die bisherige `.env.onprem` wiederherstellen oder den alten Datenbestand
-bewusst sichern und entfernen, bevor eine neue Installation angelegt wird.
+Die persistenten On-Prem-Daten liegen in stabil benannten Docker-Volumes. Ein
+Release-Installer startet absichtlich kein vorhandenes Legacy-Volume aus einem
+Source-Checkout; dadurch kann eine bestehende Installation nicht versehentlich
+mit einem neuen Projektkontext überschrieben werden.
 
 Bei einer wirklich leeren PostgreSQL-Datenbank erzeugt der Installer das
 Basisschema einmalig und fuehrt anschliessend die regulären Migrationen aus.
@@ -83,64 +82,67 @@ Damit bleibt `DB_SYNCHRONIZE` im normalen Betrieb deaktiviert.
 Linux/macOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.sh | sh
+curl -fsSL https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.sh | sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.ps1 | iex
+irm https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.ps1 | iex
 ```
 
-Standardmaessig wird in ein Unterverzeichnis `stato_okja` des aktuellen
+Standardmaessig wird in das Unterverzeichnis `stato` des aktuellen
 Verzeichnisses installiert. Das Ziel kann vorgegeben werden:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.sh | STATO_INSTALL_DIR=/opt/stato sh
+curl -fsSL https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.sh | STATO_INSTALL_DIR=/opt/stato sh
 ```
 
 ```powershell
-$env:STATO_INSTALL_DIR = 'C:\Stato'; irm https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.ps1 | iex
+$env:STATO_INSTALL_DIR = 'C:\Stato'; irm https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.ps1 | iex
 ```
 
 Beim ersten Aufruf von StatO erscheint stattdessen die Ersteinrichtung. Dort
 wird das Passwort für `admin@stato.local` festgelegt; es wird ausschließlich
-als Passwort-Hash in der Datenbank gespeichert und nicht in `.env.onprem`
+als Passwort-Hash in der Datenbank gespeichert und nicht in `config/stato.env`
 abgelegt. Fuer den produktiven Betrieb danach mindestens Domain, E-Mail,
 Branding und HTTPS-Einstellungen pruefen.
 
 ## Veroeffentlichten Release installieren oder aktualisieren
 
 Die offiziellen Container werden bei einem Release als versionierte Images in
-GHCR veroeffentlicht. Mit `STATO_IMAGE_TAG` verwendet der Installer genau diese
-Version fuer Backend, Frontend und Backup; es ist dann kein lokaler Node- oder
-Docker-Build erforderlich. Der Wert wird in `.env.onprem` gespeichert und bei
-spaeteren Installer-Laeufen beibehalten.
+GHCR veröffentlicht. Der Release-Installer setzt `STATO_IMAGE_TAG` passend zum
+geladenen Release in `config/stato.env`; ein lokaler Node- oder Docker-Build
+findet dabei nie statt. Bei einem Folgeupdate bleibt die Konfiguration erhalten
+und vor dem Containerwechsel wird ein Backup im Installationsordner angelegt.
 
 Beispiel fuer Release `1.0.0` unter Linux/macOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/v1.0.0/scripts/install-onprem.sh | STATO_BRANCH=v1.0.0 STATO_IMAGE_TAG=1.0.0 sh
+curl -fsSL https://github.com/Hubertoink/stato_okja/releases/download/v1.0.0/install-onprem.sh | sh
 ```
 
 Unter Windows PowerShell:
 
 ```powershell
-$env:STATO_BRANCH = 'v1.0.0'
-$env:STATO_IMAGE_TAG = '1.0.0'
-irm https://raw.githubusercontent.com/Hubertoink/stato_okja/v1.0.0/scripts/install-onprem.ps1 | iex
+irm https://github.com/Hubertoink/stato_okja/releases/download/v1.0.0/install-onprem.ps1 | iex
 ```
 
-Fuer ein Update wird `STATO_IMAGE_TAG` in `.env.onprem` auf die gewuenschte
-freigegebene Version gesetzt und der Installer erneut gestartet. Ein Release-Tag
-ist absichtlich unveraenderlich; `latest` zeigt nur auf den neuesten stabilen
-Release. Vor einem Update immer ein Backup erstellen.
+Für ein Update wird der Installer der gewünschten Release-Version erneut
+ausgeführt. Ein Release-Tag ist unveränderlich; `latest` zeigt nur auf den
+neuesten stabilen Release. Der Installer sichert eine bestehende, von ihm
+verwaltete Release-Installation vor dem Update automatisch.
 
-## Manuelle Installation
+## Legacy: Installation aus Source-Checkout
 
-### `.env.onprem` komfortabel erzeugen
+Dieser Abschnitt dokumentiert den bisherigen Betrieb mit
+`docker-compose.onprem.yml` und `.env.onprem`. Er bleibt für bestehende
+Installationen erhalten, ist aber nicht der Weg für neue On-Prem-Server. Neue
+Installationen verwenden ausschließlich den Release-Installer weiter oben.
 
-Für eine individuelle Konfiguration steht der statische [`.env.onprem` Generator](./ENV_GENERATOR.md) zur Verfügung. Er erzeugt die Datei ausschließlich lokal im Browser, einschließlich individueller Datenbank- und JWT-Secrets. Die erzeugte Datei anschließend als `.env.onprem` im Installationsverzeichnis ablegen; sie darf niemals committed werden.
+### `stato.env` komfortabel erzeugen
+
+Für eine individuelle Konfiguration steht der statische [`stato.env` Generator](./ENV_GENERATOR.md) zur Verfügung. Er erzeugt die Datei ausschließlich lokal im Browser, einschließlich individueller Datenbank- und JWT-Secrets. Die erzeugte Datei anschließend als `config/stato.env` im Installationsverzeichnis ablegen; sie darf niemals committed werden.
 
 Der Generator ergänzt den Installer, ersetzt ihn aber nicht: Bei einer frischen Standardinstallation erzeugen `install-onprem.sh` und `install-onprem.ps1` die Secrets selbst.
 
@@ -593,14 +595,19 @@ Wichtig:
 
 ## Updates einspielen
 
-Bei neuen Versionen:
+Für eine releasebasierte On-Prem-Installation den Installer der gewünschten
+Version erneut ausführen. Er prüft das Bundle, lädt die Images, erstellt vor
+dem Containerwechsel ein Backup und behält `config/stato.env` unverändert:
 
-```bash
-git pull
-docker compose -f docker-compose.onprem.yml --env-file .env.onprem up -d --build
+```powershell
+irm https://github.com/Hubertoink/stato_okja/releases/download/v1.0.0/install-onprem.ps1 | iex
 ```
 
-Danach die Backend-Logs prüfen. Mit `DB_MIGRATIONS_RUN=true` und `DB_SYNCHRONIZE=false` führt der Backend-Container neue Migrationen beim Start automatisch aus.
+Danach die Backend-Logs prüfen. Mit `DB_MIGRATIONS_RUN=true` und
+`DB_SYNCHRONIZE=false` führt der Backend-Container neue Migrationen beim Start
+automatisch aus. Für alte Source-Checkout-Installationen gelten weiterhin die
+bisherigen Befehle und der bisherige Installer, bis eine eigene Migration
+freigegeben ist.
 
 ## Backup-Empfehlung
 
@@ -620,11 +627,11 @@ Beispiel für DB-Export:
 docker exec -t $(docker ps --filter name=postgres --format "{{.ID}}") pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > stato_backup.sql
 ```
 
-Fuer den regelmaessigen Betriebsbackup-Pfad stehen zusaetzlich PowerShell-Skripte bereit:
+Für regelmäßige Backups der Release-Installation kann der enthaltene
+Backup-Container direkt ausgelöst werden:
 
 ```powershell
-.\scripts\onprem-backup.ps1 -ComposeFile docker-compose.onprem.yml -EnvFile .env.onprem -RetentionDays 14
-.\scripts\onprem-restore.ps1 -BackupDir .\backups\stato-onprem-YYYYMMDD-HHMMSS -ConfirmText "RESTORE STATO BACKUP"
+docker compose --env-file .\config\stato.env -f .\compose.yaml exec -T backup /usr/local/bin/stato-container-backup
 ```
 
 Die Skripte laufen ueber Docker Compose und koennen auch mit einem Docker-Context auf einem externen Host genutzt werden, solange die Docker CLI den richtigen Compose-Stack erreicht. Details, Automatisierung und Restore-Testprotokoll: [security/BACKUP_RESTORE_RUNBOOK_2026-05-02.md](security/BACKUP_RESTORE_RUNBOOK_2026-05-02.md)
@@ -669,7 +676,7 @@ Prüfen:
 - lief vorher bereits das Dev-Compose im selben Checkout?
 
 Bei `password authentication failed` passt meist das Passwort im vorhandenen
-Postgres-Volume nicht mehr zu `.env.onprem`. Ein normales `down`/`up` ändert das
+Postgres-Volume nicht mehr zu `config/stato.env`. Ein normales `down`/`up` ändert das
 gespeicherte Datenbankpasswort nicht. Den Installer erneut ausführen; er gleicht
 das Passwort ohne Löschen der Daten ab, korrigiert bei älteren Upload-Volumes die
 Berechtigungen und startet den Stack neu:
@@ -695,13 +702,13 @@ Prüfen:
 
 ## Empfehlung für den praktischen Betrieb
 
-Für einen eigenen On-Prem-Rechner ist der einfachste und sauberste Weg:
+Für einen neuen On-Prem-Rechner ist der einfachste und sauberste Weg:
 
-1. [docker-compose.onprem.yml](../docker-compose.onprem.yml) nutzen
-2. `.env.onprem` sauber ausfüllen
-3. mit dem On-Prem-Installer bauen und starten
+1. Release-Installer verwenden
+2. `config/stato.env` bei Bedarf mit dem Generator vorbereiten
+3. nur versionierte Release-Images ziehen und starten
 4. Backend-Logs prüfen, damit automatische Migrationen erfolgreich gelaufen sind
 5. nur das Frontend nach außen freigeben
-6. HTTPS davor setzen
+6. HTTPS mit dem integrierten Caddy-Profil oder einem vorgeschalteten Proxy setzen
 
 Damit läuft StatO vollständig selbst gehostet mit Frontend-, Backend- und Datenbank-Container auf einer eigenen Infrastruktur.

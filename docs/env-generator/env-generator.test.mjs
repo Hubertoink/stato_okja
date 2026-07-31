@@ -15,7 +15,7 @@ function validConfig() {
 }
 
 test('generates the same required environment keys as the on-prem example', async () => {
-  const example = await readFile(new URL('../../.env.onprem.example', import.meta.url), 'utf8');
+  const example = await readFile(new URL('../../deploy/onprem/stato.env.example', import.meta.url), 'utf8');
   const expectedKeys = example
     .split(/\r?\n/)
     .filter((line) => /^[A-Z0-9_]+=/.test(line))

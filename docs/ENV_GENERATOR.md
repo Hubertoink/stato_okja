@@ -1,6 +1,6 @@
-# StatO `.env.onprem` Generator
+# StatO On-Prem-Konfigurationsgenerator
 
-Der Generator liegt unter [`docs/env-generator/`](./env-generator/) und erzeugt eine vollständige `.env.onprem` für den StatO-On-Prem-Stack. Er ist eine statische Browser-Anwendung ohne Backend, Cookies, Tracking oder Netzwerkanfragen.
+Der Generator liegt unter [`docs/env-generator/`](./env-generator/) und erzeugt eine vollständige `stato.env` für den StatO-On-Prem-Stack. Er ist eine statische Browser-Anwendung ohne Backend, Cookies, Tracking oder Netzwerkanfragen.
 
 ## Sicherheitsmodell
 
@@ -23,7 +23,7 @@ Die Konsistenz zur aktuellen On-Prem-Vorlage wird mit folgendem Test geprüft:
 npm run test:env-generator
 ```
 
-Der Test stellt sicher, dass jede nicht auskommentierte Variable aus [`.env.onprem.example`](../.env.onprem.example) auch erzeugt wird. Bei Änderungen an der Vorlage muss deshalb der Generator mit aktualisiert werden.
+Der Test stellt sicher, dass jede nicht auskommentierte Variable aus [`deploy/onprem/stato.env.example`](../deploy/onprem/stato.env.example) auch erzeugt wird. Bei Änderungen an der Vorlage muss deshalb der Generator mit aktualisiert werden.
 
 ## Bereitstellung
 
@@ -44,7 +44,7 @@ Auf der Dokumentationsseite im Neve-Block **Individuelles HTML** einfügen:
 ```html
 <iframe
   src="https://stato-okja.de/env-generator/"
-  title="StatO .env.onprem Generator"
+  title="StatO On-Prem-Konfigurationsgenerator"
   loading="lazy"
   style="width:100%; min-height:1500px; border:0; border-radius:12px;"
 ></iframe>
@@ -57,5 +57,5 @@ Die Mindesthöhe kann nach einem visuellen Test angepasst werden. Da Quelle und 
 1. Betriebsart und öffentliche Adresse festlegen.
 2. Optional E-Mail-Versand, SMTP und Zwei-Faktor-Authentifizierung aktivieren.
 3. Secrets nur bei Bedarf mit **Neu erzeugen** ersetzen.
-4. Datei herunterladen und als `.env.onprem` im StatO-Installationsverzeichnis ablegen.
+4. Datei herunterladen und als `config/stato.env` im StatO-Installationsverzeichnis ablegen.
 5. Die On-Prem-Installation wie in [DOCKER_ONPREM_SETUP.md](./DOCKER_ONPREM_SETUP.md) fortsetzen.

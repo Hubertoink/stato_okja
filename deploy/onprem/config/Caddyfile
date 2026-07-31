@@ -1,0 +1,11 @@
+{
+	admin off
+}
+
+# STATO_PUBLIC_HOST is validated by the On-Prem installers. Caddy creates and
+# retains its own internal CA in the caddy-data Docker volume.
+{$STATO_PUBLIC_HOST} {
+	tls internal
+	encode zstd gzip
+	reverse_proxy frontend:8080
+}

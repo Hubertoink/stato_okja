@@ -1,5 +1,7 @@
-# Legacy Source-Checkout-On-Prem configuration. New installations use the
-# release runtime in deploy/onprem and keep their config outside the checkout.
+# Runtime definition for the published On-Prem release bundle. It deliberately
+# contains no build contexts: production installs pull the release images.
+name: stato-onprem
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -22,9 +24,6 @@ services:
 
   backend:
     image: ghcr.io/hubertoink/stato-backend:${STATO_IMAGE_TAG:-local}
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -104,7 +103,7 @@ services:
     volumes:
       # Persistiert /uploads (u.a. /uploads/images)
       - backend-uploads:/app/uploads
-      - ${LEGAL_CONTENT_DIR_HOST:-./legal}:${LEGAL_CONTENT_DIR:-/app/legal}:ro
+      - ${LEGAL_CONTENT_DIR_HOST:-./config/legal}:${LEGAL_CONTENT_DIR:-/app/legal}:ro
     networks: [frontend-backend, backend-db]
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -115,16 +114,6 @@ services:
 
   frontend:
     image: ghcr.io/hubertoink/stato-frontend:${STATO_IMAGE_TAG:-local}
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-      args:
-        # Wichtig für On‑Prem: Proxy auf den Backend‑Service
-        NGINX_MODE: proxy
-        VITE_ENABLE_DEV_TOOLS: ${VITE_ENABLE_DEV_TOOLS:-false}
-        VITE_ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
-        # Optional (nur wenn ihr Option B wollt):
-        # VITE_API_BASE_URL: https://<eure-domain>/api
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -175,15 +164,12 @@ services:
     ports:
       - "${HTTPS_BIND_ADDRESS:-0.0.0.0}:${HTTPS_PORT:-443}:443"
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     networks: [frontend-backend]
 
   backup:
-    build:
-      context: .
-      dockerfile: backup/Dockerfile
     image: ${BACKUP_IMAGE:-ghcr.io/hubertoink/stato-backup:${STATO_IMAGE_TAG:-local}}
     restart: unless-stopped
     read_only: true

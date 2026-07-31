@@ -83,7 +83,7 @@ function downloadOutput() {
   const blob = new Blob([output.textContent], { type: 'text/plain;charset=utf-8' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = '.env.onprem';
+  link.download = 'stato.env';
   document.body.append(link);
   link.click();
   link.remove();

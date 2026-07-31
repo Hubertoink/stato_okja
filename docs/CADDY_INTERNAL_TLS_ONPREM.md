@@ -32,13 +32,13 @@ automatisch:
 
 ```powershell
 $env:STATO_INTERNAL_TLS_HOST='stato.intern.example.de'
-irm https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.ps1 | iex
+irm https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.ps1 | iex
 ```
 
 Linux/macOS:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Hubertoink/stato_okja/main/scripts/install-onprem.sh | STATO_INTERNAL_TLS_HOST=stato.intern.example.de sh
+curl -fsSL https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.sh | STATO_INTERNAL_TLS_HOST=stato.intern.example.de sh
 ```
 
 Danach die PowerShell-Variable bei Bedarf wieder entfernen:
@@ -49,7 +49,7 @@ Remove-Item Env:STATO_INTERNAL_TLS_HOST
 
 ### Manuell in der Env-Datei
 
-In der `.env.onprem` nur diese Werte ergänzen bzw. ändern:
+In der `config/stato.env` nur diese Werte ergänzen bzw. ändern:
 
 ```dotenv
 STATO_TLS_MODE=internal
@@ -71,14 +71,14 @@ PowerShell:
 
 ```powershell
 cd C:\Stato
-.\scripts\install-onprem.ps1
+irm https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.ps1 | iex
 ```
 
 Linux:
 
 ```sh
 cd /opt/stato
-sh ./scripts/install-onprem.sh
+curl -fsSL https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.sh | sh
 ```
 
 Prüfen:
@@ -96,13 +96,15 @@ Server-Installation stammen.
 PowerShell auf dem StatO-Server:
 
 ```powershell
-.\scripts\export-onprem-caddy-root.ps1
+$caddy = docker compose --profile internal-tls --env-file .\config\stato.env -f .\compose.yaml ps -q caddy
+docker cp "${caddy}:/data/caddy/pki/authorities/local/root.crt" .\stato-onprem-caddy-root.crt
 ```
 
 Linux auf dem StatO-Server:
 
 ```sh
-sh ./scripts/export-onprem-caddy-root.sh
+caddy=$(docker compose --profile internal-tls --env-file ./config/stato.env -f ./compose.yaml ps -q caddy)
+docker cp "$caddy:/data/caddy/pki/authorities/local/root.crt" ./stato-onprem-caddy-root.crt
 ```
 
 Beide Befehle erzeugen standardmäßig:

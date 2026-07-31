@@ -71,6 +71,14 @@ jobs:
       - name: Test On-Prem environment generator
         run: npm run test:env-generator
 
+      - name: Validate release-based On-Prem runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f deploy/onprem/compose.yaml --env-file deploy/onprem/stato.env.example config --quiet
+          bash -n scripts/install-onprem-release.sh
+          pwsh -NoProfile -Command '$errors = $null; [System.Management.Automation.Language.Parser]::ParseFile("scripts/install-onprem-release.ps1", [ref]$null, [ref]$errors) | Out-Null; if ($errors.Count) { $errors | Format-List | Out-String | Write-Error; exit 1 }'
+
       - name: Test and build backend
         run: |
           npm run test --workspace=backend -- --runInBand
@@ -486,18 +494,16 @@ jobs:
           node scripts/extract-release-notes.mjs "$version" > RELEASE_NOTES.md
           test -s RELEASE_NOTES.md
 
-          mkdir -p release-assets/bundle
-          cp docker-compose.onprem.yml release-assets/docker-compose.yml
-          # GitHub Release assets cannot reliably retain a leading dot in their
-          # filename. The tar bundle still contains .env.example; the standalone
-          # asset gets an explicit, portable name.
-          cp .env.onprem.example release-assets/stato.env.example
-          sed -i "s/^STATO_IMAGE_TAG=$/STATO_IMAGE_TAG=$version/" release-assets/stato.env.example
-          cp scripts/install-onprem.sh release-assets/install-onprem.sh
-          cp scripts/install-onprem.ps1 release-assets/install-onprem.ps1
+          mkdir -p release-assets/bundle/config/legal
+          cp scripts/install-onprem-release.sh release-assets/install-onprem.sh
+          cp scripts/install-onprem-release.ps1 release-assets/install-onprem.ps1
+          sed -i "s/__STATO_RELEASE_TAG__/v$version/g" release-assets/install-onprem.sh release-assets/install-onprem.ps1
           cp .release-sbom/stato-sbom.spdx.json release-assets/stato-sbom.spdx.json
-          cp release-assets/docker-compose.yml release-assets/bundle/docker-compose.yml
-          cp release-assets/stato.env.example release-assets/bundle/.env.example
+          cp deploy/onprem/compose.yaml release-assets/bundle/compose.yaml
+          cp deploy/onprem/stato.env.example release-assets/bundle/config/stato.env.example
+          sed -i "s/^STATO_IMAGE_TAG=$/STATO_IMAGE_TAG=$version/" release-assets/bundle/config/stato.env.example
+          cp deploy/onprem/config/Caddyfile release-assets/bundle/config/Caddyfile
+          cp legal/imprint.de.md legal/manifest.json legal/privacy.de.md legal/terms.de.md release-assets/bundle/config/legal/
           cp release-assets/install-onprem.sh release-assets/bundle/install-onprem.sh
           cp release-assets/install-onprem.ps1 release-assets/bundle/install-onprem.ps1
           cp release-assets/stato-sbom.spdx.json release-assets/bundle/stato-sbom.spdx.json
@@ -505,16 +511,17 @@ jobs:
           printf '%s\n' \
             '# StatO Release-Bundle' \
             '' \
-            'Dieses Bundle enthält die On-Prem-Compose-Konfiguration, eine sichere ENV-Vorlage, beide Installer und die SBOM.' \
-            '1. .env.example nach .env kopieren und die Secrets sowie die öffentliche URL setzen.' \
-            '2. docker compose --env-file .env -f docker-compose.yml pull ausführen.' \
-            '3. docker compose --env-file .env -f docker-compose.yml up -d --no-build ausführen.' \
-            'STATO_IMAGE_TAG ist absichtlich auf diese feste Release-Version gesetzt.' \
+            'Dieses Bundle enthält die On-Prem-Compose-Konfiguration, die Konfigurationsvorlage, Caddy, Rechtstexte und die SBOM.' \
+            '1. config/stato.env.example nach config/stato.env kopieren und Secrets sowie die öffentliche URL setzen.' \
+            '2. docker compose --env-file config/stato.env -f compose.yaml pull ausführen.' \
+            '3. docker compose --env-file config/stato.env -f compose.yaml up -d --no-build ausführen.' \
+            'STATO_IMAGE_TAG ist absichtlich auf diese feste Release-Version gesetzt; die Compose-Datei baut nie lokal.' \
             > release-assets/bundle/README.md
           tar -C release-assets/bundle -czf "release-assets/StatO-v$version.tar.gz" .
+          (cd release-assets/bundle && zip -qr "../StatO-v$version.zip" .)
           (
             cd release-assets
-            sha256sum docker-compose.yml stato.env.example install-onprem.sh install-onprem.ps1 stato-sbom.spdx.json "StatO-v$version.tar.gz" > SHA256SUMS
+            sha256sum install-onprem.sh install-onprem.ps1 stato-sbom.spdx.json "StatO-v$version.tar.gz" "StatO-v$version.zip" > SHA256SUMS
           )
 
       - name: Upload release artifacts
@@ -523,13 +530,12 @@ jobs:
           name: release-assets
           if-no-files-found: error
           path: |
-            release-assets/docker-compose.yml
-            release-assets/stato.env.example
             release-assets/install-onprem.sh
             release-assets/install-onprem.ps1
             release-assets/stato-sbom.spdx.json
             release-assets/SHA256SUMS
             release-assets/StatO-*.tar.gz
+            release-assets/StatO-*.zip
             RELEASE_NOTES.md
 
   github-release:
@@ -561,13 +567,12 @@ jobs:
             --title "StatO $GITHUB_REF_NAME" \
             --notes-file RELEASE_NOTES.md \
             "${prerelease[@]}" \
-            release-assets/docker-compose.yml \
-            release-assets/stato.env.example \
             release-assets/install-onprem.sh \
             release-assets/install-onprem.ps1 \
             release-assets/stato-sbom.spdx.json \
             release-assets/SHA256SUMS \
-            release-assets/StatO-*.tar.gz
+            release-assets/StatO-*.tar.gz \
+            release-assets/StatO-*.zip
 
   promote-latest:
     name: latest nach Release promoten

@@ -20,6 +20,25 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.1.2] - 2026-07-31
+
+### Changed
+- Der On-Prem-Betrieb verwendet künftig ein geprüftes, versioniertes
+  Release-Bundle statt eines Git-Checkouts und lokaler Docker-Builds.
+- Die lokale On-Prem-Konfiguration liegt getrennt unter `config/stato.env`.
+
+### Added
+- Release-Installer für Windows PowerShell und Linux/macOS mit
+  Prüfsummenprüfung, Release-Pinning und automatischem Sicherheitsbackup vor
+  Folgeupdates.
+
+### Security
+- Bestehende Legacy-On-Prem-Datenvolumes werden vom neuen Installer nicht
+  automatisch übernommen; dadurch ist eine unbeabsichtigte Stack-Migration
+  ausgeschlossen.
+
+---
+
 ## [1.1.1] - 2026-07-31
 
 ### Changed

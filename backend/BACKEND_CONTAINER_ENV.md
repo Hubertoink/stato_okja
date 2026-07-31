@@ -1,6 +1,6 @@
 # Backend Container Environment
 
-Diese Referenz beschreibt die Environment-Variablen, die der StatO-Backend-Container zur Laufzeit liest. Sie ist die zentrale Quelle fuer Docker/Compose-Setups; konkrete Beispielwerte stehen in [.env.onprem.example](../.env.onprem.example) und [env.production.example](../env.production.example).
+Diese Referenz beschreibt die Environment-Variablen, die der StatO-Backend-Container zur Laufzeit liest. Sie ist die zentrale Quelle fuer Docker/Compose-Setups; konkrete Beispielwerte stehen in [deploy/onprem/stato.env.example](../deploy/onprem/stato.env.example) und [env.production.example](../env.production.example).
 
 Wichtig: echte Werte gehoeren in lokale `.env*`-Dateien oder Secret Stores. Sie sollten nie in Git landen. Die vorhandene [.gitignore](../.gitignore) ignoriert `.env*`-Dateien und laesst nur die Example-Dateien zu.
 
@@ -8,7 +8,7 @@ Wichtig: echte Werte gehoeren in lokale `.env*`-Dateien oder Secret Stores. Sie 
 
 | Modus | Typische Dateien | Beschreibung |
 | --- | --- | --- |
-| On-Prem / Local | [docker-compose.onprem.yml](../docker-compose.onprem.yml), [.env.onprem.example](../.env.onprem.example) | Frontend, Backend und Postgres laufen gemeinsam. Das Frontend ist der oeffentliche Einstiegspunkt und proxyt `/api/*` intern an das Backend. |
+| On-Prem / Local | [deploy/onprem/compose.yaml](../deploy/onprem/compose.yaml), [deploy/onprem/stato.env.example](../deploy/onprem/stato.env.example) | Frontend, Backend und Postgres laufen gemeinsam. Das Frontend ist der oeffentliche Einstiegspunkt und proxyt `/api/*` intern an das Backend. |
 | Off-Prem / Hosted | [docker-compose.prod.yml](../docker-compose.prod.yml), [env.production.example](../env.production.example) | Betrieb hinter einem Reverse Proxy, Load Balancer oder Plattform-Proxy. Frontend und Backend koennen getrennte Domains haben. |
 | Entwicklung | [docker-compose.yml](../docker-compose.yml), [backend/.env.example](./.env.example) | Lokale Services und lokale Node-Prozesse. Sicherheitsdefaults sind bewusst lockerer. |
 

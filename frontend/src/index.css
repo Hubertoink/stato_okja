@@ -2188,6 +2188,10 @@ code {
   margin-bottom: 2rem;
 }
 
+.statistics-page-summary-desktop {
+  display: inline;
+}
+
 @media (max-width: 767px) {
   .dashboard-kpi-grid,
   .statistics-kpi-grid {
@@ -2219,6 +2223,10 @@ code {
 
   .statistics-kpi-card p:last-child {
     margin-top: 0.5rem;
+  }
+
+  .statistics-page-summary-desktop {
+    display: none;
   }
 }
 

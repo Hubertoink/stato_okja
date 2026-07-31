@@ -2942,13 +2942,15 @@ export default function Statistics() {
         <div className="group/chart-card bg-white rounded-lg shadow p-6 mt-8" data-pdf-section>
           <div className="flex items-center justify-between mb-4 gap-3">
             <h3 className="text-lg font-semibold text-viridian">{autoT('ui_44eeeedb9e8f')}<span className="ml-2 text-sm font-normal text-gray-500">
-                {totalActivities}{autoT('ui_303e11fd9d2b')}</span>
+                {totalActivities}{' '}{autoT('ui_303e11fd9d2b')}</span>
             </h3>
             <div className="flex items-center gap-2" data-chart-export-ignore="true">
               {!pdfMode && renderActivitiesExportActions()}
               {!pdfMode && totalActivityPages > 1 && (
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">{autoT('ui_633082b8c84b')}{activitiesPage}{' '}{autoT('ui_445584edc4cc')}{' '}{totalActivityPages}
+                  <span className="statistics-page-summary text-gray-500">
+                    <span className="statistics-page-summary-desktop">{autoT('ui_633082b8c84b')}{' '}</span>
+                    {activitiesPage}{' '}{autoT('ui_445584edc4cc')}{' '}{totalActivityPages}
                   </span>
                 </div>
               )}
@@ -3014,7 +3016,7 @@ export default function Statistics() {
           {/* Pagination Controls */}
           {!pdfMode && totalActivityPages > 1 && (
             <div className="mt-4 border-t border-gray-100 pt-4" data-chart-export-ignore="true">
-              <div className="mb-3 text-xs text-gray-500 sm:mb-0">{autoT('ui_6e7156111137')}{((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, totalActivities)}{' '}{autoT('ui_445584edc4cc')}{' '}{totalActivities}
+              <div className="mb-3 text-xs text-gray-500 sm:mb-0">{autoT('ui_6e7156111137')}{' '}{((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, totalActivities)}{' '}{autoT('ui_445584edc4cc')}{' '}{totalActivities}
               </div>
               <div className={`flex gap-1 ${isMobile ? "flex-wrap items-center justify-start" : "items-center justify-end"}`}>
                 <button

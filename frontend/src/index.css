@@ -2188,23 +2188,39 @@ code {
   margin-bottom: 2rem;
 }
 
+.custom-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
 .statistics-page-summary-desktop {
   display: inline;
 }
 
 @media (max-width: 767px) {
   .dashboard-kpi-grid,
-  .statistics-kpi-grid {
+  .statistics-kpi-grid,
+  .custom-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
   }
 
   .dashboard-kpi-card,
-  .statistics-kpi-card {
+  .statistics-kpi-card,
+  .custom-kpi-card {
     min-width: 0;
     min-height: 6rem;
     padding: 0.875rem;
     border-radius: 0.875rem;
+  }
+
+  .custom-kpi-card {
+    min-height: 7.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .dashboard-kpi-card h3,
@@ -2216,9 +2232,22 @@ code {
   }
 
   .dashboard-kpi-card p,
-  .statistics-kpi-card p:first-child {
+  .statistics-kpi-card p:first-child,
+  .custom-kpi-card p:first-child {
     font-size: 1.875rem;
     line-height: 1.1;
+  }
+
+  .custom-kpi-card p:nth-child(2) {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+  }
+
+  .custom-kpi-card p:last-child {
+    margin-top: 0.25rem;
+    font-size: 0.6875rem;
+    line-height: 1.25;
   }
 
   .statistics-kpi-card p:last-child {
@@ -2239,6 +2268,10 @@ code {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  .custom-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .statistics-kpi-grid--with-closure {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
@@ -2246,6 +2279,10 @@ code {
 
 @media (min-width: 1024px) {
   .dashboard-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .custom-kpi-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

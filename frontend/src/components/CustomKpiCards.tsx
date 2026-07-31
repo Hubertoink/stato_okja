@@ -384,7 +384,7 @@ export default function CustomKpiCards({
       </div>
 
       {results.length > 0 && (
-        <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="custom-kpi-grid">
           {results.map((item) => {
             const backgroundColor = getKpiColorForTheme(item.definition.backgroundColor, isDarkTheme);
             const textColor = getTextColorForBackground(backgroundColor);
@@ -392,7 +392,7 @@ export default function CustomKpiCards({
             return (
               <div
                 key={item.definition.id}
-                className="kpi-card text-center"
+                className="kpi-card custom-kpi-card text-center"
                 style={{ backgroundColor, color: textColor }}
               >
                 <p className="text-3xl font-bold" style={{ color: textColor }}>

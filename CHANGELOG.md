@@ -20,6 +20,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.1.1] - 2026-07-31
+
+### Changed
+- Eigene KPI-Karten werden auf mobilen Geräten ebenfalls kompakt in zwei
+  Spalten dargestellt.
+
+---
+
 ## [1.1.0] - 2026-07-31
 
 ### Changed

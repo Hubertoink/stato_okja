@@ -76,6 +76,8 @@ jobs:
         run: |
           set -euo pipefail
           docker compose -f deploy/onprem/compose.yaml --env-file deploy/onprem/stato.env.example config --quiet
+          grep -F 'proxy_pass http://backend:3000/api/' frontend/nginx.proxy.conf
+          ! grep -F 'api.stato-okja.de' frontend/nginx.proxy.conf
           bash -n scripts/install-onprem-release.sh
           pwsh -NoProfile -Command '$errors = $null; [System.Management.Automation.Language.Parser]::ParseFile("scripts/install-onprem-release.ps1", [ref]$null, [ref]$errors) | Out-Null; if ($errors.Count) { $errors | Format-List | Out-String | Write-Error; exit 1 }'
 
@@ -296,6 +298,69 @@ jobs:
             VITE_COMMIT_SHA=${{ github.sha }}
             NGINX_MODE=proxy
 
+  frontend-onprem:
+    name: On-Prem frontend image
+    needs: [quality, release-gate]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: docker-frontend-onprem-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU for release images
+        if: github.ref_type == 'tag'
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract tags and labels
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE_FRONTEND }}
+          tags: |
+            type=raw,value=onprem-dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=onprem-demo,enable=${{ github.ref == 'refs/heads/demo' }}
+            type=raw,value=onprem-edge,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern=onprem-{{version}}
+            type=sha,format=short,prefix=onprem-sha-
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=StatO On-Prem Frontend
+
+      - name: Build and (optionally) push On-Prem frontend
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=frontend-onprem
+          cache-to: type=gha,mode=max,scope=frontend-onprem
+          pull: true
+          sbom: true
+          provenance: true
+          platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          build-args: |
+            VITE_API_BASE_URL=/api
+            VITE_ENABLE_DEV_TOOLS=false
+            VITE_DEMO_MODE=false
+            VITE_COMMIT_SHA=${{ github.sha }}
+            NGINX_MODE=proxy
+
   backup:
     name: Backup image
     needs: [quality, release-gate]
@@ -468,7 +533,7 @@ jobs:
   release-assets:
     name: Release-Artefakte vorbereiten
     if: github.ref_type == 'tag'
-    needs: [quality, release-gate, security-scan]
+    needs: [quality, release-gate, security-scan, frontend-onprem]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -502,6 +567,7 @@ jobs:
           cp deploy/onprem/compose.yaml release-assets/bundle/compose.yaml
           cp deploy/onprem/stato.env.example release-assets/bundle/config/stato.env.example
           sed -i "s/^STATO_IMAGE_TAG=$/STATO_IMAGE_TAG=$version/" release-assets/bundle/config/stato.env.example
+          sed -i "s/^STATO_FRONTEND_IMAGE_TAG=$/STATO_FRONTEND_IMAGE_TAG=onprem-$version/" release-assets/bundle/config/stato.env.example
           cp deploy/onprem/config/Caddyfile release-assets/bundle/config/Caddyfile
           cp legal/imprint.de.md legal/manifest.json legal/privacy.de.md legal/terms.de.md release-assets/bundle/config/legal/
           cp release-assets/install-onprem.sh release-assets/bundle/install-onprem.sh
@@ -515,7 +581,7 @@ jobs:
             '1. config/stato.env.example nach config/stato.env kopieren und Secrets sowie die öffentliche URL setzen.' \
             '2. docker compose --env-file config/stato.env -f compose.yaml pull ausführen.' \
             '3. docker compose --env-file config/stato.env -f compose.yaml up -d --no-build ausführen.' \
-            'STATO_IMAGE_TAG ist absichtlich auf diese feste Release-Version gesetzt; die Compose-Datei baut nie lokal.' \
+            'STATO_IMAGE_TAG und STATO_FRONTEND_IMAGE_TAG sind absichtlich auf feste Release-Tags gesetzt; die Compose-Datei baut nie lokal.' \
             > release-assets/bundle/README.md
           tar -C release-assets/bundle -czf "release-assets/StatO-v$version.tar.gz" .
           (cd release-assets/bundle && zip -qr "../StatO-v$version.zip" .)
@@ -541,7 +607,7 @@ jobs:
   github-release:
     name: GitHub Release erstellen
     if: github.ref_type == 'tag'
-    needs: [backend, frontend, backup, security-scan, release-assets]
+    needs: [backend, frontend, frontend-onprem, backup, security-scan, release-assets]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

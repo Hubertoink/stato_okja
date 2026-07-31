@@ -102,6 +102,12 @@ curl -fsSL https://github.com/Hubertoink/stato_okja/releases/latest/download/ins
 $env:STATO_INSTALL_DIR = 'C:\Stato'; irm https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.ps1 | iex
 ```
 
+Ist bei einer neuen lokalen HTTP-Installation Port 80 bereits belegt, wählt
+der Installer automatisch den ersten freien Port von `8080` bis `8090` und
+passt die Standardadresse auf `http://localhost:<port>` an. Bestehende
+Installationen und bewusst konfigurierte Ports werden nie automatisch
+geändert.
+
 Beim ersten Aufruf von StatO erscheint stattdessen die Ersteinrichtung. Dort
 wird das Passwort für `admin@stato.local` festgelegt; es wird ausschließlich
 als Passwort-Hash in der Datenbank gespeichert und nicht in `config/stato.env`
@@ -111,10 +117,13 @@ Branding und HTTPS-Einstellungen pruefen.
 ## Veroeffentlichten Release installieren oder aktualisieren
 
 Die offiziellen Container werden bei einem Release als versionierte Images in
-GHCR veröffentlicht. Der Release-Installer setzt `STATO_IMAGE_TAG` passend zum
-geladenen Release in `config/stato.env`; ein lokaler Node- oder Docker-Build
-findet dabei nie statt. Bei einem Folgeupdate bleibt die Konfiguration erhalten
-und vor dem Containerwechsel wird ein Backup im Installationsordner angelegt.
+GHCR veröffentlicht. Der Release-Installer setzt `STATO_IMAGE_TAG` sowie den
+separaten On-Prem-Frontend-Tag `STATO_FRONTEND_IMAGE_TAG` passend zum geladenen
+Release in `config/stato.env`; ein lokaler Node- oder Docker-Build findet dabei
+nie statt. Das On-Prem-Frontend ist ausschließlich für den internen
+`backend`-Service im selben Compose-Netz gebaut. Bei einem Folgeupdate bleibt
+die Konfiguration erhalten und vor dem Containerwechsel wird ein Backup im
+Installationsordner angelegt.
 
 Beispiel fuer Release `1.0.0` unter Linux/macOS:
 
@@ -275,6 +284,9 @@ Hinweis: Feinsteuerung wie `RESET_TOKEN_EXPIRATION` oder `INVITE_TOKEN_EXPIRATIO
 
 - `STATO_IMAGE_TAG`: leer fuer lokale Builds aus dem Checkout; sonst eine feste
   veroeffentlichte GHCR-Version wie `1.0.0`
+- `STATO_FRONTEND_IMAGE_TAG`: bei veröffentlichten On-Prem-Releases der
+  zugehörige interne Proxy-Tag, z. B. `onprem-1.0.0`; der Release-Installer
+  setzt ihn automatisch
 - `TZ`: Container-Zeitzone, z. B. `Europe/Berlin`
 - `APP_ENV`: steuert u. a. die Backend-Dev-Tools
 - `NODE_ENV`: steuert Runtime-Verhalten des Backends

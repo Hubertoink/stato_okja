@@ -64,6 +64,7 @@ const BASE_VARIABLES = [
   ['PASSWORD_RESET_MODE', (config) => (config.enableEmail ? 'email' : 'admin_temp_password')],
   ['USER_PROVISIONING_MODE', (config) => config.provisioningMode],
   ['STATO_IMAGE_TAG', (config) => config.imageTag],
+  ['STATO_FRONTEND_IMAGE_TAG', (config) => (config.imageTag ? `onprem-${config.imageTag}` : '')],
   ['PUBLIC_APP_NAME', (config) => config.appName],
   ['PUBLIC_ORG_NAME', (config) => config.organizationName],
   ['PUBLIC_LOGIN_SUBTITLE', 'OKJA Statistik und Dokumentation'],

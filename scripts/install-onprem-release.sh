@@ -44,6 +44,49 @@ compose() {
   fi
 }
 
+test_host_port_available() {
+  port=$1
+  probe_name="stato-onprem-port-probe-$$"
+  frontend_image="ghcr.io/hubertoink/stato-frontend:$(get_env_value STATO_FRONTEND_IMAGE_TAG)"
+  if docker run -d --rm --name "$probe_name" --entrypoint sh -p "$port:8080" "$frontend_image" -c 'sleep 30' >/dev/null 2>&1; then
+    docker rm -f "$probe_name" >/dev/null 2>&1 || true
+    return 0
+  fi
+  docker rm -f "$probe_name" >/dev/null 2>&1 || true
+  return 1
+}
+
+update_default_local_origin() {
+  port=$1
+  if [ "$port" -eq 80 ]; then suffix=''; else suffix=":$port"; fi
+  for key in APP_ORIGIN CORS_ORIGINS; do
+    value=$(get_env_value "$key")
+    case "$value" in
+      http://localhost|http://127.0.0.1) set_env_value "$key" "$value$suffix" ;;
+    esac
+  done
+}
+
+resolve_first_install_http_port() {
+  [ ! -f "$MARKER_FILE" ] || return 0
+  [ "$(get_env_value STATO_TLS_MODE | tr '[:upper:]' '[:lower:]')" = off ] || return 0
+
+  configured_port=$(get_env_value HTTP_PORT)
+  case "$configured_port" in ''|*[!0-9]*) fail 'HTTP_PORT muss eine Portnummer zwischen 1 und 65535 sein.' ;; esac
+  [ "$configured_port" -ge 1 ] && [ "$configured_port" -le 65535 ] || fail 'HTTP_PORT muss eine Portnummer zwischen 1 und 65535 sein.'
+  if test_host_port_available "$configured_port"; then return 0; fi
+
+  [ "$configured_port" -eq 80 ] || fail "HTTP_PORT=$configured_port ist bereits belegt. Bitte in config/stato.env einen freien Port setzen und den Installer erneut ausführen."
+  fallback_port=''
+  for candidate in 8080 8081 8082 8083 8084 8085 8086 8087 8088 8089 8090; do
+    if test_host_port_available "$candidate"; then fallback_port=$candidate; break; fi
+  done
+  [ -n "$fallback_port" ] || fail 'Keiner der lokalen HTTP-Ports 8080 bis 8090 ist verfügbar. Bitte HTTP_PORT in config/stato.env manuell setzen.'
+  set_env_value HTTP_PORT "$fallback_port"
+  update_default_local_origin "$fallback_port"
+  printf '%s\n' "  [Hinweis] Host-Port 80 ist belegt. Die neue lokale Installation verwendet http://localhost:$fallback_port."
+}
+
 create_pre_update_backup() {
   postgres_id=$(compose ps -q postgres || true)
   [ -n "$postgres_id" ] || return 0
@@ -129,9 +172,11 @@ ensure_env_value STATO_PUBLIC_HOST ''
 ensure_env_value HTTPS_BIND_ADDRESS 0.0.0.0
 ensure_env_value HTTPS_PORT 443
 ensure_env_value INITIAL_SETUP_ENABLED true
+ensure_env_value STATO_FRONTEND_IMAGE_TAG ''
 [ "$(get_env_value POSTGRES_PASSWORD)" != GENERATED_BY_INSTALLER ] || set_env_value POSTGRES_PASSWORD "StatoDb_$(random_hex 24)_A9!"
 [ "$(get_env_value JWT_SECRET)" != GENERATED_BY_INSTALLER ] || set_env_value JWT_SECRET "$(random_hex 48)"
 set_env_value STATO_IMAGE_TAG "$VERSION"
+set_env_value STATO_FRONTEND_IMAGE_TAG "onprem-$VERSION"
 
 if [ -n "${STATO_INTERNAL_TLS_HOST:-}" ]; then
   set_env_value STATO_TLS_MODE internal
@@ -164,6 +209,8 @@ compose config --quiet
 say 'Release-Images laden'
 compose pull postgres backend frontend backup
 if [ "$TLS_ENABLED" = true ]; then compose pull caddy; fi
+say 'HTTP-Port pruefen'
+resolve_first_install_http_port
 if [ -f "$MARKER_FILE" ]; then create_pre_update_backup; fi
 
 say 'PostgreSQL starten und Zugang synchronisieren'

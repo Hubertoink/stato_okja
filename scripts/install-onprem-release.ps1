@@ -101,6 +101,57 @@ function Test-InternalTls([string]$EnvFile) {
     return $true
 }
 
+function Test-TcpPortAvailable([int]$Port) {
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, $Port)
+    try {
+        $listener.Start()
+        return $true
+    } catch [System.Net.Sockets.SocketException] {
+        return $false
+    } finally {
+        $listener.Stop()
+    }
+}
+
+function Get-AvailableTcpPort([int]$FirstPort, [int]$LastPort) {
+    for ($port = $FirstPort; $port -le $LastPort; $port++) {
+        if (Test-TcpPortAvailable $port) { return $port }
+    }
+    throw "Keiner der lokalen HTTP-Ports $FirstPort bis $LastPort ist verfügbar. Bitte HTTP_PORT in config/stato.env manuell setzen."
+}
+
+function Update-DefaultLocalOrigin([string]$EnvFile, [int]$Port) {
+    $portSuffix = if ($Port -eq 80) { '' } else { ":$Port" }
+    foreach ($key in @('APP_ORIGIN', 'CORS_ORIGINS')) {
+        $value = Get-EnvValue $EnvFile $key
+        if ($value -in @('http://localhost', 'http://127.0.0.1')) {
+            Set-EnvValue $EnvFile $key ("$value$portSuffix")
+        }
+    }
+}
+
+function Resolve-FirstInstallHttpPort([string]$EnvFile, [bool]$KnownRuntime) {
+    if ($KnownRuntime -or (Get-EnvValue $EnvFile 'STATO_TLS_MODE').ToLowerInvariant() -ne 'off') { return }
+
+    $configuredPort = 0
+    if (-not [int]::TryParse((Get-EnvValue $EnvFile 'HTTP_PORT'), [ref]$configuredPort) -or $configuredPort -lt 1 -or $configuredPort -gt 65535) {
+        throw 'HTTP_PORT muss eine Portnummer zwischen 1 und 65535 sein.'
+    }
+    if (Test-TcpPortAvailable $configuredPort) { return }
+
+    # Only replace the default port on a fresh installation. Changing a custom
+    # port or an existing installation implicitly could make a public service
+    # unreachable, so those cases remain an explicit administrator decision.
+    if ($configuredPort -ne 80) {
+        throw "HTTP_PORT=$configuredPort ist bereits belegt. Bitte in config/stato.env einen freien Port setzen und den Installer erneut ausführen."
+    }
+
+    $fallbackPort = Get-AvailableTcpPort 8080 8090
+    Set-EnvValue $EnvFile 'HTTP_PORT' $fallbackPort
+    Update-DefaultLocalOrigin $EnvFile $fallbackPort
+    Write-Host "  [Hinweis] Host-Port 80 ist belegt. Die neue lokale Installation verwendet http://localhost:$fallbackPort." -ForegroundColor Yellow
+}
+
 function Invoke-Compose([string[]]$Arguments) {
     & docker @script:composeArguments @Arguments
     if ($LASTEXITCODE -ne 0) { throw "Docker Compose fehlgeschlagen: $($Arguments -join ' ')" }
@@ -185,11 +236,13 @@ try {
 
     foreach ($default in @(
         @('HTTP_BIND_ADDRESS', '0.0.0.0'), @('STATO_TLS_MODE', 'off'), @('STATO_PUBLIC_HOST', ''),
-        @('HTTPS_BIND_ADDRESS', '0.0.0.0'), @('HTTPS_PORT', '443'), @('INITIAL_SETUP_ENABLED', 'true')
+        @('HTTPS_BIND_ADDRESS', '0.0.0.0'), @('HTTPS_PORT', '443'), @('INITIAL_SETUP_ENABLED', 'true'),
+        @('STATO_FRONTEND_IMAGE_TAG', '')
     )) { Ensure-EnvValue $envFile $default[0] $default[1] }
     if ((Get-EnvValue $envFile 'POSTGRES_PASSWORD') -eq 'GENERATED_BY_INSTALLER') { Set-EnvValue $envFile 'POSTGRES_PASSWORD' "StatoDb_$(New-RandomHex 24)_A9!" }
     if ((Get-EnvValue $envFile 'JWT_SECRET') -eq 'GENERATED_BY_INSTALLER') { Set-EnvValue $envFile 'JWT_SECRET' (New-RandomHex 48) }
     Set-EnvValue $envFile 'STATO_IMAGE_TAG' $version
+    Set-EnvValue $envFile 'STATO_FRONTEND_IMAGE_TAG' "onprem-$version"
     if ($env:STATO_INTERNAL_TLS_HOST) {
         Set-EnvValue $envFile 'STATO_TLS_MODE' 'internal'
         Set-EnvValue $envFile 'STATO_PUBLIC_HOST' $env:STATO_INTERNAL_TLS_HOST.Trim()
@@ -207,6 +260,8 @@ try {
     Write-Step 'Release-Images laden'
     Invoke-Compose @('pull', 'postgres', 'backend', 'frontend', 'backup')
     if ($tlsEnabled) { Invoke-Compose @('pull', 'caddy') }
+    Write-Step 'HTTP-Port prüfen'
+    Resolve-FirstInstallHttpPort $envFile $knownRuntime
     if ($knownRuntime) { New-PreUpdateBackup $backupDirectory }
 
     Write-Step 'PostgreSQL starten und Zugang synchronisieren'

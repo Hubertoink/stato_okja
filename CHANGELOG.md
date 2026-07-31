@@ -20,6 +20,24 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.1.3] - 2026-07-31
+
+### Fixed
+- Das veröffentlichte On-Prem-Frontend erhält einen eigenen, versionierten
+  Proxy-Image-Tag und leitet `/api` ausschließlich an den lokalen
+  `backend`-Container weiter. Es kann damit keine öffentliche StatO-API mehr
+  als Upstream verwenden.
+- Bei einer frischen lokalen Installation weicht der Release-Installer bei
+  belegtem Standardport 80 sicher auf den ersten freien Port von 8080 bis 8090
+  aus und passt die lokale Standardadresse entsprechend an.
+
+### Changed
+- Der Release-Installer verwaltet `STATO_FRONTEND_IMAGE_TAG` getrennt von
+  `STATO_IMAGE_TAG`, damit das On-Prem-Frontend immer im internen Proxy-Modus
+  ausgeführt wird.
+
+---
+
 ## [1.1.2] - 2026-07-31
 
 ### Changed

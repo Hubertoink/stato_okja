@@ -64,7 +64,7 @@ Windows PowerShell:
 irm https://github.com/Hubertoink/stato_okja/releases/latest/download/install-onprem.ps1 | iex
 ```
 
-Danach ist StatO standardmäßig unter `http://localhost` beziehungsweise der IP-Adresse des Servers erreichbar. Die vollständige Anleitung, einschließlich SMTP, Domain und Branding, steht in der [Docker-On-Prem-Anleitung](docs/DOCKER_ONPREM_SETUP.md).
+Danach ist StatO standardmäßig unter `http://localhost` beziehungsweise der IP-Adresse des Servers erreichbar. Ist Port 80 bei einer neuen lokalen Installation bereits belegt, wählt der Installer automatisch einen freien Port zwischen 8080 und 8090 und zeigt die Adresse an. Die vollständige Anleitung, einschließlich SMTP, Domain und Branding, steht in der [Docker-On-Prem-Anleitung](docs/DOCKER_ONPREM_SETUP.md).
 
 Für interne HTTPS-Installationen mit Caddy gibt es zusätzlich die Anleitung [Caddy internes TLS](docs/CADDY_INTERNAL_TLS_ONPREM.md).
 

@@ -720,7 +720,7 @@ export default function ExportModal({
           <h4 className="font-semibold text-viridian mb-1">{autoT('ui_0e2d6a433d92')}</h4>
           <p className="text-sm text-gray-600 mb-3">{autoT('ui_f992f9605f17')}</p>
           <button
-            className="px-4 py-2 rounded bg-azure-web text-viridian hover:bg-mint-green disabled:opacity-60 disabled:cursor-not-allowed"
+            className="export-xlsx-button px-4 py-2 rounded bg-azure-web text-viridian hover:bg-mint-green disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={() => void runExport(downloadExcel, 'Excel-Datei')}
             disabled={isSaving}
           >{autoT('ui_d53e67acd6a6')}</button>

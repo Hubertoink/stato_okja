@@ -429,30 +429,30 @@ export default function LogbookEntryPage() {
                 />
               </label>
               <details
-                className="rounded-xl border border-gray-200 bg-gray-50/60 p-4"
+                className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 shadow-[var(--card-shadow)]"
                 open={!!(form.highlights || form.challenges || form.nextSteps)}
               >
-                <summary className="cursor-pointer text-sm font-semibold text-gray-700">{autoT('ui_f009ede6baa6')}</summary>
+                <summary className="cursor-pointer text-sm font-semibold text-[var(--text-primary)]">{autoT('ui_f009ede6baa6')}</summary>
                 <div className="mt-4 space-y-4">
-                  <label className="block text-sm font-medium text-gray-700">{autoT('ui_ed124d299865')}<textarea
+                  <label className="block text-sm font-medium text-[var(--text-primary)]">{autoT('ui_ed124d299865')}<textarea
                       rows={3}
                       value={form.highlights}
                       onChange={(event) => setForm({ ...form, highlights: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
-                  <label className="block text-sm font-medium text-gray-700">{autoT('ui_24cb5c6fa8e6')}<textarea
+                  <label className="block text-sm font-medium text-[var(--text-primary)]">{autoT('ui_24cb5c6fa8e6')}<textarea
                       rows={3}
                       value={form.challenges}
                       onChange={(event) => setForm({ ...form, challenges: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
-                  <label className="block text-sm font-medium text-gray-700">{autoT('ui_76231e1d047c')}<textarea
+                  <label className="block text-sm font-medium text-[var(--text-primary)]">{autoT('ui_76231e1d047c')}<textarea
                       rows={3}
                       value={form.nextSteps}
                       onChange={(event) => setForm({ ...form, nextSteps: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                 </div>
@@ -663,7 +663,7 @@ export default function LogbookEntryPage() {
           </div>
           {entry.status === 'discussed' && (
             <p className="mt-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-              <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
+              <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{' '}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
             </p>
           )}
         </div>

@@ -20,6 +20,19 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.1.4] - 2026-08-01
+
+### Fixed
+- Fehlende Leerzeichen in der Anzeige „Besprochen von“ korrigiert.
+- Aktionsleisten in den Einstellungs- und Teammitglied-Modalen an den Dark
+  Mode angepasst.
+- Debriefing-Felder im Logbuch an die Farbgebung der Umfrage-Fragekarten
+  angepasst.
+- XLSX-Download im Datenexport-Modal im Dark Mode als klar sichtbaren Button
+  dargestellt.
+
+---
+
 ## [1.1.3] - 2026-07-31
 
 ### Fixed

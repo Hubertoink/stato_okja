@@ -277,7 +277,7 @@ export default function LogbookEntryFlyout({
                 </div>
                 {entry.status === 'discussed' && (
                   <p className="mt-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-                    <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
+                    <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{' '}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
                   </p>
                 )}
               </section>

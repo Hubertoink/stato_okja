@@ -20,6 +20,20 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.1.0] - 2026-07-31
+
+### Changed
+- Dashboard- und Statistik-KPIs werden auf mobilen Geräten kompakt als
+  2×2-Raster dargestellt.
+- Die Statistik-Paginierung zeigt auf Mobilgeräten die verkürzte Form
+  „1 von 9“, damit die Seitenangabe nicht umbrechen muss.
+
+### Fixed
+- Fehlende Leerzeichen in der Statistik bei Eintragszahl, Seitenangabe und
+  Tabellenbereich („Zeige 1–50 von 411“) behoben.
+
+---
+
 ## [1.0.17] - 2026-07-30
 
 ### Added

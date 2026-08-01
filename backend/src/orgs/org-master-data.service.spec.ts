@@ -73,12 +73,13 @@ describe('OrgMasterDataService', () => {
     });
   });
 
-  it('does not allow an import to bypass a taxonomy create lock', async () => {
+  it('marks a locked taxonomy section as blocked without blocking other sections', async () => {
     const { service } = createService({ locks: { tags: false } });
 
     const preview = await service.preview('org-1', yaml);
-    expect(preview.valid).toBe(false);
-    expect(preview.errors).toContain('Für diese Organisation sind lokale Tags gesperrt.');
+    expect(preview.valid).toBe(true);
+    expect(preview.counts.tags).toEqual({ total: 1, create: 0, existing: 0, blocked: true });
+    expect(preview.counts.cohorts).toEqual({ total: 1, create: 1, existing: 0, blocked: false });
   });
 
   it('accepts YAML copied from a fenced AI response', async () => {

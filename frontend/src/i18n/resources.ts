@@ -73,6 +73,9 @@ export const resources = {
         cohorts: 'Kohorten',
         locations: 'Einrichtungen',
         existing: 'vorhanden',
+        blocked: 'Durch Vererbung gesperrt',
+        blockedHint:
+          '{{count}} Einträge werden nicht importiert, weil diese Orga keine eigenen {{label}} anlegen darf.',
         errorsTitle: 'Der Import kann noch nicht ausgeführt werden.',
         confirmImport: '{{count}} Einträge importieren',
         importing: 'Importiert…',
@@ -914,6 +917,9 @@ export const resources = {
         cohorts: 'Cohorts',
         locations: 'Locations',
         existing: 'existing',
+        blocked: 'Locked by inheritance',
+        blockedHint:
+          '{{count}} records will not be imported because this organisation cannot create its own {{label}}.',
         errorsTitle: 'The import cannot be run yet.',
         confirmImport: 'Import {{count}} records',
         importing: 'Importing…',

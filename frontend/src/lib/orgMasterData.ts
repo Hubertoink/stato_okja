@@ -5,7 +5,10 @@ export type OrgMasterDataKind = 'categories' | 'tags' | 'cohorts' | 'locations';
 export type OrgMasterDataPreview = {
   valid: boolean;
   sourceOrganization: string | null;
-  counts: Record<OrgMasterDataKind, { total: number; create: number; existing: number }>;
+  counts: Record<
+    OrgMasterDataKind,
+    { total: number; create: number; existing: number; blocked: boolean }
+  >;
   errors: string[];
   warnings: string[];
 };

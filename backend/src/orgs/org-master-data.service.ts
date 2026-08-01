@@ -67,7 +67,10 @@ type MasterDataDocument = {
 export type OrgMasterDataPreview = {
   valid: boolean;
   sourceOrganization: string | null;
-  counts: Record<MasterDataKind, { total: number; create: number; existing: number }>;
+  counts: Record<
+    MasterDataKind,
+    { total: number; create: number; existing: number; blocked: boolean }
+  >;
   errors: string[];
   warnings: string[];
 };
@@ -305,20 +308,20 @@ export class OrgMasterDataService {
         if (existingByKind[kind].has(key)) existing += 1;
         else create += 1;
       });
-      counts[kind] = { total: recordsByKind[kind].length, create, existing };
+      counts[kind] = { total: recordsByKind[kind].length, create, existing, blocked: false };
     }
 
     if (
       document.categories.length &&
       !(await this.orgs.canCreateOwnTaxonomy(orgId, 'categories'))
     ) {
-      errors.push('Für diese Organisation sind lokale Kategorien gesperrt.');
+      counts.categories = { ...counts.categories, create: 0, existing: 0, blocked: true };
     }
     if (document.tags.length && !(await this.orgs.canCreateOwnTaxonomy(orgId, 'tags'))) {
-      errors.push('Für diese Organisation sind lokale Tags gesperrt.');
+      counts.tags = { ...counts.tags, create: 0, existing: 0, blocked: true };
     }
     if (document.cohorts.length && !(await this.orgs.canCreateOwnTaxonomy(orgId, 'cohorts'))) {
-      errors.push('Für diese Organisation sind lokale Kohorten gesperrt.');
+      counts.cohorts = { ...counts.cohorts, create: 0, existing: 0, blocked: true };
     }
 
     const warnings: string[] = [];
@@ -373,13 +376,13 @@ export class OrgMasterDataService {
         ),
       };
 
-      const newCategories = document.categories.filter(
+      const newCategories = (preview.counts.categories.blocked ? [] : document.categories).filter(
         (item) => !existingByKind.categories.has(normalizedName(item.name)),
       );
-      const newTags = document.tags.filter(
+      const newTags = (preview.counts.tags.blocked ? [] : document.tags).filter(
         (item) => !existingByKind.tags.has(normalizedName(item.name)),
       );
-      const newCohorts = document.cohorts.filter(
+      const newCohorts = (preview.counts.cohorts.blocked ? [] : document.cohorts).filter(
         (item) => !existingByKind.cohorts.has(normalizedName(item.name)),
       );
       const newLocations = document.locations.filter(
@@ -446,9 +449,15 @@ export class OrgMasterDataService {
           details: {
             created,
             skipped: {
-              categories: preview.counts.categories.existing,
-              tags: preview.counts.tags.existing,
-              cohorts: preview.counts.cohorts.existing,
+              categories: preview.counts.categories.blocked
+                ? document.categories.length
+                : preview.counts.categories.existing,
+              tags: preview.counts.tags.blocked
+                ? document.tags.length
+                : preview.counts.tags.existing,
+              cohorts: preview.counts.cohorts.blocked
+                ? document.cohorts.length
+                : preview.counts.cohorts.existing,
               locations: preview.counts.locations.existing,
             },
           },
@@ -460,9 +469,13 @@ export class OrgMasterDataService {
     return {
       created: result,
       skipped: {
-        categories: preview.counts.categories.existing,
-        tags: preview.counts.tags.existing,
-        cohorts: preview.counts.cohorts.existing,
+        categories: preview.counts.categories.blocked
+          ? document.categories.length
+          : preview.counts.categories.existing,
+        tags: preview.counts.tags.blocked ? document.tags.length : preview.counts.tags.existing,
+        cohorts: preview.counts.cohorts.blocked
+          ? document.cohorts.length
+          : preview.counts.cohorts.existing,
         locations: preview.counts.locations.existing,
       },
     };

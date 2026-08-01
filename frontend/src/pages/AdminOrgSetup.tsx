@@ -200,6 +200,9 @@ function MasterDataTransferModal({
   const createdTotal = preview
     ? Object.values(preview.counts).reduce((sum, count) => sum + count.create, 0)
     : 0;
+  const blockedSections = preview
+    ? Object.entries(preview.counts).filter(([, count]) => count.blocked)
+    : [];
 
   return (
     <Modal
@@ -344,20 +347,38 @@ function MasterDataTransferModal({
               {Object.entries(preview.counts).map(([kind, count]) => (
                 <div
                   key={kind}
-                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2"
+                  className={`rounded-lg border px-3 py-2 ${count.blocked ? 'border-[var(--status-danger-text)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]' : 'border-[var(--border-subtle)] bg-[var(--surface-1)]'}`}
                 >
-                  <div className="text-xs font-medium text-[var(--text-muted)]">
+                  <div
+                    className={`text-xs font-medium ${count.blocked ? 'text-[var(--status-danger-text)]' : 'text-[var(--text-muted)]'}`}
+                  >
                     {itemLabels[kind as keyof OrgMasterDataPreview['counts']]}
                   </div>
-                  <div className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
-                    +{count.create}{' '}
-                    <span className="font-normal text-[var(--text-muted)]">
-                      · {count.existing} {t('masterData.existing')}
-                    </span>
-                  </div>
+                  {count.blocked ? (
+                    <div className="mt-1 text-sm font-semibold">{t('masterData.blocked')}</div>
+                  ) : (
+                    <div className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+                      +{count.create}{' '}
+                      <span className="font-normal text-[var(--text-muted)]">
+                        · {count.existing} {t('masterData.existing')}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+            {blockedSections.length > 0 && (
+              <div className="rounded-lg border border-[var(--status-danger-text)] bg-[var(--status-danger-bg)] px-3 py-2 text-sm text-[var(--status-danger-text)]">
+                {blockedSections.map(([kind, count]) => (
+                  <p key={kind}>
+                    {t('masterData.blockedHint', {
+                      count: count.total,
+                      label: itemLabels[kind as keyof OrgMasterDataPreview['counts']],
+                    })}
+                  </p>
+                ))}
+              </div>
+            )}
             {preview.errors.length > 0 && (
               <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
                 <div className="font-semibold">{t('masterData.errorsTitle')}</div>
@@ -2093,6 +2114,7 @@ function OrgRow({
               <span className="org-tree-child-badge">
                 <Users className="h-3.5 w-3.5" />
                 {childCount}
+                {' '}
                 {autoT('ui_5be3b245eac6')}
               </span>
             </div>
@@ -2185,6 +2207,7 @@ function OrgRow({
           <span className="org-tree-child-badge">
             <Users className="h-3.5 w-3.5" />
             {childCount}
+            {' '}
             {autoT('ui_5be3b245eac6')}
           </span>
         </div>

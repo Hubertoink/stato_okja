@@ -20,6 +20,32 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.1.5] - 2026-08-01
+
+### Added
+- Neue Rolle **Editor**: besitzt alle Rechte von Benutzer:innen und kann
+  Einstellungen wie Taxonomien verwalten, archivieren und löschen.
+- Der Rollenwechsel erklärt die Berechtigungen von Benutzer:in, Editor und
+  Administrator kompakt auf Deutsch und Englisch.
+
+### Fixed
+- Einstellungsmodale schließen auf Mobilgeräten korrekt am unteren Rand ab;
+  ihre Aktionsschaltflächen sind rechtsbündig, gut erreichbar und einheitlich
+  positioniert.
+- Horizontales Scrollen in mobilen Einrichtungen- und Einstellungsansichten
+  beseitigt.
+- Kontraste von Einstellungsoberflächen und dem Kalender-Badge
+  „Geschlossen“ in dunklen Themes verbessert.
+- Löschen und Archivieren von Kategorien, Tags und Kohorten ist serverseitig
+  auf Editor:innen und Administrator:innen beschränkt; Archivieren wird im
+  Bestätigungsdialog hervorgehoben.
+
+### Security
+- Alle verwundbaren `brace-expansion`-Abhängigkeiten im Lockfile auf gepatchte
+  Versionen aktualisiert.
+
+---
+
 ## [1.1.4] - 2026-08-01
 
 ### Fixed

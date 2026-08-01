@@ -20,6 +20,24 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.1.7] - 2026-08-01
+
+### Added
+- Organisations-Admins und Superadmins können lokale Kategorien, Tags,
+  Kohorten und Einrichtungen als YAML exportieren, eine Vorlage herunterladen
+  und Daten kontrolliert wieder importieren.
+- Der Import zeigt vor der Übernahme eine Vorschau der neuen und bereits
+  vorhandenen Einträge und ist auf Deutsch und Englisch verfügbar.
+
+### Fixed
+- Durch Vererbung gesperrte Bereiche werden im Import-Check deutlich markiert
+  und übersprungen; erlaubte Bereiche lassen sich weiterhin importieren.
+- Die Import-Sperre wird zusätzlich serverseitig durchgesetzt und kann nicht
+  über eine manipulierte Anfrage umgangen werden.
+- In der Organisationsübersicht wird „0 direkt“ mit korrektem Abstand angezeigt.
+
+---
+
 ## [1.1.6] - 2026-08-01
 
 ### Fixed

@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -16,10 +29,14 @@ type ManageableUserRole = 'superadmin' | 'org_admin' | 'editor' | 'user';
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
-  constructor(private readonly service: UsersService, private readonly orgs: OrgsService) {}
+  constructor(
+    private readonly service: UsersService,
+    private readonly orgs: OrgsService,
+  ) {}
 
   private parseRole(role: unknown, fallback: ManageableUserRole = 'user'): ManageableUserRole {
-    if (role === 'superadmin' || role === 'org_admin' || role === 'editor' || role === 'user') return role;
+    if (role === 'superadmin' || role === 'org_admin' || role === 'editor' || role === 'user')
+      return role;
     if (typeof role === 'undefined' || role === null || role === '') return fallback;
     throw new BadRequestException('Ungültige Rolle');
   }
@@ -30,14 +47,16 @@ export class UsersController {
     return nodeEnv !== 'production' || appEnv === 'development';
   }
 
-  private summarizeUsers(users: Array<{
-    id: string;
-    email: string;
-    name?: string | null;
-    role: string;
-    orgId?: string | null;
-    org?: { id: string; name: string } | null;
-  }>) {
+  private summarizeUsers(
+    users: Array<{
+      id: string;
+      email: string;
+      name?: string | null;
+      role: string;
+      orgId?: string | null;
+      org?: { id: string; name: string } | null;
+    }>,
+  ) {
     return users.map((user) => ({
       id: user.id,
       email: user.email,
@@ -53,8 +72,28 @@ export class UsersController {
     this.logger.log(`[users:list] ${JSON.stringify(payload)}`);
   }
 
+  @Roles('superadmin')
+  @Get('directory')
+  async directory(
+    @Req() req: { user: { role: string }; effectiveOrgId?: string | null | undefined },
+  ) {
+    // The global directory is deliberately limited to the explicit superadmin area.
+    // Keeping this separate from GET /users prevents other scoped data endpoints
+    // from accidentally gaining a global mode.
+    if (req.user.role !== 'superadmin' || req.effectiveOrgId !== null) {
+      throw new ForbiddenException('Globale Benutzerliste nur im Superadmin-Bereich verfügbar');
+    }
+    return (await this.service.findAll()).map(toPublicUser);
+  }
+
   @Get()
-  async list(@Req() req: { user: { id?: string; role: string; orgId?: string|null; email?: string|null }; effectiveOrgId?: string|null|undefined }) {
+  async list(
+    @Req()
+    req: {
+      user: { id?: string; role: string; orgId?: string | null; email?: string | null };
+      effectiveOrgId?: string | null | undefined;
+    },
+  ) {
     if (req.user.role === 'superadmin') {
       // Superadmin must scope explicitly to see tenant users; global listing is intentionally disabled.
       if (typeof req.effectiveOrgId === 'undefined' || req.effectiveOrgId === null) {
@@ -94,7 +133,8 @@ export class UsersController {
       });
       return users.map(toPublicUser);
     }
-    const myOrgId = (typeof req.effectiveOrgId === 'undefined') ? (req.user.orgId || null) : req.effectiveOrgId;
+    const myOrgId =
+      typeof req.effectiveOrgId === 'undefined' ? req.user.orgId || null : req.effectiveOrgId;
     if (!myOrgId) {
       const users = await this.service.findByOrg(null);
       this.logUserListDiagnostics({
@@ -129,12 +169,16 @@ export class UsersController {
     return users.map(toPublicUser);
   }
 
-  @Roles('org_admin','superadmin')
+  @Roles('org_admin', 'superadmin')
   @Post()
-  async create(@Body() body: CreateUserDto, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  async create(
+    @Body() body: CreateUserDto,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
     const requestedRole = this.parseRole(body?.role);
     // Require an organization for all users
-    const requestedOrgId = typeof body.orgId === 'undefined' ? (req.user.orgId || null) : (body.orgId ?? null);
+    const requestedOrgId =
+      typeof body.orgId === 'undefined' ? req.user.orgId || null : (body.orgId ?? null);
     if (!requestedOrgId) {
       throw new BadRequestException('Organisation ist erforderlich');
     }
@@ -144,18 +188,30 @@ export class UsersController {
       if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
       if (requestedRole === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
       const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-      if (!(requestedOrgId && subtree.includes(requestedOrgId))) throw new ForbiddenException('Nicht erlaubt');
-      return toPublicUser(await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }));
+      if (!(requestedOrgId && subtree.includes(requestedOrgId)))
+        throw new ForbiddenException('Nicht erlaubt');
+      return toPublicUser(
+        await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }),
+      );
     }
-    return toPublicUser(await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }));
+    return toPublicUser(
+      await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }),
+    );
   }
 
-  @Roles('org_admin','superadmin')
+  @Roles('org_admin', 'superadmin')
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() patch: UpdateUserDto, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  async update(
+    @Param('id') id: string,
+    @Body() patch: UpdateUserDto,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
     const target = await this.service.findById(id);
     if (!target) throw new BadRequestException('User not found');
-    const requestedRole = typeof patch.role === 'undefined' ? undefined : this.parseRole(patch.role, target.role as ManageableUserRole);
+    const requestedRole =
+      typeof patch.role === 'undefined'
+        ? undefined
+        : this.parseRole(patch.role, target.role as ManageableUserRole);
 
     // Admins can only change role within subtree and cannot move users outside subtree
     if (req.user.role !== 'superadmin') {
@@ -165,7 +221,8 @@ export class UsersController {
       const currentOrgId = target.orgId ?? null;
       const nextOrgId = typeof patch.orgId === 'undefined' ? currentOrgId : (patch.orgId ?? null);
 
-      if (!currentOrgId || !subtree.includes(currentOrgId)) throw new ForbiddenException('Nicht erlaubt');
+      if (!currentOrgId || !subtree.includes(currentOrgId))
+        throw new ForbiddenException('Nicht erlaubt');
       if (!nextOrgId || !subtree.includes(nextOrgId)) throw new ForbiddenException('Nicht erlaubt');
       if (requestedRole === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
       if (target.role === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
@@ -174,9 +231,12 @@ export class UsersController {
     return { ok: true };
   }
 
-  @Roles('org_admin','superadmin')
+  @Roles('org_admin', 'superadmin')
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req: { user: { id: string; orgId?: string|null; role: string } }) {
+  async remove(
+    @Param('id') id: string,
+    @Req() req: { user: { id: string; orgId?: string | null; role: string } },
+  ) {
     if (req.user.id === id) throw new BadRequestException('Cannot remove yourself');
     const target = await this.service.findById(id);
     if (!target) throw new BadRequestException('User not found');
@@ -186,7 +246,8 @@ export class UsersController {
       if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
       if (target.role === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
       const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-      if (!target.orgId || !subtree.includes(target.orgId)) throw new ForbiddenException('Nicht erlaubt');
+      if (!target.orgId || !subtree.includes(target.orgId))
+        throw new ForbiddenException('Nicht erlaubt');
     }
 
     // Prevent deleting last superadmin globally

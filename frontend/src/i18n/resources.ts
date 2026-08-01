@@ -48,6 +48,9 @@ export const resources = {
       userManagement: {
         organizationUsers: 'Benutzer von Orga „{{name}}“',
         unassignedUsers: 'Benutzer ohne Organisation',
+        globalUsers: 'Benutzer aller Organisationen',
+        unassignedGroup: 'Ohne Organisationszugehörigkeit',
+        unknownOrganization: 'Unbekannte Organisation',
       },
       masterData: {
         button: 'Import / Export',
@@ -892,6 +895,9 @@ export const resources = {
       userManagement: {
         organizationUsers: 'Users of org “{{name}}”',
         unassignedUsers: 'Users without an organisation',
+        globalUsers: 'Users across all organisations',
+        unassignedGroup: 'Without organisational affiliation',
+        unknownOrganization: 'Unknown organisation',
       },
       masterData: {
         button: 'Import / export',

@@ -1,12 +1,36 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useAuth, type Role } from '@/lib/auth';
-import { fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
+import {
+  fetchGlobalUsers,
+  fetchUsers,
+  removeUserApi,
+  updateUserApi,
+  type UserDto,
+} from '@/lib/users';
 import { createLocalUserApi, inviteUserApi, listOrgs, type OrgDto } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
-import { Trash2, KeyRound, Users, Plus, Shield, User as UserIcon, Building2, Mail, Search, HelpCircle, Eye, EyeOff } from 'lucide-react';
+import {
+  Trash2,
+  KeyRound,
+  Users,
+  Plus,
+  Shield,
+  User as UserIcon,
+  Building2,
+  Mail,
+  Search,
+  HelpCircle,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { adminResetPassword } from '@/lib/password';
-import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig, type AdminResetActionMode, type PublicConfig } from '@/lib/publicConfig';
+import {
+  DEFAULT_PUBLIC_CONFIG,
+  fetchPublicConfig,
+  type AdminResetActionMode,
+  type PublicConfig,
+} from '@/lib/publicConfig';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import AssignOrgModal from '@/components/AssignOrgModal';
@@ -17,6 +41,48 @@ import { getEmailValidationMessage } from '@/lib/emailValidation';
 import { autoT } from '@/i18n/auto';
 import { useTranslation } from 'react-i18next';
 
+type UserGroup = { key: string; name: string; users: UserDto[] };
+
+function groupUsersByOrganization(users: UserDto[], organizations: OrgDto[]): UserGroup[] {
+  const orgById = new Map(organizations.map((org) => [org.id, org]));
+  const grouped = new Map<string, UserDto[]>();
+
+  for (const user of users) {
+    const key = user.orgId ?? '__unassigned__';
+    const existing = grouped.get(key);
+    if (existing) existing.push(user);
+    else grouped.set(key, [user]);
+  }
+
+  const groups: UserGroup[] = [];
+  const unassigned = grouped.get('__unassigned__');
+  if (unassigned?.length) {
+    groups.push({ key: '__unassigned__', name: '', users: unassigned });
+  }
+
+  const orgIds = [...grouped.keys()]
+    .filter((id) => id !== '__unassigned__')
+    .sort((left, right) => {
+      const leftOrg = orgById.get(left);
+      const rightOrg = orgById.get(right);
+      const leftPath = leftOrg?.path || leftOrg?.name || left;
+      const rightPath = rightOrg?.path || rightOrg?.name || right;
+      return leftPath.localeCompare(rightPath, undefined, { sensitivity: 'base' });
+    });
+
+  for (const orgId of orgIds) {
+    const orgUsers = grouped.get(orgId) || [];
+    const org = orgById.get(orgId);
+    groups.push({
+      key: orgId,
+      name: org?.name || orgUsers[0]?.org?.name || '',
+      users: orgUsers,
+    });
+  }
+
+  return groups;
+}
+
 export default function OrgUserManagement() {
   const { user } = useAuth();
   const { t } = useTranslation('common');
@@ -24,6 +90,7 @@ export default function OrgUserManagement() {
   const { scope } = useOrgScope();
   const isMobile = useIsMobile(768);
   const isScopedOrgView = typeof scope === 'string';
+  const isGlobalSuperadminView = user?.role === 'superadmin' && scope === null;
 
   // Create user modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -44,7 +111,7 @@ export default function OrgUserManagement() {
   // Modals
   const [confirmUser, setConfirmUser] = useState<UserDto | null>(null);
   const [assignUser, setAssignUser] = useState<UserDto | null>(null);
-  
+
   // Orgs for dropdown
   const [orgs, setOrgs] = useState<OrgDto[]>([]);
   const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_PUBLIC_CONFIG);
@@ -54,13 +121,17 @@ export default function OrgUserManagement() {
     setLoading(true);
     setError(null);
     try {
-      const list = await fetchUsers();
+      const list = isGlobalSuperadminView ? await fetchGlobalUsers() : await fetchUsers();
       if (reloadRequestRef.current !== requestId) return;
       setUsers(list);
     } catch (e: unknown) {
       if (reloadRequestRef.current !== requestId) return;
-      const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_211e58a9e2c6');
-      setError(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg));
+      const msg =
+        (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
+        autoT('ui_211e58a9e2c6');
+      setError(
+        Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg),
+      );
     } finally {
       if (reloadRequestRef.current === requestId) setLoading(false);
     }
@@ -72,10 +143,10 @@ export default function OrgUserManagement() {
     setUsers([]);
     setError(null);
     void reload();
-  }, [scope]);
-  
+  }, [scope, user?.id, user?.role]);
+
   useEffect(() => {
-    (async ()=>{
+    (async () => {
       try {
         if (user?.role === 'superadmin') {
           setOrgs(await listOrgs());
@@ -85,7 +156,9 @@ export default function OrgUserManagement() {
         } else {
           setOrgs([]);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
   }, [user?.id, user?.role, user?.orgId]);
 
@@ -108,18 +181,24 @@ export default function OrgUserManagement() {
   const activeOrgName = (() => {
     if (typeof scope === 'undefined') return 'Superadmin Bereich';
     if (scope === null) return 'Superadmin Bereich';
-    const found = orgs.find(o => o.id === scope);
+    const found = orgs.find((o) => o.id === scope);
     if (found?.name) return found.name;
-    if (user?.orgId === scope && (user as { orgName?: string }).orgName) return (user as { orgName?: string }).orgName as string;
-    return `Org ${scope.substring(0,6)}…`;
+    if (user?.orgId === scope && (user as { orgName?: string }).orgName)
+      return (user as { orgName?: string }).orgName as string;
+    return `Org ${scope.substring(0, 6)}…`;
   })();
 
   // Filter users by search
-  const filteredUsers = users.filter(u => {
+  const filteredUsers = users.filter((u) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.org?.name?.toLowerCase().includes(q);
+    return (
+      u.name?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u.org?.name?.toLowerCase().includes(q)
+    );
   });
+  const userGroups = isGlobalSuperadminView ? groupUsersByOrganization(filteredUsers, orgs) : [];
   const emailValidationMessage = getEmailValidationMessage(email);
 
   // Reset create form
@@ -136,11 +215,18 @@ export default function OrgUserManagement() {
     if (!email.trim() || !targetOrgId) return;
     if (emailValidationMessage) return;
     const localProvisioning = publicConfig.userProvisioningMode === 'local';
-    if (localProvisioning && (!temporaryPassword || getPasswordValidationMessage(temporaryPassword))) return;
-    
+    if (
+      localProvisioning &&
+      (!temporaryPassword || getPasswordValidationMessage(temporaryPassword))
+    )
+      return;
+
     setCreating(true);
     try {
-      const selectedOrgId = (user?.role === 'superadmin') ? (targetOrgId || null) : ((targetOrgId as string) || (user?.orgId ?? null));
+      const selectedOrgId =
+        user?.role === 'superadmin'
+          ? targetOrgId || null
+          : (targetOrgId as string) || (user?.orgId ?? null);
       if (localProvisioning) {
         await createLocalUserApi({
           email: email.trim(),
@@ -150,21 +236,28 @@ export default function OrgUserManagement() {
           temporaryPassword,
         });
       } else {
-        await inviteUserApi({ email: email.trim(), name: name.trim() || email.split('@')[0], role, orgId: selectedOrgId });
+        await inviteUserApi({
+          email: email.trim(),
+          name: name.trim() || email.split('@')[0],
+          role,
+          orgId: selectedOrgId,
+        });
       }
-      
+
       resetCreateForm();
       setCreateModalOpen(false);
       await reload();
-      showToast(
-        localProvisioning
-          ? autoT('ui_3e9d9ed6bfed')
-          : autoT('ui_a6b3076de73d'),
-        { type: 'success' },
-      );
+      showToast(localProvisioning ? autoT('ui_3e9d9ed6bfed') : autoT('ui_a6b3076de73d'), {
+        type: 'success',
+      });
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_afe7111f97a8');
-      showToast(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg), { type: 'error', durationMs: 3500 });
+      const msg =
+        (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
+        autoT('ui_afe7111f97a8');
+      showToast(
+        Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg),
+        { type: 'error', durationMs: 3500 },
+      );
     } finally {
       setCreating(false);
     }
@@ -173,9 +266,9 @@ export default function OrgUserManagement() {
   if (!user) return null;
 
   // Get available orgs for selection (filtered for non-superadmins)
-  const availableOrgs = orgs.filter(o => {
+  const availableOrgs = orgs.filter((o) => {
     if (user?.role === 'superadmin') return true;
-    const my = orgs.find(x => x.id === user?.orgId);
+    const my = orgs.find((x) => x.id === user?.orgId);
     if (!my) return o.id === user?.orgId;
     const myPath = my.path || my.id;
     const oPath = o.path || o.id;
@@ -188,20 +281,35 @@ export default function OrgUserManagement() {
       <div className="flex items-start justify-between gap-3 mb-6 sm:items-center">
         <div>
           <h2 className="text-2xl font-bold text-viridian flex items-center gap-2">
-            <Users className="w-6 h-6" />{autoT('ui_1ea1e1f1bc9e')}</h2>
+            <Users className="w-6 h-6" />
+            {autoT('ui_1ea1e1f1bc9e')}
+          </h2>
           <p className="text-sm text-gray-600 mt-1">
-            {isScopedOrgView
-              ? t('userManagement.organizationUsers', { name: activeOrgName })
-              : t('userManagement.unassignedUsers')}
+            {isGlobalSuperadminView
+              ? t('userManagement.globalUsers')
+              : isScopedOrgView
+                ? t('userManagement.organizationUsers', { name: activeOrgName })
+                : t('userManagement.unassignedUsers')}
           </p>
         </div>
         <button
           className="inline-flex shrink-0 items-center justify-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
-          onClick={() => { resetCreateForm(); setCreateModalOpen(true); }}
-          aria-label={publicConfig.userProvisioningMode === 'local' ? autoT('ui_464d554f6c6d') : autoT('ui_744a87e36886')}
+          onClick={() => {
+            resetCreateForm();
+            setCreateModalOpen(true);
+          }}
+          aria-label={
+            publicConfig.userProvisioningMode === 'local'
+              ? autoT('ui_464d554f6c6d')
+              : autoT('ui_744a87e36886')
+          }
         >
           <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">{publicConfig.userProvisioningMode === 'local' ? autoT('ui_1614f4af1460') : autoT('ui_744a87e36886')}</span>
+          <span className="hidden sm:inline">
+            {publicConfig.userProvisioningMode === 'local'
+              ? autoT('ui_1614f4af1460')
+              : autoT('ui_744a87e36886')}
+          </span>
         </button>
       </div>
 
@@ -211,7 +319,10 @@ export default function OrgUserManagement() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-wrap">
             <div>
               <h3 className="font-semibold text-gray-800">{autoT('ui_f73f37bacbdd')}</h3>
-              <span className="text-xs text-gray-500">{users.length}{' '}{autoT('ui_bd26f3d230af')}{users.length !== 1 ? '' : ''}</span>
+              <span className="text-xs text-gray-500">
+                {users.length} {autoT('ui_bd26f3d230af')}
+                {users.length !== 1 ? '' : ''}
+              </span>
             </div>
             {/* Search */}
             <div className="relative w-full sm:w-auto">
@@ -230,9 +341,11 @@ export default function OrgUserManagement() {
         <div className="p-2">
           {loading && (
             <div className="flex items-center justify-center py-8 text-gray-500">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-viridian mr-2"></div>{autoT('ui_fdfb01fa6df9')}</div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-viridian mr-2"></div>
+              {autoT('ui_fdfb01fa6df9')}
+            </div>
           )}
-          
+
           {error && (
             <div className="text-red-600 py-4 px-3 text-sm bg-red-50 rounded-lg">{error}</div>
           )}
@@ -243,44 +356,101 @@ export default function OrgUserManagement() {
               <p className="text-gray-500 mb-4">
                 {searchQuery
                   ? autoT('ui_dddda7684ac4')
-                  : autoT('ui_15ef9a8b600f', { value0: isScopedOrgView ? ` in ${activeOrgName}` : '' })}
+                  : autoT('ui_15ef9a8b600f', {
+                      value0: isScopedOrgView ? ` in ${activeOrgName}` : '',
+                    })}
               </p>
               {!searchQuery && (
                 <button
                   className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg"
-                  onClick={() => { resetCreateForm(); setCreateModalOpen(true); }}
+                  onClick={() => {
+                    resetCreateForm();
+                    setCreateModalOpen(true);
+                  }}
                 >
-                  <Plus className="w-4 h-4" />{autoT('ui_ef5bcd6a81e1')}</button>
+                  <Plus className="w-4 h-4" />
+                  {autoT('ui_ef5bcd6a81e1')}
+                </button>
               )}
             </div>
           )}
 
-          {!loading && !error && filteredUsers.length > 0 && (
-            <ul className="space-y-3 sm:space-y-0 sm:divide-y sm:divide-gray-100">
-              {filteredUsers.map((u) => (
-                <UserRow 
-                  key={u.id} 
-                  userData={u} 
-                  currentUser={user}
-                  isMobile={isMobile}
-                  onReload={reload}
-                  onAssign={() => setAssignUser(u)}
-                  onDelete={() => setConfirmUser(u)}
-                  resetConfig={publicConfig}
-                  showToast={showToast}
-                />
-              ))}
-            </ul>
-          )}
+          {!loading &&
+            !error &&
+            filteredUsers.length > 0 &&
+            (isGlobalSuperadminView ? (
+              <div className="space-y-4">
+                {userGroups.map((group) => (
+                  <section
+                    key={group.key}
+                    className="overflow-hidden rounded-lg border border-gray-100"
+                  >
+                    <div className="flex items-center justify-between gap-3 bg-gray-50 px-3 py-2">
+                      <h4 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-800">
+                        <Building2 className="h-4 w-4 shrink-0 text-viridian" />
+                        <span className="truncate">
+                          {group.key === '__unassigned__'
+                            ? t('userManagement.unassignedGroup')
+                            : group.name || t('userManagement.unknownOrganization')}
+                        </span>
+                      </h4>
+                      <span className="shrink-0 text-xs text-gray-500">{group.users.length}</span>
+                    </div>
+                    <ul className="space-y-3 p-2 sm:space-y-0 sm:divide-y sm:divide-gray-100 sm:p-0">
+                      {group.users.map((u) => (
+                        <UserRow
+                          key={u.id}
+                          userData={u}
+                          currentUser={user}
+                          isMobile={isMobile}
+                          onReload={reload}
+                          onAssign={() => setAssignUser(u)}
+                          onDelete={() => setConfirmUser(u)}
+                          resetConfig={publicConfig}
+                          showToast={showToast}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <ul className="space-y-3 sm:space-y-0 sm:divide-y sm:divide-gray-100">
+                {filteredUsers.map((u) => (
+                  <UserRow
+                    key={u.id}
+                    userData={u}
+                    currentUser={user}
+                    isMobile={isMobile}
+                    onReload={reload}
+                    onAssign={() => setAssignUser(u)}
+                    onDelete={() => setConfirmUser(u)}
+                    resetConfig={publicConfig}
+                    showToast={showToast}
+                  />
+                ))}
+              </ul>
+            ))}
         </div>
       </div>
 
       {/* Create User Modal */}
-      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title={publicConfig.userProvisioningMode === 'local' ? autoT('ui_d18b3ef3514d') : autoT('ui_be454fe3dbfd')} maxWidth="md">
+      <Modal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        title={
+          publicConfig.userProvisioningMode === 'local'
+            ? autoT('ui_d18b3ef3514d')
+            : autoT('ui_be454fe3dbfd')
+        }
+        maxWidth="md"
+      >
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_709a23220f2c')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {autoT('ui_709a23220f2c')}
+              </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -290,23 +460,29 @@ export default function OrgUserManagement() {
               <p className="text-xs text-gray-500 mt-1">{autoT('ui_14c8987e027b')}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_9811c39359c5')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {autoT('ui_9811c39359c5')}
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={`border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian ${emailValidationMessage ? "border-red-500" : ''}`}
+                className={`border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian ${emailValidationMessage ? 'border-red-500' : ''}`}
                 placeholder={autoT('ui_15c8c90e4b60')}
                 autoFocus
                 aria-invalid={Boolean(emailValidationMessage)}
               />
-              {emailValidationMessage && <p className="text-xs text-red-600 mt-1">{emailValidationMessage}</p>}
+              {emailValidationMessage && (
+                <p className="text-xs text-red-600 mt-1">{emailValidationMessage}</p>
+              )}
             </div>
           </div>
 
           {publicConfig.userProvisioningMode === 'local' && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_c07dc032f12a')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {autoT('ui_c07dc032f12a')}
+              </label>
               <input
                 type="password"
                 value={temporaryPassword}
@@ -321,18 +497,26 @@ export default function OrgUserManagement() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_695feaaed412')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {autoT('ui_695feaaed412')}
+              </label>
               <select
                 className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
                 value={targetOrgId}
                 onChange={(e) => setTargetOrgId(e.target.value)}
               >
                 <option value="">{autoT('ui_4b0896060a4d')}</option>
-                {availableOrgs.map(o => (<option key={o.id} value={o.id}>{o.name}</option>))}
+                {availableOrgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_6237f0afe77f')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {autoT('ui_6237f0afe77f')}
+              </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as Exclude<Role, 'superadmin'>)}
@@ -349,11 +533,15 @@ export default function OrgUserManagement() {
           <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
             <div className="flex items-start gap-2 mb-2">
               <UserIcon className="w-4 h-4 mt-0.5 text-gray-500" />
-              <div><strong>{autoT('ui_e8321efba4c2')}</strong>{' '}{autoT('ui_c9319abe9cdf')}</div>
+              <div>
+                <strong>{autoT('ui_e8321efba4c2')}</strong> {autoT('ui_c9319abe9cdf')}
+              </div>
             </div>
             <div className="flex items-start gap-2">
               <Shield className="w-4 h-4 mt-0.5 text-viridian" />
-              <div><strong>{autoT('ui_9e2aeb7aa5cc')}</strong>{' '}{autoT('ui_32a6e772e5c4')}</div>
+              <div>
+                <strong>{autoT('ui_9e2aeb7aa5cc')}</strong> {autoT('ui_32a6e772e5c4')}
+              </div>
             </div>
           </div>
 
@@ -362,15 +550,32 @@ export default function OrgUserManagement() {
             <button
               className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
               onClick={() => setCreateModalOpen(false)}
-            >{autoT('ui_07af7cb30fca')}</button>
+            >
+              {autoT('ui_07af7cb30fca')}
+            </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              disabled={!email.trim() || Boolean(emailValidationMessage) || !targetOrgId || creating || (publicConfig.userProvisioningMode === 'local' && (!temporaryPassword || Boolean(getPasswordValidationMessage(temporaryPassword))))}
+              disabled={
+                !email.trim() ||
+                Boolean(emailValidationMessage) ||
+                !targetOrgId ||
+                creating ||
+                (publicConfig.userProvisioningMode === 'local' &&
+                  (!temporaryPassword || Boolean(getPasswordValidationMessage(temporaryPassword))))
+              }
               onClick={handleCreate}
             >
-              {creating && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
-              {publicConfig.userProvisioningMode === 'local' ? <KeyRound className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
-              {publicConfig.userProvisioningMode === 'local' ? autoT('ui_464d554f6c6d') : autoT('ui_39e31ae7a854')}
+              {creating && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              )}
+              {publicConfig.userProvisioningMode === 'local' ? (
+                <KeyRound className="w-4 h-4" />
+              ) : (
+                <Mail className="w-4 h-4" />
+              )}
+              {publicConfig.userProvisioningMode === 'local'
+                ? autoT('ui_464d554f6c6d')
+                : autoT('ui_39e31ae7a854')}
             </button>
           </div>
         </div>
@@ -380,7 +585,10 @@ export default function OrgUserManagement() {
       <RemoveUserModal
         user={confirmUser}
         onClose={() => setConfirmUser(null)}
-        onRemoved={() => { setConfirmUser(null); reload(); }}
+        onRemoved={() => {
+          setConfirmUser(null);
+          reload();
+        }}
       />
 
       {/* Assign org modal */}
@@ -397,8 +605,15 @@ export default function OrgUserManagement() {
             await reload();
             showToast(autoT('ui_fd4267b6a968'), { type: 'success' });
           } catch (err: unknown) {
-            const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || 'Zuweisung fehlgeschlagen';
-            showToast(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg), { type: 'error' });
+            const msg =
+              (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
+              'Zuweisung fehlgeschlagen';
+            showToast(
+              Array.isArray(msg as unknown as unknown[])
+                ? (msg as unknown[]).join(', ')
+                : String(msg),
+              { type: 'error' },
+            );
           }
         }}
       />
@@ -407,16 +622,16 @@ export default function OrgUserManagement() {
 }
 
 // Individual user row component
-function UserRow({ 
-  userData, 
-  currentUser, 
+function UserRow({
+  userData,
+  currentUser,
   isMobile,
-  onReload, 
-  onAssign, 
+  onReload,
+  onAssign,
   onDelete,
   resetConfig,
-  showToast 
-}: { 
+  showToast,
+}: {
   userData: UserDto;
   currentUser: { id: string; role: string };
   isMobile: boolean;
@@ -431,36 +646,46 @@ function UserRow({
   const isSuperadmin = userData.role === 'superadmin';
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [roleHelpOpen, setRoleHelpOpen] = useState(false);
-  const currentSelectableRole: Exclude<Role, 'superadmin'> = userData.role === 'org_admin'
-    ? 'org_admin'
-    : userData.role === 'editor'
-      ? 'editor'
-      : 'user';
-  const [pendingRole, setPendingRole] = useState<Exclude<Role, 'superadmin'>>(currentSelectableRole);
-  const roleLabel = isSuperadmin ? 'Superadmin' : userData.role === 'org_admin' ? 'Admin' : userData.role === 'editor' ? 'Editor' : autoT('ui_bd26f3d230af');
+  const currentSelectableRole: Exclude<Role, 'superadmin'> =
+    userData.role === 'org_admin' ? 'org_admin' : userData.role === 'editor' ? 'editor' : 'user';
+  const [pendingRole, setPendingRole] =
+    useState<Exclude<Role, 'superadmin'>>(currentSelectableRole);
+  const roleLabel = isSuperadmin
+    ? 'Superadmin'
+    : userData.role === 'org_admin'
+      ? 'Admin'
+      : userData.role === 'editor'
+        ? 'Editor'
+        : autoT('ui_bd26f3d230af');
   const roleBadgeClass = isSuperadmin
     ? 'bg-viridian text-white'
     : userData.role === 'org_admin'
       ? 'bg-cambridge-blue/20 text-cambridge-blue'
       : userData.role === 'editor'
         ? 'bg-viridian/15 text-viridian'
-      : 'bg-gray-100 text-gray-600';
+        : 'bg-gray-100 text-gray-600';
   const avatarClass = isSuperadmin
     ? 'bg-viridian text-white'
     : userData.role === 'org_admin'
       ? 'bg-cambridge-blue text-white'
       : userData.role === 'editor'
         ? 'bg-viridian text-white'
-      : 'bg-gray-200 text-gray-600';
+        : 'bg-gray-200 text-gray-600';
 
   if (isMobile) {
     return (
       <li className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
         <div className="flex items-start gap-3">
-          <div className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${avatarClass}`}>
-            {isSuperadmin ? <Shield className="w-5 h-5" /> :
-             userData.role === 'org_admin' ? <Shield className="w-5 h-5" /> :
-             <UserIcon className="w-5 h-5" />}
+          <div
+            className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${avatarClass}`}
+          >
+            {isSuperadmin ? (
+              <Shield className="w-5 h-5" />
+            ) : userData.role === 'org_admin' ? (
+              <Shield className="w-5 h-5" />
+            ) : (
+              <UserIcon className="w-5 h-5" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -470,7 +695,11 @@ function UserRow({
               <span className={`text-xs px-2.5 py-1 rounded-full ${roleBadgeClass}`}>
                 {roleLabel}
               </span>
-              {isCurrentUser && <span className="text-xs font-medium text-viridian">{autoT('ui_848149853921')}</span>}
+              {isCurrentUser && (
+                <span className="text-xs font-medium text-viridian">
+                  {autoT('ui_848149853921')}
+                </span>
+              )}
             </div>
             <div className="mt-1 break-all text-sm text-gray-600">{userData.email}</div>
             {userData.org?.name && (
@@ -491,16 +720,21 @@ function UserRow({
                 setRoleModalOpen(true);
               }}
             >
-              <Shield className="w-4 h-4" />{autoT('ui_6237f0afe77f')}</button>
+              <Shield className="w-4 h-4" />
+              {autoT('ui_6237f0afe77f')}
+            </button>
           )}
 
-          {(currentUser.role === 'superadmin' || currentUser.role === 'org_admin') && !isCurrentUser && (
-            <button
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-              onClick={onAssign}
-            >
-              <Building2 className="w-4 h-4" />{autoT('ui_6e99c1d3b150')}</button>
-          )}
+          {(currentUser.role === 'superadmin' || currentUser.role === 'org_admin') &&
+            !isCurrentUser && (
+              <button
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                onClick={onAssign}
+              >
+                <Building2 className="w-4 h-4" />
+                {autoT('ui_6e99c1d3b150')}
+              </button>
+            )}
 
           {currentUser.role === 'superadmin' && (
             <PasswordResetButton
@@ -518,7 +752,9 @@ function UserRow({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
               onClick={onDelete}
             >
-              <Trash2 className="w-4 h-4" />{autoT('ui_f78b6376e028')}</button>
+              <Trash2 className="w-4 h-4" />
+              {autoT('ui_f78b6376e028')}
+            </button>
           )}
         </div>
       </li>
@@ -531,14 +767,20 @@ function UserRow({
         {/* User Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${avatarClass}`}>
-            {isSuperadmin ? <Shield className="w-5 h-5" /> : 
-             userData.role === 'org_admin' ? <Shield className="w-5 h-5" /> : 
-             <UserIcon className="w-5 h-5" />}
+            {isSuperadmin ? (
+              <Shield className="w-5 h-5" />
+            ) : userData.role === 'org_admin' ? (
+              <Shield className="w-5 h-5" />
+            ) : (
+              <UserIcon className="w-5 h-5" />
+            )}
           </div>
           <div className="min-w-0">
             <div className="font-medium truncate">
               {userData.name || userData.email.split('@')[0]}
-              {isCurrentUser && <span className="ml-2 text-xs text-viridian">{autoT('ui_12e5369c8fb1')}</span>}
+              {isCurrentUser && (
+                <span className="ml-2 text-xs text-viridian">{autoT('ui_12e5369c8fb1')}</span>
+              )}
             </div>
             <div className="text-sm text-gray-500 truncate">{userData.email}</div>
             {userData.org?.name && (
@@ -565,19 +807,22 @@ function UserRow({
                 setRoleModalOpen(true);
               }}
             >
-              <Shield className="w-3.5 h-3.5 text-gray-600" />{autoT('ui_3cde967bbfd0')}</button>
+              <Shield className="w-3.5 h-3.5 text-gray-600" />
+              {autoT('ui_3cde967bbfd0')}
+            </button>
           )}
 
           {/* Org assign button */}
-          {(currentUser.role === 'superadmin' || currentUser.role === 'org_admin') && !isCurrentUser && (
-            <button
-              className="p-2 rounded hover:bg-gray-200 transition-colors"
-              title={autoT('ui_f132125032ab')}
-              onClick={onAssign}
-            >
-              <Building2 className="w-4 h-4 text-gray-600" />
-            </button>
-          )}
+          {(currentUser.role === 'superadmin' || currentUser.role === 'org_admin') &&
+            !isCurrentUser && (
+              <button
+                className="p-2 rounded hover:bg-gray-200 transition-colors"
+                title={autoT('ui_f132125032ab')}
+                onClick={onAssign}
+              >
+                <Building2 className="w-4 h-4 text-gray-600" />
+              </button>
+            )}
 
           {/* Password reset (superadmin only) */}
           {currentUser.role === 'superadmin' && (
@@ -621,7 +866,9 @@ function UserRow({
 
           <div>
             <div className="mb-1 flex items-center gap-2">
-              <label className="block text-sm font-medium text-gray-700">{autoT('ui_1fca361cd80f')}</label>
+              <label className="block text-sm font-medium text-gray-700">
+                {autoT('ui_1fca361cd80f')}
+              </label>
               <button
                 type="button"
                 className="inline-flex h-6 w-6 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-viridian"
@@ -645,9 +892,18 @@ function UserRow({
             {roleHelpOpen && (
               <div className="mt-3 space-y-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-600">
                 <p className="font-semibold text-gray-800">{t('roles.descriptions.title')}</p>
-                <p><span className="font-medium text-gray-800">{t('roles.user')}:</span> {t('roles.descriptions.user')}</p>
-                <p><span className="font-medium text-gray-800">{t('roles.editor')}:</span> {t('roles.descriptions.editor')}</p>
-                <p><span className="font-medium text-gray-800">{t('roles.org_admin')}:</span> {t('roles.descriptions.org_admin')}</p>
+                <p>
+                  <span className="font-medium text-gray-800">{t('roles.user')}:</span>{' '}
+                  {t('roles.descriptions.user')}
+                </p>
+                <p>
+                  <span className="font-medium text-gray-800">{t('roles.editor')}:</span>{' '}
+                  {t('roles.descriptions.editor')}
+                </p>
+                <p>
+                  <span className="font-medium text-gray-800">{t('roles.org_admin')}:</span>{' '}
+                  {t('roles.descriptions.org_admin')}
+                </p>
               </div>
             )}
             <p className="text-xs text-gray-500 mt-2">{autoT('ui_bba2b9362a66')}</p>
@@ -657,7 +913,9 @@ function UserRow({
             <button
               className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
               onClick={() => setRoleModalOpen(false)}
-            >{autoT('ui_07af7cb30fca')}</button>
+            >
+              {autoT('ui_07af7cb30fca')}
+            </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={pendingRole === currentSelectableRole}
@@ -668,11 +926,20 @@ function UserRow({
                   await onReload();
                   showToast(autoT('ui_d524dd5d7012'), { type: 'success' });
                 } catch (err: unknown) {
-                  const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_bcdd0620f5b9');
-                  showToast(Array.isArray(msg as unknown as unknown[]) ? (msg as unknown[]).join(', ') : String(msg), { type: 'error' });
+                  const msg =
+                    (err as { response?: { data?: { message?: unknown } } })?.response?.data
+                      ?.message || autoT('ui_bcdd0620f5b9');
+                  showToast(
+                    Array.isArray(msg as unknown as unknown[])
+                      ? (msg as unknown[]).join(', ')
+                      : String(msg),
+                    { type: 'error' },
+                  );
                 }
               }}
-            >{autoT('ui_3cde967bbfd0')}</button>
+            >
+              {autoT('ui_3cde967bbfd0')}
+            </button>
           </div>
         </div>
       </Modal>
@@ -799,7 +1066,12 @@ function PasswordResetButton({
       resetFields();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
-      showToast(Array.isArray(msg as unknown[]) ? (msg as unknown[]).join(', ') : String(msg || 'Setzen fehlgeschlagen'), { type: 'error' });
+      showToast(
+        Array.isArray(msg as unknown[])
+          ? (msg as unknown[]).join(', ')
+          : String(msg || 'Setzen fehlgeschlagen'),
+        { type: 'error' },
+      );
     } finally {
       setBusy(false);
     }
@@ -837,7 +1109,8 @@ function PasswordResetButton({
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-700">
-            {autoT('ui_181ea833463f')}{' '}<span className="font-medium">{userName}</span>{' '}{autoT('ui_8d140d8bf587')}
+            {autoT('ui_181ea833463f')} <span className="font-medium">{userName}</span>{' '}
+            {autoT('ui_8d140d8bf587')}
           </p>
 
           {resetConfig.passwordResetMode === 'hybrid' && (
@@ -852,7 +1125,9 @@ function PasswordResetButton({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block font-medium text-gray-800">{autoT('ui_7a28e7c4548f')}</span>
+                  <span className="block font-medium text-gray-800">
+                    {autoT('ui_7a28e7c4548f')}
+                  </span>
                   <span className="block text-xs text-gray-500">{autoT('ui_b40566514b14')}</span>
                 </span>
               </label>
@@ -865,7 +1140,9 @@ function PasswordResetButton({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block font-medium text-gray-800">{autoT('ui_0cbccb90f14d')}</span>
+                  <span className="block font-medium text-gray-800">
+                    {autoT('ui_0cbccb90f14d')}
+                  </span>
                   <span className="block text-xs text-gray-500">{autoT('ui_f78cd0b8b81d')}</span>
                 </span>
               </label>
@@ -874,9 +1151,13 @@ function PasswordResetButton({
 
           {resetMode === 'temporary_password' && (
             <div className="space-y-3">
-              <div className="rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-900">{autoT('ui_ddb790431110')}</div>
+              <div className="rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-900">
+                {autoT('ui_ddb790431110')}
+              </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_20641e4ae914')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {autoT('ui_20641e4ae914')}
+                </label>
                 <PasswordInput
                   value={temporaryPassword}
                   onChange={(event) => setTemporaryPassword(event.target.value)}
@@ -887,7 +1168,9 @@ function PasswordResetButton({
                 <PasswordRequirementsHint password={temporaryPassword} className="mt-2" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_35229a5f4490')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {autoT('ui_35229a5f4490')}
+                </label>
                 <PasswordInput
                   value={confirmTemporaryPassword}
                   onChange={(event) => setConfirmTemporaryPassword(event.target.value)}
@@ -904,12 +1187,16 @@ function PasswordResetButton({
                   setTemporaryPassword(generated);
                   setConfirmTemporaryPassword(generated);
                 }}
-              >{autoT('ui_6669229e0285')}</button>
+              >
+                {autoT('ui_6669229e0285')}
+              </button>
             </div>
           )}
 
           {resetMode === 'email' && (
-            <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-600">{autoT('ui_ca1c655804a0')}</div>
+            <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-600">
+              {autoT('ui_ca1c655804a0')}
+            </div>
           )}
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t">
@@ -919,15 +1206,22 @@ function PasswordResetButton({
                 setOpen(false);
                 resetFields();
               }}
-            >{autoT('ui_07af7cb30fca')}</button>
+            >
+              {autoT('ui_07af7cb30fca')}
+            </button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={busy || (resetMode === 'temporary_password' && Boolean(temporaryPasswordValidationMessage))}
+              disabled={
+                busy ||
+                (resetMode === 'temporary_password' && Boolean(temporaryPasswordValidationMessage))
+              }
               onClick={() => {
                 void submit();
               }}
             >
-              {resetMode === 'temporary_password' ? autoT('ui_7a28e7c4548f') : autoT('ui_691ad4def207')}
+              {resetMode === 'temporary_password'
+                ? autoT('ui_7a28e7c4548f')
+                : autoT('ui_691ad4def207')}
             </button>
           </div>
         </div>
@@ -973,14 +1267,31 @@ function PasswordInput({
 }
 
 // Confirm delete modal
-function RemoveUserModal({ user, onClose, onRemoved }: { user: UserDto | null; onClose: () => void; onRemoved: () => void }) {
+function RemoveUserModal({
+  user,
+  onClose,
+  onRemoved,
+}: {
+  user: UserDto | null;
+  onClose: () => void;
+  onRemoved: () => void;
+}) {
   if (!user) return null;
   return (
     <Modal open={true} onClose={onClose} title={autoT('ui_2a1dd54ba9b6')} maxWidth="sm">
-      <p className="text-sm text-gray-700">{autoT('ui_278bb06ac706')}<span className="font-medium">{user.name || user.email}</span>{autoT('ui_9c7ba5c37be5')}</p>
+      <p className="text-sm text-gray-700">
+        {autoT('ui_278bb06ac706')}
+        <span className="font-medium">{user.name || user.email}</span>
+        {autoT('ui_9c7ba5c37be5')}
+      </p>
       <p className="text-xs text-gray-500 mt-2">{autoT('ui_c7cd00d4551a')}</p>
       <div className="mt-4 flex items-center justify-end gap-2">
-        <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200" onClick={onClose}>{autoT('ui_07af7cb30fca')}</button>
+        <button
+          className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+          onClick={onClose}
+        >
+          {autoT('ui_07af7cb30fca')}
+        </button>
         <button
           className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
           onClick={async () => {
@@ -993,7 +1304,9 @@ function RemoveUserModal({ user, onClose, onRemoved }: { user: UserDto | null; o
               alert(String(e?.response?.data?.message || autoT('ui_bbe17e081ceb')));
             }
           }}
-        >{autoT('ui_f78b6376e028')}</button>
+        >
+          {autoT('ui_f78b6376e028')}
+        </button>
       </div>
     </Modal>
   );

@@ -196,7 +196,7 @@ export function CategoryFormModal({
             </div>
           </div>
         </div>
-        <div className="settings-modal-actions category-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
+        <div className="settings-modal-actions roomy-settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           <div className="flex-1 flex items-center">
             <span className="tooltip-wrapper">
               <button

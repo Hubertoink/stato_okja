@@ -1286,15 +1286,15 @@ code {
   -webkit-backdrop-filter: blur(14px);
 }
 
+.roomy-settings-modal-actions {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.25rem);
+}
+
 @media (max-width: 767px) {
   .settings-modal-actions {
     justify-content: flex-end;
     gap: 1.25rem;
     padding-inline-end: 1.25rem;
-  }
-
-  .category-modal-actions {
-    padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.5rem);
   }
 
   .settings-modal-actions > .flex-1 {

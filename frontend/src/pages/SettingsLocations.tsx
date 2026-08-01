@@ -48,7 +48,7 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
           </div>
           {/* Locations are always active; no UI toggle */}
         </div>
-        <div className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
+        <div className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
           <button type="button" className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onClose} aria-label={t('common:actions.cancel')}><XIcon className="w-5 h-5"/></button>
           <button type="button" disabled={saving} className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:opacity-50" onClick={save} aria-label={t('common:actions.save')}><SaveIcon className="w-5 h-5"/></button>
         </div>

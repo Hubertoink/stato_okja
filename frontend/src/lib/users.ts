@@ -15,7 +15,15 @@ export async function fetchUsers(): Promise<UserDto[]> {
   return res.data;
 }
 
-export async function updateUserApi(id: string, patch: { role?: Exclude<Role, 'superadmin'>; orgId?: string | null }) {
+export async function fetchGlobalUsers(): Promise<UserDto[]> {
+  const res = await api.get<UserDto[]>('/users/directory');
+  return res.data;
+}
+
+export async function updateUserApi(
+  id: string,
+  patch: { role?: Exclude<Role, 'superadmin'>; orgId?: string | null },
+) {
   await api.patch(`/users/${id}`, patch);
 }
 

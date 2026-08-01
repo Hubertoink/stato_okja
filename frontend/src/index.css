@@ -917,8 +917,8 @@ code {
   font-weight: 600;
 }
 
-/* Tablet mode (768px-1100px): Hide nav labels, show only icons with tooltip on hover */
-@media (min-width: 768px) and (max-width: 1100px) {
+/* Desktop navigation: keep the bar compact and expose labels via tooltip */
+@media (min-width: 768px) {
   .nav-label {
     /* Visually hidden but accessible */
     position: absolute;

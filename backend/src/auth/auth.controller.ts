@@ -27,7 +27,7 @@ import {
   VerifyTwoFactorDto,
 } from './dto/auth.dto';
 
-type InviteRole = 'superadmin' | 'org_admin' | 'user';
+type InviteRole = 'superadmin' | 'org_admin' | 'editor' | 'user';
 type RefreshCookieSameSite = 'lax' | 'strict' | 'none';
 
 const AUTH_RATE_LIMIT = {
@@ -106,7 +106,7 @@ export class AuthController {
   ) {}
 
   private parseInviteRole(role: unknown): InviteRole {
-    if (role === 'superadmin' || role === 'org_admin' || role === 'user') return role;
+    if (role === 'superadmin' || role === 'org_admin' || role === 'editor' || role === 'user') return role;
     if (typeof role === 'undefined' || role === null || role === '') return 'user';
     throw new BadRequestException('Ungültige Rolle');
   }

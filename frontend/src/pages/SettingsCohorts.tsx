@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
-import { useAuth } from '@/lib/auth';
+import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 
 function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void }) {
   const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
@@ -95,7 +95,7 @@ export default function SettingsCohorts() {
 
   const cohorts = data || [];
   const canCreateOwn = access?.cohorts.canCreateOwn ?? true;
-  const canDeleteTaxonomy = user?.role === 'superadmin' || user?.role === 'org_admin';
+  const canDeleteTaxonomy = canManageSettingsDestructiveActions(user?.role);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

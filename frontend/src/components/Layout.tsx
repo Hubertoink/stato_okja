@@ -113,6 +113,7 @@ export default function Layout() {
   const roleLabel: Record<string, string> = {
     superadmin: t('roles.superadmin'),
     org_admin: t('roles.org_admin'),
+    editor: t('roles.editor'),
     user: t('roles.user'),
   };
   const [menuOpen, setMenuOpen] = useState(false);

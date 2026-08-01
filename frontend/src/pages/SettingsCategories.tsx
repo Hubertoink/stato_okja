@@ -14,7 +14,7 @@ import { api } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { CategoryFormModal } from '@/components/settings/EntityFormModals';
 import { autoT } from '@/i18n/auto';
-import { useAuth } from '@/lib/auth';
+import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 
 export default function SettingsCategories() {
   const { user } = useAuth();
@@ -42,7 +42,7 @@ export default function SettingsCategories() {
 
   const categories = data || [];
   const canCreateOwn = access?.categories.canCreateOwn ?? true;
-  const canDeleteTaxonomy = user?.role === 'superadmin' || user?.role === 'org_admin';
+  const canDeleteTaxonomy = canManageSettingsDestructiveActions(user?.role);
   const allExisting = useMemo(
     () => [...(data || []), ...(archivedOnly || [])] as Category[],
     [data, archivedOnly],

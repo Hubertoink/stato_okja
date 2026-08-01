@@ -5,10 +5,11 @@ import { OrgsService } from '../orgs/orgs.service';
 
 describe('LocationsController org scoping', () => {
   let controller: LocationsController;
-  const service: Pick<LocationsService, 'findAll'|'create'|'updateScoped'> = {
+  const service: Pick<LocationsService, 'findAll'|'create'|'updateScoped'|'removeScoped'> = {
     findAll: jest.fn(async () => []),
     create: jest.fn(async () => ({} as unknown as import('./entities/location.entity').Location)),
     updateScoped: jest.fn(async () => ({} as unknown as import('./entities/location.entity').Location)),
+    removeScoped: jest.fn(async () => undefined),
   };
   const orgs: Pick<OrgsService, 'getSubtreeOrgIds'> = {
     getSubtreeOrgIds: jest.fn(async (id: string) => [id, 'child-1']),
@@ -47,5 +48,13 @@ describe('LocationsController org scoping', () => {
     await controller.update('id-1', { name: 'y', orgId: 'malicious' } as { name: string; orgId?: string|null }, { user: { role: 'admin', orgId: 'own' } });
     const [, passedData] = (service.updateScoped as jest.Mock).mock.calls[0];
     expect(passedData).not.toHaveProperty('orgId');
+  });
+
+  it('normal users cannot delete locations, but editors can', async () => {
+    expect(() => controller.remove('id-1', { user: { role: 'user', orgId: 'own' } }))
+      .toThrow('Nur Editor oder Organisationsadministratoren');
+
+    await controller.remove('id-1', { user: { role: 'editor', orgId: 'own' } });
+    expect(service.removeScoped).toHaveBeenCalledWith('id-1', expect.objectContaining({ role: 'editor' }));
   });
 });

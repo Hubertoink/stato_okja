@@ -13,8 +13,10 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { STAFF_ROLE_LABEL, StaffFormModal } from '@/components/settings/EntityFormModals';
 import { autoT } from '@/i18n/auto';
+import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 
 export default function SettingsTeam() {
+  const { user } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
   const { data, refetch } = useStaff(showArchived ? undefined : { active: true });
   const { data: archivedOnly } = useStaff({ active: false });
@@ -33,6 +35,7 @@ export default function SettingsTeam() {
   }>({ open: false });
 
   const members = data || [];
+  const canManageDestructiveActions = canManageSettingsDestructiveActions(user?.role);
 
   const roleBadgeClass = (role?: StaffRole | null) => {
     const r = (role || 'employee') as StaffRole;
@@ -120,7 +123,7 @@ export default function SettingsTeam() {
               >
                 <Pencil className="w-4 h-4 text-viridian" />
               </button>
-              {showArchived && m.active === false && (
+              {showArchived && m.active === false && canManageDestructiveActions && (
                 <button
                   className="text-viridian hover:underline text-sm"
                   onClick={() =>
@@ -135,7 +138,7 @@ export default function SettingsTeam() {
                   }
                 >{autoT('ui_98f492b5e015')}</button>
               )}
-              <button
+              {canManageDestructiveActions && <button
                 className="danger-icon-button p-1.5"
                 title={autoT('ui_ffa5a8a7e21d')}
                 aria-label={autoT('ui_b607bbd2d882', { value0: m.name })}
@@ -155,7 +158,7 @@ export default function SettingsTeam() {
                 }}
               >
                 <Trash2 className="w-4 h-4" />
-              </button>
+              </button>}
             </div>
           </div>
         ))}

@@ -4,7 +4,7 @@ import type { Organization } from '../../orgs/entities/organization.entity';
 export const SUPPORTED_LOCALES = ['de', 'en'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
-export type UserRole = 'superadmin' | 'org_admin' | 'user';
+export type UserRole = 'superadmin' | 'org_admin' | 'editor' | 'user';
 
 const userTimestampColumnType =
   (process.env.DB_TYPE || 'postgres').toLowerCase() === 'postgres'

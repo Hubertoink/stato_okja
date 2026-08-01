@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAuth } from '@/lib/auth';
+import { useAuth, type Role } from '@/lib/auth';
 import { fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
 import { createLocalUserApi, inviteUserApi, listOrgs, type OrgDto } from '@/lib/orgs';
 import { api } from '@/lib/api';
@@ -27,7 +27,7 @@ export default function OrgUserManagement() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'org_admin' | 'user'>('user');
+  const [role, setRole] = useState<Exclude<Role, 'superadmin'>>('user');
   const [targetOrgId, setTargetOrgId] = useState<string | ''>('');
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [creating, setCreating] = useState(false);
@@ -331,10 +331,11 @@ export default function OrgUserManagement() {
               <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_6237f0afe77f')}</label>
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as 'org_admin' | 'user')}
+                onChange={(e) => setRole(e.target.value as Exclude<Role, 'superadmin'>)}
                 className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
               >
                 <option value="user">{autoT('ui_bd26f3d230af')}</option>
+                <option value="editor">Editor</option>
                 <option value="org_admin">{autoT('ui_1eda23758be9')}</option>
               </select>
             </div>
@@ -424,17 +425,26 @@ function UserRow({
   const isCurrentUser = userData.id === currentUser.id;
   const isSuperadmin = userData.role === 'superadmin';
   const [roleModalOpen, setRoleModalOpen] = useState(false);
-  const [pendingRole, setPendingRole] = useState<'org_admin' | 'user'>(userData.role === 'org_admin' ? 'org_admin' : 'user');
-  const roleLabel = isSuperadmin ? 'Superadmin' : userData.role === 'org_admin' ? 'Admin' : autoT('ui_bd26f3d230af');
+  const currentSelectableRole: Exclude<Role, 'superadmin'> = userData.role === 'org_admin'
+    ? 'org_admin'
+    : userData.role === 'editor'
+      ? 'editor'
+      : 'user';
+  const [pendingRole, setPendingRole] = useState<Exclude<Role, 'superadmin'>>(currentSelectableRole);
+  const roleLabel = isSuperadmin ? 'Superadmin' : userData.role === 'org_admin' ? 'Admin' : userData.role === 'editor' ? 'Editor' : autoT('ui_bd26f3d230af');
   const roleBadgeClass = isSuperadmin
     ? 'bg-viridian text-white'
     : userData.role === 'org_admin'
       ? 'bg-cambridge-blue/20 text-cambridge-blue'
+      : userData.role === 'editor'
+        ? 'bg-viridian/15 text-viridian'
       : 'bg-gray-100 text-gray-600';
   const avatarClass = isSuperadmin
     ? 'bg-viridian text-white'
     : userData.role === 'org_admin'
       ? 'bg-cambridge-blue text-white'
+      : userData.role === 'editor'
+        ? 'bg-viridian text-white'
       : 'bg-gray-200 text-gray-600';
 
   if (isMobile) {
@@ -471,7 +481,7 @@ function UserRow({
             <button
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
               onClick={() => {
-                setPendingRole(userData.role === 'org_admin' ? "org_admin" : "user");
+                setPendingRole(currentSelectableRole);
                 setRoleModalOpen(true);
               }}
             >
@@ -545,7 +555,7 @@ function UserRow({
               className="inline-flex items-center gap-1.5 border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 transition-colors"
               title={autoT('ui_3cde967bbfd0')}
               onClick={() => {
-                setPendingRole(userData.role === 'org_admin' ? "org_admin" : "user");
+                setPendingRole(currentSelectableRole);
                 setRoleModalOpen(true);
               }}
             >
@@ -604,9 +614,10 @@ function UserRow({
             <select
               className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
               value={pendingRole}
-              onChange={(e) => setPendingRole(e.target.value as 'org_admin' | 'user')}
+              onChange={(e) => setPendingRole(e.target.value as Exclude<Role, 'superadmin'>)}
             >
               <option value="user">{autoT('ui_bd26f3d230af')}</option>
+              <option value="editor">Editor</option>
               <option value="org_admin">{autoT('ui_1eda23758be9')}</option>
             </select>
             <p className="text-xs text-gray-500 mt-2">{autoT('ui_bba2b9362a66')}</p>
@@ -619,7 +630,7 @@ function UserRow({
             >{autoT('ui_07af7cb30fca')}</button>
             <button
               className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={pendingRole === (userData.role === 'org_admin' ? "org_admin" : "user")}
+              disabled={pendingRole === currentSelectableRole}
               onClick={async () => {
                 try {
                   await updateUserApi(userData.id, { role: pendingRole });

@@ -46,8 +46,8 @@ export class InviteUserDto {
   name?: string;
 
   @IsOptional()
-  @IsIn(['superadmin', 'org_admin', 'user'])
-  role?: 'superadmin' | 'org_admin' | 'user';
+  @IsIn(['superadmin', 'org_admin', 'editor', 'user'])
+  role?: 'superadmin' | 'org_admin' | 'editor' | 'user';
 
   @IsOptional()
   @IsUUID()
@@ -71,8 +71,8 @@ export class CreateLocalUserDto {
   name?: string;
 
   @IsOptional()
-  @IsIn(['superadmin', 'org_admin', 'user'])
-  role?: 'superadmin' | 'org_admin' | 'user';
+  @IsIn(['superadmin', 'org_admin', 'editor', 'user'])
+  role?: 'superadmin' | 'org_admin' | 'editor' | 'user';
 
   @IsUUID()
   orgId!: string;

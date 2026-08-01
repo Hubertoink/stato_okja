@@ -9,7 +9,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { toPublicUser } from '../common/public-response';
 
-type ManageableUserRole = 'superadmin' | 'org_admin' | 'user';
+type ManageableUserRole = 'superadmin' | 'org_admin' | 'editor' | 'user';
 
 @UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
 @Controller('users')
@@ -19,7 +19,7 @@ export class UsersController {
   constructor(private readonly service: UsersService, private readonly orgs: OrgsService) {}
 
   private parseRole(role: unknown, fallback: ManageableUserRole = 'user'): ManageableUserRole {
-    if (role === 'superadmin' || role === 'org_admin' || role === 'user') return role;
+    if (role === 'superadmin' || role === 'org_admin' || role === 'editor' || role === 'user') return role;
     if (typeof role === 'undefined' || role === null || role === '') return fallback;
     throw new BadRequestException('Ungültige Rolle');
   }

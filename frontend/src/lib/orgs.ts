@@ -144,12 +144,12 @@ export type InviteUserResult = {
     id: string;
     email: string;
     name: string;
-    role: 'superadmin' | 'org_admin' | 'user';
+    role: 'superadmin' | 'org_admin' | 'editor' | 'user';
     orgId: string | null;
   };
 };
 
-export async function inviteUserApi(payload: { email: string; name?: string; role?: 'org_admin'|'user'; orgId?: string|null }): Promise<InviteUserResult> {
+export async function inviteUserApi(payload: { email: string; name?: string; role?: 'org_admin' | 'editor' | 'user'; orgId?: string|null }): Promise<InviteUserResult> {
   const res = await api.post<InviteUserResult>('/auth/invite', payload);
   return res.data;
 }
@@ -158,7 +158,7 @@ export type CreateLocalUserResult = {
   id: string;
   email: string;
   name: string;
-  role: 'superadmin' | 'org_admin' | 'user';
+  role: 'superadmin' | 'org_admin' | 'editor' | 'user';
   orgId: string;
   mustChangePassword: true;
 };
@@ -166,7 +166,7 @@ export type CreateLocalUserResult = {
 export async function createLocalUserApi(payload: {
   email: string;
   name?: string;
-  role?: 'org_admin' | 'user';
+  role?: 'org_admin' | 'editor' | 'user';
   orgId: string;
   temporaryPassword: string;
 }): Promise<CreateLocalUserResult> {

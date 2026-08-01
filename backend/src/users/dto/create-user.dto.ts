@@ -12,7 +12,7 @@ export class CreateUserDto {
   name!: string;
 
   @IsOptional()
-  @IsIn(['superadmin', 'org_admin', 'user'])
+  @IsIn(['superadmin', 'org_admin', 'editor', 'user'])
   role?: UserRole;
 
   @IsOptional()

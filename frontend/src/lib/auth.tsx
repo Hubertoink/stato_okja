@@ -18,7 +18,11 @@ import { setPreferredLocale } from '@/i18n';
 import { normalizeAppLocale, type AppLocale } from '@/i18n/locales';
 import { autoT } from '@/i18n/auto';
 
-export type Role = 'superadmin' | 'org_admin' | 'user';
+export type Role = 'superadmin' | 'org_admin' | 'editor' | 'user';
+
+export function canManageSettingsDestructiveActions(role?: Role | null) {
+  return role === 'superadmin' || role === 'org_admin' || role === 'editor';
+}
 export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
 
 type TwoFactorChallenge = {

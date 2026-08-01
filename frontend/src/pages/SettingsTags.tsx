@@ -6,7 +6,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { TagFormModal } from '@/components/settings/EntityFormModals';
 import { autoT } from '@/i18n/auto';
-import { useAuth } from '@/lib/auth';
+import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 
 export default function SettingsTags() {
   const { user } = useAuth();
@@ -28,7 +28,7 @@ export default function SettingsTags() {
 
   const tags = data || [];
   const canCreateOwn = access?.tags.canCreateOwn ?? true;
-  const canDeleteTaxonomy = user?.role === 'superadmin' || user?.role === 'org_admin';
+  const canDeleteTaxonomy = canManageSettingsDestructiveActions(user?.role);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

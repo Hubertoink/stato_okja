@@ -58,7 +58,7 @@ export class AuditController {
   @ApiOperation({ summary: 'Letzte Aktionen (Audit-Logs) auflisten' })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'actions', required: false, description: 'CSV-Liste der Audit-Aktionen, z. B. login,create,update,delete' })
-  @Roles('superadmin', 'org_admin', 'user')
+  @Roles('superadmin', 'org_admin', 'editor', 'user')
   async list(
     @Req() req: AuditListRequest,
     @Query('limit') limit?: string,

@@ -686,7 +686,7 @@ export class AuthService {
   async inviteUser(payload: {
     email: string;
     name: string;
-    role?: 'org_admin' | 'user' | 'superadmin';
+    role?: 'org_admin' | 'editor' | 'user' | 'superadmin';
     orgId?: string | null;
     orgName?: string;
   }): Promise<InviteUserResponse> {
@@ -780,7 +780,7 @@ export class AuthService {
   async createLocalUser(payload: {
     email: string;
     name: string;
-    role?: 'org_admin' | 'user' | 'superadmin';
+    role?: 'org_admin' | 'editor' | 'user' | 'superadmin';
     orgId: string;
     temporaryPassword: string;
     actor?: { id?: string; name?: string | null; orgId?: string | null };

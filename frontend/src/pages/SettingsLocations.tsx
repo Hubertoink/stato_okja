@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { Pencil, Save as SaveIcon, X as XIcon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 
 function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Location>; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation(['settings', 'common']);
@@ -59,9 +60,11 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
 
 export default function SettingsLocations() {
   const { t } = useTranslation(['settings', 'common']);
+  const { user } = useAuth();
   const { data, refetch } = useLocations({ active: true });
   const [modal, setModal] = useState<{ mode: 'create'|'edit'; loc?: Location }|null>(null);
   const locations = data || [];
+  const canManageDestructiveActions = canManageSettingsDestructiveActions(user?.role);
 
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden bg-white rounded-lg shadow p-6">
@@ -88,7 +91,7 @@ export default function SettingsLocations() {
             </div>
             <div className="flex shrink-0 gap-2">
               <button className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5" onClick={()=> setModal({ mode: 'edit', loc: l })} aria-label={t('common:actions.edit')}><Pencil className="w-4 h-4 text-viridian"/></button>
-              <button className="danger-icon-button p-1.5" onClick={async ()=> { if (!confirm(t('locations.deleteConfirm'))) return; await api.delete(`/locations/${l.id}`); await refetch(); }} aria-label={t('common:actions.delete')}><Trash2 className="w-4 h-4"/></button>
+              {canManageDestructiveActions && <button className="danger-icon-button p-1.5" onClick={async ()=> { if (!confirm(t('locations.deleteConfirm'))) return; await api.delete(`/locations/${l.id}`); await refetch(); }} aria-label={t('common:actions.delete')}><Trash2 className="w-4 h-4"/></button>}
             </div>
           </div>
         ))}

@@ -103,18 +103,26 @@ describe('TaxonomyController org scoping', () => {
 
   it('normal users cannot archive taxonomy records', async () => {
     expect(() => controller.updateTag('id-1', { active: false }, { user: { role: 'user', orgId: 'own' } }))
-      .toThrow('Nur Organisationsadministratoren');
+      .toThrow('Nur Editor oder Organisationsadministratoren');
     expect(service.updateTagScoped).not.toHaveBeenCalled();
   });
 
   it('normal users cannot permanently delete taxonomy records', async () => {
     expect(() => controller.removeCategory('id-1', { user: { role: 'user', orgId: 'own' } }))
-      .toThrow('Nur Organisationsadministratoren');
+      .toThrow('Nur Editor oder Organisationsadministratoren');
     expect(service.removeCategoryScoped).not.toHaveBeenCalled();
   });
 
   it('organisation administrators can permanently delete taxonomy records', async () => {
     await controller.removeCohort('id-1', { user: { role: 'org_admin', orgId: 'own' } });
     expect(service.removeCohortScoped).toHaveBeenCalledWith('id-1', expect.objectContaining({ role: 'org_admin' }));
+  });
+
+  it('editors can archive and permanently delete taxonomy records', async () => {
+    await controller.updateTag('id-1', { active: false }, { user: { role: 'editor', orgId: 'own' } });
+    await controller.removeCategory('id-1', { user: { role: 'editor', orgId: 'own' } });
+
+    expect(service.updateTagScoped).toHaveBeenCalledWith('id-1', { active: false }, expect.objectContaining({ role: 'editor' }));
+    expect(service.removeCategoryScoped).toHaveBeenCalledWith('id-1', expect.objectContaining({ role: 'editor' }));
   });
 });

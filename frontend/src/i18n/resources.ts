@@ -21,7 +21,7 @@ export const resources = {
         projects: 'Projekte', surveys: 'Umfragen', statistics: 'Statistiken', settings: 'Einstellungen',
         more: 'Mehr', userMenu: 'Benutzermenü öffnen', user: 'Benutzer', demoHints: 'Demo-Hinweise wieder einblenden',
       },
-      roles: { superadmin: 'Superadmin', org_admin: 'Org-Admin', user: 'Benutzer' },
+      roles: { superadmin: 'Superadmin', org_admin: 'Org-Admin', editor: 'Editor', user: 'Benutzer' },
       organization: { parent: 'einer übergeordneten Organisation', standardFrom: 'der Standard von {{name}}' },
       userMenu: {
         profile: 'Meine Daten', switchOrganization: 'Organisation wechseln', organizations: 'Organisationen',
@@ -343,7 +343,7 @@ export const resources = {
         projects: 'Projects', surveys: 'Surveys', statistics: 'Statistics', settings: 'Settings',
         more: 'More', userMenu: 'Open user menu', user: 'User', demoHints: 'Show demo hints again',
       },
-      roles: { superadmin: 'Superadmin', org_admin: 'Organization admin', user: 'User' },
+      roles: { superadmin: 'Superadmin', org_admin: 'Organization admin', editor: 'Editor', user: 'User' },
       organization: { parent: 'a parent organization', standardFrom: 'the default from {{name}}' },
       userMenu: {
         profile: 'My profile', switchOrganization: 'Switch organisation', organizations: 'Organisations',

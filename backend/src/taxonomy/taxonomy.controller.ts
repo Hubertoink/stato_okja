@@ -76,8 +76,8 @@ export class TaxonomyController {
   }
 
   private assertCanManageDestructiveAction(req: TaxonomyRequest) {
-    if (req.user.role !== 'superadmin' && req.user.role !== 'org_admin') {
-      throw new ForbiddenException('Nur Organisationsadministratoren dürfen Taxonomien archivieren oder löschen');
+    if (req.user.role !== 'superadmin' && req.user.role !== 'org_admin' && req.user.role !== 'editor') {
+      throw new ForbiddenException('Nur Editor oder Organisationsadministratoren dürfen Taxonomien archivieren oder löschen');
     }
   }
 
@@ -125,7 +125,7 @@ export class TaxonomyController {
   }
 
   @Delete('categories/:id')
-  @Roles('superadmin', 'org_admin')
+  @Roles('superadmin', 'org_admin', 'editor')
   removeCategory(@Param('id') id: string, @Req() req: TaxonomyRequest) {
     this.assertCanManageDestructiveAction(req);
     return this.taxonomyService.removeCategoryScoped(id, this.getScopedUser(req));
@@ -158,7 +158,7 @@ export class TaxonomyController {
   }
 
   @Delete('tags/:id')
-  @Roles('superadmin', 'org_admin')
+  @Roles('superadmin', 'org_admin', 'editor')
   removeTag(@Param('id') id: string, @Req() req: TaxonomyRequest) {
     this.assertCanManageDestructiveAction(req);
     return this.taxonomyService.removeTagScoped(id, this.getScopedUser(req));
@@ -191,7 +191,7 @@ export class TaxonomyController {
   }
 
   @Delete('cohorts/:id')
-  @Roles('superadmin', 'org_admin')
+  @Roles('superadmin', 'org_admin', 'editor')
   removeCohort(@Param('id') id: string, @Req() req: TaxonomyRequest) {
     this.assertCanManageDestructiveAction(req);
     return this.taxonomyService.removeCohortScoped(id, this.getScopedUser(req));

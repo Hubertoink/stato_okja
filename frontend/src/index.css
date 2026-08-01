@@ -1274,7 +1274,12 @@ code {
 .settings-modal-actions {
   position: sticky;
   bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   flex-shrink: 0;
+  padding: 0.5rem 0 max(env(safe-area-inset-bottom, 0px), 0.5rem);
   border-top: 1px solid rgba(229, 231, 235, 0.85);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(14px);

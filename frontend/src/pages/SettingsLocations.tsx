@@ -3,11 +3,13 @@ import { useLocations, Location } from '@/lib/locations';
 import { api } from '@/lib/api';
 import { Pencil, Save as SaveIcon, X as XIcon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Location>; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation(['settings', 'common']);
   const [form, setForm] = useState<Partial<Location>>({ ...initial });
   const [saving, setSaving] = useState(false);
+  useBodyScrollLock(true);
   const update = <K extends keyof Location>(k: K, v: Location[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
@@ -28,8 +30,8 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6">
-      <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
+    <div className="modal-overlay fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center overflow-x-hidden p-0 md:p-6">
+      <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">{initial?.id ? t('locations.edit') : t('locations.create')}</h3>
         <div className="space-y-3">
           <div>
@@ -46,7 +48,7 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
           </div>
           {/* Locations are always active; no UI toggle */}
         </div>
-        <div className="modal-sticky-actions md:-mx-6 md:px-6">
+        <div className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
           <button type="button" className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onClose} aria-label={t('common:actions.cancel')}><XIcon className="w-5 h-5"/></button>
           <button type="button" disabled={saving} className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:opacity-50" onClick={save} aria-label={t('common:actions.save')}><SaveIcon className="w-5 h-5"/></button>
         </div>

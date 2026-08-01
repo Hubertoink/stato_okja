@@ -7,7 +7,9 @@ let restoreState: {
   position: string;
   top: string;
   width: string;
+  bodyOverflowX: string;
   htmlOverflow: string;
+  htmlOverflowX: string;
   htmlOverscroll: string;
 } | null = null;
 
@@ -22,7 +24,9 @@ function lockBody() {
       position: body.style.position,
       top: body.style.top,
       width: body.style.width,
+      bodyOverflowX: body.style.overflowX,
       htmlOverflow: docEl.style.overflow,
+      htmlOverflowX: docEl.style.overflowX,
       htmlOverscroll: docEl.style.getPropertyValue('overscroll-behavior-y') || '',
     };
     if (scrollBarWidth > 0) body.style.paddingRight = `${scrollBarWidth}px`;
@@ -30,8 +34,10 @@ function lockBody() {
     body.style.position = 'fixed';
     body.style.top = `-${restoreState.scrollY}px`;
     body.style.width = '100%';
+    body.style.overflowX = 'hidden';
     // Additionally block root scrolling (covers browsers that scroll <html>)
     docEl.style.overflow = 'hidden';
+    docEl.style.overflowX = 'hidden';
     // Reduce overscroll effects on some browsers
     docEl.style.setProperty('overscroll-behavior-y', 'none');
     body.setAttribute('data-scroll-locked', 'true');
@@ -49,8 +55,10 @@ function unlockBody() {
     body.style.position = restoreState.position;
     body.style.top = restoreState.top;
     body.style.width = restoreState.width;
+    body.style.overflowX = restoreState.bodyOverflowX;
     body.removeAttribute('data-scroll-locked');
     docEl.style.overflow = restoreState.htmlOverflow;
+    docEl.style.overflowX = restoreState.htmlOverflowX;
     if (restoreState.htmlOverscroll)
       docEl.style.setProperty('overscroll-behavior-y', restoreState.htmlOverscroll);
     else docEl.style.removeProperty('overscroll-behavior-y');

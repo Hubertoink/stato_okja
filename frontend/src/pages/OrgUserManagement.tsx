@@ -4,7 +4,7 @@ import { fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/us
 import { createLocalUserApi, inviteUserApi, listOrgs, type OrgDto } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
-import { Trash2, KeyRound, Users, Plus, Shield, User as UserIcon, Building2, Mail, Search } from 'lucide-react';
+import { Trash2, KeyRound, Users, Plus, Shield, User as UserIcon, Building2, Mail, Search, HelpCircle } from 'lucide-react';
 import { adminResetPassword } from '@/lib/password';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig, type AdminResetActionMode, type PublicConfig } from '@/lib/publicConfig';
 import { useToast } from '@/components/Toast';
@@ -15,6 +15,7 @@ import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getEmailValidationMessage } from '@/lib/emailValidation';
 import { autoT } from '@/i18n/auto';
+import { useTranslation } from 'react-i18next';
 
 export default function OrgUserManagement() {
   const { user } = useAuth();
@@ -422,9 +423,11 @@ function UserRow({
   resetConfig: PublicConfig;
   showToast: (msg: string, opts?: { type?: 'success' | 'error' | 'info' }) => void;
 }) {
+  const { t } = useTranslation('common');
   const isCurrentUser = userData.id === currentUser.id;
   const isSuperadmin = userData.role === 'superadmin';
   const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [roleHelpOpen, setRoleHelpOpen] = useState(false);
   const currentSelectableRole: Exclude<Role, 'superadmin'> = userData.role === 'org_admin'
     ? 'org_admin'
     : userData.role === 'editor'
@@ -607,10 +610,26 @@ function UserRow({
         maxWidth="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-700">{autoT('ui_c82711ef6dd2')}<span className="font-medium">{userData.name || userData.email}</span>{autoT('ui_42347fb498a0')}</p>
+          <p className="text-sm text-gray-700">
+            {autoT('ui_c82711ef6dd2')}{' '}
+            <span className="font-medium">{userData.name || userData.email}</span>{' '}
+            {autoT('ui_42347fb498a0')}
+          </p>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_1fca361cd80f')}</label>
+            <div className="mb-1 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-700">{autoT('ui_1fca361cd80f')}</label>
+              <button
+                type="button"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-viridian"
+                onClick={() => setRoleHelpOpen((open) => !open)}
+                aria-label={t('roles.descriptions.toggle')}
+                aria-expanded={roleHelpOpen}
+                title={t('roles.descriptions.toggle')}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </div>
             <select
               className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
               value={pendingRole}
@@ -620,6 +639,14 @@ function UserRow({
               <option value="editor">Editor</option>
               <option value="org_admin">{autoT('ui_1eda23758be9')}</option>
             </select>
+            {roleHelpOpen && (
+              <div className="mt-3 space-y-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-600">
+                <p className="font-semibold text-gray-800">{t('roles.descriptions.title')}</p>
+                <p><span className="font-medium text-gray-800">{t('roles.user')}:</span> {t('roles.descriptions.user')}</p>
+                <p><span className="font-medium text-gray-800">{t('roles.editor')}:</span> {t('roles.descriptions.editor')}</p>
+                <p><span className="font-medium text-gray-800">{t('roles.org_admin')}:</span> {t('roles.descriptions.org_admin')}</p>
+              </div>
+            )}
             <p className="text-xs text-gray-500 mt-2">{autoT('ui_bba2b9362a66')}</p>
           </div>
 

@@ -21,7 +21,19 @@ export const resources = {
         projects: 'Projekte', surveys: 'Umfragen', statistics: 'Statistiken', settings: 'Einstellungen',
         more: 'Mehr', userMenu: 'Benutzermenü öffnen', user: 'Benutzer', demoHints: 'Demo-Hinweise wieder einblenden',
       },
-      roles: { superadmin: 'Superadmin', org_admin: 'Org-Admin', editor: 'Editor', user: 'Benutzer' },
+      roles: {
+        superadmin: 'Superadmin',
+        org_admin: 'Org-Admin',
+        editor: 'Editor',
+        user: 'Benutzer',
+        descriptions: {
+          toggle: 'Rollenbeschreibungen anzeigen',
+          title: 'Rollen im Überblick',
+          user: 'Kann mit den Daten der eigenen Organisation arbeiten.',
+          editor: 'Hat alle Benutzerrechte und kann Inhalte in den Einstellungen archivieren oder löschen.',
+          org_admin: 'Verwaltet zusätzlich Organisation, Benutzer und organisationsweite Einstellungen.',
+        },
+      },
       organization: { parent: 'einer übergeordneten Organisation', standardFrom: 'der Standard von {{name}}' },
       userMenu: {
         profile: 'Meine Daten', switchOrganization: 'Organisation wechseln', organizations: 'Organisationen',
@@ -343,7 +355,19 @@ export const resources = {
         projects: 'Projects', surveys: 'Surveys', statistics: 'Statistics', settings: 'Settings',
         more: 'More', userMenu: 'Open user menu', user: 'User', demoHints: 'Show demo hints again',
       },
-      roles: { superadmin: 'Superadmin', org_admin: 'Organization admin', editor: 'Editor', user: 'User' },
+      roles: {
+        superadmin: 'Superadmin',
+        org_admin: 'Organization admin',
+        editor: 'Editor',
+        user: 'User',
+        descriptions: {
+          toggle: 'Show role descriptions',
+          title: 'Role overview',
+          user: 'Can work with data in their own organization.',
+          editor: 'Has all user permissions and can archive or delete content in settings.',
+          org_admin: 'Also manages the organization, users, and organization-wide settings.',
+        },
+      },
       organization: { parent: 'a parent organization', standardFrom: 'the default from {{name}}' },
       userMenu: {
         profile: 'My profile', switchOrganization: 'Switch organisation', organizations: 'Organisations',

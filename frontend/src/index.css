@@ -3279,6 +3279,18 @@ code {
   background: color-mix(in srgb, var(--surface-1) 95%, transparent);
   box-shadow: inset 0 1px 0 var(--border-subtle);
 }
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .settings-page .border:not([style]),
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .settings-page .border-2:not([style]),
+:root[data-color-mode='dark'] .settings-page .border:not([style]),
+:root[data-color-mode='dark'] .settings-page .border-2:not([style]) {
+  border-color: var(--border-subtle) !important;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .settings-page .divide-y > :not([hidden]) ~ :not([hidden]),
+:root[data-color-mode='dark'] .settings-page .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border-subtle) !important;
+}
 :root[data-color-mode='dark'] .settings-modal-actions {
   border-top-color: var(--border-subtle);
   background: color-mix(in srgb, var(--surface-1) 95%, transparent);

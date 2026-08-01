@@ -78,7 +78,7 @@ export default function SettingsTags() {
           const isInherited = !!t.isInherited;
           const canManage = t.canManage !== false;
           return (
-            <div key={t.id} className={`p-3 rounded border flex items-center justify-between ${isInherited ? "bg-gray-50 border-gray-200" : ''}`}>
+            <div key={t.id} className={`p-3 rounded border border-gray-200 flex items-center justify-between ${isInherited ? "bg-gray-50" : ''}`}>
               <div className="min-w-0 flex items-center gap-3">
                 <span
                   className="inline-block h-4 w-4 rounded bg-slate-400"
@@ -190,6 +190,7 @@ export default function SettingsTags() {
         }
         cancelLabel={autoT('ui_07af7cb30fca')}
         secondaryLabel={autoT('ui_49471caa9c1f')}
+        primaryAction="secondary"
         onSecondaryConfirm={() => {
           if (confirm.tag?.id) update.mutate({ id: confirm.tag.id, data: { active: false } });
           setConfirm({ open: false });

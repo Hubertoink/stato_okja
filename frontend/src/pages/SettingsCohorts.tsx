@@ -217,6 +217,7 @@ export default function SettingsCohorts() {
         }
         cancelLabel={autoT('ui_07af7cb30fca')}
         secondaryLabel={autoT('ui_49471caa9c1f')}
+        primaryAction="secondary"
         onSecondaryConfirm={() => {
           if (confirm.cohort?.id) update.mutate({ id: confirm.cohort.id, data: { active: false } });
           setConfirm({ open: false });

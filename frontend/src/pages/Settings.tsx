@@ -46,7 +46,7 @@ export default function Settings() {
   }, [isMobile]);
 
   return (
-    <div>
+    <div className="settings-page">
       <h2 className="text-3xl font-bold text-viridian mb-6">{t('title')}</h2>
 
       {/* Tab Navigation */}

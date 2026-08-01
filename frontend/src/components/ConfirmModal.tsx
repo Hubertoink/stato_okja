@@ -15,6 +15,7 @@ export default function ConfirmModal({
   showCancel = true,
   secondaryLabel,
   onSecondaryConfirm,
+  primaryAction = 'confirm',
 }: {
   open: boolean;
   title?: string;
@@ -26,6 +27,7 @@ export default function ConfirmModal({
   showCancel?: boolean;
   secondaryLabel?: string;
   onSecondaryConfirm?: () => void;
+  primaryAction?: 'confirm' | 'secondary';
 }) {
   const { t } = useTranslation('common');
   // Lock background scroll while this modal is open
@@ -63,7 +65,11 @@ export default function ConfirmModal({
           {secondaryLabel && onSecondaryConfirm && (
             <button
               type="button"
-              className="w-full shrink-0 whitespace-nowrap rounded border border-gray-300 bg-white px-4 py-2 text-center text-gray-800 hover:bg-gray-50 sm:w-auto"
+              className={`w-full shrink-0 whitespace-nowrap rounded px-4 py-2 text-center sm:w-auto ${
+                primaryAction === 'secondary'
+                  ? 'bg-viridian text-white hover:bg-cambridge-blue'
+                  : 'border border-gray-300 bg-white text-gray-800 hover:bg-gray-50'
+              }`}
               onClick={onSecondaryConfirm}
             >
               {secondaryLabel}
@@ -71,7 +77,11 @@ export default function ConfirmModal({
           )}
           <button
             type="button"
-            className="w-full shrink-0 whitespace-nowrap rounded bg-viridian px-4 py-2 text-center text-white sm:w-auto"
+            className={`w-full shrink-0 whitespace-nowrap rounded px-4 py-2 text-center sm:w-auto ${
+              primaryAction === 'secondary'
+                ? 'border border-[var(--status-danger-text)] bg-transparent text-[var(--status-danger-text)] hover:bg-[var(--status-danger-bg)]'
+                : 'bg-viridian text-white'
+            }`}
             onClick={onConfirm}
           >
             {confirmLabel}

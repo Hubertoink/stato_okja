@@ -1633,6 +1633,12 @@ code {
   color: #fecdd3;
 }
 
+:root[data-color-mode='dark'] .calendar-closure-badge {
+  background: rgba(159, 18, 57, 0.18);
+  border-color: rgba(251, 113, 133, 0.26);
+  color: #fecdd3;
+}
+
 .activity-status-control,
 .activity-status-badge {
   border-color: var(--activity-status-border);

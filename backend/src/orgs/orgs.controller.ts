@@ -1,25 +1,47 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards, ForbiddenException, Delete, BadRequestException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+  ForbiddenException,
+  Delete,
+  BadRequestException,
+  Res,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { OrgsService } from './orgs.service';
+import { OrgMasterDataService } from './org-master-data.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import type { OpeningHours, OrganizationClosureDay, OrganizationTaxonomySettingsUpdatePayload } from './entities/organization.entity';
+import type {
+  OpeningHours,
+  OrganizationClosureDay,
+  OrganizationTaxonomySettingsUpdatePayload,
+} from './entities/organization.entity';
 import { toPublicUser } from '../common/public-response';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '../users/entities/user.entity';
 
 function orgMoveFeatureEnabled() {
-  return ['1', 'true', 'yes', 'on'].includes(String(process.env.ENABLE_ORG_MOVE || '').toLowerCase());
+  return ['1', 'true', 'yes', 'on'].includes(
+    String(process.env.ENABLE_ORG_MOVE || '').toLowerCase(),
+  );
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('orgs')
 export class OrgsController {
-  constructor(private readonly service: OrgsService) {}
+  constructor(
+    private readonly service: OrgsService,
+    private readonly masterData: OrgMasterDataService,
+  ) {}
 
-  private async assertCanAccessOrg(
-    id: string,
-    user: { role: string; orgId?: string | null },
-  ) {
+  private async assertCanAccessOrg(id: string, user: { role: string; orgId?: string | null }) {
     if (user.role === 'superadmin') return;
 
     const myOrgId = user.orgId || null;
@@ -29,9 +51,21 @@ export class OrgsController {
     if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
   }
 
+  @Roles('superadmin', 'org_admin')
+  @Get('master-data/template')
+  downloadMasterDataTemplate(@Res() res: Response) {
+    res
+      .status(200)
+      .type('text/yaml; charset=utf-8')
+      .attachment('stato-stammdaten-vorlage.yaml')
+      .send(OrgMasterDataService.template());
+  }
+
   @Roles('superadmin')
   @Get()
-  list() { return this.service.findAll(); }
+  list() {
+    return this.service.findAll();
+  }
 
   @Roles('superadmin', 'org_admin')
   @Post()
@@ -44,8 +78,14 @@ export class OrgsController {
     }
     const myOrgId = req.user.orgId || null;
     if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-    if (typeof body?.parentId !== 'undefined' && body.parentId !== null && body.parentId !== myOrgId) {
-      throw new ForbiddenException('Org-Admins können nur direkte Unterorganisationen ihrer eigenen Organisation anlegen');
+    if (
+      typeof body?.parentId !== 'undefined' &&
+      body.parentId !== null &&
+      body.parentId !== myOrgId
+    ) {
+      throw new ForbiddenException(
+        'Org-Admins können nur direkte Unterorganisationen ihrer eigenen Organisation anlegen',
+      );
     }
     return this.service.create(body?.name, myOrgId);
   }
@@ -53,14 +93,16 @@ export class OrgsController {
   @Roles('superadmin')
   @Post(':id/move-preview')
   previewMove(@Param('id') id: string, @Body() body: { parentId?: string | null }) {
-    if (!orgMoveFeatureEnabled()) throw new ForbiddenException('Organisationsverschiebung ist deaktiviert');
+    if (!orgMoveFeatureEnabled())
+      throw new ForbiddenException('Organisationsverschiebung ist deaktiviert');
     return this.service.previewMoveOrg(id, body?.parentId ?? null);
   }
 
   @Roles('superadmin')
   @Patch(':id/move')
   move(@Param('id') id: string, @Body() body: { parentId?: string | null; force?: boolean }) {
-    if (!orgMoveFeatureEnabled()) throw new ForbiddenException('Organisationsverschiebung ist deaktiviert');
+    if (!orgMoveFeatureEnabled())
+      throw new ForbiddenException('Organisationsverschiebung ist deaktiviert');
     return this.service.moveOrg(id, body?.parentId ?? null, !!body?.force);
   }
 
@@ -83,11 +125,58 @@ export class OrgsController {
     return this.service.updateOrgTaxonomySettingsScoped(id, body || {}, req.user);
   }
 
+  @Roles('superadmin', 'org_admin')
+  @Get(':id/master-data/export')
+  async exportMasterData(
+    @Param('id') id: string,
+    @Req()
+    req: { user: { id?: string; name?: string | null; role: string; orgId?: string | null } },
+    @Res() res: Response,
+  ) {
+    await this.assertCanAccessOrg(id, req.user);
+    const exported = await this.masterData.export(id, req.user);
+    res
+      .status(200)
+      .type('text/yaml; charset=utf-8')
+      .attachment(exported.filename)
+      .send(exported.content);
+  }
+
+  @Roles('superadmin', 'org_admin')
+  @Post(':id/master-data/import/preview')
+  async previewMasterDataImport(
+    @Param('id') id: string,
+    @Body() body: { content?: unknown },
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    await this.assertCanAccessOrg(id, req.user);
+    if (typeof body?.content !== 'string')
+      throw new BadRequestException('Bitte übermittle eine YAML-Datei.');
+    return this.masterData.preview(id, body.content);
+  }
+
+  @Roles('superadmin', 'org_admin')
+  @Post(':id/master-data/import')
+  async importMasterData(
+    @Param('id') id: string,
+    @Body() body: { content?: unknown },
+    @Req()
+    req: { user: { id?: string; name?: string | null; role: string; orgId?: string | null } },
+  ) {
+    await this.assertCanAccessOrg(id, req.user);
+    if (typeof body?.content !== 'string')
+      throw new BadRequestException('Bitte übermittle eine YAML-Datei.');
+    return this.masterData.import(id, body.content, req.user);
+  }
+
   @Roles('superadmin')
   @Delete(':id')
   async remove(@Param('id') id: string) {
     const ok = await this.service.removeOrg(id);
-    if (!ok) throw new BadRequestException('Organisation kann nicht gelöscht werden (existieren Unterorganisationen?)');
+    if (!ok)
+      throw new BadRequestException(
+        'Organisation kann nicht gelöscht werden (existieren Unterorganisationen?)',
+      );
     return { ok: true };
   }
 
@@ -143,7 +232,7 @@ export class OrgsController {
       if (rootId) {
         const ids = await this.service.getSubtreeOrgIds(rootId);
         const all = await this.service.findAll();
-        return all.filter(o => ids.includes(o.id));
+        return all.filter((o) => ids.includes(o.id));
       }
       return this.service.findAll();
     }
@@ -151,7 +240,7 @@ export class OrgsController {
     if (!myOrgId) return [];
     const ids = await this.service.getSubtreeOrgIds(myOrgId);
     const all = await this.service.findAll();
-    return all.filter(o => ids.includes(o.id));
+    return all.filter((o) => ids.includes(o.id));
   }
 
   // Get opening hours for an org

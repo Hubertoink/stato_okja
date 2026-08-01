@@ -2,11 +2,16 @@ import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrgsController } from './orgs.controller';
 import { OrgsService } from './orgs.service';
+import { OrgMasterDataService } from './org-master-data.service';
 
 describe('OrgsController create permissions', () => {
   let controller: OrgsController;
   const service = {
-    create: jest.fn(async (name: string, parentId?: string | null) => ({ id: 'org-1', name, parentId })),
+    create: jest.fn(async (name: string, parentId?: string | null) => ({
+      id: 'org-1',
+      name,
+      parentId,
+    })),
   };
 
   beforeEach(async () => {
@@ -15,6 +20,7 @@ describe('OrgsController create permissions', () => {
       controllers: [OrgsController],
       providers: [
         { provide: OrgsService, useValue: service },
+        { provide: OrgMasterDataService, useValue: {} },
       ],
     }).compile();
 
@@ -32,10 +38,7 @@ describe('OrgsController create permissions', () => {
   });
 
   it('forces org-admin creations under the admin org', async () => {
-    await controller.create(
-      { name: 'Kindorg' },
-      { user: { role: 'org_admin', orgId: 'own-org' } },
-    );
+    await controller.create({ name: 'Kindorg' }, { user: { role: 'org_admin', orgId: 'own-org' } });
 
     expect(service.create).toHaveBeenCalledWith('Kindorg', 'own-org');
   });
@@ -51,6 +54,8 @@ describe('OrgsController create permissions', () => {
   });
 
   it('blocks move preview when org move feature is disabled', async () => {
-    expect(() => controller.previewMove('org-1', { parentId: 'other-org' })).toThrow(ForbiddenException);
+    expect(() => controller.previewMove('org-1', { parentId: 'other-org' })).toThrow(
+      ForbiddenException,
+    );
   });
 });

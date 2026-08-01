@@ -6,15 +6,17 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Organization } from '../../orgs/entities/organization.entity';
 
 @Entity('tags')
+@Index('IDX_tags_org_name', ['orgId', 'name'], { unique: true })
 export class Tag {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column()
   name: string;
 
   @Column({ type: 'simple-array', nullable: true })

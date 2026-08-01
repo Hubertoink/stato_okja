@@ -9,12 +9,15 @@ describe('TaxonomyController org scoping', () => {
     findAllCategories: jest.fn(async () => []),
     createCategory: jest.fn(async () => ({} as any)),
     updateCategoryScoped: jest.fn(async () => ({} as any)),
+    removeCategoryScoped: jest.fn(async () => undefined),
     findAllTags: jest.fn(async () => []),
     createTag: jest.fn(async () => ({} as any)),
     updateTagScoped: jest.fn(async () => ({} as any)),
+    removeTagScoped: jest.fn(async () => undefined),
     findAllCohorts: jest.fn(async () => []),
     createCohort: jest.fn(async () => ({} as any)),
     updateCohortScoped: jest.fn(async () => ({} as any)),
+    removeCohortScoped: jest.fn(async () => undefined),
   };
   const orgs: Partial<OrgsService> = {
     getSubtreeOrgIds: jest.fn(async (id: string) => [id, 'child-1']),
@@ -96,5 +99,22 @@ describe('TaxonomyController org scoping', () => {
     );
     const [, passedData] = (service.updateCohortScoped as jest.Mock).mock.calls[0];
     expect(passedData).toEqual({ name: '12-14', minAge: 12, maxAge: 14 });
+  });
+
+  it('normal users cannot archive taxonomy records', async () => {
+    expect(() => controller.updateTag('id-1', { active: false }, { user: { role: 'user', orgId: 'own' } }))
+      .toThrow('Nur Organisationsadministratoren');
+    expect(service.updateTagScoped).not.toHaveBeenCalled();
+  });
+
+  it('normal users cannot permanently delete taxonomy records', async () => {
+    expect(() => controller.removeCategory('id-1', { user: { role: 'user', orgId: 'own' } }))
+      .toThrow('Nur Organisationsadministratoren');
+    expect(service.removeCategoryScoped).not.toHaveBeenCalled();
+  });
+
+  it('organisation administrators can permanently delete taxonomy records', async () => {
+    await controller.removeCohort('id-1', { user: { role: 'org_admin', orgId: 'own' } });
+    expect(service.removeCohortScoped).toHaveBeenCalledWith('id-1', expect.objectContaining({ role: 'org_admin' }));
   });
 });

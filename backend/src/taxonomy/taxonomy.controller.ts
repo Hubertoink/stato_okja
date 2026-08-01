@@ -20,6 +20,8 @@ import { Cohort } from './entities/cohort.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { resolveOrgScope } from '../auth/org-scope-access';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 function pickDefined<T extends object>(data: Partial<T>, keys: Array<keyof T>): Partial<T> {
   const result: Partial<T> = {};
@@ -61,7 +63,7 @@ function parseActiveQuery(active?: string) {
 
 @ApiTags('taxonomy')
 @Controller('taxonomy')
-@UseGuards(JwtAuthGuard, OrgScopeGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
 export class TaxonomyController {
   constructor(private readonly taxonomyService: TaxonomyService, private readonly orgs: OrgsService) {}
 
@@ -71,6 +73,12 @@ export class TaxonomyController {
 
   private getScopedUser(req: TaxonomyRequest) {
     return { ...req.user, effectiveOrgId: req.effectiveOrgId };
+  }
+
+  private assertCanManageDestructiveAction(req: TaxonomyRequest) {
+    if (req.user.role !== 'superadmin' && req.user.role !== 'org_admin') {
+      throw new ForbiddenException('Nur Organisationsadministratoren dürfen Taxonomien archivieren oder löschen');
+    }
   }
 
   private async getCreateContext(kind: TaxonomyKind, req: TaxonomyRequest) {
@@ -111,11 +119,15 @@ export class TaxonomyController {
 
   @Patch('categories/:id')
   updateCategory(@Param('id') id: string, @Body() data: Partial<Category>, @Req() req: TaxonomyRequest) {
-    return this.taxonomyService.updateCategoryScoped(id, sanitizeCategoryPayload(data), this.getScopedUser(req));
+    const payload = sanitizeCategoryPayload(data);
+    if (payload.active === false) this.assertCanManageDestructiveAction(req);
+    return this.taxonomyService.updateCategoryScoped(id, payload, this.getScopedUser(req));
   }
 
   @Delete('categories/:id')
+  @Roles('superadmin', 'org_admin')
   removeCategory(@Param('id') id: string, @Req() req: TaxonomyRequest) {
+    this.assertCanManageDestructiveAction(req);
     return this.taxonomyService.removeCategoryScoped(id, this.getScopedUser(req));
   }
 
@@ -140,11 +152,15 @@ export class TaxonomyController {
 
   @Patch('tags/:id')
   updateTag(@Param('id') id: string, @Body() data: Partial<Tag>, @Req() req: TaxonomyRequest) {
-    return this.taxonomyService.updateTagScoped(id, sanitizeTagPayload(data), this.getScopedUser(req));
+    const payload = sanitizeTagPayload(data);
+    if (payload.active === false) this.assertCanManageDestructiveAction(req);
+    return this.taxonomyService.updateTagScoped(id, payload, this.getScopedUser(req));
   }
 
   @Delete('tags/:id')
+  @Roles('superadmin', 'org_admin')
   removeTag(@Param('id') id: string, @Req() req: TaxonomyRequest) {
+    this.assertCanManageDestructiveAction(req);
     return this.taxonomyService.removeTagScoped(id, this.getScopedUser(req));
   }
 
@@ -169,11 +185,15 @@ export class TaxonomyController {
 
   @Patch('cohorts/:id')
   updateCohort(@Param('id') id: string, @Body() data: Partial<Cohort>, @Req() req: TaxonomyRequest) {
-    return this.taxonomyService.updateCohortScoped(id, sanitizeCohortPayload(data), this.getScopedUser(req));
+    const payload = sanitizeCohortPayload(data);
+    if (payload.active === false) this.assertCanManageDestructiveAction(req);
+    return this.taxonomyService.updateCohortScoped(id, payload, this.getScopedUser(req));
   }
 
   @Delete('cohorts/:id')
+  @Roles('superadmin', 'org_admin')
   removeCohort(@Param('id') id: string, @Req() req: TaxonomyRequest) {
+    this.assertCanManageDestructiveAction(req);
     return this.taxonomyService.removeCohortScoped(id, this.getScopedUser(req));
   }
 }

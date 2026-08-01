@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
+import { useAuth } from '@/lib/auth';
 
 function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void }) {
   const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
@@ -80,6 +81,7 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
 }
 
 export default function SettingsCohorts() {
+  const { user } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
   const { data } = useCohorts(showArchived ? undefined : { active: true });
   const { data: archivedOnly } = useCohorts({ active: false });
@@ -93,6 +95,7 @@ export default function SettingsCohorts() {
 
   const cohorts = data || [];
   const canCreateOwn = access?.cohorts.canCreateOwn ?? true;
+  const canDeleteTaxonomy = user?.role === 'superadmin' || user?.role === 'org_admin';
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -136,7 +139,7 @@ export default function SettingsCohorts() {
               <div className="text-sm text-gray-600">{c.minAge}–{c.maxAge}{' '}{autoT('ui_b0bf2144b683')}</div>
             </div>
             <div className="flex gap-2">
-              {showArchived && c.active === false && canManage && (
+              {showArchived && c.active === false && canManage && canDeleteTaxonomy && (
                 <button
                   className="text-viridian hover:underline"
                   onClick={() => update.mutate({ id: c.id, data: { active: true } })}
@@ -152,7 +155,7 @@ export default function SettingsCohorts() {
                   >
                     <Pencil className="w-4 h-4 text-viridian" />
                   </button>
-                  <button
+                  {canDeleteTaxonomy && <button
                     className="danger-icon-button p-1.5"
                     aria-label={autoT('ui_ffa5a8a7e21d')}
                     title={autoT('ui_ffa5a8a7e21d')}
@@ -171,7 +174,7 @@ export default function SettingsCohorts() {
                     }}
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </button>}
                 </>
               )}
             </div>
@@ -193,7 +196,7 @@ export default function SettingsCohorts() {
               update.mutate({ id: modal.cohort.id, data: rest }, { onSuccess: () => setModal(null) });
             }
           }}
-          onArchive={modal.mode === 'edit' && modal.cohort && modal.cohort.id ? () => update.mutate({ id: modal.cohort!.id, data: { active: false } }, { onSuccess: () => setModal(null) }) : undefined}
+          onArchive={canDeleteTaxonomy && modal.mode === 'edit' && modal.cohort && modal.cohort.id ? () => update.mutate({ id: modal.cohort!.id, data: { active: false } }, { onSuccess: () => setModal(null) }) : undefined}
           onCancel={() => setModal(null)}
         />
       )}

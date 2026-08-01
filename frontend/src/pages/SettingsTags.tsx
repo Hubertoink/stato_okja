@@ -6,8 +6,10 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { TagFormModal } from '@/components/settings/EntityFormModals';
 import { autoT } from '@/i18n/auto';
+import { useAuth } from '@/lib/auth';
 
 export default function SettingsTags() {
+  const { user } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
   const { data } = useTags(showArchived ? undefined : { active: true });
   const { data: archivedOnly } = useTags({ active: false });
@@ -26,6 +28,7 @@ export default function SettingsTags() {
 
   const tags = data || [];
   const canCreateOwn = access?.tags.canCreateOwn ?? true;
+  const canDeleteTaxonomy = user?.role === 'superadmin' || user?.role === 'org_admin';
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -98,7 +101,7 @@ export default function SettingsTags() {
                 </div>
               </div>
               <div className="flex gap-2">
-                {showArchived && t.active === false && canManage && (
+                {showArchived && t.active === false && canManage && canDeleteTaxonomy && (
                   <button
                     className="text-viridian hover:underline"
                     onClick={() => update.mutate({ id: t.id, data: { active: true } })}
@@ -112,7 +115,7 @@ export default function SettingsTags() {
                 >
                   <Pencil className="w-4 h-4 text-viridian" />
                 </button>}
-                {canManage && <button
+                {canManage && canDeleteTaxonomy && <button
                   className="danger-icon-button p-1.5"
                   aria-label={autoT('ui_ffa5a8a7e21d')}
                   title={autoT('ui_ffa5a8a7e21d')}
@@ -161,7 +164,7 @@ export default function SettingsTags() {
             }
           }}
           onArchive={
-            modal.mode === 'edit' && modal.tag && modal.tag.id
+            canDeleteTaxonomy && modal.mode === 'edit' && modal.tag && modal.tag.id
               ? () =>
                   update.mutate(
                     { id: modal.tag!.id, data: { active: false } },

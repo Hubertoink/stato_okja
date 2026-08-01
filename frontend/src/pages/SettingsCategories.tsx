@@ -14,8 +14,10 @@ import { api } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import { CategoryFormModal } from '@/components/settings/EntityFormModals';
 import { autoT } from '@/i18n/auto';
+import { useAuth } from '@/lib/auth';
 
 export default function SettingsCategories() {
+  const { user } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
   const { data } = useCategories(showArchived ? undefined : { active: true });
   const { data: archivedOnly } = useCategories({ active: false });
@@ -40,6 +42,7 @@ export default function SettingsCategories() {
 
   const categories = data || [];
   const canCreateOwn = access?.categories.canCreateOwn ?? true;
+  const canDeleteTaxonomy = user?.role === 'superadmin' || user?.role === 'org_admin';
   const allExisting = useMemo(
     () => [...(data || []), ...(archivedOnly || [])] as Category[],
     [data, archivedOnly],
@@ -157,7 +160,7 @@ export default function SettingsCategories() {
                 </div>
               </div>
               <div className="flex gap-2">
-                {showArchived && (c as Category).active === false && canManage && (
+                {showArchived && (c as Category).active === false && canManage && canDeleteTaxonomy && (
                   <button
                     className="text-viridian hover:underline"
                     onClick={() => update.mutate({ id: c.id, data: { active: true } })}
@@ -171,7 +174,7 @@ export default function SettingsCategories() {
                 >
                   <Pencil className="w-4 h-4 text-viridian" />
                 </button>}
-                {canManage && <button
+                {canManage && canDeleteTaxonomy && <button
                   className="danger-icon-button p-1.5"
                   aria-label={autoT('ui_ffa5a8a7e21d')}
                   title={autoT('ui_ffa5a8a7e21d')}
@@ -222,7 +225,7 @@ export default function SettingsCategories() {
             }
           }}
           onArchive={
-            modal.mode === 'edit' && modal.category && modal.category.id
+            canDeleteTaxonomy && modal.mode === 'edit' && modal.category && modal.category.id
               ? () =>
                   update.mutate(
                     { id: modal.category!.id, data: { active: false } },

@@ -185,15 +185,15 @@ export default function SuperAdminAudit() {
           {/* Tables */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {/* Orgs Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
-                <h3 className="font-semibold text-gray-900">{autoT('ui_4048d8ed39f2')}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{autoT('ui_64b2ad3e9759')}</p>
+            <div className="audit-metrics-panel rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="audit-metrics-panel-header px-5 py-4 border-b border-gray-100">
+                <h3 className="audit-metrics-panel-title font-semibold text-gray-900">{autoT('ui_4048d8ed39f2')}</h3>
+                <p className="audit-metrics-panel-copy text-xs text-gray-500 mt-0.5">{autoT('ui_64b2ad3e9759')}</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                    <tr className="audit-metrics-table-head text-gray-600 text-xs uppercase tracking-wide">
                       <th className="text-left px-4 py-3 font-semibold">
                         {autoT('ui_709a23220f2c')}
                       </th>
@@ -211,7 +211,7 @@ export default function SuperAdminAudit() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="audit-metrics-table-body divide-y divide-gray-100">
                     {orgsTop.length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
@@ -220,7 +220,7 @@ export default function SuperAdminAudit() {
                       </tr>
                     )}
                     {orgsTop.map((o) => (
-                      <tr key={o.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={o.id} className="audit-metrics-table-row transition-colors">
                         <td
                           className="px-4 py-3 font-medium text-gray-900 max-w-[220px] truncate"
                           title={o.name}
@@ -241,15 +241,15 @@ export default function SuperAdminAudit() {
             </div>
 
             {/* Top Users Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
-                <h3 className="font-semibold text-gray-900">{autoT('ui_7a334a2fea9c')}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{autoT('ui_dc7d6956122a')}</p>
+            <div className="audit-metrics-panel rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="audit-metrics-panel-header px-5 py-4 border-b border-gray-100">
+                <h3 className="audit-metrics-panel-title font-semibold text-gray-900">{autoT('ui_7a334a2fea9c')}</h3>
+                <p className="audit-metrics-panel-copy text-xs text-gray-500 mt-0.5">{autoT('ui_dc7d6956122a')}</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                    <tr className="audit-metrics-table-head text-gray-600 text-xs uppercase tracking-wide">
                       <th className="text-left px-4 py-3 font-semibold">
                         {autoT('ui_709a23220f2c')}
                       </th>
@@ -261,7 +261,7 @@ export default function SuperAdminAudit() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="audit-metrics-table-body divide-y divide-gray-100">
                     {(data.topUsers30d ?? []).length === 0 && (
                       <tr>
                         <td colSpan={3} className="px-4 py-6 text-center text-gray-500">
@@ -270,7 +270,7 @@ export default function SuperAdminAudit() {
                       </tr>
                     )}
                     {(data.topUsers30d ?? []).map((u) => (
-                      <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={u.id} className="audit-metrics-table-row transition-colors">
                         <td className="px-4 py-3 font-medium text-gray-900">{u.name || '–'}</td>
                         <td className="px-4 py-3 text-gray-600">{u.email}</td>
                         <td className="px-4 py-3 text-right">

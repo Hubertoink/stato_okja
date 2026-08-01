@@ -2736,6 +2736,34 @@ code {
   color: var(--text-secondary);
 }
 
+.audit-metrics-panel {
+  background: var(--surface-elevated);
+  border-color: var(--border-subtle);
+}
+
+.audit-metrics-panel-header,
+.audit-metrics-table-head {
+  background: var(--surface-2);
+  border-color: var(--border-subtle);
+}
+
+.audit-metrics-panel-title {
+  color: var(--text-primary);
+}
+
+.audit-metrics-panel-copy,
+.audit-metrics-table-head {
+  color: var(--text-secondary);
+}
+
+.audit-metrics-table-body > tr + tr {
+  border-top-color: var(--border-subtle);
+}
+
+.audit-metrics-table-row:hover {
+  background: var(--interactive-soft);
+}
+
 .system-data-banner {
   border: 1px solid transparent;
 }
@@ -2817,19 +2845,19 @@ code {
   color: #a16207;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-banner-info {
+:root[data-color-mode='dark'] .system-data-banner-info {
   background: rgba(96, 165, 250, 0.12);
   border-color: rgba(96, 165, 250, 0.26);
   color: #dbeafe;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-banner-warning {
+:root[data-color-mode='dark'] .system-data-banner-warning {
   background: rgba(251, 191, 36, 0.12);
   border-color: rgba(251, 191, 36, 0.24);
   color: #fde68a;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-banner-danger {
+:root[data-color-mode='dark'] .system-data-banner-danger {
   background: rgba(248, 113, 113, 0.12);
   border-color: rgba(248, 113, 113, 0.24);
   color: #fecaca;
@@ -2918,61 +2946,57 @@ code {
   }
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-banner-success {
+:root[data-color-mode='dark'] .system-data-banner-success {
   background: rgba(52, 211, 153, 0.12);
   border-color: rgba(52, 211, 153, 0.24);
   color: #bbf7d0;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes'])
-  .system-data-collapse-header-import {
+:root[data-color-mode='dark'] .system-data-collapse-header-import {
   background: linear-gradient(180deg, rgba(245, 158, 11, 0.16) 0%, rgba(17, 26, 43, 0.92) 100%);
   color: #fde68a;
   border-bottom-color: rgba(245, 158, 11, 0.24);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-header-info {
+:root[data-color-mode='dark'] .system-data-collapse-header-info {
   background: linear-gradient(180deg, rgba(59, 130, 246, 0.16) 0%, rgba(17, 26, 43, 0.92) 100%);
   color: #dbeafe;
   border-bottom-color: rgba(96, 165, 250, 0.24);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes'])
-  .system-data-collapse-header-danger {
+:root[data-color-mode='dark'] .system-data-collapse-header-danger {
   background: linear-gradient(180deg, rgba(239, 68, 68, 0.16) 0%, rgba(17, 26, 43, 0.92) 100%);
   color: #fecaca;
   border-bottom-color: rgba(239, 68, 68, 0.24);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes'])
-  .system-data-collapse-toggle-import {
+:root[data-color-mode='dark'] .system-data-collapse-toggle-import {
   color: #fde68a;
   border-color: rgba(245, 158, 11, 0.28);
   background: rgba(17, 26, 43, 0.78);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-collapse-toggle-info {
+:root[data-color-mode='dark'] .system-data-collapse-toggle-info {
   color: #dbeafe;
   border-color: rgba(96, 165, 250, 0.28);
   background: rgba(17, 26, 43, 0.78);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes'])
-  .system-data-collapse-toggle-danger {
+:root[data-color-mode='dark'] .system-data-collapse-toggle-danger {
   color: #fecaca;
   border-color: rgba(239, 68, 68, 0.28);
   background: rgba(17, 26, 43, 0.78);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-danger-icon {
+:root[data-color-mode='dark'] .system-data-danger-icon {
   color: #fca5a5;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-info-icon {
+:root[data-color-mode='dark'] .system-data-info-icon {
   color: #93c5fd;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .system-data-warning-copy {
+:root[data-color-mode='dark'] .system-data-warning-copy {
   color: #fde68a;
 }
 

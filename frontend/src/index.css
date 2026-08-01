@@ -1286,6 +1286,21 @@ code {
   -webkit-backdrop-filter: blur(14px);
 }
 
+@media (max-width: 767px) {
+  .settings-modal-actions {
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .settings-modal-actions > .flex-1 {
+    flex: 0 0 auto;
+  }
+
+  .settings-modal-actions > .flex-1:empty {
+    display: none;
+  }
+}
+
 .taxonomy-lock-hint {
   margin-top: 0.5rem;
   border-radius: 0.75rem;

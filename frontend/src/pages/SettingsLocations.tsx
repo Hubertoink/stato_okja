@@ -31,7 +31,7 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
 
   return (
     <div className="modal-overlay fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center overflow-x-hidden p-0 md:p-6">
-      <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
+      <div className="bg-white w-full max-w-full min-w-0 md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">{initial?.id ? t('locations.edit') : t('locations.create')}</h3>
         <div className="space-y-3">
           <div>
@@ -64,13 +64,13 @@ export default function SettingsLocations() {
   const locations = data || [];
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <div>
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden bg-white rounded-lg shadow p-6">
+      <div className="flex min-w-0 items-center justify-between mb-4 gap-3">
+        <div className="min-w-0 flex-1">
           <h3 className="text-xl font-semibold text-viridian">{t('locations.title')}</h3>
           <p className="text-gray-600">{t('locations.subtitle')}</p>
         </div>
-        <span className="tooltip-wrapper"><button
+        <span className="tooltip-wrapper shrink-0"><button
           className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow"
           onClick={()=> setModal({ mode: 'create' })}
           aria-label={t('locations.create')}
@@ -79,14 +79,14 @@ export default function SettingsLocations() {
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clipRule="evenodd" /></svg>
         </button><span className="tooltip-bubble">{t('locations.create')}</span></span>
       </div>
-      <div className="divide-y">
+      <div className="min-w-0 divide-y">
         {locations.map((l) => (
-          <div key={l.id} className="py-3 flex items-center justify-between">
-            <div className="min-w-0">
+          <div key={l.id} className="min-w-0 py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <div className="font-medium text-viridian">{l.name}</div>
               {(l.address || l.roomType) && <div className="text-sm text-gray-600">{[l.address, l.roomType].filter(Boolean).join(' · ')}</div>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex shrink-0 gap-2">
               <button className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5" onClick={()=> setModal({ mode: 'edit', loc: l })} aria-label={t('common:actions.edit')}><Pencil className="w-4 h-4 text-viridian"/></button>
               <button className="danger-icon-button p-1.5" onClick={async ()=> { if (!confirm(t('locations.deleteConfirm'))) return; await api.delete(`/locations/${l.id}`); await refetch(); }} aria-label={t('common:actions.delete')}><Trash2 className="w-4 h-4"/></button>
             </div>

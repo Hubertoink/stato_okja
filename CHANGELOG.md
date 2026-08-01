@@ -20,6 +20,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.1.8] - 2026-08-01
+
+### Fixed
+- Die Darstellung von Admin-Daten und Navigation ist kontrastreicher und
+  kompakter.
+- Audit-Karten und Organisations-Setup sind auf kleineren Ansichten besser
+  ausgerichtet.
+
 ## [1.1.7] - 2026-08-01
 
 ### Added

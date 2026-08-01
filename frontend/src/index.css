@@ -1288,7 +1288,7 @@ code {
 
 @media (max-width: 767px) {
   .settings-modal-actions {
-    justify-content: center;
+    justify-content: flex-end;
     gap: 1.25rem;
   }
 

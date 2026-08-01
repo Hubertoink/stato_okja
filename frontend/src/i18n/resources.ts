@@ -34,6 +34,10 @@ export const resources = {
           org_admin: 'Verwaltet zusätzlich Organisation, Benutzer und organisationsweite Einstellungen.',
         },
       },
+      userManagement: {
+        organizationUsers: 'Benutzer von Orga „{{name}}“',
+        unassignedUsers: 'Benutzer ohne Organisation',
+      },
       organization: { parent: 'einer übergeordneten Organisation', standardFrom: 'der Standard von {{name}}' },
       userMenu: {
         profile: 'Meine Daten', switchOrganization: 'Organisation wechseln', organizations: 'Organisationen',
@@ -367,6 +371,10 @@ export const resources = {
           editor: 'Has all user permissions and can archive or delete content in settings.',
           org_admin: 'Also manages the organization, users, and organization-wide settings.',
         },
+      },
+      userManagement: {
+        organizationUsers: 'Users of org “{{name}}”',
+        unassignedUsers: 'Users without an organisation',
       },
       organization: { parent: 'a parent organization', standardFrom: 'the default from {{name}}' },
       userMenu: {

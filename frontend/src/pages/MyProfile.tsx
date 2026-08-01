@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAuth, type AuthUser } from '@/lib/auth';
+import { useAuth, type AuthSessionPayload } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { applyTheme, THEME_DEFINITIONS } from '@/lib/theme';
 import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
@@ -17,7 +17,7 @@ import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 export default function MyProfile() {
-  const { user, refresh, updateSessionUser } = useAuth();
+  const { user, refresh, replaceSession } = useAuth();
   const mustChangePassword = user?.mustChangePassword === true;
   return (
     <div>
@@ -30,7 +30,7 @@ export default function MyProfile() {
           <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} locale={user?.locale || 'de'} />
         )}
         {!mustChangePassword && <MobileNavigationSettings userId={user?.id} />}
-        <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={updateSessionUser} />
+        <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={replaceSession} />
         {!mustChangePassword && <SessionsSection />}
       </div>
     </div>
@@ -474,7 +474,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, locale }: {
   );
 }
 
-function PasswordSection({ mustChangePassword, onPasswordChanged }: { mustChangePassword: boolean; onPasswordChanged: (user: AuthUser) => void }) {
+function PasswordSection({ mustChangePassword, onPasswordChanged }: { mustChangePassword: boolean; onPasswordChanged: (session: AuthSessionPayload) => void }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -516,7 +516,7 @@ function PasswordChangeModal({
   open: boolean;
   mustChangePassword: boolean;
   onClose: () => void;
-  onPasswordChanged: (user: AuthUser) => void;
+  onPasswordChanged: (session: AuthSessionPayload) => void;
 }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -590,10 +590,10 @@ function PasswordChangeModal({
             onClick={async()=>{
               setMsg(null); setErr(null); setBusy(true);
               try {
-                const response = await api.post<{ ok: true; user: AuthUser }>('/auth/change-password', { currentPassword, newPassword });
+                const response = await api.post<AuthSessionPayload>('/auth/change-password', { currentPassword, newPassword });
                 setMsg(autoT('ui_5dca18ea873e'));
                 setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
-                onPasswordChanged(response.data.user);
+                onPasswordChanged(response.data);
                 onClose();
               } catch (e: unknown) {
                 const m = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message || autoT('ui_a987db72eb1d');

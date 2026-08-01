@@ -887,7 +887,12 @@ export class AuthService {
     return this.getProfile(user.id);
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    metadata?: RefreshSessionMetadata,
+  ) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user || !user.passwordHash) {
       throw new Error('Passwortänderung nicht möglich');
@@ -895,7 +900,10 @@ export class AuthService {
     const ok = await bcrypt.compare(currentPassword || '', user.passwordHash || '');
     if (!ok) throw new Error('Aktuelles Passwort ist falsch');
     await this.savePassword(user, newPassword, { mustChangePassword: false, bumpResetVersion: true });
-    return { ok: true, user: await this.getProfile(user.id) };
+    // savePassword invalidates all refresh sessions, including the one that
+    // authorized this request. Replace it immediately so the mandatory
+    // password change can continue to the terms-acceptance step.
+    return this.createAuthenticatedSession(user, { auditLogin: false, sessionMetadata: metadata });
   }
 
   async verifyPasswordForUser(userId: string, password: string) {

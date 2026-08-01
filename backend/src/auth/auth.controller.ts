@@ -391,8 +391,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Throttle(AUTH_RATE_LIMIT)
   @Post('change-password')
-  changePassword(@Req() req: { user: { id: string } }, @Body() body: ChangePasswordDto) {
-    return this.auth.changePassword(req.user.id, body.currentPassword, body.newPassword);
+  async changePassword(
+    @Req() req: { user: { id: string }; ip?: string; headers?: Record<string, string | string[] | undefined> },
+    @Body() body: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = await this.auth.changePassword(
+      req.user.id,
+      body.currentPassword,
+      body.newPassword,
+      getSessionMetadata(req),
+    );
+    return this.finalizeAuthSession(res, session);
   }
 
   @UseGuards(JwtAuthGuard)

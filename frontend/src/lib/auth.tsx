@@ -39,7 +39,7 @@ type LoginResult =
 
 type TwoFactorResult = { ok: true } | { ok: false; error: string };
 
-type AuthSessionPayload = {
+export type AuthSessionPayload = {
   access_token: string;
   refresh_csrf_token: string;
   user: AuthUser;
@@ -60,6 +60,7 @@ interface AuthState {
   resendTwoFactor: (challengeToken: string) => Promise<({ ok: true } & TwoFactorChallenge) | { ok: false; error: string }>;
   logout: () => void;
   refresh: () => Promise<void>;
+  replaceSession: (payload: AuthSessionPayload) => void;
   updateSessionUser: (user: AuthUser) => void;
 }
 
@@ -254,6 +255,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     async refresh() {
       await refreshProfile();
+    },
+    replaceSession(payload: AuthSessionPayload) {
+      applyAuthenticatedSession(payload);
     },
     updateSessionUser(nextUser: AuthUser) {
       applyResolvedUser(nextUser);

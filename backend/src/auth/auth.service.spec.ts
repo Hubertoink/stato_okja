@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 
 describe('AuthService invitations', () => {
@@ -17,16 +18,23 @@ describe('AuthService invitations', () => {
       verifyAsync: jest.fn(),
     };
     const email = { sendInviteEmail: jest.fn().mockResolvedValue(options.emailResult ?? { queued: true }) };
+    const orgs = { findOne: jest.fn().mockResolvedValue(null) };
+    const refreshSessions = {
+      findOne: jest.fn(),
+      create: jest.fn((data) => ({ id: 'session-1', ...data })),
+      save: jest.fn(async (session) => session),
+      delete: jest.fn().mockResolvedValue(undefined),
+    };
     const service = new AuthService(
       users as never,
-      { findOne: jest.fn() } as never,
+      orgs as never,
       {} as never,
-      { delete: jest.fn().mockResolvedValue(undefined) } as never,
+      refreshSessions as never,
       jwt as never,
       email as never,
       {} as never,
     );
-    return { service, users, jwt, email };
+    return { service, users, jwt, email, refreshSessions };
   }
 
   it('does not return an invite token and binds it to the pending invite version', async () => {
@@ -146,6 +154,36 @@ describe('AuthService invitations', () => {
       if (typeof previousMode === 'undefined') delete process.env.USER_PROVISIONING_MODE;
       else process.env.USER_PROVISIONING_MODE = previousMode;
     }
+  });
+
+  it('replaces the current session after a password change', async () => {
+    const { service, refreshSessions } = createService({
+      existingUser: {
+        id: 'user-1',
+        email: 'local@example.org',
+        name: 'Local User',
+        role: 'user',
+        orgId: 'org-1',
+        passwordHash: await bcrypt.hash('CurrentPassword1!', 10),
+        mustChangePassword: true,
+      },
+    });
+
+    const session = await service.changePassword(
+      'user-1',
+      'CurrentPassword1!',
+      'ReplacementPassword1!',
+      { ipAddress: '127.0.0.1' },
+    );
+
+    expect(refreshSessions.delete).toHaveBeenCalledWith({ userId: 'user-1' });
+    expect(refreshSessions.save).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-1' }));
+    expect(session).toEqual(expect.objectContaining({
+      access_token: 'invite-token',
+      refreshToken: expect.any(String),
+      refresh_csrf_token: expect.any(String),
+      user: expect.objectContaining({ mustChangePassword: false }),
+    }));
   });
 
   it('accepts an active reset token without consuming it', async () => {

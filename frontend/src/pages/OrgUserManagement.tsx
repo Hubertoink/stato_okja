@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useAuth, type Role } from '@/lib/auth';
 import { fetchUsers, removeUserApi, updateUserApi, type UserDto } from '@/lib/users';
 import { createLocalUserApi, inviteUserApi, listOrgs, type OrgDto } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useOrgScope } from '@/lib/orgScope';
-import { Trash2, KeyRound, Users, Plus, Shield, User as UserIcon, Building2, Mail, Search, HelpCircle } from 'lucide-react';
+import { Trash2, KeyRound, Users, Plus, Shield, User as UserIcon, Building2, Mail, Search, HelpCircle, Eye, EyeOff } from 'lucide-react';
 import { adminResetPassword } from '@/lib/password';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig, type AdminResetActionMode, type PublicConfig } from '@/lib/publicConfig';
 import { useToast } from '@/components/Toast';
@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 
 export default function OrgUserManagement() {
   const { user } = useAuth();
+  const { t } = useTranslation('common');
   const { showToast } = useToast();
   const { scope } = useOrgScope();
   const isMobile = useIsMobile(768);
@@ -189,7 +190,9 @@ export default function OrgUserManagement() {
           <h2 className="text-2xl font-bold text-viridian flex items-center gap-2">
             <Users className="w-6 h-6" />{autoT('ui_1ea1e1f1bc9e')}</h2>
           <p className="text-sm text-gray-600 mt-1">
-            {isScopedOrgView ? activeOrgName : autoT('ui_fafb0377a7fa')}
+            {isScopedOrgView
+              ? t('userManagement.organizationUsers', { name: activeOrgName })
+              : t('userManagement.unassignedUsers')}
           </p>
         </div>
         <button
@@ -718,6 +721,8 @@ function PasswordResetButton({
   );
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [confirmTemporaryPassword, setConfirmTemporaryPassword] = useState('');
+  const [showTemporaryPassword, setShowTemporaryPassword] = useState(false);
+  const [showConfirmTemporaryPassword, setShowConfirmTemporaryPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const temporaryPasswordValidationMessage = getPasswordValidationMessage(temporaryPassword);
 
@@ -741,6 +746,8 @@ function PasswordResetButton({
   const resetFields = () => {
     setTemporaryPassword('');
     setConfirmTemporaryPassword('');
+    setShowTemporaryPassword(false);
+    setShowConfirmTemporaryPassword(false);
     setBusy(false);
     setResetMode(resetConfig.passwordResetMode === 'email' ? 'email' : 'temporary_password');
   };
@@ -829,7 +836,9 @@ function PasswordResetButton({
         maxWidth="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-700">{autoT('ui_181ea833463f')}<span className="font-medium">{userName}</span>{autoT('ui_8d140d8bf587')}</p>
+          <p className="text-sm text-gray-700">
+            {autoT('ui_181ea833463f')}{' '}<span className="font-medium">{userName}</span>{' '}{autoT('ui_8d140d8bf587')}
+          </p>
 
           {resetConfig.passwordResetMode === 'hybrid' && (
             <div className="space-y-2">
@@ -868,22 +877,22 @@ function PasswordResetButton({
               <div className="rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-900">{autoT('ui_ddb790431110')}</div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_20641e4ae914')}</label>
-                <input
-                  type="text"
+                <PasswordInput
                   value={temporaryPassword}
                   onChange={(event) => setTemporaryPassword(event.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
+                  visible={showTemporaryPassword}
+                  onToggleVisibility={() => setShowTemporaryPassword((visible) => !visible)}
                   placeholder={autoT('ui_20641e4ae914')}
                 />
                 <PasswordRequirementsHint password={temporaryPassword} className="mt-2" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_35229a5f4490')}</label>
-                <input
-                  type="text"
+                <PasswordInput
                   value={confirmTemporaryPassword}
                   onChange={(event) => setConfirmTemporaryPassword(event.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
+                  visible={showConfirmTemporaryPassword}
+                  onToggleVisibility={() => setShowConfirmTemporaryPassword((visible) => !visible)}
                   placeholder={autoT('ui_3794271cb105')}
                 />
               </div>
@@ -924,6 +933,42 @@ function PasswordResetButton({
         </div>
       </Modal>
     </>
+  );
+}
+
+function PasswordInput({
+  value,
+  visible,
+  placeholder,
+  onChange,
+  onToggleVisibility,
+}: {
+  value: string;
+  visible: boolean;
+  placeholder: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onToggleVisibility: () => void;
+}) {
+  return (
+    <div className="relative">
+      <input
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete="new-password"
+        className="w-full border rounded-lg px-3 py-2 pr-11 focus:ring-2 focus:ring-viridian focus:border-viridian"
+      />
+      <button
+        type="button"
+        onClick={onToggleVisibility}
+        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-gray-500 hover:text-viridian"
+        aria-label={visible ? autoT('ui_79de9effdeda') : autoT('ui_07039cae9ab7')}
+        title={visible ? autoT('ui_79de9effdeda') : autoT('ui_07039cae9ab7')}
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
   );
 }
 

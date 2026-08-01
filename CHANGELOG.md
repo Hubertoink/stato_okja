@@ -20,6 +20,19 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.1.6] - 2026-08-01
+
+### Fixed
+- Nach einem erzwungenen Passwortwechsel wird die zuvor widerrufene Sitzung
+  sofort durch eine neue ersetzt. Die Zustimmung zu den Nutzungsbedingungen
+  kann dadurch direkt anschließend gespeichert werden.
+- Die Benutzerverwaltung benennt den Kontext eindeutig als „Benutzer von
+  Orga …“ beziehungsweise „Benutzer ohne Organisation“.
+- Das Zurücksetzen eines Passworts setzt die Eingaben verdeckt zurück und
+  zeigt nur noch einen Sichtbarkeits-Schalter an.
+
+---
+
 ## [1.1.5] - 2026-08-01
 
 ### Added

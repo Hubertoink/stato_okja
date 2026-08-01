@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Edge adds its own reveal control to password inputs. We render an
+   accessible, consistent control ourselves, so suppress the browser one. */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}
+
 :root {
   --app-bg-image: url('/Background_Stato.jpg');
   --app-bg: #fafbff;

@@ -1292,6 +1292,10 @@ code {
     gap: 1.25rem;
   }
 
+  .category-modal-actions {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+  }
+
   .settings-modal-actions > .flex-1 {
     flex: 0 0 auto;
   }

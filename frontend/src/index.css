@@ -1289,7 +1289,7 @@ code {
 @media (max-width: 767px) {
   .settings-modal-actions {
     justify-content: center;
-    gap: 1rem;
+    gap: 1.25rem;
   }
 
   .settings-modal-actions > .flex-1 {

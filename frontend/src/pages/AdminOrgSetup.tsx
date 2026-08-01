@@ -1562,10 +1562,7 @@ export default function AdminOrgSetup() {
       >
         <div className="flex items-center justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-viridian flex items-center gap-2">
-              <Building2 className="w-6 h-6" />
-              {autoT('ui_4048d8ed39f2')}
-            </h2>
+            <h2 className="text-3xl font-bold text-viridian">{autoT('ui_4048d8ed39f2')}</h2>
             <p className="text-sm text-[var(--text-secondary)] mt-1">{autoT('ui_7344d9db4825')}</p>
           </div>
           <button
@@ -2113,9 +2110,7 @@ function OrgRow({
               </span>
               <span className="org-tree-child-badge">
                 <Users className="h-3.5 w-3.5" />
-                {childCount}
-                {' '}
-                {autoT('ui_5be3b245eac6')}
+                {childCount} {autoT('ui_5be3b245eac6')}
               </span>
             </div>
           </div>
@@ -2206,9 +2201,7 @@ function OrgRow({
           </span>
           <span className="org-tree-child-badge">
             <Users className="h-3.5 w-3.5" />
-            {childCount}
-            {' '}
-            {autoT('ui_5be3b245eac6')}
+            {childCount} {autoT('ui_5be3b245eac6')}
           </span>
         </div>
 

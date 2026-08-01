@@ -32,7 +32,11 @@ import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig } from '@/lib/publicConfig';
 import DemoMobilePageGuide, { hasDemoMobileGuideForPath } from '@/demo/DemoMobilePageGuide';
 import { demoModeEnabled } from '@/demo/config';
 import { setDemoMobileGuideMuted, useDemoMobileGuideMuted } from '@/demo/mobileGuideState';
-import { getMobileNavLayout, MOBILE_NAV_ITEM_IDS, type MobileNavItemId } from '@/lib/mobileNavigation';
+import {
+  getMobileNavLayout,
+  MOBILE_NAV_ITEM_IDS,
+  type MobileNavItemId,
+} from '@/lib/mobileNavigation';
 import { useTranslation } from 'react-i18next';
 import { compareLocalized } from '@/i18n/formatters';
 import { autoT } from '@/i18n/auto';
@@ -58,7 +62,10 @@ function buildOrgScopeTree(orgs: OrgDto[]): OrgScopeTreeNode[] {
   return roots;
 }
 
-function flattenOrgScopeTree(nodes: OrgScopeTreeNode[], depth = 0): Array<{ org: OrgDto; depth: number }> {
+function flattenOrgScopeTree(
+  nodes: OrgScopeTreeNode[],
+  depth = 0,
+): Array<{ org: OrgDto; depth: number }> {
   return nodes.flatMap((node) => [
     { org: node.org, depth },
     ...flattenOrgScopeTree(node.children, depth + 1),
@@ -146,25 +153,31 @@ export default function Layout() {
     return location.pathname.startsWith(path);
   };
 
-  const mobileNavItems: Record<MobileNavItemId, { to: string; label: string; icon: typeof Home }> = {
-    dashboard: { to: '/dashboard', label: t('navigation.dashboard'), icon: Home },
-    activities: { to: '/activities', label: t('navigation.activities'), icon: Activity },
-    logbook: { to: '/logbook', label: t('navigation.logbook'), icon: BookOpen },
-    calendar: { to: '/calendar', label: t('navigation.calendar'), icon: CalendarIcon },
-    projects: { to: '/projects', label: t('navigation.projects'), icon: Boxes },
-    surveys: { to: '/surveys', label: t('navigation.surveys'), icon: ClipboardList },
-    statistics: { to: '/statistics', label: t('navigation.statistics'), icon: BarChart3 },
-    settings: { to: '/settings', label: t('navigation.settings'), icon: Settings },
-  };
+  const mobileNavItems: Record<MobileNavItemId, { to: string; label: string; icon: typeof Home }> =
+    {
+      dashboard: { to: '/dashboard', label: t('navigation.dashboard'), icon: Home },
+      activities: { to: '/activities', label: t('navigation.activities'), icon: Activity },
+      logbook: { to: '/logbook', label: t('navigation.logbook'), icon: BookOpen },
+      calendar: { to: '/calendar', label: t('navigation.calendar'), icon: CalendarIcon },
+      projects: { to: '/projects', label: t('navigation.projects'), icon: Boxes },
+      surveys: { to: '/surveys', label: t('navigation.surveys'), icon: ClipboardList },
+      statistics: { to: '/statistics', label: t('navigation.statistics'), icon: BarChart3 },
+      settings: { to: '/settings', label: t('navigation.settings'), icon: Settings },
+    };
   const navLabels = {
-    dashboard: t('navigation.dashboard'), activities: t('navigation.activities'), logbook: t('navigation.logbook'),
-    calendar: t('navigation.calendar'), projects: t('navigation.projects'), surveys: t('navigation.surveys'),
-    statistics: t('navigation.statistics'), settings: t('navigation.settings'),
+    dashboard: t('navigation.dashboard'),
+    activities: t('navigation.activities'),
+    logbook: t('navigation.logbook'),
+    calendar: t('navigation.calendar'),
+    projects: t('navigation.projects'),
+    surveys: t('navigation.surveys'),
+    statistics: t('navigation.statistics'),
+    settings: t('navigation.settings'),
   };
   const mobileBottomItems = mobileNavLayout.bottom.map((id) => mobileNavItems[id]);
-  const mobileMoreItems = MOBILE_NAV_ITEM_IDS
-    .filter((id) => !mobileNavLayout.bottom.includes(id))
-    .map((id) => mobileNavItems[id]);
+  const mobileMoreItems = MOBILE_NAV_ITEM_IDS.filter(
+    (id) => !mobileNavLayout.bottom.includes(id),
+  ).map((id) => mobileNavItems[id]);
 
   useEffect(() => {
     const syncMobileLayout = () => setMobileNavLayout(getMobileNavLayout(user?.id));
@@ -187,7 +200,8 @@ export default function Layout() {
   const [newOrgName, setNewOrgName] = useState('');
   const [parentForNewOrg, setParentForNewOrg] = useState<string | 'root' | ''>('');
   const isSuperadmin = user?.role === 'superadmin';
-  const fixedParentOrgName = orgList.find((o) => o.id === user?.orgId)?.name || user?.orgName || autoT('ui_89e32a6a5474');
+  const fixedParentOrgName =
+    orgList.find((o) => o.id === user?.orgId)?.name || user?.orgName || autoT('ui_89e32a6a5474');
   const scopeOrgRows = useMemo(() => flattenOrgScopeTree(buildOrgScopeTree(orgList)), [orgList]);
   const keyboardOpen = useKeyboardOpen();
   const isActivityFull =
@@ -195,7 +209,8 @@ export default function Layout() {
   const isLogbookDetail = location.pathname.startsWith('/logbook/');
   const hideBottomNav = isActivityFull || isLogbookDetail || keyboardOpen;
   const hideFooter = isActivityFull || isLogbookDetail || keyboardOpen;
-  const showDemoGuideRestore = demoModeEnabled && demoGuidesMutedForPageLoad && hasDemoMobileGuideForPath(location.pathname);
+  const showDemoGuideRestore =
+    demoModeEnabled && demoGuidesMutedForPageLoad && hasDemoMobileGuideForPath(location.pathname);
   const restoreDemoGuides = () => {
     setDemoMobileGuideMuted(false);
     setMenuOpen(false);
@@ -285,7 +300,7 @@ export default function Layout() {
         /* ignore */
       }
       // Default selection to current scope; for legacy undefined use null (safe)
-      setPendingScope((typeof scope === 'undefined') ? null : scope);
+      setPendingScope(typeof scope === 'undefined' ? null : scope);
     })();
   }, [scopeModalOpen]);
   // Load org list when opening quick-create modal as well
@@ -341,14 +356,18 @@ export default function Layout() {
             />
             <div className="leading-tight min-w-0">
               <div className="flex min-w-0 items-baseline gap-2">
-                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight truncate">{autoT('ui_3abd120bdece')}</h1>
+                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight truncate">
+                  {autoT('ui_3abd120bdece')}
+                </h1>
                 {branding.orgName ? (
                   <span className="min-w-0 truncate text-xs md:text-sm font-medium text-gray-600">
                     {branding.orgName}
                   </span>
                 ) : null}
               </div>
-              <p className="text-[11px] md:text-sm text-gray-600 truncate">{autoT('ui_86922bad66e8')}</p>
+              <p className="text-[11px] md:text-sm text-gray-600 truncate">
+                {autoT('ui_86922bad66e8')}
+              </p>
             </div>
           </div>
           {/* Current user and org summary (moved next to avatar on desktop) */}
@@ -410,7 +429,9 @@ export default function Layout() {
                   <UserCircle2 className="w-8 h-8" />
                 )}
                 <div className="flex flex-col items-end text-[11px] leading-4">
-                  <div className="font-medium truncate max-w-[34vw]">{user?.name || user?.email}</div>
+                  <div className="font-medium truncate max-w-[34vw]">
+                    {user?.name || user?.email}
+                  </div>
                   <div className="text-gray-600 truncate max-w-[34vw]">
                     {activeOrgName ||
                       (typeof scope === 'string' ? `Org ${scope.substring(0, 6)}…` : '')}
@@ -458,32 +479,34 @@ export default function Layout() {
                       {t('userMenu.profile')}
                     </button>
                   </li>
-                  {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
-                    <li>
-                      <button
-                        className="w-full px-4 py-2 text-left theme-menu-item"
-                        onClick={() => {
-                          setScopeModalOpen(true);
-                          setMenuOpen(false);
-                        }}
-                      >
-                        {t('userMenu.switchOrganization')}
-                      </button>
-                    </li>
-                  )}
-                  {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
-                    <li>
-                      <button
-                        className="w-full px-4 py-2 text-left theme-menu-item"
-                        onClick={() => {
-                          navigate('/admin/orgs');
-                          setMenuOpen(false);
-                        }}
-                      >
-                        {t('userMenu.organizations')}
-                      </button>
-                    </li>
-                  )}
+                  {!restrictToPasswordChange &&
+                    (user?.role === 'org_admin' || user?.role === 'superadmin') && (
+                      <li>
+                        <button
+                          className="w-full px-4 py-2 text-left theme-menu-item"
+                          onClick={() => {
+                            setScopeModalOpen(true);
+                            setMenuOpen(false);
+                          }}
+                        >
+                          {t('userMenu.switchOrganization')}
+                        </button>
+                      </li>
+                    )}
+                  {!restrictToPasswordChange &&
+                    (user?.role === 'org_admin' || user?.role === 'superadmin') && (
+                      <li>
+                        <button
+                          className="w-full px-4 py-2 text-left theme-menu-item"
+                          onClick={() => {
+                            navigate('/admin/orgs');
+                            setMenuOpen(false);
+                          }}
+                        >
+                          {t('userMenu.organizations')}
+                        </button>
+                      </li>
+                    )}
                   {!restrictToPasswordChange && canAccessDevTools(user?.role) && (
                     <li>
                       <button
@@ -523,19 +546,20 @@ export default function Layout() {
                       </button>
                     </li>
                   )}
-                  {!restrictToPasswordChange && (user?.role === 'org_admin' || user?.role === 'superadmin') && (
-                    <li>
-                      <button
-                        className="w-full px-4 py-2 text-left theme-menu-item"
-                        onClick={() => {
-                          navigate('/admin/users');
-                          setMenuOpen(false);
-                        }}
-                      >
-                        {t('userMenu.users')}
-                      </button>
-                    </li>
-                  )}
+                  {!restrictToPasswordChange &&
+                    (user?.role === 'org_admin' || user?.role === 'superadmin') && (
+                      <li>
+                        <button
+                          className="w-full px-4 py-2 text-left theme-menu-item"
+                          onClick={() => {
+                            navigate('/admin/users');
+                            setMenuOpen(false);
+                          }}
+                        >
+                          {t('userMenu.users')}
+                        </button>
+                      </li>
+                    )}
                   <li>
                     <button
                       className="w-full px-4 py-2 text-left theme-menu-item"
@@ -555,129 +579,157 @@ export default function Layout() {
       </header>
 
       {/* Navigation (desktop) - fixed under header */}
-      {!restrictToPasswordChange && <nav className="nav-surface hidden md:block fixed top-14 md:top-20 inset-x-0 z-30">
-        <div className="container mx-auto px-4">
-          <ul className="flex space-x-1">
-            <li>
-              <Link
-                to="/dashboard"
-                data-tooltip={navLabels.dashboard}
-                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                  isActive('/dashboard')
-                    ? "theme-nav-item-active"
-                    : ''
-                }`}
-              >
-                <Home className="w-5 h-5 lg:mr-2 flex-shrink-0" />
-                <span className={`nav-label ${isActive('/dashboard') ? "nav-label-active" : ''}`} data-text={navLabels.dashboard}>{navLabels.dashboard}</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/activities"
-                data-tooltip={navLabels.activities}
-                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                  isActive('/activities')
-                    ? "theme-nav-item-active"
-                    : ''
-                }`}
-              >
-                <Activity className="w-5 h-5 lg:mr-2 flex-shrink-0" />
-                <span className={`nav-label ${isActive('/activities') ? "nav-label-active" : ''}`} data-text={navLabels.activities}>{navLabels.activities}</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/logbook"
-                data-tooltip={navLabels.logbook}
-                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                  isActive('/logbook')
-                    ? "theme-nav-item-active"
-                    : ''
-                }`}
-              >
-                <BookOpen className="w-5 h-5 lg:mr-2 flex-shrink-0" />
-                <span className={`nav-label ${isActive('/logbook') ? "nav-label-active" : ''}`} data-text={navLabels.logbook}>{navLabels.logbook}</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/calendar"
-                data-tooltip={navLabels.calendar}
-                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                  isActive('/calendar')
-                    ? "theme-nav-item-active"
-                    : ''
-                }`}
-              >
-                <CalendarIcon className="w-5 h-5 lg:mr-2 flex-shrink-0" />
-                <span className={`nav-label ${isActive('/calendar') ? "nav-label-active" : ''}`} data-text={navLabels.calendar}>{navLabels.calendar}</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/projects"
-                data-tooltip={navLabels.projects}
-                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                  isActive('/projects')
-                    ? "theme-nav-item-active"
-                    : ''
-                }`}
-              >
-                <Boxes className="w-5 h-5 lg:mr-2 flex-shrink-0" />
-                <span className={`nav-label ${isActive('/projects') ? "nav-label-active" : ''}`} data-text={navLabels.projects}>{navLabels.projects}</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/surveys"
-                data-tooltip={navLabels.surveys}
-                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                  isActive('/surveys') ? "theme-nav-item-active" : ''
-                }`}
-              >
-                <ClipboardList className="w-5 h-5 lg:mr-2 flex-shrink-0" />
-                <span className={`nav-label ${isActive('/surveys') ? "nav-label-active" : ''}`} data-text={navLabels.surveys}>{navLabels.surveys}</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/statistics"
-                data-tooltip={navLabels.statistics}
-                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                  isActive('/statistics')
-                    ? "theme-nav-item-active"
-                    : ''
-                }`}
-              >
-                <BarChart3 className="w-5 h-5 lg:mr-2 flex-shrink-0" />
-                <span className={`nav-label ${isActive('/statistics') ? "nav-label-active" : ''}`} data-text={navLabels.statistics}>{navLabels.statistics}</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/settings"
-                data-tooltip={navLabels.settings}
-                className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                  isActive('/settings')
-                    ? "theme-nav-item-active"
-                    : ''
-                }`}
-              >
-                <Settings className="w-5 h-5 lg:mr-2 flex-shrink-0" />
-                <span className={`nav-label ${isActive('/settings') ? "nav-label-active" : ''}`} data-text={navLabels.settings}>{navLabels.settings}</span>
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </nav>}
+      {!restrictToPasswordChange && (
+        <nav className="nav-surface hidden md:block fixed top-14 md:top-20 inset-x-0 z-30">
+          <div className="container mx-auto px-4">
+            <ul className="flex space-x-1">
+              <li>
+                <Link
+                  to="/dashboard"
+                  data-tooltip={navLabels.dashboard}
+                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                    isActive('/dashboard') ? 'theme-nav-item-active' : ''
+                  }`}
+                >
+                  <Home className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <span
+                    className={`nav-label ${isActive('/dashboard') ? 'nav-label-active' : ''}`}
+                    data-text={navLabels.dashboard}
+                  >
+                    {navLabels.dashboard}
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/activities"
+                  data-tooltip={navLabels.activities}
+                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                    isActive('/activities') ? 'theme-nav-item-active' : ''
+                  }`}
+                >
+                  <Activity className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <span
+                    className={`nav-label ${isActive('/activities') ? 'nav-label-active' : ''}`}
+                    data-text={navLabels.activities}
+                  >
+                    {navLabels.activities}
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/logbook"
+                  data-tooltip={navLabels.logbook}
+                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                    isActive('/logbook') ? 'theme-nav-item-active' : ''
+                  }`}
+                >
+                  <BookOpen className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <span
+                    className={`nav-label ${isActive('/logbook') ? 'nav-label-active' : ''}`}
+                    data-text={navLabels.logbook}
+                  >
+                    {navLabels.logbook}
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/calendar"
+                  data-tooltip={navLabels.calendar}
+                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                    isActive('/calendar') ? 'theme-nav-item-active' : ''
+                  }`}
+                >
+                  <CalendarIcon className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <span
+                    className={`nav-label ${isActive('/calendar') ? 'nav-label-active' : ''}`}
+                    data-text={navLabels.calendar}
+                  >
+                    {navLabels.calendar}
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/projects"
+                  data-tooltip={navLabels.projects}
+                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                    isActive('/projects') ? 'theme-nav-item-active' : ''
+                  }`}
+                >
+                  <Boxes className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <span
+                    className={`nav-label ${isActive('/projects') ? 'nav-label-active' : ''}`}
+                    data-text={navLabels.projects}
+                  >
+                    {navLabels.projects}
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/surveys"
+                  data-tooltip={navLabels.surveys}
+                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                    isActive('/surveys') ? 'theme-nav-item-active' : ''
+                  }`}
+                >
+                  <ClipboardList className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <span
+                    className={`nav-label ${isActive('/surveys') ? 'nav-label-active' : ''}`}
+                    data-text={navLabels.surveys}
+                  >
+                    {navLabels.surveys}
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/statistics"
+                  data-tooltip={navLabels.statistics}
+                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                    isActive('/statistics') ? 'theme-nav-item-active' : ''
+                  }`}
+                >
+                  <BarChart3 className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <span
+                    className={`nav-label ${isActive('/statistics') ? 'nav-label-active' : ''}`}
+                    data-text={navLabels.statistics}
+                  >
+                    {navLabels.statistics}
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/settings"
+                  data-tooltip={navLabels.settings}
+                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                    isActive('/settings') ? 'theme-nav-item-active' : ''
+                  }`}
+                >
+                  <Settings className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <span
+                    className={`nav-label ${isActive('/settings') ? 'nav-label-active' : ''}`}
+                    data-text={navLabels.settings}
+                  >
+                    {navLabels.settings}
+                  </span>
+                </Link>
+              </li>
+            </ul>
+          </div>
+        </nav>
+      )}
 
       {/* Tiny spacer below fixed desktop nav for visual breathing room */}
       {!restrictToPasswordChange && <div className="hidden md:block h-[5px]" aria-hidden="true" />}
 
       {/* Main Content */}
       <main
-        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-hidden px-2 sm:px-3 md:px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? "pb-0" : "pb-24"} md:pb-8`}
+        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-hidden px-2 sm:px-3 md:px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
         <Outlet key={scopeKey} context={{ openQuickTally }} />
       </main>
@@ -691,68 +743,76 @@ export default function Layout() {
       )}
 
       {/* Bottom Navigation (mobile) */}
-      {!restrictToPasswordChange && <nav
-        className={`mobile-bottom-nav fixed inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-lg md:hidden z-50 ${hideBottomNav ? "hidden" : ''}`}
-      >
-        <ul className="grid grid-cols-5 text-xs pb-[max(env(safe-area-inset-bottom,0px),0.25rem)]">
-          {mobileBottomItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.to}>
-                <Link
-                  to={item.to}
-                  onClick={() => setMobileMoreOpen(false)}
-                  className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive(item.to) ? "text-viridian font-semibold scale-105" : "text-gray-500 hover:text-viridian"}`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-          <li>
-            <button
-              type="button"
-              onClick={() => setMobileMoreOpen((value) => !value)}
-              className={`flex w-full flex-col items-center py-2.5 transition-all duration-200 ${mobileMoreItems.some((item) => isActive(item.to)) ? "text-viridian font-semibold scale-105" : "text-gray-500 hover:text-viridian"}`}
-            >
-              <Menu className="w-5 h-5" />
-              <span>{t('navigation.more')}</span>
-            </button>
-          </li>
-        </ul>
-        {mobileMoreOpen && (
-          <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3.9rem)] right-2 w-52 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
-            {mobileMoreItems.map((item) => {
+      {!restrictToPasswordChange && (
+        <nav
+          className={`mobile-bottom-nav fixed inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-lg md:hidden z-50 ${hideBottomNav ? 'hidden' : ''}`}
+        >
+          <ul className="grid grid-cols-5 text-xs pb-[max(env(safe-area-inset-bottom,0px),0.25rem)]">
+            {mobileBottomItems.map((item) => {
               const Icon = item.icon;
               return (
-                <Link key={item.to} to={item.to} onClick={() => setMobileMoreOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  <Icon className="h-5 w-5 text-viridian" />{item.label}
-                </Link>
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    onClick={() => setMobileMoreOpen(false)}
+                    className={`flex flex-col items-center py-2.5 transition-all duration-200 ${isActive(item.to) ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
               );
             })}
-          </div>
-        )}
-      </nav>}
+            <li>
+              <button
+                type="button"
+                onClick={() => setMobileMoreOpen((value) => !value)}
+                className={`flex w-full flex-col items-center py-2.5 transition-all duration-200 ${mobileMoreItems.some((item) => isActive(item.to)) ? 'text-viridian font-semibold scale-105' : 'text-gray-500 hover:text-viridian'}`}
+              >
+                <Menu className="w-5 h-5" />
+                <span>{t('navigation.more')}</span>
+              </button>
+            </li>
+          </ul>
+          {mobileMoreOpen && (
+            <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3.9rem)] right-2 w-52 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
+              {mobileMoreItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileMoreOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <Icon className="h-5 w-5 text-viridian" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </nav>
+      )}
 
       {!restrictToPasswordChange && !hideBottomNav && <DemoMobilePageGuide />}
 
       {/* Footer (hidden on full activity views or while keyboard open) */}
       {!hideFooter && !restrictToPasswordChange && (
         <footer className="mt-12">
-          <div className={`footer-surface w-full px-4 py-6 text-center text-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/45 ${hideBottomNav ? '' : "pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] md:pb-6"}`}>
+          <div
+            className={`footer-surface w-full px-4 py-6 text-center text-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/45 ${hideBottomNav ? '' : 'pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] md:pb-6'}`}
+          >
             <div className="flex items-center justify-center gap-1 flex-wrap">
               <p>
-                © {new Date().getFullYear()}{' '}{autoT('ui_2ed433a6e527')}{' '}
-                {appVersionDisplay}
+                © {new Date().getFullYear()} {autoT('ui_2ed433a6e527')} {appVersionDisplay}
                 {import.meta.env.VITE_COMMIT_SHA
                   ? ` (${String(import.meta.env.VITE_COMMIT_SHA).substring(0, 7)})`
                   : ''}{' '}
                 ·{' '}
-                <a
-                  href="mailto:hubertoink@outlook.com"
-                  className="underline hover:text-viridian"
-                >{autoT('ui_cb4a3ac0211d')}</a>
+                <a href="mailto:hubertoink@outlook.com" className="underline hover:text-viridian">
+                  {autoT('ui_cb4a3ac0211d')}
+                </a>
               </p>
               <span aria-hidden="true">·</span>
               <button
@@ -806,15 +866,15 @@ export default function Layout() {
             />
           </div>
           <div>
-            <label htmlFor="parent-org-select" className="block text-sm font-medium mb-1">{autoT('ui_ff5ba4d2f6c1')}</label>
+            <label htmlFor="parent-org-select" className="block text-sm font-medium mb-1">
+              {autoT('ui_ff5ba4d2f6c1')}
+            </label>
             {isSuperadmin ? (
               <select
                 id="parent-org-select"
                 value={parentForNewOrg}
                 onChange={(e) =>
-                  setParentForNewOrg(
-                    (e.target.value || 'root') as 'root' | string | '',
-                  )
+                  setParentForNewOrg((e.target.value || 'root') as 'root' | string | '')
                 }
                 className="border rounded px-3 py-2 w-full"
               >
@@ -844,25 +904,28 @@ export default function Layout() {
                 setCreateModalOpen(false);
                 setNewOrgName('');
               }}
-            >{autoT('ui_07af7cb30fca')}</button>
+            >
+              {autoT('ui_07af7cb30fca')}
+            </button>
             <button
               className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
               disabled={!newOrgName.trim() || (!isSuperadmin && !user?.orgId)}
               onClick={async () => {
                 try {
-                  const parentId =
-                    isSuperadmin
-                      ? parentForNewOrg === 'root'
-                        ? null
-                        : parentForNewOrg || null
-                      : (user?.orgId as string | undefined) || null;
+                  const parentId = isSuperadmin
+                    ? parentForNewOrg === 'root'
+                      ? null
+                      : parentForNewOrg || null
+                    : (user?.orgId as string | undefined) || null;
                   const created = await createOrgApi(
                     newOrgName.trim(),
                     parentId as string | null | undefined,
                   );
                   setNewOrgName('');
                   setCreateModalOpen(false);
-                  showToast(autoT('ui_76783d2c57a3', { value0: created.name }), { type: 'success' });
+                  showToast(autoT('ui_76783d2c57a3', { value0: created.name }), {
+                    type: 'success',
+                  });
                 } catch (e: unknown) {
                   const msg =
                     (e as { response?: { data?: { message?: unknown } } })?.response?.data
@@ -870,7 +933,9 @@ export default function Layout() {
                   showToast(String(msg), { type: 'error', durationMs: 3500 });
                 }
               }}
-            >{autoT('ui_bf524c1f1672')}</button>
+            >
+              {autoT('ui_bf524c1f1672')}
+            </button>
           </div>
         </div>
       </Modal>
@@ -883,7 +948,9 @@ export default function Layout() {
       >
         <div className="space-y-3">
           {user?.role === 'superadmin' && (
-            <div className={`org-scope-option rounded-lg ${pendingScope === null ? "org-scope-option-active" : ''}`}>
+            <div
+              className={`org-scope-option rounded-lg ${pendingScope === null ? 'org-scope-option-active' : ''}`}
+            >
               <label className="flex w-full cursor-pointer items-center gap-3 text-sm">
                 <input
                   type="radio"
@@ -905,7 +972,7 @@ export default function Layout() {
               {scopeOrgRows.map(({ org, depth }) => (
                 <li key={org.id}>
                   <label
-                    className={`org-scope-option flex cursor-pointer items-center gap-3 text-sm ${pendingScope === org.id ? "org-scope-option-active" : ''}`}
+                    className={`org-scope-option flex cursor-pointer items-center gap-3 text-sm ${pendingScope === org.id ? 'org-scope-option-active' : ''}`}
                     style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}
                   >
                     <input
@@ -916,11 +983,17 @@ export default function Layout() {
                       className="h-4 w-4 shrink-0"
                     />
                     <span className="org-scope-icon-shell">
-                      {depth === 0 ? <Building2 className="h-4 w-4" /> : <GitBranch className="h-4 w-4" />}
+                      {depth === 0 ? (
+                        <Building2 className="h-4 w-4" />
+                      ) : (
+                        <GitBranch className="h-4 w-4" />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{org.name}</span>
-                      <span className="org-scope-depth-label">{depth === 0 ? autoT('ui_e96857c58f71') : `Ebene ${depth}`}</span>
+                      <span className="org-scope-depth-label">
+                        {depth === 0 ? autoT('ui_e96857c58f71') : `Ebene ${depth}`}
+                      </span>
                     </span>
                   </label>
                 </li>
@@ -931,7 +1004,9 @@ export default function Layout() {
             <button
               className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
               onClick={() => setScopeModalOpen(false)}
-            >{autoT('ui_07af7cb30fca')}</button>
+            >
+              {autoT('ui_07af7cb30fca')}
+            </button>
             <button
               className="px-3 py-1.5 rounded bg-viridian text-white"
               onClick={() => {

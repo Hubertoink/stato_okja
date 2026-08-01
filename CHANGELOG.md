@@ -20,6 +20,23 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.2.0] - 2026-08-01
+
+### Added
+- Superadmins sehen im Superadmin-Bereich alle Benutzer, nach
+  Organisationszugehörigkeit getrennt.
+
+### Fixed
+- Die Desktop-Hauptnavigation zeigt nur noch Icons und bleibt dadurch auch
+  bei langen Beschriftungen vollständig sichtbar. Die Bezeichnungen bleiben
+  per Tooltip und für Screenreader verfügbar.
+- Die Darstellung von Admin-Daten und Navigation ist kontrastreicher und
+  kompakter.
+- Audit-Karten und Organisations-Setup sind auf kleineren Ansichten besser
+  ausgerichtet.
+
+---
+
 ## [1.1.7] - 2026-08-01
 
 ### Added

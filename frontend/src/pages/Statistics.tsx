@@ -26,6 +26,7 @@ import { FileDown, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, Chevron
 import Modal from '@/components/Modal';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import ProtectedImage from '@/components/ProtectedImage';
+import { useToast } from '@/components/Toast';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import { usePublicConfig } from '@/lib/publicConfig';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
@@ -194,6 +195,7 @@ const PDF_RENDER_SCALE = 2;
 const PDF_MARGIN_MM = 10;
 const PDF_HEADER_HEIGHT_MM = 40;
 const PDF_MIN_PAGE_FILL_RATIO = 0.58;
+const PDF_MAX_RENDER_HEIGHT_PX = 30000;
 const CHART_EXPORT_HEADER_HEIGHT_MM = 26;
 
 let pdfExportDependenciesPromise:
@@ -380,6 +382,94 @@ function createCanvasSlice(sourceCanvas: HTMLCanvasElement, startPx: number, end
   return sliceCanvas;
 }
 
+function fitPdfTableCell(pdf: jsPDF, value: string | number, width: number) {
+  const text = String(value ?? '');
+  if (pdf.getTextWidth(text) <= width) return text;
+
+  let end = text.length;
+  while (end > 0 && pdf.getTextWidth(`${text.slice(0, end)}…`) > width) end -= 1;
+  return `${text.slice(0, end)}…`;
+}
+
+function appendActivitiesTableToPdf(
+  pdf: jsPDF,
+  activities: Activity[],
+  orgTitle: string,
+  dateRange: string,
+) {
+  const columns = [
+    { label: 'Datum', width: 20, align: 'left' as const },
+    { label: 'Typ', width: 23, align: 'left' as const },
+    { label: 'Titel', width: 39, align: 'left' as const },
+    { label: 'Projekt', width: 41, align: 'left' as const },
+    { label: 'Gesamt', width: 12, align: 'right' as const },
+    { label: 'M', width: 12, align: 'right' as const },
+    { label: 'W', width: 12, align: 'right' as const },
+    { label: 'D', width: 12, align: 'right' as const },
+    { label: 'Min.', width: 19, align: 'right' as const },
+  ];
+  const pageBottom = pdf.internal.pageSize.getHeight() - PDF_MARGIN_MM;
+  const headerHeight = 7;
+  const rowHeight = 6;
+  let rowY = 0;
+
+  const drawTableHeader = () => {
+    addPdfPageHeader(pdf, orgTitle, dateRange);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(12);
+    pdf.setTextColor(31, 41, 55);
+    pdf.text(`Aktivitätenliste (${activities.length})`, PDF_MARGIN_MM, 35);
+    pdf.setFillColor(245, 247, 255);
+    pdf.rect(PDF_MARGIN_MM, 41, columns.reduce((sum, column) => sum + column.width, 0), headerHeight, 'F');
+    pdf.setFontSize(7.5);
+    let columnX = PDF_MARGIN_MM;
+    for (const column of columns) {
+      pdf.text(column.label, column.align === 'right' ? columnX + column.width - 1 : columnX + 1, 45.5, {
+        align: column.align,
+      });
+      columnX += column.width;
+    }
+    rowY = 48;
+  };
+
+  pdf.addPage('a4', 'portrait');
+  drawTableHeader();
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(7.5);
+
+  for (const activity of toActivityExportRows(activities)) {
+    if (rowY + rowHeight > pageBottom) {
+      pdf.addPage('a4', 'portrait');
+      drawTableHeader();
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7.5);
+    }
+
+    const values = [
+      activity.date,
+      activity.type,
+      activity.title,
+      activity.project,
+      activity.total,
+      activity.male,
+      activity.female,
+      activity.diverse,
+      activity.duration,
+    ];
+    let columnX = PDF_MARGIN_MM;
+    for (const [index, column] of columns.entries()) {
+      const text = fitPdfTableCell(pdf, values[index], column.width - 2);
+      pdf.text(text, column.align === 'right' ? columnX + column.width - 1 : columnX + 1, rowY + 4, {
+        align: column.align,
+      });
+      columnX += column.width;
+    }
+    pdf.setDrawColor(226, 232, 240);
+    pdf.line(PDF_MARGIN_MM, rowY + rowHeight, PDF_MARGIN_MM + 190, rowY + rowHeight);
+    rowY += rowHeight;
+  }
+}
+
 function useStatsOverview(
   params: {
     from?: string;
@@ -465,7 +555,6 @@ export default function Statistics() {
   const ACTIVITIES_PER_PAGE = 50;
 
   const [pdfMode, setPdfMode] = useState(false);
-  const [pdfActivities, setPdfActivities] = useState<Activity[]>([]);
   const reportRef = useRef<HTMLDivElement | null>(null);
   const chartCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const statsUiFlowIdRef = useRef<string | null>(null);
@@ -477,8 +566,12 @@ export default function Statistics() {
   const [activeActivitiesExport, setActiveActivitiesExport] = useState<ActivitiesExportFormat | null>(null);
   const [isControllingExporting, setIsControllingExporting] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
+  const [includeActivitiesInPdf, setIncludeActivitiesInPdf] = useState(false);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
+  const [isExportInProgress, setIsExportInProgress] = useState(false);
+  const exportInProgressRef = useRef(false);
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const { data: publicConfig } = usePublicConfig();
@@ -536,7 +629,7 @@ export default function Statistics() {
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
   const pagedActivities = activitiesPageQ.data?.data ?? [];
-  const reportActivities = pdfMode ? pdfActivities : pagedActivities;
+  const reportActivities = pagedActivities;
   const totalActivities = activitiesPageQ.data?.total ?? summary?.totalActivities ?? 0;
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: cohortsAll = [] } = useCohorts({ active: true });
@@ -1279,6 +1372,22 @@ export default function Statistics() {
     return fetchAllActivities(activitiesParams, scope);
   };
 
+  const beginExport = () => {
+    if (exportInProgressRef.current) {
+      showToast('Ein Export wird bereits erstellt.', { type: 'info' });
+      return false;
+    }
+
+    exportInProgressRef.current = true;
+    setIsExportInProgress(true);
+    return true;
+  };
+
+  const finishExport = () => {
+    exportInProgressRef.current = false;
+    setIsExportInProgress(false);
+  };
+
   const exportActivitiesAsExcel = async (activities: Activity[]) => {
     setExportProgress(autoT('ui_fdc6078908bb'));
     await new Promise(requestAnimationFrame);
@@ -1683,10 +1792,13 @@ export default function Statistics() {
   };
 
   async function exportActivitiesTable(format: ActivitiesExportFormat) {
+    if (!beginExport()) return;
+
     setActiveActivitiesExport(format);
     setExportProgress(autoT('ui_cde99ee62070'));
 
     try {
+      await new Promise(requestAnimationFrame);
       const activities = await fetchAllFilteredActivities();
       if (format === 'xlsx') {
         await exportActivitiesAsExcel(activities);
@@ -1696,30 +1808,44 @@ export default function Statistics() {
       await exportActivitiesAsPdf(activities);
     } catch (error) {
       console.error('Activities export failed', error);
+      showToast('Die Aktivitätenliste konnte nicht exportiert werden. Bitte erneut versuchen.', {
+        type: 'error',
+        durationMs: 5000,
+      });
     } finally {
       setActiveActivitiesExport(null);
       setExportProgress(null);
+      finishExport();
     }
   }
 
   async function exportControllingData() {
+    if (!beginExport()) return;
+
     setIsControllingExporting(true);
     setExportProgress(autoT('ui_cde99ee62070'));
 
     try {
+      await new Promise(requestAnimationFrame);
       const activities = await fetchAllFilteredActivities();
       await exportControllingDataAsExcel(activities);
     } catch (error) {
       console.error('Controlling export failed', error);
+      showToast('Der Controlling-Export konnte nicht erstellt werden. Bitte erneut versuchen.', {
+        type: 'error',
+        durationMs: 5000,
+      });
     } finally {
       setIsControllingExporting(false);
       setExportProgress(null);
+      finishExport();
     }
   }
 
   async function exportChart(chartId: string, chartTitle: string, format: ChartExportFormat) {
     const card = chartCardRefs.current[chartId];
     if (!card) return;
+    if (!beginExport()) return;
 
     const exportKey = `${chartId}:${format}`;
     setActiveChartExport(exportKey);
@@ -1781,15 +1907,20 @@ export default function Statistics() {
       pdf.save(getChartFileName(chartTitle, 'pdf'));
     } catch (error) {
       console.error('Chart export failed', error);
+      showToast('Das Diagramm konnte nicht exportiert werden. Bitte erneut versuchen.', {
+        type: 'error',
+        durationMs: 5000,
+      });
     } finally {
       card.classList.remove('statistics-pdf-export-card');
       setActiveChartExport(null);
       setExportProgress(null);
+      finishExport();
     }
   }
 
   const renderChartExportActions = (chartId: string, chartTitle: string) => {
-    const isExporting = activeChartExport?.startsWith(`${chartId}:`) ?? false;
+    const isExporting = isExportInProgress || (activeChartExport?.startsWith(`${chartId}:`) ?? false);
 
     return (
       <StatisticsExportActions
@@ -1813,7 +1944,7 @@ export default function Statistics() {
   };
 
   const renderActivitiesExportActions = () => {
-    const isExporting = activeActivitiesExport !== null;
+    const isExporting = isExportInProgress || activeActivitiesExport !== null;
 
     return (
       <StatisticsExportActions
@@ -1836,15 +1967,21 @@ export default function Statistics() {
     );
   };
 
-  async function exportPdf() {
+  async function exportPdf(includeActivities: boolean) {
     // Render the report container to images and assemble into a PDF (A4 portrait)
     if (!reportRef.current) return;
+    if (!beginExport()) return;
 
     try {
-      // The on-screen table is intentionally paginated. The PDF must instead
-      // render the complete matching dataset before html2canvas captures it.
-      setExportProgress(autoT('ui_cde99ee62070'));
-      setPdfActivities(await fetchAllFilteredActivities());
+      setExportProgress(
+        includeActivities
+          ? 'Aktivitäten werden geladen. Das kann bei großen Datenmengen etwas dauern …'
+          : 'PDF-Bericht wird vorbereitet …',
+      );
+      // Give React a frame to render the blocking progress dialog before the
+      // paginated requests begin. This prevents accidental parallel exports.
+      await new Promise(requestAnimationFrame);
+      const activitiesForPdf = includeActivities ? await fetchAllFilteredActivities() : [];
       setPdfMode(true);
       setExportProgress(autoT('ui_c49a3f591c68'));
       const { JsPDF, html2canvas } = await loadPdfExportDependencies();
@@ -1853,8 +1990,12 @@ export default function Statistics() {
       if (!el) return;
 
       await new Promise(requestAnimationFrame);
+      const renderScale = Math.min(
+        PDF_RENDER_SCALE,
+        Math.max(1, PDF_MAX_RENDER_HEIGHT_PX / Math.max(el.scrollHeight, 1)),
+      );
       const canvas = await html2canvas(el, {
-        scale: PDF_RENDER_SCALE,
+        scale: renderScale,
         backgroundColor: '#ffffff',
       });
 
@@ -1893,13 +2034,25 @@ export default function Statistics() {
         );
       });
 
+      if (includeActivities && activitiesForPdf.length > 0) {
+        setExportProgress('Aktivitätenliste wird hinzugefügt …');
+        await new Promise(requestAnimationFrame);
+        appendActivitiesTableToPdf(pdf, activitiesForPdf, orgTitle, dateRange);
+      }
+
       setExportProgress(autoT('ui_0acf469c6a6c'));
       await new Promise(requestAnimationFrame);
       pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
+    } catch (error) {
+      console.error('Statistics PDF export failed', error);
+      showToast('Der PDF-Bericht konnte nicht erstellt werden. Bitte erneut versuchen.', {
+        type: 'error',
+        durationMs: 5000,
+      });
     } finally {
       setPdfMode(false);
-      setPdfActivities([]);
       setExportProgress(null);
+      finishExport();
     }
   }
 
@@ -2066,7 +2219,8 @@ export default function Statistics() {
                       <SlidersHorizontal className="h-4 w-4" />{autoT('ui_dc3decbb9384')}</button>
                     <button
                       type="button"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian disabled:cursor-wait disabled:opacity-60"
+                      disabled={isExportInProgress}
                       onClick={() => setReportExportOpen(true)}
                       title={autoT('ui_8dbb5c1c7f40')}
                     >
@@ -2409,7 +2563,8 @@ export default function Statistics() {
                 <div className="flex items-center gap-2 sm:ml-0">
                   <button
                     type="button"
-                    className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation"
+                    className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation disabled:cursor-wait disabled:opacity-60"
+                    disabled={isExportInProgress}
                     onClick={() => setReportExportOpen(true)}
                     title={autoT('ui_4e4a0d7117ee')}
                   >
@@ -2928,7 +3083,10 @@ export default function Statistics() {
         </div>
 
         {/* Aktivitäten-Tabelle (nach Diagrammen) */}
-        <div className="group/chart-card bg-white rounded-lg shadow p-6 mt-8" data-pdf-section>
+        <div
+          className={`${pdfMode ? 'hidden ' : ''}group/chart-card mt-8 rounded-lg bg-white p-6 shadow`}
+          data-pdf-section
+        >
           <div className="flex items-center justify-between mb-4 gap-3">
             <h3 className="text-lg font-semibold text-viridian">{autoT('ui_44eeeedb9e8f')}<span className="ml-2 text-sm font-normal text-gray-500">
                 {totalActivities}{' '}{autoT('ui_303e11fd9d2b')}</span>
@@ -3303,18 +3461,34 @@ export default function Statistics() {
       >
         <div className="space-y-4 text-sm text-gray-700">
           <p>{autoT('ui_fabb2abae3a4')}</p>
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 text-left">
+            <input
+              type="checkbox"
+              checked={includeActivitiesInPdf}
+              onChange={(event) => setIncludeActivitiesInPdf(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
+            />
+            <span>
+              <span className="block font-semibold text-gray-900">Aktivitätenliste anhängen</span>
+              <span className="mt-0.5 block text-xs text-gray-600">
+                Für große Datenmengen wird die Liste als eigene, paginierte Tabelle ergänzt.
+              </span>
+            </span>
+          </label>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <button
               type="button"
-              className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50"
-              onClick={() => { setReportExportOpen(false); void exportPdf(); }}
+              className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60"
+              disabled={isExportInProgress}
+              onClick={() => { setReportExportOpen(false); void exportPdf(includeActivitiesInPdf); }}
             >
               <div className="font-semibold text-gray-900">{autoT('ui_104827f9e0c7')}</div>
               <div className="mt-1 text-xs text-gray-600">{autoT('ui_49b7d61d6e43')}</div>
             </button>
             <button
               type="button"
-              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green"
+              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-wait disabled:opacity-60"
+              disabled={isExportInProgress}
               onClick={() => { setReportExportOpen(false); void exportActivitiesTable('xlsx'); }}
             >
               <div className="font-semibold text-viridian">{autoT('ui_db0d32742b50')}</div>
@@ -3323,7 +3497,7 @@ export default function Statistics() {
             <button
               type="button"
               className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-wait disabled:opacity-60"
-              disabled={isControllingExporting}
+              disabled={isExportInProgress || isControllingExporting}
               onClick={() => { setReportExportOpen(false); void exportControllingData(); }}
             >
               <div className="font-semibold text-viridian">{autoT('ui_601dd4ee44ea')}</div>

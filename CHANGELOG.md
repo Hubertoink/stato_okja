@@ -20,6 +20,19 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.3.1] - 2026-08-02
+
+### Added
+- Neue Amigo-Illustrationen für die KPI-Karten sowie für leere Daily-Log-,
+  Logbuch- und Umfrageansichten.
+
+### Changed
+- Bei vorhandenen Daily-Log- und Logbucheinträgen erscheinen die jeweiligen
+  Illustrationen dezent im Hintergrund; Leerzustände sind damit konsistent
+  und ohne unnötige Aktionen gestaltet.
+
+---
+
 ## [1.3.0] - 2026-08-02
 
 ### Added

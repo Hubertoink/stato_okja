@@ -1522,11 +1522,17 @@ code {
   transition: color 180ms ease, transform 180ms ease;
 }
 
-.segmented-control-button:hover {
-  color: var(--text-primary);
+.segmented-control-button-active {
+  color: #ffffff;
 }
 
-.segmented-control-button-active {
+.segmented-control-button:hover:not(.segmented-control-button-active) {
+  background: var(--interactive-soft-strong);
+}
+
+.segmented-control-button-active:hover,
+.segmented-control-button-active:focus-visible {
+  background: transparent;
   color: #ffffff;
 }
 
@@ -1828,11 +1834,13 @@ code {
   color: #c9d5eb;
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .segmented-control-button:hover {
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .segmented-control-button:hover:not(.segmented-control-button-active) {
   background: rgba(148, 163, 184, 0.08);
 }
 
-:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .segmented-control-button-active {
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .segmented-control-button-active,
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .segmented-control-button-active:hover,
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .segmented-control-button-active:focus-visible {
   background: transparent;
   color: #ffffff;
   border-color: transparent;

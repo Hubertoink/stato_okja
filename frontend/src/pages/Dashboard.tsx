@@ -56,6 +56,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate, formatNumber, getCurrentIntlLocale } from '@/i18n/formatters';
 import { isDarkThemeName } from '@/lib/theme';
+import { loadDashboardTrendPeriod, saveDashboardTrendPeriod } from '@/lib/statisticsViewPreferences';
 import activitiesKpiIcon from '../../assets/Illust_Amigos/Aktivitäten.svg';
 import participantsKpiIcon from '../../assets/Illust_Amigos/Teilnehmende.svg';
 import hoursKpiIcon from '../../assets/Illust_Amigos/Stunden.svg';
@@ -245,9 +246,13 @@ export default function Dashboard() {
   const [picker, setPicker] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const [dashboardTrendMode, setDashboardTrendMode] = useState<'activity' | 'efficiency'>('activity');
-  const [dashboardTrendPeriod, setDashboardTrendPeriod] = useState<DashboardTrendPeriod>('year');
+  const [dashboardTrendPeriod, setDashboardTrendPeriod] = useState<DashboardTrendPeriod>(loadDashboardTrendPeriod);
   const [dashboardLogbookEntryId, setDashboardLogbookEntryId] = useState<string | null>(null);
   const [dashboardLogbookEditId, setDashboardLogbookEditId] = useState<string | null>(null);
+  useEffect(() => {
+    saveDashboardTrendPeriod(dashboardTrendPeriod);
+  }, [dashboardTrendPeriod]);
+
   const dashboardTrendRange = useMemo<DashboardTrendRange>(() => {
     const dateFormatter = new Intl.DateTimeFormat(getCurrentIntlLocale(), {
       day: 'numeric',

@@ -22,6 +22,7 @@ import { Tag } from '../../taxonomy/entities/tag.entity';
 import { Location } from '../../locations/entities/location.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { Activity } from '../../activities/entities/activity.entity';
+import { normalizeActivityMetrics } from '../../activities/activity-metrics';
 import { StaffRole, ActivityType } from '../../common/enums';
 import * as bcrypt from 'bcryptjs';
 
@@ -369,6 +370,7 @@ async function main() {
         staff: randomElements(staff, randomInt(1, 4)),
       };
 
+      normalizeActivityMetrics(activity);
       batch.push(activity);
     }
 

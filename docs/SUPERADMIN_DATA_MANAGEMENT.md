@@ -16,6 +16,10 @@ Der Export erzeugt ein einzelnes ZIP-Archiv mit:
 - `database/<tabelle>.csv` für jede verwaltete TypeORM-Tabelle
 - `uploads/...` mit allen lokal vorhandenen Upload-Dateien
 
+Kurzlebige Authentifizierungs-Sitzungen (`auth_refresh_sessions`) werden aus
+Sicherheitsgründen nicht exportiert. Benutzerkonten und Passwort-Hashes bleiben
+Bestandteil des vollständigen Backups.
+
 Der Export ist read-only und verändert keine Daten.
 
 Das Manifest enthält zusätzlich ein Exportformat und eine Schema-Version, damit spätere Restores die ZIP vorab validieren können.
@@ -38,6 +42,11 @@ Beim Restore werden:
 - alle Tabellen aus dem Backup in FK-sicherer Reihenfolge neu eingespielt
 - lokale Upload-Dateien vollständig aus `uploads/...` wiederhergestellt
 
+Der ausführende Superadmin bleibt beim Restore erhalten. Dadurch bleiben die
+laufende Sitzung und die Login-Fähigkeit auch dann stabil, wenn Benutzer aus dem
+Backup ersetzt werden. Ein im Backup enthaltenes Konto mit derselben ID oder
+E-Mail wird für diesen einen Superadmin nicht darübergeschrieben.
+
 Der Import ist damit ein vollständiger Replace-All-Restore. Bestehende Daten werden nicht zusammengeführt.
 
 ## Gesamtlöschung
@@ -53,6 +62,7 @@ Erhalten bleiben:
 
 - alle Superadmin-Konten
 - deren Login-Fähigkeit
+- deren aktive Sitzungen
 
 Nach der Löschung werden verbliebene Superadmins automatisch von gelöschten Organisationen entkoppelt (`orgId = null`).
 

@@ -20,6 +20,7 @@ import {
 } from '@/lib/systemData';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { useQueryClient } from '@tanstack/react-query';
 
 function formatBytes(bytes: number) {
   const value = Number(bytes) || 0;
@@ -196,6 +197,7 @@ function CommandSnippet({
 export default function SuperAdminSystemData() {
   const { user } = useAuth();
   const { setScope } = useOrgScope();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
   const summaryQuery = useSystemDataSummary();
   const exportMutation = useExportSystemData();
@@ -348,7 +350,7 @@ export default function SuperAdminSystemData() {
         importedUploadBytes: result.importedUploadBytes,
         warnings: result.warnings,
       });
-      await summaryQuery.refetch();
+      await queryClient.invalidateQueries({ predicate: () => true, refetchType: 'active' });
       showToast(autoT('ui_773edec9f96d'), { type: 'success', durationMs: 5000 });
     } catch (error) {
       showToast(getApiErrorMessage(error, autoT('ui_d0d1813dcc84')), { type: 'error', durationMs: 5000 });
@@ -370,7 +372,7 @@ export default function SuperAdminSystemData() {
         deletedUploadBytes: result.deletedUploadBytes,
         warnings: result.warnings,
       });
-      await summaryQuery.refetch();
+      await queryClient.invalidateQueries({ predicate: () => true, refetchType: 'active' });
       showToast(autoT('ui_c9f6169b6b47'), { type: 'success', durationMs: 4500 });
     } catch (error) {
       showToast(getApiErrorMessage(error, autoT('ui_ef3183f1c913')), { type: 'error', durationMs: 4500 });

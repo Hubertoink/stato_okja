@@ -5,8 +5,8 @@ import { useActivities } from '@/lib/activities';
 import {
   Area,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -626,7 +626,7 @@ export default function Dashboard() {
 
         <div className="dashboard-trend-chart">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={monthlyTrend} margin={{ top: 8, right: isMobile ? 2 : 14, left: isMobile ? -18 : 0, bottom: 0 }}>
+            <ComposedChart data={monthlyTrend} margin={{ top: 8, right: isMobile ? 2 : 14, left: isMobile ? -18 : 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="dashboardTrendArea" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'} stopOpacity={0.28} />
@@ -668,7 +668,7 @@ export default function Dashboard() {
                 dot={false}
                 activeDot={{ r: 5, stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
               />
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
 

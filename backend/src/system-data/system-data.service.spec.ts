@@ -114,10 +114,15 @@ describe('SystemDataService', () => {
         if (sql === 'SELECT * FROM "activities"') {
           return [{ id: 'activity-1', orgId: 'org-1', date: new Date(2026, 3, 17), executionStatus: 'cancelled', startTime: '10:00', endTime: '11:00', durationMinutes: 60, type: 'open_door', locationId: null, countMale: 1, countFemale: 2, countDiverse: 0, countTotal: 3, title: 'Offener Treff', cohorts: null, notes: 'Note', goals: 'Goal', createdById: null, updatedById: null, createdAt: '2026-04-01T10:00:00Z', updatedAt: '2026-04-01T10:00:00Z', ackDone: false, projectId: null }];
         }
+        if (sql === 'SELECT id, email FROM "users" WHERE id = ?') {
+          return [{ id: 'super-1', email: 'super@example.com' }];
+        }
         if (sql.includes('FROM "activities"') && sql.includes('COUNT(*)')) return [{ count: '3' }];
         if (sql.includes('FROM "organizations"') && sql.includes('COUNT(*)')) return [{ count: '2' }];
         if (sql.includes('FROM "users"') && sql.includes(`role <> 'superadmin'`)) return [{ count: '4' }];
         if (sql.includes('FROM "users"') && sql.includes(`role = 'superadmin' AND "orgId" IS NOT NULL`)) return [{ count: '1' }];
+        if (sql.includes('FROM "users"') && sql.includes(`role = 'superadmin' AND "avatarUrl" IS NOT NULL`)) return [{ count: '1' }];
+        if (sql.includes('FROM "users"') && sql.includes('id <> ?')) return [{ count: '1' }];
         if (sql.includes('SELECT id, email, name FROM "users" WHERE role = ')) {
           return [{ id: 'super-1', email: 'super@example.com', name: 'Super Admin' }];
         }
@@ -145,6 +150,7 @@ describe('SystemDataService', () => {
       options: { type: 'sqlite' },
       entityMetadatas: [
         { tableName: 'users', tablePath: 'users', relations: [], columns: [] },
+        { tableName: 'auth_refresh_sessions', tablePath: 'auth_refresh_sessions', relations: [], columns: [] },
         { tableName: 'organizations', tablePath: 'organizations', relations: [], columns: [{ databaseName: 'closureDays', type: 'simple-json' }] },
         {
           tableName: 'activities',
@@ -207,6 +213,8 @@ describe('SystemDataService', () => {
     expect(deleteUsersIndex).toBeGreaterThan(deleteOrganizationsIndex);
     expect(queryLog).toContain(`SELECT COUNT(*) AS count FROM "users" WHERE role = 'superadmin' AND "orgId" IS NOT NULL`);
     expect(queryLog).toContain(`UPDATE "users" SET "orgId" = NULL WHERE role = 'superadmin' AND "orgId" IS NOT NULL`);
+    expect(queryLog).toContain(`UPDATE "users" SET "avatarUrl" = NULL WHERE role = 'superadmin' AND "avatarUrl" IS NOT NULL`);
+    expect(queryLog).not.toContain('DELETE FROM "auth_refresh_sessions"');
     expect(result.deletedUsers).toBe(4);
     expect(result.preservedSuperadmins).toEqual([
       { id: 'super-1', email: 'super@example.com', name: 'Super Admin' },
@@ -237,11 +245,39 @@ describe('SystemDataService', () => {
     expect(queryRunner.stream).toHaveBeenCalled();
     expect(streamMetrics.maxActive).toBe(1);
     expect(manifest.format).toBe('stato-system-data-export');
-    expect(manifest.schemaVersion).toBe(2);
+    expect(manifest.schemaVersion).toBe(3);
+    expect(zip.file('database/auth_refresh_sessions.json')).toBeNull();
     expect(activities[0]?.date).toBe('2026-04-17');
     expect(activities[0]?.executionStatus).toBe('cancelled');
     expect(organizations[0]?.closureDays).toEqual([{ date: '2026-04-17' }]);
     expect(auditService.log).toHaveBeenCalled();
+  });
+
+  it('includes every scanned upload file in the export zip', async () => {
+    const { service, uploadStore } = createService();
+    const tempFile = join(tmpdir(), `stato-export-upload-${Date.now()}.txt`);
+    await writeFile(tempFile, 'backup-content');
+    jest.spyOn(uploadStore, 'scanUploads').mockResolvedValue({
+      files: [{ absolutePath: tempFile, relativePath: 'project-documents/backup.txt', size: 14 }],
+      fileCount: 1,
+      totalBytes: 14,
+      warnings: [],
+    });
+
+    try {
+      const result = await service.exportAllData(actor);
+      const chunks: Buffer[] = [];
+      for await (const chunk of result.stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      const zip = await JSZip.loadAsync(Buffer.concat(chunks));
+
+      expect(await zip.file('uploads/project-documents/backup.txt')?.async('string')).toBe('backup-content');
+      const manifest = JSON.parse(await zip.file('manifest.json')!.async('string')) as {
+        totals?: { uploadFiles?: number; uploadBytes?: number };
+      };
+      expect(manifest.totals).toMatchObject({ uploadFiles: 1, uploadBytes: 14 });
+    } finally {
+      await rm(tempFile, { force: true });
+    }
   });
 
   it('returns an import preview for a valid backup archive', async () => {
@@ -315,7 +351,10 @@ describe('SystemDataService', () => {
           key: 'users',
           path: 'users',
           filename: 'users',
-          rows: [{ id: 'super-1', email: 'super@example.com', name: 'Super Admin', role: 'superadmin', orgId: 'org-1', theme: 'Default Theme', passwordHash: null, mustChangePassword: false }],
+          rows: [
+            { id: 'super-1', email: 'super@example.com', name: 'Super Admin', role: 'superadmin', orgId: 'org-1', theme: 'Default Theme', passwordHash: null, mustChangePassword: false },
+            { id: 'user-2', email: 'imported@example.com', name: 'Imported User', role: 'user', orgId: 'org-1', theme: 'Default Theme', passwordHash: null, mustChangePassword: false },
+          ],
         },
         {
           key: 'activities',
@@ -351,11 +390,17 @@ describe('SystemDataService', () => {
     const insertActivitiesIndex = queryLog.findIndex((sql) => sql.startsWith('INSERT INTO "activities"'));
     const insertUsersIndex = queryLog.findIndex((sql) => sql.startsWith('INSERT INTO "users"'));
     const insertActivitiesCall = queryCalls.find((call) => call.sql.startsWith('INSERT INTO "activities"'));
+    const insertUsersCall = queryCalls.find((call) => call.sql.startsWith('INSERT INTO "users"'));
 
     expect(deleteOrganizationsIndex).toBeGreaterThan(-1);
     expect(insertOrganizationsIndex).toBeGreaterThan(-1);
     expect(insertActivitiesIndex).toBeGreaterThan(insertOrganizationsIndex);
     expect(insertUsersIndex).toBeGreaterThan(insertOrganizationsIndex);
+    expect(queryLog).not.toContain('DELETE FROM "users"');
+    expect(queryLog).toContain('DELETE FROM "users" WHERE id <> ?');
+    expect(queryLog).not.toContain('DELETE FROM "auth_refresh_sessions"');
+    expect(insertUsersCall?.params).toContain('imported@example.com');
+    expect(insertUsersCall?.params).not.toContain('super@example.com');
     expect(insertActivitiesCall?.params).toContain('2026-04-17');
     expect(queryRunner.commitTransaction).toHaveBeenCalled();
     expect(result.importedTables).toHaveLength(3);

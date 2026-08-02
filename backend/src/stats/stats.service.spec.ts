@@ -70,11 +70,11 @@ describe('StatsService date normalization', () => {
     }
   });
 
-  it('derives legacy participant totals after the database query', async () => {
+  it('uses the normalized persisted participant total', async () => {
     const { service, qb } = createService([
       {
         date: '2026-03-12',
-        totalParticipants: '0',
+        totalParticipants: '16',
         totalMale: '7',
         totalFemale: '8',
         totalDiverse: '1',

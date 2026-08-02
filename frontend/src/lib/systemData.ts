@@ -218,7 +218,6 @@ export function useInspectSystemDataImport() {
 }
 
 export function useImportSystemData() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: ImportSystemDataPayload) => {
       const formData = new FormData();
@@ -230,21 +229,14 @@ export function useImportSystemData() {
       });
       return res.data;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ predicate: () => true });
-    },
   });
 }
 
 export function usePurgeSystemData() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: PurgeSystemDataPayload) => {
       const res = await api.post<PurgeSystemDataResult>('/admin/system-data/purge', payload);
       return res.data;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ predicate: () => true });
     },
   });
 }

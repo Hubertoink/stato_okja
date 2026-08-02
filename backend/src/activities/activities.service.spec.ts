@@ -65,6 +65,7 @@ describe('ActivitiesService audit diff', () => {
     const updatedActivity = {
       ...existingActivity,
       title: 'Neu',
+      endTime: '11:30',
       durationMinutes: 90,
       type: ActivityType.PROJECT_OPEN,
       projectId: 'project-2',
@@ -127,7 +128,8 @@ describe('ActivitiesService audit diff', () => {
       'activity-1',
       {
         title: 'Neu',
-        durationMinutes: 90,
+        endTime: '11:30',
+        durationMinutes: 5,
         projectId: 'project-2',
         categoryIds: ['category-1'],
         tagIds: ['tag-1'],

@@ -20,6 +20,20 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.3.5] - 2026-08-02
+
+### Changed
+- Beim vollständigen Statistik-PDF kann die Aktivitätenliste optional als
+  eigene, paginierte Tabelle ergänzt werden. Große Datenmengen bleiben damit
+  exportierbar, ohne leere Seiten zu erzeugen.
+
+### Fixed
+- Der Statistik-PDF-Export zeigt seinen Ladezustand jetzt sofort vor dem Laden
+  aller Aktivitäten und sperrt parallele Exporte. Dadurch werden doppelte
+  Anfragen und Rate-Limit-Fehler vermieden.
+
+---
+
 ## [1.3.4] - 2026-08-02
 
 ### Fixed

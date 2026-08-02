@@ -46,6 +46,7 @@ import CustomKpiCards from '@/components/CustomKpiCards';
 import { useLogbookEntries } from '@/lib/logbook';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
+import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -241,6 +242,7 @@ export default function Dashboard() {
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const [dashboardTrendMode, setDashboardTrendMode] = useState<'activity' | 'efficiency'>('activity');
   const [dashboardTrendPeriod, setDashboardTrendPeriod] = useState<DashboardTrendPeriod>('year');
+  const [dashboardLogbookEntryId, setDashboardLogbookEntryId] = useState<string | null>(null);
   const dashboardTrendRange = useMemo<DashboardTrendRange>(() => {
     const dateFormatter = new Intl.DateTimeFormat(getCurrentIntlLocale(), {
       day: 'numeric',
@@ -918,11 +920,7 @@ export default function Dashboard() {
               <button
                 key={entry.id}
                 type="button"
-                onClick={() =>
-                  navigate(`/logbook?entry=${encodeURIComponent(entry.id)}`, {
-                    state: { returnTo: '/dashboard' },
-                  })
-                }
+                onClick={() => setDashboardLogbookEntryId(entry.id)}
                 className="dashboard-logbook-entry rounded-xl p-4 text-left"
               >
                 <div className="mb-1 flex items-center justify-between gap-2">
@@ -1027,7 +1025,7 @@ export default function Dashboard() {
                           setDoneMap((m) => ({ ...m, [item.id]: !next }));
                         }
                       }}
-                      className={`p-1.5 rounded-full transition-all duration-200 ${doneMap[item.id] ? "bg-accent-green/10 text-accent-green" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}
+                      className={`p-1.5 rounded-full transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-viridian/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viridian/50 ${doneMap[item.id] ? "bg-accent-green/10 text-accent-green hover:bg-accent-green/20" : "bg-gray-100 text-gray-400 hover:bg-viridian/10 hover:text-viridian"}`}
                       title={
                         doneMap[item.id] ? t('daily.markUndiscussed') : t('daily.markDiscussed')
                       }
@@ -1198,6 +1196,11 @@ export default function Dashboard() {
           />
         </Suspense>
       )}
+      <LogbookEntryFlyout
+        entryId={dashboardLogbookEntryId}
+        returnTo="/dashboard"
+        onClose={() => setDashboardLogbookEntryId(null)}
+      />
     </div>
   );
 }

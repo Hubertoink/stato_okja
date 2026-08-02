@@ -31,6 +31,7 @@ import DemoHoverHint from '@/demo/DemoHoverHint';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 
@@ -1127,46 +1128,28 @@ export default function Calendar() {
             >
               »
             </button>
-            <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label={autoT('ui_d256a4d045f0')}>
-              <button
-                type="button"
-                className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                  calendarView === 'month' ? "stats-kpi-toggle-button-active font-medium" : ''
-                }`}
-                onClick={() => setView('month')}
-                aria-pressed={calendarView === 'month'}
-              >{autoT('ui_da13625eeb37')}</button>
-              <button
-                type="button"
-                className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                  calendarView === 'week' ? "stats-kpi-toggle-button-active font-medium" : ''
-                }`}
-                onClick={() => setView('week')}
-                aria-pressed={calendarView === 'week'}
-              >{autoT('ui_7b2207dc85a6')}</button>
-            </div>
+            <SegmentedControl<'month' | 'week'>
+              ariaLabel={autoT('ui_d256a4d045f0')}
+              onChange={setView}
+              options={[
+                { value: 'month', label: autoT('ui_da13625eeb37') },
+                { value: 'week', label: autoT('ui_7b2207dc85a6') },
+              ]}
+              value={calendarView === 'week' ? 'week' : 'month'}
+            />
           </div>
         </DemoHoverHint>
 
         <div className="flex flex-wrap items-center gap-2 md:hidden">
-          <div className="stats-kpi-toggle inline-flex items-center gap-1 rounded-lg p-1" role="tablist" aria-label={autoT('ui_a950dd6ca6dd')}>
-            <button
-              type="button"
-              className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                calendarView === 'month' ? "stats-kpi-toggle-button-active font-medium" : ''
-              }`}
-              onClick={() => setView('month')}
-              aria-pressed={calendarView === 'month'}
-            >{autoT('ui_da13625eeb37')}</button>
-            <button
-              type="button"
-              className={`stats-kpi-toggle-button rounded-md px-3 py-2 text-sm transition-colors ${
-                calendarView === 'three-day' ? "stats-kpi-toggle-button-active font-medium" : ''
-              }`}
-              onClick={() => setView('three-day')}
-              aria-pressed={calendarView === 'three-day'}
-            >{autoT('ui_6d3823976a67')}</button>
-          </div>
+          <SegmentedControl<'month' | 'three-day'>
+            ariaLabel={autoT('ui_a950dd6ca6dd')}
+            onChange={setView}
+            options={[
+              { value: 'month', label: autoT('ui_da13625eeb37') },
+              { value: 'three-day', label: autoT('ui_6d3823976a67') },
+            ]}
+            value={calendarView === 'three-day' ? 'three-day' : 'month'}
+          />
         </div>
       </div>
 

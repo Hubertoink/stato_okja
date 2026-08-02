@@ -72,6 +72,7 @@ import RichTextEditor, {
 } from 'react-simple-wysiwyg';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
 const PROJECTS_STARRED_FIRST_STORAGE_KEY = 'projects:starred-first';
@@ -2597,30 +2598,16 @@ export default function Projects() {
 
         <div className="hidden md:flex items-center gap-3 self-start md:self-auto">
           <span className="text-sm font-medium text-gray-700">{autoT('ui_5c388792c607')}</span>
-          <div className="inline-flex items-center rounded-xl border border-gray-300 bg-white p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setDesktopView('grid')}
-              aria-pressed={desktopView === 'grid'}
-              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                desktopView === 'grid'
-                  ? "bg-viridian text-white shadow-sm"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4" />{autoT('ui_295ce85597c5')}</button>
-            <button
-              type="button"
-              onClick={() => setDesktopView('list')}
-              aria-pressed={desktopView === 'list'}
-              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                desktopView === 'list'
-                  ? "bg-viridian text-white shadow-sm"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <List className="w-4 h-4" />{autoT('ui_4231be174728')}</button>
-          </div>
+          <SegmentedControl<ProjectsDesktopView>
+            ariaLabel={autoT('ui_5c388792c607')}
+            onChange={setDesktopView}
+            options={[
+              { value: 'grid', label: autoT('ui_295ce85597c5'), icon: <LayoutGrid /> },
+              { value: 'list', label: autoT('ui_4231be174728'), icon: <List /> },
+            ]}
+            value={desktopView}
+            variant="emphasis"
+          />
         </div>
       </div>
 

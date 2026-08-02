@@ -49,6 +49,7 @@ import LogbookStatusBadge from '@/components/LogbookStatusBadge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -694,42 +695,27 @@ export default function Dashboard() {
             <h2 id="dashboard-trend-title" className="dashboard-trend-title">{dashboardTrendRange.title}</h2>
           </div>
           <div className="dashboard-trend-controls">
-            <div className="dashboard-trend-period-toggle" role="tablist" aria-label={t('trend.periodLabel')}>
-              {(['week', 'month', 'year'] as const).map((period) => (
-                <button
-                  key={period}
-                  type="button"
-                  role="tab"
-                  aria-selected={dashboardTrendPeriod === period}
-                  className={`dashboard-trend-period-button ${dashboardTrendPeriod === period ? 'dashboard-trend-period-button--active' : ''}`}
-                  onClick={() => setDashboardTrendPeriod(period)}
-                >
-                  {t(`trend.periods.${period}`)}
-                </button>
-              ))}
-            </div>
-            <div className="dashboard-trend-toggle" role="tablist" aria-label={t('trend.title')}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={dashboardTrendMode === 'activity'}
-                className={`dashboard-trend-toggle-button ${dashboardTrendMode === 'activity' ? 'dashboard-trend-toggle-button--active' : ''}`}
-                onClick={() => setDashboardTrendMode('activity')}
-              >
-                <CalendarIcon aria-hidden="true" />
-                {t('trend.activityMode')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={dashboardTrendMode === 'efficiency'}
-                className={`dashboard-trend-toggle-button ${dashboardTrendMode === 'efficiency' ? 'dashboard-trend-toggle-button--active' : ''}`}
-                onClick={() => setDashboardTrendMode('efficiency')}
-              >
-                <Clock aria-hidden="true" />
-                {t('trend.efficiencyMode')}
-              </button>
-            </div>
+            <SegmentedControl<DashboardTrendPeriod>
+              ariaLabel={t('trend.periodLabel')}
+              className="dashboard-trend-period-toggle"
+              onChange={setDashboardTrendPeriod}
+              options={(['week', 'month', 'year'] as const).map((period) => ({
+                value: period,
+                label: t(`trend.periods.${period}`),
+              }))}
+              value={dashboardTrendPeriod}
+            />
+            <SegmentedControl
+              ariaLabel={t('trend.title')}
+              className="dashboard-trend-toggle"
+              onChange={setDashboardTrendMode}
+              options={[
+                { value: 'activity', label: t('trend.activityMode'), icon: <CalendarIcon /> },
+                { value: 'efficiency', label: t('trend.efficiencyMode'), icon: <Clock /> },
+              ]}
+              value={dashboardTrendMode}
+              variant="emphasis"
+            />
           </div>
         </div>
 

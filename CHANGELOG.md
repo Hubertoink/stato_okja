@@ -20,6 +20,15 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.3.4] - 2026-08-02
+
+### Fixed
+- Der vollständige Statistik-PDF-Export blendet interaktive Schalter und
+  Diagramm-Exportaktionen während des Renderns aus. Dadurch gelangen keine von
+  html2canvas nicht unterstützten CSS-Farb-Funktionen mehr in das PDF.
+
+---
+
 ## [1.3.3] - 2026-08-02
 
 ### Changed

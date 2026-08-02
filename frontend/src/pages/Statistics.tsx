@@ -2572,18 +2572,21 @@ export default function Statistics() {
       </SurfaceCard>
 
       <div ref={reportRef} className={pdfMode ? 'statistics-pdf-report' : ''}>
-        {/* KPI Summary with Toggle */}
-        <div className="flex items-center justify-end mb-4" data-pdf-section>
-          <SegmentedControl<'absolute' | 'average'>
-            ariaLabel={`${autoT('ui_ffa660db79fb')} / ${autoT('ui_388b22eb70db')}`}
-            onChange={(mode) => setShowAverage(mode === 'average')}
-            options={[
-              { value: 'absolute', label: autoT('ui_ffa660db79fb') },
-              { value: 'average', label: autoT('ui_388b22eb70db') },
-            ]}
-            value={showAverage ? 'average' : 'absolute'}
-          />
-        </div>
+        {/* Interactive controls use CSS Color 4. Omit them from the report so
+            html2canvas only receives export-safe, static report content. */}
+        {!pdfMode && (
+          <div className="flex items-center justify-end mb-4" data-pdf-section>
+            <SegmentedControl<'absolute' | 'average'>
+              ariaLabel={`${autoT('ui_ffa660db79fb')} / ${autoT('ui_388b22eb70db')}`}
+              onChange={(mode) => setShowAverage(mode === 'average')}
+              options={[
+                { value: 'absolute', label: autoT('ui_ffa660db79fb') },
+                { value: 'average', label: autoT('ui_388b22eb70db') },
+              ]}
+              value={showAverage ? 'average' : 'absolute'}
+            />
+          </div>
+        )}
         <div
           className={`statistics-kpi-grid ${selectedClosureState === 'closed' ? "statistics-kpi-grid--with-closure" : ''}`}
           data-pdf-section
@@ -2665,7 +2668,7 @@ export default function Statistics() {
         <div className={`grid gap-6 ${pdfMode ? "grid-cols-2" : "grid-cols-1 lg:grid-cols-2"}`}>
           <StatisticsPieChartCard
             title={autoT('ui_7a55d1e6e986')}
-            exportActions={renderChartExportActions('activity-types', autoT('ui_7a55d1e6e986'))}
+            exportActions={pdfMode ? null : renderChartExportActions('activity-types', autoT('ui_7a55d1e6e986'))}
             bodyClassName="h-80 md:h-[23rem]"
             chartRef={setChartCardRef('activity-types')}
             data={byTypeData}
@@ -2684,7 +2687,7 @@ export default function Statistics() {
 
           <StatisticsPieChartCard
             title={autoT('ui_2b8c8cd6a28c')}
-            exportActions={renderChartExportActions('gender-distribution', 'Geschlechterverteilung')}
+            exportActions={pdfMode ? null : renderChartExportActions('gender-distribution', 'Geschlechterverteilung')}
             bodyClassName="h-80 md:h-[23rem]"
             chartRef={setChartCardRef('gender-distribution')}
             data={genderData}
@@ -2712,22 +2715,24 @@ export default function Statistics() {
               <h3 className="text-lg font-semibold text-viridian">
                 {showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5')}
               </h3>
-              <div className="flex items-center gap-2">
-                {renderChartExportActions(
-                  'participants-trend',
-                  showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5'),
-                )}
-                <SegmentedControl<'day' | 'week' | 'month'>
-                  ariaLabel={autoT('ui_3b658714e6c5')}
-                  onChange={setTimeAggregation}
-                  options={[
-                    { value: 'day', label: autoT('ui_982963c1c41c') },
-                    { value: 'week', label: autoT('ui_7b2207dc85a6') },
-                    { value: 'month', label: autoT('ui_da13625eeb37') },
-                  ]}
-                  value={timeAggregation}
-                />
-              </div>
+              {!pdfMode && (
+                <div className="flex items-center gap-2">
+                  {renderChartExportActions(
+                    'participants-trend',
+                    showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5'),
+                  )}
+                  <SegmentedControl<'day' | 'week' | 'month'>
+                    ariaLabel={autoT('ui_3b658714e6c5')}
+                    onChange={setTimeAggregation}
+                    options={[
+                      { value: 'day', label: autoT('ui_982963c1c41c') },
+                      { value: 'week', label: autoT('ui_7b2207dc85a6') },
+                      { value: 'month', label: autoT('ui_da13625eeb37') },
+                    ]}
+                    value={timeAggregation}
+                  />
+                </div>
+              )}
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -2787,10 +2792,14 @@ export default function Statistics() {
 
           <StatisticsPieChartCard
             title={showAverage ? autoT('ui_784a48af8419') : autoT('ui_4d34ac48c54e')}
-            exportActions={renderChartExportActions(
-              'cohorts',
-              showAverage ? "Ø Alterskohorten" : "Alterskohorten",
-            )}
+            exportActions={
+              pdfMode
+                ? null
+                : renderChartExportActions(
+                    'cohorts',
+                    showAverage ? "Ø Alterskohorten" : "Alterskohorten",
+                  )
+            }
             cardClassName="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
             bodyClassName={pdfMode ? "h-72" : "h-80 md:h-[23rem]"}
             chartRef={setChartCardRef('cohorts')}
@@ -2810,7 +2819,7 @@ export default function Statistics() {
 
           <StatisticsBarChartCard
             title={autoT('ui_14a39a02cc68')}
-            exportActions={renderChartExportActions('top-categories', 'Top Kategorien')}
+            exportActions={pdfMode ? null : renderChartExportActions('top-categories', 'Top Kategorien')}
             chartRef={setChartCardRef('top-categories')}
             data={topCategoryChartData}
             bodyClassName={pdfMode ? "h-64" : "h-80 md:h-[23rem]"}
@@ -2834,7 +2843,7 @@ export default function Statistics() {
 
           <StatisticsBarChartCard
             title={autoT('ui_0fb32d3b3eaa')}
-            exportActions={renderChartExportActions('top-tags', 'Top Tags')}
+            exportActions={pdfMode ? null : renderChartExportActions('top-tags', 'Top Tags')}
             chartRef={setChartCardRef('top-tags')}
             data={topTags}
             bodyClassName="h-64"
@@ -2861,7 +2870,7 @@ export default function Statistics() {
           {projectId ? (
             <StatisticsBarChartCard
               title={autoT('ui_77e6509147ca')}
-              exportActions={renderChartExportActions('top-days', 'Top Tage')}
+              exportActions={pdfMode ? null : renderChartExportActions('top-days', 'Top Tage')}
               chartRef={setChartCardRef('top-days')}
               data={topDays}
               bodyClassName="h-64"
@@ -2891,7 +2900,7 @@ export default function Statistics() {
           ) : (
             <StatisticsBarChartCard
               title={autoT('ui_70494e6a6cd0')}
-              exportActions={renderChartExportActions('top-projects', autoT('ui_70494e6a6cd0'))}
+              exportActions={pdfMode ? null : renderChartExportActions('top-projects', autoT('ui_70494e6a6cd0'))}
               chartRef={setChartCardRef('top-projects')}
               data={topProjects}
               bodyClassName="h-64"

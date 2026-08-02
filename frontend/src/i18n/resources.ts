@@ -510,6 +510,7 @@ export const resources = {
       daily: {
         title: 'Daily Log',
         period: '(letzte 14 Tage)',
+        emptyTitle: 'Noch keine Daily-Log-Einträge',
         empty: 'Keine Aktivitäten mit Notizen oder Tags im aktuellen Zeitraum.',
         markDiscussed: 'Als besprochen markieren',
         markUndiscussed: 'Als unbesprochen markieren',
@@ -1356,6 +1357,7 @@ export const resources = {
       daily: {
         title: 'Daily log',
         period: '(last 14 days)',
+        emptyTitle: 'No Daily Log entries yet',
         empty: 'No activities with notes or tags in the current period.',
         markDiscussed: 'Mark as discussed',
         markUndiscussed: 'Mark as not discussed',

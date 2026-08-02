@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, RotateCcw, Search, SlidersHorizontal, UserRound, XCircle } from 'lucide-react';
+import { Plus, RotateCcw, Search, SlidersHorizontal, XCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLogbookEntries } from '@/lib/logbook';
 import {
@@ -20,6 +20,7 @@ import { ErrorState, LoadingState } from '@/components/ui/StatePanel';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate, formatNumber } from '@/i18n/formatters';
+import logbookEmptyIllustration from '../../assets/Illust_Amigos/Logbuch_keineEinträge.svg';
 
 function filterDate(value: string) {
   return formatDate(`${value}T12:00:00`, { dateStyle: 'short' });
@@ -210,7 +211,7 @@ export default function Logbook() {
         <ErrorState action={{ label: t('retry'), onClick: () => void refetch() }} />
       ) : entries.length === 0 ? (
         <EmptyState
-          icon={<UserRound className="h-5 w-5" />}
+          illustration={logbookEmptyIllustration}
           title={t('emptyTitle')}
           description={t('emptyDescription')}
           action={(

@@ -54,10 +54,12 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate, formatNumber, getCurrentIntlLocale } from '@/i18n/formatters';
 import { isDarkThemeName } from '@/lib/theme';
-import activitiesKpiIcon from '../../assets/Icons_KPI/Calendar_Icon_light.png';
-import participantsKpiIcon from '../../assets/Icons_KPI/Clients_Light.png';
-import hoursKpiIcon from '../../assets/Icons_KPI/Time_Light.png';
-import averageKpiIcon from '../../assets/Icons_KPI/Time_RMS_light.png';
+import activitiesKpiIcon from '../../assets/Illust_Amigos/Aktivitäten.svg';
+import participantsKpiIcon from '../../assets/Illust_Amigos/Teilnehmende.svg';
+import hoursKpiIcon from '../../assets/Illust_Amigos/Stunden.svg';
+import averageKpiIcon from '../../assets/Illust_Amigos/proAktivität.svg';
+import dailyLogEmptyIllustration from '../../assets/Illust_Amigos/DailyLog_Keine.svg';
+import logbookEmptyIllustration from '../../assets/Illust_Amigos/Logbuch_keineEinträge.svg';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
 
@@ -898,7 +900,13 @@ export default function Dashboard() {
         </div>
       </SurfaceCard>
 
-      <SurfaceCard className="mb-8" padding="md">
+      <SurfaceCard
+        className={`mb-8 ${recentLogbookEntries.length > 0 ? 'dashboard-illustrated-surface' : ''}`}
+        padding="md"
+      >
+        {recentLogbookEntries.length > 0 ? (
+          <img className="dashboard-section-illustration" src={logbookEmptyIllustration} alt="" aria-hidden="true" />
+        ) : null}
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-[var(--text-primary)]">{t('logbook.title')}</h3>
@@ -913,8 +921,9 @@ export default function Dashboard() {
         </div>
         {recentLogbookEntries.length === 0 ? (
           <EmptyState
-            className="py-6"
+            className="dashboard-section-empty-state py-6"
             description={t('logbook.emptyDescription')}
+            illustration={logbookEmptyIllustration}
             title={t('logbook.emptyTitle')}
           />
         ) : (
@@ -976,15 +985,21 @@ export default function Dashboard() {
       </SurfaceCard>
 
       {/* Daily Log */}
-      <div className="modern-card p-6 mb-8">
+      <div className={`modern-card mb-8 p-6 ${dailyLog.length > 0 ? 'dashboard-illustrated-surface' : ''}`}>
+        {dailyLog.length > 0 ? (
+          <img className="dashboard-section-illustration" src={dailyLogEmptyIllustration} alt="" aria-hidden="true" />
+        ) : null}
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           {t('daily.title')}
           <span className="ml-2 text-xs text-gray-400 font-normal">{t('daily.period')}</span>
         </h3>
         {dailyLog.length === 0 ? (
-          <div className="text-gray-500">
-            {t('daily.empty')}
-          </div>
+          <EmptyState
+            className="dashboard-section-empty-state py-6"
+            description={t('daily.empty')}
+            illustration={dailyLogEmptyIllustration}
+            title={t('daily.emptyTitle')}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {dailyLog.map((item) => (

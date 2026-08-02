@@ -2309,6 +2309,50 @@ code {
   line-height: 1.25;
 }
 
+/* html2canvas cannot parse CSS Color 4 values produced by color-mix().
+   The report uses these static equivalents only while it is rendered to PDF. */
+.statistics-pdf-report .statistics-kpi-card {
+  border: 1px solid #dbe3f5;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+}
+
+.statistics-pdf-report .statistics-kpi-card:hover {
+  transform: none;
+  border-color: #dbe3f5;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+}
+
+.statistics-pdf-report .statistics-kpi-card--activities,
+.statistics-pdf-report .statistics-kpi-card--hours {
+  --statistics-kpi-accent: #5b6cff;
+}
+
+.statistics-pdf-report .statistics-kpi-card--participants,
+.statistics-pdf-report .statistics-kpi-card--participants-per-hour {
+  --statistics-kpi-accent: #3b82f6;
+}
+
+.statistics-pdf-report .statistics-kpi-card--closure {
+  --statistics-kpi-accent: #f59e0b;
+}
+
+.statistics-pdf-report .statistics-kpi-card-label {
+  color: #475569;
+}
+
+.statistics-pdf-report .kpi-card {
+  border-color: #dbe3f5;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.statistics-pdf-report .stats-kpi-toggle {
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
 .custom-kpi-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));

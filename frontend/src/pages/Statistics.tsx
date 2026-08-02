@@ -2598,7 +2598,7 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      <div ref={reportRef} className="">
+      <div ref={reportRef} className={pdfMode ? 'statistics-pdf-report' : ''}>
         {/* KPI Summary with Toggle */}
         <div className="flex items-center justify-end mb-4" data-pdf-section>
           <div className="stats-kpi-toggle flex items-center gap-2 rounded-lg p-1">

@@ -2425,6 +2425,33 @@ code {
   background: #ffffff;
 }
 
+/* Single-chart exports capture the chart node itself, so the static PDF
+   palette has to be applied directly to that node as well. */
+.statistics-pdf-export-card {
+  --surface-1: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #eef2f7;
+  --surface-elevated: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --border-subtle: #dbe3f5;
+  --border-strong: #cbd5e1;
+  --interactive-soft: #eef2ff;
+  --interactive-soft-strong: #e0e7ff;
+  --interactive-soft-border: #c7d2fe;
+  --card-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  border: 1px solid #dbe3f5 !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1) !important;
+  color: #1f2937 !important;
+}
+
+.statistics-pdf-export-card .recharts-tooltip-wrapper {
+  visibility: hidden !important;
+}
+
 .custom-kpi-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));

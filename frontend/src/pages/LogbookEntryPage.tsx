@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Circle,
   Edit3,
-  Link2,
   LockKeyhole,
   MessageCircle,
   Plus,
@@ -38,6 +37,7 @@ import Modal, { ModalBackdrop } from '@/components/Modal';
 import { Menu, MenuItem } from '@/components/ui/Menu';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
+import LogbookConnections from '@/components/LogbookConnections';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
@@ -214,6 +214,10 @@ export default function LogbookEntryPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const isNew = !id;
+  const returnTo =
+    (location.state as { returnTo?: unknown } | null)?.returnTo === '/dashboard'
+      ? '/dashboard'
+      : '/logbook';
   const [editing, setEditing] = useState(isNew || location.pathname.endsWith('/edit'));
   useBodyScrollLock(editing);
   const [form, setForm] = useState<FormState>(() => emptyForm(search));
@@ -292,11 +296,21 @@ export default function LogbookEntryPage() {
       if (isNew) {
         const created = await create.mutateAsync(formPayload);
         showToast(autoT('ui_bfeed61d0034'), { type: 'success' });
-        navigate(`/logbook?entry=${encodeURIComponent(created.id)}`, { replace: true });
+        navigate(
+          returnTo === '/dashboard'
+            ? returnTo
+            : `/logbook?entry=${encodeURIComponent(created.id)}`,
+          { replace: true },
+        );
       } else if (id) {
         await update.mutateAsync({ id, data: formPayload });
         showToast(autoT('ui_e1bd2c4575ee'), { type: 'success' });
-        navigate(`/logbook?entry=${encodeURIComponent(id)}`, { replace: true });
+        navigate(
+          returnTo === '/dashboard'
+            ? returnTo
+            : `/logbook?entry=${encodeURIComponent(id)}`,
+          { replace: true },
+        );
       }
     } catch (error: unknown) {
       showToast(getErrorMessage(error, autoT('ui_81128854f3b0')), {
@@ -372,7 +386,11 @@ export default function LogbookEntryPage() {
               type="button"
               aria-label={autoT('ui_e3bdcc71200e')}
               onClick={() =>
-                navigate(isNew ? "/logbook" : `/logbook?entry=${encodeURIComponent(id || '')}`)
+                navigate(
+                  isNew || returnTo === '/dashboard'
+                    ? returnTo
+                    : `/logbook?entry=${encodeURIComponent(id || '')}`,
+                )
               }
               className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
             >
@@ -553,8 +571,8 @@ export default function LogbookEntryPage() {
               <button
                 type="button"
                 onClick={() =>
-                  isNew
-                    ? navigate('/logbook')
+                  isNew || returnTo === '/dashboard'
+                    ? navigate(returnTo)
                     : navigate(`/logbook?entry=${encodeURIComponent(id || '')}`)
                 }
                 className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
@@ -694,28 +712,7 @@ export default function LogbookEntryPage() {
               )}
             </section>
           )}
-          {(entry.activity || entry.project) && (
-            <section className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <Link2 className="h-4 w-4" />{autoT('ui_0493d567bdb7')}</h2>
-              <div className="flex flex-wrap gap-2 text-sm">
-                {entry.project && (
-                  <button
-                    onClick={() => navigate('/projects')}
-                    className="rounded-lg bg-white px-3 py-2 text-viridian shadow-sm"
-                  >{autoT('ui_30c095c845e0')}{entry.project.title}
-                  </button>
-                )}
-                {entry.activity && (
-                  <button
-                    onClick={() => navigate(`/activities/${entry.activity!.id}`)}
-                    className="rounded-lg bg-white px-3 py-2 text-viridian shadow-sm"
-                  >{autoT('ui_c71c993f48b0')}{entry.activity.title || entry.activity.date}
-                  </button>
-                )}
-              </div>
-            </section>
-          )}
+          <LogbookConnections entry={entry} />
           {canManage && !archived && (
             <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-5">
               {entry.status !== 'discussed' && (

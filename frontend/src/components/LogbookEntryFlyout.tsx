@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Circle,
   Edit3,
-  Link2,
   LockKeyhole,
   MessageCircle,
   Send,
@@ -29,6 +28,7 @@ import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { ModalBackdrop } from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
+import LogbookConnections from '@/components/LogbookConnections';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
 import { Button, IconButton } from '@/components/ui/Button';
@@ -93,9 +93,11 @@ function getErrorMessage(error: unknown, fallback: string) {
 export default function LogbookEntryFlyout({
   entryId,
   onClose,
+  returnTo = '/logbook',
 }: {
   entryId: string | null;
   onClose: () => void;
+  returnTo?: string;
 }) {
   const open = !!entryId;
   const navigate = useNavigate();
@@ -209,7 +211,7 @@ export default function LogbookEntryFlyout({
               <IconButton
                 variant="secondary"
                 className="logbook-edit-button"
-                onClick={() => navigate(`/logbook/${entry.id}/edit`)}
+                onClick={() => navigate(`/logbook/${entry.id}/edit`, { state: { returnTo } })}
                 aria-label={autoT('ui_104f3bfdc340')}
                 title={autoT('ui_104f3bfdc340')}
               >
@@ -304,30 +306,7 @@ export default function LogbookEntryFlyout({
                   />
                 </section>
               )}
-              {(entry.activity || entry.project) && (
-                <section className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                  <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <Link2 className="h-4 w-4" />{autoT('ui_0493d567bdb7')}</h3>
-                  <div className="flex flex-wrap gap-2 text-sm">
-                    {entry.project && (
-                      <button
-                        type="button"
-                        onClick={() => navigate('/projects')}
-                        className="rounded-lg bg-white px-3 py-2 text-viridian shadow-sm"
-                      >{autoT('ui_30c095c845e0')}{entry.project.title}
-                      </button>
-                    )}
-                    {entry.activity && (
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/activities/${entry.activity!.id}`)}
-                        className="rounded-lg bg-white px-3 py-2 text-viridian shadow-sm"
-                      >{autoT('ui_c71c993f48b0')}{entry.activity.title || entry.activity.date}
-                      </button>
-                    )}
-                  </div>
-                </section>
-              )}
+              <LogbookConnections entry={entry} />
               <section className="border-t border-gray-100 pt-5">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
                   <MessageCircle className="h-5 w-5 text-viridian" />{autoT('ui_b9677171d9f7')}{entry.comments?.length || 0})

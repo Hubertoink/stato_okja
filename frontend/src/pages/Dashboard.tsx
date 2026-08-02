@@ -899,7 +899,7 @@ export default function Dashboard() {
           </div>
           <Button
             size="sm"
-            onClick={() => navigate('/logbook/new')}
+            onClick={() => navigate('/logbook/new', { state: { returnTo: '/dashboard' } })}
           >
             <Plus className="h-4 w-4" />
             {t('logbook.entry')}
@@ -918,7 +918,11 @@ export default function Dashboard() {
               <button
                 key={entry.id}
                 type="button"
-                onClick={() => navigate(`/logbook?entry=${encodeURIComponent(entry.id)}`)}
+                onClick={() =>
+                  navigate(`/logbook?entry=${encodeURIComponent(entry.id)}`, {
+                    state: { returnTo: '/dashboard' },
+                  })
+                }
                 className="dashboard-logbook-entry rounded-xl p-4 text-left"
               >
                 <div className="mb-1 flex items-center justify-between gap-2">

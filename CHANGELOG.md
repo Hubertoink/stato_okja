@@ -20,6 +20,25 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.3.0] - 2026-08-02
+
+### Added
+- Das Dashboard bietet im monatlichen Verlauf jetzt eine Auswahl zwischen
+  Wochen-, Monats- und Jahresansicht.
+
+### Fixed
+- KPI-Karten in Statistik und Dashboard verwenden konsistente Illustrationen
+  und Hinweise zum jeweils dargestellten Zeitraum.
+- Teilnehmende und Stunden werden auch bei unvollständigen Alt- oder Testdaten
+  belastbar ausgewertet; neue Aktivitäten speichern Teilnehmendenzahl und Dauer
+  nach einheitlichen Datenregeln.
+- PDF-Berichte, Datenexport/-import und die vollständige Datenlöschung sind
+  robuster abgesichert. Upload-Dateien werden beim Gesamtlöschen zuverlässig
+  entfernt, während die administrative Anmeldung erhalten bleibt.
+- Diagramm-Tooltips folgen jetzt der Farbgebung des aktiven Themes.
+
+---
+
 ## [1.2.0] - 2026-08-01
 
 ### Added

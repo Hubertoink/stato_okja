@@ -54,6 +54,10 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate, formatNumber } from '@/i18n/formatters';
 import { isDarkThemeName } from '@/lib/theme';
+import activitiesKpiIcon from '../../assets/Icons_KPI/Calendar_Icon_light.png';
+import participantsKpiIcon from '../../assets/Icons_KPI/Clients_Light.png';
+import hoursKpiIcon from '../../assets/Icons_KPI/Time_Light.png';
+import averageKpiIcon from '../../assets/Icons_KPI/Time_RMS_light.png';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
 
@@ -108,6 +112,13 @@ type DashboardTimeseriesPoint = {
   totalDurationMinutes?: number;
 };
 
+const DASHBOARD_KPI_ICONS = {
+  activities: activitiesKpiIcon,
+  participants: participantsKpiIcon,
+  average: averageKpiIcon,
+  hours: hoursKpiIcon,
+} as const;
+
 function useDashboardTimeseries(
   year: number,
   scopeKey: string,
@@ -119,14 +130,15 @@ function useDashboardTimeseries(
   return useQuery({
     queryKey: ['stats:dashboard-timeseries', scopeKey, from, to],
     queryFn: async () => {
-      const res = await api.get('/stats/participants-timeseries', {
+      // Keep the dashboard on the same aggregate source as Statistics.
+      const res = await api.get('/stats/overview', {
         params: {
           from,
           to,
           orgId: typeof scope === 'undefined' ? undefined : scope === null ? 'null' : scope,
         },
       });
-      return (Array.isArray(res.data) ? res.data : []) as DashboardTimeseriesPoint[];
+      return (Array.isArray(res.data?.participantsTimeseries) ? res.data.participantsTimeseries : []) as DashboardTimeseriesPoint[];
     },
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchInterval:
@@ -213,6 +225,10 @@ export default function Dashboard() {
   const [picker, setPicker] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const [dashboardTrendMode, setDashboardTrendMode] = useState<'activity' | 'efficiency'>('activity');
+  const currentMonthLabel = useMemo(
+    () => new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(now),
+    [year, month],
+  );
   const { data: summary } = useMonthSummary(year, month, scopeKey, {
     refetchOnWindowFocus: 'always',
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
@@ -573,23 +589,25 @@ export default function Dashboard() {
             <p className="dashboard-trend-eyebrow">{t('trend.yearLabel', { year })}</p>
             <h2 id="dashboard-trend-title" className="dashboard-trend-title">{t('trend.title')}</h2>
           </div>
-          <div className="stats-kpi-toggle dashboard-trend-toggle" role="tablist" aria-label={t('trend.title')}>
+          <div className="dashboard-trend-toggle" role="tablist" aria-label={t('trend.title')}>
             <button
               type="button"
               role="tab"
               aria-selected={dashboardTrendMode === 'activity'}
-              className={`stats-kpi-toggle-button ${dashboardTrendMode === 'activity' ? 'stats-kpi-toggle-button-active font-medium' : ''}`}
+              className={`dashboard-trend-toggle-button ${dashboardTrendMode === 'activity' ? 'dashboard-trend-toggle-button--active' : ''}`}
               onClick={() => setDashboardTrendMode('activity')}
             >
+              <CalendarIcon aria-hidden="true" />
               {t('trend.activityMode')}
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={dashboardTrendMode === 'efficiency'}
-              className={`stats-kpi-toggle-button ${dashboardTrendMode === 'efficiency' ? 'stats-kpi-toggle-button-active font-medium' : ''}`}
+              className={`dashboard-trend-toggle-button ${dashboardTrendMode === 'efficiency' ? 'dashboard-trend-toggle-button--active' : ''}`}
               onClick={() => setDashboardTrendMode('efficiency')}
             >
+              <Clock aria-hidden="true" />
               {t('trend.efficiencyMode')}
             </button>
           </div>
@@ -654,22 +672,38 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
+        <div className="dashboard-trend-summary-header">
+          <p>{t('trend.currentMonth')}</p>
+          <span>{t('trend.currentMonthHint', { month: currentMonthLabel })}</span>
+        </div>
         <div className="dashboard-trend-summary" aria-label={t('trend.currentMonth')}>
-          <div className="dashboard-trend-summary-item">
-            <span>{t('trend.activities')}</span>
-            <strong>{fmt(summary?.totalActivities ?? currentMonthTrend.activities)}</strong>
+          <div className="statistics-kpi-card statistics-kpi-card--activities dashboard-month-kpi-card">
+            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.activities} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">{fmt(summary?.totalActivities ?? currentMonthTrend.activities)}</p>
+              <p className="statistics-kpi-card-label">{t('trend.activities')}</p>
+            </div>
           </div>
-          <div className="dashboard-trend-summary-item">
-            <span>{t('trend.participants')}</span>
-            <strong>{fmt(summary?.totalParticipants ?? currentMonthTrend.participants)}</strong>
+          <div className="statistics-kpi-card statistics-kpi-card--participants dashboard-month-kpi-card">
+            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.participants} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">{fmt(summary?.totalParticipants ?? currentMonthTrend.participants)}</p>
+              <p className="statistics-kpi-card-label">{t('trend.participants')}</p>
+            </div>
           </div>
-          <div className="dashboard-trend-summary-item">
-            <span>{t('trend.average')}</span>
-            <strong>{formatNumber(summary?.averageParticipants ?? currentMonthTrend.averageParticipants)}</strong>
+          <div className="statistics-kpi-card statistics-kpi-card--participants-per-hour dashboard-month-kpi-card">
+            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.average} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">{formatNumber(summary?.averageParticipants ?? currentMonthTrend.averageParticipants)}</p>
+              <p className="statistics-kpi-card-label">{t('trend.average')}</p>
+            </div>
           </div>
-          <div className="dashboard-trend-summary-item">
-            <span>{t('trend.hours')}</span>
-            <strong>{formatNumber(summary?.totalHours ?? currentMonthTrend.hours)}</strong>
+          <div className="statistics-kpi-card statistics-kpi-card--hours dashboard-month-kpi-card">
+            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.hours} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">{formatNumber(summary?.totalHours ?? currentMonthTrend.hours)}</p>
+              <p className="statistics-kpi-card-label">{t('trend.hours')}</p>
+            </div>
           </div>
         </div>
       </section>

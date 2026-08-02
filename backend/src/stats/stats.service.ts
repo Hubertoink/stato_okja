@@ -185,6 +185,24 @@ export class StatsService {
     return 0;
   }
 
+  /** Keep legacy activities with only a gender breakdown visible in all KPIs. */
+  private getParticipantTotalExpression() {
+    return `CASE
+      WHEN COALESCE(activity.countTotal, 0) > 0 THEN activity.countTotal
+      ELSE COALESCE(activity.countMale, 0) + COALESCE(activity.countFemale, 0) + COALESCE(activity.countDiverse, 0)
+    END`;
+  }
+
+  /** Derive duration from start/end times when legacy records lack a duration. */
+  private getDurationMinutesExpression() {
+    const storedDuration = 'NULLIF(activity.durationMinutes, 0)';
+    if (this.dataSource.options.type === 'postgres') {
+      return `COALESCE(${storedDuration}, GREATEST(EXTRACT(EPOCH FROM (activity.endTime - activity.startTime)) / 60, 0), 0)`;
+    }
+
+    return `COALESCE(${storedDuration}, MAX((julianday('2000-01-01 ' || activity.endTime) - julianday('2000-01-01 ' || activity.startTime)) * 1440, 0), 0)`;
+  }
+
   private getOverviewCacheTtlMs() {
     const configured = Number.parseInt(process.env.STATS_OVERVIEW_CACHE_TTL_MS || '30000', 10);
     if (!Number.isFinite(configured) || configured < 0) return 30000;
@@ -343,13 +361,15 @@ export class StatsService {
         ? (await this.orgs.getClosedDatesForOrganizations(orgId, orgIds, from, to)).length
         : 0;
 
+    const participantTotalExpression = this.getParticipantTotalExpression();
+    const durationMinutesExpression = this.getDurationMinutesExpression();
     const raw = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('COUNT(*)', 'totalActivities')
-      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
+      .addSelect(`COALESCE(SUM(${participantTotalExpression}), 0)`, 'totalParticipants')
       .addSelect('COALESCE(SUM(activity.countMale), 0)', 'totalMale')
       .addSelect('COALESCE(SUM(activity.countFemale), 0)', 'totalFemale')
       .addSelect('COALESCE(SUM(activity.countDiverse), 0)', 'totalDiverse')
-      .addSelect('COALESCE(SUM(activity.durationMinutes), 0)', 'totalDurationMinutes')
+      .addSelect(`COALESCE(SUM(${durationMinutesExpression}), 0)`, 'totalDurationMinutes')
       .getRawOne<{
         totalActivities: string;
         totalParticipants: string;
@@ -436,10 +456,11 @@ export class StatsService {
   }
 
   async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
+    const participantTotalExpression = this.getParticipantTotalExpression();
     const rows = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('activity.type', 'type')
       .addSelect('COUNT(*)', 'count')
-      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
+      .addSelect(`COALESCE(SUM(${participantTotalExpression}), 0)`, 'totalParticipants')
       .groupBy('activity.type')
       .orderBy('COUNT(*)', 'DESC')
       .getRawMany<{ type: string; count: string; totalParticipants: string }>();
@@ -465,11 +486,13 @@ export class StatsService {
   }
 
   async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
+    const participantTotalExpression = this.getParticipantTotalExpression();
+    const durationMinutesExpression = this.getDurationMinutesExpression();
     const rows = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('activity.date', 'date')
-      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
+      .addSelect(`COALESCE(SUM(${participantTotalExpression}), 0)`, 'totalParticipants')
       .addSelect('COUNT(*)', 'activityCount')
-      .addSelect('COALESCE(SUM(activity.durationMinutes), 0)', 'totalDurationMinutes')
+      .addSelect(`COALESCE(SUM(${durationMinutesExpression}), 0)`, 'totalDurationMinutes')
       .groupBy('activity.date')
       .orderBy('activity.date', 'ASC')
       .getRawMany<{ date: string | Date; totalParticipants: string; activityCount: string; totalDurationMinutes: string }>();

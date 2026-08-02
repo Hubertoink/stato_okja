@@ -76,6 +76,7 @@ jobs:
         run: |
           set -euo pipefail
           docker compose -f deploy/onprem/compose.yaml --env-file deploy/onprem/stato.env.example config --quiet
+          docker compose -f deploy/zimaos/compose.yaml --env-file deploy/zimaos/stato.env.example config --quiet
           grep -F 'proxy_pass http://backend:3000/api/' frontend/nginx.proxy.conf
           ! grep -F 'api.stato-okja.de' frontend/nginx.proxy.conf
           bash -n scripts/install-onprem-release.sh

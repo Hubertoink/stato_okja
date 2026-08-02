@@ -10,6 +10,8 @@ import {
   JoinTable,
   JoinColumn,
   OneToMany,
+  BeforeInsert,
+  BeforeUpdate,
 } from 'typeorm';
 import { ActivityExecutionStatus, ActivityType } from '../../common/enums';
 import { Location } from '../../locations/entities/location.entity';
@@ -18,12 +20,19 @@ import { Tag } from '../../taxonomy/entities/tag.entity';
 import { Staff } from '../../staff/entities/staff.entity';
 import type { Attachment } from './attachment.entity';
 import { Project } from '../../projects/entities/project.entity';
+import { normalizeActivityMetrics } from '../activity-metrics';
 
 @Entity('activities')
 @Index('IDX_activities_orgId_date_startTime', ['orgId', 'date', 'startTime'])
 @Index('IDX_activities_orgId_executionStatus_date', ['orgId', 'executionStatus', 'date'])
 @Index('IDX_activities_orgId_projectId_date', ['orgId', 'projectId', 'date'])
 export class Activity {
+  @BeforeInsert()
+  @BeforeUpdate()
+  normalizeMetrics() {
+    normalizeActivityMetrics(this);
+  }
+
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

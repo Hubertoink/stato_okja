@@ -2,7 +2,17 @@ import { StatsService } from './stats.service';
 import { ActivityExecutionStatus, ActivityType } from '../common/enums';
 
 describe('StatsService date normalization', () => {
-  const createQueryBuilder = (rows: Array<{ date: string | Date; totalParticipants?: string; activityCount?: string }>) => ({
+  type TimeseriesRow = {
+    date: string | Date;
+    totalParticipants?: string;
+    totalMale?: string;
+    totalFemale?: string;
+    totalDiverse?: string;
+    activityCount?: string;
+    totalDurationMinutes?: string;
+  };
+
+  const createQueryBuilder = (rows: TimeseriesRow[]) => ({
     leftJoin: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     distinct: jest.fn().mockReturnThis(),
@@ -13,7 +23,7 @@ describe('StatsService date normalization', () => {
     getRawMany: jest.fn().mockResolvedValue(rows),
   });
 
-  const createService = (rows: Array<{ date: string | Date; totalParticipants?: string; activityCount?: string }>) => {
+  const createService = (rows: TimeseriesRow[]) => {
     const qb = createQueryBuilder(rows);
     const activityRepository = {
       createQueryBuilder: jest.fn(() => qb),
@@ -51,12 +61,40 @@ describe('StatsService date normalization', () => {
           date: '2026-02-09',
           totalParticipants: 18,
           activityCount: 1,
+          totalDurationMinutes: 0,
         },
       ]);
     } finally {
       if (typeof previousTz === 'undefined') delete process.env.TZ;
       else process.env.TZ = previousTz;
     }
+  });
+
+  it('uses the normalized persisted participant total', async () => {
+    const { service, qb } = createService([
+      {
+        date: '2026-03-12',
+        totalParticipants: '16',
+        totalMale: '7',
+        totalFemale: '8',
+        totalDiverse: '1',
+        activityCount: '2',
+        totalDurationMinutes: '180',
+      },
+    ]);
+
+    await expect(service.getParticipantsTimeseries()).resolves.toEqual([
+      {
+        date: '2026-03-12',
+        totalParticipants: 16,
+        activityCount: 2,
+        totalDurationMinutes: 180,
+      },
+    ]);
+    expect(qb.addSelect).toHaveBeenCalledWith(
+      'COALESCE(SUM(activity.countTotal), 0)',
+      'totalParticipants',
+    );
   });
 
   it('keeps available years stable for date-only rows represented as Date objects', async () => {
@@ -162,7 +200,7 @@ describe('StatsService execution status filtering', () => {
       { getClosedDatesForOrganizations: jest.fn(async () => []) } as never,
     );
 
-    await service.getSummary();
+    const result = await service.getSummary();
 
     expect(qb.andWhere).toHaveBeenCalledWith(
       'activity.executionStatus IN (:...executionStatuses)',
@@ -170,6 +208,7 @@ describe('StatsService execution status filtering', () => {
         executionStatuses: [ActivityExecutionStatus.COMPLETED],
       },
     );
+    expect(result.totalParticipants).toBe(0);
   });
 
   it('filters overview queries to closed dates when closureState is closed', async () => {

@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Project } from '../projects/entities/project.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { applyActivityRelationJoins } from '../activities/activity-list-query';
+import { normalizeActivityMetrics } from '../activities/activity-metrics';
 import { Category } from '../taxonomy/entities/category.entity';
 import { Tag } from '../taxonomy/entities/tag.entity';
 import { Location } from '../locations/entities/location.entity';
@@ -683,7 +684,7 @@ export class DevToolsService {
                 ? this.pickOne(OUTREACH_TITLES)
                 : `${project?.title || 'Gruppenangebot'} Termin ${this.randomInt(1, 18)}`;
 
-      return this.activityRepository.create({
+      const activity = this.activityRepository.create({
         date: when,
         startTime: timing.startTime,
         endTime: timing.endTime,
@@ -707,6 +708,8 @@ export class DevToolsService {
         ackDone: Math.random() > 0.8,
         orgId,
       });
+      normalizeActivityMetrics(activity);
+      return activity;
     });
 
     await this.activityRepository.save(activities, { chunk: 250 });

@@ -62,7 +62,12 @@ type StatsOverviewResponse = {
   };
   byType: Array<{ type: string; count: number; totalParticipants: number }>;
   gender: { male: number; female: number; diverse: number };
-  participantsTimeseries: Array<{ date: string; totalParticipants: number; activityCount: number }>;
+  participantsTimeseries: Array<{
+    date: string;
+    totalParticipants: number;
+    activityCount: number;
+    totalDurationMinutes: number;
+  }>;
   byCohort: Array<{ cohortId: string; name: string; total: number; male: number; female: number; diverse: number }>;
   byCategory: Array<{ id: string; name: string; count: number }>;
   topTags: Array<{ id: string; name: string; count: number }>;
@@ -1504,7 +1509,7 @@ export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOvervie
   const byCategory = new Map<string, number>();
   const byTag = new Map<string, number>();
   const byProject = new Map<string, number>();
-  const byDate = new Map<string, { totalParticipants: number; activityCount: number }>();
+  const byDate = new Map<string, { totalParticipants: number; activityCount: number; totalDurationMinutes: number }>();
   let totalMale = 0;
   let totalFemale = 0;
   let totalDiverse = 0;
@@ -1521,9 +1526,10 @@ export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOvervie
     typeEntry.count += 1;
     typeEntry.totalParticipants += total;
     byType.set(activity.type, typeEntry);
-    const dateEntry = byDate.get(activity.date) || { totalParticipants: 0, activityCount: 0 };
+    const dateEntry = byDate.get(activity.date) || { totalParticipants: 0, activityCount: 0, totalDurationMinutes: 0 };
     dateEntry.totalParticipants += total;
     dateEntry.activityCount += 1;
+    if (activity.executionStatus !== 'cancelled') dateEntry.totalDurationMinutes += activity.durationMinutes || 0;
     byDate.set(activity.date, dateEntry);
     (activity.cohorts || []).forEach((cohort) => {
       const entry = byCohort.get(cohort.cohortId) || { male: 0, female: 0, diverse: 0 };

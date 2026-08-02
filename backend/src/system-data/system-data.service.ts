@@ -17,6 +17,7 @@ import { AuthService } from '../auth/auth.service';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
+import { normalizeActivityMetrics } from '../activities/activity-metrics';
 import {
   SystemDataUploadStore,
   type AppliedImportUploads,
@@ -81,7 +82,8 @@ type UploadReferenceSummary = {
 const PURGE_CONFIRMATION_TEXT = 'ALLE DATEN LOESCHEN';
 const IMPORT_CONFIRMATION_TEXT = 'BACKUP IMPORTIEREN';
 const SYSTEM_DATA_EXPORT_FORMAT = 'stato-system-data-export';
-const SYSTEM_DATA_EXPORT_SCHEMA_VERSION = 2;
+const SYSTEM_DATA_EXPORT_SCHEMA_VERSION = 3;
+const TRANSIENT_SYSTEM_TABLE_KEYS = new Set(['auth_refresh_sessions']);
 const EMPTY_UPLOAD_REFERENCE_BREAKDOWN: UploadReferenceBreakdown = {
   projects: 0,
   projectDocuments: 0,
@@ -385,7 +387,18 @@ export class SystemDataService {
 
       await queryRunner.startTransaction();
 
-      const deleteOrder = await this.getDeleteOrder(queryRunner, new Set());
+      const actorRows = await queryRunner.query(
+        `SELECT id, email FROM ${this.escapeTablePath('users')} WHERE id = ${this.getParameterPlaceholder(1)}`,
+        [actor.id],
+      ) as Array<{ id: string; email: string }>;
+      const currentActor = actorRows[0];
+      if (!currentActor) {
+        throw new InternalServerErrorException('Der ausführende Superadmin konnte vor dem Restore nicht gesichert werden.');
+      }
+
+      // Preserve the executing superadmin and therefore their active refresh
+      // session. All other users are replaced from the backup below.
+      const deleteOrder = await this.getDeleteOrder(queryRunner, new Set(['users']));
       const deletedTables: Array<{ tableName: string; deletedRows: number }> = [];
       for (const table of deleteOrder) {
         const deletedRows = await this.countRows(queryRunner, table.path);
@@ -395,14 +408,30 @@ export class SystemDataService {
         deletedTables.push({ tableName: table.filename, deletedRows });
       }
 
+      const actorPlaceholder = this.getParameterPlaceholder(1);
+      const deletedUsers = await this.countRowsWhere(queryRunner, 'users', `id <> ${actorPlaceholder}`, [actor.id]);
+      if (deletedUsers > 0) {
+        await queryRunner.query(
+          `DELETE FROM ${this.escapeTablePath('users')} WHERE id <> ${actorPlaceholder}`,
+          [actor.id],
+        );
+      }
+      deletedTables.push({ tableName: 'users', deletedRows: deletedUsers });
+
       const importOrder = await this.getInsertOrder(queryRunner, new Set());
       const importedTableMap = new Map(archive.tables.map((table) => [table.key, table]));
       const importedTables: Array<{ tableName: string; importedRows: number }> = [];
       for (const table of importOrder) {
         const importedTable = importedTableMap.get(table.key);
         if (!importedTable) continue;
-        await this.insertRows(queryRunner, table.path, importedTable.rows);
-        importedTables.push({ tableName: table.filename, importedRows: importedTable.rows.length });
+        const rows = table.key === 'users'
+          ? importedTable.rows.filter((row) => (
+            String(row.id || '') !== actor.id
+            && String(row.email || '').trim().toLowerCase() !== currentActor.email.trim().toLowerCase()
+          ))
+          : importedTable.rows;
+        await this.insertRows(queryRunner, table.path, rows);
+        importedTables.push({ tableName: table.filename, importedRows: rows.length });
       }
 
       appliedUploads = await this.uploadStore.applyImportedUploads(stagedUploads);
@@ -482,6 +511,7 @@ export class SystemDataService {
       deletedUsers: number;
       preservedSuperadmins: Array<{ id: string; email: string; name: string | null }>;
       clearedSuperadminOrgLinks: number;
+      clearedSuperadminAvatars: number;
       deletedUploadFiles: number;
       deletedUploadBytes: number;
       warnings: string[];
@@ -529,6 +559,17 @@ export class SystemDataService {
         );
       }
 
+      const clearedSuperadminAvatars = await this.countRowsWhere(
+        queryRunner,
+        'users',
+        `role = 'superadmin' AND "avatarUrl" IS NOT NULL`,
+      );
+      if (clearedSuperadminAvatars > 0) {
+        await queryRunner.query(
+          `UPDATE ${this.escapeTablePath('users')} SET "avatarUrl" = NULL WHERE role = 'superadmin' AND "avatarUrl" IS NOT NULL`,
+        );
+      }
+
       await queryRunner.commitTransaction();
 
       const uploadsDeleted = await this.uploadStore.clearUploads();
@@ -538,6 +579,7 @@ export class SystemDataService {
         deletedUsers,
         preservedSuperadmins,
         clearedSuperadminOrgLinks,
+        clearedSuperadminAvatars,
         deletedUploadFiles: uploadsDeleted.deletedFiles,
         deletedUploadBytes: uploadsDeleted.deletedBytes,
         warnings: uploadsDeleted.warnings,
@@ -566,6 +608,7 @@ export class SystemDataService {
           deletedUsers: result.deletedUsers,
           preservedSuperadmins: result.preservedSuperadmins.map((user) => user.email),
           clearedSuperadminOrgLinks: result.clearedSuperadminOrgLinks,
+          clearedSuperadminAvatars: result.clearedSuperadminAvatars,
           deletedUploadFiles: result.deletedUploadFiles,
           deletedUploadBytes: result.deletedUploadBytes,
           warnings: result.warnings,
@@ -631,7 +674,7 @@ export class SystemDataService {
     columns: Array<{ databaseName?: string; type?: unknown }>,
   ) {
     const key = this.normalizeTableKey(tablePath);
-    if (!key || target.has(key)) return;
+    if (!key || target.has(key) || TRANSIENT_SYSTEM_TABLE_KEYS.has(key)) return;
     target.set(key, {
       key,
       path: tablePath,
@@ -682,9 +725,15 @@ export class SystemDataService {
     return Number(rows?.[0]?.count || 0);
   }
 
-  private async countRowsWhere(queryRunner: QueryRunner, tablePath: string, whereSql: string) {
+  private async countRowsWhere(
+    queryRunner: QueryRunner,
+    tablePath: string,
+    whereSql: string,
+    params: unknown[] = [],
+  ) {
     const rows = await queryRunner.query(
       `SELECT COUNT(*) AS count FROM ${this.escapeTablePath(tablePath)} WHERE ${whereSql}`,
+      params,
     ) as Array<{ count?: string | number }>;
     return Number(rows?.[0]?.count || 0);
   }
@@ -1221,12 +1270,13 @@ export class SystemDataService {
   }
 
   private normalizeActivityImportRow(table: ManagedTable, row: Record<string, unknown>) {
-    if (table.key !== 'activities' || !Object.prototype.hasOwnProperty.call(table.columnTypes, 'executionStatus')) {
-      return row;
-    }
+    if (table.key !== 'activities') return row;
 
     const normalizedRow = { ...row };
-    normalizedRow.executionStatus = normalizedRow.executionStatus === 'cancelled' ? 'cancelled' : 'completed';
+    if (Object.prototype.hasOwnProperty.call(table.columnTypes, 'executionStatus')) {
+      normalizedRow.executionStatus = normalizedRow.executionStatus === 'cancelled' ? 'cancelled' : 'completed';
+    }
+    normalizeActivityMetrics(normalizedRow);
     return normalizedRow;
   }
 

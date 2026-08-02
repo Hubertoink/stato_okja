@@ -291,13 +291,13 @@ export default function SettingsTestData() {
             <div className="font-semibold text-gray-800">{entry.label}</div>
             <div className="text-sm text-gray-600 mt-1">{entry.description}</div>
             <div className="text-xs text-gray-500 mt-3">
-              {entry.projects}{' '}{autoT('ui_10cea68cc868')}{' '}{entry.activities}{' '}{autoT('ui_5963f7713a74')}{' '}{entry.monthsBack}{autoT('ui_1c561ae3103f')}</div>
+              {entry.projects}{' '}{autoT('ui_10cea68cc868')}{' '}{entry.activities}{' '}{autoT('ui_5963f7713a74')}{' '}{entry.monthsBack}{' '}{autoT('ui_1c561ae3103f')}</div>
           </button>
         ))}
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-        <div className="text-sm text-gray-700">{autoT('ui_bca788763dd4')}<span className="font-semibold">{selectedPreset.label}</span>: {selectedPreset.projects}{' '}{autoT('ui_ec531cafb0c1')}{' '}{selectedPreset.activities}{' '}{autoT('ui_50b8dfb643b2')}{' '}{selectedPreset.monthsBack}{autoT('ui_02610d17e92c')}</div>
+        <div className="text-sm text-gray-700">{autoT('ui_bca788763dd4')}{' '}<span className="font-semibold">{selectedPreset.label}</span>: {selectedPreset.projects}{' '}{autoT('ui_ec531cafb0c1')}{' '}{selectedPreset.activities}{' '}{autoT('ui_50b8dfb643b2')}{' '}{selectedPreset.monthsBack}{' '}{autoT('ui_02610d17e92c')}</div>
         <label className="flex items-start gap-3 text-sm text-gray-700">
           <input
             type="checkbox"

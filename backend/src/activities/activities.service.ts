@@ -13,6 +13,7 @@ import { Project } from '../projects/entities/project.entity';
 import { OrgsService } from '../orgs/orgs.service';
 import { assertOrgScopedEntityAccess, preserveOrgIdForNonSuperadmin } from '../auth/org-scope-access';
 import { ActivityListQuery, type ActivityListFilters } from './activity-list-query';
+import { normalizeActivityMetrics } from './activity-metrics';
 
 type ActivityAuditSnapshot = {
   title: string | null;
@@ -444,6 +445,8 @@ export class ActivitiesService {
       await this.applyActivityCohorts(activity, activityOrgId, cohorts);
     }
 
+    normalizeActivityMetrics(activity);
+
     const saved = await this.activityRepository.save(activity);
     await this.audit.log({
       action: AuditAction.CREATE,
@@ -532,6 +535,8 @@ export class ActivitiesService {
     if (Array.isArray(cohorts)) {
       await this.applyActivityCohorts(existing, activityOrgId, cohorts);
     }
+
+    normalizeActivityMetrics(existing);
 
     await this.activityRepository.save(existing);
     const updated = await this.findOne(id);

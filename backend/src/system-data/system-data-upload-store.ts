@@ -30,13 +30,15 @@ export type AppliedImportUploads = {
 export class SystemDataUploadStore {
   private readonly logger = new Logger(SystemDataUploadStore.name);
 
+  constructor(private readonly uploadsRoot = join(process.cwd(), 'uploads')) {}
+
   async scanUploads(): Promise<{
     files: UploadFileEntry[];
     fileCount: number;
     totalBytes: number;
     warnings: string[];
   }> {
-    const uploadsRoot = join(process.cwd(), 'uploads');
+    const uploadsRoot = this.uploadsRoot;
     const warnings: string[] = [];
     const files: UploadFileEntry[] = [];
 
@@ -87,18 +89,29 @@ export class SystemDataUploadStore {
   }
 
   async clearUploads() {
-    const uploadsRoot = join(process.cwd(), 'uploads');
+    const uploadsRoot = this.uploadsRoot;
     const scan = await this.scanUploads();
     const warnings = [...scan.warnings];
 
     try {
-      await rm(uploadsRoot, { recursive: true, force: true });
+      // The uploads directory is a Docker volume mount in production and the
+      // mount point itself cannot be removed (EBUSY). Clear its contents instead.
+      await mkdir(uploadsRoot, { recursive: true });
+      await this.clearDirectoryContents(uploadsRoot);
       await mkdir(join(uploadsRoot, 'images'), { recursive: true });
       await mkdir(join(uploadsRoot, 'project-documents'), { recursive: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown upload cleanup error';
-      warnings.push(message);
-      this.logger.warn(`Upload cleanup completed with warning: ${message}`);
+      this.logger.error(`Upload cleanup failed: ${message}`);
+      throw new InternalServerErrorException(`Upload-Dateien konnten nicht vollständig gelöscht werden: ${message}`);
+    }
+
+    const verification = await this.scanUploads();
+    warnings.push(...verification.warnings);
+    if (verification.fileCount > 0) {
+      throw new InternalServerErrorException(
+        `Upload-Dateien konnten nicht vollständig gelöscht werden (${verification.fileCount} Dateien verbleiben).`,
+      );
     }
 
     return {
@@ -133,7 +146,7 @@ export class SystemDataUploadStore {
   }
 
   async applyImportedUploads(stagedUploads: StagedImportUploads): Promise<AppliedImportUploads> {
-    const uploadsRoot = join(process.cwd(), 'uploads');
+    const uploadsRoot = this.uploadsRoot;
     const backupRoot = `${stagedUploads.sessionRoot}-uploads-backup`;
 
     try {
@@ -224,7 +237,24 @@ export class SystemDataUploadStore {
     }
 
     for (const entry of entries) {
-      await rm(join(directory, entry.name), { recursive: true, force: true });
+      await this.removeEntryWithRetry(join(directory, entry.name));
+    }
+  }
+
+  private async removeEntryWithRetry(path: string) {
+    const maxAttempts = 4;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        await rm(path, { recursive: true, force: true });
+        return;
+      } catch (error) {
+        const code = typeof error === 'object' && error && 'code' in error
+          ? String((error as { code?: string }).code || '')
+          : '';
+        const isTransient = code === 'EPERM' || code === 'EBUSY' || code === 'EMFILE' || code === 'ENFILE';
+        if (!isTransient || attempt === maxAttempts) throw error;
+        await new Promise<void>((resolve) => setTimeout(resolve, 75 * attempt));
+      }
     }
   }
 

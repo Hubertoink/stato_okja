@@ -65,6 +65,10 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import activitiesKpiIcon from '../../assets/Icons_KPI/Calendar_Icon_light.png';
+import participantsKpiIcon from '../../assets/Icons_KPI/Clients_Light.png';
+import hoursKpiIcon from '../../assets/Icons_KPI/Time_Light.png';
+import participantsPerHourKpiIcon from '../../assets/Icons_KPI/Time_RMS_light.png';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: autoT('ui_a80778b6b148'),
@@ -87,6 +91,13 @@ const DESKTOP_PROJECT_CHIP_COLLAPSE_THRESHOLD = 12;
 const DESKTOP_PROJECT_CHIP_VISIBLE_COUNT = 10;
 const MOBILE_TYPE_CHIP_VISIBLE_COUNT = 4;
 const MOBILE_PROJECT_CHIP_VISIBLE_COUNT = 5;
+
+const STATISTICS_KPI_ICONS = {
+  activities: activitiesKpiIcon,
+  participants: participantsKpiIcon,
+  participantsPerHour: participantsPerHourKpiIcon,
+  hours: hoursKpiIcon,
+} as const;
 
 const WEEKDAY_OPTIONS = [
   { value: 1, shortLabel: 'Mo', label: autoT('ui_8bb0f19f592e') },
@@ -129,7 +140,12 @@ type StatsOverviewResponse = {
   };
   byType: Array<{ type: string; count: number; totalParticipants: number }>;
   gender: { male: number; female: number; diverse: number };
-  participantsTimeseries: Array<{ date: string; totalParticipants: number; activityCount: number }>;
+  participantsTimeseries: Array<{
+    date: string;
+    totalParticipants: number;
+    activityCount: number;
+    totalDurationMinutes?: number;
+  }>;
   byCohort: Array<{
     cohortId: string;
     name: string;
@@ -913,22 +929,20 @@ export default function Statistics() {
     ? { top: 16, right: 6, left: -14, bottom: 4 }
     : { top: 20, right: 20, left: 0, bottom: 8 };
   const chartTooltipContentStyle = {
-    backgroundColor: isDarkTheme ? 'rgba(17, 26, 43, 0.96)' : 'rgba(255, 255, 255, 0.96)',
-    borderColor: isDarkTheme ? 'rgba(148, 163, 184, 0.22)' : 'rgba(15, 23, 42, 0.1)',
+    backgroundColor: 'color-mix(in srgb, var(--surface-1) 96%, transparent)',
+    borderColor: 'var(--border-strong)',
     borderRadius: '12px',
-    boxShadow: isDarkTheme ? '0 16px 36px rgba(0, 0, 0, 0.42)' : '0 10px 24px rgba(15, 23, 42, 0.14)',
-    color: isDarkTheme ? '#ecf3ff' : '#111827',
+    boxShadow: 'var(--card-shadow)',
+    color: 'var(--text-primary)',
   } as const;
   const chartTooltipLabelStyle = {
-    color: isDarkTheme ? '#c9d5eb' : '#475569',
+    color: 'var(--text-secondary)',
     fontWeight: 600,
   } as const;
   const chartTooltipItemStyle = {
-    color: isDarkTheme ? '#ecf3ff' : '#111827',
+    color: 'var(--text-primary)',
   } as const;
-  const lineChartCursor = isDarkTheme
-    ? { stroke: 'rgba(203, 213, 225, 0.75)', strokeWidth: 1, strokeDasharray: '4 4' }
-    : { stroke: 'rgba(71, 85, 105, 0.48)', strokeWidth: 1, strokeDasharray: '4 4' };
+  const lineChartCursor = { stroke: 'var(--border-strong)', strokeWidth: 1, strokeDasharray: '4 4' };
   const barChartCursor = isDarkTheme
     ? { fill: 'rgba(110, 168, 255, 0.14)' }
     : { fill: 'rgba(91, 108, 255, 0.08)' };
@@ -2582,7 +2596,7 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      <div ref={reportRef} className="">
+      <div ref={reportRef} className={pdfMode ? 'statistics-pdf-report' : ''}>
         {/* KPI Summary with Toggle */}
         <div className="flex items-center justify-end mb-4" data-pdf-section>
           <div className="stats-kpi-toggle flex items-center gap-2 rounded-lg p-1">
@@ -2606,50 +2620,64 @@ export default function Statistics() {
           className={`statistics-kpi-grid ${selectedClosureState === 'closed' ? "statistics-kpi-grid--with-closure" : ''}`}
           data-pdf-section
         >
-          <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-4xl font-bold text-viridian">
-              {showAverage
-                ? averageActivitiesPerWeek.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
-                : fmtNumber(summary?.totalActivities)}
-            </p>
-            <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? autoT('ui_a5ae4475a508') : autoT('ui_b6bf5f1a2033')}
-            </p>
+          <div className="statistics-kpi-card statistics-kpi-card--activities">
+            <img className="statistics-kpi-card-icon" src={STATISTICS_KPI_ICONS.activities} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">
+                {showAverage
+                  ? averageActivitiesPerWeek.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
+                  : fmtNumber(summary?.totalActivities)}
+              </p>
+              <p className="statistics-kpi-card-label">
+                {showAverage ? autoT('ui_a5ae4475a508') : autoT('ui_b6bf5f1a2033')}
+              </p>
+            </div>
           </div>
-          <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-4xl font-bold text-cambridge-blue">
-              {showAverage
-                ? summary?.averageParticipants?.toLocaleString('de-DE', { maximumFractionDigits: 1 })
-                : fmtNumber(summary?.totalParticipants)}
-            </p>
-            <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? autoT('ui_ce999918d5c2') : autoT('ui_a8a4d6b019af')}
-            </p>
+          <div className="statistics-kpi-card statistics-kpi-card--participants">
+            <img className="statistics-kpi-card-icon" src={STATISTICS_KPI_ICONS.participants} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">
+                {showAverage
+                  ? summary?.averageParticipants?.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+                  : fmtNumber(summary?.totalParticipants)}
+              </p>
+              <p className="statistics-kpi-card-label">
+                {showAverage ? autoT('ui_ce999918d5c2') : autoT('ui_a8a4d6b019af')}
+              </p>
+            </div>
           </div>
-          <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-4xl font-bold text-cambridge-blue">
-              {totalParticipantsPerHour.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })}
-            </p>
-            <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? autoT('ui_86f83c37babf') : autoT('ui_bb662b9cd669')}
-            </p>
+          <div className="statistics-kpi-card statistics-kpi-card--participants-per-hour">
+            <img className="statistics-kpi-card-icon" src={STATISTICS_KPI_ICONS.participantsPerHour} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">
+                {totalParticipantsPerHour.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })}
+              </p>
+              <p className="statistics-kpi-card-label">
+                {showAverage ? autoT('ui_86f83c37babf') : autoT('ui_bb662b9cd669')}
+              </p>
+            </div>
           </div>
-          <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-4xl font-bold text-viridian">
-              {showAverage
-                ? averageHoursPerActivity.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
-                : summary?.totalHours?.toLocaleString('de-DE')}
-            </p>
-            <p className="text-sm text-gray-600 mt-2">
-              {showAverage ? autoT('ui_ddd5d008e490') : autoT('ui_02f31c07bda8')}
-            </p>
+          <div className="statistics-kpi-card statistics-kpi-card--hours">
+            <img className="statistics-kpi-card-icon" src={STATISTICS_KPI_ICONS.hours} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">
+                {showAverage
+                  ? averageHoursPerActivity.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
+                  : summary?.totalHours?.toLocaleString('de-DE')}
+              </p>
+              <p className="statistics-kpi-card-label">
+                {showAverage ? autoT('ui_ddd5d008e490') : autoT('ui_02f31c07bda8')}
+              </p>
+            </div>
           </div>
           {selectedClosureState === 'closed' && (
-            <div className="statistics-kpi-card bg-white rounded-lg shadow p-6 text-center">
-              <p className="text-4xl font-bold text-amber-500">
-                {fmtNumber(summary?.closureDaysCount ?? 0)}
-              </p>
-              <p className="text-sm text-gray-600 mt-2">{autoT('ui_13c97516c9d9')}</p>
+            <div className="statistics-kpi-card statistics-kpi-card--closure">
+              <div className="statistics-kpi-card-content">
+                <p className="statistics-kpi-card-value">
+                  {fmtNumber(summary?.closureDaysCount ?? 0)}
+                </p>
+                <p className="statistics-kpi-card-label">{autoT('ui_13c97516c9d9')}</p>
+              </div>
             </div>
           )}
         </div>

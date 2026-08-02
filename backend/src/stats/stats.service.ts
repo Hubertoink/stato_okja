@@ -185,14 +185,6 @@ export class StatsService {
     return 0;
   }
 
-  /** Keep legacy activities with only a gender breakdown visible in all KPIs. */
-  private getParticipantTotalExpression() {
-    return `CASE
-      WHEN COALESCE(activity.countTotal, 0) > 0 THEN activity.countTotal
-      ELSE COALESCE(activity.countMale, 0) + COALESCE(activity.countFemale, 0) + COALESCE(activity.countDiverse, 0)
-    END`;
-  }
-
   private getOverviewCacheTtlMs() {
     const configured = Number.parseInt(process.env.STATS_OVERVIEW_CACHE_TTL_MS || '30000', 10);
     if (!Number.isFinite(configured) || configured < 0) return 30000;
@@ -351,10 +343,9 @@ export class StatsService {
         ? (await this.orgs.getClosedDatesForOrganizations(orgId, orgIds, from, to)).length
         : 0;
 
-    const participantTotalExpression = this.getParticipantTotalExpression();
     const raw = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('COUNT(*)', 'totalActivities')
-      .addSelect(`COALESCE(SUM(${participantTotalExpression}), 0)`, 'totalParticipants')
+      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
       .addSelect('COALESCE(SUM(activity.countMale), 0)', 'totalMale')
       .addSelect('COALESCE(SUM(activity.countFemale), 0)', 'totalFemale')
       .addSelect('COALESCE(SUM(activity.countDiverse), 0)', 'totalDiverse')
@@ -369,10 +360,11 @@ export class StatsService {
       }>();
 
     const totalActivities = this.toNumber(raw?.totalActivities);
-    const totalParticipants = this.toNumber(raw?.totalParticipants);
+    const recordedParticipants = this.toNumber(raw?.totalParticipants);
     const totalMale = this.toNumber(raw?.totalMale);
     const totalFemale = this.toNumber(raw?.totalFemale);
     const totalDiverse = this.toNumber(raw?.totalDiverse);
+    const totalParticipants = Math.max(recordedParticipants, totalMale + totalFemale + totalDiverse);
     const totalDurationMinutes = this.toNumber(raw?.totalDurationMinutes);
 
     return {
@@ -445,20 +437,35 @@ export class StatsService {
   }
 
   async getByType(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
-    const participantTotalExpression = this.getParticipantTotalExpression();
     const rows = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('activity.type', 'type')
       .addSelect('COUNT(*)', 'count')
-      .addSelect(`COALESCE(SUM(${participantTotalExpression}), 0)`, 'totalParticipants')
+      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
+      .addSelect('COALESCE(SUM(activity.countMale), 0)', 'totalMale')
+      .addSelect('COALESCE(SUM(activity.countFemale), 0)', 'totalFemale')
+      .addSelect('COALESCE(SUM(activity.countDiverse), 0)', 'totalDiverse')
       .groupBy('activity.type')
       .orderBy('COUNT(*)', 'DESC')
-      .getRawMany<{ type: string; count: string; totalParticipants: string }>();
+      .getRawMany<{
+        type: string;
+        count: string;
+        totalParticipants: string;
+        totalMale: string;
+        totalFemale: string;
+        totalDiverse: string;
+      }>();
 
-    return rows.map((row) => ({
-      type: row.type,
-      count: this.toNumber(row.count),
-      totalParticipants: this.toNumber(row.totalParticipants),
-    }));
+    return rows.map((row) => {
+      const genderTotal =
+        this.toNumber(row.totalMale) +
+        this.toNumber(row.totalFemale) +
+        this.toNumber(row.totalDiverse);
+      return {
+        type: row.type,
+        count: this.toNumber(row.count),
+        totalParticipants: Math.max(this.toNumber(row.totalParticipants), genderTotal),
+      };
+    });
   }
 
   async getGender(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
@@ -475,22 +482,38 @@ export class StatsService {
   }
 
   async getParticipantsTimeseries(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {
-    const participantTotalExpression = this.getParticipantTotalExpression();
     const rows = await (await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState))
       .select('activity.date', 'date')
-      .addSelect(`COALESCE(SUM(${participantTotalExpression}), 0)`, 'totalParticipants')
+      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
+      .addSelect('COALESCE(SUM(activity.countMale), 0)', 'totalMale')
+      .addSelect('COALESCE(SUM(activity.countFemale), 0)', 'totalFemale')
+      .addSelect('COALESCE(SUM(activity.countDiverse), 0)', 'totalDiverse')
       .addSelect('COUNT(*)', 'activityCount')
       .addSelect('COALESCE(SUM(activity.durationMinutes), 0)', 'totalDurationMinutes')
       .groupBy('activity.date')
       .orderBy('activity.date', 'ASC')
-      .getRawMany<{ date: string | Date; totalParticipants: string; activityCount: string; totalDurationMinutes: string }>();
+      .getRawMany<{
+        date: string | Date;
+        totalParticipants: string;
+        totalMale: string;
+        totalFemale: string;
+        totalDiverse: string;
+        activityCount: string;
+        totalDurationMinutes: string;
+      }>();
 
-    return rows.map((row) => ({
-      date: this.toCalendarDateString(row.date),
-      totalParticipants: this.toNumber(row.totalParticipants),
-      activityCount: this.toNumber(row.activityCount),
-      totalDurationMinutes: this.toNumber(row.totalDurationMinutes),
-    }));
+    return rows.map((row) => {
+      const genderTotal =
+        this.toNumber(row.totalMale) +
+        this.toNumber(row.totalFemale) +
+        this.toNumber(row.totalDiverse);
+      return {
+        date: this.toCalendarDateString(row.date),
+        totalParticipants: Math.max(this.toNumber(row.totalParticipants), genderTotal),
+        activityCount: this.toNumber(row.activityCount),
+        totalDurationMinutes: this.toNumber(row.totalDurationMinutes),
+      };
+    });
   }
 
   async getByCategory(from?: string, to?: string, orgId?: string|null, orgIds?: string[], projectId?: string, type?: string, weekdays?: number[], executionStatuses?: string[], closureState?: string) {

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState, useEffect } from 'react';
+import { Suspense, lazy, useMemo, useState, useEffect, type ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
@@ -46,6 +46,7 @@ import CustomKpiCards from '@/components/CustomKpiCards';
 import { useLogbookEntries } from '@/lib/logbook';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
+import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -63,6 +64,10 @@ import dailyLogEmptyIllustration from '../../assets/Illust_Amigos/DailyLog_Keine
 import logbookEmptyIllustration from '../../assets/Illust_Amigos/Logbuch_keineEinträge.svg';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
+const LogbookEditor = lazy(async () => {
+  const module = await import('./LogbookEntryPage');
+  return { default: module.default as ComponentType<import('./LogbookEntryPage').LogbookEntryPageProps> };
+});
 
 type DashboardRealtimeOptions = {
   refetchOnWindowFocus?: boolean | 'always';
@@ -241,6 +246,8 @@ export default function Dashboard() {
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const [dashboardTrendMode, setDashboardTrendMode] = useState<'activity' | 'efficiency'>('activity');
   const [dashboardTrendPeriod, setDashboardTrendPeriod] = useState<DashboardTrendPeriod>('year');
+  const [dashboardLogbookEntryId, setDashboardLogbookEntryId] = useState<string | null>(null);
+  const [dashboardLogbookEditId, setDashboardLogbookEditId] = useState<string | null>(null);
   const dashboardTrendRange = useMemo<DashboardTrendRange>(() => {
     const dateFormatter = new Intl.DateTimeFormat(getCurrentIntlLocale(), {
       day: 'numeric',
@@ -899,7 +906,7 @@ export default function Dashboard() {
           </div>
           <Button
             size="sm"
-            onClick={() => navigate('/logbook/new')}
+            onClick={() => navigate('/logbook/new', { state: { returnTo: '/dashboard' } })}
           >
             <Plus className="h-4 w-4" />
             {t('logbook.entry')}
@@ -918,7 +925,7 @@ export default function Dashboard() {
               <button
                 key={entry.id}
                 type="button"
-                onClick={() => navigate(`/logbook?entry=${encodeURIComponent(entry.id)}`)}
+                onClick={() => setDashboardLogbookEntryId(entry.id)}
                 className="dashboard-logbook-entry rounded-xl p-4 text-left"
               >
                 <div className="mb-1 flex items-center justify-between gap-2">
@@ -1023,7 +1030,7 @@ export default function Dashboard() {
                           setDoneMap((m) => ({ ...m, [item.id]: !next }));
                         }
                       }}
-                      className={`p-1.5 rounded-full transition-all duration-200 ${doneMap[item.id] ? "bg-accent-green/10 text-accent-green" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}
+                      className={`p-1.5 rounded-full transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-viridian/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viridian/50 ${doneMap[item.id] ? "bg-accent-green/10 text-accent-green hover:bg-accent-green/20" : "bg-gray-100 text-gray-400 hover:bg-viridian/10 hover:text-viridian"}`}
                       title={
                         doneMap[item.id] ? t('daily.markUndiscussed') : t('daily.markDiscussed')
                       }
@@ -1191,6 +1198,24 @@ export default function Dashboard() {
             onClose={() => setExportOpen(false)}
             initialFrom={currentMonthRange.from}
             initialTo={currentMonthRange.to}
+          />
+        </Suspense>
+      )}
+      <LogbookEntryFlyout
+        entryId={dashboardLogbookEntryId}
+        returnTo="/dashboard"
+        onEdit={(entryId) => {
+          setDashboardLogbookEntryId(null);
+          setDashboardLogbookEditId(entryId);
+        }}
+        onClose={() => setDashboardLogbookEntryId(null)}
+      />
+      {dashboardLogbookEditId && (
+        <Suspense fallback={null}>
+          <LogbookEditor
+            entryId={dashboardLogbookEditId}
+            returnTo="/dashboard"
+            onClose={() => setDashboardLogbookEditId(null)}
           />
         </Suspense>
       )}

@@ -20,6 +20,24 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.3.3] - 2026-08-02
+
+### Changed
+- Ferien werden im Kalender wochenübergreifend als durchgängige Wochenbänder
+  dargestellt.
+- Logbuch-Verknüpfungen zeigen die Projektfarbe und das Projektbild und führen
+  direkt zur projektbezogenen Aktivitätsansicht.
+
+### Fixed
+- PNG- und PDF-Exporte einzelner Statistikdiagramme verwenden jetzt dieselbe
+  exportkompatible Farbpalette wie der große Statistik-PDF-Export.
+- Logbuch-Einträge sowie der Bearbeitungsmodus bleiben beim Öffnen vom Dashboard
+  im Dashboard-Workflow; Schließen, Abbrechen und Speichern reißen den Nutzer
+  nicht mehr auf die Logbuchseite.
+- Die Checkboxen im Daily Log haben einen klaren Hover-Zustand.
+
+---
+
 ## [1.3.2] - 2026-08-02
 
 ### Changed

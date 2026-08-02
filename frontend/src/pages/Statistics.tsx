@@ -930,20 +930,26 @@ export default function Statistics() {
     ? { top: 16, right: 6, left: -14, bottom: 4 }
     : { top: 20, right: 20, left: 0, bottom: 8 };
   const chartTooltipContentStyle = {
-    backgroundColor: 'color-mix(in srgb, var(--surface-1) 96%, transparent)',
-    borderColor: 'var(--border-strong)',
+    // Keep chart tooltip styles in CSS2-compatible colors so html2canvas can
+    // parse them during both report and single-chart exports.
+    backgroundColor: isDarkTheme ? 'rgba(30, 34, 52, 0.96)' : 'rgba(255, 255, 255, 0.96)',
+    borderColor: isDarkTheme ? 'rgba(148, 163, 184, 0.32)' : 'rgba(107, 114, 128, 0.24)',
     borderRadius: '12px',
-    boxShadow: 'var(--card-shadow)',
-    color: 'var(--text-primary)',
+    boxShadow: isDarkTheme ? '0 10px 34px rgba(0, 0, 0, 0.38)' : '0 8px 26px rgba(76, 79, 105, 0.1)',
+    color: isDarkTheme ? '#c9d5eb' : '#374151',
   } as const;
   const chartTooltipLabelStyle = {
-    color: 'var(--text-secondary)',
+    color: chartLegendTextColor,
     fontWeight: 600,
   } as const;
   const chartTooltipItemStyle = {
-    color: 'var(--text-primary)',
+    color: chartValueLabelColor,
   } as const;
-  const lineChartCursor = { stroke: 'var(--border-strong)', strokeWidth: 1, strokeDasharray: '4 4' };
+  const lineChartCursor = {
+    stroke: isDarkTheme ? 'rgba(148, 163, 184, 0.32)' : 'rgba(107, 114, 128, 0.24)',
+    strokeWidth: 1,
+    strokeDasharray: '4 4',
+  };
   const barChartCursor = isDarkTheme
     ? { fill: 'rgba(110, 168, 255, 0.14)' }
     : { fill: 'rgba(91, 108, 255, 0.08)' };
@@ -1718,6 +1724,10 @@ export default function Statistics() {
     const exportKey = `${chartId}:${format}`;
     setActiveChartExport(exportKey);
     setExportProgress(format === 'pdf' ? autoT('ui_70aa98ab3b7d') : 'Diagramm wird als Bild aufbereitet …');
+    // Reuse the same static export palette as the full statistics PDF. The
+    // class must live on the captured node itself because html2canvas only
+    // clones that node, not its styled ancestors.
+    card.classList.add('statistics-pdf-export-card');
 
     try {
       const { JsPDF, html2canvas } = await loadPdfExportDependencies();
@@ -1772,6 +1782,7 @@ export default function Statistics() {
     } catch (error) {
       console.error('Chart export failed', error);
     } finally {
+      card.classList.remove('statistics-pdf-export-card');
       setActiveChartExport(null);
       setExportProgress(null);
     }

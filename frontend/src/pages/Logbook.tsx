@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, RotateCcw, Search, SlidersHorizontal, XCircle } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLogbookEntries } from '@/lib/logbook';
 import {
   loadLogbookFilters,
@@ -36,6 +36,7 @@ function dateBadge(t: TFunction, from?: string, to?: string) {
 
 export default function Logbook() {
   const { t } = useTranslation(['logbook', 'common']);
+  const location = useLocation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [initialFilters] = useState(loadLogbookFilters);
@@ -44,6 +45,10 @@ export default function Logbook() {
   const [filterDrawer, setFilterDrawer] = useState(false);
   const [advanced, setAdvanced] = useState<LogbookAdvancedFilters>(initialFilters.advanced);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const returnTo =
+    (location.state as { returnTo?: unknown } | null)?.returnTo === '/dashboard'
+      ? '/dashboard'
+      : '/logbook';
   const filters = useMemo(
     () => ({ search: search.trim() || undefined, ...advanced }),
     [advanced, search],
@@ -278,7 +283,8 @@ export default function Logbook() {
       />
       <LogbookEntryFlyout
         entryId={selectedEntryId}
-        onClose={() => navigate('/logbook', { replace: true })}
+        returnTo={returnTo}
+        onClose={() => navigate(returnTo, { replace: true })}
       />
     </div>
   );

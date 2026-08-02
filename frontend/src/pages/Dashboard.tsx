@@ -2,6 +2,16 @@ import { Suspense, lazy, useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
+import {
+  Area,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useAuditLogs, type AuditLog, type AuditLogAction } from '@/lib/audit';
 import {
   ChevronDown,
@@ -43,7 +53,7 @@ import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate, formatNumber } from '@/i18n/formatters';
-import { autoT } from '@/i18n/auto';
+import { isDarkThemeName } from '@/lib/theme';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
 
@@ -82,6 +92,41 @@ function useMonthSummary(
         totalHours: number;
         averageParticipants: number;
       };
+    },
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
+    refetchInterval:
+      typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
+        ? options.refetchIntervalMs
+        : false,
+  });
+}
+
+type DashboardTimeseriesPoint = {
+  date: string;
+  totalParticipants: number;
+  activityCount: number;
+  totalDurationMinutes?: number;
+};
+
+function useDashboardTimeseries(
+  year: number,
+  scopeKey: string,
+  options?: DashboardRealtimeOptions,
+) {
+  const { scope } = useOrgScope();
+  const from = `${year}-01-01`;
+  const to = `${year}-12-31`;
+  return useQuery({
+    queryKey: ['stats:dashboard-timeseries', scopeKey, from, to],
+    queryFn: async () => {
+      const res = await api.get('/stats/participants-timeseries', {
+        params: {
+          from,
+          to,
+          orgId: typeof scope === 'undefined' ? undefined : scope === null ? 'null' : scope,
+        },
+      });
+      return (Array.isArray(res.data) ? res.data : []) as DashboardTimeseriesPoint[];
     },
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchInterval:
@@ -167,7 +212,12 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const [picker, setPicker] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
+  const [dashboardTrendMode, setDashboardTrendMode] = useState<'activity' | 'efficiency'>('activity');
   const { data: summary } = useMonthSummary(year, month, scopeKey, {
+    refetchOnWindowFocus: 'always',
+    refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+  });
+  const { data: dashboardTimeseries = [] } = useDashboardTimeseries(year, scopeKey, {
     refetchOnWindowFocus: 'always',
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
@@ -289,6 +339,52 @@ export default function Dashboard() {
   const hasRecentActionEntries = recentActionGroups.some((group) => group.items.length > 0);
 
   const fmt = (n?: number) => (typeof n === 'number' ? formatNumber(n) : '0');
+  const isDarkTheme = isDarkThemeName(user?.theme);
+  const dashboardChartGridColor = isDarkTheme ? 'rgba(148, 163, 184, 0.22)' : 'rgba(107, 114, 128, 0.24)';
+  const dashboardChartAxisTick = {
+    fill: isDarkTheme ? '#99a7c2' : '#6b7280',
+    fontSize: 12,
+  } as const;
+  const dashboardChartTooltip = {
+    backgroundColor: isDarkTheme ? 'rgba(17, 26, 43, 0.96)' : 'rgba(255, 255, 255, 0.96)',
+    borderColor: isDarkTheme ? 'rgba(148, 163, 184, 0.22)' : 'rgba(15, 23, 42, 0.1)',
+    borderRadius: '12px',
+    boxShadow: isDarkTheme ? '0 16px 36px rgba(0, 0, 0, 0.42)' : '0 10px 24px rgba(15, 23, 42, 0.14)',
+    color: isDarkTheme ? '#ecf3ff' : '#111827',
+  } as const;
+  const monthlyTrend = useMemo(() => {
+    const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'short' });
+    const months = Array.from({ length: 12 }, (_, index) => ({
+      key: `${year}-${String(index + 1).padStart(2, '0')}`,
+      label: monthFormatter.format(new Date(year, index, 1)),
+      activities: 0,
+      participants: 0,
+      hours: 0,
+    }));
+
+    for (const point of dashboardTimeseries) {
+      const monthIndex = Number(point.date.slice(5, 7)) - 1;
+      if (monthIndex < 0 || monthIndex > 11) continue;
+      months[monthIndex].activities += Number(point.activityCount) || 0;
+      months[monthIndex].participants += Number(point.totalParticipants) || 0;
+      months[monthIndex].hours += (Number(point.totalDurationMinutes) || 0) / 60;
+    }
+
+    return months.map((entry) => ({
+      ...entry,
+      averageParticipants: entry.activities > 0 ? entry.participants / entry.activities : 0,
+      hours: Number(entry.hours.toFixed(1)),
+    }));
+  }, [dashboardTimeseries, year]);
+  const currentMonthTrend = monthlyTrend[month - 1] || {
+    activities: 0,
+    participants: 0,
+    averageParticipants: 0,
+    hours: 0,
+  };
+  const activeTrendLabels = dashboardTrendMode === 'activity'
+    ? { primary: t('trend.participants'), secondary: t('trend.activities') }
+    : { primary: t('trend.hours'), secondary: t('trend.average') };
   // keep date helpers only where needed; recent actions use locale string
 
   // Build Daily Log: last 5 activities in the last 14 days that have notes and/or tags
@@ -470,32 +566,113 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div className="dashboard-kpi-grid">
-        <div className="kpi-card dashboard-kpi-card">
-          <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.activities')}</h3>
-          <p className="text-3xl font-bold text-gray-800">{fmt(summary?.totalActivities)}</p>
+      {/* KPI trend */}
+      <section className="dashboard-trend-card" aria-labelledby="dashboard-trend-title">
+        <div className="dashboard-trend-card-header">
+          <div>
+            <p className="dashboard-trend-eyebrow">{t('trend.yearLabel', { year })}</p>
+            <h2 id="dashboard-trend-title" className="dashboard-trend-title">{t('trend.title')}</h2>
+          </div>
+          <div className="stats-kpi-toggle dashboard-trend-toggle" role="tablist" aria-label={t('trend.title')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={dashboardTrendMode === 'activity'}
+              className={`stats-kpi-toggle-button ${dashboardTrendMode === 'activity' ? 'stats-kpi-toggle-button-active font-medium' : ''}`}
+              onClick={() => setDashboardTrendMode('activity')}
+            >
+              {t('trend.activityMode')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={dashboardTrendMode === 'efficiency'}
+              className={`stats-kpi-toggle-button ${dashboardTrendMode === 'efficiency' ? 'stats-kpi-toggle-button-active font-medium' : ''}`}
+              onClick={() => setDashboardTrendMode('efficiency')}
+            >
+              {t('trend.efficiencyMode')}
+            </button>
+          </div>
         </div>
 
-        <div className="kpi-card dashboard-kpi-card">
-          <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.participants')}</h3>
-          <p className="text-3xl font-bold text-gray-800">{fmt(summary?.totalParticipants)}</p>
+        <div className="dashboard-trend-legend" aria-hidden="true">
+          <span>
+            <i className={`dashboard-trend-legend-dot ${dashboardTrendMode === 'activity' ? 'dashboard-trend-legend-dot--teal' : 'dashboard-trend-legend-dot--mint'}`} />
+            {activeTrendLabels.primary}
+          </span>
+          <span>
+            <i className={`dashboard-trend-legend-dot ${dashboardTrendMode === 'activity' ? 'dashboard-trend-legend-dot--blue' : 'dashboard-trend-legend-dot--purple'}`} />
+            {activeTrendLabels.secondary}
+          </span>
         </div>
 
-        <div className="kpi-card dashboard-kpi-card">
-          <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.average')}</h3>
-          <p className="text-3xl font-bold text-gray-800">
-            {typeof summary?.averageParticipants === 'number' ? formatNumber(summary.averageParticipants) : autoT('ui_b6589fc6ab0d')}
-          </p>
+        <div className="dashboard-trend-chart">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={monthlyTrend} margin={{ top: 8, right: isMobile ? 2 : 14, left: isMobile ? -18 : 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="dashboardTrendArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'} stopOpacity={0.28} />
+                  <stop offset="100%" stopColor={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke={dashboardChartGridColor} strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={dashboardChartAxisTick} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="primary" tick={dashboardChartAxisTick} tickLine={false} axisLine={false} allowDecimals={false} width={isMobile ? 28 : 38} />
+              <YAxis yAxisId="secondary" orientation="right" tick={dashboardChartAxisTick} tickLine={false} axisLine={false} allowDecimals width={isMobile ? 28 : 38} />
+              <Tooltip
+                contentStyle={dashboardChartTooltip}
+                labelStyle={{ color: isDarkTheme ? '#c9d5eb' : '#475569', fontWeight: 600 }}
+                itemStyle={{ color: isDarkTheme ? '#ecf3ff' : '#111827' }}
+                cursor={{ stroke: isDarkTheme ? 'rgba(203, 213, 225, 0.75)' : 'rgba(71, 85, 105, 0.48)', strokeDasharray: '4 4' }}
+                formatter={(value: number, name: string) => [
+                  formatNumber(value, { maximumFractionDigits: dashboardTrendMode === 'activity' ? 0 : 1 }),
+                  name,
+                ]}
+              />
+              <Area
+                yAxisId="primary"
+                type="monotone"
+                dataKey={dashboardTrendMode === 'activity' ? 'participants' : 'hours'}
+                name={activeTrendLabels.primary}
+                stroke={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'}
+                fill="url(#dashboardTrendArea)"
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5, stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
+              />
+              <Line
+                yAxisId="secondary"
+                type="monotone"
+                dataKey={dashboardTrendMode === 'activity' ? 'activities' : 'averageParticipants'}
+                name={activeTrendLabels.secondary}
+                stroke={dashboardTrendMode === 'activity' ? '#5b6cff' : '#8b5cf6'}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5, stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
 
-        <div className="kpi-card dashboard-kpi-card">
-          <h3 className="text-sm text-gray-500 font-medium mb-2">{t('kpis.hours')}</h3>
-          <p className="text-3xl font-bold text-gray-800">
-            {typeof summary?.totalHours === 'number' ? formatNumber(summary.totalHours) : autoT('ui_b6589fc6ab0d')}
-          </p>
+        <div className="dashboard-trend-summary" aria-label={t('trend.currentMonth')}>
+          <div className="dashboard-trend-summary-item">
+            <span>{t('trend.activities')}</span>
+            <strong>{fmt(summary?.totalActivities ?? currentMonthTrend.activities)}</strong>
+          </div>
+          <div className="dashboard-trend-summary-item">
+            <span>{t('trend.participants')}</span>
+            <strong>{fmt(summary?.totalParticipants ?? currentMonthTrend.participants)}</strong>
+          </div>
+          <div className="dashboard-trend-summary-item">
+            <span>{t('trend.average')}</span>
+            <strong>{formatNumber(summary?.averageParticipants ?? currentMonthTrend.averageParticipants)}</strong>
+          </div>
+          <div className="dashboard-trend-summary-item">
+            <span>{t('trend.hours')}</span>
+            <strong>{formatNumber(summary?.totalHours ?? currentMonthTrend.hours)}</strong>
+          </div>
         </div>
-      </div>
+      </section>
 
       <CustomKpiCards
         surface="dashboard"

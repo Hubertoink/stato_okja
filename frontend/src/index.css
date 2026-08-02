@@ -2432,6 +2432,143 @@ code {
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
 }
 
+.dashboard-trend-card {
+  margin-bottom: 2rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  background: var(--surface-1);
+  box-shadow: var(--card-shadow);
+}
+
+.dashboard-trend-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.dashboard-trend-eyebrow {
+  margin: 0 0 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-trend-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.dashboard-trend-toggle {
+  flex-shrink: 0;
+}
+
+.dashboard-trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0.25rem 0 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dashboard-trend-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dashboard-trend-legend-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.dashboard-trend-legend-dot--teal { background: #10b981; }
+.dashboard-trend-legend-dot--mint { background: #14b8a6; }
+.dashboard-trend-legend-dot--blue { background: #5b6cff; }
+.dashboard-trend-legend-dot--purple { background: #8b5cf6; }
+
+.dashboard-trend-chart {
+  height: 17rem;
+  margin: 0 -0.25rem;
+}
+
+.dashboard-trend-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.dashboard-trend-summary-item {
+  min-width: 0;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--interactive-soft) 42%, var(--surface-1));
+}
+
+.dashboard-trend-summary-item span,
+.dashboard-trend-summary-item strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-trend-summary-item span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dashboard-trend-summary-item strong {
+  margin-top: 0.25rem;
+  color: var(--text-primary);
+  font-size: 1.125rem;
+  font-weight: 800;
+}
+
+@media (max-width: 767px) {
+  .dashboard-trend-card {
+    padding: 1rem;
+    border-radius: 0.875rem;
+  }
+
+  .dashboard-trend-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboard-trend-toggle {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .dashboard-trend-toggle button {
+    flex: 1 0 auto;
+    white-space: nowrap;
+  }
+
+  .dashboard-trend-chart {
+    height: 14rem;
+    margin: 0 -0.5rem;
+  }
+
+  .dashboard-trend-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .theme-accent-panel {
   background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
   color: #ffffff;

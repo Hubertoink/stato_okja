@@ -50,7 +50,12 @@ type StatsOverviewResult = {
   };
   byType: Array<{ type: string; count: number; totalParticipants: number }>;
   gender: { male: number; female: number; diverse: number };
-  participantsTimeseries: Array<{ date: string; totalParticipants: number; activityCount: number }>;
+  participantsTimeseries: Array<{
+    date: string;
+    totalParticipants: number;
+    activityCount: number;
+    totalDurationMinutes: number;
+  }>;
   byCategory: Array<{ id: string; name: string; count: number }>;
   byCohort: Array<{ cohortId: string; name: string; total: number; male: number; female: number; diverse: number }>;
   topTags: Array<{ id: string; name: string; count: number }>;
@@ -464,14 +469,16 @@ export class StatsService {
       .select('activity.date', 'date')
       .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'totalParticipants')
       .addSelect('COUNT(*)', 'activityCount')
+      .addSelect('COALESCE(SUM(activity.durationMinutes), 0)', 'totalDurationMinutes')
       .groupBy('activity.date')
       .orderBy('activity.date', 'ASC')
-      .getRawMany<{ date: string | Date; totalParticipants: string; activityCount: string }>();
+      .getRawMany<{ date: string | Date; totalParticipants: string; activityCount: string; totalDurationMinutes: string }>();
 
     return rows.map((row) => ({
       date: this.toCalendarDateString(row.date),
       totalParticipants: this.toNumber(row.totalParticipants),
       activityCount: this.toNumber(row.activityCount),
+      totalDurationMinutes: this.toNumber(row.totalDurationMinutes),
     }));
   }
 

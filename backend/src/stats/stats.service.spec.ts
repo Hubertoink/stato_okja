@@ -51,6 +51,7 @@ describe('StatsService date normalization', () => {
           date: '2026-02-09',
           totalParticipants: 18,
           activityCount: 1,
+          totalDurationMinutes: 0,
         },
       ]);
     } finally {

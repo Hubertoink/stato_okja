@@ -140,7 +140,12 @@ type StatsOverviewResponse = {
   };
   byType: Array<{ type: string; count: number; totalParticipants: number }>;
   gender: { male: number; female: number; diverse: number };
-  participantsTimeseries: Array<{ date: string; totalParticipants: number; activityCount: number }>;
+  participantsTimeseries: Array<{
+    date: string;
+    totalParticipants: number;
+    activityCount: number;
+    totalDurationMinutes?: number;
+  }>;
   byCohort: Array<{
     cohortId: string;
     name: string;

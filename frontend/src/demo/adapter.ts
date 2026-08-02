@@ -277,6 +277,9 @@ function handleRequest(method: string, path: string, params: Record<string, unkn
 
   if (method === 'get' && path === '/stats/summary') return ok(demo.getDemoStatsSummary(params));
   if (method === 'get' && path === '/stats/overview') return ok(demo.getDemoStatsOverview(params));
+  if (method === 'get' && path === '/stats/participants-timeseries') {
+    return ok(demo.getDemoStatsOverview(params).participantsTimeseries);
+  }
   if (method === 'get' && path === '/stats/by-cohort') return ok(demo.getDemoStatsByCohort());
 
   if (method === 'get' && path === '/audit') return ok(demo.listDemoAuditLogs(params));

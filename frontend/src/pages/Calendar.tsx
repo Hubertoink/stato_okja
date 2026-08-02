@@ -269,6 +269,12 @@ function startOfWeek(d: Date) {
   x.setHours(0, 0, 0, 0);
   return x;
 }
+
+function isoDayNumber(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return Date.UTC(year, (month || 1) - 1, day || 1) / 86400000;
+}
+
 function getISOWeek(d: Date) {
   // ISO week: Thursday determines the week number
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -767,6 +773,22 @@ export default function Calendar() {
     const hit = schoolRanges.find((r: SchoolHolidayRange) => !(r.end < iso || r.start > iso));
     return hit?.name ?? null;
   };
+
+  const schoolHolidaySegmentsForWeek = (week: Date[]) => {
+    if (!showSchool || !schoolRanges?.length || !week.length) return [];
+    const weekStart = fmtLocalISO(week[0]);
+    const weekEnd = fmtLocalISO(week[week.length - 1]);
+    const weekStartDay = isoDayNumber(weekStart);
+
+    return schoolRanges
+      .filter((range) => !(range.end < weekStart || range.start > weekEnd))
+      .map((range) => {
+        const start = Math.max(0, isoDayNumber(range.start) - weekStartDay);
+        const end = Math.min(week.length - 1, isoDayNumber(range.end) - weekStartDay);
+        return { start, end, name: range.name };
+      })
+      .filter((segment) => segment.start <= segment.end);
+  };
   const typeLabel: Record<string, string> = {
     open_door: autoT('ui_a80778b6b148'),
     project_open: autoT('ui_00d882fbb5d4'),
@@ -1174,8 +1196,10 @@ export default function Calendar() {
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 auto-rows-auto">
-            {monthWeeks.flat().map((day, idx) => {
+          <div className="grid auto-rows-auto">
+            {monthWeeks.map((week, weekIndex) => (
+              <div key={`week-${weekIndex}`} className="relative grid grid-cols-7">
+              {week.map((day, dayIndex) => {
               const iso = fmtLocalISO(day);
               const isToday = iso === todayISO;
               const isOtherMonth = day.getMonth() !== cursor.getMonth();
@@ -1183,7 +1207,7 @@ export default function Calendar() {
               const hasSchoolHoliday = showSchool && schoolLabelFor(iso);
               return (
                 <div
-                  key={idx}
+                  key={dayIndex}
                   onClick={isMobile ? undefined : () => openActivitiesForDate(iso)}
                   className={`calendar-day-cell group relative min-h-[6.25rem] md:min-h-[8rem] border p-1 text-left transition-colors ${!isMobile ? "cursor-pointer" : ''} ${
                     isOtherMonth
@@ -1251,12 +1275,7 @@ export default function Calendar() {
                   )}
                   {/* School holiday band */}
                   {hasSchoolHoliday && (
-                    <div
-                      className="calendar-school-badge w-full h-3.5 rounded-sm border text-[9px] md:text-[10px] overflow-hidden px-1 mb-0.5"
-                      title={schoolLabelFor(iso) || undefined}
-                    >
-                      <span className="truncate inline-block align-top leading-[14px]">{schoolLabelFor(iso)}</span>
-                    </div>
+                    <div className="mb-0.5 h-3.5" aria-hidden="true" />
                   )}
                   {renderClosureBadge(iso, true)}
                   {renderEntries(
@@ -1265,7 +1284,22 @@ export default function Calendar() {
                   )}
                 </div>
               );
-            })}
+              })}
+              {schoolHolidaySegmentsForWeek(week).map((segment) => (
+                <div
+                  key={`${segment.name}-${segment.start}-${segment.end}`}
+                  className="calendar-school-badge pointer-events-none absolute top-8 z-[4] h-3.5 overflow-hidden rounded-sm border px-1 text-[9px] leading-[14px] md:text-[10px]"
+                  style={{
+                    left: `${(segment.start / 7) * 100}%`,
+                    width: `${((segment.end - segment.start + 1) / 7) * 100}%`,
+                  }}
+                  title={segment.name}
+                >
+                  <span className="truncate">{segment.name}</span>
+                </div>
+              ))}
+              </div>
+            ))}
           </div>
         </div>
         </DemoHoverHint>

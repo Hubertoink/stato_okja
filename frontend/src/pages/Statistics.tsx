@@ -26,6 +26,7 @@ import { FileDown, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, Chevron
 import Modal from '@/components/Modal';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import ProtectedImage from '@/components/ProtectedImage';
+import { useToast } from '@/components/Toast';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import { usePublicConfig } from '@/lib/publicConfig';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
@@ -567,7 +568,10 @@ export default function Statistics() {
   const [reportExportOpen, setReportExportOpen] = useState(false);
   const [includeActivitiesInPdf, setIncludeActivitiesInPdf] = useState(false);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
+  const [isExportInProgress, setIsExportInProgress] = useState(false);
+  const exportInProgressRef = useRef(false);
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const { data: publicConfig } = usePublicConfig();
@@ -1368,6 +1372,22 @@ export default function Statistics() {
     return fetchAllActivities(activitiesParams, scope);
   };
 
+  const beginExport = () => {
+    if (exportInProgressRef.current) {
+      showToast('Ein Export wird bereits erstellt.', { type: 'info' });
+      return false;
+    }
+
+    exportInProgressRef.current = true;
+    setIsExportInProgress(true);
+    return true;
+  };
+
+  const finishExport = () => {
+    exportInProgressRef.current = false;
+    setIsExportInProgress(false);
+  };
+
   const exportActivitiesAsExcel = async (activities: Activity[]) => {
     setExportProgress(autoT('ui_fdc6078908bb'));
     await new Promise(requestAnimationFrame);
@@ -1772,10 +1792,13 @@ export default function Statistics() {
   };
 
   async function exportActivitiesTable(format: ActivitiesExportFormat) {
+    if (!beginExport()) return;
+
     setActiveActivitiesExport(format);
     setExportProgress(autoT('ui_cde99ee62070'));
 
     try {
+      await new Promise(requestAnimationFrame);
       const activities = await fetchAllFilteredActivities();
       if (format === 'xlsx') {
         await exportActivitiesAsExcel(activities);
@@ -1785,30 +1808,44 @@ export default function Statistics() {
       await exportActivitiesAsPdf(activities);
     } catch (error) {
       console.error('Activities export failed', error);
+      showToast('Die Aktivitätenliste konnte nicht exportiert werden. Bitte erneut versuchen.', {
+        type: 'error',
+        durationMs: 5000,
+      });
     } finally {
       setActiveActivitiesExport(null);
       setExportProgress(null);
+      finishExport();
     }
   }
 
   async function exportControllingData() {
+    if (!beginExport()) return;
+
     setIsControllingExporting(true);
     setExportProgress(autoT('ui_cde99ee62070'));
 
     try {
+      await new Promise(requestAnimationFrame);
       const activities = await fetchAllFilteredActivities();
       await exportControllingDataAsExcel(activities);
     } catch (error) {
       console.error('Controlling export failed', error);
+      showToast('Der Controlling-Export konnte nicht erstellt werden. Bitte erneut versuchen.', {
+        type: 'error',
+        durationMs: 5000,
+      });
     } finally {
       setIsControllingExporting(false);
       setExportProgress(null);
+      finishExport();
     }
   }
 
   async function exportChart(chartId: string, chartTitle: string, format: ChartExportFormat) {
     const card = chartCardRefs.current[chartId];
     if (!card) return;
+    if (!beginExport()) return;
 
     const exportKey = `${chartId}:${format}`;
     setActiveChartExport(exportKey);
@@ -1870,15 +1907,20 @@ export default function Statistics() {
       pdf.save(getChartFileName(chartTitle, 'pdf'));
     } catch (error) {
       console.error('Chart export failed', error);
+      showToast('Das Diagramm konnte nicht exportiert werden. Bitte erneut versuchen.', {
+        type: 'error',
+        durationMs: 5000,
+      });
     } finally {
       card.classList.remove('statistics-pdf-export-card');
       setActiveChartExport(null);
       setExportProgress(null);
+      finishExport();
     }
   }
 
   const renderChartExportActions = (chartId: string, chartTitle: string) => {
-    const isExporting = activeChartExport?.startsWith(`${chartId}:`) ?? false;
+    const isExporting = isExportInProgress || (activeChartExport?.startsWith(`${chartId}:`) ?? false);
 
     return (
       <StatisticsExportActions
@@ -1902,7 +1944,7 @@ export default function Statistics() {
   };
 
   const renderActivitiesExportActions = () => {
-    const isExporting = activeActivitiesExport !== null;
+    const isExporting = isExportInProgress || activeActivitiesExport !== null;
 
     return (
       <StatisticsExportActions
@@ -1928,8 +1970,17 @@ export default function Statistics() {
   async function exportPdf(includeActivities: boolean) {
     // Render the report container to images and assemble into a PDF (A4 portrait)
     if (!reportRef.current) return;
+    if (!beginExport()) return;
 
     try {
+      setExportProgress(
+        includeActivities
+          ? 'Aktivitäten werden geladen. Das kann bei großen Datenmengen etwas dauern …'
+          : 'PDF-Bericht wird vorbereitet …',
+      );
+      // Give React a frame to render the blocking progress dialog before the
+      // paginated requests begin. This prevents accidental parallel exports.
+      await new Promise(requestAnimationFrame);
       const activitiesForPdf = includeActivities ? await fetchAllFilteredActivities() : [];
       setPdfMode(true);
       setExportProgress(autoT('ui_c49a3f591c68'));
@@ -1992,9 +2043,16 @@ export default function Statistics() {
       setExportProgress(autoT('ui_0acf469c6a6c'));
       await new Promise(requestAnimationFrame);
       pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
+    } catch (error) {
+      console.error('Statistics PDF export failed', error);
+      showToast('Der PDF-Bericht konnte nicht erstellt werden. Bitte erneut versuchen.', {
+        type: 'error',
+        durationMs: 5000,
+      });
     } finally {
       setPdfMode(false);
       setExportProgress(null);
+      finishExport();
     }
   }
 
@@ -2161,7 +2219,8 @@ export default function Statistics() {
                       <SlidersHorizontal className="h-4 w-4" />{autoT('ui_dc3decbb9384')}</button>
                     <button
                       type="button"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian disabled:cursor-wait disabled:opacity-60"
+                      disabled={isExportInProgress}
                       onClick={() => setReportExportOpen(true)}
                       title={autoT('ui_8dbb5c1c7f40')}
                     >
@@ -2504,7 +2563,8 @@ export default function Statistics() {
                 <div className="flex items-center gap-2 sm:ml-0">
                   <button
                     type="button"
-                    className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation"
+                    className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation disabled:cursor-wait disabled:opacity-60"
+                    disabled={isExportInProgress}
                     onClick={() => setReportExportOpen(true)}
                     title={autoT('ui_4e4a0d7117ee')}
                   >
@@ -3418,7 +3478,8 @@ export default function Statistics() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <button
               type="button"
-              className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50"
+              className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60"
+              disabled={isExportInProgress}
               onClick={() => { setReportExportOpen(false); void exportPdf(includeActivitiesInPdf); }}
             >
               <div className="font-semibold text-gray-900">{autoT('ui_104827f9e0c7')}</div>
@@ -3426,7 +3487,8 @@ export default function Statistics() {
             </button>
             <button
               type="button"
-              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green"
+              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-wait disabled:opacity-60"
+              disabled={isExportInProgress}
               onClick={() => { setReportExportOpen(false); void exportActivitiesTable('xlsx'); }}
             >
               <div className="font-semibold text-viridian">{autoT('ui_db0d32742b50')}</div>
@@ -3435,7 +3497,7 @@ export default function Statistics() {
             <button
               type="button"
               className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-wait disabled:opacity-60"
-              disabled={isControllingExporting}
+              disabled={isExportInProgress || isControllingExporting}
               onClick={() => { setReportExportOpen(false); void exportControllingData(); }}
             >
               <div className="font-semibold text-viridian">{autoT('ui_601dd4ee44ea')}</div>

@@ -20,6 +20,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.3.2] - 2026-08-02
+
+### Changed
+- Auswahl-Buttons für Zeiträume, Ansichten und Statistikbereiche verwenden jetzt
+  eine gemeinsame, animierte Darstellung mit lesbarem Hover-Zustand.
+
+### Fixed
+- Der Backend-Produktionscontainer verwendet für `brace-expansion` ausschließlich
+  eine gegen CVE-2026-14257 gepatchte Version.
+
+---
+
 ## [1.3.1] - 2026-08-02
 
 ### Added

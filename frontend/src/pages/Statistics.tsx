@@ -62,6 +62,7 @@ import { StatisticsExportActions } from './StatisticsExportActions';
 import { StatisticsPieChartCard } from './StatisticsPieChartCard';
 import CustomKpiCards from '@/components/CustomKpiCards';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
@@ -2066,26 +2067,15 @@ export default function Statistics() {
                   <div className={`space-y-5 border-t pt-4 ${mobileDividerClass}`}>
                     <section className="space-y-3">
                       <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${mobileLabelTextClass}`}>{autoT('ui_fe359159c8ad')}</div>
-                      <div className={`inline-flex items-center rounded-xl p-1 ${mobileMutedSurfaceClass}`}>
-                        <button
-                          type="button"
-                          className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                            filterMode === 'year' && !isCustomRange
-                              ? "bg-white shadow text-viridian font-medium"
-                              : `${mobileSecondaryTextClass} hover:text-viridian`
-                          }`}
-                          onClick={switchToYearView}
-                        >{autoT('ui_956a6e5ab6c7')}</button>
-                        <button
-                          type="button"
-                          className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                            filterMode === 'month' && !isCustomRange
-                              ? "bg-white shadow text-viridian font-medium"
-                              : `${mobileSecondaryTextClass} hover:text-viridian`
-                          }`}
-                          onClick={switchToMonthView}
-                        >{autoT('ui_da13625eeb37')}</button>
-                      </div>
+                      <SegmentedControl<'year' | 'month'>
+                        ariaLabel={autoT('ui_fe359159c8ad')}
+                        onChange={(mode) => mode === 'year' ? switchToYearView() : switchToMonthView()}
+                        options={[
+                          { value: 'year', label: autoT('ui_956a6e5ab6c7') },
+                          { value: 'month', label: autoT('ui_da13625eeb37') },
+                        ]}
+                        value={filterMode}
+                      />
 
                       {filterMode === 'month' && !isCustomRange ? (
                         <>
@@ -2326,26 +2316,16 @@ export default function Statistics() {
           return (
             <>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
-                <div className="flex items-center bg-gray-100 rounded-lg p-1 self-start">
-                  <button
-                    type="button"
-                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                      filterMode === 'year' && !isCustomRange
-                        ? "bg-white shadow text-viridian font-medium"
-                        : "text-gray-600 hover:text-gray-800"
-                    }`}
-                    onClick={switchToYearView}
-                  >{autoT('ui_956a6e5ab6c7')}</button>
-                  <button
-                    type="button"
-                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                      filterMode === 'month' && !isCustomRange
-                        ? "bg-white shadow text-viridian font-medium"
-                        : "text-gray-600 hover:text-gray-800"
-                    }`}
-                    onClick={switchToMonthView}
-                  >{autoT('ui_da13625eeb37')}</button>
-                </div>
+                <SegmentedControl<'year' | 'month'>
+                  ariaLabel={autoT('ui_fe359159c8ad')}
+                  className="self-start"
+                  onChange={(mode) => mode === 'year' ? switchToYearView() : switchToMonthView()}
+                  options={[
+                    { value: 'year', label: autoT('ui_956a6e5ab6c7') },
+                    { value: 'month', label: autoT('ui_da13625eeb37') },
+                  ]}
+                  value={filterMode}
+                />
 
                 <div className="flex items-center gap-2 flex-wrap">
                   {filterMode === 'month' && !isCustomRange ? (
@@ -2374,31 +2354,15 @@ export default function Statistics() {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <button
-                        type="button"
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
-                          !selectedYear && !isCustomRange
-                            ? "bg-viridian text-white"
-                            : "bg-gray-100 hover:bg-gray-200 text-gray-800"
-                        }`}
-                        onClick={() => selectYear('')}
-                      >{autoT('ui_4c7a986ffe2b')}</button>
-                      {activityYears.map((y) => (
-                        <button
-                          key={y}
-                          type="button"
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
-                            selectedYear === y && !isCustomRange
-                              ? "bg-viridian text-white"
-                              : "bg-gray-100 hover:bg-gray-200 text-gray-800"
-                          }`}
-                          onClick={() => selectYear(y)}
-                        >
-                          {y}
-                        </button>
-                      ))}
-                    </div>
+                    <SegmentedControl
+                      ariaLabel={autoT('ui_a0ee12af77e5')}
+                      onChange={selectYear}
+                      options={[
+                        { value: '', label: autoT('ui_4c7a986ffe2b') },
+                        ...activityYears.map((year) => ({ value: year, label: year })),
+                      ]}
+                      value={selectedYear}
+                    />
                   )}
                 </div>
 
@@ -2599,22 +2563,15 @@ export default function Statistics() {
       <div ref={reportRef} className={pdfMode ? 'statistics-pdf-report' : ''}>
         {/* KPI Summary with Toggle */}
         <div className="flex items-center justify-end mb-4" data-pdf-section>
-          <div className="stats-kpi-toggle flex items-center gap-2 rounded-lg p-1">
-            <button
-              type="button"
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                !showAverage ? "stats-kpi-toggle-button-active font-medium" : "stats-kpi-toggle-button"
-              }`}
-              onClick={() => setShowAverage(false)}
-            >{autoT('ui_ffa660db79fb')}</button>
-            <button
-              type="button"
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                showAverage ? "stats-kpi-toggle-button-active font-medium" : "stats-kpi-toggle-button"
-              }`}
-              onClick={() => setShowAverage(true)}
-            >{autoT('ui_388b22eb70db')}</button>
-          </div>
+          <SegmentedControl<'absolute' | 'average'>
+            ariaLabel={`${autoT('ui_ffa660db79fb')} / ${autoT('ui_388b22eb70db')}`}
+            onChange={(mode) => setShowAverage(mode === 'average')}
+            options={[
+              { value: 'absolute', label: autoT('ui_ffa660db79fb') },
+              { value: 'average', label: autoT('ui_388b22eb70db') },
+            ]}
+            value={showAverage ? 'average' : 'absolute'}
+          />
         </div>
         <div
           className={`statistics-kpi-grid ${selectedClosureState === 'closed' ? "statistics-kpi-grid--with-closure" : ''}`}
@@ -2749,32 +2706,16 @@ export default function Statistics() {
                   'participants-trend',
                   showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5'),
                 )}
-                <div className="stats-kpi-toggle flex items-center gap-1 rounded-lg p-1">
-                  <button
-                    onClick={() => setTimeAggregation('day')}
-                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                      timeAggregation === 'day'
-                        ? "stats-kpi-toggle-button-active font-medium"
-                        : "stats-kpi-toggle-button"
-                    }`}
-                  >{autoT('ui_982963c1c41c')}</button>
-                  <button
-                    onClick={() => setTimeAggregation('week')}
-                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                      timeAggregation === 'week'
-                        ? "stats-kpi-toggle-button-active font-medium"
-                        : "stats-kpi-toggle-button"
-                    }`}
-                  >{autoT('ui_7b2207dc85a6')}</button>
-                  <button
-                    onClick={() => setTimeAggregation('month')}
-                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
-                      timeAggregation === 'month'
-                        ? "stats-kpi-toggle-button-active font-medium"
-                        : "stats-kpi-toggle-button"
-                    }`}
-                  >{autoT('ui_da13625eeb37')}</button>
-                </div>
+                <SegmentedControl<'day' | 'week' | 'month'>
+                  ariaLabel={autoT('ui_3b658714e6c5')}
+                  onChange={setTimeAggregation}
+                  options={[
+                    { value: 'day', label: autoT('ui_982963c1c41c') },
+                    { value: 'week', label: autoT('ui_7b2207dc85a6') },
+                    { value: 'month', label: autoT('ui_da13625eeb37') },
+                  ]}
+                  value={timeAggregation}
+                />
               </div>
             </div>
             <div className="h-64">

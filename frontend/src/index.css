@@ -2493,6 +2493,13 @@ code {
   margin-bottom: 0.75rem;
 }
 
+.dashboard-trend-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .dashboard-trend-eyebrow {
   margin: 0 0 0.25rem;
   color: var(--text-muted);
@@ -2517,6 +2524,39 @@ code {
   border: 1px solid var(--border-subtle);
   border-radius: 0.875rem;
   background: color-mix(in srgb, var(--interactive-soft) 50%, var(--surface-1));
+}
+
+.dashboard-trend-period-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.875rem;
+  background: color-mix(in srgb, var(--interactive-soft) 34%, var(--surface-1));
+}
+
+.dashboard-trend-period-button {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.65rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.dashboard-trend-period-button:hover {
+  color: var(--text-primary);
+}
+
+.dashboard-trend-period-button--active {
+  background: var(--viridian);
+  color: #ffffff;
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--viridian) 28%, transparent);
 }
 
 .dashboard-trend-toggle-button {
@@ -2646,6 +2686,19 @@ code {
   .dashboard-trend-toggle {
     width: 100%;
     overflow-x: auto;
+  }
+
+  .dashboard-trend-controls {
+    display: grid;
+    width: 100%;
+  }
+
+  .dashboard-trend-period-toggle {
+    width: 100%;
+  }
+
+  .dashboard-trend-period-button {
+    flex: 1 1 0;
   }
 
   .dashboard-trend-toggle-button {

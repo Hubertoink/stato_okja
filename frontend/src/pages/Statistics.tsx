@@ -929,22 +929,20 @@ export default function Statistics() {
     ? { top: 16, right: 6, left: -14, bottom: 4 }
     : { top: 20, right: 20, left: 0, bottom: 8 };
   const chartTooltipContentStyle = {
-    backgroundColor: isDarkTheme ? 'rgba(17, 26, 43, 0.96)' : 'rgba(255, 255, 255, 0.96)',
-    borderColor: isDarkTheme ? 'rgba(148, 163, 184, 0.22)' : 'rgba(15, 23, 42, 0.1)',
+    backgroundColor: 'color-mix(in srgb, var(--surface-1) 96%, transparent)',
+    borderColor: 'var(--border-strong)',
     borderRadius: '12px',
-    boxShadow: isDarkTheme ? '0 16px 36px rgba(0, 0, 0, 0.42)' : '0 10px 24px rgba(15, 23, 42, 0.14)',
-    color: isDarkTheme ? '#ecf3ff' : '#111827',
+    boxShadow: 'var(--card-shadow)',
+    color: 'var(--text-primary)',
   } as const;
   const chartTooltipLabelStyle = {
-    color: isDarkTheme ? '#c9d5eb' : '#475569',
+    color: 'var(--text-secondary)',
     fontWeight: 600,
   } as const;
   const chartTooltipItemStyle = {
-    color: isDarkTheme ? '#ecf3ff' : '#111827',
+    color: 'var(--text-primary)',
   } as const;
-  const lineChartCursor = isDarkTheme
-    ? { stroke: 'rgba(203, 213, 225, 0.75)', strokeWidth: 1, strokeDasharray: '4 4' }
-    : { stroke: 'rgba(71, 85, 105, 0.48)', strokeWidth: 1, strokeDasharray: '4 4' };
+  const lineChartCursor = { stroke: 'var(--border-strong)', strokeWidth: 1, strokeDasharray: '4 4' };
   const barChartCursor = isDarkTheme
     ? { fill: 'rgba(110, 168, 255, 0.14)' }
     : { fill: 'rgba(91, 108, 255, 0.08)' };

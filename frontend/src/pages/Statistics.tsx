@@ -65,10 +65,10 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
-import activitiesKpiIcon from '../../assets/Icons_KPI/Calendar_Icon_light.png';
-import participantsKpiIcon from '../../assets/Icons_KPI/Clients_Light.png';
-import hoursKpiIcon from '../../assets/Icons_KPI/Time_Light.png';
-import participantsPerHourKpiIcon from '../../assets/Icons_KPI/Time_RMS_light.png';
+import activitiesKpiIcon from '../../assets/Illust_Amigos/Aktivitäten.svg';
+import participantsKpiIcon from '../../assets/Illust_Amigos/Teilnehmende.svg';
+import hoursKpiIcon from '../../assets/Illust_Amigos/Stunden.svg';
+import participantsPerHourKpiIcon from '../../assets/Illust_Amigos/proAktivität.svg';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: autoT('ui_a80778b6b148'),

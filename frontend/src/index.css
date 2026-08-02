@@ -2285,6 +2285,14 @@ code {
   filter: saturate(0.92);
 }
 
+.empty-state-illustration {
+  display: block;
+  width: min(9rem, 48%);
+  height: 7rem;
+  margin: 0 auto 0.5rem;
+  object-fit: contain;
+}
+
 .statistics-kpi-card-content {
   position: relative;
   z-index: 1;
@@ -2769,6 +2777,34 @@ code {
     background-color 150ms ease,
     border-color 150ms ease,
     transform 150ms ease;
+}
+
+.dashboard-illustrated-surface {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.dashboard-illustrated-surface > :not(.dashboard-section-illustration) {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-section-illustration {
+  position: absolute;
+  z-index: 0;
+  right: -1.5rem;
+  bottom: -2.25rem;
+  width: min(22rem, 42%);
+  height: 15rem;
+  object-fit: contain;
+  opacity: 0.09;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dashboard-section-empty-state .empty-state-illustration {
+  height: 6.5rem;
 }
 
 .dashboard-logbook-entry:hover,

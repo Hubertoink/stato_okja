@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState, useEffect } from 'react';
+import { Suspense, lazy, useMemo, useState, useEffect, type ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
@@ -64,6 +64,10 @@ import dailyLogEmptyIllustration from '../../assets/Illust_Amigos/DailyLog_Keine
 import logbookEmptyIllustration from '../../assets/Illust_Amigos/Logbuch_keineEinträge.svg';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
+const LogbookEditor = lazy(async () => {
+  const module = await import('./LogbookEntryPage');
+  return { default: module.default as ComponentType<import('./LogbookEntryPage').LogbookEntryPageProps> };
+});
 
 type DashboardRealtimeOptions = {
   refetchOnWindowFocus?: boolean | 'always';
@@ -243,6 +247,7 @@ export default function Dashboard() {
   const [dashboardTrendMode, setDashboardTrendMode] = useState<'activity' | 'efficiency'>('activity');
   const [dashboardTrendPeriod, setDashboardTrendPeriod] = useState<DashboardTrendPeriod>('year');
   const [dashboardLogbookEntryId, setDashboardLogbookEntryId] = useState<string | null>(null);
+  const [dashboardLogbookEditId, setDashboardLogbookEditId] = useState<string | null>(null);
   const dashboardTrendRange = useMemo<DashboardTrendRange>(() => {
     const dateFormatter = new Intl.DateTimeFormat(getCurrentIntlLocale(), {
       day: 'numeric',
@@ -1199,8 +1204,21 @@ export default function Dashboard() {
       <LogbookEntryFlyout
         entryId={dashboardLogbookEntryId}
         returnTo="/dashboard"
+        onEdit={(entryId) => {
+          setDashboardLogbookEntryId(null);
+          setDashboardLogbookEditId(entryId);
+        }}
         onClose={() => setDashboardLogbookEntryId(null)}
       />
+      {dashboardLogbookEditId && (
+        <Suspense fallback={null}>
+          <LogbookEditor
+            entryId={dashboardLogbookEditId}
+            returnTo="/dashboard"
+            onClose={() => setDashboardLogbookEditId(null)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

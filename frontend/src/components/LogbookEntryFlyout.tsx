@@ -93,10 +93,12 @@ function getErrorMessage(error: unknown, fallback: string) {
 export default function LogbookEntryFlyout({
   entryId,
   onClose,
+  onEdit,
   returnTo = '/logbook',
 }: {
   entryId: string | null;
   onClose: () => void;
+  onEdit?: (entryId: string) => void;
   returnTo?: string;
 }) {
   const open = !!entryId;
@@ -208,10 +210,16 @@ export default function LogbookEntryFlyout({
               </div>
             )}
             {canManage && !archived && entry && (
-              <IconButton
-                variant="secondary"
-                className="logbook-edit-button"
-                onClick={() => navigate(`/logbook/${entry.id}/edit`, { state: { returnTo } })}
+                <IconButton
+                  variant="secondary"
+                  className="logbook-edit-button"
+                  onClick={() => {
+                    if (onEdit) {
+                      onEdit(entry.id);
+                    } else {
+                      navigate(`/logbook/${entry.id}/edit`, { state: { returnTo } });
+                    }
+                  }}
                 aria-label={autoT('ui_104f3bfdc340')}
                 title={autoT('ui_104f3bfdc340')}
               >

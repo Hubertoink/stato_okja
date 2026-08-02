@@ -206,19 +206,33 @@ function ActivityPickerModal({
   );
 }
 
-export default function LogbookEntryPage() {
-  const { id } = useParams<{ id: string }>();
+export type LogbookEntryPageProps = {
+  entryId?: string;
+  returnTo?: string;
+  onClose?: () => void;
+};
+
+export default function LogbookEntryPage(props: unknown = {}) {
+  const {
+    entryId: embeddedEntryId,
+    returnTo: embeddedReturnTo,
+    onClose: embeddedOnClose,
+  } = (props ?? {}) as LogbookEntryPageProps;
+  const { id: routeEntryId } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const [search] = useSearchParams();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const id = embeddedEntryId ?? routeEntryId;
   const isNew = !id;
-  const returnTo =
-    (location.state as { returnTo?: unknown } | null)?.returnTo === '/dashboard'
+  const returnTo = embeddedReturnTo ??
+    ((location.state as { returnTo?: unknown } | null)?.returnTo === '/dashboard'
       ? '/dashboard'
-      : '/logbook';
-  const [editing, setEditing] = useState(isNew || location.pathname.endsWith('/edit'));
+      : '/logbook');
+  const [editing, setEditing] = useState(
+    isNew || !!embeddedEntryId || location.pathname.endsWith('/edit'),
+  );
   useBodyScrollLock(editing);
   const [form, setForm] = useState<FormState>(() => emptyForm(search));
   const [comment, setComment] = useState('');
@@ -261,8 +275,16 @@ export default function LogbookEntryPage() {
   }, [entry]);
 
   useEffect(() => {
-    if (!isNew) setEditing(location.pathname.endsWith('/edit'));
-  }, [isNew, location.pathname]);
+    if (!isNew) setEditing(!!embeddedEntryId || location.pathname.endsWith('/edit'));
+  }, [embeddedEntryId, isNew, location.pathname]);
+
+  const closeEditor = (destination?: string) => {
+    if (embeddedOnClose) {
+      embeddedOnClose();
+      return;
+    }
+    navigate(destination ?? returnTo);
+  };
 
   const canManage =
     !!entry &&
@@ -296,21 +318,29 @@ export default function LogbookEntryPage() {
       if (isNew) {
         const created = await create.mutateAsync(formPayload);
         showToast(autoT('ui_bfeed61d0034'), { type: 'success' });
-        navigate(
-          returnTo === '/dashboard'
-            ? returnTo
-            : `/logbook?entry=${encodeURIComponent(created.id)}`,
-          { replace: true },
-        );
+        if (embeddedOnClose) {
+          embeddedOnClose();
+        } else {
+          navigate(
+            returnTo === '/dashboard'
+              ? returnTo
+              : `/logbook?entry=${encodeURIComponent(created.id)}`,
+            { replace: true },
+          );
+        }
       } else if (id) {
         await update.mutateAsync({ id, data: formPayload });
         showToast(autoT('ui_e1bd2c4575ee'), { type: 'success' });
-        navigate(
-          returnTo === '/dashboard'
-            ? returnTo
-            : `/logbook?entry=${encodeURIComponent(id)}`,
-          { replace: true },
-        );
+        if (embeddedOnClose) {
+          embeddedOnClose();
+        } else {
+          navigate(
+            returnTo === '/dashboard'
+              ? returnTo
+              : `/logbook?entry=${encodeURIComponent(id)}`,
+            { replace: true },
+          );
+        }
       }
     } catch (error: unknown) {
       showToast(getErrorMessage(error, autoT('ui_81128854f3b0')), {
@@ -386,11 +416,13 @@ export default function LogbookEntryPage() {
               type="button"
               aria-label={autoT('ui_e3bdcc71200e')}
               onClick={() =>
-                navigate(
-                  isNew || returnTo === '/dashboard'
-                    ? returnTo
-                    : `/logbook?entry=${encodeURIComponent(id || '')}`,
-                )
+                embeddedOnClose
+                  ? embeddedOnClose()
+                  : closeEditor(
+                      isNew || returnTo === '/dashboard'
+                        ? returnTo
+                        : `/logbook?entry=${encodeURIComponent(id || '')}`,
+                    )
               }
               className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
             >
@@ -571,9 +603,13 @@ export default function LogbookEntryPage() {
               <button
                 type="button"
                 onClick={() =>
-                  isNew || returnTo === '/dashboard'
-                    ? navigate(returnTo)
-                    : navigate(`/logbook?entry=${encodeURIComponent(id || '')}`)
+                  embeddedOnClose
+                    ? embeddedOnClose()
+                    : closeEditor(
+                        isNew || returnTo === '/dashboard'
+                          ? returnTo
+                          : `/logbook?entry=${encodeURIComponent(id || '')}`,
+                      )
                 }
                 className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
               >{autoT('ui_07af7cb30fca')}</button>

@@ -351,7 +351,7 @@ function SurveyOverview({
                     className={`group cursor-pointer border-b border-[var(--border-subtle)] last:border-0 ${round.id === selectedRoundId ? "bg-[var(--interactive-soft)]" : "hover:bg-[var(--surface-2)]"}`}
                     onClick={() => onSelectRound(round.id)}
                   >
-                    <td className="px-2 py-3 font-medium">{autoT('ui_101d931d6b66')}{round.roundNumber || 1}
+                    <td className="px-2 py-3 font-medium">{autoT('ui_101d931d6b66')} {round.roundNumber || 1}
                       {formatRoundMonthYear(round) ? (
                         <span className="ml-1 whitespace-nowrap text-xs font-normal text-[var(--text-secondary)]">
                           ({formatRoundMonthYear(round)})
@@ -379,7 +379,7 @@ function SurveyOverview({
               <div>
                 <QrCode className="mx-auto mb-2 h-5 w-5 text-viridian" />
                 <h2 className="font-semibold text-viridian">{autoT('ui_187917d94802')}</h2>
-                <p className="mt-1 text-xs text-[var(--text-secondary)]">{autoT('ui_101d931d6b66')}{survey.roundNumber || 1}
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">{autoT('ui_101d931d6b66')} {survey.roundNumber || 1}
                 </p>
               </div>
               <StatisticsExportActions
@@ -851,7 +851,7 @@ export default function SurveyDetail() {
             onChange={(event) => setSelectedRoundId(event.target.value)}
           >
             {rounds.map((round) => (
-              <option key={round.id} value={round.id}>{autoT('ui_101d931d6b66')}{round.roundNumber || 1} ·{' '}
+              <option key={round.id} value={round.id}>{autoT('ui_101d931d6b66')} {round.roundNumber || 1} ·{' '}
                 {formatDate(round.closedAt || round.startsAt || null)} · {round.responsesCount}{' '}{autoT('ui_062c3d5e1537')}</option>
             ))}
           </Select>

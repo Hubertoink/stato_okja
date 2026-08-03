@@ -234,8 +234,9 @@ export default function ActivityCreatePage() {
 
   // Die Aktionen bleiben im normalen Dokumentfluss, damit die Tastatur das Layout nicht überdeckt.
   const containerPad = 'pb-[env(safe-area-inset-bottom,0px)]';
-  const actionBarClass =
-    'sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end';
+  const actionBarClass = keyboardOpen
+    ? 'relative flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-2 sm:flex-row sm:justify-end'
+    : 'sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end';
   // Etwas kompakter, wenn die Tastatur offen ist
   const formSpacing = keyboardOpen ? 'space-y-2' : 'space-y-4';
 

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Archive,
@@ -39,6 +39,7 @@ import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
 import { autoT } from '@/i18n/auto';
@@ -239,6 +240,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const { data: entry, isLoading } = useLogbookEntry(id);
   const create = useCreateLogbookEntry();
   const update = useUpdateLogbookEntry();
@@ -246,6 +248,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const setStatus = useSetLogbookStatus();
   const createComment = useCreateLogbookComment();
   const removeComment = useRemoveLogbookComment();
+  const keyboardOpen = useKeyboardOpen();
   const { data: projects = [] } = useProjects({ archived: false });
   const now = new Date();
   const from = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -256,6 +259,26 @@ export default function LogbookEntryPage(props: unknown = {}) {
     activities.find((activity) => activity.id === form.activityId) ||
     (entry?.activityId === form.activityId ? entry.activity : undefined);
   const occurredAtWeekday = useMemo(() => getWeekdayLabel(form.occurredAt), [form.occurredAt]);
+
+  useEffect(() => {
+    if (!keyboardOpen) return;
+    const scrollFocusedField = () => {
+      const active = document.activeElement;
+      const isField =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement;
+      if (isField && formRef.current?.contains(active)) {
+        active.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+      }
+    };
+    const initialScroll = window.setTimeout(scrollFocusedField, 50);
+    const settledScroll = window.setTimeout(scrollFocusedField, 250);
+    return () => {
+      window.clearTimeout(initialScroll);
+      window.clearTimeout(settledScroll);
+    };
+  }, [keyboardOpen]);
 
   useEffect(() => {
     if (!entry) return;
@@ -430,7 +453,25 @@ export default function LogbookEntryPage(props: unknown = {}) {
             </button>
             </div>
           </div>
-          <form onSubmit={save} className="mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-lg bg-white shadow md:mx-0 md:mb-0 md:rounded-none md:shadow-none">
+          <form
+            ref={formRef}
+            onFocusCapture={() => {
+              if (!keyboardOpen) return;
+              window.setTimeout(() => {
+                const active = document.activeElement;
+                const isField =
+                  active instanceof HTMLInputElement ||
+                  active instanceof HTMLTextAreaElement ||
+                  active instanceof HTMLSelectElement;
+                if (isField && formRef.current?.contains(active)) {
+                  active.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+                }
+              }, 50);
+            }}
+            onSubmit={save}
+            className="mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-lg bg-white shadow md:mx-0 md:mb-0 md:rounded-none md:shadow-none"
+            style={{ scrollPaddingBottom: keyboardOpen ? '8rem' : undefined }}
+          >
             <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_e2f9e932be0a')}{occurredAtWeekday && (
@@ -599,7 +640,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 )}
               </div>
             </div>
-            <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end">
+            <div className={`${keyboardOpen ? 'relative p-2' : 'sticky p-4 pb-safe'} bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 sm:flex-row sm:justify-end`}>
               <button
                 type="button"
                 onClick={() =>

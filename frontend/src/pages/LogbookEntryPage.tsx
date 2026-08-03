@@ -264,7 +264,11 @@ export default function LogbookEntryPage(props: unknown = {}) {
     if (!keyboardOpen) return;
     const scrollFocusedField = () => {
       const active = document.activeElement;
-      if (active instanceof HTMLElement && formRef.current?.contains(active)) {
+      const isField =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement;
+      if (isField && formRef.current?.contains(active)) {
         active.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
       }
     };
@@ -452,9 +456,14 @@ export default function LogbookEntryPage(props: unknown = {}) {
           <form
             ref={formRef}
             onFocusCapture={() => {
+              if (!keyboardOpen) return;
               window.setTimeout(() => {
                 const active = document.activeElement;
-                if (active instanceof HTMLElement && formRef.current?.contains(active)) {
+                const isField =
+                  active instanceof HTMLInputElement ||
+                  active instanceof HTMLTextAreaElement ||
+                  active instanceof HTMLSelectElement;
+                if (isField && formRef.current?.contains(active)) {
                   active.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
                 }
               }, 50);

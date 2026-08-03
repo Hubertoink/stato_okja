@@ -68,6 +68,10 @@ Danach ist StatO standardmäßig unter `http://localhost` beziehungsweise der IP
 
 Für interne HTTPS-Installationen mit Caddy gibt es zusätzlich die Anleitung [Caddy internes TLS](docs/CADDY_INTERNAL_TLS_ONPREM.md).
 
+Für die Installation als Custom-App auf einem ZimaOS-NAS steht eine eigene
+[ZimaOS-Anleitung](docs/ZIMAOS_SETUP.md) mit importierbarer Compose-Datei zur
+Verfügung.
+
 ### Lokale Entwicklung
 
 ```bash

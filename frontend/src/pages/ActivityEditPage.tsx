@@ -684,7 +684,7 @@ export default function ActivityEditPage() {
           />
         </div>
 
-        <div className="sticky bottom-0 flex flex-col gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:items-center sm:justify-end">
+        <div className={`${keyboardOpen ? 'relative p-2' : 'sticky p-4 pb-safe'} bottom-0 flex flex-col gap-2 border-t border-gray-100 bg-white/95 sm:flex-row sm:items-center sm:justify-end`}>
           <button
             type="button"
             className="dashboard-accent-solid-button order-1 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60 sm:order-3 sm:w-auto"

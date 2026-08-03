@@ -14,6 +14,7 @@ import { useToast } from '@/components/Toast';
 import { colorFromStringHash } from '@/lib/colors';
 import { useCohorts } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { createSurveyTemplate, parseSurveyTemplate, surveyQuestionId, type Survey, type SurveyInput, type SurveyQuestion, type SurveyQuestionType, useArchivedSurveys, useArchiveSurvey, useCreateSurvey, useSurveys, useUpdateSurvey } from '@/lib/surveys';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -61,6 +62,7 @@ export function SurveyEditor({ open, survey, onClose, initialTemplate, instanceK
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   if (initialIdentity !== initialId) { setInitialId(initialIdentity); setState(toEditor(t, survey || undefined, initialTemplate)); }
   const navigate = useNavigate(); const { showToast } = useToast(); const create = useCreateSurvey(); const update = useUpdateSurvey();
+  const keyboardOpen = useKeyboardOpen();
   const cohorts = useCohorts({ active: true }).data || []; const projects = useProjects({ archived: false }).data || [];
   const selectedProject = projects.find((project) => project.id === state.projectId);
   const busy = create.isPending || update.isPending;
@@ -89,7 +91,7 @@ export function SurveyEditor({ open, survey, onClose, initialTemplate, instanceK
       <label className="flex items-start gap-2 rounded-xl bg-[var(--surface-2)] p-3 text-sm"><input className="mt-1" type="checkbox" checked={state.allowMultiplePerDevice} onChange={(event) => set('allowMultiplePerDevice', event.target.checked)} /><span><span className="font-medium text-[var(--text-primary)]">{t('editor.multiple')}</span><br /><span className="text-[var(--text-secondary)]">{t('editor.multipleHint')}</span></span></label>
       {!survey ? <div className="flex flex-wrap gap-2"><Button size="sm" variant="secondary" onClick={() => set('questions', generalTemplate(t))}>{t('editor.wishesTemplate')}</Button><Button size="sm" variant="secondary" onClick={() => set('questions', projectTemplate(t))}>{t('editor.projectTemplate')}</Button><Button size="sm" variant="secondary" onClick={() => set('questions', [])}>{t('editor.emptyTemplate')}</Button></div> : null}
       <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold text-viridian">{t('editor.questions')}</h4><div className="flex flex-wrap gap-2"><Button size="sm" variant={state.questions.some((entry) => entry.demographicKey === 'age_cohort') ? "primary" : "secondary"} onClick={() => addDemographic('age')}>+ {t('editor.age')}</Button><Button size="sm" variant={state.questions.some((entry) => entry.demographicKey === 'gender') ? "primary" : "secondary"} onClick={() => addDemographic('gender')}>+ {t('editor.gender')}</Button><Button size="sm" variant={state.questions.some((entry) => entry.demographicKey === 'origin_area') ? "primary" : "secondary"} onClick={() => addDemographic('origin')}>+ {t('editor.district')}</Button><Button size="sm" onClick={() => set('questions', [...state.questions, question('single_choice', '', t)])}><Plus className="h-4 w-4" /> {t('editor.question')}</Button></div></div><FieldHint>{t('editor.demographicHint')}</FieldHint>{state.questions.map((entry, index) => <QuestionEditor key={entry.id} value={entry} index={index} onChange={(next) => set('questions', state.questions.map((item, itemIndex) => itemIndex === index ? next : item))} onRemove={() => set('questions', state.questions.filter((_, itemIndex) => itemIndex !== index))} onMoveUp={() => moveQuestion(index, index - 1)} onMoveDown={() => moveQuestion(index, index + 1)} canMoveUp={index > 0} canMoveDown={index < state.questions.length - 1} />)}</div>
-    </div><div className="shrink-0 flex flex-col-reverse gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-3 pb-safe md:flex-row md:justify-end md:px-6"><Button variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button><Button onClick={() => void save()} disabled={busy}>{busy ? t('editor.saving') : t('editor.saveDraft')}</Button></div></div>
+    </div><div className={`${keyboardOpen ? 'relative' : 'shrink-0'} flex flex-col-reverse gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-3 pb-safe md:flex-row md:justify-end md:px-6`}><Button variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button><Button onClick={() => void save()} disabled={busy}>{busy ? t('editor.saving') : t('editor.saveDraft')}</Button></div></div>
   </Modal>{projectPickerOpen ? <ProjectPickerModal onClose={() => setProjectPickerOpen(false)} onPick={(project) => { set('projectId', project.id); setProjectPickerOpen(false); }} /> : null}</>;
 }
 

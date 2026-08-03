@@ -53,6 +53,7 @@ import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTempl
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
@@ -931,6 +932,7 @@ function ProjectForm({
   saving?: boolean;
 }) {
   useBodyScrollLock(true);
+  const keyboardOpen = useKeyboardOpen();
   const { user } = useAuth();
   const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
@@ -2206,7 +2208,7 @@ function ProjectForm({
         </div>
         </div>
 
-        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6">
+        <div className={`${keyboardOpen ? 'relative' : 'shrink-0'} border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6`}>
           <div className="flex items-center justify-between gap-3">
             <span className="tooltip-wrapper">
               <button

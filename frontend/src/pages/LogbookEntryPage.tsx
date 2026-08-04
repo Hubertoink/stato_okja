@@ -286,6 +286,9 @@ export default function LogbookEntryPage(props: unknown = {}) {
   }, [embeddedEntryId, isNew, location.pathname]);
 
   const closeEditor = (destination?: string) => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     if (embeddedOnClose) {
       embeddedOnClose();
       return;
@@ -423,13 +426,11 @@ export default function LogbookEntryPage(props: unknown = {}) {
               type="button"
               aria-label={autoT('ui_e3bdcc71200e')}
               onClick={() =>
-                embeddedOnClose
-                  ? embeddedOnClose()
-                  : closeEditor(
-                      isNew || returnTo === '/dashboard'
-                        ? returnTo
-                        : `/logbook?entry=${encodeURIComponent(id || '')}`,
-                    )
+                closeEditor(
+                  isNew || returnTo === '/dashboard'
+                    ? returnTo
+                    : `/logbook?entry=${encodeURIComponent(id || '')}`,
+                )
               }
               className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
             >
@@ -616,13 +617,11 @@ export default function LogbookEntryPage(props: unknown = {}) {
               <button
                 type="button"
                 onClick={() =>
-                  embeddedOnClose
-                    ? embeddedOnClose()
-                    : closeEditor(
-                        isNew || returnTo === '/dashboard'
-                          ? returnTo
-                          : `/logbook?entry=${encodeURIComponent(id || '')}`,
-                      )
+                  closeEditor(
+                    isNew || returnTo === '/dashboard'
+                      ? returnTo
+                      : `/logbook?entry=${encodeURIComponent(id || '')}`,
+                  )
                 }
                 className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
               >{autoT('ui_07af7cb30fca')}</button>

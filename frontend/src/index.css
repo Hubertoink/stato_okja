@@ -1087,7 +1087,7 @@ code {
   position: fixed;
   inset-inline: 0;
   top: var(--visual-viewport-offset-top, 0px);
-  height: var(--visual-viewport-height, 100vh);
+  height: var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100vh));
 }
 
 .visual-viewport-min-height {
@@ -1375,7 +1375,7 @@ code {
 
 @supports (height: 100dvh) {
   .visual-viewport-fixed {
-    height: var(--visual-viewport-height, 100dvh);
+    height: var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100dvh));
   }
 
   .visual-viewport-min-height {

@@ -23,4 +23,14 @@ describe('Modal', () => {
     expect(content).toHaveClass('overflow-y-auto');
     expect(content).toHaveClass('min-h-0');
   });
+
+  it('uses the visual viewport for its fixed overlay', () => {
+    render(
+      <Modal open onClose={vi.fn()} title="Form" variant="form">
+        <input aria-label="Field" />
+      </Modal>,
+    );
+
+    expect(screen.getByRole('dialog').parentElement).toHaveClass('visual-viewport-fixed');
+  });
 });

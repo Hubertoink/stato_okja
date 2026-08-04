@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
 
+const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
+let viewportBaseline = { width: 0, height: 0 };
+
+function isEditableElement(element: Element | null): boolean {
+  return element instanceof HTMLElement && element.matches(EDITABLE_SELECTOR);
+}
+
 /**
  * Detects if the on-screen keyboard is likely open.
  * Uses VisualViewport when available for better accuracy on mobile browsers.
@@ -13,14 +20,27 @@ export function useKeyboardOpen(threshold = 120): boolean {
 
     const compute = () => {
       try {
-        if (vv) {
-          const diff = window.innerHeight - vv.height;
-          setOpen(diff > threshold);
+        const height = vv?.height ?? window.innerHeight;
+        const offsetTop = vv?.offsetTop ?? 0;
+        const layoutHeight = Math.max(window.innerHeight, document.documentElement.clientHeight, height + offsetTop);
+        if (Math.abs(viewportBaseline.width - window.innerWidth) > 40) {
+          viewportBaseline = { width: window.innerWidth, height: layoutHeight };
         } else {
-          // Fallback: heuristic based on window height changes
-          const diff = screen.height - window.innerHeight;
-          setOpen(diff > threshold);
+          viewportBaseline.height = Math.max(viewportBaseline.height, layoutHeight);
         }
+        const hiddenHeight = Math.max(
+          0,
+          layoutHeight - height - offsetTop,
+          viewportBaseline.height - height - offsetTop,
+        );
+        const nextOpen = isEditableElement(document.activeElement) && hiddenHeight > threshold;
+        const root = document.documentElement;
+
+        root.style.setProperty('--visual-viewport-height', `${height}px`);
+        root.style.setProperty('--visual-viewport-offset-top', `${offsetTop}px`);
+        root.style.setProperty('--keyboard-inset-height', `${nextOpen ? hiddenHeight : 0}px`);
+        root.dataset.keyboardOpen = String(nextOpen);
+        setOpen(nextOpen);
       } catch {
         // Best-effort only
       }

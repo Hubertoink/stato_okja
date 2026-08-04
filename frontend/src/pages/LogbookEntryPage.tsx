@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Archive,
@@ -39,6 +39,8 @@ import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
 import { autoT } from '@/i18n/auto';
@@ -166,15 +168,16 @@ function ActivityPickerModal({
       .includes(search.trim().toLowerCase()),
   );
   return (
-    <Modal open={open} onClose={onClose} title={autoT('ui_ab6635285bc7')} maxWidth="2xl">
-      <p className="mb-4 text-sm text-gray-600">{autoT('ui_3c4b1175587b')}</p>
-      <input
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder={autoT('ui_cdcd2f758fec')}
-        className="mb-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
-      />
-      <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+    <Modal open={open} onClose={onClose} title={autoT('ui_ab6635285bc7')} maxWidth="2xl" variant="form">
+      <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 md:px-6 md:pb-6">
+        <p className="mb-3 shrink-0 text-sm text-gray-600">{autoT('ui_3c4b1175587b')}</p>
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={autoT('ui_cdcd2f758fec')}
+          className="mb-3 w-full shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
+        />
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {visible.map((activity) => (
           <button
             key={activity.id}
@@ -201,6 +204,7 @@ function ActivityPickerModal({
         {visible.length === 0 && (
           <p className="py-8 text-center text-sm text-gray-500">{autoT('ui_dfc3488ab197')}</p>
         )}
+        </div>
       </div>
     </Modal>
   );
@@ -239,6 +243,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const { data: entry, isLoading } = useLogbookEntry(id);
   const create = useCreateLogbookEntry();
   const update = useUpdateLogbookEntry();
@@ -246,6 +251,8 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const setStatus = useSetLogbookStatus();
   const createComment = useCreateLogbookComment();
   const removeComment = useRemoveLogbookComment();
+  const keyboardOpen = useKeyboardOpen();
+  const handleFormFocus = useFocusedFieldVisibility(formRef, keyboardOpen);
   const { data: projects = [] } = useProjects({ archived: false });
   const now = new Date();
   const from = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -371,10 +378,10 @@ export default function LogbookEntryPage(props: unknown = {}) {
 
   if (editing)
     return (
-      <div className="fixed inset-0 z-[60] flex items-stretch justify-center p-2 md:items-center md:p-6">
+      <div className="visual-viewport-fixed z-[60] flex items-stretch justify-center p-2 md:items-center md:p-6">
         <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
         <div className="app-background logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-white">
-          <div className="mb-4 mt-1 flex items-center justify-between gap-3 px-3 pt-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3">
+          <div className={`${keyboardOpen ? 'mb-1 px-2 pt-2' : 'mb-4 mt-1 px-3 pt-3'} flex items-center justify-between gap-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3`}>
             <h2 className="min-w-0 truncate text-2xl font-bold text-viridian md:text-gray-800">
               <span className="md:hidden">{autoT('ui_f95da57ad34c')}</span>
               <span className="hidden md:inline">
@@ -430,7 +437,13 @@ export default function LogbookEntryPage(props: unknown = {}) {
             </button>
             </div>
           </div>
-          <form onSubmit={save} className="mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-lg bg-white shadow md:mx-0 md:mb-0 md:rounded-none md:shadow-none">
+          <form
+            ref={formRef}
+            onFocusCapture={handleFormFocus}
+            onSubmit={save}
+            className="mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-lg bg-white shadow md:mx-0 md:mb-0 md:rounded-none md:shadow-none"
+            style={{ scrollPaddingBottom: keyboardOpen ? '1rem' : undefined }}
+          >
             <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_e2f9e932be0a')}{occurredAtWeekday && (
@@ -599,7 +612,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 )}
               </div>
             </div>
-            <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end">
+            <div className={`${keyboardOpen ? 'relative p-2' : 'sticky p-4 pb-safe'} bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 sm:flex-row sm:justify-end`}>
               <button
                 type="button"
                 onClick={() =>

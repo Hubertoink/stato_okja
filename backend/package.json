@@ -55,7 +55,7 @@
     "pg-query-stream": "^4.16.0",
     "qs": "^6.15.3",
     "reflect-metadata": "^0.2.1",
-    "rxjs": "^7.8.2",
+    "rxjs": "^7.8.1",
     "sharp": "^0.35.3",
     "sql.js": "^1.14.1",
     "typeorm": "^1.1.0",

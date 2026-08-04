@@ -41,7 +41,7 @@ export function TagFormModal({
   });
 
   return (
-    <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6">
+    <div className="modal-overlay visual-viewport-fixed z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6">
       <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? autoT('ui_c7f5b6bae389') : autoT('ui_dacb43d1a177')}
@@ -152,7 +152,7 @@ export function CategoryFormModal({
   });
 
   return (
-    <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6">
+    <div className="modal-overlay visual-viewport-fixed z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6">
       <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? autoT('ui_a396ad29224c') : autoT('ui_f65f5413c438')}
@@ -277,7 +277,7 @@ export function StaffFormModal({
   });
 
   return (
-    <div className="modal-overlay fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center overflow-x-hidden p-0 md:p-6">
+    <div className="modal-overlay visual-viewport-fixed z-[60] bg-black/30 flex items-end md:items-center justify-center overflow-x-hidden p-0 md:p-6">
       <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? autoT('ui_362bc3480705') : autoT('ui_561b3cbf4717')}

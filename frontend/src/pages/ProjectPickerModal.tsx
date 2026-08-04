@@ -8,6 +8,7 @@ import { getStarredProjectIds } from '@/lib/starred';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useTranslation } from 'react-i18next';
 import { compareLocalized } from '@/i18n/formatters';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 
 function backgroundColorForProject(project: Project) {
   return project.color || colorFromStringHash(project.title);
@@ -23,6 +24,7 @@ export default function ProjectPickerModal({
   const { t } = useTranslation(['common', 'activities']);
   // This component mounts only when open – lock body scroll while mounted
   useBodyScrollLock(true);
+  const keyboardOpen = useKeyboardOpen();
   const [search, setSearch] = useState('');
   const { data } = useProjects({ archived: false, search });
   const projects = useMemo(() => {
@@ -62,10 +64,10 @@ export default function ProjectPickerModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
+      className="visual-viewport-fixed z-[80] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] md:max-h-[90vh] md:flex md:flex-col md:overflow-hidden bottom-sheet-animate">
+      <div className="modal-panel-roomy bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 flex flex-col overflow-hidden bottom-sheet-animate">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xl font-semibold text-viridian">{t('projectPicker.title')}</h3>
           <button
@@ -102,7 +104,7 @@ export default function ProjectPickerModal({
           </label>
         </div>
 
-        <div className="md:min-h-0 md:flex-1 md:overflow-y-auto md:pb-4">
+        <div className="min-h-0 flex-1 overflow-y-auto pb-4">
           {!compact && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {projects.map((p) => (
@@ -194,11 +196,11 @@ export default function ProjectPickerModal({
             </ul>
           )}
         </div>
-        <div className="mt-4 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 md:border-t md:border-gray-100">
+        {!keyboardOpen && <div className="mt-4 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 md:border-t md:border-gray-100">
           <div className="text-xs text-gray-600">
             {t('projectPicker.tip')}
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

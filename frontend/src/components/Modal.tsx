@@ -2,6 +2,7 @@ import { X as XIcon } from 'lucide-react';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -34,6 +35,7 @@ export default function Modal({
   variant?: 'default' | 'information' | 'form';
 }) {
   const { t } = useTranslation('common');
+  const keyboardOpen = useKeyboardOpen();
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
   if (!open) return null;
@@ -51,7 +53,7 @@ export default function Modal({
   const isStructuredModal = variant === 'information' || variant === 'form';
   const content = (
     <div
-      className={`fixed inset-0 z-[70] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? "backdrop-blur-sm" : ''}`}
+      className={`visual-viewport-fixed z-[70] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? "backdrop-blur-sm" : ''}`}
       onWheel={(e) => e.stopPropagation()}
     >
       <div
@@ -63,7 +65,7 @@ export default function Modal({
       >
         <div
           className={isStructuredModal
-            ? "flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 md:p-6"
+            ? `flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] ${keyboardOpen && variant === 'form' ? "p-2 md:p-6" : "p-4 md:p-6"}`
             : "mb-4 flex items-center justify-between"}
         >
           <h3 className="text-lg font-bold gradient-text">{title}</h3>

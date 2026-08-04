@@ -51,8 +51,13 @@ export function useKeyboardOpen(threshold = 120): boolean {
     };
 
     compute();
+    let focusChangeTimeout: number | null = null;
     const handleFocusChange = () => {
-      window.setTimeout(compute, 0);
+      if (focusChangeTimeout !== null) window.clearTimeout(focusChangeTimeout);
+      focusChangeTimeout = window.setTimeout(() => {
+        focusChangeTimeout = null;
+        compute();
+      }, 0);
     };
     window.addEventListener('focusin', compute);
     window.addEventListener('focusout', handleFocusChange);
@@ -60,6 +65,7 @@ export function useKeyboardOpen(threshold = 120): boolean {
       vv.addEventListener('resize', compute);
       vv.addEventListener('scroll', compute);
       return () => {
+        if (focusChangeTimeout !== null) window.clearTimeout(focusChangeTimeout);
         window.removeEventListener('focusin', compute);
         window.removeEventListener('focusout', handleFocusChange);
         vv.removeEventListener('resize', compute);
@@ -68,6 +74,7 @@ export function useKeyboardOpen(threshold = 120): boolean {
     }
     window.addEventListener('resize', compute);
     return () => {
+      if (focusChangeTimeout !== null) window.clearTimeout(focusChangeTimeout);
       window.removeEventListener('focusin', compute);
       window.removeEventListener('focusout', handleFocusChange);
       window.removeEventListener('resize', compute);

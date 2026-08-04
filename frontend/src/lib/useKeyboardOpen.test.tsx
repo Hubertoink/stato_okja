@@ -71,4 +71,30 @@ describe('useKeyboardOpen', () => {
     expect(document.documentElement.dataset.keyboardOpen).toBe('false');
     input.remove();
   });
+
+  it('clears keyboard state when dismissal is reported by the window viewport', () => {
+    const viewport = new TestVisualViewport();
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 });
+    Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, value: 800 });
+    const input = document.createElement('input');
+    document.body.append(input);
+    input.focus();
+    const { result } = renderHook(() => useKeyboardOpen());
+
+    act(() => {
+      viewport.height = 500;
+      viewport.dispatchEvent(new Event('resize'));
+    });
+    expect(result.current).toBe(true);
+
+    act(() => {
+      viewport.height = 800;
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    expect(result.current).toBe(false);
+    expect(document.documentElement.dataset.keyboardOpen).toBe('false');
+    input.remove();
+  });
 });

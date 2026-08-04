@@ -34,6 +34,9 @@ updates:
       - dependency-name: "@nestjs/jwt"
         update-types:
           - version-update:semver-major
+      - dependency-name: "@vitejs/plugin-react"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /

@@ -33,4 +33,22 @@ describe('Modal', () => {
 
     expect(screen.getByRole('dialog').parentElement).toHaveClass('visual-viewport-fixed');
   });
+
+  it('releases focused fields when it closes', () => {
+    const { rerender } = render(
+      <Modal open onClose={vi.fn()} title="Form" variant="form">
+        <input aria-label="Field" />
+      </Modal>,
+    );
+    const field = screen.getByLabelText('Field');
+    field.focus();
+
+    rerender(
+      <Modal open={false} onClose={vi.fn()} title="Form" variant="form">
+        <input aria-label="Field" />
+      </Modal>,
+    );
+
+    expect(document.activeElement).not.toBe(field);
+  });
 });

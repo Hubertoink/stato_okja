@@ -1,5 +1,5 @@
 import { X as XIcon } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
@@ -36,8 +36,17 @@ export default function Modal({
 }) {
   const { t } = useTranslation('common');
   const keyboardOpen = useKeyboardOpen();
+  const wasOpen = useRef(open);
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
+
+  useEffect(() => {
+    if (wasOpen.current && !open && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    wasOpen.current = open;
+  }, [open]);
+
   if (!open) return null;
   const maxW = {
     sm: 'md:max-w-sm',

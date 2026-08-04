@@ -1906,7 +1906,7 @@ function ProjectForm({
       <div
         ref={panelRef}
         onFocusCapture={handlePanelFocus}
-        className={`modal-panel-roomy bg-white w-full md:max-w-4xl lg:max-w-5xl rounded-t-2xl md:rounded-lg px-4 md:px-6 bottom-sheet-animate flex flex-col ${keyboardOpen ? 'overflow-y-auto pt-2 md:pt-6' : 'overflow-hidden pt-4 md:pt-6'}`}
+        className={`modal-panel-roomy bg-white w-full md:max-w-4xl lg:max-w-5xl rounded-t-2xl md:rounded-lg px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-x-hidden ${keyboardOpen ? 'overflow-y-auto pt-2 md:pt-6' : 'overflow-hidden pt-4 md:pt-6'}`}
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
       >
@@ -1939,7 +1939,7 @@ function ProjectForm({
           </button>
         </div>
 
-        <div className={keyboardOpen ? 'flex-none overflow-visible pb-2' : 'min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6'}>
+        <div className={keyboardOpen ? 'min-w-0 flex-none overflow-visible pb-2' : 'min-w-0 min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6'}>
 
         {!initial?.id && (
           <div className="mb-4">

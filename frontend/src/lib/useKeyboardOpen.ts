@@ -1,4 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
+
+function isEditableElement(element: Element | null): boolean {
+  return element instanceof HTMLElement && element.matches(EDITABLE_SELECTOR);
+}
 
 /**
  * Detects if the on-screen keyboard is likely open.
@@ -6,6 +12,7 @@ import { useEffect, useState } from 'react';
  */
 export function useKeyboardOpen(threshold = 120): boolean {
   const [open, setOpen] = useState(false);
+  const baselineHeight = useRef(0);
 
   useEffect(() => {
     const w = window as unknown as { visualViewport?: VisualViewport };
@@ -13,14 +20,23 @@ export function useKeyboardOpen(threshold = 120): boolean {
 
     const compute = () => {
       try {
-        if (vv) {
-          const diff = window.innerHeight - vv.height;
-          setOpen(diff > threshold);
-        } else {
-          // Fallback: heuristic based on window height changes
-          const diff = screen.height - window.innerHeight;
-          setOpen(diff > threshold);
-        }
+        const height = vv?.height ?? window.innerHeight;
+        const offsetTop = vv?.offsetTop ?? 0;
+        const layoutHeight = Math.max(window.innerHeight, document.documentElement.clientHeight, height + offsetTop);
+        baselineHeight.current = Math.max(baselineHeight.current, layoutHeight);
+        const hiddenHeight = Math.max(
+          0,
+          layoutHeight - height - offsetTop,
+          baselineHeight.current - height - offsetTop,
+        );
+        const nextOpen = isEditableElement(document.activeElement) && hiddenHeight > threshold;
+        const root = document.documentElement;
+
+        root.style.setProperty('--visual-viewport-height', `${height}px`);
+        root.style.setProperty('--visual-viewport-offset-top', `${offsetTop}px`);
+        root.style.setProperty('--keyboard-inset-height', `${nextOpen ? hiddenHeight : 0}px`);
+        root.dataset.keyboardOpen = String(nextOpen);
+        setOpen(nextOpen);
       } catch {
         // Best-effort only
       }

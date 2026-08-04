@@ -344,7 +344,7 @@ export default function Layout() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="visual-viewport-min-height flex flex-col">
       {/* Header */}
       <header className="fixed top-0 inset-x-0 z-40 header-surface text-gray-900">
         <div className="container mx-auto px-2 sm:px-3 md:px-4 py-3 md:py-4 flex items-center justify-between gap-3">

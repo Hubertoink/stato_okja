@@ -54,6 +54,7 @@ import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
@@ -936,6 +937,8 @@ function ProjectForm({
   const { user } = useAuth();
   const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const handlePanelFocus = useFocusedFieldVisibility(panelRef, keyboardOpen);
   const submitLockedRef = useRef(false);
   const [form, setForm] = useState<Partial<Project>>(() => {
     const base: Partial<Project> = {
@@ -1899,13 +1902,15 @@ function ProjectForm({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
+    <div className="visual-viewport-fixed bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
       <div
-        className="modal-panel-roomy bg-white w-full md:max-w-4xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-hidden"
+        ref={panelRef}
+        onFocusCapture={handlePanelFocus}
+        className={`modal-panel-roomy bg-white w-full md:max-w-4xl lg:max-w-5xl rounded-t-2xl md:rounded-lg px-4 md:px-6 bottom-sheet-animate flex flex-col ${keyboardOpen ? 'overflow-y-auto pt-2 md:pt-6' : 'overflow-hidden pt-4 md:pt-6'}`}
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
       >
-        <div className="shrink-0 flex items-start justify-between gap-3 mb-4">
+        <div className={`shrink-0 flex items-start justify-between gap-3 ${keyboardOpen ? 'mb-2' : 'mb-4'}`}>
           <div className="space-y-2">
             <h3 className="text-xl font-semibold text-viridian">
               {initial?.id ? autoT('ui_82ef22dfb102') : autoT('ui_4bc9d33f94ce')}
@@ -1934,7 +1939,7 @@ function ProjectForm({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6">
+        <div className={keyboardOpen ? 'flex-none overflow-visible pb-2' : 'min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6'}>
 
         {!initial?.id && (
           <div className="mb-4">
@@ -2208,7 +2213,7 @@ function ProjectForm({
         </div>
         </div>
 
-        <div className={`${keyboardOpen ? 'relative' : 'shrink-0'} border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6`}>
+        <div className={`shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 -mx-4 md:-mx-6 px-4 md:px-6 ${keyboardOpen ? '' : 'pb-safe'}`}>
           <div className="flex items-center justify-between gap-3">
             <span className="tooltip-wrapper">
               <button

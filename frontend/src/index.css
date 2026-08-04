@@ -327,8 +327,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text-primary);
-  /* Respect safe areas on iOS */
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 body,
@@ -1085,8 +1083,19 @@ code {
   background: var(--overlay-backdrop);
 }
 
+.visual-viewport-fixed {
+  position: fixed;
+  inset-inline: 0;
+  top: var(--visual-viewport-offset-top, 0px);
+  height: var(--visual-viewport-height, 100vh);
+}
+
+.visual-viewport-min-height {
+  min-height: var(--visual-viewport-height, 100vh);
+}
+
 .modal-panel-roomy {
-  max-height: calc(100vh - env(safe-area-inset-top, 0px) - 0.75rem);
+  max-height: calc(var(--visual-viewport-height, 100vh) - 0.75rem);
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
@@ -1365,9 +1374,26 @@ code {
 }
 
 @supports (height: 100dvh) {
-  .modal-panel-roomy {
-    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 0.75rem);
+  .visual-viewport-fixed {
+    height: var(--visual-viewport-height, 100dvh);
   }
+
+  .visual-viewport-min-height {
+    min-height: var(--visual-viewport-height, 100dvh);
+  }
+
+  .modal-panel-roomy {
+    max-height: calc(var(--visual-viewport-height, 100dvh) - 0.75rem);
+  }
+}
+
+html[data-keyboard-open='true'] .pb-safe {
+  padding-bottom: 0.5rem;
+}
+
+html[data-keyboard-open='true'] .settings-modal-actions {
+  position: static;
+  padding-bottom: 0.5rem;
 }
 
 @media (min-width: 768px) {

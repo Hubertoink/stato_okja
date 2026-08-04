@@ -9,7 +9,7 @@ class TestVisualViewport extends EventTarget {
 
 describe('useKeyboardOpen', () => {
   afterEach(() => {
-    document.activeElement instanceof HTMLElement && document.activeElement.blur();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   });
 
   it('tracks the visible viewport and only reports a keyboard for focused fields', () => {

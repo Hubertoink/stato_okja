@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
+let viewportBaseline = { width: 0, height: 0 };
 
 function isEditableElement(element: Element | null): boolean {
   return element instanceof HTMLElement && element.matches(EDITABLE_SELECTOR);
@@ -12,7 +13,6 @@ function isEditableElement(element: Element | null): boolean {
  */
 export function useKeyboardOpen(threshold = 120): boolean {
   const [open, setOpen] = useState(false);
-  const baselineHeight = useRef(0);
 
   useEffect(() => {
     const w = window as unknown as { visualViewport?: VisualViewport };
@@ -23,11 +23,15 @@ export function useKeyboardOpen(threshold = 120): boolean {
         const height = vv?.height ?? window.innerHeight;
         const offsetTop = vv?.offsetTop ?? 0;
         const layoutHeight = Math.max(window.innerHeight, document.documentElement.clientHeight, height + offsetTop);
-        baselineHeight.current = Math.max(baselineHeight.current, layoutHeight);
+        if (Math.abs(viewportBaseline.width - window.innerWidth) > 40) {
+          viewportBaseline = { width: window.innerWidth, height: layoutHeight };
+        } else {
+          viewportBaseline.height = Math.max(viewportBaseline.height, layoutHeight);
+        }
         const hiddenHeight = Math.max(
           0,
           layoutHeight - height - offsetTop,
-          baselineHeight.current - height - offsetTop,
+          viewportBaseline.height - height - offsetTop,
         );
         const nextOpen = isEditableElement(document.activeElement) && hiddenHeight > threshold;
         const root = document.documentElement;

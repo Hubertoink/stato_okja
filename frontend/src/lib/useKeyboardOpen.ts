@@ -61,6 +61,8 @@ export function useKeyboardOpen(threshold = 120): boolean {
     };
     window.addEventListener('focusin', compute);
     window.addEventListener('focusout', handleFocusChange);
+    window.addEventListener('resize', compute);
+    window.addEventListener('orientationchange', compute);
     if (vv) {
       vv.addEventListener('resize', compute);
       vv.addEventListener('scroll', compute);
@@ -68,16 +70,18 @@ export function useKeyboardOpen(threshold = 120): boolean {
         if (focusChangeTimeout !== null) window.clearTimeout(focusChangeTimeout);
         window.removeEventListener('focusin', compute);
         window.removeEventListener('focusout', handleFocusChange);
+        window.removeEventListener('resize', compute);
+        window.removeEventListener('orientationchange', compute);
         vv.removeEventListener('resize', compute);
         vv.removeEventListener('scroll', compute);
       };
     }
-    window.addEventListener('resize', compute);
     return () => {
       if (focusChangeTimeout !== null) window.clearTimeout(focusChangeTimeout);
       window.removeEventListener('focusin', compute);
       window.removeEventListener('focusout', handleFocusChange);
       window.removeEventListener('resize', compute);
+      window.removeEventListener('orientationchange', compute);
     };
   }, [threshold]);
 

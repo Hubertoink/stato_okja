@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { useTranslation } from 'react-i18next';
+import { EditorHeader } from '@/components/ui/EditorFrame';
 
 /**
  * A visual modal backdrop that deliberately does not handle clicks.
@@ -22,6 +23,7 @@ export default function Modal({
   blur = true,
   showCloseButton = true,
   variant = 'default',
+  headerActions,
 }: {
   open: boolean;
   title?: string;
@@ -32,6 +34,7 @@ export default function Modal({
   showCloseButton?: boolean;
   /** Information and form modals keep their title and controls visible while their content scrolls. */
   variant?: 'default' | 'information' | 'form';
+  headerActions?: React.ReactNode;
 }) {
   const { t } = useTranslation('common');
   const wasOpen = useRef(open);
@@ -70,24 +73,28 @@ export default function Modal({
         role="dialog"
         tabIndex={-1}
       >
-        <div
-          className={isStructuredModal
-            ? 'flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 md:p-6'
-            : "mb-4 flex items-center justify-between"}
-        >
-          <h3 className={isStructuredModal ? 'text-2xl font-bold text-viridian' : 'text-lg font-bold gradient-text'}>{title}</h3>
-          {showCloseButton && (
+        {isStructuredModal ? (
+          <EditorHeader
+            title={title}
+            actions={headerActions}
+            onClose={onClose}
+            closeLabel={t('actions.close')}
+            showCloseButton={showCloseButton}
+          />
+        ) : (
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-bold gradient-text">{title}</h3>
+            {showCloseButton && (
             <button
-              className={isStructuredModal
-                ? 'inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200'
-                : 'inline-flex items-center justify-center rounded-xl bg-[var(--surface-2)] p-2 text-[var(--text-secondary)] transition-all duration-200 hover:scale-105 hover:bg-[var(--surface-3)]'}
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--surface-2)] p-2 text-[var(--text-secondary)] transition-all duration-200 hover:scale-105 hover:bg-[var(--surface-3)]"
               onClick={onClose}
               aria-label={t('actions.close')}
             >
               <XIcon className="w-5 h-5" />
             </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
         {variant === 'information' ? (
           <div className="min-h-0 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6">
             {children}

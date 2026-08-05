@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { X as XIcon, Boxes, Plus as PlusIcon, Save as SaveIcon } from 'lucide-react';
+import { Boxes, Plus as PlusIcon, Save as SaveIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import { useCreateActivity } from '@/lib/activities';
 import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
@@ -45,6 +45,8 @@ import {
 } from './activityEditorShared';
 import { useTranslation } from 'react-i18next';
 import { autoT } from '@/i18n/auto';
+import { EditorActions, EditorHeader, EditorSurface } from '@/components/ui/EditorFrame';
+import { Button } from '@/components/ui/Button';
 
 export default function ActivityCreatePage() {
   const { t } = useTranslation(['activities', 'common']);
@@ -232,42 +234,33 @@ export default function ActivityCreatePage() {
     onSave: create.isPending || picker || Boolean(errorOpen) ? undefined : handleSave,
   });
 
-  // Die Aktionen bleiben im normalen Dokumentfluss, damit die Tastatur das Layout nicht überdeckt.
   const containerPad = 'pb-[env(safe-area-inset-bottom,0px)]';
-  const actionBarClass = keyboardOpen
-    ? 'relative flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-2 sm:flex-row sm:justify-end'
-    : 'sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end';
   // Etwas kompakter, wenn die Tastatur offen ist
   const formSpacing = keyboardOpen ? 'space-y-2' : 'space-y-4';
 
   return (
     <div className={`max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 ${containerPad}`}>
-      <div className="flex items-center justify-between mb-4 mt-1">
-        <h2 className="text-2xl font-bold text-viridian">{t('actions.new')}</h2>
-        <div className="flex items-center gap-2">
+      <EditorSurface>
+        <EditorHeader
+          title={t('actions.new')}
+          closeLabel={t('common:actions.cancel')}
+          onClose={handleCancel}
+          actions={
           <ActivityExecutionStatusControl
             value={form.executionStatus}
             onChange={(executionStatus) => setForm((current) => ({ ...current, executionStatus }))}
           />
-          <button
-            type="button"
-            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-            onClick={handleCancel}
-            title={t('common:actions.cancel')}
-            aria-label={t('common:actions.cancel')}
-          >
-            <XIcon className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+          }
+        />
 
       <form
-        className={`bg-white rounded-lg shadow p-4 md:p-6 ${formSpacing}`}
+        className={formSpacing}
         onSubmit={(e) => {
           e.preventDefault();
           handleSave();
         }}
       >
+        <div className={`p-4 md:p-6 ${formSpacing}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">
@@ -740,25 +733,18 @@ export default function ActivityCreatePage() {
           />
         </div>
 
-        {/* Mobile-friendly, labelled actions match the Logbook editor. */}
-        <div className={actionBarClass}>
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-          >
-            {t('common:actions.cancel')}
-          </button>
-          <button
-            type="submit"
-            className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={create.isPending || picker || Boolean(errorOpen)}
-          >
-            <SaveIcon className="h-4 w-4" />
-            {create.isPending ? t('common:language.saving') : t('quickAdd.save')}
-          </button>
         </div>
+        <EditorActions
+          secondary={<Button variant="ghost" size="lg" onClick={handleCancel}>{t('common:actions.cancel')}</Button>}
+          primary={(
+            <Button type="submit" size="lg" disabled={create.isPending || picker || Boolean(errorOpen)}>
+              <SaveIcon className="h-4 w-4" />
+              {create.isPending ? t('common:language.saving') : t('quickAdd.save')}
+            </Button>
+          )}
+        />
       </form>
+      </EditorSurface>
 
       {picker && (
         <ProjectPickerModal

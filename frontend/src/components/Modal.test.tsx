@@ -34,6 +34,39 @@ describe('Modal', () => {
     expect(screen.getByRole('dialog').parentElement).toHaveClass('visual-viewport-fixed');
   });
 
+  it('renders structured modal actions in the shared header', () => {
+    render(
+      <Modal
+        open
+        onClose={vi.fn()}
+        title="Form"
+        variant="form"
+        headerActions={<span>Status</span>}
+      >
+        <input aria-label="Field" />
+      </Modal>,
+    );
+
+    expect(screen.getByText('Status').closest('header')).toContainElement(screen.getByText('Form'));
+  });
+
+  it('keeps the structured header when its close button is hidden', () => {
+    render(
+      <Modal
+        open
+        onClose={vi.fn()}
+        title="Form"
+        variant="form"
+        showCloseButton={false}
+      >
+        <input aria-label="Field" />
+      </Modal>,
+    );
+
+    expect(screen.getByText('Form').closest('header')).toHaveClass('border-b');
+    expect(screen.queryByRole('button', { name: 'Schließen' })).not.toBeInTheDocument();
+  });
+
   it('releases focused fields when it closes', () => {
     const { rerender } = render(
       <Modal open onClose={vi.fn()} title="Form" variant="form">

@@ -1760,13 +1760,6 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
-@media (min-width: 768px) {
-  .logbook-editor-modal.app-background {
-    background-color: var(--surface-1);
-    background-image: none;
-  }
-}
-
 .activity-status-control:hover {
   background: var(--activity-status-bg-hover);
 }
@@ -2969,8 +2962,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 }
 
 @media (min-width: 768px) {
-  .logbook-detail-modal,
-  .logbook-editor-modal {
+  .logbook-detail-modal {
     animation: logbook-modal-in 180ms ease-out both;
   }
 }

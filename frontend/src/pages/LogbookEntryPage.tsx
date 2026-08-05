@@ -33,16 +33,17 @@ import {
 import { useProjects } from '@/lib/projects';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import { useToast } from '@/components/Toast';
-import Modal, { ModalBackdrop } from '@/components/Modal';
+import Modal from '@/components/Modal';
 import { Menu, MenuItem } from '@/components/ui/Menu';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
-import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { EditorActions } from '@/components/ui/EditorFrame';
+import { Button } from '@/components/ui/Button';
 
 type FormState = {
   occurredAt: string;
@@ -235,7 +236,6 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const [editing, setEditing] = useState(
     isNew || !!embeddedEntryId || location.pathname.endsWith('/edit'),
   );
-  useBodyScrollLock(editing);
   const [form, setForm] = useState<FormState>(() => emptyForm(search));
   const [comment, setComment] = useState('');
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
@@ -290,6 +290,12 @@ export default function LogbookEntryPage(props: unknown = {}) {
     }
     navigate(destination ?? returnTo);
   };
+  const closeEditing = () =>
+    closeEditor(
+      isNew || returnTo === '/dashboard'
+        ? returnTo
+        : `/logbook?entry=${encodeURIComponent(id || '')}`,
+    );
 
   const canManage =
     !!entry &&
@@ -376,17 +382,14 @@ export default function LogbookEntryPage(props: unknown = {}) {
 
   if (editing)
     return (
-      <div className="visual-viewport-fixed z-[60] flex items-stretch justify-center p-2 md:items-center md:p-6">
-        <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
-        <div className="app-background logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-white">
-          <div className="mb-4 mt-1 flex items-center justify-between gap-3 px-3 pt-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3">
-            <h2 className="min-w-0 truncate text-2xl font-bold text-viridian md:text-gray-800">
-              <span className="md:hidden">{autoT('ui_f95da57ad34c')}</span>
-              <span className="hidden md:inline">
-                {isNew ? autoT('ui_feb9aab49734') : autoT('ui_0b00abd52aba')}
-              </span>
-            </h2>
-            <div className="flex shrink-0 items-center gap-2">
+      <>
+        <Modal
+          open
+          onClose={closeEditing}
+          title={isNew ? autoT('ui_feb9aab49734') : autoT('ui_0b00abd52aba')}
+          maxWidth="5xl"
+          variant="form"
+          headerActions={
             <div className="relative">
               <button
                 type="button"
@@ -417,25 +420,11 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 </Menu>
               )}
             </div>
-            <button
-              type="button"
-              aria-label={autoT('ui_e3bdcc71200e')}
-              onClick={() =>
-                closeEditor(
-                  isNew || returnTo === '/dashboard'
-                    ? returnTo
-                    : `/logbook?entry=${encodeURIComponent(id || '')}`,
-                )
-              }
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            </div>
-          </div>
+          }
+        >
           <form
             onSubmit={save}
-            className="mx-3 min-h-0 flex-1 overflow-y-auto rounded-t-lg bg-white shadow md:mx-0 md:rounded-none md:shadow-none"
+            className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface-elevated)]"
           >
             <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -605,44 +594,33 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 )}
               </div>
             </div>
-            <div className="flex flex-col-reverse gap-2 border-t border-gray-100 bg-white p-4 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  closeEditor(
-                    isNew || returnTo === '/dashboard'
-                      ? returnTo
-                      : `/logbook?entry=${encodeURIComponent(id || '')}`,
-                  )
-                }
-                className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-              >{autoT('ui_07af7cb30fca')}</button>
-              <button
-                disabled={create.isPending || update.isPending}
-                className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60"
-              >
-                <Save className="h-4 w-4" />
-                {create.isPending || update.isPending ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}
-              </button>
-            </div>
-          </form>
-          {projectPickerOpen && (
-            <ProjectPickerModal
-              onClose={() => setProjectPickerOpen(false)}
-              onPick={(project) => {
-                setForm({ ...form, projectId: project.id });
-                setProjectPickerOpen(false);
-              }}
+            <EditorActions
+              secondary={<Button variant="ghost" size="lg" onClick={closeEditing}>{autoT('ui_07af7cb30fca')}</Button>}
+              primary={(
+                <Button type="submit" size="lg" disabled={create.isPending || update.isPending}>
+                  <Save className="h-4 w-4" />
+                  {create.isPending || update.isPending ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}
+                </Button>
+              )}
             />
-          )}
-          <ActivityPickerModal
-            open={activityPickerOpen}
-            onClose={() => setActivityPickerOpen(false)}
-            onPick={(activityId) => setForm({ ...form, activityId })}
-            occurredAt={form.occurredAt}
+          </form>
+        </Modal>
+        {projectPickerOpen && (
+          <ProjectPickerModal
+            onClose={() => setProjectPickerOpen(false)}
+            onPick={(project) => {
+              setForm({ ...form, projectId: project.id });
+              setProjectPickerOpen(false);
+            }}
           />
-        </div>
-      </div>
+        )}
+        <ActivityPickerModal
+          open={activityPickerOpen}
+          onClose={() => setActivityPickerOpen(false)}
+          onPick={(activityId) => setForm({ ...form, activityId })}
+          occurredAt={form.occurredAt}
+        />
+      </>
     );
 
   if (!entry) return null;

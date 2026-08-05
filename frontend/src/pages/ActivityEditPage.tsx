@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { X as XIcon, Save as SaveIcon, Trash2 as TrashIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
+import { Save as SaveIcon, Trash2 as TrashIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import { useActivity, useUpdateActivity, useRemoveActivity, type Activity } from '@/lib/activities';
 import { useProjects, type Project } from '@/lib/projects';
@@ -43,6 +43,8 @@ import {
   getStaffGroupMembers,
   getWeekdayLabel,
 } from './activityEditorShared';
+import { EditorActions, EditorHeader, EditorSurface } from '@/components/ui/EditorFrame';
+import { Button } from '@/components/ui/Button';
 import { useTranslation } from 'react-i18next';
 import { autoT } from '@/i18n/auto';
 
@@ -196,26 +198,21 @@ export default function ActivityEditPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4">
-      <div className="flex items-center justify-between mb-4 mt-1">
-        <h2 className="text-2xl font-bold text-viridian">{t('common:routes.editActivity')}</h2>
-        <div className="flex items-center gap-2">
+      <EditorSurface>
+        <EditorHeader
+          title={t('common:routes.editActivity')}
+          closeLabel={t('common:actions.cancel')}
+          onClose={handleClose}
+          actions={
           <ActivityExecutionStatusControl
             value={form.executionStatus}
             onChange={(executionStatus) => setForm((current) => ({ ...current, executionStatus }))}
           />
-          <button
-            type="button"
-            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-            onClick={handleClose}
-            title={t('common:actions.cancel')}
-            aria-label={t('common:actions.cancel')}
-          >
-            <XIcon className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+          }
+        />
 
-      <div className={`bg-white rounded-lg shadow p-4 md:p-6 ${contentSpacing}`}>
+      <div className={contentSpacing}>
+        <div className={`p-4 md:p-6 ${contentSpacing}`}>
         <div>
           <div className="mb-1 flex items-center justify-between gap-2">
             <label className="block text-sm font-medium" htmlFor="activity-date-edit-page">
@@ -684,35 +681,24 @@ export default function ActivityEditPage() {
           />
         </div>
 
-        <div className={`${keyboardOpen ? 'relative p-2' : 'sticky p-4 pb-safe'} bottom-0 flex flex-col gap-2 border-t border-gray-100 bg-white/95 sm:flex-row sm:items-center sm:justify-end`}>
-          <button
-            type="button"
-            className="dashboard-accent-solid-button order-1 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60 sm:order-3 sm:w-auto"
-            onClick={handleSave}
-            disabled={update.isPending || picker || deleteOpen}
-          >
-            <SaveIcon className="h-4 w-4" />
-            {update.isPending ? t('common:language.saving') : t('quickAdd.save')}
-          </button>
-          <div className="order-2 flex items-center justify-between gap-2 sm:contents">
-            <button
-              type="button"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-red-700 hover:bg-red-50 sm:order-1"
-              onClick={() => setDeleteOpen(true)}
-            >
+        </div>
+        <EditorActions
+          leading={(
+            <Button variant="danger" size="lg" onClick={() => setDeleteOpen(true)}>
               <TrashIcon className="h-4 w-4" />
               {t('quickAdd.delete')}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100 sm:order-2"
-            >
-              {t('common:actions.cancel')}
-            </button>
-          </div>
-        </div>
+            </Button>
+          )}
+          secondary={<Button variant="ghost" size="lg" onClick={() => navigate(-1)}>{t('common:actions.cancel')}</Button>}
+          primary={(
+            <Button size="lg" onClick={handleSave} disabled={update.isPending || picker || deleteOpen}>
+              <SaveIcon className="h-4 w-4" />
+              {update.isPending ? t('common:language.saving') : t('quickAdd.save')}
+            </Button>
+          )}
+        />
       </div>
+      </EditorSurface>
 
       {picker && (
         <ProjectPickerModal

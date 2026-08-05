@@ -441,7 +441,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
             ref={formRef}
             onFocusCapture={handleFormFocus}
             onSubmit={save}
-            className="mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-lg bg-white shadow md:mx-0 md:mb-0 md:rounded-none md:shadow-none"
+            className="mx-3 min-h-0 flex-1 overflow-y-auto rounded-t-lg bg-white shadow md:mx-0 md:rounded-none md:shadow-none"
             style={{ scrollPaddingBottom: keyboardOpen ? '1rem' : undefined }}
           >
             <div className="space-y-4 p-4 md:p-6">

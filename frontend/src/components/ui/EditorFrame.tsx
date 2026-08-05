@@ -7,12 +7,14 @@ export function EditorHeader({
   className = '',
   closeLabel,
   onClose,
+  showCloseButton = true,
   title,
 }: {
   actions?: ReactNode;
   className?: string;
   closeLabel: string;
   onClose: () => void;
+  showCloseButton?: boolean;
   title: ReactNode;
 }) {
   return (
@@ -20,15 +22,17 @@ export function EditorHeader({
       <h2 className="min-w-0 truncate text-2xl font-bold text-viridian">{title}</h2>
       <div className="flex shrink-0 items-center gap-2">
         {actions}
-        <IconButton
-          variant="secondary"
-          className="rounded-full"
-          onClick={onClose}
-          aria-label={closeLabel}
-          title={closeLabel}
-        >
-          <X className="h-5 w-5" />
-        </IconButton>
+        {showCloseButton ? (
+          <IconButton
+            variant="secondary"
+            className="rounded-full"
+            onClick={onClose}
+            aria-label={closeLabel}
+            title={closeLabel}
+          >
+            <X className="h-5 w-5" />
+          </IconButton>
+        ) : null}
       </div>
     </header>
   );

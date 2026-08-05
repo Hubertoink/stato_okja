@@ -73,12 +73,13 @@ export default function Modal({
         role="dialog"
         tabIndex={-1}
       >
-        {isStructuredModal && showCloseButton ? (
+        {isStructuredModal ? (
           <EditorHeader
             title={title}
             actions={headerActions}
             onClose={onClose}
             closeLabel={t('actions.close')}
+            showCloseButton={showCloseButton}
           />
         ) : (
           <div className="mb-4 flex items-center justify-between">

@@ -1,8 +1,7 @@
 import { X as XIcon } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -35,9 +34,17 @@ export default function Modal({
   variant?: 'default' | 'information' | 'form';
 }) {
   const { t } = useTranslation('common');
-  const keyboardOpen = useKeyboardOpen();
+  const wasOpen = useRef(open);
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
+
+  useEffect(() => {
+    if (wasOpen.current && !open && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    wasOpen.current = open;
+  }, [open]);
+
   if (!open) return null;
   const maxW = {
     sm: 'md:max-w-sm',
@@ -65,13 +72,15 @@ export default function Modal({
       >
         <div
           className={isStructuredModal
-            ? `flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] ${keyboardOpen && variant === 'form' ? "p-2 md:p-6" : "p-4 md:p-6"}`
+            ? 'flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 md:p-6'
             : "mb-4 flex items-center justify-between"}
         >
-          <h3 className="text-lg font-bold gradient-text">{title}</h3>
+          <h3 className={isStructuredModal ? 'text-2xl font-bold text-viridian' : 'text-lg font-bold gradient-text'}>{title}</h3>
           {showCloseButton && (
             <button
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--surface-2)] p-2 text-[var(--text-secondary)] transition-all duration-200 hover:scale-105 hover:bg-[var(--surface-3)]"
+              className={isStructuredModal
+                ? 'inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200'
+                : 'inline-flex items-center justify-center rounded-xl bg-[var(--surface-2)] p-2 text-[var(--text-secondary)] transition-all duration-200 hover:scale-105 hover:bg-[var(--surface-3)]'}
               onClick={onClose}
               aria-label={t('actions.close')}
             >

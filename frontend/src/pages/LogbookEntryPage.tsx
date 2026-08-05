@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Archive,
@@ -39,8 +39,6 @@ import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
-import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
 import { autoT } from '@/i18n/auto';
@@ -243,7 +241,6 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
   const { data: entry, isLoading } = useLogbookEntry(id);
   const create = useCreateLogbookEntry();
   const update = useUpdateLogbookEntry();
@@ -251,8 +248,6 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const setStatus = useSetLogbookStatus();
   const createComment = useCreateLogbookComment();
   const removeComment = useRemoveLogbookComment();
-  const keyboardOpen = useKeyboardOpen();
-  const handleFormFocus = useFocusedFieldVisibility(formRef, keyboardOpen);
   const { data: projects = [] } = useProjects({ archived: false });
   const now = new Date();
   const from = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -286,6 +281,9 @@ export default function LogbookEntryPage(props: unknown = {}) {
   }, [embeddedEntryId, isNew, location.pathname]);
 
   const closeEditor = (destination?: string) => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     if (embeddedOnClose) {
       embeddedOnClose();
       return;
@@ -381,7 +379,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
       <div className="visual-viewport-fixed z-[60] flex items-stretch justify-center p-2 md:items-center md:p-6">
         <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
         <div className="app-background logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-white">
-          <div className={`${keyboardOpen ? 'mb-1 px-2 pt-2' : 'mb-4 mt-1 px-3 pt-3'} flex items-center justify-between gap-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3`}>
+          <div className="mb-4 mt-1 flex items-center justify-between gap-3 px-3 pt-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3">
             <h2 className="min-w-0 truncate text-2xl font-bold text-viridian md:text-gray-800">
               <span className="md:hidden">{autoT('ui_f95da57ad34c')}</span>
               <span className="hidden md:inline">
@@ -423,13 +421,11 @@ export default function LogbookEntryPage(props: unknown = {}) {
               type="button"
               aria-label={autoT('ui_e3bdcc71200e')}
               onClick={() =>
-                embeddedOnClose
-                  ? embeddedOnClose()
-                  : closeEditor(
-                      isNew || returnTo === '/dashboard'
-                        ? returnTo
-                        : `/logbook?entry=${encodeURIComponent(id || '')}`,
-                    )
+                closeEditor(
+                  isNew || returnTo === '/dashboard'
+                    ? returnTo
+                    : `/logbook?entry=${encodeURIComponent(id || '')}`,
+                )
               }
               className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
             >
@@ -438,11 +434,8 @@ export default function LogbookEntryPage(props: unknown = {}) {
             </div>
           </div>
           <form
-            ref={formRef}
-            onFocusCapture={handleFormFocus}
             onSubmit={save}
             className="mx-3 min-h-0 flex-1 overflow-y-auto rounded-t-lg bg-white shadow md:mx-0 md:rounded-none md:shadow-none"
-            style={{ scrollPaddingBottom: keyboardOpen ? '1rem' : undefined }}
           >
             <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -612,17 +605,15 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 )}
               </div>
             </div>
-            <div className={`${keyboardOpen ? 'relative p-2' : 'sticky p-4 pb-safe'} bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 sm:flex-row sm:justify-end`}>
+            <div className="flex flex-col-reverse gap-2 border-t border-gray-100 bg-white p-4 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() =>
-                  embeddedOnClose
-                    ? embeddedOnClose()
-                    : closeEditor(
-                        isNew || returnTo === '/dashboard'
-                          ? returnTo
-                          : `/logbook?entry=${encodeURIComponent(id || '')}`,
-                      )
+                  closeEditor(
+                    isNew || returnTo === '/dashboard'
+                      ? returnTo
+                      : `/logbook?entry=${encodeURIComponent(id || '')}`,
+                  )
                 }
                 className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
               >{autoT('ui_07af7cb30fca')}</button>

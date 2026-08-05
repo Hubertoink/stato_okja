@@ -35,8 +35,12 @@ export function useKeyboardOpen(threshold = 120): boolean {
         );
         const nextOpen = isEditableElement(document.activeElement) && hiddenHeight > threshold;
         const root = document.documentElement;
+        const layoutViewportResized =
+          viewportBaseline.height > 0 && layoutHeight < viewportBaseline.height - threshold;
+        const fixedHeight = nextOpen && !layoutViewportResized ? height : layoutHeight;
 
         root.style.setProperty('--visual-viewport-height', `${height}px`);
+        root.style.setProperty('--visual-viewport-fixed-height', `${Math.max(height, fixedHeight)}px`);
         root.style.setProperty('--visual-viewport-offset-top', `${offsetTop}px`);
         root.style.setProperty('--keyboard-inset-height', `${nextOpen ? hiddenHeight : 0}px`);
         root.dataset.keyboardOpen = String(nextOpen);
@@ -47,16 +51,38 @@ export function useKeyboardOpen(threshold = 120): boolean {
     };
 
     compute();
+    let focusChangeTimeout: number | null = null;
+    const handleFocusChange = () => {
+      if (focusChangeTimeout !== null) window.clearTimeout(focusChangeTimeout);
+      focusChangeTimeout = window.setTimeout(() => {
+        focusChangeTimeout = null;
+        compute();
+      }, 0);
+    };
+    window.addEventListener('focusin', compute);
+    window.addEventListener('focusout', handleFocusChange);
+    window.addEventListener('resize', compute);
+    window.addEventListener('orientationchange', compute);
     if (vv) {
       vv.addEventListener('resize', compute);
       vv.addEventListener('scroll', compute);
       return () => {
+        if (focusChangeTimeout !== null) window.clearTimeout(focusChangeTimeout);
+        window.removeEventListener('focusin', compute);
+        window.removeEventListener('focusout', handleFocusChange);
+        window.removeEventListener('resize', compute);
+        window.removeEventListener('orientationchange', compute);
         vv.removeEventListener('resize', compute);
         vv.removeEventListener('scroll', compute);
       };
     }
-    window.addEventListener('resize', compute);
-    return () => window.removeEventListener('resize', compute);
+    return () => {
+      if (focusChangeTimeout !== null) window.clearTimeout(focusChangeTimeout);
+      window.removeEventListener('focusin', compute);
+      window.removeEventListener('focusout', handleFocusChange);
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('orientationchange', compute);
+    };
   }, [threshold]);
 
   return open;

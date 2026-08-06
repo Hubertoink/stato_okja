@@ -221,6 +221,12 @@ export const resources = {
         saving: 'Wird gespeichert…',
         accept: 'Zustimmen und StatO öffnen',
       },
+      unsavedChanges: {
+        title: 'Ungespeicherte Änderungen',
+        message: 'Deine Änderungen wurden noch nicht gespeichert. Möchtest du sie verwerfen?',
+        keepEditing: 'Weiter bearbeiten',
+        discard: 'Änderungen verwerfen',
+      },
     },
     auth: {
       login: {
@@ -1073,6 +1079,12 @@ export const resources = {
         saveError: 'Your acceptance could not be saved. Please try again.',
         saving: 'Saving…',
         accept: 'Accept and open StatO',
+      },
+      unsavedChanges: {
+        title: 'Unsaved changes',
+        message: 'Your changes have not been saved yet. Do you want to discard them?',
+        keepEditing: 'Keep editing',
+        discard: 'Discard changes',
       },
     },
     auth: {

@@ -48,6 +48,7 @@ import { autoT } from '@/i18n/auto';
 import { EditorActions, EditorHeader, EditorSurface } from '@/components/ui/EditorFrame';
 import { Button } from '@/components/ui/Button';
 import ActivityTitleField from '@/components/ActivityTitleField';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
 export default function ActivityCreatePage() {
   const { t } = useTranslation(['activities', 'common']);
@@ -87,6 +88,8 @@ export default function ActivityCreatePage() {
     executionStatus: DEFAULT_ACTIVITY_EXECUTION_STATUS,
     projectId: qpProjectId,
   }));
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form);
+  const initialFormBaselineSetRef = useRef(false);
 
   const selectedProject: Project | undefined = useMemo(() => {
     const id = form.projectId || qpProjectId;
@@ -177,6 +180,19 @@ export default function ActivityCreatePage() {
     });
   }, [selectedProject, staff]);
 
+  // Project defaults are loaded asynchronously. Treat that initial prefill as the
+  // starting point, not as an edit the user needs to discard.
+  const initialFormReady = Boolean(projects && locations && tags && categories && staff);
+  useEffect(() => {
+    if (!initialFormReady || initialFormBaselineSetRef.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (initialFormBaselineSetRef.current) return;
+      reset(form);
+      initialFormBaselineSetRef.current = true;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [categories, form, initialFormReady, locations, projects, reset, staff, tags]);
+
   const handleSave = () => {
     if (create.isPending || submitLockedRef.current) return;
 
@@ -211,11 +227,16 @@ export default function ActivityCreatePage() {
 
   const handleCancel = () => {
     // If we navigated here from the project picker route, go back two steps
-    if (picker) setPicker(false);
+    if (picker) {
+      setPicker(false);
+      return;
+    }
     const fromPicker = (location.state as unknown as { fromProjectPicker?: boolean })
       ?.fromProjectPicker;
-    if (fromPicker) navigate(-2);
-    else navigate(-1);
+    requestDiscard(() => {
+      if (fromPicker) navigate(-2);
+      else navigate(-1);
+    });
   };
 
   const handleShortcutClose = () => {
@@ -793,6 +814,7 @@ export default function ActivityCreatePage() {
         showCancel={false}
         confirmLabel={autoT('ui_9ce3bd4224c8')}
       />
+      {discardDialog}
     </div>
   );
 }

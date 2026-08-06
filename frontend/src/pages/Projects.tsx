@@ -57,6 +57,7 @@ import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useAuth } from '@/lib/auth';
 import RichTextEditor, {
@@ -978,6 +979,15 @@ function ProjectForm({
   const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
   const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
   const [showTitleValidation, setShowTitleValidation] = useState(false);
+  const { discardDialog, requestDiscard } = useUnsavedChangesGuard({
+    form,
+    pendingDocuments: pendingDocuments.map((file) => ({
+      lastModified: file.lastModified,
+      name: file.name,
+      size: file.size,
+    })),
+    removedDocumentIds,
+  });
   const [tagCreateOpen, setTagCreateOpen] = useState(false);
   const [categoryCreateOpen, setCategoryCreateOpen] = useState(false);
   const [staffCreateState, setStaffCreateState] = useState<{
@@ -1334,8 +1344,8 @@ function ProjectForm({
       setDocumentIssue((state) => ({ ...state, open: false }));
       return;
     }
-    onCancel();
-  }, [documentIssue.open, imageIssue.open, onCancel]);
+    requestDiscard(onCancel);
+  }, [documentIssue.open, imageIssue.open, onCancel, requestDiscard]);
 
   const handleSave = useCallback(() => {
     if (saving || submitLockedRef.current) return;
@@ -1902,6 +1912,7 @@ function ProjectForm({
   };
 
   return (
+    <>
     <div className="visual-viewport-fixed bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
       <div
         ref={panelRef}
@@ -2389,6 +2400,8 @@ function ProjectForm({
         </div>
       </Modal>
     </div>
+    {discardDialog}
+    </>
   );
 }
 

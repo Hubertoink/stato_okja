@@ -44,6 +44,7 @@ import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import { Button } from '@/components/ui/Button';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
 type FormState = {
   occurredAt: string;
@@ -272,6 +273,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
     isNew || !!embeddedEntryId || location.pathname.endsWith('/edit'),
   );
   const [form, setForm] = useState<FormState>(() => emptyForm(search));
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, { enabled: editing });
   const [comment, setComment] = useState('');
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
@@ -296,7 +298,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
 
   useEffect(() => {
     if (!entry) return;
-    setForm({
+    const nextForm = {
       occurredAt: toInputDate(entry.occurredAt),
       type: entry.type,
       title: entry.title,
@@ -308,8 +310,10 @@ export default function LogbookEntryPage(props: unknown = {}) {
       visibility: entry.visibility,
       activityId: entry.activityId || '',
       projectId: entry.projectId || '',
-    });
-  }, [entry]);
+    };
+    setForm(nextForm);
+    reset(nextForm);
+  }, [entry, reset]);
 
   useEffect(() => {
     if (!isNew) setEditing(!!embeddedEntryId || location.pathname.endsWith('/edit'));
@@ -326,11 +330,11 @@ export default function LogbookEntryPage(props: unknown = {}) {
     navigate(destination ?? returnTo);
   };
   const closeEditing = () =>
-    closeEditor(
+    requestDiscard(() => closeEditor(
       isNew || returnTo === '/dashboard'
         ? returnTo
         : `/logbook?entry=${encodeURIComponent(id || '')}`,
-    );
+    ));
 
   const canManage =
     !!entry &&
@@ -364,6 +368,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
       if (isNew) {
         const created = await create.mutateAsync(formPayload);
         showToast(autoT('ui_bfeed61d0034'), { type: 'success' });
+        reset(form);
         if (embeddedOnClose) {
           embeddedOnClose();
         } else {
@@ -377,6 +382,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
       } else if (id) {
         await update.mutateAsync({ id, data: formPayload });
         showToast(autoT('ui_e1bd2c4575ee'), { type: 'success' });
+        reset(form);
         if (embeddedOnClose) {
           embeddedOnClose();
         } else {
@@ -655,6 +661,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
           onPick={(activityId) => setForm({ ...form, activityId })}
           occurredAt={form.occurredAt}
         />
+        {discardDialog}
       </>
     );
 

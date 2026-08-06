@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, BarChart3, ClipboardList, Copy, Download, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import Modal from '@/components/Modal';
@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import surveyEmptyIllustration from '../../assets/Illust_Amigos/Umfrage_Keine.svg';
 import { EditorActions } from '@/components/ui/EditorFrame';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
 type EditorState = { title: string; introduction: string; projectId: string; expectedParticipants: string; startsAt: string; endsAt: string; allowMultiplePerDevice: boolean; questions: SurveyQuestion[] };
 const isoToLocal = (value?: string | null) => value ? new Date(value).toISOString().slice(0, 16) : '';
@@ -60,7 +61,14 @@ export function SurveyEditor({ open, survey, onClose, initialTemplate, instanceK
   const [state, setState] = useState<EditorState>(() => toEditor(t, survey || undefined, initialTemplate));
   const [initialId, setInitialId] = useState(initialIdentity);
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
-  if (initialIdentity !== initialId) { setInitialId(initialIdentity); setState(toEditor(t, survey || undefined, initialTemplate)); }
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(state, { enabled: open });
+  useEffect(() => {
+    if (initialIdentity === initialId) return;
+    const nextState = toEditor(t, survey || undefined, initialTemplate);
+    setInitialId(initialIdentity);
+    setState(nextState);
+    reset(nextState);
+  }, [initialId, initialIdentity, initialTemplate, reset, survey, t]);
   const navigate = useNavigate(); const { showToast } = useToast(); const create = useCreateSurvey(); const update = useUpdateSurvey();
   const cohorts = useCohorts({ active: true }).data || []; const projects = useProjects({ archived: false }).data || [];
   const selectedProject = projects.find((project) => project.id === state.projectId);
@@ -81,14 +89,15 @@ export function SurveyEditor({ open, survey, onClose, initialTemplate, instanceK
   const save = async () => {
     if (!state.title.trim()) { showToast(t('editor.enterTitle'), { type: 'error' }); return; }
     const data: SurveyInput = { title: state.title, introduction: state.introduction || null, projectId: state.projectId || null, expectedParticipants: state.expectedParticipants ? Number(state.expectedParticipants) : null, startsAt: localToIso(state.startsAt), endsAt: localToIso(state.endsAt), allowMultiplePerDevice: state.allowMultiplePerDevice, questions: state.questions };
-    try { const saved = survey ? await update.mutateAsync({ id: survey.id, data }) as Survey : await create.mutateAsync(data) as Survey; showToast(survey ? t('editor.saved') : t('editor.created')); onClose(); navigate(`/surveys/${saved.id}`); } catch (error: unknown) { showToast((error as { response?: { data?: { message?: string } } })?.response?.data?.message || t('editor.saveError'), { type: 'error' }); }
+    try { const saved = survey ? await update.mutateAsync({ id: survey.id, data }) as Survey : await create.mutateAsync(data) as Survey; showToast(survey ? t('editor.saved') : t('editor.created')); reset(state); onClose(); navigate(`/surveys/${saved.id}`); } catch (error: unknown) { showToast((error as { response?: { data?: { message?: string } } })?.response?.data?.message || t('editor.saveError'), { type: 'error' }); }
   };
+  const closeEditor = () => requestDiscard(onClose);
   const actions = <EditorActions
     className="-mx-4 -mb-5 mt-5 md:-mx-6"
-    secondary={<Button variant="ghost" size="lg" onClick={onClose}>{t('common:actions.cancel')}</Button>}
+    secondary={<Button variant="ghost" size="lg" onClick={closeEditor}>{t('common:actions.cancel')}</Button>}
     primary={<Button size="lg" onClick={() => void save()} disabled={busy}>{busy ? t('editor.saving') : t('editor.saveDraft')}</Button>}
   />;
-  return <><Modal open={open} onClose={onClose} title={survey ? t('editor.edit') : initialTemplate ? t('editor.useTemplate') : t('editor.new')} maxWidth="5xl" variant="form">
+  return <><Modal open={open} onClose={closeEditor} title={survey ? t('editor.edit') : initialTemplate ? t('editor.useTemplate') : t('editor.new')} maxWidth="5xl" variant="form">
     <div className="flex min-h-0 flex-1 flex-col"><div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 md:px-6"><div className="grid gap-4 md:grid-cols-2"><div><FieldLabel>{t('editor.title')}</FieldLabel><Input value={state.title} onChange={(event) => set('title', event.target.value)} placeholder={t('editor.titlePlaceholder')} /></div><div><FieldLabel>{t('editor.project')}</FieldLabel><div className="flex gap-2"><Button className="min-w-0 flex-1 justify-start" variant="secondary" onClick={() => setProjectPickerOpen(true)}>{selectedProject ? <span className="flex min-w-0 items-center gap-2"><span className="h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-gray-100" style={{ backgroundColor: selectedProject.color || colorFromStringHash(selectedProject.title) }}>{selectedProject.imageUrl ? <ProtectedImage src={selectedProject.imageUrl} alt="" className="h-full w-full object-cover" /> : null}</span><span className="truncate">{selectedProject.title}</span></span> : t('editor.general')}</Button>{state.projectId ? <Button size="icon" variant="secondary" onClick={() => set('projectId', '')} aria-label={t('editor.unlinkProject')}><X className="h-4 w-4" /></Button> : null}</div><FieldHint>{t('editor.projectHint')}</FieldHint></div></div>
       <div><FieldLabel>{t('editor.introduction')}</FieldLabel><Textarea rows={3} value={state.introduction} onChange={(event) => set('introduction', event.target.value)} placeholder={t('editor.introductionPlaceholder')} /></div>
       <div className="grid gap-4 md:grid-cols-3"><div><FieldLabel>{t('editor.expected')}</FieldLabel><Input type="number" min="1" value={state.expectedParticipants} onChange={(event) => set('expectedParticipants', event.target.value)} /><FieldHint>{t('editor.expectedHint')}</FieldHint></div><div><FieldLabel>{t('editor.starts')}</FieldLabel><Input type="datetime-local" value={state.startsAt} onChange={(event) => set('startsAt', event.target.value)} /></div><div><FieldLabel>{t('editor.ends')}</FieldLabel><Input type="datetime-local" value={state.endsAt} onChange={(event) => set('endsAt', event.target.value)} /><FieldHint>{t('editor.endHint')}</FieldHint></div></div>
@@ -97,7 +106,7 @@ export function SurveyEditor({ open, survey, onClose, initialTemplate, instanceK
       <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold text-viridian">{t('editor.questions')}</h4><div className="flex flex-wrap gap-2"><Button size="sm" variant={state.questions.some((entry) => entry.demographicKey === 'age_cohort') ? "primary" : "secondary"} onClick={() => addDemographic('age')}>+ {t('editor.age')}</Button><Button size="sm" variant={state.questions.some((entry) => entry.demographicKey === 'gender') ? "primary" : "secondary"} onClick={() => addDemographic('gender')}>+ {t('editor.gender')}</Button><Button size="sm" variant={state.questions.some((entry) => entry.demographicKey === 'origin_area') ? "primary" : "secondary"} onClick={() => addDemographic('origin')}>+ {t('editor.district')}</Button><Button size="sm" onClick={() => set('questions', [...state.questions, question('single_choice', '', t)])}><Plus className="h-4 w-4" /> {t('editor.question')}</Button></div></div><FieldHint>{t('editor.demographicHint')}</FieldHint>{state.questions.map((entry, index) => <QuestionEditor key={entry.id} value={entry} index={index} onChange={(next) => set('questions', state.questions.map((item, itemIndex) => itemIndex === index ? next : item))} onRemove={() => set('questions', state.questions.filter((_, itemIndex) => itemIndex !== index))} onMoveUp={() => moveQuestion(index, index - 1)} onMoveDown={() => moveQuestion(index, index + 1)} canMoveUp={index > 0} canMoveDown={index < state.questions.length - 1} />)}</div>
       {actions}
     </div></div>
-  </Modal>{projectPickerOpen ? <ProjectPickerModal onClose={() => setProjectPickerOpen(false)} onPick={(project) => { set('projectId', project.id); setProjectPickerOpen(false); }} /> : null}</>;
+  </Modal>{projectPickerOpen ? <ProjectPickerModal onClose={() => setProjectPickerOpen(false)} onPick={(project) => { set('projectId', project.id); setProjectPickerOpen(false); }} /> : null}{discardDialog}</>;
 }
 
 export default function Surveys() {

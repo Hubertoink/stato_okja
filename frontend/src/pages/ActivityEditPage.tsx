@@ -48,6 +48,7 @@ import { Button } from '@/components/ui/Button';
 import { useTranslation } from 'react-i18next';
 import { autoT } from '@/i18n/auto';
 import ActivityTitleField from '@/components/ActivityTitleField';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
 export default function ActivityEditPage() {
   const { t } = useTranslation(['activities', 'common']);
@@ -85,14 +86,19 @@ export default function ActivityEditPage() {
   })();
 
   const [form, setForm] = useState<ActivityFormState>({ cohortCounts: {} });
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
+    enabled: Boolean(activity),
+  });
 
   useEffect(() => {
     if (!activity) return;
-    setForm({
+    const nextForm = {
       ...getActivityFormStateFromActivity(activity),
       executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-    });
-  }, [activity]);
+    };
+    setForm(nextForm);
+    reset(nextForm);
+  }, [activity, reset]);
 
   const selectedProject: Project | undefined = useMemo(
     () => (projects || []).find((p) => p.id === form.projectId),
@@ -166,7 +172,7 @@ export default function ActivityEditPage() {
       setDeleteOpen(false);
       return;
     }
-    navigate(-1);
+    requestDiscard(() => navigate(-1));
   };
 
   const handleSave = () => {
@@ -693,7 +699,7 @@ export default function ActivityEditPage() {
               {t('quickAdd.delete')}
             </Button>
           )}
-          secondary={<Button variant="ghost" size="lg" onClick={() => navigate(-1)}>{t('common:actions.cancel')}</Button>}
+          secondary={<Button variant="ghost" size="lg" onClick={handleClose}>{t('common:actions.cancel')}</Button>}
           primary={(
             <Button size="lg" onClick={handleSave} disabled={update.isPending || picker || deleteOpen}>
               <SaveIcon className="h-4 w-4" />
@@ -757,6 +763,7 @@ export default function ActivityEditPage() {
           confirmLabel={t('quickAdd.delete')}
         />
       )}
+      {discardDialog}
     </div>
   );
 }

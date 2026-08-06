@@ -527,7 +527,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 
 .calendar-day-cell {
   background: var(--calendar-cell-bg);
-  border-color: var(--calendar-grid-border) !important;
+  border-color: var(--calendar-grid-border);
 }
 
 .calendar-day-cell:hover {
@@ -541,7 +541,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 
 .calendar-day-cell-today {
   background: var(--calendar-today-bg);
-  border-color: var(--calendar-grid-border) !important;
+  border-color: var(--calendar-grid-border);
   box-shadow: inset 0 0 0 2px var(--calendar-today-ring);
 }
 
@@ -564,20 +564,20 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 
 .calendar-holiday-badge {
   background: var(--calendar-holiday-bg);
-  border-color: var(--calendar-holiday-border) !important;
+  border-color: var(--calendar-holiday-border);
   color: var(--calendar-holiday-text);
 }
 
 .calendar-school-badge {
   background: var(--calendar-school-bg);
-  border-color: var(--calendar-school-border) !important;
+  border-color: var(--calendar-school-border);
   color: var(--calendar-school-text);
 }
 
 .calendar-more-badge {
   background: rgba(91, 108, 255, 0.16);
   color: #2643c4;
-  border-color: rgba(91, 108, 255, 0.24) !important;
+  border-color: rgba(91, 108, 255, 0.24);
 }
 
 .calendar-more-badge:hover {
@@ -602,12 +602,12 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 
 .calendar-day-list {
   background: var(--surface-elevated);
-  border-color: var(--border-subtle) !important;
+  border-color: var(--border-subtle);
   color: var(--text-primary);
 }
 
 .calendar-day-list-header {
-  border-color: var(--border-subtle) !important;
+  border-color: var(--border-subtle);
 }
 
 .calendar-day-list-table {
@@ -696,7 +696,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .calendar-more-badge {
   background: rgba(110, 168, 255, 0.2);
   color: #d8e6ff;
-  border-color: rgba(110, 168, 255, 0.28) !important;
+  border-color: rgba(110, 168, 255, 0.28);
 }
 
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .calendar-more-badge:hover {

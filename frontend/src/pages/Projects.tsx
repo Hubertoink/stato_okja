@@ -2214,41 +2214,45 @@ function ProjectForm({
         </div>
 
         <div className={`shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 -mx-4 md:-mx-6 px-4 md:px-6 ${keyboardOpen ? '' : 'pb-safe'}`}>
-          <div className="flex items-center justify-between gap-3">
-            <span className="tooltip-wrapper">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
+            {initial?.id && (
+              <div className="order-3 self-start md:order-1 md:mr-auto">
+                <ArchiveRestoreControls
+                  id={initial.id as string}
+                  archived={Boolean(initial.archived)}
+                  archiving={archiving}
+                  deleting={deleting}
+                  onArchivingChange={setArchiving}
+                  onDeletingChange={setDeleting}
+                  onDeleted={onCancel}
+                  onArchivedToggle={onCancel}
+                />
+              </div>
+            )}
+            <span className="order-2 tooltip-wrapper">
               <button
                 type="button"
                 onClick={handleClose}
-                className="inline-flex md:hidden items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100 md:min-h-0 md:w-auto md:rounded-full md:bg-gray-200 md:p-2"
                 title={autoT('ui_07af7cb30fca')}
                 aria-label={autoT('ui_07af7cb30fca')}
               >
-                <XIcon className="w-5 h-5" />
+                <span className="md:hidden">{autoT('ui_07af7cb30fca')}</span>
+                <XIcon className="hidden h-5 w-5 md:block" />
               </button>
               <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
-            {initial?.id && (
-              <ArchiveRestoreControls
-                id={initial.id as string}
-                archived={Boolean(initial.archived)}
-                archiving={archiving}
-                deleting={deleting}
-                onArchivingChange={setArchiving}
-                onDeletingChange={setDeleting}
-                onDeleted={onCancel}
-                onArchivedToggle={onCancel}
-              />
-            )}
-            <span className="tooltip-wrapper">
+            <span className="order-1 tooltip-wrapper">
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={isTitleMissing || saving || applyingTemplate || archiving || deleting}
-                className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-viridian px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 md:min-h-0 md:w-auto md:rounded-full md:p-2"
                 title={autoT('ui_70b73bbc118d')}
                 aria-label={autoT('ui_70b73bbc118d')}
               >
-                <SaveIcon className="w-5 h-5" />
+                <SaveIcon className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="md:hidden">{autoT('ui_70b73bbc118d')}</span>
               </button>
               <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
             </span>

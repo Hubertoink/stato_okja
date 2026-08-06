@@ -65,7 +65,7 @@ export function EditorActions({
   secondary?: ReactNode;
 }) {
   return (
-    <footer className={`flex flex-col gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 pb-safe md:flex-row md:items-center md:px-6 ${className}`}>
+    <footer className={`flex flex-col gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 pb-safe md:flex-row md:items-center md:justify-end md:px-6 ${className}`}>
       {leading ? <div className="order-3 [&>*]:w-full md:order-1 md:mr-auto md:[&>*]:w-auto">{leading}</div> : null}
       {secondary ? <div className="order-2 [&>*]:w-full md:[&>*]:w-auto">{secondary}</div> : null}
       <div className="order-1 [&>*]:w-full md:order-3 md:[&>*]:w-auto">{primary}</div>

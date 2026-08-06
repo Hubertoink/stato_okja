@@ -387,7 +387,7 @@ export default function ActivityQuickAdd({
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setForm({ ...form, title: e.target.value })
                 }
-                autoComplete={isMobile ? 'off' : undefined}
+                autoComplete="off"
                 className="w-full border rounded px-3 py-2"
                 placeholder={t('quickAdd.titlePlaceholder')}
               />

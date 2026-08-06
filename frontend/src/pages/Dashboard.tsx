@@ -758,7 +758,6 @@ export default function Dashboard() {
               <Tooltip
                 contentStyle={dashboardChartTooltip}
                 labelStyle={{ color: 'var(--text-secondary)', fontWeight: 600 }}
-                itemStyle={{ color: 'var(--text-primary)' }}
                 cursor={{ stroke: 'var(--border-strong)', strokeDasharray: '4 4' }}
                 formatter={(value: number, name: string) => [
                   formatNumber(value, { maximumFractionDigits: dashboardTrendMode === 'activity' ? 0 : 1 }),

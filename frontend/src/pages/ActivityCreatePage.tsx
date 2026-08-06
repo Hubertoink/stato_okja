@@ -47,6 +47,7 @@ import { useTranslation } from 'react-i18next';
 import { autoT } from '@/i18n/auto';
 import { EditorActions, EditorHeader, EditorSurface } from '@/components/ui/EditorFrame';
 import { Button } from '@/components/ui/Button';
+import ActivityTitleField from '@/components/ActivityTitleField';
 
 export default function ActivityCreatePage() {
   const { t } = useTranslation(['activities', 'common']);
@@ -306,11 +307,10 @@ export default function ActivityCreatePage() {
           <label className="block text-sm font-medium mb-1" htmlFor="activity-title">
             {t('quickAdd.titleField')}
           </label>
-          <input
+          <ActivityTitleField
             id="activity-title"
             value={form.title || ''}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            autoComplete="off"
+            onValueChange={(title) => setForm({ ...form, title })}
             className="w-full border rounded px-3 py-2"
             placeholder={t('quickAdd.titlePlaceholder')}
           />

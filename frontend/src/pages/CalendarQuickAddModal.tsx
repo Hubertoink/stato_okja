@@ -51,6 +51,7 @@ import {
   mergeProjectStaffIds,
 } from './activityEditorShared';
 import { autoT } from '@/i18n/auto';
+import ActivityTitleField from '@/components/ActivityTitleField';
 
 export default function ActivityQuickAdd({
   dateISO,
@@ -381,13 +382,10 @@ export default function ActivityQuickAdd({
               <label className="block text-sm font-medium mb-1" htmlFor="activity-title">
                 {t('quickAdd.titleField')}
               </label>
-              <input
+              <ActivityTitleField
                 id="activity-title"
                 value={form.title || ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm({ ...form, title: e.target.value })
-                }
-                autoComplete="off"
+                onValueChange={(title) => setForm({ ...form, title })}
                 className="w-full border rounded px-3 py-2"
                 placeholder={t('quickAdd.titlePlaceholder')}
               />

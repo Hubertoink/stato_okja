@@ -806,7 +806,7 @@ function ProjectListRow({
               {project.title}
             </button>
             {project.targetGroup && (
-              <div className="mt-1 text-sm font-medium text-gray-700">{autoT('ui_e5e954075491')}<span className="font-normal text-gray-800">{project.targetGroup}</span>
+              <div className="mt-1 text-sm font-medium text-gray-700">{autoT('ui_e5e954075491')}{' '}<span className="font-normal text-gray-800">{project.targetGroup}</span>
               </div>
             )}
             {Array.isArray(project.documents) && project.documents.length > 0 && (

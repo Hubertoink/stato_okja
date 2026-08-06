@@ -177,29 +177,64 @@ function ActivityPickerModal({
           className="mb-3 w-full shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
         />
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-        {visible.map((activity) => (
-          <button
-            key={activity.id}
-            type="button"
-            onClick={() => {
-              onPick(activity.id);
-              onClose();
-            }}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left transition hover:border-viridian hover:bg-viridian/5"
-          >
-            <span className="min-w-0">
-              <span className="block font-semibold text-gray-800">
-                {activity.title || activity.project?.title || autoT('ui_1c4aaccf808e')}
+        {visible.map((activity) => {
+          const project = activity.project;
+          const projectColor = project
+            ? project.color || colorFromStringHash(project.title)
+            : undefined;
+
+          return (
+            <button
+              key={activity.id}
+              type="button"
+              onClick={() => {
+                onPick(activity.id);
+                onClose();
+              }}
+              className="relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border border-gray-100 bg-white p-3 text-left transition hover:border-viridian hover:bg-viridian/5"
+            >
+              {project?.imageUrl ? (
+                <>
+                  <ProtectedImage
+                    src={project.imageUrl}
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-y-0 right-0 h-full w-1/3 object-cover opacity-85 sm:w-1/4"
+                  />
+                  <div
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-1/3 sm:w-1/4"
+                    aria-hidden
+                  />
+                </>
+              ) : projectColor ? (
+                <>
+                  <div
+                    className="absolute inset-y-0 right-0 w-1/3 opacity-80 sm:w-1/4"
+                    style={{
+                      background: `linear-gradient(135deg, ${projectColor} 0%, color-mix(in srgb, ${projectColor} 68%, white) 100%)`,
+                    }}
+                    aria-hidden
+                  />
+                  <div
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-1/3 sm:w-1/4"
+                    aria-hidden
+                  />
+                </>
+              ) : null}
+              <span className="relative z-10 min-w-0">
+                <span className="block font-semibold text-gray-800">
+                  {activity.title || project?.title || autoT('ui_1c4aaccf808e')}
+                </span>
+                <span className="mt-1 block text-xs text-gray-500">
+                  {new Date(`${activity.date}T12:00:00`).toLocaleDateString(getCurrentIntlLocale())} ·{' '}
+                  {project?.title || autoT('ui_5b4a4a84148c')}
+                </span>
               </span>
-              <span className="mt-1 block text-xs text-gray-500">
-                {new Date(`${activity.date}T12:00:00`).toLocaleDateString(getCurrentIntlLocale())} ·{' '}
-                {activity.project?.title || autoT('ui_5b4a4a84148c')}
-              </span>
-            </span>
-            <span className="shrink-0 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600">
-              {activity.countTotal || 0}{autoT('ui_f79fa2d4a0a2')}</span>
-          </button>
-        ))}
+              <span className="relative z-10 shrink-0 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                {activity.countTotal || 0}{autoT('ui_f79fa2d4a0a2')}</span>
+            </button>
+          );
+        })}
         {visible.length === 0 && (
           <p className="py-8 text-center text-sm text-gray-500">{autoT('ui_dfc3488ab197')}</p>
         )}

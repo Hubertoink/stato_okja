@@ -52,9 +52,6 @@ import { defaultCategoryByName } from '@/lib/defaultCategories';
 import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTemplatesApi';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import ProtectedImage from '@/components/ProtectedImage';
-import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
-import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
@@ -933,13 +930,9 @@ function ProjectForm({
   onCancel: () => void;
   saving?: boolean;
 }) {
-  useBodyScrollLock(true);
-  const keyboardOpen = useKeyboardOpen();
   const { user } = useAuth();
   const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const handlePanelFocus = useFocusedFieldVisibility(panelRef, keyboardOpen);
   const submitLockedRef = useRef(false);
   const [form, setForm] = useState<Partial<Project>>(() => {
     const base: Partial<Project> = {
@@ -1913,44 +1906,29 @@ function ProjectForm({
 
   return (
     <>
-    <div className="visual-viewport-fixed bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
+      <Modal
+        open
+        onClose={handleClose}
+        title={initial?.id ? autoT('ui_82ef22dfb102') : autoT('ui_4bc9d33f94ce')}
+        maxWidth="5xl"
+        variant="form"
+        headerActions={
+          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{
+            background: initial?.archived
+              ? 'color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))'
+              : 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+            color: initial?.archived
+              ? 'color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))'
+              : 'var(--viridian)',
+          }}>{autoT('ui_11dc9e195292')}{initial?.archived ? autoT('ui_7d6b45e9c890') : autoT('ui_16a766caf92d')}</span>
+        }
+      >
       <div
-        ref={panelRef}
-        onFocusCapture={handlePanelFocus}
-        className={`modal-panel-roomy bg-white w-full md:max-w-4xl lg:max-w-5xl rounded-t-2xl md:rounded-lg px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-x-hidden ${keyboardOpen ? 'overflow-y-auto pt-2 md:pt-6' : 'overflow-hidden pt-4 md:pt-6'}`}
+        className="flex min-h-0 flex-1 flex-col"
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
       >
-        <div className={`shrink-0 flex items-start justify-between gap-3 ${keyboardOpen ? 'mb-2' : 'mb-4'}`}>
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold text-viridian">
-              {initial?.id ? autoT('ui_82ef22dfb102') : autoT('ui_4bc9d33f94ce')}
-            </h3>
-            <span
-              className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
-              style={{
-                background: initial?.archived
-                  ? "color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))"
-                  : "color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))",
-                color: initial?.archived
-                  ? "color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))"
-                  : "var(--viridian)",
-              }}
-            >{autoT('ui_11dc9e195292')}{initial?.archived ? autoT('ui_7d6b45e9c890') : autoT('ui_16a766caf92d')}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-            title={autoT('ui_44424b18700e')}
-            aria-label={autoT('ui_44424b18700e')}
-          >
-            <XIcon className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className={keyboardOpen ? 'min-w-0 flex-none overflow-visible pb-2' : 'min-w-0 min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6'}>
+        <div className="min-w-0 min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
 
         {!initial?.id && (
           <div className="mb-4">
@@ -2224,7 +2202,7 @@ function ProjectForm({
         </div>
         </div>
 
-        <div className={`shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 -mx-4 md:-mx-6 px-4 md:px-6 ${keyboardOpen ? '' : 'pb-safe'}`}>
+        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 px-4 pb-safe md:px-6">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
             {initial?.id && (
               <div className="order-3 self-start md:order-1 md:mr-auto">
@@ -2399,7 +2377,7 @@ function ProjectForm({
           </div>
         </div>
       </Modal>
-    </div>
+    </Modal>
     {discardDialog}
     </>
   );

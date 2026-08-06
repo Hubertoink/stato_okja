@@ -309,6 +309,7 @@ export default function ActivityCreatePage() {
             id="activity-title"
             value={form.title || ''}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
+            autoComplete={isMobile ? 'off' : undefined}
             className="w-full border rounded px-3 py-2"
             placeholder={t('quickAdd.titlePlaceholder')}
           />

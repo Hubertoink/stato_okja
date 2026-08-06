@@ -1090,10 +1090,6 @@ code {
   height: var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100vh));
 }
 
-.visual-viewport-min-height {
-  min-height: var(--visual-viewport-height, 100vh);
-}
-
 .modal-panel-roomy {
   max-height: calc(var(--visual-viewport-height, 100vh) - 0.75rem);
   background: var(--surface-elevated);
@@ -1376,10 +1372,6 @@ code {
 @supports (height: 100dvh) {
   .visual-viewport-fixed {
     height: var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100dvh));
-  }
-
-  .visual-viewport-min-height {
-    min-height: var(--visual-viewport-height, 100dvh);
   }
 
   .modal-panel-roomy {

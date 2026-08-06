@@ -5,7 +5,8 @@ Die globalen Styles sind in `main.tsx` in ihrer Kaskadenreihenfolge eingebunden.
 ## Aktuelle Zuständigkeiten
 
 - `foundation.css`, `themes.css`, `document.css`: Grundgerüst und Design-Tokens
-- `theme-utilities.css`: theme-aware Utility-Overrides
+- `tailwind.config.js`: theme-aware Tailwind-Farbpalette; Vollfarben verwenden CSS-Tokens, Opazitätsvarianten `color-mix()`
+- `theme-utilities.css`: wenige bewusst abweichende Theme-Sonderfälle
 - `shell.css`, `navigation.css`: App-Shell, Header und Navigation
 - `settings-admin.css`: Settings- und Organisationsverwaltung
 - `overlays-modals.css`: Modale, Scroll-Verhalten und Overlay-Regeln

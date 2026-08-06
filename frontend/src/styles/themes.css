@@ -1,0 +1,228 @@
+/* Theme variables: default to Default Theme (modern blue/purple gradient) */
+:root[data-theme='Default Theme'],
+:root:not([data-theme]) {
+  --viridian: #5b6cff; /* Vibrant blue-purple primary */
+  --cambridge-blue: #7c8fff; /* Lighter blue accent */
+  --mint-green: #e8ebff; /* Soft blue tint */
+  --azure-web: #f5f7ff; /* Very light blue-white */
+  --mint-cream: #fafbff; /* Near-white with blue tint */
+  --app-bg: #fafbff;
+  --app-bg-overlay:
+    radial-gradient(circle at 14% 22%, rgba(91, 108, 255, 0.12) 0%, rgba(91, 108, 255, 0) 28%),
+    radial-gradient(circle at 84% 78%, rgba(124, 143, 255, 0.1) 0%, rgba(124, 143, 255, 0) 24%),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.08) 48%,
+      rgba(255, 255, 255, 0.18) 100%
+    );
+  /* Modern accent colors */
+  --accent-orange: #f59e0b; /* warning / highlight (amber) */
+  --accent-green: #16a34a; /* success */
+  --accent-pink: #ef4444; /* danger */
+  --accent-teal: #0ea5e9; /* info */
+  --accent-purple: #6366f1; /* secondary accent */
+  /* Greys - softer, warmer */
+  --seasalt: #f8f9faff;
+  --antiflash-white: #e9ecefff;
+  --platinum: #dee2e6ff;
+  --french-gray: #ced4daff;
+  --french-gray-2: #adb5bdff;
+  --slate-gray: #6c757dff;
+  --outer-space: #495057ff;
+  --onyx: #343a40ff;
+  --eerie-black: #212529ff;
+  /* Card styling */
+  --card-shadow: 0 4px 24px rgba(91, 108, 255, 0.08);
+  --card-radius: 16px;
+}
+
+/* Earthy Tones */
+:root[data-theme='Earthy Tones'] {
+  --viridian: #6d6875ff; /* dim-gray as primary */
+  --cambridge-blue: #b5838dff; /* old-rose */
+  --mint-green: #e5989bff; /* salmon-pink */
+  --azure-web: #ffb4a2ff; /* melon */
+  --mint-cream: #f5f2f1; /* softened, desaturated warm light background */
+  --app-bg: #f5f2f1;
+  --app-bg-overlay:
+    radial-gradient(circle at 16% 20%, rgba(181, 131, 141, 0.14) 0%, rgba(181, 131, 141, 0) 28%),
+    radial-gradient(circle at 80% 76%, rgba(255, 180, 162, 0.18) 0%, rgba(255, 180, 162, 0) 24%),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.2) 0%,
+      rgba(245, 242, 241, 0.06) 48%,
+      rgba(255, 255, 255, 0.16) 100%
+    );
+}
+
+/* Peachy Delight */
+:root[data-theme='Peachy Delight'] {
+  --viridian: #9d8189ff; /* mountbatten-pink */
+  --cambridge-blue: #f4acb7ff; /* cherry-blossom-pink */
+  --mint-green: #ffcad4ff; /* pink */
+  --azure-web: #ffe5d9ff; /* champagne-pink */
+  --mint-cream: #d8e2dcff; /* platinum */
+  --app-bg: #d8e2dcff;
+  --app-bg-overlay:
+    radial-gradient(circle at 14% 18%, rgba(244, 172, 183, 0.16) 0%, rgba(244, 172, 183, 0) 28%),
+    radial-gradient(circle at 82% 80%, rgba(255, 229, 217, 0.18) 0%, rgba(255, 229, 217, 0) 24%),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(216, 226, 220, 0.08) 48%,
+      rgba(255, 255, 255, 0.16) 100%
+    );
+}
+
+/* Ocean Pearl */
+:root[data-theme='Ocean Pearl'] {
+  --viridian: #006d77ff; /* caribbean-current */
+  --cambridge-blue: #83c5beff; /* tiffany-blue */
+  --mint-green: #edf6f9ff; /* alice-blue */
+  --azure-web: #ffddd2ff; /* pale-dogwood */
+  --mint-cream: #f3f4f6; /* soft light gray instead of atomic-tangerine */
+  --app-bg: #f3f4f6;
+  --app-bg-overlay:
+    radial-gradient(circle at 15% 20%, rgba(131, 197, 190, 0.18) 0%, rgba(131, 197, 190, 0) 28%),
+    radial-gradient(circle at 84% 78%, rgba(255, 221, 210, 0.18) 0%, rgba(255, 221, 210, 0) 24%),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(237, 246, 249, 0.08) 48%,
+      rgba(255, 255, 255, 0.16) 100%
+    );
+}
+
+:root[data-theme='Midnight'] {
+  color-scheme: dark;
+  --viridian: #6ea8ff;
+  --cambridge-blue: #66d9d1;
+  --mint-green: #142132;
+  --azure-web: #1a2333;
+  --mint-cream: #0c1220;
+  --app-bg: #08101d;
+  --app-bg-overlay:
+    radial-gradient(circle at 12% 18%, rgba(110, 168, 255, 0.22) 0%, rgba(110, 168, 255, 0) 28%),
+    radial-gradient(circle at 82% 78%, rgba(102, 217, 209, 0.16) 0%, rgba(102, 217, 209, 0) 24%),
+    radial-gradient(circle at 50% 100%, rgba(88, 103, 255, 0.12) 0%, rgba(88, 103, 255, 0) 34%),
+    linear-gradient(
+      145deg,
+      rgba(4, 9, 20, 0.96) 0%,
+      rgba(9, 17, 31, 0.88) 36%,
+      rgba(12, 21, 39, 0.82) 62%,
+      rgba(6, 12, 24, 0.96) 100%
+    );
+  --surface-1: #0d1422;
+  --surface-2: #111a2b;
+  --surface-3: #19243a;
+  --surface-elevated: #111a2b;
+  --text-primary: #ecf3ff;
+  --text-secondary: #c9d5eb;
+  --text-muted: #99a7c2;
+  --text-faint: #74829c;
+  --border-subtle: rgba(148, 163, 184, 0.16);
+  --border-strong: rgba(148, 163, 184, 0.3);
+  --header-surface-bg: rgba(8, 14, 26, 0.72);
+  --nav-surface-bg: rgba(10, 18, 31, 0.82);
+  --footer-surface-bg: linear-gradient(
+    180deg,
+    rgba(20, 30, 47, 0.82) 0%,
+    rgba(13, 20, 34, 0.72) 100%
+  );
+  --overlay-backdrop: rgba(2, 6, 23, 0.62);
+  --input-bg: #111a2b;
+  --input-disabled-bg: #0f1728;
+  --focus-ring: rgba(110, 168, 255, 0.28);
+  --interactive-soft: color-mix(in srgb, var(--viridian) 18%, transparent);
+  --interactive-soft-strong: color-mix(in srgb, var(--viridian) 26%, transparent);
+  --interactive-soft-border: color-mix(in srgb, var(--viridian) 42%, transparent);
+  --calendar-surface-bg: #0c1220;
+  --calendar-header-bg: #111a2b;
+  --calendar-grid-border: rgba(148, 163, 184, 0.2);
+  --calendar-cell-bg: #0f172a;
+  --calendar-cell-hover: #131f34;
+  --calendar-cell-other-bg: rgba(30, 41, 59, 0.5);
+  --calendar-cell-other-text: #7f8ba3;
+  --calendar-today-bg: rgba(102, 217, 209, 0.12);
+  --calendar-today-ring: rgba(102, 217, 209, 0.82);
+  --calendar-holiday-bg: rgba(69, 10, 10, 0.55);
+  --calendar-holiday-border: rgba(248, 113, 113, 0.36);
+  --calendar-holiday-text: #fecaca;
+  --calendar-school-bg: rgba(120, 53, 15, 0.42);
+  --calendar-school-border: rgba(251, 191, 36, 0.34);
+  --calendar-school-text: #fde68a;
+  --accent-orange: #f6ad55;
+  --accent-green: #48bb78;
+  --accent-pink: #f87171;
+  --accent-teal: #38bdf8;
+  --accent-purple: #a78bfa;
+  --card-shadow: 0 10px 34px rgba(0, 0, 0, 0.38);
+}
+
+:root[data-theme='Coastal Vibes'] {
+  color-scheme: dark;
+  --viridian: #8d99ae;
+  --cambridge-blue: #ef233c;
+  --mint-green: #35374f;
+  --azure-web: #40445f;
+  --mint-cream: #1f2132;
+  --app-bg: #171927;
+  --app-bg-overlay:
+    radial-gradient(circle at 14% 18%, rgba(141, 153, 174, 0.22) 0%, rgba(141, 153, 174, 0) 28%),
+    radial-gradient(circle at 82% 76%, rgba(217, 4, 41, 0.16) 0%, rgba(217, 4, 41, 0) 24%),
+    radial-gradient(circle at 52% 100%, rgba(239, 35, 60, 0.12) 0%, rgba(239, 35, 60, 0) 34%),
+    linear-gradient(
+      145deg,
+      rgba(18, 19, 31, 0.96) 0%,
+      rgba(27, 29, 43, 0.9) 38%,
+      rgba(35, 37, 55, 0.84) 64%,
+      rgba(16, 17, 28, 0.96) 100%
+    );
+  --surface-1: #232538;
+  --surface-2: #2b2d42;
+  --surface-3: #363a53;
+  --surface-elevated: #2f3248;
+  --text-primary: #edf2f4;
+  --text-secondary: #d4dbe3;
+  --text-muted: #aeb8c5;
+  --text-faint: #8d99ae;
+  --border-subtle: rgba(141, 153, 174, 0.18);
+  --border-strong: rgba(141, 153, 174, 0.32);
+  --header-surface-bg: rgba(31, 33, 50, 0.74);
+  --nav-surface-bg: rgba(35, 37, 56, 0.84);
+  --footer-surface-bg: linear-gradient(
+    180deg,
+    rgba(47, 50, 72, 0.84) 0%,
+    rgba(31, 33, 50, 0.74) 100%
+  );
+  --overlay-backdrop: rgba(10, 11, 19, 0.62);
+  --input-bg: #2b2d42;
+  --input-disabled-bg: #222437;
+  --focus-ring: rgba(141, 153, 174, 0.28);
+  --interactive-soft: color-mix(in srgb, var(--cambridge-blue) 18%, transparent);
+  --interactive-soft-strong: color-mix(in srgb, var(--cambridge-blue) 28%, transparent);
+  --interactive-soft-border: color-mix(in srgb, var(--cambridge-blue) 42%, transparent);
+  --calendar-surface-bg: #1f2132;
+  --calendar-header-bg: #2b2d42;
+  --calendar-grid-border: rgba(141, 153, 174, 0.24);
+  --calendar-cell-bg: #232538;
+  --calendar-cell-hover: #2f3248;
+  --calendar-cell-other-bg: rgba(64, 68, 95, 0.52);
+  --calendar-cell-other-text: #8d99ae;
+  --calendar-today-bg: rgba(141, 153, 174, 0.14);
+  --calendar-today-ring: rgba(237, 242, 244, 0.82);
+  --calendar-holiday-bg: rgba(96, 10, 24, 0.46);
+  --calendar-holiday-border: rgba(239, 35, 60, 0.38);
+  --calendar-holiday-text: #ffd6dc;
+  --calendar-school-bg: rgba(74, 82, 101, 0.42);
+  --calendar-school-border: rgba(141, 153, 174, 0.34);
+  --calendar-school-text: #edf2f4;
+  --accent-orange: #ef233c;
+  --accent-green: #8d99ae;
+  --accent-pink: #d90429;
+  --accent-teal: #edf2f4;
+  --accent-purple: #b6bfd0;
+  --card-shadow: 0 10px 34px rgba(0, 0, 0, 0.42);
+}
+

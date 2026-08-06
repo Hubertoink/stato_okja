@@ -1,0 +1,340 @@
+.settings-nav-surface {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+}
+
+.settings-tab-button {
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+}
+
+.settings-tab-button:hover {
+  background: var(--interactive-soft);
+  color: var(--text-primary);
+}
+
+.settings-tab-button-active {
+  background: var(--interactive-soft-strong);
+  color: var(--viridian);
+  border-bottom-color: var(--viridian);
+}
+
+.settings-mobile-trigger {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+}
+
+.settings-mobile-trigger-label {
+  color: var(--text-muted);
+}
+
+.settings-mobile-trigger-pill {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.settings-mobile-menu {
+  background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
+  border: 1px solid var(--border-subtle);
+}
+
+.settings-mobile-option {
+  color: var(--text-secondary);
+}
+
+.settings-mobile-option:hover {
+  background: var(--interactive-soft);
+  color: var(--text-primary);
+}
+
+.settings-mobile-option-active {
+  background: var(--interactive-soft-strong);
+  color: var(--text-primary);
+}
+
+.settings-mobile-icon-shell {
+  background: var(--interactive-soft);
+  color: var(--viridian);
+}
+
+.settings-mobile-icon-shell-active {
+  background: color-mix(in srgb, var(--viridian) 20%, transparent);
+  color: var(--viridian);
+}
+
+.org-admin-card {
+  background: color-mix(in srgb, var(--surface-1) 96%, transparent);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.org-tree-item {
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border-subtle) 42%, transparent);
+}
+
+.org-tree-item:hover {
+  background: color-mix(in srgb, var(--interactive-soft) 48%, var(--surface-1));
+  border-color: var(--interactive-soft-border);
+}
+
+.org-tree-item-selected {
+  background: color-mix(in srgb, var(--interactive-soft-strong) 52%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--viridian) 64%, var(--border-subtle));
+  box-shadow:
+    inset 3px 0 0 var(--viridian),
+    0 10px 24px color-mix(in srgb, var(--viridian) 10%, transparent);
+}
+
+.org-tree-toggle {
+  color: var(--text-muted);
+}
+
+.org-tree-toggle:hover,
+.org-tree-icon-button:hover,
+.org-tree-action-button:hover {
+  background: var(--interactive-soft);
+  color: var(--viridian);
+}
+
+.org-tree-settings-button {
+  background: color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--accent-pink) 42%, var(--border-subtle));
+  color: color-mix(in srgb, var(--accent-pink) 84%, white 16%);
+}
+
+.org-tree-settings-button:hover {
+  background: color-mix(in srgb, var(--accent-pink) 22%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--accent-pink) 58%, var(--border-subtle));
+  color: color-mix(in srgb, var(--accent-pink) 92%, white 8%);
+}
+
+.org-tree-status-pill,
+.org-tree-count-pill,
+.taxonomy-context-pill {
+  background: color-mix(in srgb, var(--surface-2) 82%, transparent);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.org-tree-level-badge,
+.org-tree-child-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.org-tree-level-badge-root {
+  background: color-mix(in srgb, var(--viridian) 18%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--viridian) 36%, var(--border-subtle));
+  color: color-mix(in srgb, var(--viridian) 78%, var(--text-primary));
+}
+
+.org-tree-level-badge-child {
+  background: color-mix(in srgb, var(--interactive-soft-strong) 64%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--interactive-soft-border) 78%, var(--border-subtle));
+  color: var(--text-primary);
+}
+
+.org-tree-child-badge {
+  background: color-mix(in srgb, var(--surface-2) 86%, transparent);
+  color: var(--text-muted);
+}
+
+.org-tree-level-badge svg,
+.org-tree-child-badge svg {
+  flex: 0 0 auto;
+}
+
+.org-tree-count-pill svg {
+  color: var(--text-muted);
+}
+
+.org-tree-icon-button,
+.org-tree-action-button {
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.org-tree-delete-button {
+  background: color-mix(in srgb, var(--accent-pink) 10%, var(--surface-1));
+  color: color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary));
+}
+
+.org-tree-delete-button:hover {
+  background: color-mix(in srgb, var(--accent-pink) 16%, var(--surface-1));
+}
+
+.taxonomy-context-stat,
+.taxonomy-rule-summary-card,
+.taxonomy-rule-control {
+  background: color-mix(in srgb, var(--surface-2) 82%, transparent);
+  border: 1px solid var(--border-subtle);
+}
+
+.taxonomy-rule-summary-card {
+  border-radius: 0.75rem;
+  padding: 0.875rem;
+}
+
+.taxonomy-rule-control {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  color: var(--text-secondary);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.taxonomy-rule-switch {
+  position: relative;
+  margin-top: 0.125rem;
+  width: 2.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 26%, var(--surface-3));
+  border: 1px solid var(--border-subtle);
+}
+
+.taxonomy-rule-switch > span {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+  transition: transform 160ms ease;
+}
+
+.taxonomy-rule-switch-on {
+  background: color-mix(in srgb, var(--viridian) 72%, var(--surface-3));
+  border-color: color-mix(in srgb, var(--viridian) 72%, var(--border-subtle));
+}
+
+.taxonomy-rule-switch-on > span {
+  transform: translateX(1rem);
+}
+
+.taxonomy-config-diff-list {
+  background: color-mix(in srgb, var(--accent-orange) 12%, var(--surface-1));
+  border: 1px solid color-mix(in srgb, var(--accent-orange) 32%, var(--border-subtle));
+}
+
+.taxonomy-config-info-banner {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #1e3a8a;
+}
+
+.taxonomy-config-warning-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  color: #92400e;
+}
+
+.taxonomy-config-warning-soft {
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.taxonomy-config-override-surface {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.taxonomy-config-override-pill {
+  background: rgba(245, 158, 11, 0.18);
+  color: #92400e;
+}
+
+.org-scope-option {
+  padding: 0.625rem 0.75rem;
+  color: var(--text-secondary);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.org-scope-option:hover {
+  background: var(--interactive-soft);
+  color: var(--text-primary);
+}
+
+.org-scope-option-active {
+  background: color-mix(in srgb, var(--viridian) 14%, var(--surface-1));
+  color: var(--text-primary);
+  box-shadow: inset 3px 0 0 var(--viridian);
+}
+
+.org-scope-icon-shell {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  background: var(--interactive-soft);
+  color: var(--viridian);
+}
+
+.org-scope-depth-label {
+  margin-top: 0.125rem;
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .taxonomy-config-info-banner {
+  background: rgba(96, 165, 250, 0.14);
+  border-color: rgba(96, 165, 250, 0.28);
+  color: #dbeafe;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .taxonomy-config-warning-banner {
+  background: rgba(251, 191, 36, 0.14);
+  border-color: rgba(251, 191, 36, 0.26);
+  color: #fde68a;
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .taxonomy-config-warning-soft {
+  border-color: rgba(251, 191, 36, 0.24);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .taxonomy-config-override-surface {
+  border-color: rgba(251, 191, 36, 0.28);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+:root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .taxonomy-config-override-pill {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fde68a;
+}

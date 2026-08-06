@@ -1,0 +1,283 @@
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.statistics-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.statistics-kpi-card {
+  --statistics-kpi-accent: var(--viridian);
+  position: relative;
+  isolation: isolate;
+  min-height: 8.25rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--statistics-kpi-accent) 22%, var(--border-subtle));
+  border-radius: var(--card-radius);
+  background: linear-gradient(
+    135deg,
+    var(--surface-1) 0%,
+    color-mix(in srgb, var(--statistics-kpi-accent) 9%, var(--surface-1)) 100%
+  );
+  box-shadow: var(--card-shadow);
+  text-align: left;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.statistics-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--statistics-kpi-accent) 42%, var(--border-subtle));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--statistics-kpi-accent) 14%, transparent);
+}
+
+.statistics-kpi-card--activities {
+  --statistics-kpi-accent: var(--viridian);
+}
+
+.statistics-kpi-card--participants,
+.statistics-kpi-card--participants-per-hour {
+  --statistics-kpi-accent: var(--cambridge-blue);
+}
+
+.statistics-kpi-card--hours {
+  --statistics-kpi-accent: var(--viridian);
+}
+
+.statistics-kpi-card--closure {
+  --statistics-kpi-accent: var(--accent-orange);
+}
+
+.statistics-kpi-card-icon {
+  position: absolute;
+  z-index: -1;
+  right: -0.75rem;
+  bottom: -1.5rem;
+  width: min(46%, 11rem);
+  height: 9.5rem;
+  object-fit: contain;
+  object-position: center;
+  opacity: 0.46;
+  pointer-events: none;
+  user-select: none;
+  filter: saturate(0.92);
+}
+
+.empty-state-illustration {
+  display: block;
+  width: min(9rem, 48%);
+  height: 7rem;
+  margin: 0 auto 0.5rem;
+  object-fit: contain;
+}
+
+.statistics-kpi-card-content {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.statistics-kpi-card-value {
+  margin: 0;
+  color: var(--statistics-kpi-accent);
+  font-size: clamp(1.85rem, 3vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.statistics-kpi-card-label {
+  max-width: 12rem;
+  margin: 0.65rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* html2canvas cannot parse CSS Color 4 values produced by color-mix().
+   The report uses these static equivalents only while it is rendered to PDF. */
+.statistics-pdf-report .statistics-kpi-card {
+  border: 1px solid #dbe3f5;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+}
+
+.statistics-pdf-report .statistics-kpi-card:hover {
+  transform: none;
+  border-color: #dbe3f5;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+}
+
+.statistics-pdf-report .statistics-kpi-card--activities,
+.statistics-pdf-report .statistics-kpi-card--hours {
+  --statistics-kpi-accent: #5b6cff;
+}
+
+.statistics-pdf-report .statistics-kpi-card--participants,
+.statistics-pdf-report .statistics-kpi-card--participants-per-hour {
+  --statistics-kpi-accent: #3b82f6;
+}
+
+.statistics-pdf-report .statistics-kpi-card--closure {
+  --statistics-kpi-accent: #f59e0b;
+}
+
+.statistics-pdf-report .statistics-kpi-card-label {
+  color: #475569;
+}
+
+.statistics-pdf-report .kpi-card {
+  border-color: #dbe3f5;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.statistics-pdf-report .stats-kpi-toggle {
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
+/* Single-chart exports capture the chart node itself, so the static PDF
+   palette has to be applied directly to that node as well. */
+.statistics-pdf-export-card {
+  --surface-1: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #eef2f7;
+  --surface-elevated: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --border-subtle: #dbe3f5;
+  --border-strong: #cbd5e1;
+  --interactive-soft: #eef2ff;
+  --interactive-soft-strong: #e0e7ff;
+  --interactive-soft-border: #c7d2fe;
+  --card-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  border: 1px solid #dbe3f5 !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1) !important;
+  color: #1f2937 !important;
+}
+
+.statistics-pdf-export-card .recharts-tooltip-wrapper {
+  visibility: hidden !important;
+}
+
+.custom-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.statistics-page-summary-desktop {
+  display: inline;
+}
+
+@media (max-width: 767px) {
+  .dashboard-kpi-grid,
+  .statistics-kpi-grid,
+  .custom-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .dashboard-kpi-card,
+  .statistics-kpi-card,
+  .custom-kpi-card {
+    min-width: 0;
+    min-height: 6rem;
+    padding: 0.875rem;
+    border-radius: 0.875rem;
+  }
+
+  .custom-kpi-card {
+    min-height: 7.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .dashboard-kpi-card h3,
+  .statistics-kpi-card-label {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+  }
+
+  .dashboard-kpi-card p,
+  .statistics-kpi-card-value,
+  .custom-kpi-card p:first-child {
+    font-size: 1.875rem;
+    line-height: 1.1;
+  }
+
+  .custom-kpi-card p:nth-child(2) {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+  }
+
+  .custom-kpi-card p:last-child {
+    margin-top: 0.25rem;
+    font-size: 0.6875rem;
+    line-height: 1.25;
+  }
+
+  .statistics-kpi-card-label {
+    margin-top: 0.5rem;
+  }
+
+  .statistics-kpi-card {
+    min-height: 6.75rem;
+    padding: 0.875rem;
+    border-radius: 0.875rem;
+  }
+
+  .statistics-kpi-card-icon {
+    right: -0.8rem;
+    bottom: -1.25rem;
+    width: 46%;
+    height: 7.25rem;
+    opacity: 0.38;
+  }
+
+  .statistics-kpi-card-label {
+    max-width: 8rem;
+  }
+
+  .statistics-page-summary-desktop {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .statistics-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .custom-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .statistics-kpi-grid--with-closure {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+

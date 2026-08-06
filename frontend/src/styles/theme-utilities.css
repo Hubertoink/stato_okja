@@ -1,0 +1,133 @@
+/* Override color utility classes to use theme variables */
+.bg-viridian {
+  background-color: var(--viridian) !important;
+}
+.text-viridian {
+  color: var(--viridian) !important;
+}
+.border-viridian {
+  border-color: var(--viridian) !important;
+}
+
+.bg-cambridge-blue {
+  background-color: var(--cambridge-blue) !important;
+}
+.text-cambridge-blue {
+  color: var(--cambridge-blue) !important;
+}
+.border-cambridge-blue {
+  border-color: var(--cambridge-blue) !important;
+}
+
+.bg-mint-green {
+  background-color: var(--mint-green) !important;
+}
+.text-mint-green {
+  color: var(--mint-green) !important;
+}
+.border-mint-green {
+  border-color: var(--mint-green) !important;
+}
+
+.bg-azure-web {
+  background-color: var(--azure-web) !important;
+}
+.text-azure-web {
+  color: var(--azure-web) !important;
+}
+.border-azure-web {
+  border-color: var(--azure-web) !important;
+}
+
+.bg-mint-cream {
+  background-color: var(--mint-cream) !important;
+}
+.text-mint-cream {
+  color: var(--mint-cream) !important;
+}
+.border-mint-cream {
+  border-color: var(--mint-cream) !important;
+}
+
+/* Accent utility classes should respect theme variables */
+.bg-accent-orange {
+  background-color: var(--accent-orange) !important;
+}
+.text-accent-orange {
+  color: var(--accent-orange) !important;
+}
+.border-accent-orange {
+  border-color: var(--accent-orange) !important;
+}
+
+.bg-accent-green {
+  background-color: var(--accent-green) !important;
+}
+.text-accent-green {
+  color: var(--accent-green) !important;
+}
+.border-accent-green {
+  border-color: var(--accent-green) !important;
+}
+
+.bg-accent-pink {
+  background-color: var(--accent-pink) !important;
+}
+.text-accent-pink {
+  color: var(--accent-pink) !important;
+}
+.border-accent-pink {
+  border-color: var(--accent-pink) !important;
+}
+
+.bg-accent-teal {
+  background-color: var(--accent-teal) !important;
+}
+.text-accent-teal {
+  color: var(--accent-teal) !important;
+}
+.border-accent-teal {
+  border-color: var(--accent-teal) !important;
+}
+
+.bg-accent-purple {
+  background-color: var(--accent-purple) !important;
+}
+.text-accent-purple {
+  color: var(--accent-purple) !important;
+}
+.border-accent-purple {
+  border-color: var(--accent-purple) !important;
+}
+
+:root[data-theme='Coastal Vibes'] button.bg-viridian,
+:root[data-theme='Coastal Vibes'] a.bg-viridian {
+  background-color: var(--accent-pink) !important;
+}
+
+:root[data-theme='Coastal Vibes'] button.border-viridian,
+:root[data-theme='Coastal Vibes'] a.border-viridian {
+  border-color: var(--accent-pink) !important;
+}
+
+:root[data-theme='Coastal Vibes'] button.text-viridian,
+:root[data-theme='Coastal Vibes'] a.text-viridian {
+  color: var(--accent-pink) !important;
+}
+
+:root[data-theme='Coastal Vibes'] button.hover\:bg-cambridge-blue:hover,
+:root[data-theme='Coastal Vibes'] a.hover\:bg-cambridge-blue:hover {
+  background-color: var(--accent-orange) !important;
+}
+
+:root[data-theme='Coastal Vibes'] button.hover\:border-gray-300:hover,
+:root[data-theme='Coastal Vibes'] button.hover\:border-gray-400:hover,
+:root[data-theme='Coastal Vibes'] a.hover\:border-gray-300:hover,
+:root[data-theme='Coastal Vibes'] a.hover\:border-gray-400:hover {
+  border-color: var(--accent-orange) !important;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+

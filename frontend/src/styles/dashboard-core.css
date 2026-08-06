@@ -1,0 +1,132 @@
+/* ============================================
+   MODERN UI COMPONENTS - Inspired by Image2
+   ============================================ */
+
+/* Modern card with glassmorphism - clean style */
+.modern-card {
+  background: var(--surface-1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+}
+
+.recent-actions-group {
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.recent-actions-group-header {
+  color: var(--text-primary);
+}
+
+.recent-actions-group-header:hover {
+  background: var(--interactive-soft);
+}
+
+.recent-actions-group-kicker {
+  color: var(--text-muted);
+}
+
+.recent-actions-group-count {
+  background: var(--interactive-soft);
+  color: var(--text-secondary);
+  border: 1px solid var(--interactive-soft-border);
+}
+
+.recent-actions-entry {
+  background: color-mix(in srgb, var(--surface-2) 94%, transparent);
+  border: 1px solid var(--border-subtle);
+}
+
+.recent-actions-entry-title {
+  color: var(--text-primary);
+}
+
+.recent-actions-entry-meta,
+.recent-actions-empty {
+  color: var(--text-muted);
+}
+
+.recent-actions-chip {
+  background: color-mix(in srgb, var(--surface-3) 72%, transparent);
+  color: var(--text-secondary);
+}
+
+.recent-actions-diff {
+  color: var(--text-secondary);
+}
+
+/* Modern gradient buttons */
+.btn-modern {
+  background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(91, 108, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-modern:hover::before {
+  left: 100%;
+}
+
+.btn-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(91, 108, 255, 0.4);
+}
+
+.btn-modern:active {
+  transform: translateY(0);
+}
+
+/* Gradient accent button (orange) */
+.btn-accent {
+  background: linear-gradient(135deg, #ff9f43 0%, #ffb976 100%);
+  box-shadow: 0 4px 14px rgba(255, 159, 67, 0.3);
+}
+
+.btn-accent:hover {
+  box-shadow: 0 6px 20px rgba(255, 159, 67, 0.4);
+}
+
+/* Success button (green) */
+.btn-success {
+  background: linear-gradient(135deg, #28c76f 0%, #48da89 100%);
+  box-shadow: 0 4px 14px rgba(40, 199, 111, 0.3);
+}
+
+.btn-success:hover {
+  box-shadow: 0 6px 20px rgba(40, 199, 111, 0.4);
+}
+
+/* Modern KPI card styling - clean and minimal */
+.kpi-card {
+  background: var(--surface-1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  padding: 24px;
+  box-shadow: var(--card-shadow);
+}
+
+/* Keep the four primary dashboard KPIs visible at once on small screens. */

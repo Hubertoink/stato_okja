@@ -28,6 +28,7 @@ import './styles/common.css';
 import './styles/theme-overrides.css';
 
 import { applyStoredBackground } from './lib/background';
+import { applyStoredThemePreference, listenForSystemThemeChanges } from './lib/theme';
 import { attachQueryClientMetrics } from './lib/devMetrics';
 import { demoModeEnabled } from './demo/config';
 
@@ -50,6 +51,8 @@ const queryClient = new QueryClient({
 attachQueryClientMetrics(queryClient);
 
 applyStoredBackground();
+applyStoredThemePreference();
+listenForSystemThemeChanges();
 
 if (demoModeEnabled) {
   document.title = 'Stato - Demo';

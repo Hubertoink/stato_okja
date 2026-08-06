@@ -1,8 +1,10 @@
 /* Default Theme (modern blue/purple) - duplicate selector removed, see top */
 
 html {
-  /* Prevent layout shift when scrollbar appears/disappears */
-  scrollbar-gutter: stable;
+  /* Keep the page scrollbar at the viewport edge. Modal-specific scroll
+   * containers handle their own gutter so it does not appear inset from the
+   * right edge on mobile activity/project views. */
+  scrollbar-gutter: auto;
 }
 
 body {

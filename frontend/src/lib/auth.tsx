@@ -13,7 +13,7 @@ import {
   storePendingTwoFactorChallenge,
   storeRefreshCsrfToken,
 } from './authStorage';
-import { applyTheme } from './theme';
+import { applyStoredThemePreference, applyTheme, normalizeThemeMode, type ThemeMode } from './theme';
 import { setPreferredLocale } from '@/i18n';
 import { normalizeAppLocale, type AppLocale } from '@/i18n/locales';
 import { autoT } from '@/i18n/auto';
@@ -23,7 +23,7 @@ export type Role = 'superadmin' | 'org_admin' | 'editor' | 'user';
 export function canManageSettingsDestructiveActions(role?: Role | null) {
   return role === 'superadmin' || role === 'org_admin' || role === 'editor';
 }
-export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
+export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
 
 type TwoFactorChallenge = {
   requiresTwoFactor: true;
@@ -77,9 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const applyResolvedUser = useCallback((nextUser: AuthUser, options?: { resetCache?: boolean }) => {
     const normalizedTheme = normalizeThemeName(nextUser.theme);
+    const themeMode = normalizeThemeMode(nextUser.themeMode);
     const locale = normalizeAppLocale(nextUser.locale);
-    setUser({ ...nextUser, theme: normalizedTheme, locale });
-    applyTheme(normalizedTheme);
+    setUser({ ...nextUser, theme: normalizedTheme, themeMode, locale });
+    applyTheme(normalizedTheme, themeMode);
     void setPreferredLocale(locale, { reload: true });
     if (options?.resetCache) {
       qc.clear();
@@ -92,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearStoredPendingTwoFactorChallenge();
     clearStoredRefreshCsrfToken();
     setUser(null);
-    applyTheme(null);
+    applyStoredThemePreference();
     qc.clear();
   }, [qc]);
 

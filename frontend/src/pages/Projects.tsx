@@ -22,7 +22,6 @@ import {
   Plus,
   Search,
   Save as SaveIcon,
-  X as XIcon,
   XCircle,
   Archive as ArchiveIcon,
   ArchiveRestore as ArchiveRestoreIcon,
@@ -972,7 +971,8 @@ function ProjectForm({
   const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
   const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
   const [showTitleValidation, setShowTitleValidation] = useState(false);
-  const { discardDialog, requestDiscard } = useUnsavedChangesGuard({
+  const initialBaselineSetRef = useRef(false);
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard({
     form,
     pendingDocuments: pendingDocuments.map((file) => ({
       lastModified: file.lastModified,
@@ -1002,16 +1002,16 @@ function ProjectForm({
     ? (initial.documents as ProjectDocument[])
     : [];
   const removedDocumentIdSet = new Set(removedDocumentIds);
-  const projectFieldClassName = 'project-form-field w-full rounded px-3 py-2';
+  const projectFieldClassName = 'project-form-field editor-field w-full px-3 py-2';
   const projectSectionClassName = 'rounded-xl border p-4 md:p-5';
   const projectInnerCardClassName = 'rounded-xl border p-4';
   const projectSectionStyle = {
     background: 'var(--project-form-section-bg, color-mix(in srgb, var(--surface-2) 88%, transparent))',
-    borderColor: 'var(--border-subtle)',
+    borderColor: 'var(--project-form-section-border, var(--border-subtle))',
   } as const;
   const projectInnerCardStyle = {
     background: 'var(--project-form-inner-card-bg, var(--surface-1))',
-    borderColor: 'var(--border-subtle)',
+    borderColor: 'var(--project-form-inner-border, var(--border-subtle))',
   } as const;
   const projectSecondaryButtonClassName = 'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';
   const projectAddActionButtonClassName =
@@ -1427,9 +1427,34 @@ function ProjectForm({
   }, [form, isTitleMissing, onSubmit, pendingDocuments, removedDocumentIds, saving, staff]);
 
   useEffect(() => {
-    if (!staff?.length) return;
+    // Existing projects must remain untouched while opening the editor. The
+    // save path still normalizes legacy staff assignments before persisting;
+    // doing it here would make only some projects appear dirty on open.
+    if (initial?.id || !staff?.length) return;
     setForm((current) => normalizeProjectStaffAssignments(current, staff, ''));
-  }, [staff]);
+  }, [initial?.id, staff]);
+
+  // Loading staff can normalize legacy assignments once after the project has
+  // opened. Establish the clean snapshot only after that initial prefill so an
+  // unchanged edit does not trigger the discard dialog.
+  useEffect(() => {
+    const initialDataReady = true;
+    if (!initialDataReady || initialBaselineSetRef.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (initialBaselineSetRef.current) return;
+      reset({
+        form,
+        pendingDocuments: pendingDocuments.map((file) => ({
+          lastModified: file.lastModified,
+          name: file.name,
+          size: file.size,
+        })),
+        removedDocumentIds,
+      });
+      initialBaselineSetRef.current = true;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [form, initial?.id, pendingDocuments, removedDocumentIds, reset, staff]);
 
   useEffect(() => {
     if (!saving) submitLockedRef.current = false;
@@ -2218,19 +2243,6 @@ function ProjectForm({
                 />
               </div>
             )}
-            <span className="order-2 tooltip-wrapper">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100 md:min-h-0 md:w-auto md:rounded-full md:bg-gray-200 md:p-2"
-                title={autoT('ui_07af7cb30fca')}
-                aria-label={autoT('ui_07af7cb30fca')}
-              >
-                <span className="md:hidden">{autoT('ui_07af7cb30fca')}</span>
-                <XIcon className="hidden h-5 w-5 md:block" />
-              </button>
-              <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
-            </span>
             <span className="order-1 tooltip-wrapper">
               <button
                 type="button"
@@ -2240,7 +2252,8 @@ function ProjectForm({
                 title={autoT('ui_70b73bbc118d')}
                 aria-label={autoT('ui_70b73bbc118d')}
               >
-                <SaveIcon className="h-4 w-4 md:h-5 md:w-5" />
+                <SaveIcon className="h-4 w-4 md:hidden" />
+                <Plus className="hidden h-5 w-5 md:block" />
                 <span className="md:hidden">{autoT('ui_70b73bbc118d')}</span>
               </button>
               <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>

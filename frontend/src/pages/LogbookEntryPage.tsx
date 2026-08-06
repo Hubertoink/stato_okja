@@ -477,7 +477,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                     type="datetime-local"
                     value={form.occurredAt}
                     onChange={(event) => setForm({ ...form, occurredAt: event.target.value })}
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                   />
                 </label>
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_f4b0e988965d')}<select
@@ -485,7 +485,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                     onChange={(event) =>
                       setForm({ ...form, type: event.target.value as LogbookEntryType })
                     }
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                   >
                     {Object.entries(logbookTypeLabels).map(([value, label]) => (
                       <option key={value} value={value}>
@@ -501,7 +501,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   value={form.title}
                   onChange={(event) => setForm({ ...form, title: event.target.value })}
                   placeholder={autoT('ui_b1654f25a69e')}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                  className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                 />
               </label>
               <label className="block text-sm font-medium text-gray-700">{autoT('ui_b3c8defcacc0')}<textarea
@@ -511,7 +511,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   value={form.body}
                   onChange={(event) => setForm({ ...form, body: event.target.value })}
                   placeholder={autoT('ui_c64d2713db08')}
-                  className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                  className="editor-field mt-1 w-full resize-y border border-gray-200 bg-white px-3 py-2.5"
                 />
               </label>
               <details
@@ -524,21 +524,21 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       rows={3}
                       value={form.highlights}
                       onChange={(event) => setForm({ ...form, highlights: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      className="editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                   <label className="block text-sm font-medium text-[var(--text-primary)]">{autoT('ui_24cb5c6fa8e6')}<textarea
                       rows={3}
                       value={form.challenges}
                       onChange={(event) => setForm({ ...form, challenges: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      className="editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                   <label className="block text-sm font-medium text-[var(--text-primary)]">{autoT('ui_76231e1d047c')}<textarea
                       rows={3}
                       value={form.nextSteps}
                       onChange={(event) => setForm({ ...form, nextSteps: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      className="editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                 </div>
@@ -554,7 +554,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       {selectedProject ? (
                         <span className="flex min-w-0 items-center gap-2">
                           <span
-                            className="h-8 w-8 overflow-hidden rounded-lg bg-gray-100"
+                            className="h-8 w-8 overflow-hidden rounded-lg"
                             style={{ backgroundColor: selectedProject.color || colorFromStringHash(selectedProject.title) }}
                           >
                             {selectedProject.imageUrl && (
@@ -626,7 +626,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       onChange={(event) =>
                         setForm({ ...form, visibility: event.target.value as 'team' | 'admins' })
                       }
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                      className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                     >
                       <option value="team">{autoT('ui_adc88eec60e4')}</option>
                       <option value="admins">{autoT('ui_db8e800f08e5')}</option>
@@ -845,7 +845,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 rows={3}
                 maxLength={4000}
                 placeholder={autoT('ui_6119b63de1a4')}
-                className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                className="editor-field mt-1 w-full resize-y border border-gray-200 bg-white px-3 py-2.5"
               />
             </label>
             <div className="mt-2 flex justify-end">

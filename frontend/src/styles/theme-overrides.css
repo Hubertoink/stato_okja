@@ -116,6 +116,9 @@
   --text-faint: var(--theme-text-faint);
   --border-subtle: color-mix(in srgb, var(--theme-text) 15%, transparent);
   --border-strong: color-mix(in srgb, var(--theme-text) 29%, transparent);
+  --project-form-section-border: color-mix(in srgb, var(--theme-text) 30%, transparent);
+  --project-form-inner-border: color-mix(in srgb, var(--theme-text) 25%, transparent);
+  --project-form-field-border: color-mix(in srgb, var(--theme-text) 38%, transparent);
   --header-surface-bg: color-mix(in srgb, var(--theme-bg) 84%, transparent);
   --nav-surface-bg: color-mix(in srgb, var(--theme-surface-1) 90%, transparent);
   --footer-surface-bg: linear-gradient(180deg, color-mix(in srgb, var(--theme-surface-2) 90%, transparent) 0%, color-mix(in srgb, var(--theme-bg) 88%, transparent) 100%);
@@ -173,6 +176,9 @@
    The explicit mode attribute keeps all new families consistent in the desktop
    layout, mobile layout, modals, tables and form controls. */
 :root[data-color-mode='dark'] {
+  /* Tailwind's ring-offset defaults to white; use the elevated dark surface
+     so focused icon buttons do not get a bright halo. */
+  --tw-ring-offset-color: var(--surface-elevated);
   --status-success-bg: color-mix(in srgb, #166534 46%, var(--surface-1));
   --status-success-text: #bbf7d0;
   --status-warning-bg: color-mix(in srgb, #92400e 46%, var(--surface-1));
@@ -193,6 +199,11 @@
 :root[data-color-mode='dark'] input[type='time'] { color-scheme: dark; }
 :root[data-color-mode='dark'] input[type='date']::-webkit-calendar-picker-indicator,
 :root[data-color-mode='dark'] input[type='time']::-webkit-calendar-picker-indicator { opacity: 0.72; }
+
+:root[data-color-mode='dark'] .project-form-field,
+:root[data-color-mode='dark'] .project-rich-text-editor.rsw-editor {
+  border-color: var(--project-form-field-border, var(--border-strong));
+}
 :root[data-color-mode='dark'] input::placeholder,
 :root[data-color-mode='dark'] textarea::placeholder { color: var(--text-faint); }
 :root[data-color-mode='dark'] .bg-white,

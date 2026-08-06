@@ -55,7 +55,7 @@ import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate, formatNumber, getCurrentIntlLocale } from '@/i18n/formatters';
-import { isDarkThemeName } from '@/lib/theme';
+import { isDarkThemeName, resolveThemeName } from '@/lib/theme';
 import { loadDashboardTrendPeriod, saveDashboardTrendPeriod } from '@/lib/statisticsViewPreferences';
 import activitiesKpiIcon from '../../assets/Illust_Amigos/Aktivitäten.svg';
 import participantsKpiIcon from '../../assets/Illust_Amigos/Teilnehmende.svg';
@@ -436,7 +436,7 @@ export default function Dashboard() {
   const hasRecentActionEntries = recentActionGroups.some((group) => group.items.length > 0);
 
   const fmt = (n?: number) => (typeof n === 'number' ? formatNumber(n) : '0');
-  const isDarkTheme = isDarkThemeName(user?.theme);
+  const isDarkTheme = isDarkThemeName(resolveThemeName(user?.theme, user?.themeMode));
   const dashboardChartGridColor = isDarkTheme ? 'rgba(148, 163, 184, 0.22)' : 'rgba(107, 114, 128, 0.24)';
   const dashboardChartAxisTick = {
     fill: isDarkTheme ? '#99a7c2' : '#6b7280',

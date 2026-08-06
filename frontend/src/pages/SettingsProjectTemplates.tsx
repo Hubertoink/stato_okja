@@ -6,7 +6,8 @@ import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useAuth } from '@/lib/auth';
-import { useCategories, useTags, useCreateCategory, useCreateTag } from '@/lib/taxonomy';
+import { useCategories, useTags, useCreateCategory, useCreateTag, type Category, type Tag } from '@/lib/taxonomy';
+import { CategoryFormModal, TagFormModal } from '@/components/settings/EntityFormModals';
 import ProtectedImage from '@/components/ProtectedImage';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
@@ -61,12 +62,8 @@ export default function SettingsProjectTemplates() {
 
   // Inline create modals
   const [newCatModal, setNewCatModal] = useState(false);
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatColor, setNewCatColor] = useState('#7aa39a');
 
   const [newTagModal, setNewTagModal] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
-  const [newTagColor, setNewTagColor] = useState('#7aa39a');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -139,40 +136,40 @@ export default function SettingsProjectTemplates() {
     }
   }, [create, editing, form, showToast, update]);
 
-  const handleNewCategorySave = useCallback(async () => {
-    if (!newCatName.trim() || createCategory.isPending) return;
+  const handleNewCategorySave = useCallback(async (data: Partial<Category>) => {
+    if (!String(data.name || '').trim() || createCategory.isPending) return;
     try {
       const created = await createCategory.mutateAsync({
-        name: newCatName.trim(),
-        color: newCatColor,
+        name: String(data.name).trim(),
+        color: String(data.color || '#7aa39a'),
         active: true,
       });
       setForm((f) => ({
         ...f,
         categoryId: created.id,
         categoryName: created.name,
-        categoryColor: created.color || newCatColor,
+        categoryColor: created.color || String(data.color || '#7aa39a'),
       }));
       setNewCatModal(false);
       showToast(autoT('ui_eced6187d679'), { type: 'success' });
     } catch {
       showToast(autoT('ui_fe851ffd3df5'), { type: 'error' });
     }
-  }, [createCategory, newCatColor, newCatName, showToast]);
+  }, [createCategory, showToast]);
 
-  const handleNewTagSave = useCallback(async () => {
-    if (!newTagName.trim() || createTag.isPending) return;
+  const handleNewTagSave = useCallback(async (data: Partial<Tag>) => {
+    if (!String(data.name || '').trim() || createTag.isPending) return;
     try {
       const created = await createTag.mutateAsync({
-        name: newTagName.trim(),
-        color: newTagColor,
+        name: String(data.name).trim(),
+        color: String(data.color || '#7aa39a'),
         active: true,
       });
       setForm((f) => ({
         ...f,
         selectedTags: [
           ...(f.selectedTags || []),
-          { name: created.name, color: created.color || newTagColor },
+          { name: created.name, color: created.color || String(data.color || '#7aa39a') },
         ],
       }));
       setNewTagModal(false);
@@ -180,7 +177,7 @@ export default function SettingsProjectTemplates() {
     } catch {
       showToast(autoT('ui_fe851ffd3df5'), { type: 'error' });
     }
-  }, [createTag, newTagColor, newTagName, showToast]);
+  }, [createTag, showToast]);
 
   useEditorShortcuts({
     enabled: modalOpen && !newCatModal && !newTagModal && !imageIssue.open,
@@ -190,28 +187,6 @@ export default function SettingsProjectTemplates() {
         ? undefined
         : () => {
             void handleTemplateSave();
-          },
-  });
-
-  useEditorShortcuts({
-    enabled: newCatModal,
-    onClose: () => setNewCatModal(false),
-    onSave:
-      !newCatName.trim() || createCategory.isPending
-        ? undefined
-        : () => {
-            void handleNewCategorySave();
-          },
-  });
-
-  useEditorShortcuts({
-    enabled: newTagModal,
-    onClose: () => setNewTagModal(false),
-    onSave:
-      !newTagName.trim() || createTag.isPending
-        ? undefined
-        : () => {
-            void handleNewTagSave();
           },
   });
 
@@ -386,7 +361,7 @@ export default function SettingsProjectTemplates() {
 
       {/* Template Edit/Create Modal - styled like project modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
+        <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center p-0 md:items-center md:p-6">
           <div
             className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate"
             onDragOver={(e) => e.preventDefault()}
@@ -517,8 +492,6 @@ export default function SettingsProjectTemplates() {
                   <button
                     type="button"
                     onClick={() => {
-                      setNewTagName('');
-                      setNewTagColor('#7aa39a');
                       setNewTagModal(true);
                     }}
                     className="text-xs text-viridian hover:underline"
@@ -581,8 +554,6 @@ export default function SettingsProjectTemplates() {
                     <button
                       type="button"
                       onClick={() => {
-                        setNewCatName('');
-                        setNewCatColor('#7aa39a');
                         setNewCatModal(true);
                       }}
                       className="text-xs text-viridian hover:underline"
@@ -663,79 +634,21 @@ export default function SettingsProjectTemplates() {
         </div>
       )}
 
-      {/* Create New Category Modal */}
-      {newCatModal && (
-        <div className="fixed inset-0 bg-black/30 z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h4 className="text-lg font-semibold text-viridian mb-4">{autoT('ui_f65f5413c438')}</h4>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">{autoT('ui_d145bb830936')}</label>
-                <input
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" htmlFor="new-template-category-color">{autoT('ui_89b7957dae43')}</label>
-                <ColorPicker id="new-template-category-color" value={newCatColor} onChange={setNewCatColor} />
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 mt-4">
-              <button
-                className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
-                onClick={() => setNewCatModal(false)}
-              >{autoT('ui_07af7cb30fca')}</button>
-              <button
-                className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
-                disabled={!newCatName.trim() || createCategory.isPending}
-                onClick={() => {
-                  void handleNewCategorySave();
-                }}
-              >{autoT('ui_846460c3195a')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {newCatModal ? (
+        <CategoryFormModal
+          initial={{ color: '#7aa39a' }}
+          onCancel={() => setNewCatModal(false)}
+          onSubmit={(data) => void handleNewCategorySave(data)}
+        />
+      ) : null}
 
-      {/* Create New Tag Modal */}
-      {newTagModal && (
-        <div className="fixed inset-0 bg-black/30 z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h4 className="text-lg font-semibold text-viridian mb-4">{autoT('ui_0b768aa07583')}</h4>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">{autoT('ui_d145bb830936')}</label>
-                <input
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" htmlFor="new-template-tag-color">{autoT('ui_89b7957dae43')}</label>
-                <ColorPicker id="new-template-tag-color" value={newTagColor} onChange={setNewTagColor} />
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 mt-4">
-              <button
-                className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
-                onClick={() => setNewTagModal(false)}
-              >{autoT('ui_07af7cb30fca')}</button>
-              <button
-                className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
-                disabled={!newTagName.trim() || createTag.isPending}
-                onClick={() => {
-                  void handleNewTagSave();
-                }}
-              >{autoT('ui_846460c3195a')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {newTagModal ? (
+        <TagFormModal
+          initial={{ color: '#7aa39a' }}
+          onCancel={() => setNewTagModal(false)}
+          onSubmit={(data) => void handleNewTagSave(data)}
+        />
+      ) : null}
 
       <ConfirmModal
         open={confirm.open}

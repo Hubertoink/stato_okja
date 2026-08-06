@@ -258,7 +258,7 @@ export default function ActivityEditPage() {
             }}
             aria-invalid={Boolean(validationErrors.date)}
             aria-describedby={validationErrors.date ? 'activity-date-edit-error' : undefined}
-            className={`w-full border rounded px-3 py-2 ${validationErrors.date ? 'border-red-500' : ''}`}
+            className={`editor-field w-full border px-3 py-2 ${validationErrors.date ? 'border-red-500' : ''}`}
           />
           {validationErrors.date ? <p id="activity-date-edit-error" className="mt-1 text-sm text-red-700">{validationErrors.date}</p> : null}
         </div>
@@ -271,7 +271,7 @@ export default function ActivityEditPage() {
             id="location-select-edit"
             value={form.locationId || ''}
             onChange={(e) => setForm({ ...form, locationId: e.target.value || undefined })}
-            className="w-full border rounded px-3 py-2"
+            className="editor-field w-full border px-3 py-2"
           >
             <option value="">{t('quickAdd.selectLocation')}</option>
             {(locations || []).map((l) => (
@@ -290,7 +290,7 @@ export default function ActivityEditPage() {
             id="activity-title-edit"
             value={form.title || ''}
             onValueChange={(title) => setForm({ ...form, title })}
-            className="w-full border rounded px-3 py-2"
+            className="editor-field w-full border px-3 py-2"
             placeholder={t('quickAdd.titlePlaceholder')}
           />
         </div>
@@ -305,9 +305,12 @@ export default function ActivityEditPage() {
               onClick={() => setPicker(true)}
               aria-invalid={Boolean(validationErrors.project)}
               aria-describedby={validationErrors.project ? 'activity-project-edit-error' : undefined}
-              className={`w-full border rounded p-2 flex items-center gap-3 text-left ${validationErrors.project ? 'border-red-500' : ''}`}
+              className={`editor-field w-full border p-2 flex items-center gap-3 text-left ${validationErrors.project ? 'border-red-500' : ''}`}
             >
-              <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+              <div
+                className="w-12 h-10 rounded overflow-hidden flex items-center justify-center"
+                style={selectedProject.imageUrl ? undefined : { backgroundColor: selectedProject.color || 'var(--interactive-soft-strong)' }}
+              >
                 {selectedProject.imageUrl ? (
                   <ProtectedImage
                     src={selectedProject.imageUrl}
@@ -315,7 +318,7 @@ export default function ActivityEditPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <Boxes className="w-6 h-6 text-gray-500" />
+                  <Boxes className="w-6 h-6 text-white/90" />
                 )}
               </div>
               <div>
@@ -331,7 +334,7 @@ export default function ActivityEditPage() {
               onClick={() => setPicker(true)}
               aria-invalid={Boolean(validationErrors.project)}
               aria-describedby={validationErrors.project ? 'activity-project-edit-error' : undefined}
-              className={`w-full border rounded p-3 text-left text-gray-600 ${validationErrors.project ? 'border-red-500' : ''}`}
+              className={`editor-field w-full border p-3 text-left text-gray-600 ${validationErrors.project ? 'border-red-500' : ''}`}
             >
               {t('quickAdd.selectProject')}
             </button>
@@ -349,7 +352,7 @@ export default function ActivityEditPage() {
               type="time"
               value={form.start || ''}
               onChange={(e) => setForm({ ...form, start: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className="editor-field w-full border px-3 py-2"
               placeholder={autoT('ui_a4c7ee9ba5c9')}
               title={t('quickAdd.start')}
             />
@@ -363,7 +366,7 @@ export default function ActivityEditPage() {
               type="time"
               value={form.end || ''}
               onChange={(e) => setForm({ ...form, end: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className="editor-field w-full border px-3 py-2"
               placeholder={autoT('ui_a4c7ee9ba5c9')}
               title={t('quickAdd.end')}
             />
@@ -729,7 +732,7 @@ export default function ActivityEditPage() {
             value={form.notes || ''}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             rows={3}
-            className="w-full border rounded px-3 py-2"
+            className="editor-field w-full border px-3 py-2"
             placeholder={t('quickAdd.notesPlaceholder')}
             aria-label={t('quickAdd.notes')}
           />

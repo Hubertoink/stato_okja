@@ -18,7 +18,7 @@ export function EditorHeader({
   title: ReactNode;
 }) {
   return (
-    <header className={`flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-3 md:px-6 ${className}`}>
+    <header className={`editor-modal-header flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-2 md:px-6 ${className}`}>
       <h2 className="min-w-0 truncate text-2xl font-bold text-viridian">{title}</h2>
       <div className="flex shrink-0 items-center gap-2">
         {actions}

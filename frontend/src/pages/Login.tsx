@@ -25,6 +25,8 @@ export default function Login() {
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [twoFactorEmailHint, setTwoFactorEmailHint] = useState<string | null>(null);
   const [showPwd, setShowPwd] = useState(false);
+  const [showSetupPassword, setShowSetupPassword] = useState(false);
+  const [showSetupPasswordConfirmation, setShowSetupPasswordConfirmation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
@@ -131,45 +133,67 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #5B6CFF 0%, #7C8FFF 30%, #9F7AEA 70%, #00CFE8 100%)'}}>
-      <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white/50">
+    <div className="login-screen min-h-screen flex items-center justify-center p-4">
+      <div className="login-card backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-extrabold gradient-text leading-tight whitespace-normal break-words">
             {branding.loginTitle}
           </h1>
-          <p className="text-gray-500 mt-2 font-medium">{branding.loginSubtitle}</p>
+          <p className="login-subtitle mt-2 font-medium">{branding.loginSubtitle}</p>
         </div>
 
         {branding.initialSetupRequired ? (
           <form className="space-y-6" onSubmit={onInitialSetup}>
-            <div className="rounded-2xl border border-viridian/20 bg-viridian/5 px-4 py-3 text-sm text-gray-600">
+            <div className="login-info rounded-2xl px-4 py-3 text-sm">
               {t('login.initialSetupInfo')}
             </div>
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">{t('login.adminPassword')}</label>
-              <input
-                type="password"
-                required
-                minLength={12}
-                value={setupPassword}
-                onChange={(event) => setSetupPassword(event.target.value)}
-                className="input-modern w-full"
-                placeholder={t('login.minimumTwelve')}
-                autoComplete="new-password"
-              />
+              <label className="login-label mb-2 block text-sm font-semibold">{t('login.adminPassword')}</label>
+              <div className="relative">
+                <input
+                  type={showSetupPassword ? 'text' : 'password'}
+                  required
+                  minLength={12}
+                  value={setupPassword}
+                  onChange={(event) => setSetupPassword(event.target.value)}
+                  className="input-modern w-full pr-10"
+                  placeholder={t('login.minimumTwelve')}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-2 flex items-center px-2 text-gray-400 transition-colors hover:text-viridian"
+                  aria-label={showSetupPassword ? t('login.hidePassword') : t('login.showPassword')}
+                  title={showSetupPassword ? t('login.hidePassword') : t('login.showPassword')}
+                  onClick={() => setShowSetupPassword((visible) => !visible)}
+                >
+                  {showSetupPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                </button>
+              </div>
               <PasswordRequirementsHint password={setupPassword} className="mt-2" />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">{t('login.repeatPassword')}</label>
-              <input
-                type="password"
-                required
-                value={setupPasswordConfirmation}
-                onChange={(event) => setSetupPasswordConfirmation(event.target.value)}
-                className="input-modern w-full"
-                placeholder={t('login.repeatPassword')}
-                autoComplete="new-password"
-              />
+              <label className="login-label mb-2 block text-sm font-semibold">{t('login.repeatPassword')}</label>
+              <div className="relative">
+                <input
+                  type={showSetupPasswordConfirmation ? 'text' : 'password'}
+                  required
+                  value={setupPasswordConfirmation}
+                  onChange={(event) => setSetupPasswordConfirmation(event.target.value)}
+                  className="input-modern w-full pr-10"
+                  placeholder={t('login.repeatPassword')}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-2 flex items-center px-2 text-gray-400 transition-colors hover:text-viridian"
+                  aria-label={showSetupPasswordConfirmation ? t('login.hidePassword') : t('login.showPassword')}
+                  title={showSetupPasswordConfirmation ? t('login.hidePassword') : t('login.showPassword')}
+                  onClick={() => setShowSetupPasswordConfirmation((visible) => !visible)}
+                >
+                  {showSetupPasswordConfirmation ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
             <button
               type="submit"
@@ -191,12 +215,12 @@ export default function Login() {
           {!challengeToken ? (
             <>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">{t('login.email')}</label>
+                <label className="login-label block text-sm font-semibold mb-2">{t('login.email')}</label>
                 <input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="input-modern w-full" placeholder={autoT('ui_9395988394d4')} />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">{t('login.password')}</label>
+                <label className="login-label block text-sm font-semibold mb-2">{t('login.password')}</label>
                 <div className="relative">
                   <input
                     type={showPwd ? "text" : "password"}
@@ -219,7 +243,7 @@ export default function Login() {
                 </div>
               </div>
               {branding.twoFactorEnabled && (
-                <div className="rounded-2xl border border-viridian/20 bg-viridian/5 px-4 py-3 text-sm text-gray-600">
+                  <div className="login-info rounded-2xl px-4 py-3 text-sm">
                   {t('login.twoFactorInfo')}
                 </div>
               )}
@@ -236,7 +260,7 @@ export default function Login() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">{t('login.securityCode')}</label>
+                <label className="login-label block text-sm font-semibold mb-2">{t('login.securityCode')}</label>
                 <input
                   inputMode="numeric"
                   pattern="[0-9]*"
@@ -254,7 +278,7 @@ export default function Login() {
               <div className="flex items-center justify-between gap-3 text-sm">
                 <button
                   type="button"
-                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  className="login-muted transition-colors"
                   onClick={() => {
                     clearStoredPendingTwoFactorChallenge();
                     setChallengeToken(null);
@@ -297,7 +321,7 @@ export default function Login() {
               <a className="text-viridian hover:text-cambridge-blue transition-colors font-medium" href="/reset-password-request">{t('login.forgotPassword')}</a>
             </div>
           ) : (
-            <div className="text-center text-sm mt-2 text-gray-500">
+            <div className="login-muted text-center text-sm mt-2">
               {t('login.forgotPasswordDisabled')}
             </div>
           )}
@@ -306,7 +330,7 @@ export default function Login() {
         </form>
         )}
 
-        <div className="mt-6 flex items-center justify-center gap-3 flex-wrap text-sm text-gray-500">
+        <div className="login-legal mt-6 flex items-center justify-center gap-3 flex-wrap text-sm">
           <button
             type="button"
             onClick={() => setImprintModalOpen(true)}
@@ -340,7 +364,7 @@ export default function Login() {
           </button>
         </div>
 
-        <div className="relative mt-4 flex items-center justify-center text-sm text-gray-400">
+        <div className="login-footer relative mt-4 flex items-center justify-center text-sm">
           <button
             type="button"
             onClick={() => setLanguageModalOpen(true)}

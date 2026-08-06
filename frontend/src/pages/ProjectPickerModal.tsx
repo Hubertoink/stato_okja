@@ -104,7 +104,7 @@ export default function ProjectPickerModal({
           </label>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+        <div className="project-picker-scroll min-h-0 flex-1 overflow-y-auto pb-4">
           {!compact && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {projects.map((p) => (

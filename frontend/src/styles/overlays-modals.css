@@ -13,11 +13,60 @@
   background: var(--overlay-backdrop);
 }
 
+.editor-modal-header {
+  background: color-mix(in srgb, var(--interactive-soft) 28%, var(--surface-elevated));
+}
+
+/* Shared radius for all editor controls. */
+.editor-field {
+  border-radius: 0.75rem;
+}
+
+/* Keep the smaller settings and utility modals on the same control radius. */
+.modal-overlay :is(input, select, textarea) {
+  border-radius: var(--editor-field-radius, 0.75rem);
+}
+
 .visual-viewport-fixed {
   position: fixed;
   inset-inline: 0;
   top: var(--visual-viewport-offset-top, 0px);
   height: var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100vh));
+}
+
+/* The picker keeps its visual padding for cards, while the scrollbar itself
+ * belongs to the modal edge instead of stopping one padding-width early. */
+.project-picker-scroll {
+  margin-right: -1rem;
+  padding-right: 1rem;
+}
+
+/* The activity editor uses a nested form scroller. Align it with the modal
+ * edge while retaining horizontal breathing room for its fields. */
+.activity-editor-scroll {
+  margin-right: -0.75rem;
+  padding-right: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .project-picker-scroll {
+    margin-right: -1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .activity-editor-scroll {
+    margin-right: -1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .activity-editor-scroll {
+    margin-right: -1.5rem;
+    padding-right: 1.5rem;
+  }
 }
 
 .modal-panel-roomy {
@@ -29,7 +78,7 @@
 
 .project-form-field {
   background: var(--project-form-field-bg, color-mix(in srgb, var(--surface-2) 84%, var(--surface-3)));
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--project-form-field-border, var(--border-strong));
   color: var(--text-primary);
   box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.04);
   transition:
@@ -74,7 +123,7 @@
 .project-rich-text-editor.rsw-editor {
   min-height: 190px;
   background: var(--project-form-field-bg, color-mix(in srgb, var(--surface-2) 84%, var(--surface-3)));
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--project-form-field-border, var(--border-strong));
   border-radius: 0.5rem;
   color: var(--text-primary);
   box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.04);
@@ -191,7 +240,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   margin-top: 1.5rem;
-  padding: 0.5rem 0 max(env(safe-area-inset-bottom, 0px), 16px);
+  padding: 0.5rem 1rem max(env(safe-area-inset-bottom, 0px), 16px);
   background: linear-gradient(
     180deg,
     rgba(255, 255, 255, 0.72) 0%,
@@ -221,7 +270,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   flex-shrink: 0;
-  padding: 0.5rem 0 max(env(safe-area-inset-bottom, 0px), 0.5rem);
+  padding: 0.5rem 1rem max(env(safe-area-inset-bottom, 0px), 0.5rem);
   border-top: 1px solid rgba(229, 231, 235, 0.85);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(14px);
@@ -246,4 +295,8 @@
   .settings-modal-actions > .flex-1:empty {
     display: none;
   }
+}
+.survey-question-card-active {
+  background: color-mix(in srgb, var(--interactive-soft) 58%, var(--surface-1));
+  box-shadow: 0 0 0 1px var(--interactive-soft-border), var(--card-shadow);
 }

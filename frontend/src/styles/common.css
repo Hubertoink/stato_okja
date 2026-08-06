@@ -32,6 +32,35 @@
   transition: all 0.2s ease;
 }
 
+/* Theme-aware public authentication surface. Keeping these styles outside the
+ * authenticated shell makes the login screen follow the last known user/org
+ * preference without duplicating theme-specific colors in JSX. */
+.login-screen {
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--cambridge-blue) 42%, transparent), transparent 34%),
+    radial-gradient(circle at 86% 84%, color-mix(in srgb, var(--accent-purple) 42%, transparent), transparent 38%),
+    linear-gradient(135deg, var(--viridian), var(--cambridge-blue) 42%, var(--accent-purple) 74%, var(--accent-teal));
+}
+
+.login-card {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 62%, transparent);
+}
+
+.login-label { color: var(--text-primary); }
+.login-subtitle, .login-muted, .login-legal, .login-footer { color: var(--text-secondary); }
+.login-screen .text-gray-500,
+.login-screen .text-gray-600,
+.login-screen .text-gray-700,
+.login-screen .text-gray-400 { color: var(--text-secondary); }
+.login-info {
+  color: var(--text-secondary);
+  border: 1px solid color-mix(in srgb, var(--viridian) 28%, transparent);
+  background: color-mix(in srgb, var(--viridian) 10%, transparent);
+}
+
 .input-modern:focus {
   outline: none;
   border-color: var(--viridian);

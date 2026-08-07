@@ -74,6 +74,15 @@
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  scrollbar-color: color-mix(in srgb, var(--viridian) 45%, var(--border-strong)) transparent;
+}
+
+.modal-panel-roomy ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-panel-roomy ::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--viridian) 45%, var(--border-strong));
 }
 
 .project-form-field {
@@ -85,6 +94,10 @@
     background-color 150ms ease,
     border-color 150ms ease,
     box-shadow 150ms ease;
+}
+
+.project-modal-actions {
+  box-shadow: 0 -8px 18px color-mix(in srgb, var(--surface-elevated) 72%, transparent);
 }
 
 .project-form-field:hover {

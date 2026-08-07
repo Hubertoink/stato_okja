@@ -1,5 +1,5 @@
 import { X as XIcon } from 'lucide-react';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { useTranslation } from 'react-i18next';
@@ -37,16 +37,56 @@ export default function Modal({
   headerActions?: React.ReactNode;
 }) {
   const { t } = useTranslation('common');
-  const wasOpen = useRef(open);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
 
   useEffect(() => {
-    if (wasOpen.current && !open && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-    wasOpen.current = open;
+    if (!open) return;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+    };
   }, [open]);
+
+  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab' || !dialogRef.current) return;
+
+    const focusable = Array.from(
+      dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((element) => !element.hasAttribute('hidden') && element.getClientRects().length > 0);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialogRef.current.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   if (!open) return null;
   const maxW = {
@@ -67,15 +107,19 @@ export default function Modal({
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        aria-label={title || t('dialog.ariaLabel')}
+        ref={dialogRef}
+        aria-label={title ? undefined : t('dialog.ariaLabel')}
+        aria-labelledby={title ? titleId : undefined}
         aria-modal="true"
         className={`w-full ${maxW} max-h-[85vh] rounded-t-3xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl bottom-sheet-animate modal-panel-roomy md:rounded-2xl ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
         role="dialog"
         tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
       >
         {isStructuredModal ? (
           <EditorHeader
             title={title}
+            titleId={titleId}
             actions={headerActions}
             onClose={onClose}
             closeLabel={t('actions.close')}

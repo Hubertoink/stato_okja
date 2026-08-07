@@ -74,7 +74,7 @@ function MobileNavigationSettings({ userId }: { userId?: string }) {
     else if (targetIsBottom) persist(bottom.map((item) => item === target ? id : item));
   };
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="settings-profile-card bg-white rounded-lg shadow p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-viridian">{autoT('ui_23f0292a1de9')}</h3>
@@ -101,7 +101,7 @@ function MobileNavigationList({ labels, title, ids, dragged, setDragged, onDrop,
   onDrop: (source: MobileNavItemId, target: MobileNavItemId) => void; onMove: (id: MobileNavItemId) => void;
   actionLabel: string; emphasis?: boolean;
 }) {
-  return <section><h4 className="mb-2 text-sm font-semibold text-gray-700">{title}</h4><div className={`space-y-2 rounded-xl border p-2 ${emphasis ? "border-viridian/30 bg-viridian/5" : "border-gray-200 bg-gray-50"}`}>{ids.map((id) => <div key={id} draggable onDragStart={() => setDragged(id)} onDragEnd={() => setDragged(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (dragged) onDrop(dragged, id); setDragged(null); }} className="flex min-h-11 items-center gap-2 rounded-lg bg-white px-3 text-sm font-medium text-gray-800 shadow-sm"><GripVertical className="h-4 w-4 text-gray-400" /><span className="flex-1">{labels[id]}</span><button type="button" onClick={() => onMove(id)} className={`text-xs font-semibold ${emphasis ? "text-gray-500 hover:text-viridian" : "text-viridian"}`}>{actionLabel}</button></div>)}</div></section>;
+  return <section><h4 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">{title}</h4><div className={`settings-mobile-list space-y-2 rounded-xl border p-2 ${emphasis ? "settings-mobile-list-emphasis" : ""}`}>{ids.map((id) => <div key={id} draggable onDragStart={() => setDragged(id)} onDragEnd={() => setDragged(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (dragged) onDrop(dragged, id); setDragged(null); }} className="settings-mobile-item flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium"><GripVertical className="h-4 w-4 text-[var(--text-muted)]" /><span className="min-w-0 flex-1">{labels[id]}</span><button type="button" onClick={() => onMove(id)} className={`min-h-11 shrink-0 px-2 text-xs font-semibold ${emphasis ? "text-[var(--text-secondary)] hover:text-viridian" : "text-viridian"}`}>{actionLabel}</button></div>)}</div></section>;
 }
 
 type AuthSession = {

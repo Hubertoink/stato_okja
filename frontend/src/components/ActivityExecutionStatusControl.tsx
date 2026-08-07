@@ -62,12 +62,12 @@ export default function ActivityExecutionStatusControl({
         title={t('executionStatus.title', { status: t(`executionStatus.${status}`) })}
       >
         <StatusIcon status={status} className="h-4 w-4" />
-        <span className="hidden sm:inline">{t('executionStatus.label')}</span>
+        <span className="hidden sm:inline">{t(`executionStatus.${status}`)}</span>
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ''}`} />
       </button>
 
       {open && (
-        <div className="activity-status-menu absolute right-0 top-full z-30 mt-2 w-52 rounded-2xl p-2">
+        <div role="menu" className="activity-status-menu absolute right-0 top-full z-30 mt-2 w-52 rounded-2xl p-2">
           <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
             {t('executionStatus.menuTitle')}
           </div>

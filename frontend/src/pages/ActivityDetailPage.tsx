@@ -79,7 +79,7 @@ export default function ActivityDetailPage() {
     const r = (Array.isArray(roles) ? roles[0] : role) || '';
     if (r === 'lead' || r === 'employee') return 'bg-viridian text-white';
     if (r === 'volunteer') return 'bg-cambridge-blue text-white';
-    if (r === 'helper') return 'bg-amber-200 text-gray-900';
+    if (r === 'helper') return 'bg-amber-200 text-amber-900';
     return 'bg-azure-web text-viridian';
   };
 

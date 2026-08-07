@@ -300,17 +300,17 @@ export default function LogbookEntryFlyout({
                   <DetailNote
                     title={autoT('ui_ed124d299865')}
                     value={entry.highlights}
-                    className="bg-green-50 text-green-800"
+                    className="logbook-detail-note--success bg-green-50 text-green-800"
                   />
                   <DetailNote
                     title={autoT('ui_24cb5c6fa8e6')}
                     value={entry.challenges}
-                    className="bg-amber-50 text-amber-800"
+                    className="logbook-detail-note--warning bg-amber-50 text-amber-800"
                   />
                   <DetailNote
                     title={autoT('ui_76231e1d047c')}
                     value={entry.nextSteps}
-                    className="bg-blue-50 text-blue-800"
+                    className="logbook-detail-note--info bg-blue-50 text-blue-800"
                   />
                 </section>
               )}
@@ -445,7 +445,7 @@ function DetailNote({
 }) {
   if (!value) return null;
   return (
-    <div className={`rounded-xl p-4 ${className}`}>
+    <div className={`logbook-detail-note rounded-xl p-4 ${className}`}>
       <h3 className="mb-2 font-semibold">{title}</h3>
       <p className="whitespace-pre-wrap text-sm">{value}</p>
     </div>

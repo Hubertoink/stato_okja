@@ -87,3 +87,6 @@ backups/
 
 # Local Codex worktrees
 .codex-worktrees/
+
+# Generated Impeccable critique artifacts
+.impeccable/

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import Modal, { ModalBackdrop } from './Modal';
 
@@ -48,6 +48,20 @@ describe('Modal', () => {
     );
 
     expect(screen.getByText('Status').closest('header')).toContainElement(screen.getByText('Form'));
+  });
+
+  it('uses the visible title as its accessible name and closes on Escape', () => {
+    const onClose = vi.fn();
+    render(
+      <Modal open onClose={onClose} title="Form" variant="form">
+        <input aria-label="Field" />
+      </Modal>,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Form' });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the structured header when its close button is hidden', () => {

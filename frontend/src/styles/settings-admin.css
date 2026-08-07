@@ -66,6 +66,34 @@
   color: var(--viridian);
 }
 
+.settings-mobile-list {
+  background: var(--surface-2);
+  border-color: var(--border-subtle);
+}
+
+.settings-mobile-list-emphasis {
+  background: color-mix(in srgb, var(--viridian) 8%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--viridian) 30%, var(--border-subtle));
+}
+
+.settings-mobile-item {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border-subtle) 45%, transparent);
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.settings-mobile-item:hover {
+  background: var(--interactive-soft);
+  border-color: var(--interactive-soft-border);
+}
+
+.settings-mobile-item:focus-within {
+  border-color: var(--viridian);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
 .org-admin-card {
   background: color-mix(in srgb, var(--surface-1) 96%, transparent);
   border: 1px solid var(--border-subtle);
@@ -336,5 +364,30 @@
 
 :root:is([data-theme='Midnight'], [data-theme='Coastal Vibes']) .taxonomy-config-override-pill {
   background: rgba(251, 191, 36, 0.16);
+  color: #fde68a;
+}
+
+/* All dark families, including Tokyo Night and Nord, need the light warning
+ * foreground; the legacy selectors above only covered the original skins. */
+:root[data-color-mode='dark'] .taxonomy-config-info-banner {
+  background: color-mix(in srgb, #60a5fa 14%, var(--surface-1));
+  border-color: color-mix(in srgb, #60a5fa 30%, var(--border-subtle));
+  color: #dbeafe;
+}
+
+:root[data-color-mode='dark'] .taxonomy-config-warning-banner {
+  background: color-mix(in srgb, #fbbf24 14%, var(--surface-1));
+  border-color: color-mix(in srgb, #fbbf24 32%, var(--border-subtle));
+  color: #fde68a;
+}
+
+:root[data-color-mode='dark'] .taxonomy-config-warning-soft,
+:root[data-color-mode='dark'] .taxonomy-config-override-surface {
+  border-color: color-mix(in srgb, #fbbf24 30%, var(--border-subtle));
+  background: color-mix(in srgb, #fbbf24 10%, var(--surface-1));
+}
+
+:root[data-color-mode='dark'] .taxonomy-config-override-pill {
+  background: color-mix(in srgb, #fbbf24 18%, var(--surface-1));
   color: #fde68a;
 }

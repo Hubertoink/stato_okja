@@ -147,6 +147,20 @@ export default function QuickTallyButton({
     [decrement, isLikelySyntheticMouseEvent]
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (disabled || e.repeat) return;
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        increment();
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        decrement();
+      }
+    },
+    [disabled, decrement, increment],
+  );
+
   return (
     <button
       type="button"
@@ -158,6 +172,7 @@ export default function QuickTallyButton({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onContextMenu={handleContextMenu}
+      onKeyDown={handleKeyDown}
       className={`
         relative select-none
         min-w-[3.5rem] min-h-[3.5rem] 

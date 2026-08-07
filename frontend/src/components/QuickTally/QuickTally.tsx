@@ -126,7 +126,8 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-2 transition-colors hover:bg-white/20"
+                  aria-label={autoT('ui_07af7cb30fca')}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -252,13 +253,13 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
     <div className="fixed inset-0 z-[60] flex flex-col" style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-primary)' }}>
       {/* Header */}
       <div className="theme-accent-panel px-4 py-3 shadow-md">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex min-w-0 max-w-2xl items-center justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="p-2 bg-white/20 rounded-full">
               <Users className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="font-bold text-lg">{sessionProject?.title || 'Tageserfassung'}</h3>
+            <div className="min-w-0">
+              <h3 className="truncate font-bold text-lg">{sessionProject?.title || 'Tageserfassung'}</h3>
               <p className="text-white/80 text-sm">{autoT('ui_af1b4714651b')}{' '}{session.startTime} • {totals.total}{' '}{autoT('ui_a8a4d6b019af')}</p>
             </div>
           </div>
@@ -267,8 +268,9 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
               <button
                 type="button"
                 onClick={onMinimize}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-2 transition-colors hover:bg-white/20"
                 title={autoT('ui_209bcbdc731e')}
+                aria-label={autoT('ui_209bcbdc731e')}
               >
                 <Minimize2 className="w-5 h-5" />
               </button>
@@ -276,8 +278,9 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
             <button
               type="button"
               onClick={handleCancel}
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-2 transition-colors hover:bg-white/20"
               title={autoT('ui_07af7cb30fca')}
+              aria-label={autoT('ui_07af7cb30fca')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -289,7 +292,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
       <div className="flex-1 overflow-auto p-4" style={{ backgroundColor: 'var(--surface-2)' }}>
         <div className="max-w-2xl mx-auto">
           <table className="w-full">
-            <thead className="sticky top-0" style={{ backgroundColor: 'var(--surface-2)' }}>
+            <thead className="sticky top-0 z-10" style={{ backgroundColor: 'var(--surface-2)' }}>
               <tr className="border-b-2" style={{ borderColor: 'var(--border-strong)' }}>
                 <th className="text-left py-3 pr-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{autoT('ui_b134a27dd6b6')}</th>
                 <th className="py-3 px-1 text-center" title={autoT('ui_897ccce3f38f')}>
@@ -313,7 +316,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                     <td className="py-4 pr-2">
                       <div className="font-semibold">{cohort.name}</div>
                       <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {cohort.minAge}–{cohort.maxAge}{autoT('ui_b0bf2144b683')}</div>
+                        {cohort.minAge}–{cohort.maxAge}{' '}{autoT('ui_b0bf2144b683')}</div>
                     </td>
                     <td className="py-4 px-1 text-center">
                       <QuickTallyButton
@@ -349,9 +352,9 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
 
       {/* Footer - Totals and Actions */}
       <div className="border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]" style={{ background: 'var(--footer-surface-bg)', borderColor: 'var(--border-subtle)' }}>
-        <div className="max-w-2xl mx-auto p-4">
+        <div className="mx-auto max-w-2xl p-4 pb-safe">
           {/* Totals */}
-          <div className="grid grid-cols-4 gap-2 text-center mb-4">
+          <div className="mb-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
             <div className="summary-metric-card py-2">
               <div className="summary-metric-label text-xs">{autoT('ui_37c1e4b405c4')}</div>
               <div className="text-2xl font-bold text-viridian">{totals.m}</div>
@@ -441,7 +444,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
           </div>
 
           <div className="max-h-[min(22rem,calc(100vh-12rem))] overflow-x-hidden overflow-y-auto px-3 py-2">
-            <div className="grid grid-cols-[minmax(0,1fr)_2.5rem_2.5rem_2.5rem] items-center gap-1 px-1 pb-1 text-center text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+            <div className="grid grid-cols-[minmax(0,1fr)_2.75rem_2.75rem_2.75rem] items-center gap-1 px-1 pb-1 text-center text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
               <span className="text-left">{autoT('ui_b134a27dd6b6')}</span>
               <span title={autoT('ui_897ccce3f38f')}>{autoT('ui_6b0d31c0d563')}</span>
               <span title={autoT('ui_aeff6199c838')}>{autoT('ui_aff024fe4ab0')}</span>
@@ -450,7 +453,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
             {(cohorts || []).map((cohort) => {
               const counts = session.counts[cohort.id] || { m: 0, w: 0, d: 0 };
               return (
-                <div key={cohort.id} className="grid grid-cols-[minmax(0,1fr)_2.5rem_2.5rem_2.5rem] items-center gap-1 border-t py-2" style={{ borderColor: 'var(--border-subtle)' }}>
+                <div key={cohort.id} className="grid grid-cols-[minmax(0,1fr)_2.75rem_2.75rem_2.75rem] items-center gap-1 border-t py-2" style={{ borderColor: 'var(--border-subtle)' }}>
                   <div className="min-w-0 pr-1">
                     <div className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{cohort.name}</div>
                     <div className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{autoT('ui_ccb9fecbb241')}{' '}{getCohortTotal(cohort.id)}</div>
@@ -459,21 +462,21 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
                     value={counts.m}
                     onChange={(value) => updateCount(cohort.id, 'm', value)}
                     label={autoT('ui_fa207fa300e3', { value0: cohort.name })}
-                    className="!min-h-10 !min-w-10 h-10 w-10 rounded-lg border px-1 py-1 text-sm"
+                    className="!min-h-11 !min-w-11 h-11 w-11 rounded-lg border px-1 py-1 text-sm"
                     valueClassName="text-base"
                   />
                   <QuickTallyButton
                     value={counts.w}
                     onChange={(value) => updateCount(cohort.id, 'w', value)}
                     label={`${cohort.name} weiblich`}
-                    className="!min-h-10 !min-w-10 h-10 w-10 rounded-lg border px-1 py-1 text-sm"
+                    className="!min-h-11 !min-w-11 h-11 w-11 rounded-lg border px-1 py-1 text-sm"
                     valueClassName="text-base"
                   />
                   <QuickTallyButton
                     value={counts.d}
                     onChange={(value) => updateCount(cohort.id, 'd', value)}
                     label={`${cohort.name} divers`}
-                    className="!min-h-10 !min-w-10 h-10 w-10 rounded-lg border px-1 py-1 text-sm"
+                    className="!min-h-11 !min-w-11 h-11 w-11 rounded-lg border px-1 py-1 text-sm"
                     valueClassName="text-base"
                   />
                 </div>
@@ -485,7 +488,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
             <button
               type="button"
               onClick={onRestore}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-viridian transition-colors hover:bg-[var(--interactive-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-viridian transition-colors hover:bg-[var(--interactive-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             >{autoT('ui_474e16d80f82')}<ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -495,7 +498,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
       <button
         type="button"
         onClick={onRestore}
-        className="theme-accent-solid-button flex items-center gap-3 rounded-full py-3 pl-4 pr-5 shadow-lg transition-all hover:scale-105 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
+        className="quick-tally-pill theme-accent-solid-button flex items-center gap-3 rounded-full py-3 pl-4 pr-5 shadow-lg transition-all hover:scale-105 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
         style={{ animation: 'pulse 2s infinite' }}
       >
         <div className="rounded-full bg-white/20 p-1.5">

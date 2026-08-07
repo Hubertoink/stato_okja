@@ -67,12 +67,9 @@
   box-shadow: 0 0 0 4px var(--focus-ring);
 }
 
-/* Gradient text utility */
+/* Emphasis text utility */
 .gradient-text {
-  background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--viridian);
 }
 
 /* Modern badge/chip */

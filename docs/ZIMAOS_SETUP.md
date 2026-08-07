@@ -14,7 +14,7 @@ benötigt.
 - für Internetzugriff: ein Reverse Proxy mit HTTPS und eine Domain
 
 Die Release-Images unterstützen `amd64` und `arm64`. Verwende nur eine
-veröffentlichte StatO-Version wie `1.4.1`, nie einen beweglichen Tag wie
+veröffentlichte StatO-Version wie `1.4.2`, nie einen beweglichen Tag wie
 `latest`.
 
 ## Installation über die ZimaOS-Oberfläche
@@ -29,7 +29,7 @@ veröffentlichte StatO-Version wie `1.4.1`, nie einen beweglichen Tag wie
 
    | Variable | Beispiel | Zweck |
    | --- | --- | --- |
-   | `STATO_VERSION` | `1.4.1` | unveränderliche StatO-Release-Version |
+   | `STATO_VERSION` | `1.4.2` | unveränderliche StatO-Release-Version |
    | `WEBUI_PORT` | `8088` | Port, über den die StatO-Oberfläche erreichbar ist |
    | `APP_ORIGIN` | `http://192.168.1.50:8088` | exakte Adresse, die im Browser verwendet wird |
    | `CORS_ORIGINS` | identisch zu `APP_ORIGIN` | erlaubte Browser-Origin |

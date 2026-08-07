@@ -20,6 +20,23 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.4.2] - 2026-08-07
+
+### Changed
+- Projekt-, Aktivitäts- und Erfassungsdialoge verwenden nun konsistentere
+  Formular-, Aktions- und Responsive-Layouts.
+- Die Tageserfassung richtet sich visuell und strukturell stärker am
+  Aktivitätsdialog aus; mobile Aktionen folgen dem normalen Scrollfluss.
+
+### Fixed
+- Start- und Endzeiten werden in Projekten, Aktivitäten und Abschlüssen
+  geprüft: unvollständige oder nicht aufsteigende Zeiträume lassen sich nicht
+  speichern.
+- Kontraste, Ausrichtung und Zustände in Dark Themes wurden in den geprüften
+  Dialogen und Logbuchansichten vereinheitlicht.
+
+---
+
 ## [1.4.1] - 2026-08-07
 
 ### Fixed

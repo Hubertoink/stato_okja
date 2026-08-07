@@ -179,7 +179,14 @@ function handleProjects(method: string, segments: string[], params: Record<strin
   }
   if (method === 'patch' && segments[2] === 'archive') return ok(demo.updateDemoProject(projectId, { archived: body.archived === true }));
   if (method === 'patch' && projectId) return ok(demo.updateDemoProject(projectId, body));
-  if (method === 'delete' && projectId) { demo.deleteDemoProject(projectId); return noContent(); }
+  if (method === 'delete' && projectId) {
+    try {
+      demo.deleteDemoProject(projectId);
+      return noContent();
+    } catch (error) {
+      throw new DemoHttpError(409, error instanceof Error ? error.message : 'Projekt kann nicht gelöscht werden.');
+    }
+  }
   return undefined;
 }
 

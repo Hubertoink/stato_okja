@@ -84,3 +84,6 @@ backups/
 *.seed
 *.pid.lock
 .fallow/
+
+# Local Codex worktrees
+.codex-worktrees/

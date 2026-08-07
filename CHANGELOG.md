@@ -20,6 +20,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.4.4] - 2026-08-07
+
+### Changed
+- Die Umfragenliste bietet nun einen direkten CSV-Export der verfügbaren
+  Rohantworten, ohne zuvor die Umfrageauswertung öffnen zu müssen.
+
+### Fixed
+- PDF- und PNG-Exporte der Umfrageauswertung verwenden eine exportfreundliche
+  CSS2-Farbpalette und funktionieren damit auch in CSS-Color-4-Dark-Themes.
+
+---
+
 ## [1.4.3] - 2026-08-07
 
 ### Changed

@@ -20,6 +20,23 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.4.0] - 2026-08-07
+
+### Added
+- Nutzer können ihren bevorzugten Hell-/Dunkelmodus speichern.
+- Bearbeitungsformulare warnen vor dem Verwerfen ungespeicherter Änderungen.
+
+### Changed
+- Mobile Formulare, Modals und Navigation wurden umfassend für kleinere
+  Viewports, die Bildschirmtastatur und konsistente Theme-Darstellung verfeinert.
+- Backend, Frontend-Build und CI verwenden jetzt Node.js 24 LTS.
+
+### Fixed
+- Der Backend-Docker-Build entfernt einen lokalen TypeScript-Build-Cache, damit
+  das Runtime-Bundle bei Builds aus einem Quell-Checkout vollständig erzeugt wird.
+
+---
+
 ## [1.3.5] - 2026-08-02
 
 ### Changed

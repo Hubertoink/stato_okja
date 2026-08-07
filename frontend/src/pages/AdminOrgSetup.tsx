@@ -53,6 +53,8 @@ import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getEmailValidationMessage } from '@/lib/emailValidation';
 import { autoT } from '@/i18n/auto';
 import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
+import { Button } from '@/components/ui/Button';
+import { EditorActions } from '@/components/ui/EditorFrame';
 import {
   downloadBlob,
   downloadOrgMasterData,
@@ -979,12 +981,15 @@ function OrgTaxonomySettingsModal({
         onClose={onClose}
         title={org ? autoT('ui_5b2a4f8af741', { value0: org.name }) : autoT('ui_73a0104df5e5')}
         maxWidth="5xl"
+        variant="form"
       >
         {loading && (
           <div className="py-8 text-center text-gray-500">{autoT('ui_2c9d36fbce1b')}</div>
         )}
         {!loading && snapshot && settingsDraft && childDefaultsDraft && (
-          <div className="space-y-5">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
+              <div className="space-y-5">
             <div className="taxonomy-modal-hero rounded-xl border border-[var(--border-subtle)] px-4 py-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
@@ -1223,28 +1228,27 @@ function OrgTaxonomySettingsModal({
                   ) : null,
                   readOnly: !snapshot.permissions.canEditChildDefaults,
                 })}
-            <div className="modal-sticky-actions org-taxonomy-modal-actions -mx-4 -mb-4 border-t border-[var(--border-subtle)] px-4 md:-mx-6 md:-mb-6 md:px-6">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-                onClick={onClose}
-                aria-label={autoT('ui_07af7cb30fca')}
-                title={autoT('ui_07af7cb30fca')}
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:opacity-50"
-                disabled={
-                  saving ||
-                  (activePanel === 'self'
-                    ? !snapshot.permissions.canEditSelf
-                    : !snapshot.permissions.canEditChildDefaults)
-                }
-                aria-label={saving ? autoT('ui_b28e5e6d9ac7') : autoT('ui_70b73bbc118d')}
-                title={saving ? autoT('ui_b28e5e6d9ac7') : autoT('ui_70b73bbc118d')}
-                onClick={async () => {
+              </div>
+            </div>
+            <EditorActions
+              secondary={(
+                <Button variant="secondary" size="lg" onClick={onClose}>
+                  <XIcon className="h-4 w-4" />
+                  {autoT('ui_07af7cb30fca')}
+                </Button>
+              )}
+              primary={(
+                <Button
+                  size="lg"
+                  disabled={
+                    saving ||
+                    (activePanel === 'self'
+                      ? !snapshot.permissions.canEditSelf
+                      : !snapshot.permissions.canEditChildDefaults)
+                  }
+                  aria-label={saving ? autoT('ui_b28e5e6d9ac7') : autoT('ui_70b73bbc118d')}
+                  title={saving ? autoT('ui_b28e5e6d9ac7') : autoT('ui_70b73bbc118d')}
+                  onClick={async () => {
                   if (!org || !settingsDraft || !childDefaultsDraft) return;
                   try {
                     setSaving(true);
@@ -1280,15 +1284,17 @@ function OrgTaxonomySettingsModal({
                   } finally {
                     setSaving(false);
                   }
-                }}
-              >
-                {saving ? (
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                ) : (
-                  <SaveIcon className="w-5 h-5" />
-                )}
-              </button>
-            </div>
+                  }}
+                >
+                  {saving ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  ) : (
+                    <SaveIcon className="h-4 w-4" />
+                  )}
+                  {saving ? autoT('ui_b28e5e6d9ac7') : autoT('ui_70b73bbc118d')}
+                </Button>
+              )}
+            />
           </div>
         )}
       </Modal>
@@ -2555,8 +2561,8 @@ function OrgRow({
             setDeleteModalOpen(false);
             onMoved();
           }}
-        />
-      )}
+            />
+        )}
     </li>
   );
 }

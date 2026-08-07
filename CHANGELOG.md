@@ -20,6 +20,19 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.4.5] - 2026-08-07
+
+### Changed
+- Umfragedaten lassen sich direkt aus der Liste als PDF oder Excel exportieren.
+- Exporte enthalten sämtliche Umfragerunden; Excel ergänzt je Runde die
+  Auswertung und verfügbare Rohantworten.
+
+### Fixed
+- Export- und Archivaktionen sind in der Umfragenliste visuell semantisch
+  eingefärbt und dadurch besser unterscheidbar.
+
+---
+
 ## [1.4.4] - 2026-08-07
 
 ### Changed

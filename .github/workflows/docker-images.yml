@@ -630,16 +630,27 @@ jobs:
           set -euo pipefail
           prerelease=()
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then prerelease+=(--prerelease); fi
-          gh release create "$GITHUB_REF_NAME" \
-            --title "StatO $GITHUB_REF_NAME" \
-            --notes-file RELEASE_NOTES.md \
-            "${prerelease[@]}" \
-            release-assets/install-onprem.sh \
-            release-assets/install-onprem.ps1 \
-            release-assets/stato-sbom.spdx.json \
-            release-assets/SHA256SUMS \
-            release-assets/StatO-*.tar.gz \
+          release_assets=(
+            release-assets/install-onprem.sh
+            release-assets/install-onprem.ps1
+            release-assets/stato-sbom.spdx.json
+            release-assets/SHA256SUMS
+            release-assets/StatO-*.tar.gz
             release-assets/StatO-*.zip
+          )
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "StatO $GITHUB_REF_NAME" \
+              --notes-file RELEASE_NOTES.md \
+              "${prerelease[@]}"
+            gh release upload "$GITHUB_REF_NAME" "${release_assets[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "StatO $GITHUB_REF_NAME" \
+              --notes-file RELEASE_NOTES.md \
+              "${prerelease[@]}" \
+              "${release_assets[@]}"
+          fi
 
   promote-latest:
     name: latest nach Release promoten

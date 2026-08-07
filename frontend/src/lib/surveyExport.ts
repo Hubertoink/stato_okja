@@ -238,6 +238,7 @@ export async function exportSurveyRoundsToPdf(
     ], 10, 5);
     y += 2;
     round.analytics.questions.forEach((result, questionIndex) => {
+      const question = round.survey.questions.find((entry) => entry.id === result.id);
       ensureSpace(18);
       pdf.setTextColor(15, 118, 110);
       pdf.setFont('helvetica', 'bold');
@@ -248,7 +249,11 @@ export async function exportSurveyRoundsToPdf(
         `${labels.answered}: ${result.answeredCount}`,
         result.mean === null || typeof result.mean === 'undefined' ? '' : `${labels.mean}: ${result.mean}`,
         result.median === null || typeof result.median === 'undefined' ? '' : `${labels.median}: ${result.median}`,
-        ...(result.type === 'text' ? (result.texts || []).slice(0, 12).map((text) => `${labels.textAnswer}: ${text}`) : Object.entries(result.counts || {}).map(([value, count]) => `${value}: ${count}`)),
+        ...(result.type === 'text'
+          ? (result.texts || []).slice(0, 12).map((text) => `${labels.textAnswer}: ${text}`)
+          : Object.entries(result.counts || {}).map(
+              ([value, count]) => `${surveyAnswerLabel(question, value)}: ${count}`,
+            )),
       ].filter(Boolean), 9, 4.5);
       y += 2;
     });

@@ -72,6 +72,8 @@ import RichTextEditor, {
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { Button } from '@/components/ui/Button';
+import { EditorActions } from '@/components/ui/EditorFrame';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
 const PROJECTS_STARRED_FIRST_STORAGE_KEY = 'projects:starred-first';
@@ -389,6 +391,7 @@ function ArchiveRestoreControls({
   archived,
   archiving,
   deleting,
+  fullWidth = false,
   onArchivingChange,
   onDeletingChange,
   onDeleted,
@@ -398,6 +401,7 @@ function ArchiveRestoreControls({
   archived: boolean;
   archiving: boolean;
   deleting: boolean;
+  fullWidth?: boolean;
   onArchivingChange: (v: boolean) => void;
   onDeletingChange: (v: boolean) => void;
   onDeleted?: () => void;
@@ -427,11 +431,12 @@ function ArchiveRestoreControls({
   );
 
   return (
-    <div className="flex gap-2 items-center">
-      <span className="tooltip-wrapper">
-        <button
-          type="button"
-          className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 disabled:opacity-50 bg-white/80"
+    <div className={fullWidth ? 'flex w-full items-center' : 'flex items-center gap-2'}>
+      {fullWidth ? (
+        <Button
+          variant="secondary"
+          size="lg"
+          className="w-full"
           title={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           aria-label={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           disabled={archiving || archive.isPending}
@@ -443,19 +448,39 @@ function ArchiveRestoreControls({
             setArchiveConfirmOpen(true);
           }}
         >
-          {archived ? (
-            <ArchiveRestoreIcon className="w-5 h-5" />
-          ) : (
-            <ArchiveIcon className="w-5 h-5" />
-          )}
-        </button>
-        <span className="tooltip-bubble">{archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}</span>
-      </span>
-      {archived && (
+          {archived ? <ArchiveRestoreIcon className="h-4 w-4" /> : <ArchiveIcon className="h-4 w-4" />}
+          {archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
+        </Button>
+      ) : (
         <span className="tooltip-wrapper">
           <button
             type="button"
-            className="inline-flex items-center justify-center p-2 rounded-full border border-red-300 text-red-700 disabled:opacity-50 bg-white/80"
+            className="inline-flex items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-1)] p-2 text-[var(--text-secondary)] disabled:opacity-50"
+            title={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
+            aria-label={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
+            disabled={archiving || archive.isPending}
+            onClick={() => {
+              if (archived) {
+                toggleArchivedState(false);
+                return;
+              }
+              setArchiveConfirmOpen(true);
+            }}
+          >
+            {archived ? (
+              <ArchiveRestoreIcon className="w-5 h-5" />
+            ) : (
+              <ArchiveIcon className="w-5 h-5" />
+            )}
+          </button>
+          <span className="tooltip-bubble">{archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}</span>
+        </span>
+      )}
+      {archived && !fullWidth && (
+        <span className="tooltip-wrapper">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-full border border-red-300 bg-red-50 p-2 text-red-700 disabled:opacity-50 dark:border-red-400/40 dark:bg-red-950/30 dark:text-red-300"
             title={autoT('ui_ffa5a8a7e21d')}
             aria-label={autoT('ui_ffa5a8a7e21d')}
             disabled={deleting || remove.isPending}
@@ -1949,11 +1974,11 @@ function ProjectForm({
         }
       >
       <div
-        className="flex min-h-0 flex-1 flex-col"
+        className="min-w-0 overflow-y-auto"
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
       >
-        <div className="min-w-0 min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
+        <div className="px-4 py-4 md:px-6 md:py-6">
 
         {!initial?.id && (
           <div className="mb-4">
@@ -2227,39 +2252,33 @@ function ProjectForm({
         </div>
         </div>
 
-        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 px-4 pb-safe md:px-6">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
-            {initial?.id && (
-              <div className="order-3 self-start md:order-1 md:mr-auto">
-                <ArchiveRestoreControls
-                  id={initial.id as string}
-                  archived={Boolean(initial.archived)}
-                  archiving={archiving}
-                  deleting={deleting}
-                  onArchivingChange={setArchiving}
-                  onDeletingChange={setDeleting}
-                  onDeleted={onCancel}
-                  onArchivedToggle={onCancel}
-                />
-              </div>
-            )}
-            <span className="order-1 tooltip-wrapper">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isTitleMissing || saving || applyingTemplate || archiving || deleting}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-viridian px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 md:min-h-0 md:w-auto md:rounded-full md:p-2"
-                title={autoT('ui_70b73bbc118d')}
-                aria-label={autoT('ui_70b73bbc118d')}
-              >
-                <SaveIcon className="h-4 w-4 md:hidden" />
-                <Plus className="hidden h-5 w-5 md:block" />
-                <span className="md:hidden">{autoT('ui_70b73bbc118d')}</span>
-              </button>
-              <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
-            </span>
-          </div>
-        </div>
+        <EditorActions
+          className="project-modal-actions"
+          leading={initial?.id ? (
+            <ArchiveRestoreControls
+              id={initial.id as string}
+              archived={Boolean(initial.archived)}
+              archiving={archiving}
+              deleting={deleting}
+              fullWidth
+              onArchivingChange={setArchiving}
+              onDeletingChange={setDeleting}
+              onDeleted={onCancel}
+              onArchivedToggle={onCancel}
+            />
+          ) : undefined}
+          secondary={<Button variant="secondary" size="lg" onClick={handleClose}>{autoT('ui_07af7cb30fca')}</Button>}
+          primary={(
+            <Button
+              size="lg"
+              onClick={handleSave}
+              disabled={isTitleMissing || saving || applyingTemplate || archiving || deleting}
+            >
+              <SaveIcon className="h-4 w-4" />
+              {autoT('ui_70b73bbc118d')}
+            </Button>
+          )}
+        />
       </div>
 
       {tagCreateOpen ? (

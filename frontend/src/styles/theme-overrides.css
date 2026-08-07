@@ -235,7 +235,7 @@
 :root[data-color-mode='dark'] .shadow-xl { box-shadow: var(--card-shadow) !important; }
 :root[data-color-mode='dark'] .disabled\:hover\:bg-white:disabled:hover { background-color: var(--surface-1) !important; }
 :root[data-color-mode='dark'] .modal-sticky-actions {
-  background: color-mix(in srgb, var(--surface-1) 95%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 95%, transparent);
   box-shadow: inset 0 1px 0 var(--border-subtle);
 }
 

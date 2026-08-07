@@ -51,6 +51,8 @@ import {
   mergeProjectStaffIds,
 } from './activityEditorShared';
 import { autoT } from '@/i18n/auto';
+import { Button } from '@/components/ui/Button';
+import { EditorActions } from '@/components/ui/EditorFrame';
 import ActivityTitleField from '@/components/ActivityTitleField';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
@@ -840,46 +842,28 @@ export default function ActivityQuickAdd({
         </div>
         </div>
 
-        <div className={`shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 flex items-center gap-3 ${keyboardOpen ? '' : 'pb-safe'}`}>
-          <div className="flex-1 flex items-center">
-            <button
-              type="button"
-              className="inline-flex md:hidden items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-              onClick={handleClose}
-              title={t('quickAdd.cancel')}
-              aria-label={t('quickAdd.cancel')}
-            >
-              <XIcon className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            {activity ? (
-              <button
-                type="button"
-                className="danger-icon-button p-2"
-                onClick={() => setDeleteOpen(true)}
-                title={t('quickAdd.delete')}
-                aria-label={t('quickAdd.delete')}
-              >
-                <TrashIcon className="w-5 h-5" />
-              </button>
-            ) : (
-              <span className="inline-block w-10 h-10" aria-hidden="true" />
-            )}
-          </div>
-          <div className="flex-1 flex items-center justify-end">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
+        <EditorActions
+          className={`-mx-3 px-3 sm:-mx-4 sm:px-4 md:-mx-6 md:px-6 ${keyboardOpen ? '' : 'pb-safe'}`}
+          leading={activity ? (
+            <Button variant="danger" size="lg" onClick={() => setDeleteOpen(true)}>
+              <TrashIcon className="h-4 w-4" />
+              {t('quickAdd.delete')}
+            </Button>
+          ) : undefined}
+          secondary={<Button variant="secondary" size="lg" onClick={handleClose}>{t('quickAdd.cancel')}</Button>}
+          primary={(
+            <Button
+              size="lg"
               onClick={handleSave}
               title={t('quickAdd.save')}
               aria-label={t('quickAdd.save')}
               disabled={create.isPending || update.isPending || picker || deleteOpen || Boolean(errorOpen)}
             >
-              {activity ? <SaveIcon className="w-5 h-5" /> : <PlusIcon className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
+              <SaveIcon className="h-4 w-4" />
+              {t('quickAdd.save')}
+            </Button>
+          )}
+        />
         {picker && (
           <ProjectPickerModal
             onPick={(p) => {

@@ -106,7 +106,7 @@ export default function ActivityDetailPage() {
               }
               aria-label={t('detail.documentInLogbook')}
               title={t('detail.documentInLogbook')}
-              className="inline-flex items-center justify-center p-2 rounded-full bg-white border text-viridian"
+              className="inline-flex items-center justify-center rounded-full border-0 bg-transparent p-2 text-viridian transition-colors hover:bg-[var(--surface-2)]"
             >
               <BookOpen className="w-5 h-5" />
             </button>
@@ -116,7 +116,7 @@ export default function ActivityDetailPage() {
               onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from } })}
               aria-label={t('common:actions.edit')}
               title={t('common:actions.edit')}
-              className="inline-flex items-center justify-center p-2 rounded-full bg-white border text-viridian"
+              className="inline-flex items-center justify-center rounded-full border-0 bg-transparent p-2 text-viridian transition-colors hover:bg-[var(--surface-2)]"
             >
               <Pencil className="w-5 h-5" />
             </button>

@@ -449,12 +449,12 @@ function ArchiveRestoreControls({
   );
 
   return (
-    <div className={fullWidth ? 'flex w-full flex-col gap-2' : 'flex items-center gap-2'}>
+    <div className={fullWidth ? 'flex w-full items-center gap-2' : 'flex items-center gap-2'}>
       {fullWidth ? (
         <Button
           variant="secondary"
           size="lg"
-          className="w-full"
+          className={fullWidth ? 'min-w-0 flex-1' : 'w-full'}
           title={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           aria-label={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           disabled={archiving || archive.isPending}
@@ -498,7 +498,7 @@ function ArchiveRestoreControls({
         <Button
           variant="danger"
           size="lg"
-          className="w-full"
+          className="min-w-0 flex-1"
           title={autoT('ui_ffa5a8a7e21d')}
           aria-label={autoT('ui_ffa5a8a7e21d')}
           disabled={deleting || remove.isPending || archiving || archive.isPending}

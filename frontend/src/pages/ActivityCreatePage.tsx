@@ -800,7 +800,7 @@ export default function ActivityCreatePage() {
 
         </div>
         <EditorActions
-          secondary={<Button variant="ghost" size="lg" onClick={handleCancel}>{t('common:actions.cancel')}</Button>}
+          secondary={<Button variant="secondary" size="lg" onClick={handleCancel}>{t('common:actions.cancel')}</Button>}
           primary={(
             <Button type="submit" size="lg" disabled={create.isPending || picker || Boolean(errorOpen)}>
               <SaveIcon className="h-4 w-4" />

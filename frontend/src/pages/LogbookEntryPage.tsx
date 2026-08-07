@@ -636,7 +636,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
               </div>
             </div>
             <EditorActions
-              secondary={<Button variant="ghost" size="lg" onClick={closeEditing}>{autoT('ui_07af7cb30fca')}</Button>}
+              secondary={<Button variant="secondary" size="lg" onClick={closeEditing}>{autoT('ui_07af7cb30fca')}</Button>}
               primary={(
                 <Button type="submit" size="lg" disabled={create.isPending || update.isPending}>
                   <Save className="h-4 w-4" />

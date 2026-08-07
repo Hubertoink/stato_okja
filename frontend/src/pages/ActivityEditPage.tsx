@@ -747,7 +747,7 @@ export default function ActivityEditPage() {
               {t('quickAdd.delete')}
             </Button>
           )}
-          secondary={<Button variant="ghost" size="lg" onClick={handleClose}>{t('common:actions.cancel')}</Button>}
+          secondary={<Button variant="secondary" size="lg" onClick={handleClose}>{t('common:actions.cancel')}</Button>}
           primary={(
             <Button size="lg" onClick={handleSave} disabled={update.isPending || picker || deleteOpen}>
               <SaveIcon className="h-4 w-4" />

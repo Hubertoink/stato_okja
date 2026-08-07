@@ -169,7 +169,7 @@ export function SurveyEditor({ open, survey, onClose, initialTemplate, instanceK
   const closeEditor = () => requestDiscard(onClose);
   const actions = <EditorActions
     className="-mx-4 -mb-5 mt-5 md:-mx-6"
-    secondary={<Button variant="ghost" size="lg" onClick={step === 'basics' ? closeEditor : () => setStep('basics')}>{step === 'basics' ? t('common:actions.cancel') : t('editor.backToBasics')}</Button>}
+    secondary={<Button variant="secondary" size="lg" onClick={step === 'basics' ? closeEditor : () => setStep('basics')}>{step === 'basics' ? t('common:actions.cancel') : t('editor.backToBasics')}</Button>}
     primary={step === 'basics' ? <Button size="lg" onClick={() => setStep('questions')}>{t('editor.nextToQuestions')}</Button> : <Button size="lg" onClick={() => void save()} disabled={busy}>{busy ? t('editor.saving') : t('editor.saveDraft')}</Button>}
   />;
   const headerActions = <Button size="sm" className="min-h-11" onClick={() => void save()} disabled={busy} aria-label={t('editor.saveDraft')}><Save className="h-4 w-4" /><span className="hidden sm:inline">{busy ? t('editor.saving') : t('editor.saveDraft')}</span></Button>;

@@ -20,6 +20,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.4.1] - 2026-08-07
+
+### Fixed
+- Projektmodal-Footer scrollt jetzt mit dem Formularinhalt statt dauerhaft am
+  unteren Viewport-Rand zu stehen.
+- Abbrechen-Aktionen verwenden in allen Editor- und Modalvarianten einen klar
+  sichtbaren Rahmen, auch im Standard-Dark-Theme.
+- Die übrigen lokalen UI-Verbesserungen für Formulare, Navigation und
+  Aktivitäten sind in den Release-Stand übernommen.
+
 ## [1.4.0] - 2026-08-07
 
 ### Added

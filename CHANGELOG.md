@@ -20,6 +20,22 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.4.3] - 2026-08-07
+
+### Changed
+- Umfrageauswertungen verwenden in allen Diagrammen konsistente, theme-aware
+  Achsen, Raster, Legenden und Verlaufstooltips.
+- Exportauswahl und Tab-Fokus in Umfrageansichten folgen dem Dark-Theme und den
+  gemeinsamen StatO-Interaktionsmustern.
+
+### Fixed
+- Der mobile Tageserfassungs-Header schließt nun ohne sichtbaren Abstand an
+  die Kohortenleiste an.
+- Löschaktionen und Suchfelder in Umfragen bleiben auch im Dark Theme klar
+  lesbar und visuell konsistent.
+
+---
+
 ## [1.4.2] - 2026-08-07
 
 ### Changed

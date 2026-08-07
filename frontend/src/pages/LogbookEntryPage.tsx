@@ -33,16 +33,18 @@ import {
 import { useProjects } from '@/lib/projects';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import { useToast } from '@/components/Toast';
-import Modal, { ModalBackdrop } from '@/components/Modal';
+import Modal from '@/components/Modal';
 import { Menu, MenuItem } from '@/components/ui/Menu';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
-import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { EditorActions } from '@/components/ui/EditorFrame';
+import { Button } from '@/components/ui/Button';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
 type FormState = {
   occurredAt: string;
@@ -166,41 +168,78 @@ function ActivityPickerModal({
       .includes(search.trim().toLowerCase()),
   );
   return (
-    <Modal open={open} onClose={onClose} title={autoT('ui_ab6635285bc7')} maxWidth="2xl">
-      <p className="mb-4 text-sm text-gray-600">{autoT('ui_3c4b1175587b')}</p>
-      <input
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder={autoT('ui_cdcd2f758fec')}
-        className="mb-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
-      />
-      <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
-        {visible.map((activity) => (
-          <button
-            key={activity.id}
-            type="button"
-            onClick={() => {
-              onPick(activity.id);
-              onClose();
-            }}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left transition hover:border-viridian hover:bg-viridian/5"
-          >
-            <span className="min-w-0">
-              <span className="block font-semibold text-gray-800">
-                {activity.title || activity.project?.title || autoT('ui_1c4aaccf808e')}
+    <Modal open={open} onClose={onClose} title={autoT('ui_ab6635285bc7')} maxWidth="2xl" variant="form">
+      <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 md:px-6 md:pb-6">
+        <p className="mb-3 shrink-0 text-sm text-gray-600">{autoT('ui_3c4b1175587b')}</p>
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={autoT('ui_cdcd2f758fec')}
+          className="mb-3 w-full shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
+        />
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+        {visible.map((activity) => {
+          const project = activity.project;
+          const projectColor = project
+            ? project.color || colorFromStringHash(project.title)
+            : undefined;
+
+          return (
+            <button
+              key={activity.id}
+              type="button"
+              onClick={() => {
+                onPick(activity.id);
+                onClose();
+              }}
+              className="relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border border-gray-100 bg-white p-3 text-left transition hover:border-viridian hover:bg-viridian/5"
+            >
+              {project?.imageUrl ? (
+                <>
+                  <ProtectedImage
+                    src={project.imageUrl}
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-y-0 right-0 h-full w-1/3 object-cover opacity-85 sm:w-1/4"
+                  />
+                  <div
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-1/3 sm:w-1/4"
+                    aria-hidden
+                  />
+                </>
+              ) : projectColor ? (
+                <>
+                  <div
+                    className="absolute inset-y-0 right-0 w-1/3 opacity-80 sm:w-1/4"
+                    style={{
+                      background: `linear-gradient(135deg, ${projectColor} 0%, color-mix(in srgb, ${projectColor} 68%, white) 100%)`,
+                    }}
+                    aria-hidden
+                  />
+                  <div
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-1/3 sm:w-1/4"
+                    aria-hidden
+                  />
+                </>
+              ) : null}
+              <span className="relative z-10 min-w-0">
+                <span className="block font-semibold text-gray-800">
+                  {activity.title || project?.title || autoT('ui_1c4aaccf808e')}
+                </span>
+                <span className="mt-1 block text-xs text-gray-500">
+                  {new Date(`${activity.date}T12:00:00`).toLocaleDateString(getCurrentIntlLocale())} ·{' '}
+                  {project?.title || autoT('ui_5b4a4a84148c')}
+                </span>
               </span>
-              <span className="mt-1 block text-xs text-gray-500">
-                {new Date(`${activity.date}T12:00:00`).toLocaleDateString(getCurrentIntlLocale())} ·{' '}
-                {activity.project?.title || autoT('ui_5b4a4a84148c')}
-              </span>
-            </span>
-            <span className="shrink-0 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600">
-              {activity.countTotal || 0}{autoT('ui_f79fa2d4a0a2')}</span>
-          </button>
-        ))}
+              <span className="relative z-10 shrink-0 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                {activity.countTotal || 0}{autoT('ui_f79fa2d4a0a2')}</span>
+            </button>
+          );
+        })}
         {visible.length === 0 && (
           <p className="py-8 text-center text-sm text-gray-500">{autoT('ui_dfc3488ab197')}</p>
         )}
+        </div>
       </div>
     </Modal>
   );
@@ -233,8 +272,8 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const [editing, setEditing] = useState(
     isNew || !!embeddedEntryId || location.pathname.endsWith('/edit'),
   );
-  useBodyScrollLock(editing);
   const [form, setForm] = useState<FormState>(() => emptyForm(search));
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, { enabled: editing });
   const [comment, setComment] = useState('');
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
@@ -259,7 +298,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
 
   useEffect(() => {
     if (!entry) return;
-    setForm({
+    const nextForm = {
       occurredAt: toInputDate(entry.occurredAt),
       type: entry.type,
       title: entry.title,
@@ -271,20 +310,31 @@ export default function LogbookEntryPage(props: unknown = {}) {
       visibility: entry.visibility,
       activityId: entry.activityId || '',
       projectId: entry.projectId || '',
-    });
-  }, [entry]);
+    };
+    setForm(nextForm);
+    reset(nextForm);
+  }, [entry, reset]);
 
   useEffect(() => {
     if (!isNew) setEditing(!!embeddedEntryId || location.pathname.endsWith('/edit'));
   }, [embeddedEntryId, isNew, location.pathname]);
 
   const closeEditor = (destination?: string) => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     if (embeddedOnClose) {
       embeddedOnClose();
       return;
     }
     navigate(destination ?? returnTo);
   };
+  const closeEditing = () =>
+    requestDiscard(() => closeEditor(
+      isNew || returnTo === '/dashboard'
+        ? returnTo
+        : `/logbook?entry=${encodeURIComponent(id || '')}`,
+    ));
 
   const canManage =
     !!entry &&
@@ -318,6 +368,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
       if (isNew) {
         const created = await create.mutateAsync(formPayload);
         showToast(autoT('ui_bfeed61d0034'), { type: 'success' });
+        reset(form);
         if (embeddedOnClose) {
           embeddedOnClose();
         } else {
@@ -331,6 +382,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
       } else if (id) {
         await update.mutateAsync({ id, data: formPayload });
         showToast(autoT('ui_e1bd2c4575ee'), { type: 'success' });
+        reset(form);
         if (embeddedOnClose) {
           embeddedOnClose();
         } else {
@@ -371,17 +423,14 @@ export default function LogbookEntryPage(props: unknown = {}) {
 
   if (editing)
     return (
-      <div className="fixed inset-0 z-[60] flex items-stretch justify-center p-2 md:items-center md:p-6">
-        <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
-        <div className="app-background logbook-editor-modal relative flex h-full w-full flex-col overflow-hidden rounded-2xl shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-white">
-          <div className="mb-4 mt-1 flex items-center justify-between gap-3 px-3 pt-3 md:mb-0 md:border-b md:border-gray-100 md:px-6 md:py-3">
-            <h2 className="min-w-0 truncate text-2xl font-bold text-viridian md:text-gray-800">
-              <span className="md:hidden">{autoT('ui_f95da57ad34c')}</span>
-              <span className="hidden md:inline">
-                {isNew ? autoT('ui_feb9aab49734') : autoT('ui_0b00abd52aba')}
-              </span>
-            </h2>
-            <div className="flex shrink-0 items-center gap-2">
+      <>
+        <Modal
+          open
+          onClose={closeEditing}
+          title={isNew ? autoT('ui_feb9aab49734') : autoT('ui_0b00abd52aba')}
+          maxWidth="5xl"
+          variant="form"
+          headerActions={
             <div className="relative">
               <button
                 type="button"
@@ -412,25 +461,12 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 </Menu>
               )}
             </div>
-            <button
-              type="button"
-              aria-label={autoT('ui_e3bdcc71200e')}
-              onClick={() =>
-                embeddedOnClose
-                  ? embeddedOnClose()
-                  : closeEditor(
-                      isNew || returnTo === '/dashboard'
-                        ? returnTo
-                        : `/logbook?entry=${encodeURIComponent(id || '')}`,
-                    )
-              }
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            </div>
-          </div>
-          <form onSubmit={save} className="mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-lg bg-white shadow md:mx-0 md:mb-0 md:rounded-none md:shadow-none">
+          }
+        >
+          <form
+            onSubmit={save}
+            className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface-elevated)]"
+          >
             <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_e2f9e932be0a')}{occurredAtWeekday && (
@@ -441,7 +477,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                     type="datetime-local"
                     value={form.occurredAt}
                     onChange={(event) => setForm({ ...form, occurredAt: event.target.value })}
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                   />
                 </label>
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_f4b0e988965d')}<select
@@ -449,7 +485,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                     onChange={(event) =>
                       setForm({ ...form, type: event.target.value as LogbookEntryType })
                     }
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                   >
                     {Object.entries(logbookTypeLabels).map(([value, label]) => (
                       <option key={value} value={value}>
@@ -465,7 +501,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   value={form.title}
                   onChange={(event) => setForm({ ...form, title: event.target.value })}
                   placeholder={autoT('ui_b1654f25a69e')}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                  className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                 />
               </label>
               <label className="block text-sm font-medium text-gray-700">{autoT('ui_b3c8defcacc0')}<textarea
@@ -475,7 +511,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   value={form.body}
                   onChange={(event) => setForm({ ...form, body: event.target.value })}
                   placeholder={autoT('ui_c64d2713db08')}
-                  className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                  className="editor-field mt-1 w-full resize-y border border-gray-200 bg-white px-3 py-2.5"
                 />
               </label>
               <details
@@ -488,21 +524,21 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       rows={3}
                       value={form.highlights}
                       onChange={(event) => setForm({ ...form, highlights: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      className="editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                   <label className="block text-sm font-medium text-[var(--text-primary)]">{autoT('ui_24cb5c6fa8e6')}<textarea
                       rows={3}
                       value={form.challenges}
                       onChange={(event) => setForm({ ...form, challenges: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      className="editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                   <label className="block text-sm font-medium text-[var(--text-primary)]">{autoT('ui_76231e1d047c')}<textarea
                       rows={3}
                       value={form.nextSteps}
                       onChange={(event) => setForm({ ...form, nextSteps: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      className="editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                 </div>
@@ -518,7 +554,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       {selectedProject ? (
                         <span className="flex min-w-0 items-center gap-2">
                           <span
-                            className="h-8 w-8 overflow-hidden rounded-lg bg-gray-100"
+                            className="h-8 w-8 overflow-hidden rounded-lg"
                             style={{ backgroundColor: selectedProject.color || colorFromStringHash(selectedProject.title) }}
                           >
                             {selectedProject.imageUrl && (
@@ -590,7 +626,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       onChange={(event) =>
                         setForm({ ...form, visibility: event.target.value as 'team' | 'admins' })
                       }
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                      className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                     >
                       <option value="team">{autoT('ui_adc88eec60e4')}</option>
                       <option value="admins">{autoT('ui_db8e800f08e5')}</option>
@@ -599,46 +635,34 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 )}
               </div>
             </div>
-            <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  embeddedOnClose
-                    ? embeddedOnClose()
-                    : closeEditor(
-                        isNew || returnTo === '/dashboard'
-                          ? returnTo
-                          : `/logbook?entry=${encodeURIComponent(id || '')}`,
-                      )
-                }
-                className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-              >{autoT('ui_07af7cb30fca')}</button>
-              <button
-                disabled={create.isPending || update.isPending}
-                className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:opacity-60"
-              >
-                <Save className="h-4 w-4" />
-                {create.isPending || update.isPending ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}
-              </button>
-            </div>
-          </form>
-          {projectPickerOpen && (
-            <ProjectPickerModal
-              onClose={() => setProjectPickerOpen(false)}
-              onPick={(project) => {
-                setForm({ ...form, projectId: project.id });
-                setProjectPickerOpen(false);
-              }}
+            <EditorActions
+              secondary={<Button variant="ghost" size="lg" onClick={closeEditing}>{autoT('ui_07af7cb30fca')}</Button>}
+              primary={(
+                <Button type="submit" size="lg" disabled={create.isPending || update.isPending}>
+                  <Save className="h-4 w-4" />
+                  {create.isPending || update.isPending ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}
+                </Button>
+              )}
             />
-          )}
-          <ActivityPickerModal
-            open={activityPickerOpen}
-            onClose={() => setActivityPickerOpen(false)}
-            onPick={(activityId) => setForm({ ...form, activityId })}
-            occurredAt={form.occurredAt}
+          </form>
+        </Modal>
+        {projectPickerOpen && (
+          <ProjectPickerModal
+            onClose={() => setProjectPickerOpen(false)}
+            onPick={(project) => {
+              setForm({ ...form, projectId: project.id });
+              setProjectPickerOpen(false);
+            }}
           />
-        </div>
-      </div>
+        )}
+        <ActivityPickerModal
+          open={activityPickerOpen}
+          onClose={() => setActivityPickerOpen(false)}
+          onPick={(activityId) => setForm({ ...form, activityId })}
+          occurredAt={form.occurredAt}
+        />
+        {discardDialog}
+      </>
     );
 
   if (!entry) return null;
@@ -821,7 +845,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 rows={3}
                 maxLength={4000}
                 placeholder={autoT('ui_6119b63de1a4')}
-                className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                className="editor-field mt-1 w-full resize-y border border-gray-200 bg-white px-3 py-2.5"
               />
             </label>
             <div className="mt-2 flex justify-end">

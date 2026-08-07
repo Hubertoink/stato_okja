@@ -209,7 +209,7 @@ function SurveyQuestionsPreview({ questions }: { questions: SurveyQuestion[] }) 
         <div>
           <h3 className="font-semibold text-viridian">{autoT('ui_0eb5ac7cb670')}</h3>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            {questions.length} {questions.length === 1 ? autoT('ui_2e4bccb00f59') : autoT('ui_0eb5ac7cb670')}{autoT('ui_a39c9658d2c8')}</p>
+            {questions.length} {questions.length === 1 ? autoT('ui_2e4bccb00f59') : autoT('ui_0eb5ac7cb670')}{' '}{autoT('ui_a39c9658d2c8')}</p>
         </div>
         <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>{autoT('ui_4dd094221b03')}</Button>
       </section>
@@ -351,7 +351,7 @@ function SurveyOverview({
                     className={`group cursor-pointer border-b border-[var(--border-subtle)] last:border-0 ${round.id === selectedRoundId ? "bg-[var(--interactive-soft)]" : "hover:bg-[var(--surface-2)]"}`}
                     onClick={() => onSelectRound(round.id)}
                   >
-                    <td className="px-2 py-3 font-medium">{autoT('ui_101d931d6b66')}{round.roundNumber || 1}
+                    <td className="px-2 py-3 font-medium">{autoT('ui_101d931d6b66')} {round.roundNumber || 1}
                       {formatRoundMonthYear(round) ? (
                         <span className="ml-1 whitespace-nowrap text-xs font-normal text-[var(--text-secondary)]">
                           ({formatRoundMonthYear(round)})
@@ -379,7 +379,7 @@ function SurveyOverview({
               <div>
                 <QrCode className="mx-auto mb-2 h-5 w-5 text-viridian" />
                 <h2 className="font-semibold text-viridian">{autoT('ui_187917d94802')}</h2>
-                <p className="mt-1 text-xs text-[var(--text-secondary)]">{autoT('ui_101d931d6b66')}{survey.roundNumber || 1}
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">{autoT('ui_101d931d6b66')} {survey.roundNumber || 1}
                 </p>
               </div>
               <StatisticsExportActions
@@ -851,7 +851,7 @@ export default function SurveyDetail() {
             onChange={(event) => setSelectedRoundId(event.target.value)}
           >
             {rounds.map((round) => (
-              <option key={round.id} value={round.id}>{autoT('ui_101d931d6b66')}{round.roundNumber || 1} ·{' '}
+              <option key={round.id} value={round.id}>{autoT('ui_101d931d6b66')} {round.roundNumber || 1} ·{' '}
                 {formatDate(round.closedAt || round.startsAt || null)} · {round.responsesCount}{' '}{autoT('ui_062c3d5e1537')}</option>
             ))}
           </Select>
@@ -1018,7 +1018,7 @@ export default function SurveyDetail() {
                         <div>
                           <h2 className="font-semibold text-viridian">{result.label}</h2>
                           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                            {result.answeredCount}{autoT('ui_6db5b569b339')}</p>
+                            {result.answeredCount}{' '}{autoT('ui_6db5b569b339')}</p>
                         </div>
                         {exportActions}
                       </div>
@@ -1065,7 +1065,7 @@ export default function SurveyDetail() {
                       <h2 className="font-semibold text-viridian">{result.label}</h2>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-[var(--text-secondary)]">
-                          {result.answeredCount}{autoT('ui_062c3d5e1537')}{result.median ? ` · Median ${result.median}` : ''}
+                          {result.answeredCount}{' '}{autoT('ui_062c3d5e1537')}{result.median ? ` · Median ${result.median}` : ''}
                         </span>
                         {exportActions}
                       </div>
@@ -1116,7 +1116,7 @@ export default function SurveyDetail() {
                     <p className="mt-1 text-sm text-[var(--text-secondary)]">{autoT('ui_d4f4165a09bd')}</p>
                   </div>
                   <span className="text-sm text-[var(--text-secondary)]">
-                    {trendQuery.data.rounds.length}{autoT('ui_c042750d784a')}</span>
+                    {trendQuery.data.rounds.length}{' '}{autoT('ui_c042750d784a')}</span>
                 </div>
                 <div className="mt-4 h-56">
                   <ResponsiveContainer width="100%" height="100%">

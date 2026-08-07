@@ -1222,22 +1222,24 @@ export default function Activities() {
                     src={a.project.imageUrl || undefined}
                     alt=""
                     aria-hidden
-                    className="absolute inset-y-0 right-0 w-28 h-full object-cover opacity-70"
+                    className="absolute inset-y-0 right-0 w-[42%] h-full object-cover opacity-85"
                   />
                   <div
-                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-28"
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-[42%]"
                     aria-hidden
                   />
                 </>
               ) : a.project?.color ? (
                 <>
                   <div
-                    className="absolute inset-y-0 right-0 w-28 opacity-40"
-                    style={{ backgroundColor: a.project.color || undefined }}
+                    className="absolute inset-y-0 right-0 w-[42%] opacity-80"
+                    style={{
+                      background: `linear-gradient(135deg, ${a.project.color} 0%, color-mix(in srgb, ${a.project.color} 68%, white) 100%)`,
+                    }}
                     aria-hidden
                   />
                   <div
-                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-28"
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-[42%]"
                     aria-hidden
                   />
                 </>

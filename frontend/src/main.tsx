@@ -12,8 +12,23 @@ import '@fontsource/inter/800.css';
 import './i18n';
 import App from './App';
 import './index.css';
+import './styles/foundation.css';
+import './styles/themes.css';
+import './styles/document.css';
+import './styles/theme-utilities.css';
+import './styles/shell.css';
+import './styles/settings-admin.css';
+import './styles/navigation.css';
+import './styles/overlays-modals.css';
+import './styles/activity-calendar.css';
+import './styles/dashboard-core.css';
+import './styles/statistics.css';
+import './styles/dashboard-logbook.css';
+import './styles/common.css';
+import './styles/theme-overrides.css';
 
 import { applyStoredBackground } from './lib/background';
+import { applyStoredThemePreference, listenForSystemThemeChanges } from './lib/theme';
 import { attachQueryClientMetrics } from './lib/devMetrics';
 import { demoModeEnabled } from './demo/config';
 
@@ -36,6 +51,8 @@ const queryClient = new QueryClient({
 attachQueryClientMetrics(queryClient);
 
 applyStoredBackground();
+applyStoredThemePreference();
+listenForSystemThemeChanges();
 
 if (demoModeEnabled) {
   document.title = 'Stato - Demo';

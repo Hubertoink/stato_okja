@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { X as XIcon, Boxes, Plus as PlusIcon, Save as SaveIcon } from 'lucide-react';
+import { Boxes, Plus as PlusIcon, Save as SaveIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import { useCreateActivity } from '@/lib/activities';
 import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
@@ -45,6 +45,10 @@ import {
 } from './activityEditorShared';
 import { useTranslation } from 'react-i18next';
 import { autoT } from '@/i18n/auto';
+import { EditorActions, EditorHeader, EditorSurface } from '@/components/ui/EditorFrame';
+import { Button } from '@/components/ui/Button';
+import SingleLineTextField from '@/components/SingleLineTextField';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
 export default function ActivityCreatePage() {
   const { t } = useTranslation(['activities', 'common']);
@@ -78,12 +82,17 @@ export default function ActivityCreatePage() {
 
   const [picker, setPicker] = useState(false);
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<{ date?: string; project?: string }>({});
+  const dateFieldRef = useRef<HTMLInputElement | null>(null);
+  const projectFieldRef = useRef<HTMLButtonElement | null>(null);
   const [form, setForm] = useState<ActivityFormState>(() => ({
     cohortCounts: {},
     date: (qpDate || new Date().toISOString()).slice(0, 10),
     executionStatus: DEFAULT_ACTIVITY_EXECUTION_STATUS,
     projectId: qpProjectId,
   }));
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form);
+  const initialFormBaselineSetRef = useRef(false);
 
   const selectedProject: Project | undefined = useMemo(() => {
     const id = form.projectId || qpProjectId;
@@ -174,17 +183,36 @@ export default function ActivityCreatePage() {
     });
   }, [selectedProject, staff]);
 
+  // Project defaults are loaded asynchronously. Treat that initial prefill as the
+  // starting point, not as an edit the user needs to discard.
+  const initialFormReady = Boolean(projects && locations && tags && categories && staff);
+  useEffect(() => {
+    if (!initialFormReady || initialFormBaselineSetRef.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (initialFormBaselineSetRef.current) return;
+      reset(form);
+      initialFormBaselineSetRef.current = true;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [categories, form, initialFormReady, locations, projects, reset, staff, tags]);
+
   const handleSave = () => {
     if (create.isPending || submitLockedRef.current) return;
 
-    if (!form.date) {
-      setErrorOpen(t('quickAdd.chooseDate'));
+    const nextErrors = {
+      ...(!form.date ? { date: t('quickAdd.chooseDate') } : {}),
+      ...(!form.projectId ? { project: t('quickAdd.chooseProject') } : {}),
+    };
+    if (Object.keys(nextErrors).length) {
+      setValidationErrors(nextErrors);
+      window.requestAnimationFrame(() => {
+        const target = nextErrors.date ? dateFieldRef.current : projectFieldRef.current;
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target?.focus({ preventScroll: true });
+      });
       return;
     }
-    if (!form.projectId) {
-      setErrorOpen(t('quickAdd.chooseProject'));
-      return;
-    }
+    setValidationErrors({});
     const payload = buildActivitySavePayload({
       form: {
         ...form,
@@ -208,11 +236,16 @@ export default function ActivityCreatePage() {
 
   const handleCancel = () => {
     // If we navigated here from the project picker route, go back two steps
-    if (picker) setPicker(false);
+    if (picker) {
+      setPicker(false);
+      return;
+    }
     const fromPicker = (location.state as unknown as { fromProjectPicker?: boolean })
       ?.fromProjectPicker;
-    if (fromPicker) navigate(-2);
-    else navigate(-1);
+    requestDiscard(() => {
+      if (fromPicker) navigate(-2);
+      else navigate(-1);
+    });
   };
 
   const handleShortcutClose = () => {
@@ -232,41 +265,34 @@ export default function ActivityCreatePage() {
     onSave: create.isPending || picker || Boolean(errorOpen) ? undefined : handleSave,
   });
 
-  // Die Aktionen bleiben im normalen Dokumentfluss, damit die Tastatur das Layout nicht überdeckt.
   const containerPad = 'pb-[env(safe-area-inset-bottom,0px)]';
-  const actionBarClass =
-    'sticky bottom-0 flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/95 p-4 pb-safe sm:flex-row sm:justify-end';
   // Etwas kompakter, wenn die Tastatur offen ist
   const formSpacing = keyboardOpen ? 'space-y-2' : 'space-y-4';
 
   return (
     <div className={`max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 ${containerPad}`}>
-      <div className="flex items-center justify-between mb-4 mt-1">
-        <h2 className="text-2xl font-bold text-viridian">{t('actions.new')}</h2>
-        <div className="flex items-center gap-2">
+      <EditorSurface>
+        <EditorHeader
+          title={t('actions.new')}
+          closeLabel={t('common:actions.cancel')}
+          onClose={handleCancel}
+          actions={
           <ActivityExecutionStatusControl
             value={form.executionStatus}
             onChange={(executionStatus) => setForm((current) => ({ ...current, executionStatus }))}
           />
-          <button
-            type="button"
-            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-            onClick={handleCancel}
-            title={t('common:actions.cancel')}
-            aria-label={t('common:actions.cancel')}
-          >
-            <XIcon className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+          }
+        />
 
       <form
-        className={`bg-white rounded-lg shadow p-4 md:p-6 ${formSpacing}`}
+        className={formSpacing}
+        autoComplete="off"
         onSubmit={(e) => {
           e.preventDefault();
           handleSave();
         }}
       >
+        <div className={`p-4 md:p-6 ${formSpacing}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">
@@ -280,12 +306,19 @@ export default function ActivityCreatePage() {
               )}
             </div>
             <input
+              ref={dateFieldRef}
               id="activity-date"
               type="date"
               value={(form.date || '').slice(0, 10)}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              onChange={(e) => {
+                setForm({ ...form, date: e.target.value });
+                setValidationErrors((errors) => ({ ...errors, date: undefined }));
+              }}
+              aria-invalid={Boolean(validationErrors.date)}
+              aria-describedby={validationErrors.date ? 'activity-date-error' : undefined}
+              className={`editor-field w-full border px-3 py-2 ${validationErrors.date ? 'border-red-500' : ''}`}
             />
+            {validationErrors.date ? <p id="activity-date-error" className="mt-1 text-sm text-red-700">{validationErrors.date}</p> : null}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="location-select">
@@ -295,7 +328,7 @@ export default function ActivityCreatePage() {
               id="location-select"
               value={form.locationId || ''}
               onChange={(e) => setForm({ ...form, locationId: e.target.value || undefined })}
-              className="w-full border rounded px-3 py-2"
+              className="editor-field w-full border px-3 py-2"
             >
               <option value="">{t('quickAdd.selectLocation')}</option>
               {(locations || []).map((l) => (
@@ -311,24 +344,31 @@ export default function ActivityCreatePage() {
           <label className="block text-sm font-medium mb-1" htmlFor="activity-title">
             {t('quickAdd.titleField')}
           </label>
-          <input
+          <SingleLineTextField
             id="activity-title"
             value={form.title || ''}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            className="w-full border rounded px-3 py-2"
+            onValueChange={(title) => setForm({ ...form, title })}
+            className="editor-field w-full border px-3 py-2"
             placeholder={t('quickAdd.titlePlaceholder')}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">{t('quickAdd.project')}</label>
+          <label className="block text-sm font-medium mb-1" htmlFor="activity-project">{t('quickAdd.project')}</label>
           {selectedProject ? (
             <button
+              ref={projectFieldRef}
+              id="activity-project"
               type="button"
               onClick={() => setPicker(true)}
-              className="w-full border rounded p-2 flex items-center gap-3 text-left"
+              aria-invalid={Boolean(validationErrors.project)}
+              aria-describedby={validationErrors.project ? 'activity-project-error' : undefined}
+              className={`editor-field w-full border p-2 flex items-center gap-3 text-left ${validationErrors.project ? 'border-red-500' : ''}`}
             >
-              <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+              <div
+                className="w-12 h-10 rounded overflow-hidden flex items-center justify-center"
+                style={selectedProject.imageUrl ? undefined : { backgroundColor: selectedProject.color || 'var(--interactive-soft-strong)' }}
+              >
                 {selectedProject.imageUrl ? (
                         <ProtectedImage
                           src={selectedProject.imageUrl}
@@ -336,7 +376,7 @@ export default function ActivityCreatePage() {
                           className="w-full h-full object-cover"
                         />
                 ) : (
-                  <Boxes className="w-6 h-6 text-gray-500" />
+                  <Boxes className="w-6 h-6 text-white/90" />
                 )}
               </div>
               <div>
@@ -346,13 +386,18 @@ export default function ActivityCreatePage() {
             </button>
           ) : (
             <button
+              ref={projectFieldRef}
+              id="activity-project"
               type="button"
               onClick={() => setPicker(true)}
-              className="w-full border rounded p-3 text-left text-gray-600"
+              aria-invalid={Boolean(validationErrors.project)}
+              aria-describedby={validationErrors.project ? 'activity-project-error' : undefined}
+              className={`editor-field w-full border p-3 text-left text-gray-600 ${validationErrors.project ? 'border-red-500' : ''}`}
             >
               {t('quickAdd.selectProject')}
             </button>
           )}
+          {validationErrors.project ? <p id="activity-project-error" className="mt-1 text-sm text-red-700">{validationErrors.project}</p> : null}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -365,7 +410,7 @@ export default function ActivityCreatePage() {
               type="time"
               value={form.start || ''}
               onChange={(e) => setForm({ ...form, start: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className="editor-field w-full border px-3 py-2"
               placeholder={autoT('ui_a4c7ee9ba5c9')}
               title={t('quickAdd.start')}
             />
@@ -379,7 +424,7 @@ export default function ActivityCreatePage() {
               type="time"
               value={form.end || ''}
               onChange={(e) => setForm({ ...form, end: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className="editor-field w-full border px-3 py-2"
               placeholder={autoT('ui_a4c7ee9ba5c9')}
               title={t('quickAdd.end')}
             />
@@ -523,6 +568,12 @@ export default function ActivityCreatePage() {
           </div>
         </div>
 
+        <details className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 md:p-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-[var(--text-primary)]">
+            <span>{t('quickAdd.assignment')}</span>
+            <span className="text-xs font-normal text-[var(--text-secondary)]">{t('quickAdd.assignmentSummary', { tags: form.tagIds?.length || 0, staff: form.staffIds?.length || 0 })}</span>
+          </summary>
+          <div className="mt-4 space-y-4">
         {/* Kategorien: ausblenden bei "Offene Tür" */}
         {selectedProject?.type !== 'open_door' && (
           <div>
@@ -723,8 +774,15 @@ export default function ActivityCreatePage() {
           </div>
         </div>
         )}
+          </div>
+        </details>
 
-        <div>
+        <details className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 md:p-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-[var(--text-primary)]">
+            <span>{t('quickAdd.additionalDetails')}</span>
+            <span className="text-xs font-normal text-[var(--text-secondary)]">{t('quickAdd.notesSummary')}</span>
+          </summary>
+          <div className="mt-4">
           <label className="block text-sm font-medium mb-1" htmlFor="activity-notes">
             {t('quickAdd.notes')}
           </label>
@@ -733,31 +791,25 @@ export default function ActivityCreatePage() {
             value={form.notes || ''}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             rows={3}
-            className="w-full border rounded px-3 py-2"
+            className="editor-field w-full border px-3 py-2"
             placeholder={t('quickAdd.notesPlaceholder')}
             aria-label={t('quickAdd.notes')}
           />
-        </div>
+          </div>
+        </details>
 
-        {/* Mobile-friendly, labelled actions match the Logbook editor. */}
-        <div className={actionBarClass}>
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-          >
-            {t('common:actions.cancel')}
-          </button>
-          <button
-            type="submit"
-            className="dashboard-accent-solid-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={create.isPending || picker || Boolean(errorOpen)}
-          >
-            <SaveIcon className="h-4 w-4" />
-            {create.isPending ? t('common:language.saving') : t('quickAdd.save')}
-          </button>
         </div>
+        <EditorActions
+          secondary={<Button variant="ghost" size="lg" onClick={handleCancel}>{t('common:actions.cancel')}</Button>}
+          primary={(
+            <Button type="submit" size="lg" disabled={create.isPending || picker || Boolean(errorOpen)}>
+              <SaveIcon className="h-4 w-4" />
+              {create.isPending ? t('common:language.saving') : t('quickAdd.save')}
+            </Button>
+          )}
+        />
       </form>
+      </EditorSurface>
 
       {picker && (
         <ProjectPickerModal
@@ -787,6 +839,7 @@ export default function ActivityCreatePage() {
               start: prev.start || p.defaultStartTime || '15:00',
               end: prev.end || p.defaultEndTime || '17:00',
             }));
+            setValidationErrors((errors) => ({ ...errors, project: undefined }));
             setPicker(false);
           }}
           onClose={() => setPicker(false)}
@@ -804,6 +857,7 @@ export default function ActivityCreatePage() {
         showCancel={false}
         confirmLabel={autoT('ui_9ce3bd4224c8')}
       />
+      {discardDialog}
     </div>
   );
 }

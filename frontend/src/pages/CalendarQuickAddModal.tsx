@@ -33,6 +33,8 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
 import { useAuth } from '@/lib/auth';
 import { useActivityInlineCreation } from './useActivityInlineCreation';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/i18n/formatters';
 import {
@@ -49,6 +51,8 @@ import {
   mergeProjectStaffIds,
 } from './activityEditorShared';
 import { autoT } from '@/i18n/auto';
+import ActivityTitleField from '@/components/ActivityTitleField';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
 export default function ActivityQuickAdd({
   dateISO,
@@ -64,6 +68,9 @@ export default function ActivityQuickAdd({
   const { t } = useTranslation('activities');
   // This modal mounts only while open – lock body scroll while mounted
   useBodyScrollLock(true);
+  const keyboardOpen = useKeyboardOpen();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const handlePanelFocus = useFocusedFieldVisibility(panelRef, keyboardOpen);
   const submitLockedRef = useRef(false);
   const { data: projects } = useProjects({ archived: false });
   const { data: staff } = useStaff({ active: true });
@@ -94,6 +101,8 @@ export default function ActivityQuickAdd({
     };
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form);
+  const initialFormBaselineSetRef = useRef(false);
   const selectedProject: Project | undefined = useMemo(
     () => (projects || []).find((p: Project) => p.id === form.projectId) || initialProject,
     [projects, form.projectId, initialProject],
@@ -214,6 +223,20 @@ export default function ActivityQuickAdd({
     });
   }, [initialProject, staff]);
 
+  // Project defaults and the edit payload are populated asynchronously. They
+  // define the initial state of this editor and must not trigger a discard
+  // confirmation before the user has changed anything.
+  const initialFormReady = Boolean(projects && locations && tags && categories && staff);
+  useEffect(() => {
+    if (!initialFormReady || initialFormBaselineSetRef.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (initialFormBaselineSetRef.current) return;
+      reset(form);
+      initialFormBaselineSetRef.current = true;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [categories, form, initialFormReady, locations, projects, reset, staff, tags]);
+
   const create = useCreateActivity();
   const update = useUpdateActivity();
   const remove = useRemoveActivity();
@@ -231,7 +254,7 @@ export default function ActivityQuickAdd({
       setDeleteOpen(false);
       return;
     }
-    onClose();
+    requestDiscard(onClose);
   };
 
   const handleSave = () => {
@@ -302,11 +325,13 @@ export default function ActivityQuickAdd({
 
   const content = (
     <div
-      className="fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
+      className="visual-viewport-fixed z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="modal-panel-roomy bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-hidden">
-        <div className="shrink-0 flex items-start justify-between gap-3 mb-2">
+      <div ref={panelRef} onFocusCapture={handlePanelFocus} className={`modal-panel-roomy bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-lg px-3 sm:px-4 md:px-6 bottom-sheet-animate flex flex-col ${keyboardOpen ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+        <div
+          className="editor-modal-header shrink-0 -mx-3 sm:-mx-4 md:-mx-6 flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-3 pb-3 pt-4 sm:px-4 md:pt-6"
+        >
           <h3 className="text-xl font-semibold text-viridian">
             {t('quickAdd.title', { date: formatDate(form.date || dateISO, { dateStyle: 'short' }) })}
           </h3>
@@ -326,7 +351,7 @@ export default function ActivityQuickAdd({
             </button>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6">
+        <div className={keyboardOpen ? 'flex-none overflow-visible pb-2 pt-2' : 'activity-editor-scroll min-h-0 flex-1 overflow-y-auto pb-4 pt-3 md:pb-6 md:pt-4'}>
         <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 lg:items-start">
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -348,7 +373,7 @@ export default function ActivityQuickAdd({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setForm({ ...form, date: e.target.value })
                   }
-                  className="w-full border rounded px-3 py-2"
+                  className="editor-field w-full border px-3 py-2"
                 />
               </div>
               <div>
@@ -361,7 +386,7 @@ export default function ActivityQuickAdd({
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                     setForm({ ...form, locationId: e.target.value || undefined })
                   }
-                  className="w-full border rounded px-3 py-2"
+                  className="editor-field w-full border px-3 py-2"
                 >
                   <option value="">{t('quickAdd.selectLocation')}</option>
                   {(locations || []).map((l) => (
@@ -376,13 +401,11 @@ export default function ActivityQuickAdd({
               <label className="block text-sm font-medium mb-1" htmlFor="activity-title">
                 {t('quickAdd.titleField')}
               </label>
-              <input
+              <ActivityTitleField
                 id="activity-title"
                 value={form.title || ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm({ ...form, title: e.target.value })
-                }
-                className="w-full border rounded px-3 py-2"
+                onValueChange={(title) => setForm({ ...form, title })}
+                className="editor-field w-full border px-3 py-2"
                 placeholder={t('quickAdd.titlePlaceholder')}
               />
             </div>
@@ -392,9 +415,12 @@ export default function ActivityQuickAdd({
                 <button
                   type="button"
                   onClick={() => setPicker(true)}
-                  className="w-full border rounded p-2 flex items-center gap-3 text-left"
+                  className="editor-field w-full border p-2 flex items-center gap-3 text-left"
                 >
-                  <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <div
+                    className="w-12 h-10 rounded overflow-hidden flex items-center justify-center"
+                    style={selectedProject.imageUrl ? undefined : { backgroundColor: selectedProject.color || 'var(--interactive-soft-strong)' }}
+                  >
                     {selectedProject.imageUrl ? (
                       <ProtectedImage
                         src={selectedProject.imageUrl}
@@ -402,7 +428,7 @@ export default function ActivityQuickAdd({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Boxes className="w-6 h-6 text-gray-500" />
+                      <Boxes className="w-6 h-6 text-white/90" />
                     )}
                   </div>
                   <div>
@@ -414,7 +440,7 @@ export default function ActivityQuickAdd({
                 <button
                   type="button"
                   onClick={() => setPicker(true)}
-                  className="w-full border rounded p-3 text-left text-gray-600"
+                  className="editor-field w-full border p-3 text-left text-gray-600"
                 >
                   {t('quickAdd.selectProject')}
                 </button>
@@ -432,7 +458,7 @@ export default function ActivityQuickAdd({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setForm({ ...form, start: e.target.value })
                   }
-                  className="w-full border rounded px-3 py-2"
+                  className="editor-field w-full border px-3 py-2"
                   placeholder={autoT('ui_a4c7ee9ba5c9')}
                   title={t('quickAdd.start')}
                 />
@@ -448,7 +474,7 @@ export default function ActivityQuickAdd({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setForm({ ...form, end: e.target.value })
                   }
-                  className="w-full border rounded px-3 py-2"
+                  className="editor-field w-full border px-3 py-2"
                   placeholder={autoT('ui_a4c7ee9ba5c9')}
                   title={t('quickAdd.end')}
                 />
@@ -805,7 +831,7 @@ export default function ActivityQuickAdd({
                 value={form.notes || ''}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 rows={4}
-                className="w-full border rounded px-3 py-2"
+                className="editor-field w-full border px-3 py-2"
                 placeholder={t('quickAdd.notesPlaceholder')}
                 aria-label={t('quickAdd.notes')}
               />
@@ -814,7 +840,7 @@ export default function ActivityQuickAdd({
         </div>
         </div>
 
-        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 flex items-center gap-3">
+        <div className={`shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 flex items-center gap-3 ${keyboardOpen ? '' : 'pb-safe'}`}>
           <div className="flex-1 flex items-center">
             <button
               type="button"
@@ -924,6 +950,8 @@ export default function ActivityQuickAdd({
       </div>
     </div>
   );
-  if (typeof document !== 'undefined') return createPortal(content, document.body);
-  return content;
+  return <>
+    {typeof document !== 'undefined' ? createPortal(content, document.body) : content}
+    {discardDialog}
+  </>;
 }

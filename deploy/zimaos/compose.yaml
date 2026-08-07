@@ -1,0 +1,186 @@
+# StatO for ZimaOS
+#
+# Import this file through: App Center -> Install a customized app -> Import.
+# Set the required variables in the ZimaOS form before installing. The
+# frontend is the only public service; it proxies /api internally to backend.
+
+name: stato-zimaos
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: frontend
+  author: StatO
+  developer: StatO
+  category: Utilities
+  icon: https://raw.githubusercontent.com/Hubertoink/stato_okja/main/frontend/assets/Stato_Logo.png
+  description:
+    de_de: Datenschutzfreundliche Statistik und Dokumentation für die Offene Kinder- und Jugendarbeit.
+    en_us: Privacy-friendly statistics and documentation for open child and youth work.
+  tagline:
+    de_de: Statistik und Dokumentation für die OKJA
+    en_us: Statistics and documentation for open child and youth work
+  scheme: http
+  index: /
+  port_map: "${WEBUI_PORT:-8088}"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stato_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-stato_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before installing}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [backend-db]
+
+  backend:
+    image: ghcr.io/hubertoink/stato-backend:${STATO_VERSION:-1.3.5}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      STRICT_SECURITY_MODE: "true"
+      PORT: 3000
+      TZ: ${TZ:-Europe/Berlin}
+      API_PREFIX: api
+      APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN to the exact StatO address before installing}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS to the exact StatO address before installing}
+      TRUST_PROXY: "true"
+
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER:-stato_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before installing}
+      DB_DATABASE: ${POSTGRES_DB:-stato_prod}
+      DB_SYNCHRONIZE: "false"
+      DB_MIGRATIONS_RUN: "true"
+      DB_BOOTSTRAP_ON_EMPTY: "true"
+      DB_LOGGING: "false"
+
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET before installing}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      AUTH_REFRESH_COOKIE_SAMESITE: ${AUTH_REFRESH_COOKIE_SAMESITE:-lax}
+      AUTH_REFRESH_COOKIE_SECURE: ${AUTH_REFRESH_COOKIE_SECURE:-false}
+      INVITE_TOKEN_EXPIRATION: ${INVITE_TOKEN_EXPIRATION:-24h}
+      RESET_TOKEN_EXPIRATION: ${RESET_TOKEN_EXPIRATION:-1h}
+      AUTH_2FA_ENABLED: ${AUTH_2FA_ENABLED:-false}
+      AUTH_2FA_CODE_TTL: ${AUTH_2FA_CODE_TTL:-600}
+      PASSWORD_RESET_MODE: ${PASSWORD_RESET_MODE:-admin_temp_password}
+      USER_PROVISIONING_MODE: ${USER_PROVISIONING_MODE:-local}
+
+      PUBLIC_APP_NAME: ${PUBLIC_APP_NAME:-StatO}
+      PUBLIC_ORG_NAME: "${PUBLIC_ORG_NAME:-}"
+      PUBLIC_LOGIN_SUBTITLE: ${PUBLIC_LOGIN_SUBTITLE:-OKJA Statistik & Dokumentation}
+      PUBLIC_LIVE_REFRESH_INTERVAL_MS: ${PUBLIC_LIVE_REFRESH_INTERVAL_MS:-30000}
+      STATS_OVERVIEW_CACHE_TTL_MS: ${STATS_OVERVIEW_CACHE_TTL_MS:-30000}
+
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@stato.local}
+      INITIAL_SETUP_ENABLED: "true"
+      SUPERADMIN_EMAIL_FORCE: "false"
+      SUPERADMIN_PASSWORD_FORCE: "false"
+      ENABLE_ORG_MOVE: "false"
+
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASS: "${SMTP_PASS:-}"
+      SMTP_FROM: ${SMTP_FROM:-no-reply@stato.local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backend-uploads:/app/uploads
+    networks: [frontend-backend, backend-db]
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    # The on-prem image contains the internal Nginx proxy for /api and /uploads.
+    image: ghcr.io/hubertoink/stato-frontend:onprem-${STATO_VERSION:-1.3.5}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - target: 8080
+        published: ${WEBUI_PORT:-8088}
+        protocol: tcp
+    networks: [frontend-backend]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backup:
+    image: ghcr.io/hubertoink/stato-backup:${STATO_VERSION:-1.3.5}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:-stato_user}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before installing}
+      PGDATABASE: ${POSTGRES_DB:-stato_prod}
+      BACKUP_OUTPUT_DIR: /backups
+      BACKUP_UPLOADS_DIR: /mnt/uploads
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backend-uploads:/mnt/uploads:ro
+      - backup-data:/backups
+    networks: [backend-db]
+
+volumes:
+  postgres-data:
+  backend-uploads:
+  backup-data:
+
+networks:
+  frontend-backend:
+  backend-db:

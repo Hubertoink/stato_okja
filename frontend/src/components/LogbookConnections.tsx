@@ -53,7 +53,7 @@ export default function LogbookConnections({ entry }: { entry: LogbookEntry }) {
               onClick={() => navigate(`/activities?projectId=${encodeURIComponent(project.id)}`)}
               className={linkClassName}
             >
-              {autoT('ui_30c095c845e0')}{project.title}
+              {autoT('ui_30c095c845e0')}{' '}{project.title}
             </button>
           )}
           {entry.activity && (
@@ -62,7 +62,7 @@ export default function LogbookConnections({ entry }: { entry: LogbookEntry }) {
               onClick={() => navigate(`/activities/${entry.activity!.id}`)}
               className={linkClassName}
             >
-              {autoT('ui_c71c993f48b0')}{entry.activity.title || entry.activity.date}
+              {autoT('ui_c71c993f48b0')}{' '}{entry.activity.title || entry.activity.date}
             </button>
           )}
         </div>

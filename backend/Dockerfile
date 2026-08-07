@@ -1,7 +1,7 @@
 # Backend production Dockerfile (NestJS)
 # Build context must be the repository root so npm can use the workspace lockfile.
 
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -11,9 +11,12 @@ RUN npm ci --workspace backend --include-workspace-root=false --no-audit --no-fu
 
 COPY backend ./backend
 WORKDIR /app/backend
-RUN npm run build
+# A host-side incremental build cache can be present in a source checkout while
+# its matching dist directory is excluded from the Docker context. Remove it
+# so Nest always emits the complete runtime bundle inside the image.
+RUN rm -f tsconfig.tsbuildinfo && npm run build
 
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 # npm installs workspace dependencies below /app/backend/node_modules. The

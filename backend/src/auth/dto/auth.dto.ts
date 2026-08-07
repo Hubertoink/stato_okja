@@ -1,5 +1,5 @@
 import { IsAscii, IsBoolean, IsEmail, IsIn, IsOptional, IsString, IsUUID, Length, MaxLength, MinLength } from 'class-validator';
-import { SUPPORTED_LOCALES, type SupportedLocale } from '../../users/entities/user.entity';
+import { SUPPORTED_LOCALES, SUPPORTED_THEME_MODES, type SupportedLocale, type ThemeMode } from '../../users/entities/user.entity';
 
 export class LoginDto {
   @IsAscii()
@@ -156,6 +156,10 @@ export class UpdateMeDto {
   @IsString()
   @MaxLength(80)
   theme?: string;
+
+  @IsOptional()
+  @IsIn(SUPPORTED_THEME_MODES)
+  themeMode?: ThemeMode;
 
   @IsOptional()
   @IsIn(SUPPORTED_LOCALES)

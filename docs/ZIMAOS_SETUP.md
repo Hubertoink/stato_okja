@@ -1,0 +1,110 @@
+# StatO auf ZimaOS installieren
+
+StatO läuft auf ZimaOS als eigene Docker-Compose-App. Die importierbare Vorlage
+liegt in [deploy/zimaos/compose.yaml](../deploy/zimaos/compose.yaml). Sie
+verwendet ausschließlich veröffentlichte, versionsgebundene Container-Images;
+auf dem ZimaOS-Gerät werden weder Quellcode noch Node.js oder ein lokaler Build
+benötigt.
+
+## Voraussetzungen
+
+- ZimaOS mit Zugriff auf das App Center
+- eine feste LAN-IP oder ein lokaler DNS-Name für das ZimaOS-Gerät
+- ein freier TCP-Port, standardmäßig `8088`
+- für Internetzugriff: ein Reverse Proxy mit HTTPS und eine Domain
+
+Die Release-Images unterstützen `amd64` und `arm64`. Verwende nur eine
+veröffentlichte StatO-Version wie `1.3.5`, nie einen beweglichen Tag wie
+`latest`.
+
+## Installation über die ZimaOS-Oberfläche
+
+1. Lade [compose.yaml](../deploy/zimaos/compose.yaml) herunter oder kopiere
+   seinen Inhalt.
+2. Öffne in ZimaOS das **App Center** und wähle **Install a customized app**.
+3. Wähle **Import** und füge die Compose-Datei ein.
+4. Trage die Variablen aus
+   [stato.env.example](../deploy/zimaos/stato.env.example) ein. Die wichtigen
+   Werte sind:
+
+   | Variable | Beispiel | Zweck |
+   | --- | --- | --- |
+   | `STATO_VERSION` | `1.3.5` | unveränderliche StatO-Release-Version |
+   | `WEBUI_PORT` | `8088` | Port, über den die StatO-Oberfläche erreichbar ist |
+   | `APP_ORIGIN` | `http://192.168.1.50:8088` | exakte Adresse, die im Browser verwendet wird |
+   | `CORS_ORIGINS` | identisch zu `APP_ORIGIN` | erlaubte Browser-Origin |
+   | `POSTGRES_PASSWORD` | langes, einzigartiges Passwort | Datenbankzugang |
+   | `JWT_SECRET` | mindestens 48 zufällige Zeichen | Signatur der Login-Sitzungen |
+   | `SUPERADMIN_EMAIL` | `admin@organisation.de` | E-Mail für die einmalige Ersteinrichtung |
+
+   `APP_ORIGIN` und `CORS_ORIGINS` müssen den gleichen Host, Port und das
+   gleiche Protokoll enthalten wie die Adresse im Browser. Bei der
+   Beispieladresse `http://192.168.1.50:8088` dürfen sie also nicht auf
+   `localhost` stehen.
+
+5. Prüfe den Port und starte die Installation. ZimaOS legt die persistenten
+   Docker-Volumes für PostgreSQL, Uploads und Backups an.
+6. Warte, bis die Dienste den Status „running/healthy“ zeigen, und öffne
+   `http://<ZIMAOS-IP>:<WEBUI_PORT>`.
+7. Beim ersten Aufruf legst du das Passwort für `SUPERADMIN_EMAIL` fest. Es
+   wird nur als Hash in PostgreSQL gespeichert.
+
+Das Frontend ist der einzige veröffentlichte Dienst. Backend und Datenbank
+bleiben innerhalb des Docker-Netzwerks; `/api` und `/uploads` werden intern
+über das Frontend weitergeleitet.
+
+## HTTPS und Domain
+
+Für eine produktive oder von außen erreichbare Instanz gehört StatO hinter
+einen Reverse Proxy mit HTTPS. Danach ändere die drei Werte und starte die App
+neu:
+
+```env
+APP_ORIGIN=https://stato.example.org
+CORS_ORIGINS=https://stato.example.org
+AUTH_REFRESH_COOKIE_SECURE=true
+```
+
+Die HTTPS-Adresse muss exakt sein; keine zusätzlichen Pfade und kein
+abweichender Port. Der Reverse Proxy leitet anschließend an
+`http://<ZIMAOS-IP>:8088` weiter. Öffne nicht zusätzlich den Backend-Port und
+veröffentliche auch PostgreSQL niemals nach außen.
+
+## E-Mail und Benutzerverwaltung
+
+Die Vorlage funktioniert im lokalen Netzwerk ohne Mailserver:
+
+```env
+PASSWORD_RESET_MODE=admin_temp_password
+USER_PROVISIONING_MODE=local
+```
+
+Für Einladungen per E-Mail, Passwort-Reset per E-Mail oder E-Mail-2FA müssen
+die SMTP-Variablen gesetzt werden. Dann ist typischerweise
+`USER_PROVISIONING_MODE=email` sinnvoll.
+
+## Backups
+
+Der Stack enthält einen ruhenden `backup`-Dienst sowie drei persistente
+Volumes: Datenbank, Uploads und Backup-Ausgaben. Vor Updates sollte ein Backup
+ausgeführt und aus ZimaOS heraus gesichert werden. Der Befehl lautet über SSH:
+
+```bash
+docker compose -f compose.yaml exec backup /usr/local/bin/stato-container-backup
+```
+
+Wenn ZimaOS die Compose-Datei verwaltet, den Befehl im zugehörigen
+App-Kontext ausführen. Das Backup enthält PostgreSQL und die Upload-Dateien.
+
+## Aktualisieren
+
+1. Zuerst ein Backup erstellen.
+2. In der ZimaOS-App-Konfiguration nur `STATO_VERSION` auf die gewünschte
+   Release-Version ändern, z. B. von `1.3.5` auf `1.3.6`.
+3. App neu bereitstellen bzw. neu starten und warten, bis Backend und Frontend
+   wieder gesund sind.
+4. StatO öffnen und kurz prüfen, ob Anmeldung und aktuelle Daten vorhanden
+   sind.
+
+Die Versionsnummer von Backend, On-Prem-Frontend und Backup bleibt dadurch
+immer gleich. Das verhindert inkompatible Mischstände zwischen UI und API.

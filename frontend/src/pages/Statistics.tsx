@@ -20,7 +20,7 @@ import { useProjects } from '@/lib/projects';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { colorForActivityType, translucent } from '@/lib/colors';
-import { isDarkThemeName } from '../lib/theme';
+import { isDarkThemeName, resolveThemeName } from '../lib/theme';
 import type jsPDF from 'jspdf';
 import { FileDown, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
@@ -67,6 +67,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { loadStatisticsViewPreferences, saveStatisticsViewPreferences } from '@/lib/statisticsViewPreferences';
 import activitiesKpiIcon from '../../assets/Illust_Amigos/Aktivitäten.svg';
 import participantsKpiIcon from '../../assets/Illust_Amigos/Teilnehmende.svg';
 import hoursKpiIcon from '../../assets/Illust_Amigos/Stunden.svg';
@@ -521,13 +522,16 @@ export default function Statistics() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1; // 1-12
   const isMobile = useIsMobile(768);
-  const [from, setFrom] = useState<string>(`${currentYear}-01-01`);
-  const [to, setTo] = useState<string>(`${currentYear}-12-31`);
-  const [projectId, setProjectId] = useState<string>('');
-  const [selectedType, setSelectedType] = useState<Activity['type'] | ''>('');
-  const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null); // null = ganzes Jahr
-  const [filterMode, setFilterMode] = useState<'year' | 'month'>('year');
+  const [storedViewPreferences] = useState(loadStatisticsViewPreferences);
+  const [from, setFrom] = useState<string>(storedViewPreferences.from ?? `${currentYear}-01-01`);
+  const [to, setTo] = useState<string>(storedViewPreferences.to ?? `${currentYear}-12-31`);
+  const [projectId, setProjectId] = useState<string>(storedViewPreferences.projectId ?? '');
+  const [selectedType, setSelectedType] = useState<Activity['type'] | ''>(
+    (storedViewPreferences.selectedType as Activity['type'] | '') || '',
+  );
+  const [selectedYear, setSelectedYear] = useState<string>(storedViewPreferences.selectedYear ?? String(currentYear));
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(storedViewPreferences.selectedMonth ?? null); // null = ganzes Jahr
+  const [filterMode, setFilterMode] = useState<'year' | 'month'>(storedViewPreferences.filterMode ?? 'year');
   const [customFilterOpen, setCustomFilterOpen] = useState(false);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
@@ -570,6 +574,19 @@ export default function Statistics() {
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isExportInProgress, setIsExportInProgress] = useState(false);
   const exportInProgressRef = useRef(false);
+
+  useEffect(() => {
+    saveStatisticsViewPreferences({
+      from,
+      to,
+      projectId,
+      selectedType,
+      selectedYear,
+      selectedMonth,
+      filterMode,
+    });
+  }, [filterMode, from, projectId, selectedMonth, selectedType, selectedYear, to]);
+
   const { user } = useAuth();
   const { showToast } = useToast();
   const { scope } = useOrgScope();
@@ -1006,7 +1023,7 @@ export default function Statistics() {
     value: d.count,
     color: COLORS[i % COLORS.length],
   }));
-  const isDarkTheme = isDarkThemeName(user?.theme);
+  const isDarkTheme = isDarkThemeName(resolveThemeName(user?.theme, user?.themeMode));
   const chartSeparatorColor = isDarkTheme ? 'rgba(148, 163, 184, 0.2)' : 'rgba(255, 255, 255, 0.92)';
   const chartLegendTextColor = isDarkTheme ? '#c9d5eb' : '#4b5563';
   const chartValueLabelColor = isDarkTheme ? '#f8fbff' : '#374151';

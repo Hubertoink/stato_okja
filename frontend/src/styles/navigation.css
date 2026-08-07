@@ -1,0 +1,176 @@
+
+/* Navigation label – reserves space for bold text to prevent layout shift */
+.nav-label {
+  display: inline-block;
+  position: relative;
+  font-weight: 400;
+}
+/* Invisible pseudo-element with bold text to reserve width */
+.nav-label::after {
+  content: attr(data-text);
+  display: block;
+  height: 0;
+  visibility: hidden;
+  overflow: hidden;
+  font-weight: 600;
+  user-select: none;
+  pointer-events: none;
+}
+/* Active state: make visible text bold */
+.nav-label-active {
+  font-weight: 600;
+}
+
+/* Keep the compact icon-only navigation only while desktop width is limited.
+   From 1101px the component exposes its labels next to the icons. */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .nav-label {
+    /* Visually hidden but accessible */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .nav-label::after {
+    display: none;
+  }
+  /* Show tooltip on hover for nav items */
+  .nav-item-tooltip {
+    position: relative;
+  }
+  .nav-item-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(17, 24, 39, 0.95);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0s,
+      visibility 0s;
+    z-index: 100;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  .nav-item-tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* Utility helpers for mobile safe areas and tooltips */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+.mb-safe {
+  margin-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 0px);
+}
+
+.mobile-bottom-nav {
+  bottom: 0;
+}
+
+.activity-cohort-column-icon {
+  font-size: 1rem;
+  line-height: 1;
+  font-weight: 600;
+  text-align: center;
+  color: rgb(75 85 99);
+}
+
+@media (min-width: 640px) {
+  .activity-cohort-column-icon {
+    font-size: 1.125rem;
+  }
+}
+
+/* Immediate tooltip styles */
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  z-index: 1;
+}
+.tooltip-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 24, 39, 0.95);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  margin-bottom: 6px;
+  z-index: 80;
+}
+.tooltip-wrapper:hover .tooltip-bubble,
+.tooltip-wrapper:focus-within .tooltip-bubble {
+  opacity: 1;
+  z-index: 80;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-tab-tooltip.group-hover\:opacity-100 {
+    opacity: 1;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .settings-tab-tooltip,
+  .group:focus-visible .settings-tab-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Calendar activity tooltip animation */
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%) translateY(-4px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) translateY(-8px) scale(1);
+  }
+}
+.animate-tooltip-fade-in {
+  animation: tooltipFadeIn 150ms ease-out forwards;
+}
+
+/* Bottom sheet slide-up animation */
+@keyframes bottomSheetIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.bottom-sheet-animate {
+  animation: bottomSheetIn 180ms ease-out;
+}

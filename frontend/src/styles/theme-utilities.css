@@ -1,0 +1,28 @@
+/* Coastal Vibes intentionally uses its red accent for interactive primary
+   actions while keeping the neutral theme tokens for headings and icons. */
+:root[data-theme='Coastal Vibes'] button.bg-viridian,
+:root[data-theme='Coastal Vibes'] a.bg-viridian {
+  background-color: var(--accent-pink) !important;
+}
+
+:root[data-theme='Coastal Vibes'] button.border-viridian,
+:root[data-theme='Coastal Vibes'] a.border-viridian {
+  border-color: var(--accent-pink) !important;
+}
+
+:root[data-theme='Coastal Vibes'] button.text-viridian,
+:root[data-theme='Coastal Vibes'] a.text-viridian {
+  color: var(--accent-pink) !important;
+}
+
+:root[data-theme='Coastal Vibes'] button.hover\:bg-cambridge-blue:hover,
+:root[data-theme='Coastal Vibes'] a.hover\:bg-cambridge-blue:hover {
+  background-color: var(--accent-orange) !important;
+}
+
+:root[data-theme='Coastal Vibes'] button.hover\:border-gray-300:hover,
+:root[data-theme='Coastal Vibes'] button.hover\:border-gray-400:hover,
+:root[data-theme='Coastal Vibes'] a.hover\:border-gray-300:hover,
+:root[data-theme='Coastal Vibes'] a.hover\:border-gray-400:hover {
+  border-color: var(--accent-orange) !important;
+}

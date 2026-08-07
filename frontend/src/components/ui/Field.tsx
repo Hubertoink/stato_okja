@@ -6,7 +6,7 @@ import type {
   TextareaHTMLAttributes,
 } from 'react';
 
-const controlClassName = 'mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm transition-colors placeholder:text-[var(--text-faint)] hover:border-[var(--border-strong)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-[var(--input-disabled-bg)] disabled:opacity-70';
+const controlClassName = 'editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm transition-colors placeholder:text-[var(--text-faint)] hover:border-[var(--border-strong)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-[var(--input-disabled-bg)] disabled:opacity-70';
 
 export function FieldLabel({ children, className = '', ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (

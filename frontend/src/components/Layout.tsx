@@ -207,6 +207,7 @@ export default function Layout() {
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
   const isLogbookDetail = location.pathname.startsWith('/logbook/');
+  const usesCompactMobileEditorSpacing = isActivityFull || isLogbookDetail;
   const hideBottomNav = isActivityFull || isLogbookDetail || keyboardOpen;
   const hideFooter = isActivityFull || isLogbookDetail || keyboardOpen;
   const showDemoGuideRestore =
@@ -343,6 +344,8 @@ export default function Layout() {
     };
   }, []);
 
+  // Keep the document canvas at layout-viewport height. Shrinking this wrapper to the
+  // VisualViewport exposes a strip below the app when Android opens its keyboard UI.
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -729,7 +732,7 @@ export default function Layout() {
 
       {/* Main Content */}
       <main
-        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-hidden px-2 sm:px-3 md:px-4 py-8 pt-24 md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
+        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-hidden px-2 sm:px-3 md:px-4 py-8 ${usesCompactMobileEditorSpacing ? 'pt-[4.25rem]' : 'pt-24'} md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
         <Outlet key={scopeKey} context={{ openQuickTally }} />
       </main>

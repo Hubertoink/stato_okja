@@ -5,6 +5,8 @@ export const SUPPORTED_LOCALES = ['de', 'en'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export type UserRole = 'superadmin' | 'org_admin' | 'editor' | 'user';
+export const SUPPORTED_THEME_MODES = ['system', 'light', 'dark', 'custom'] as const;
+export type ThemeMode = (typeof SUPPORTED_THEME_MODES)[number];
 
 const userTimestampColumnType =
   (process.env.DB_TYPE || 'postgres').toLowerCase() === 'postgres'
@@ -42,6 +44,9 @@ export class User {
 
   @Column({ type: 'varchar', length: 50, default: 'Default Theme' })
   theme!: string;
+
+  @Column({ type: 'varchar', length: 16, default: 'system' })
+  themeMode!: ThemeMode;
 
   @Column({ type: 'varchar', length: 8, nullable: true })
   locale!: SupportedLocale | null;

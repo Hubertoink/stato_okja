@@ -37,4 +37,11 @@ describe('i18n resources', () => {
     expect(autoResources.de.ui_892ed2e65fe7).toBe('Aktivitäten am {{value0}}');
     expect(autoResources.en.ui_892ed2e65fe7).toBe('Activities on {{value0}}');
   });
+
+  it('keeps spaces around interpolated values in generated messages', () => {
+    expect(autoResources.de.ui_0fa39bb896b6).toContain('gelöscht. {{value1}}');
+    expect(autoResources.en.ui_0fa39bb896b6).toContain('deleted. {{value1}}');
+    expect(autoResources.de.ui_56be077ab68d).toContain('{{value0}} MB');
+    expect(autoResources.en.ui_56be077ab68d).toContain('{{value0}} MB');
+  });
 });

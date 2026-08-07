@@ -7,6 +7,17 @@ export type ThemeDefinition = {
   description: string;
 };
 
+export type ThemeMode = 'system' | 'light' | 'dark' | 'custom';
+
+export const DEFAULT_LIGHT_THEME = 'Default Theme';
+export const DEFAULT_DARK_THEME = 'Catppuccin Mocha';
+const THEME_PREFERENCE_STORAGE_KEY = 'stato_theme_preference_v1';
+
+type StoredThemePreference = {
+  theme: string;
+  mode: ThemeMode;
+};
+
 export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
   { name: 'Default Theme', colors: ['#5B6CFF', '#7C8FFF', '#16A34A', '#F59E0B', '#FAFBFF'], isDark: false, description: autoT('ui_e96d0b1a0023') },
   { name: 'Earthy Tones', colors: ['#6D6875', '#B5838D', '#E5989B', '#FFB4A2', '#F5F2F1'], isDark: false, description: autoT('ui_a782f53f9730') },
@@ -30,13 +41,74 @@ export function isDarkThemeName(theme?: string | null): boolean {
   return !!theme && DARK_THEMES.has(theme);
 }
 
-export function applyTheme(theme?: string | null) {
+export function normalizeThemeMode(mode?: string | null): ThemeMode {
+  return mode === 'system' || mode === 'light' || mode === 'dark' || mode === 'custom' ? mode : 'system';
+}
+
+export function resolveThemeName(theme?: string | null, mode?: ThemeMode | string | null): string {
+  const resolvedMode = normalizeThemeMode(mode);
+  if (resolvedMode === 'light') return DEFAULT_LIGHT_THEME;
+  if (resolvedMode === 'dark') return DEFAULT_DARK_THEME;
+  if (resolvedMode === 'system') {
+    const prefersDark = typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return prefersDark ? DEFAULT_DARK_THEME : DEFAULT_LIGHT_THEME;
+  }
+  return theme || DEFAULT_LIGHT_THEME;
+}
+
+function readStoredThemePreference(): StoredThemePreference | null {
+  try {
+    const raw = window.localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredThemePreference>;
+    if (typeof parsed.theme !== 'string') return null;
+    return { theme: parsed.theme, mode: normalizeThemeMode(parsed.mode) };
+  } catch {
+    return null;
+  }
+}
+
+export function persistThemePreference(theme: string, mode?: ThemeMode | string | null) {
+  try {
+    window.localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, JSON.stringify({
+      theme,
+      mode: normalizeThemeMode(mode),
+    } satisfies StoredThemePreference));
+  } catch {
+    // Storage can be disabled by privacy settings; the server preference still applies.
+  }
+}
+
+export function applyTheme(theme?: string | null, mode?: ThemeMode | string | null, options?: { persist?: boolean }) {
   try {
     const root = document.documentElement;
-    if (theme) root.setAttribute('data-theme', theme);
+    const resolvedTheme = resolveThemeName(theme, mode);
+    if (resolvedTheme) root.setAttribute('data-theme', resolvedTheme);
     else root.removeAttribute('data-theme');
-    root.setAttribute('data-color-mode', isDarkThemeName(theme) ? 'dark' : 'light');
+    root.setAttribute('data-color-mode', isDarkThemeName(resolvedTheme) ? 'dark' : 'light');
+    if (options?.persist !== false && theme) persistThemePreference(theme, mode);
   } catch {
     // Rendering without a document (for example during a test) needs no theme update.
   }
+}
+
+export function applyStoredThemePreference() {
+  const stored = readStoredThemePreference();
+  if (stored) applyTheme(stored.theme, stored.mode, { persist: false });
+  else applyTheme(DEFAULT_LIGHT_THEME, 'system', { persist: false });
+}
+
+export function listenForSystemThemeChanges() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => undefined;
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  const sync = () => {
+    const stored = readStoredThemePreference();
+    if (!stored || stored.mode === 'system') {
+      applyTheme(stored?.theme || DEFAULT_LIGHT_THEME, 'system', { persist: false });
+    }
+  };
+  media.addEventListener?.('change', sync);
+  return () => media.removeEventListener?.('change', sync);
 }

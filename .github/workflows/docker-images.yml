@@ -59,7 +59,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -76,6 +76,7 @@ jobs:
         run: |
           set -euo pipefail
           docker compose -f deploy/onprem/compose.yaml --env-file deploy/onprem/stato.env.example config --quiet
+          docker compose -f deploy/zimaos/compose.yaml --env-file deploy/zimaos/stato.env.example config --quiet
           grep -F 'proxy_pass http://backend:3000/api/' frontend/nginx.proxy.conf
           ! grep -F 'api.stato-okja.de' frontend/nginx.proxy.conf
           bash -n scripts/install-onprem-release.sh
@@ -542,7 +543,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Download repository SBOM
         uses: actions/download-artifact@v8

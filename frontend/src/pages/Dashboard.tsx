@@ -55,7 +55,8 @@ import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate, formatNumber, getCurrentIntlLocale } from '@/i18n/formatters';
-import { isDarkThemeName } from '@/lib/theme';
+import { isDarkThemeName, resolveThemeName } from '@/lib/theme';
+import { loadDashboardTrendPeriod, saveDashboardTrendPeriod } from '@/lib/statisticsViewPreferences';
 import activitiesKpiIcon from '../../assets/Illust_Amigos/Aktivitäten.svg';
 import participantsKpiIcon from '../../assets/Illust_Amigos/Teilnehmende.svg';
 import hoursKpiIcon from '../../assets/Illust_Amigos/Stunden.svg';
@@ -245,9 +246,13 @@ export default function Dashboard() {
   const [picker, setPicker] = useState(false);
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
   const [dashboardTrendMode, setDashboardTrendMode] = useState<'activity' | 'efficiency'>('activity');
-  const [dashboardTrendPeriod, setDashboardTrendPeriod] = useState<DashboardTrendPeriod>('year');
+  const [dashboardTrendPeriod, setDashboardTrendPeriod] = useState<DashboardTrendPeriod>(loadDashboardTrendPeriod);
   const [dashboardLogbookEntryId, setDashboardLogbookEntryId] = useState<string | null>(null);
   const [dashboardLogbookEditId, setDashboardLogbookEditId] = useState<string | null>(null);
+  useEffect(() => {
+    saveDashboardTrendPeriod(dashboardTrendPeriod);
+  }, [dashboardTrendPeriod]);
+
   const dashboardTrendRange = useMemo<DashboardTrendRange>(() => {
     const dateFormatter = new Intl.DateTimeFormat(getCurrentIntlLocale(), {
       day: 'numeric',
@@ -431,7 +436,7 @@ export default function Dashboard() {
   const hasRecentActionEntries = recentActionGroups.some((group) => group.items.length > 0);
 
   const fmt = (n?: number) => (typeof n === 'number' ? formatNumber(n) : '0');
-  const isDarkTheme = isDarkThemeName(user?.theme);
+  const isDarkTheme = isDarkThemeName(resolveThemeName(user?.theme, user?.themeMode));
   const dashboardChartGridColor = isDarkTheme ? 'rgba(148, 163, 184, 0.22)' : 'rgba(107, 114, 128, 0.24)';
   const dashboardChartAxisTick = {
     fill: isDarkTheme ? '#99a7c2' : '#6b7280',
@@ -753,7 +758,6 @@ export default function Dashboard() {
               <Tooltip
                 contentStyle={dashboardChartTooltip}
                 labelStyle={{ color: 'var(--text-secondary)', fontWeight: 600 }}
-                itemStyle={{ color: 'var(--text-primary)' }}
                 cursor={{ stroke: 'var(--border-strong)', strokeDasharray: '4 4' }}
                 formatter={(value: number, name: string) => [
                   formatNumber(value, { maximumFractionDigits: dashboardTrendMode === 'activity' ? 0 : 1 }),

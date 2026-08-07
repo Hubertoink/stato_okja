@@ -15,5 +15,6 @@ export const demoUser: AuthUser = {
   orgName: 'Demo Jugendhaus',
   avatarUrl: null,
   theme: 'Default Theme',
+  themeMode: 'system',
   mustChangePassword: false,
 };

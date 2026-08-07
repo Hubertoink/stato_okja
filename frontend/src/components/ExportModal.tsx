@@ -10,6 +10,7 @@ import {
   normalizeActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
 import { autoT } from '@/i18n/auto';
+import { useToast } from '@/components/Toast';
 
 type ColInfo = { wch?: number };
 type WorkSheet = Record<string, unknown> & {
@@ -102,8 +103,8 @@ export default function ExportModal({
   const today = useMemo(() => isoDate(todayDate), [todayDate]);
   const [from, setFrom] = useState<string>(initialFrom);
   const [to, setTo] = useState<string>(initialTo);
-  const [saveStatus, setSaveStatus] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const { showToast } = useToast();
   const effectiveTo = from <= to ? to : from;
   const dateRangePresets = useMemo<DateRangePreset[]>(() => {
     const year = todayDate.getFullYear();
@@ -202,7 +203,6 @@ export default function ExportModal({
   const applyDateRangePreset = (preset: DateRangePreset) => {
     setFrom(preset.from);
     setTo(preset.to);
-    setSaveStatus('');
   };
 
   const saveCsv = async (rows: string[][], fileName: string) => {
@@ -630,17 +630,19 @@ export default function ExportModal({
     successLabel: string,
   ) => {
     if (!from || !to) {
-      setSaveStatus(autoT('ui_15ec3fbfb3f5'));
+      showToast(autoT('ui_15ec3fbfb3f5'), { type: 'error' });
       return;
     }
 
     setIsSaving(true);
-    setSaveStatus('');
     try {
       await exporter();
-      setSaveStatus(`${successLabel} heruntergeladen. Der Speicherort wird vom Browser bestimmt.`);
-    } catch (error) {
-      setSaveStatus('Export konnte nicht heruntergeladen werden.');
+      showToast(`${successLabel} heruntergeladen. Der Speicherort wird vom Browser bestimmt.`, {
+        type: 'success',
+        durationMs: 4500,
+      });
+    } catch {
+      showToast('Export konnte nicht heruntergeladen werden.', { type: 'error', durationMs: 4500 });
     } finally {
       setIsSaving(false);
     }
@@ -725,7 +727,6 @@ export default function ExportModal({
             disabled={isSaving}
           >{autoT('ui_d53e67acd6a6')}</button>
         </div>
-        {saveStatus && <div className="text-sm text-gray-600">{saveStatus}</div>}
       </div>
     </Modal>
   );

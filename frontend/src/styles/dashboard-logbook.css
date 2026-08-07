@@ -38,13 +38,11 @@
   gap: 0.5rem;
 }
 
-.dashboard-trend-eyebrow {
-  margin: 0 0 0.25rem;
+.dashboard-trend-context {
+  margin: 0.25rem 0 0;
   color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 .dashboard-trend-title {
@@ -91,7 +89,7 @@
 .dashboard-trend-legend-dot--purple { background: #8b5cf6; }
 
 .dashboard-trend-chart {
-  height: 17rem;
+  height: clamp(14rem, 20vw, 16rem);
   margin: 0 -0.25rem;
 }
 
@@ -107,7 +105,7 @@
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.35rem 0.65rem;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
 }
 
 .dashboard-trend-summary-header p {
@@ -138,10 +136,11 @@
 }
 
 .dashboard-month-kpi-card .statistics-kpi-card-icon {
-  right: -0.6rem;
-  bottom: -1.4rem;
-  width: min(48%, 8.25rem);
-  height: 7.5rem;
+  right: -0.4rem;
+  bottom: -1rem;
+  width: min(40%, 7.25rem);
+  height: 6.75rem;
+  opacity: 0.34;
 }
 
 @media (max-width: 767px) {
@@ -284,6 +283,28 @@
 .dashboard-logbook-entry:focus-visible {
   outline: none;
   box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.logbook-detail-note {
+  border: 1px solid transparent;
+}
+
+:root[data-color-mode='dark'] .logbook-detail-note--success {
+  border-color: color-mix(in srgb, #86efac 28%, var(--border-subtle));
+  background: color-mix(in srgb, #14532d 24%, var(--surface-1));
+  color: #bbf7d0;
+}
+
+:root[data-color-mode='dark'] .logbook-detail-note--warning {
+  border-color: color-mix(in srgb, #fde68a 30%, var(--border-subtle));
+  background: color-mix(in srgb, #78350f 24%, var(--surface-1));
+  color: #fde68a;
+}
+
+:root[data-color-mode='dark'] .logbook-detail-note--info {
+  border-color: color-mix(in srgb, #93c5fd 28%, var(--border-subtle));
+  background: color-mix(in srgb, #1e3a8a 24%, var(--surface-1));
+  color: #bfdbfe;
 }
 
 .logbook-edit-button {
@@ -438,9 +459,5 @@
 .kpi-value {
   font-size: 2.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--viridian);
 }
-

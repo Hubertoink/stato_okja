@@ -112,7 +112,7 @@ const taxonomyMutedSurfaceClass =
 const taxonomySecondaryTextClass = 'text-[var(--text-secondary)]';
 const taxonomyMutedTextClass = 'text-[var(--text-muted)]';
 const taxonomyNeutralButtonClass =
-  'rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-secondary)] transition-colors hover:bg-[var(--interactive-soft)]';
+  'min-h-11 touch-manipulation rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-secondary)] transition-colors hover:bg-[var(--interactive-soft)]';
 const taxonomySegmentedClass =
   'inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-1 shadow-sm';
 const taxonomySegmentedButtonInactiveClass =
@@ -1067,7 +1067,7 @@ function OrgTaxonomySettingsModal({
                 type="button"
                 onClick={() => setActivePanel('self')}
                 aria-pressed={activePanel === 'self'}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'self' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
+                className={`min-h-11 touch-manipulation rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'self' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
               >
                 {autoT('ui_ca7f16d8ef7e')}
               </button>
@@ -1075,7 +1075,7 @@ function OrgTaxonomySettingsModal({
                 type="button"
                 onClick={() => setActivePanel('children')}
                 aria-pressed={activePanel === 'children'}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'children' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
+                className={`min-h-11 touch-manipulation rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'children' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
               >
                 {autoT('ui_6d31c3c8355f')}
               </button>
@@ -1164,8 +1164,8 @@ function OrgTaxonomySettingsModal({
                       <div
                         className={`${taxonomySurfaceClass} px-4 py-3 text-sm ${taxonomySecondaryTextClass}`}
                       >
-                        {autoT('ui_05fd6084bff8')}
-                        <strong>{snapshot.orgName}</strong>
+                        {autoT('ui_05fd6084bff8')}{' '}
+                        <strong className="break-words">{snapshot.orgName}</strong>
                         {autoT('ui_0b390ca81ab3')}
                         <div className={`mt-1 text-xs ${taxonomyMutedTextClass}`}>
                           {autoT('ui_b4fb63cb8125')}

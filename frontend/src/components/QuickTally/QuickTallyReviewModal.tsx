@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { X, Save, Clock, MapPin, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Save, Clock, MapPin, AlertCircle, Loader2 } from 'lucide-react';
 import { useProjects, type Project } from '@/lib/projects';
 import { useCohorts, useTags, useCategories } from '@/lib/taxonomy';
 import { useLocations } from '@/lib/locations';
@@ -7,9 +8,13 @@ import { useStaff } from '@/lib/staff';
 import { useCreateActivity } from '@/lib/activities';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useToast } from '@/components/Toast';
+import Modal from '@/components/Modal';
+import { EditorActions } from '@/components/ui/EditorFrame';
+import { Button } from '@/components/ui/Button';
 import type { TallySession } from './useQuickTallySession';
 import { autoT } from '@/i18n/auto';
 import ActivityTitleField from '@/components/ActivityTitleField';
+import { getTimeRangeValidationIssue } from '@/lib/timeRange';
 
 interface QuickTallyReviewModalProps {
   session: TallySession;
@@ -22,6 +27,7 @@ export default function QuickTallyReviewModal({
   onClose,
   onSaved,
 }: QuickTallyReviewModalProps) {
+  const { t } = useTranslation('activities');
   const { data: projects } = useProjects({ archived: false });
   const { data: cohorts } = useCohorts({ active: true });
   const { data: locations } = useLocations({ active: true });
@@ -32,7 +38,7 @@ export default function QuickTallyReviewModal({
   const { showToast } = useToast();
 
   const [endTime, setEndTime] = useState<string>(
-    `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`
+    `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
   );
   const [startTime, setStartTime] = useState<string>(session.startTime);
   const [notes, setNotes] = useState<string>('');
@@ -44,12 +50,12 @@ export default function QuickTallyReviewModal({
 
   const project = useMemo(
     () => (projects || []).find((p: Project) => p.id === session.projectId),
-    [projects, session.projectId]
+    [projects, session.projectId],
   );
 
   const location = useMemo(
     () => (locations || []).find((l) => l.id === session.locationId),
-    [locations, session.locationId]
+    [locations, session.locationId],
   );
 
   const isOpenDoor = project?.type === 'open_door';
@@ -112,6 +118,14 @@ export default function QuickTallyReviewModal({
     });
     return { m, w, d, total: m + w + d };
   }, [session.counts]);
+  const timeRangeIssue = getTimeRangeValidationIssue(startTime, endTime);
+  const timeRangeError = timeRangeIssue
+    ? t(
+        timeRangeIssue === 'incomplete'
+          ? 'quickAdd.timeRangeIncomplete'
+          : 'quickAdd.timeRangeOrder',
+      )
+    : undefined;
 
   // Cohort breakdown for display
   const cohortBreakdown = useMemo(() => {
@@ -130,6 +144,10 @@ export default function QuickTallyReviewModal({
   };
 
   const handleSave = async () => {
+    if (timeRangeError) {
+      showToast(timeRangeError, { type: 'error' });
+      return;
+    }
     setSaving(true);
     try {
       // Build cohorts array in the format expected by backend (same as CalendarQuickAddModal)
@@ -145,7 +163,7 @@ export default function QuickTallyReviewModal({
       // Calculate duration in minutes
       const [startH, startM] = startTime.split(':').map(Number);
       const [endH, endM] = endTime.split(':').map(Number);
-      const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+      const durationMinutes = endH * 60 + endM - (startH * 60 + startM);
 
       await createActivity.mutateAsync({
         date: session.date,
@@ -163,7 +181,8 @@ export default function QuickTallyReviewModal({
         // Send cohorts array (this is what the backend expects)
         cohorts,
         tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-        categoryIds: !isOpenDoor && selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+        categoryIds:
+          !isOpenDoor && selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         staffIds: selectedStaffIds.length > 0 ? selectedStaffIds : undefined,
         durationMinutes: durationMinutes > 0 ? durationMinutes : undefined,
         // Type derived from project or default to open_door
@@ -180,26 +199,44 @@ export default function QuickTallyReviewModal({
     }
   };
 
-  return (
-    <div className="modal-overlay fixed inset-0 flex items-end md:items-center justify-center p-0 md:p-6" style={{ backgroundColor: 'var(--overlay-backdrop)' }}>
-      <div
-        className="w-full md:max-w-lg rounded-t-2xl md:rounded-lg max-h-[90vh] overflow-y-auto border"
-        style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
-      >
-        <div className="sticky top-0 border-b px-4 md:px-6 py-4 flex items-center justify-between" style={{ backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-subtle)' }}>
-          <h3 className="text-xl font-bold text-viridian">{autoT('ui_f6d3cc8bec17')}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-full"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const renderActions = (className = '') => (
+    <EditorActions
+      className={className}
+      secondary={
+        <Button variant="secondary" size="lg" onClick={onClose}>
+          {autoT('ui_4080624342b2')}
+        </Button>
+      }
+      primary={
+        <Button
+          size="lg"
+          onClick={handleSave}
+          disabled={saving || totals.total === 0 || Boolean(timeRangeError)}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {autoT('ui_3b922c6b470b')}
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              {autoT('ui_70b73bbc118d')}
+            </>
+          )}
+        </Button>
+      }
+    />
+  );
 
-        <div className="p-4 md:p-6 space-y-6">
-          <div className="rounded-lg p-4 space-y-2 border" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-subtle)' }}>
+  return (
+    <Modal open onClose={onClose} title={autoT('ui_f6d3cc8bec17')} maxWidth="4xl" variant="form">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
+        <div className="space-y-6">
+          <div
+            className="rounded-lg p-4 space-y-2 border"
+            style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-subtle)' }}
+          >
             <div className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
               <Clock className="w-4 h-4" />
               <span className="font-medium">{formatDate(session.date)}</span>
@@ -209,275 +246,316 @@ export default function QuickTallyReviewModal({
             </div>
             {project && <div className="font-semibold text-viridian">{project.title}</div>}
             {location && (
-              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+              <div
+                className="flex items-center gap-2 text-sm"
+                style={{ color: 'var(--text-muted)' }}
+              >
                 <MapPin className="w-4 h-4" />
                 {location.name}
               </div>
             )}
           </div>
 
-          <div className="bg-mint-green rounded-lg p-4">
-            <h4 className="font-semibold text-viridian mb-3">{autoT('ui_dc230696907d')}</h4>
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div className="summary-metric-card py-2">
-                <div className="summary-metric-label text-xs">{autoT('ui_37c1e4b405c4')}</div>
-                <div className="text-xl font-bold text-viridian">{totals.m}</div>
-              </div>
-              <div className="summary-metric-card py-2">
-                <div className="summary-metric-label text-xs">{autoT('ui_2d18dfa3e9fd')}</div>
-                <div className="text-xl font-bold text-viridian">{totals.w}</div>
-              </div>
-              <div className="summary-metric-card py-2">
-                <div className="summary-metric-label text-xs">{autoT('ui_d4deea2b7d14')}</div>
-                <div className="text-xl font-bold text-viridian">{totals.d}</div>
-              </div>
-              <div className="summary-metric-card-total py-2">
-                <div className="summary-metric-label text-xs">{autoT('ui_2a8a291a83fb')}</div>
-                <div className="text-2xl font-bold text-viridian">{totals.total}</div>
-              </div>
-            </div>
-          </div>
-
-          {cohortBreakdown.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-viridian mb-2">{autoT('ui_acf8763813f6')}</h4>
-              <div className="space-y-1">
-                {cohortBreakdown.map(({ cohort, counts, total }) => (
-                  <div
-                    key={cohort.id}
-                    className="flex items-center justify-between py-2 border-b last:border-0"
-                    style={{ borderColor: 'var(--border-subtle)' }}
-                  >
-                    <div>
-                      <span className="font-medium">{cohort.name}</span>
-                      <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
-                        ({cohort.minAge}–{cohort.maxAge}{autoT('ui_a89b17fb6a17')}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <span title={autoT('ui_897ccce3f38f')}>{autoT('ui_6b0d31c0d563')}{' '}{counts.m}</span>
-                      <span title={autoT('ui_aeff6199c838')}>{autoT('ui_aff024fe4ab0')}{' '}{counts.w}</span>
-                      <span title={autoT('ui_9a2dd276e60f')}>{autoT('ui_3c363836cf4e')}{' '}{counts.d}</span>
-                      <span className="font-bold text-viridian">= {total}</span>
-                    </div>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+            <div className="space-y-6">
+              <div className="bg-mint-green rounded-lg p-4">
+                <h4 className="font-semibold text-viridian mb-3">{autoT('ui_dc230696907d')}</h4>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="summary-metric-card py-2">
+                    <div className="summary-metric-label text-xs">{autoT('ui_37c1e4b405c4')}</div>
+                    <div className="text-xl font-bold text-viridian">{totals.m}</div>
                   </div>
-                ))}
+                  <div className="summary-metric-card py-2">
+                    <div className="summary-metric-label text-xs">{autoT('ui_2d18dfa3e9fd')}</div>
+                    <div className="text-xl font-bold text-viridian">{totals.w}</div>
+                  </div>
+                  <div className="summary-metric-card py-2">
+                    <div className="summary-metric-label text-xs">{autoT('ui_d4deea2b7d14')}</div>
+                    <div className="text-xl font-bold text-viridian">{totals.d}</div>
+                  </div>
+                  <div className="summary-metric-card-total py-2">
+                    <div className="summary-metric-label text-xs">{autoT('ui_2a8a291a83fb')}</div>
+                    <div className="text-2xl font-bold text-viridian">{totals.total}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
 
-          <div>
-            <label className="block text-sm font-medium mb-1">{autoT('ui_4aa533c84189')}</label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full border rounded-lg px-4 py-3"
-              style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">{autoT('ui_352471b9c9cc')}</label>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="w-full border rounded-lg px-4 py-3"
-              style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="quick-tally-title">
-              {autoT('ui_81bb3e27efd1')}
-            </label>
-            <ActivityTitleField
-              id="quick-tally-title"
-              value={title}
-              onValueChange={setTitle}
-              placeholder={autoT('ui_b2459f8b2a18')}
-              className="w-full border rounded-lg px-4 py-3"
-              style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
-            />
-          </div>
-
-          {!isOpenDoor && (categories || []).length > 0 && (
-            <div>
-              <label className="block text-sm font-medium mb-2">{autoT('ui_4e1e15e17610')}</label>
-              <div className="flex flex-wrap gap-2">
-                {(categories || []).map((c) => {
-                  const active = selectedCategoryIds.includes(c.id);
-                  const bg = c.color || '#7aa39a';
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        const set = new Set(selectedCategoryIds);
-                        if (set.has(c.id)) set.delete(c.id);
-                        else set.add(c.id);
-                        setSelectedCategoryIds(Array.from(set));
-                      }}
-                      className="px-3 py-1.5 rounded-full text-sm border transition-colors"
-                      style={getSelectableTaxonomyChipStyle(active, bg)}
-                    >
-                      {c.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {(tags || []).length > 0 && (
-            <div>
-              <label className="block text-sm font-medium mb-2">{autoT('ui_848eed0fbd54')}</label>
-              <div className="flex flex-wrap gap-2">
-                {(tags || []).map((t) => {
-                  const active = selectedTagIds.includes(t.id);
-                  const bg = t.color || '#7aa39a';
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        const set = new Set(selectedTagIds);
-                        if (set.has(t.id)) set.delete(t.id);
-                        else set.add(t.id);
-                        setSelectedTagIds(Array.from(set));
-                      }}
-                      className="px-3 py-1.5 rounded-full text-sm border transition-colors"
-                      style={getSelectableTaxonomyChipStyle(active, bg)}
-                    >
-                      {t.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {(staff || []).filter((s) =>
-            Array.isArray(s.roles)
-              ? s.roles.includes('lead') || s.roles.includes('employee')
-              : s.role === 'lead' || s.role === 'employee'
-          ).length > 0 && (
-            <div>
-              <label className="block text-sm font-medium mb-2">{autoT('ui_93d76ef57f64')}</label>
-              <div className="flex flex-wrap gap-2">
-                {(staff || [])
-                  .filter((s) =>
-                    Array.isArray(s.roles)
-                      ? s.roles.includes('lead') || s.roles.includes('employee')
-                      : s.role === 'lead' || s.role === 'employee'
-                  )
-                  .map((s) => {
-                    const active = selectedStaffIds.includes(s.id);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          const set = new Set(selectedStaffIds);
-                          if (set.has(s.id)) set.delete(s.id);
-                          else set.add(s.id);
-                          setSelectedStaffIds(Array.from(set));
-                        }}
-                        className="px-3 py-1.5 rounded-full text-sm border transition-colors"
-                        style={active
-                          ? { backgroundColor: 'var(--cambridge-blue)', color: '#fff', borderColor: 'var(--cambridge-blue)' }
-                          : { backgroundColor: 'var(--surface-1)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
+              {cohortBreakdown.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-viridian mb-2">{autoT('ui_acf8763813f6')}</h4>
+                  <div className="space-y-1">
+                    {cohortBreakdown.map(({ cohort, counts, total }) => (
+                      <div
+                        key={cohort.id}
+                        className="flex items-center justify-between py-2 border-b last:border-0"
+                        style={{ borderColor: 'var(--border-subtle)' }}
                       >
-                        {s.name}
-                      </button>
-                    );
-                  })}
+                        <div>
+                          <span className="font-medium">{cohort.name}</span>
+                          <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
+                            ({cohort.minAge}–{cohort.maxAge}
+                            {autoT('ui_a89b17fb6a17')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm">
+                          <span title={autoT('ui_897ccce3f38f')}>
+                            {autoT('ui_6b0d31c0d563')} {counts.m}
+                          </span>
+                          <span title={autoT('ui_aeff6199c838')}>
+                            {autoT('ui_aff024fe4ab0')} {counts.w}
+                          </span>
+                          <span title={autoT('ui_9a2dd276e60f')}>
+                            {autoT('ui_3c363836cf4e')} {counts.d}
+                          </span>
+                          <span className="font-bold text-viridian">= {total}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {autoT('ui_4aa533c84189')}
+                  </label>
+                  <input
+                    id="quick-tally-start-time"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    aria-invalid={Boolean(timeRangeError)}
+                    aria-describedby={timeRangeError ? 'quick-tally-time-range-error' : undefined}
+                    className={`editor-field w-full border px-4 py-3 ${timeRangeError ? 'border-red-500' : ''}`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {autoT('ui_352471b9c9cc')}
+                  </label>
+                  <input
+                    id="quick-tally-end-time"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    aria-invalid={Boolean(timeRangeError)}
+                    aria-describedby={timeRangeError ? 'quick-tally-time-range-error' : undefined}
+                    className={`editor-field w-full border px-4 py-3 ${timeRangeError ? 'border-red-500' : ''}`}
+                  />
+                </div>
+              </div>
+              {timeRangeError ? (
+                <p id="quick-tally-time-range-error" className="-mt-3 text-sm text-red-700">
+                  {timeRangeError}
+                </p>
+              ) : null}
+
+              <div>
+                <label className="block text-sm font-medium mb-1" htmlFor="quick-tally-title">
+                  {autoT('ui_81bb3e27efd1')}
+                </label>
+                <ActivityTitleField
+                  id="quick-tally-title"
+                  value={title}
+                  onValueChange={setTitle}
+                  placeholder={autoT('ui_b2459f8b2a18')}
+                  className="editor-field w-full border px-4 py-3"
+                />
               </div>
             </div>
-          )}
 
-          {(staff || []).filter((s) =>
-            Array.isArray(s.roles)
-              ? s.roles.includes('volunteer') || s.roles.includes('helper')
-              : s.role === 'volunteer' || s.role === 'helper'
-          ).length > 0 && (
-            <div>
-              <label className="block text-sm font-medium mb-2">{autoT('ui_4ac524334f49')}</label>
-              <div className="flex flex-wrap gap-2">
-                {(staff || [])
-                  .filter((s) =>
-                    Array.isArray(s.roles)
-                      ? s.roles.includes('volunteer') || s.roles.includes('helper')
-                      : s.role === 'volunteer' || s.role === 'helper'
-                  )
-                  .map((s) => {
-                    const active = selectedStaffIds.includes(s.id);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          const set = new Set(selectedStaffIds);
-                          if (set.has(s.id)) set.delete(s.id);
-                          else set.add(s.id);
-                          setSelectedStaffIds(Array.from(set));
-                        }}
-                        className="px-3 py-1.5 rounded-full text-sm border transition-colors"
-                        style={active
-                          ? { backgroundColor: 'var(--mint-green)', color: 'var(--text-primary)', borderColor: 'var(--mint-green)' }
-                          : { backgroundColor: 'var(--surface-1)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
-                      >
-                        {s.name}
-                      </button>
-                    );
-                  })}
+            <div className="space-y-6">
+              {!isOpenDoor && (categories || []).length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {autoT('ui_4e1e15e17610')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {(categories || []).map((c) => {
+                      const active = selectedCategoryIds.includes(c.id);
+                      const bg = c.color || '#7aa39a';
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            const set = new Set(selectedCategoryIds);
+                            if (set.has(c.id)) set.delete(c.id);
+                            else set.add(c.id);
+                            setSelectedCategoryIds(Array.from(set));
+                          }}
+                          className="px-3 py-1.5 rounded-full text-sm border transition-colors"
+                          style={getSelectableTaxonomyChipStyle(active, bg)}
+                        >
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {(tags || []).length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {autoT('ui_848eed0fbd54')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {(tags || []).map((t) => {
+                      const active = selectedTagIds.includes(t.id);
+                      const bg = t.color || '#7aa39a';
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            const set = new Set(selectedTagIds);
+                            if (set.has(t.id)) set.delete(t.id);
+                            else set.add(t.id);
+                            setSelectedTagIds(Array.from(set));
+                          }}
+                          className="px-3 py-1.5 rounded-full text-sm border transition-colors"
+                          style={getSelectableTaxonomyChipStyle(active, bg)}
+                        >
+                          {t.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {(staff || []).filter((s) =>
+                Array.isArray(s.roles)
+                  ? s.roles.includes('lead') || s.roles.includes('employee')
+                  : s.role === 'lead' || s.role === 'employee',
+              ).length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {autoT('ui_93d76ef57f64')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {(staff || [])
+                      .filter((s) =>
+                        Array.isArray(s.roles)
+                          ? s.roles.includes('lead') || s.roles.includes('employee')
+                          : s.role === 'lead' || s.role === 'employee',
+                      )
+                      .map((s) => {
+                        const active = selectedStaffIds.includes(s.id);
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => {
+                              const set = new Set(selectedStaffIds);
+                              if (set.has(s.id)) set.delete(s.id);
+                              else set.add(s.id);
+                              setSelectedStaffIds(Array.from(set));
+                            }}
+                            className="px-3 py-1.5 rounded-full text-sm border transition-colors"
+                            style={
+                              active
+                                ? {
+                                    backgroundColor: 'var(--cambridge-blue)',
+                                    color: '#fff',
+                                    borderColor: 'var(--cambridge-blue)',
+                                  }
+                                : {
+                                    backgroundColor: 'var(--surface-1)',
+                                    color: 'var(--text-primary)',
+                                    borderColor: 'var(--border-subtle)',
+                                  }
+                            }
+                          >
+                            {s.name}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {(staff || []).filter((s) =>
+                Array.isArray(s.roles)
+                  ? s.roles.includes('volunteer') || s.roles.includes('helper')
+                  : s.role === 'volunteer' || s.role === 'helper',
+              ).length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {autoT('ui_4ac524334f49')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {(staff || [])
+                      .filter((s) =>
+                        Array.isArray(s.roles)
+                          ? s.roles.includes('volunteer') || s.roles.includes('helper')
+                          : s.role === 'volunteer' || s.role === 'helper',
+                      )
+                      .map((s) => {
+                        const active = selectedStaffIds.includes(s.id);
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => {
+                              const set = new Set(selectedStaffIds);
+                              if (set.has(s.id)) set.delete(s.id);
+                              else set.add(s.id);
+                              setSelectedStaffIds(Array.from(set));
+                            }}
+                            className="px-3 py-1.5 rounded-full text-sm border transition-colors"
+                            style={
+                              active
+                                ? {
+                                    backgroundColor: 'var(--mint-green)',
+                                    color: 'var(--text-primary)',
+                                    borderColor: 'var(--mint-green)',
+                                  }
+                                : {
+                                    backgroundColor: 'var(--surface-1)',
+                                    color: 'var(--text-primary)',
+                                    borderColor: 'var(--border-subtle)',
+                                  }
+                            }
+                          >
+                            {s.name}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium mb-1">{autoT('ui_6139cff2b081')}</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  placeholder={autoT('ui_d73e0e0799f9')}
+                  className="editor-field w-full resize-none border px-4 py-3"
+                />
               </div>
             </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium mb-1">{autoT('ui_6139cff2b081')}</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder={autoT('ui_d73e0e0799f9')}
-              className="w-full border rounded-lg px-4 py-3 resize-none"
-              style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
-            />
           </div>
 
           {totals.total === 0 && (
-            <div className="flex items-center gap-2 text-amber-600 rounded-lg p-3" style={{ backgroundColor: 'rgba(245, 158, 11, 0.12)' }}>
+            <div
+              className="flex items-center gap-2 text-amber-600 rounded-lg p-3"
+              style={{ backgroundColor: 'rgba(245, 158, 11, 0.12)' }}
+            >
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <span className="text-sm">{autoT('ui_1ecada05b583')}</span>
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 border px-6 py-3 rounded-lg font-medium transition-colors"
-              style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-1)' }}
-            >{autoT('ui_4080624342b2')}</button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || totals.total === 0}
-              className="flex-1 theme-accent-solid-button px-6 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <span className="animate-spin">⏳</span>{autoT('ui_3b922c6b470b')}</>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />{autoT('ui_70b73bbc118d')}</>
-              )}
-            </button>
-          </div>
+          <div className="mt-6 md:hidden">{renderActions('-mx-4 px-4')}</div>
         </div>
       </div>
-    </div>
+      <div className="hidden shrink-0 md:block">{renderActions()}</div>
+    </Modal>
   );
 }

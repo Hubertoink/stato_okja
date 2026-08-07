@@ -187,6 +187,14 @@
   --status-info-text: #bfdbfe;
   --status-danger-bg: color-mix(in srgb, #991b1b 44%, var(--surface-1));
   --status-danger-text: #fecaca;
+
+  /* Project sections stay on the elevated surface; editable controls recede
+     one level so the long project editor keeps the same field hierarchy as
+     the activity and logbook editors in every dark theme. */
+  --project-form-section-bg: color-mix(in srgb, var(--surface-elevated) 76%, var(--surface-2));
+  --project-form-section-border: color-mix(in srgb, var(--text-primary) 23%, transparent);
+  --project-form-field-bg: var(--surface-1);
+  --project-form-field-border: color-mix(in srgb, var(--text-primary) 42%, transparent);
 }
 
 :root[data-color-mode='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
@@ -202,7 +210,16 @@
 
 :root[data-color-mode='dark'] .project-form-field,
 :root[data-color-mode='dark'] .project-rich-text-editor.rsw-editor {
+  background: var(--project-form-field-bg, var(--input-bg));
   border-color: var(--project-form-field-border, var(--border-strong));
+}
+:root[data-color-mode='dark'] .summary-metric-card {
+  background: var(--surface-1);
+  border-color: var(--border-subtle);
+}
+:root[data-color-mode='dark'] .summary-metric-card-total {
+  background: color-mix(in srgb, var(--interactive-soft-strong) 72%, var(--surface-1));
+  border-color: var(--interactive-soft-border);
 }
 :root[data-color-mode='dark'] input::placeholder,
 :root[data-color-mode='dark'] textarea::placeholder { color: var(--text-faint); }

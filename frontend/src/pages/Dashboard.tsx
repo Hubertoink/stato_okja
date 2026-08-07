@@ -156,7 +156,7 @@ type DashboardTrendPeriod = 'week' | 'month' | 'year';
 type DashboardTrendRange = {
   from: string;
   to: string;
-  eyebrow: string;
+  context: string;
   title: string;
   summaryPeriodLabel: string;
 };
@@ -273,7 +273,7 @@ export default function Dashboard() {
       return {
         from: toLocalDateString(weekStart),
         to: toLocalDateString(weekEnd),
-        eyebrow: t('trend.weekLabel', { period: periodLabel }),
+        context: t('trend.weekLabel', { period: periodLabel }),
         title: t('trend.dailyTitle'),
         summaryPeriodLabel: periodLabel,
       };
@@ -286,7 +286,7 @@ export default function Dashboard() {
       return {
         from: toLocalDateString(monthStart),
         to: toLocalDateString(monthEnd),
-        eyebrow: t('trend.monthLabel', { month: periodLabel }),
+        context: t('trend.monthLabel', { month: periodLabel }),
         title: t('trend.dailyTitle'),
         summaryPeriodLabel: periodLabel,
       };
@@ -295,7 +295,7 @@ export default function Dashboard() {
     return {
       from: `${year}-01-01`,
       to: `${year}-12-31`,
-      eyebrow: t('trend.yearLabel', { year }),
+      context: t('trend.yearLabel', { year }),
       title: t('trend.title'),
       summaryPeriodLabel: String(year),
     };
@@ -703,8 +703,8 @@ export default function Dashboard() {
       <section className="dashboard-trend-card" aria-labelledby="dashboard-trend-title">
         <div className="dashboard-trend-card-header">
           <div>
-            <p className="dashboard-trend-eyebrow">{dashboardTrendRange.eyebrow}</p>
             <h2 id="dashboard-trend-title" className="dashboard-trend-title">{dashboardTrendRange.title}</h2>
+            <p className="dashboard-trend-context">{dashboardTrendRange.context}</p>
           </div>
           <div className="dashboard-trend-controls">
             <SegmentedControl<DashboardTrendPeriod>

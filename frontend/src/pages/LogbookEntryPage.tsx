@@ -45,6 +45,7 @@ import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import { Button } from '@/components/ui/Button';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
+import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
 type FormState = {
   occurredAt: string;
@@ -336,6 +337,11 @@ export default function LogbookEntryPage(props: unknown = {}) {
         : `/logbook?entry=${encodeURIComponent(id || '')}`,
     ));
 
+  useEditorShortcuts({
+    enabled: editing,
+    onClose: closeEditing,
+  });
+
   const canManage =
     !!entry &&
     (user?.role === 'superadmin' ||
@@ -428,7 +434,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
           open
           onClose={closeEditing}
           title={isNew ? autoT('ui_feb9aab49734') : autoT('ui_0b00abd52aba')}
-          maxWidth="5xl"
+          maxWidth="4xl"
           variant="form"
           headerActions={
             <div className="relative">
@@ -470,7 +476,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
             <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_e2f9e932be0a')}{occurredAtWeekday && (
-                    <span className="ml-2 font-normal text-gray-500">{occurredAtWeekday}</span>
+                    <span className="ml-2 font-normal text-gray-500">· {occurredAtWeekday}</span>
                   )}
                   <input
                     required
@@ -543,7 +549,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   </label>
                 </div>
               </details>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className={`grid grid-cols-1 gap-4 ${isAdmin ? 'lg:grid-cols-3' : 'sm:grid-cols-2'}`}>
                 <div className="text-sm font-medium text-gray-700">{autoT('ui_20bda6d2e725')}<div className="mt-1 flex gap-2">
                     <button
                       type="button"
@@ -617,9 +623,6 @@ export default function LogbookEntryPage(props: unknown = {}) {
                     )}
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="hidden sm:block" />
                 {isAdmin && (
                   <label className="text-sm font-medium text-gray-700">{autoT('ui_0218eb5cd0e8')}<select
                       value={form.visibility}
@@ -753,21 +756,21 @@ export default function LogbookEntryPage(props: unknown = {}) {
           {(entry.highlights || entry.challenges || entry.nextSteps) && (
             <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {entry.highlights && (
-                <div className="rounded-xl bg-green-50 p-4">
-                  <h3 className="mb-2 font-semibold text-green-800">{autoT('ui_ed124d299865')}</h3>
-                  <p className="whitespace-pre-wrap text-sm text-green-950">{entry.highlights}</p>
+                <div className="logbook-detail-note logbook-detail-note--success rounded-xl bg-green-50 p-4 text-green-800">
+                  <h3 className="mb-2 font-semibold">{autoT('ui_ed124d299865')}</h3>
+                  <p className="whitespace-pre-wrap text-sm">{entry.highlights}</p>
                 </div>
               )}
               {entry.challenges && (
-                <div className="rounded-xl bg-amber-50 p-4">
-                  <h3 className="mb-2 font-semibold text-amber-800">{autoT('ui_24cb5c6fa8e6')}</h3>
-                  <p className="whitespace-pre-wrap text-sm text-amber-950">{entry.challenges}</p>
+                <div className="logbook-detail-note logbook-detail-note--warning rounded-xl bg-amber-50 p-4 text-amber-800">
+                  <h3 className="mb-2 font-semibold">{autoT('ui_24cb5c6fa8e6')}</h3>
+                  <p className="whitespace-pre-wrap text-sm">{entry.challenges}</p>
                 </div>
               )}
               {entry.nextSteps && (
-                <div className="rounded-xl bg-blue-50 p-4">
-                  <h3 className="mb-2 font-semibold text-blue-800">{autoT('ui_76231e1d047c')}</h3>
-                  <p className="whitespace-pre-wrap text-sm text-blue-950">{entry.nextSteps}</p>
+                <div className="logbook-detail-note logbook-detail-note--info rounded-xl bg-blue-50 p-4 text-blue-800">
+                  <h3 className="mb-2 font-semibold">{autoT('ui_76231e1d047c')}</h3>
+                  <p className="whitespace-pre-wrap text-sm">{entry.nextSteps}</p>
                 </div>
               )}
             </section>

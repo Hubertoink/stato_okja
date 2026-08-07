@@ -44,7 +44,11 @@ import { type StaffMember, type StaffRole, useCreateStaff, useStaff } from '@/li
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import Modal from '@/components/Modal';
-import { CategoryFormModal, StaffFormModal, TagFormModal } from '@/components/settings/EntityFormModals';
+import {
+  CategoryFormModal,
+  StaffFormModal,
+  TagFormModal,
+} from '@/components/settings/EntityFormModals';
 import { useQueryClient } from '@tanstack/react-query';
 import { PROJECT_TEMPLATES, type ProjectTemplate } from '@/lib/projectTemplates';
 import { defaultCategoryByName } from '@/lib/defaultCategories';
@@ -56,6 +60,8 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useAuth } from '@/lib/auth';
+import { getTimeRangeValidationIssue } from '@/lib/timeRange';
+import { useTranslation } from 'react-i18next';
 import RichTextEditor, {
   BtnBold,
   BtnBulletList,
@@ -183,7 +189,9 @@ async function ensureNamedTaxonomyItem<T extends NamedTaxonomyItem>({
     try {
       const res = await api.get(listPath);
       const list = (res.data || []) as NamedTaxonomyItem[];
-      const found = list.find((item) => normalizeNamedTaxonomyItem(item.name || '') === normalizedName);
+      const found = list.find(
+        (item) => normalizeNamedTaxonomyItem(item.name || '') === normalizedName,
+      );
       return found?.id ? { id: found.id } : null;
     } catch {
       return null;
@@ -275,7 +283,10 @@ const projectDescriptionToPlainText = (value?: string | null) => {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
   }
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 const formatDocumentSize = (bytes?: number | null) => {
@@ -294,7 +305,9 @@ const formatDocumentDate = (value?: string | Date | null) => {
 };
 
 const isAllowedProjectDocumentFile = (file: File) => {
-  const extension = file.name.includes('.') ? `.${file.name.split('.').pop()?.toLowerCase() || ''}` : '';
+  const extension = file.name.includes('.')
+    ? `.${file.name.split('.').pop()?.toLowerCase() || ''}`
+    : '';
   return ['.pdf', '.doc', '.docx', '.odt', '.rtf', '.txt'].includes(extension);
 };
 
@@ -326,9 +339,7 @@ const normalizeProjectStaffAssignments = (
 
   const employeeNames = new Set<string>();
   const volunteerNames = new Set<string>();
-  const staffByName = new Map(
-    (staff || []).map((member) => [member.name.trim(), member] as const),
-  );
+  const staffByName = new Map((staff || []).map((member) => [member.name.trim(), member] as const));
 
   const assignName = (name: string, fallbackGroup: 'employee' | 'volunteer') => {
     const member = staffByName.get(name);
@@ -345,7 +356,9 @@ const normalizeProjectStaffAssignments = (
   };
 
   splitProjectStaffNames(project.defaultStaff).forEach((name) => assignName(name, 'employee'));
-  splitProjectStaffNames(project.defaultVolunteers).forEach((name) => assignName(name, 'volunteer'));
+  splitProjectStaffNames(project.defaultVolunteers).forEach((name) =>
+    assignName(name, 'volunteer'),
+  );
 
   const nextDefaultStaff =
     employeeNames.size > 0 ? Array.from(employeeNames).join(', ') : emptyValue;
@@ -454,7 +467,7 @@ function ArchiveRestoreControls({
         <Button
           variant="secondary"
           size="lg"
-          className={fullWidth ? 'min-w-0 flex-1' : 'w-full'}
+          className={`${fullWidth ? 'min-w-0 flex-1' : 'w-full'} ${archived ? '' : 'logbook-archive-button'}`}
           title={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           aria-label={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           disabled={archiving || archive.isPending}
@@ -466,7 +479,11 @@ function ArchiveRestoreControls({
             setArchiveConfirmOpen(true);
           }}
         >
-          {archived ? <ArchiveRestoreIcon className="h-4 w-4" /> : <ArchiveIcon className="h-4 w-4" />}
+          {archived ? (
+            <ArchiveRestoreIcon className="h-4 w-4" />
+          ) : (
+            <ArchiveIcon className="h-4 w-4" />
+          )}
           {archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
         </Button>
       ) : (
@@ -491,7 +508,9 @@ function ArchiveRestoreControls({
               <ArchiveIcon className="w-5 h-5" />
             )}
           </button>
-          <span className="tooltip-bubble">{archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}</span>
+          <span className="tooltip-bubble">
+            {archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
+          </span>
         </span>
       )}
       {fullWidth && archived ? (
@@ -532,11 +551,17 @@ function ArchiveRestoreControls({
             {confirm.loading ? (
               <p className="text-sm text-gray-500">{autoT('ui_7a67a2dd16a7')}</p>
             ) : typeof confirm.count !== 'number' ? (
-              <p className="text-sm text-red-700">Aktivitäten konnten nicht geprüft werden. Das Projekt bleibt zur Sicherheit geschützt.</p>
+              <p className="text-sm text-red-700">
+                Aktivitäten konnten nicht geprüft werden. Das Projekt bleibt zur Sicherheit
+                geschützt.
+              </p>
             ) : confirm.count > 0 ? (
-              <p className="text-sm text-red-700">Löschen nicht möglich: Bitte zuerst alle zugeordneten Aktivitäten löschen.</p>
+              <p className="text-sm text-red-700">
+                Löschen nicht möglich: Bitte zuerst alle zugeordneten Aktivitäten löschen.
+              </p>
             ) : (
-              <p className="text-sm text-gray-700">{autoT('ui_8ae03f3803dd')}{' '}
+              <p className="text-sm text-gray-700">
+                {autoT('ui_8ae03f3803dd')}{' '}
                 <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong>
               </p>
             )}
@@ -544,7 +569,7 @@ function ArchiveRestoreControls({
           </div>
         }
         cancelLabel={autoT('ui_07af7cb30fca')}
-        secondaryLabel={archived ? "Wiederherstellen" : undefined}
+        secondaryLabel={archived ? 'Wiederherstellen' : undefined}
         onSecondaryConfirm={
           archived
             ? () => {
@@ -626,7 +651,9 @@ function ProjectGridCard({
   return (
     <div
       className="relative rounded-2xl shadow group min-h-[160px]"
-      style={{ backgroundColor: project.imageUrl ? undefined : project.color || pickBg(project.title) }}
+      style={{
+        backgroundColor: project.imageUrl ? undefined : project.color || pickBg(project.title),
+      }}
     >
       <div className="absolute inset-0 rounded-2xl overflow-hidden z-0 pointer-events-none">
         {project.imageUrl ? (
@@ -653,7 +680,7 @@ function ProjectGridCard({
           <div className="min-w-0 flex-1">
             <div
               className={`line-clamp-2 break-words font-semibold leading-tight drop-shadow-sm ${
-                hasLongTitle ? "text-base sm:text-lg" : "text-lg sm:text-xl"
+                hasLongTitle ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
               }`}
             >
               {project.title}
@@ -662,7 +689,9 @@ function ProjectGridCard({
             {Array.isArray(project.documents) && project.documents.length > 0 && (
               <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
                 <Paperclip className="w-3 h-3" />
-                {project.documents.length}{autoT('ui_1e879a942da8')}</div>
+                {project.documents.length}
+                {autoT('ui_1e879a942da8')}
+              </div>
             )}
             {(category || staffNames.length > 0) && (
               <div className="mt-1 flex items-center flex-wrap gap-2">
@@ -712,7 +741,7 @@ function ProjectGridCard({
                 type="button"
                 onClick={onToggleStar}
                 className={`opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full p-1.5 ${
-                  starred ? "bg-yellow-400/90" : "bg-white/20 hover:bg-white/30"
+                  starred ? 'bg-yellow-400/90' : 'bg-white/20 hover:bg-white/30'
                 }`}
                 aria-label={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
               >
@@ -722,7 +751,9 @@ function ProjectGridCard({
                   <StarOff className="w-4 h-4 text-white" />
                 )}
               </button>
-              <span className="tooltip-bubble">{starred ? autoT('ui_28f4ed84c2f4') : autoT('ui_e1da9275bc5b')}</span>
+              <span className="tooltip-bubble">
+                {starred ? autoT('ui_28f4ed84c2f4') : autoT('ui_e1da9275bc5b')}
+              </span>
             </span>
             <span className="tooltip-wrapper">
               <button
@@ -781,7 +812,9 @@ function ProjectGridCard({
         )}
 
         {project.archived && (
-          <div className="mt-1 text-xs inline-block px-2 py-0.5 rounded-full bg-white/25 backdrop-blur-sm">{autoT('ui_7d6b45e9c890')}</div>
+          <div className="mt-1 text-xs inline-block px-2 py-0.5 rounded-full bg-white/25 backdrop-blur-sm">
+            {autoT('ui_7d6b45e9c890')}
+          </div>
         )}
       </div>
     </div>
@@ -832,7 +865,9 @@ function ProjectListRow({
           {prettyType}
         </div>
         {project.archived && (
-          <div className="absolute left-3 bottom-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-800 shadow-sm">{autoT('ui_7d6b45e9c890')}</div>
+          <div className="absolute left-3 bottom-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-800 shadow-sm">
+            {autoT('ui_7d6b45e9c890')}
+          </div>
         )}
       </div>
 
@@ -849,13 +884,17 @@ function ProjectListRow({
               {project.title}
             </button>
             {project.targetGroup && (
-              <div className="mt-1 text-sm font-medium text-gray-700">{autoT('ui_e5e954075491')}{' '}<span className="font-normal text-gray-800">{project.targetGroup}</span>
+              <div className="mt-1 text-sm font-medium text-gray-700">
+                {autoT('ui_e5e954075491')}{' '}
+                <span className="font-normal text-gray-800">{project.targetGroup}</span>
               </div>
             )}
             {Array.isArray(project.documents) && project.documents.length > 0 && (
               <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700">
                 <Paperclip className="w-3.5 h-3.5 text-viridian" />
-                {project.documents.length}{autoT('ui_1e879a942da8')}</div>
+                {project.documents.length}
+                {autoT('ui_1e879a942da8')}
+              </div>
             )}
           </div>
 
@@ -878,13 +917,15 @@ function ProjectListRow({
                 aria-label={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
                 className={`inline-flex items-center justify-center rounded-full border p-2 transition-colors ${
                   starred
-                    ? "border-yellow-400 bg-yellow-100 text-yellow-800"
-                    : "border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:text-yellow-700"
+                    ? 'border-yellow-400 bg-yellow-100 text-yellow-800'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:text-yellow-700'
                 }`}
               >
                 {starred ? <Star className="w-4 h-4" /> : <StarOff className="w-4 h-4" />}
               </button>
-              <span className="tooltip-bubble">{starred ? autoT('ui_054cf53eb7ef') : autoT('ui_2ed72c09fb1f')}</span>
+              <span className="tooltip-bubble">
+                {starred ? autoT('ui_054cf53eb7ef') : autoT('ui_2ed72c09fb1f')}
+              </span>
             </span>
             <span className="tooltip-wrapper">
               <button
@@ -949,7 +990,9 @@ function ProjectListRow({
             ))}
             {extraTags > 0 && (
               <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700">
-                +{extraTags}{autoT('ui_4e3936d10c2b')}</span>
+                +{extraTags}
+                {autoT('ui_4e3936d10c2b')}
+              </span>
             )}
           </div>
         )}
@@ -975,6 +1018,7 @@ function ProjectForm({
   onCancel: () => void;
   saving?: boolean;
 }) {
+  const { t } = useTranslation('activities');
   const { user } = useAuth();
   const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
@@ -1007,12 +1051,16 @@ function ProjectForm({
   const [showTemplates, setShowTemplates] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [imageIssue, setImageIssue] = useState<{ open: boolean; title: string; message: string }>(
-    { open: false, title: '', message: '' },
-  );
-  const [documentIssue, setDocumentIssue] = useState<{ open: boolean; title: string; message: string }>(
-    { open: false, title: '', message: '' },
-  );
+  const [imageIssue, setImageIssue] = useState<{ open: boolean; title: string; message: string }>({
+    open: false,
+    title: '',
+    message: '',
+  });
+  const [documentIssue, setDocumentIssue] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({ open: false, title: '', message: '' });
   const [documentsExpanded, setDocumentsExpanded] = useState(false);
   const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
   const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
@@ -1050,16 +1098,15 @@ function ProjectForm({
   const removedDocumentIdSet = new Set(removedDocumentIds);
   const projectFieldClassName = 'project-form-field editor-field w-full px-3 py-2';
   const projectSectionClassName = 'rounded-xl border p-4 md:p-5';
-  const projectInnerCardClassName = 'rounded-xl border p-4';
+  const projectInnerCardClassName = 'min-w-0 py-1';
   const projectSectionStyle = {
-    background: 'var(--project-form-section-bg, color-mix(in srgb, var(--surface-2) 88%, transparent))',
+    background:
+      'var(--project-form-section-bg, color-mix(in srgb, var(--surface-2) 88%, transparent))',
     borderColor: 'var(--project-form-section-border, var(--border-subtle))',
   } as const;
-  const projectInnerCardStyle = {
-    background: 'var(--project-form-inner-card-bg, var(--surface-1))',
-    borderColor: 'var(--project-form-inner-border, var(--border-subtle))',
-  } as const;
-  const projectSecondaryButtonClassName = 'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';
+  const projectInnerCardStyle = {} as const;
+  const projectSecondaryButtonClassName =
+    'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';
   const projectAddActionButtonClassName =
     'inline-flex items-center gap-1 text-sm font-medium text-viridian transition-colors hover:text-viridian/80';
   const canCreateOwnTags = Boolean(taxonomyAccess?.tags.canCreateOwn);
@@ -1076,8 +1123,18 @@ function ProjectForm({
       });
       const url = res.data?.url as string;
       const sizeRaw = res.data?.size as unknown;
-      const size = typeof sizeRaw === 'number' ? sizeRaw : typeof sizeRaw === 'string' ? Number(sizeRaw) : undefined;
-      if (url) setForm((f) => ({ ...f, imageUrl: url, imageSize: Number.isFinite(size as number) ? (size as number) : null }));
+      const size =
+        typeof sizeRaw === 'number'
+          ? sizeRaw
+          : typeof sizeRaw === 'string'
+            ? Number(sizeRaw)
+            : undefined;
+      if (url)
+        setForm((f) => ({
+          ...f,
+          imageUrl: url,
+          imageSize: Number.isFinite(size as number) ? (size as number) : null,
+        }));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Bild konnte nicht verarbeitet werden.';
       setImageIssue({
@@ -1131,7 +1188,11 @@ function ProjectForm({
           ...(color ? { color } : {}),
         },
         reactivate: async (id) => {
-          await api.patch(`/taxonomy/tags/${id}`, { active: true, ...overrides, ...(color ? { color } : {}) });
+          await api.patch(`/taxonomy/tags/${id}`, {
+            active: true,
+            ...overrides,
+            ...(color ? { color } : {}),
+          });
           await qc.invalidateQueries({ queryKey: ['tags'] });
         },
         refresh: () => qc.invalidateQueries({ queryKey: ['tags'] }),
@@ -1303,13 +1364,18 @@ function ProjectForm({
       setDocumentIssue({
         open: true,
         title: autoT('ui_bc3dc0cda5ea'),
-        message: autoT('ui_6f5c0fb203fc', { value0: tooLarge.name, value1: Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024)) }),
+        message: autoT('ui_6f5c0fb203fc', {
+          value0: tooLarge.name,
+          value1: Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024)),
+        }),
       });
       return;
     }
 
     setPendingDocuments((current) => {
-      const known = new Set(current.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+      const known = new Set(
+        current.map((file) => `${file.name}:${file.size}:${file.lastModified}`),
+      );
       const merged = [...current];
       for (const file of nextFiles) {
         const key = `${file.name}:${file.size}:${file.lastModified}`;
@@ -1323,16 +1389,22 @@ function ProjectForm({
     setDocumentsExpanded(true);
   }, []);
 
-  const onDocumentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length) addDocuments(e.target.files);
-    e.target.value = '';
-  }, [addDocuments]);
+  const onDocumentChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.length) addDocuments(e.target.files);
+      e.target.value = '';
+    },
+    [addDocuments],
+  );
 
-  const onDocumentDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.files?.length) addDocuments(e.dataTransfer.files);
-  }, [addDocuments]);
+  const onDocumentDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer.files?.length) addDocuments(e.dataTransfer.files);
+    },
+    [addDocuments],
+  );
 
   const visibleExistingDocuments = existingDocuments.filter(
     (document) => !removedDocumentIdSet.has(document.id),
@@ -1351,9 +1423,23 @@ function ProjectForm({
   const update = <K extends keyof Project>(k: K, v: Project[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
   const handleDescriptionChange = useCallback((event: ContentEditableEvent) => {
-    update('description', sanitizeProjectDescriptionHtml(event.target.value) as Project['description']);
+    update(
+      'description',
+      sanitizeProjectDescriptionHtml(event.target.value) as Project['description'],
+    );
   }, []);
   const isTitleMissing = String(form.title || '').trim().length === 0;
+  const defaultTimeRangeIssue = getTimeRangeValidationIssue(
+    form.defaultStartTime,
+    form.defaultEndTime,
+  );
+  const defaultTimeRangeError = defaultTimeRangeIssue
+    ? t(
+        defaultTimeRangeIssue === 'incomplete'
+          ? 'quickAdd.timeRangeIncomplete'
+          : 'quickAdd.timeRangeOrder',
+      )
+    : undefined;
   const selectedTags = new Set(
     (form.tag || '')
       .split(',')
@@ -1392,6 +1478,14 @@ function ProjectForm({
     if (isTitleMissing) {
       setShowTitleValidation(true);
       titleInputRef.current?.focus();
+      return;
+    }
+    if (defaultTimeRangeError) {
+      showToast(defaultTimeRangeError, { type: 'error' });
+      document
+        .getElementById('project-end-time')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('project-end-time')?.focus({ preventScroll: true });
       return;
     }
 
@@ -1435,7 +1529,9 @@ function ProjectForm({
           (acc as Record<string, unknown>)[k as string] = normalizeUploadPath(v) ?? null;
         } else if (k === 'description' && typeof v === 'string') {
           const descriptionHtml = normalizeProjectDescriptionHtml(v);
-          (acc as Record<string, unknown>)[k as string] = projectDescriptionToPlainText(descriptionHtml)
+          (acc as Record<string, unknown>)[k as string] = projectDescriptionToPlainText(
+            descriptionHtml,
+          )
             ? descriptionHtml
             : null;
         } else if (k === 'imageSize' && typeof v === 'string' && v.trim() !== '') {
@@ -1509,38 +1605,51 @@ function ProjectForm({
   useEditorShortcuts({
     onClose: handleClose,
     onSave:
-      applyingTemplate || archiving || deleting || imageIssue.open || documentIssue.open || saving ? undefined : handleSave,
+      applyingTemplate || archiving || deleting || imageIssue.open || documentIssue.open || saving
+        ? undefined
+        : handleSave,
   });
 
   const renderDocumentManager = () => (
     <div
-      className={`rounded-xl border ${documentsExpanded ? "p-4" : "px-3 py-2"}`}
+      className={`rounded-xl border ${documentsExpanded ? 'p-4' : 'px-3 py-2'}`}
       style={{
         background: 'color-mix(in srgb, var(--surface-2) 86%, transparent)',
         borderColor: 'var(--border-subtle)',
       }}
     >
-      <div className={`flex justify-between gap-3 ${documentsExpanded ? "items-start" : "items-center"}`}>
+      <div
+        className={`flex justify-between gap-3 ${documentsExpanded ? 'items-start' : 'items-center'}`}
+      >
         <button
           type="button"
           onClick={() => setDocumentsExpanded((current) => !current)}
-          className={`min-w-0 flex flex-1 text-left ${documentsExpanded ? "items-start gap-3" : "items-center gap-2"}`}
+          className={`min-w-0 flex flex-1 text-left ${documentsExpanded ? 'items-start gap-3' : 'items-center gap-2'}`}
           aria-expanded={documentsExpanded}
           aria-label={documentsExpanded ? autoT('ui_a940c980ecbb') : autoT('ui_f99cf303a3e3')}
         >
           <span
-            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${documentsExpanded ? "mt-0.5" : ''}`}
+            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${documentsExpanded ? 'mt-0.5' : ''}`}
             style={{
               borderColor: 'var(--border-subtle)',
               background: 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
               color: 'var(--viridian)',
             }}
           >
-            {documentsExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            {documentsExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
           </span>
           <span className="min-w-0">
-            <span className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              <Paperclip className="w-4 h-4" style={{ color: 'var(--viridian)' }} />{autoT('ui_69b8dc1598cc')}</span>
+            <span
+              className="flex items-center gap-2 text-sm font-medium"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <Paperclip className="w-4 h-4" style={{ color: 'var(--viridian)' }} />
+              {autoT('ui_69b8dc1598cc')}
+            </span>
             {documentsExpanded && (
               <span className="mt-1 block text-xs" style={{ color: 'var(--text-muted)' }}>
                 {documentSummary || autoT('ui_5f0da5391bde')}
@@ -1560,7 +1669,9 @@ function ProjectForm({
             borderColor: 'var(--border-subtle)',
             color: 'var(--text-primary)',
           }}
-        >{autoT('ui_68c7239005dd')}</button>
+        >
+          {autoT('ui_68c7239005dd')}
+        </button>
         <input
           ref={documentInputRef}
           type="file"
@@ -1597,8 +1708,14 @@ function ProjectForm({
               </span>
               <div className="min-w-0 flex-1 space-y-3">
                 <div>
-                  <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{autoT('ui_434a0de83833')}</div>
-                  <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{autoT('ui_9f2c4aade665')}{Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))}{autoT('ui_5d914735c1b4')}</div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {autoT('ui_434a0de83833')}
+                  </div>
+                  <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {autoT('ui_9f2c4aade665')}
+                    {Math.round(MAX_PROJECT_DOCUMENT_BYTES / (1024 * 1024))}
+                    {autoT('ui_5d914735c1b4')}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -1610,7 +1727,9 @@ function ProjectForm({
                     color: 'var(--text-primary)',
                   }}
                 >
-                  <Paperclip className="h-4 w-4" />{autoT('ui_b97a9a8a68d0')}</button>
+                  <Paperclip className="h-4 w-4" />
+                  {autoT('ui_b97a9a8a68d0')}
+                </button>
               </div>
             </div>
           </div>
@@ -1623,7 +1742,9 @@ function ProjectForm({
                 borderColor: 'var(--border-subtle)',
                 color: 'var(--text-muted)',
               }}
-            >{autoT('ui_5f0da5391bde')}{!initial?.id ? autoT('ui_22e5300c4960') : ''}
+            >
+              {autoT('ui_5f0da5391bde')}
+              {!initial?.id ? autoT('ui_22e5300c4960') : ''}
             </div>
           ) : null}
 
@@ -1638,9 +1759,12 @@ function ProjectForm({
                     style={
                       markedForRemoval
                         ? {
-                            borderColor: 'color-mix(in srgb, var(--accent-pink) 42%, var(--border-subtle))',
-                            background: 'color-mix(in srgb, var(--accent-pink) 10%, var(--surface-1))',
-                            color: 'color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary))',
+                            borderColor:
+                              'color-mix(in srgb, var(--accent-pink) 42%, var(--border-subtle))',
+                            background:
+                              'color-mix(in srgb, var(--accent-pink) 10%, var(--surface-1))',
+                            color:
+                              'color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary))',
                           }
                         : {
                             borderColor: 'var(--border-subtle)',
@@ -1655,10 +1779,12 @@ function ProjectForm({
                         <div className="text-sm font-medium truncate">{document.filename}</div>
                         <div
                           className="text-xs"
-                          style={{ color: markedForRemoval ? "inherit" : "var(--text-muted)" }}
+                          style={{ color: markedForRemoval ? 'inherit' : 'var(--text-muted)' }}
                         >
                           {formatDocumentSize(document.size)}
-                          {formatDocumentDate(document.createdAt) ? ` · ${formatDocumentDate(document.createdAt)}` : ''}
+                          {formatDocumentDate(document.createdAt)
+                            ? ` · ${formatDocumentDate(document.createdAt)}`
+                            : ''}
                           {markedForRemoval ? autoT('ui_da1ae981971a') : ''}
                         </div>
                       </div>
@@ -1667,7 +1793,9 @@ function ProjectForm({
                       {!markedForRemoval && (
                         <button
                           type="button"
-                          onClick={() => void downloadProjectDocument(initial?.id as string, document)}
+                          onClick={() =>
+                            void downloadProjectDocument(initial?.id as string, document)
+                          }
                           className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs"
                           style={{
                             borderColor: 'var(--border-subtle)',
@@ -1675,7 +1803,9 @@ function ProjectForm({
                             color: 'var(--text-primary)',
                           }}
                         >
-                          <Download className="w-3.5 h-3.5" />{autoT('ui_a479c9c34e87')}</button>
+                          <Download className="w-3.5 h-3.5" />
+                          {autoT('ui_a479c9c34e87')}
+                        </button>
                       )}
                       <button
                         type="button"
@@ -1691,13 +1821,18 @@ function ProjectForm({
                           markedForRemoval
                             ? {
                                 background: 'var(--surface-1)',
-                                borderColor: 'color-mix(in srgb, var(--accent-pink) 42%, var(--border-subtle))',
-                                color: 'color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary))',
+                                borderColor:
+                                  'color-mix(in srgb, var(--accent-pink) 42%, var(--border-subtle))',
+                                color:
+                                  'color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary))',
                               }
                             : {
-                                background: 'color-mix(in srgb, var(--accent-pink) 10%, var(--surface-1))',
-                                borderColor: 'color-mix(in srgb, var(--accent-pink) 32%, var(--border-subtle))',
-                                color: 'color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary))',
+                                background:
+                                  'color-mix(in srgb, var(--accent-pink) 10%, var(--surface-1))',
+                                borderColor:
+                                  'color-mix(in srgb, var(--accent-pink) 32%, var(--border-subtle))',
+                                color:
+                                  'color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary))',
                               }
                         }
                       >
@@ -1717,7 +1852,8 @@ function ProjectForm({
                   key={`${document.name}:${document.size}:${document.lastModified}`}
                   className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
                   style={{
-                    borderColor: 'color-mix(in srgb, var(--accent-orange) 32%, var(--border-subtle))',
+                    borderColor:
+                      'color-mix(in srgb, var(--accent-orange) 32%, var(--border-subtle))',
                     background: 'color-mix(in srgb, var(--accent-orange) 10%, var(--surface-1))',
                     color: 'var(--text-primary)',
                   }}
@@ -1727,21 +1863,28 @@ function ProjectForm({
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">{document.name}</div>
                       <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {formatDocumentSize(document.size)}{autoT('ui_c606177865bd')}</div>
+                        {formatDocumentSize(document.size)}
+                        {autoT('ui_c606177865bd')}
+                      </div>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() =>
-                      setPendingDocuments((current) => current.filter((_, currentIndex) => currentIndex !== index))
+                      setPendingDocuments((current) =>
+                        current.filter((_, currentIndex) => currentIndex !== index),
+                      )
                     }
                     className="inline-flex items-center rounded border px-2 py-1 text-xs"
                     style={{
-                      borderColor: 'color-mix(in srgb, var(--accent-orange) 32%, var(--border-subtle))',
+                      borderColor:
+                        'color-mix(in srgb, var(--accent-orange) 32%, var(--border-subtle))',
                       background: 'var(--surface-1)',
                       color: 'var(--text-primary)',
                     }}
-                  >{autoT('ui_f78b6376e028')}</button>
+                  >
+                    {autoT('ui_f78b6376e028')}
+                  </button>
                 </div>
               ))}
             </div>
@@ -1783,7 +1926,9 @@ function ProjectForm({
             onClick={() => setTagCreateOpen(true)}
             className={projectAddActionButtonClassName}
           >
-            <Plus className="h-4 w-4" />{autoT('ui_f0d37b9d26bb')}</button>
+            <Plus className="h-4 w-4" />
+            {autoT('ui_f0d37b9d26bb')}
+          </button>
         </div>
       ) : null}
     </div>
@@ -1818,7 +1963,9 @@ function ProjectForm({
             onClick={() => setCategoryCreateOpen(true)}
             className={projectAddActionButtonClassName}
           >
-            <Plus className="h-4 w-4" />{autoT('ui_f0d37b9d26bb')}</button>
+            <Plus className="h-4 w-4" />
+            {autoT('ui_f0d37b9d26bb')}
+          </button>
         </div>
       ) : null}
     </div>
@@ -1846,12 +1993,16 @@ function ProjectForm({
               type="button"
               onClick={() => setForm((f) => ({ ...f, imageUrl: '', imageSize: null }))}
               className="px-3 py-1 rounded bg-gray-200 text-gray-700"
-            >{autoT('ui_f78b6376e028')}</button>
+            >
+              {autoT('ui_f78b6376e028')}
+            </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="px-3 py-1 rounded bg-viridian text-white"
-            >{autoT('ui_8d7f8296772e')}</button>
+            >
+              {autoT('ui_8d7f8296772e')}
+            </button>
           </div>
         </div>
       ) : (
@@ -1874,18 +2025,24 @@ function ProjectForm({
               <ImagePlus className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="mb-2 font-medium" style={{ color: 'var(--text-primary)' }}>{autoT('ui_cc705d14a7c1')}</div>
+              <div className="mb-2 font-medium" style={{ color: 'var(--text-primary)' }}>
+                {autoT('ui_cc705d14a7c1')}
+              </div>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className={`${projectSecondaryButtonClassName} project-form-field`}
                 >
-                  <ImagePlus className="h-4 w-4" />{autoT('ui_1c309c12384c')}</button>
+                  <ImagePlus className="h-4 w-4" />
+                  {autoT('ui_1c309c12384c')}
+                </button>
               </div>
             </div>
           </div>
-          <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>{autoT('ui_db04437ca925')}</div>
+          <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+            {autoT('ui_db04437ca925')}
+          </div>
         </div>
       )}
     </div>
@@ -1893,7 +2050,10 @@ function ProjectForm({
 
   const renderSectionHeader = (title: string) => (
     <div className="mb-4">
-      <h4 className="text-sm font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--viridian)' }}>
+      <h4
+        className="text-sm font-semibold uppercase tracking-[0.08em]"
+        style={{ color: 'var(--viridian)' }}
+      >
         {title}
       </h4>
     </div>
@@ -1968,7 +2128,9 @@ function ProjectForm({
               }}
               className={projectAddActionButtonClassName}
             >
-              <Plus className="h-4 w-4" />{autoT('ui_f0d37b9d26bb')}</button>
+              <Plus className="h-4 w-4" />
+              {autoT('ui_f0d37b9d26bb')}
+            </button>
           </div>
         ) : null}
       </div>
@@ -1984,454 +2146,537 @@ function ProjectForm({
         maxWidth="5xl"
         variant="form"
         headerActions={
-          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{
-            background: initial?.archived
-              ? 'color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))'
-              : 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
-            color: initial?.archived
-              ? 'color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))'
-              : 'var(--viridian)',
-          }}>{autoT('ui_11dc9e195292')}{initial?.archived ? autoT('ui_7d6b45e9c890') : autoT('ui_16a766caf92d')}</span>
+          initial?.id ? (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
+              style={{
+                background: initial?.archived
+                  ? 'color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))'
+                  : 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+                color: initial?.archived
+                  ? 'color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))'
+                  : 'var(--viridian)',
+              }}
+            >
+              {autoT('ui_11dc9e195292')}
+              {initial?.archived ? autoT('ui_7d6b45e9c890') : autoT('ui_16a766caf92d')}
+            </span>
+          ) : undefined
         }
       >
-      <div
-        className="min-w-0 overflow-y-auto"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={onDrop}
-      >
-        <div className="px-4 py-4 md:px-6 md:py-6">
-
-        {!initial?.id && (
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={() => setShowTemplates((s) => !s)}
-              className="flex items-center gap-2 text-sm font-medium text-viridian hover:underline"
-            >
-              <Layers className="w-4 h-4" />
-              {showTemplates ? autoT('ui_7ab64d33d06d') : autoT('ui_78704e7ad37d')}
-              <span className="text-xs text-gray-500">
-                {selectedTemplateKey ? autoT('ui_5f38ce090c08') : ''}
-              </span>
-            </button>
-            {showTemplates && (
-              <div className="mt-3">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="text-xs text-gray-600">{autoT('ui_2386e1a1c341')}</div>
-                  {applyingTemplate && (
-                    <div className="text-xs text-gray-500">{autoT('ui_49454a2df970')}</div>
-                  )}
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedTemplateKey('');
-                      // Reset form to initial empty values
-                      setForm({
-                        title: '',
-                        type: 'project_open',
-                        targetGroup: '',
-                        description: '',
-                        imageUrl: '',
-                        categoryId: null,
-                        tag: '',
-                        color: '#7aa39a',
-                      });
-                    }}
-                    className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden flex items-center justify-center text-sm px-3 ${
-                      selectedTemplateKey === '' ? "border-viridian ring-2 ring-viridian/30" : "border-gray-200"
-                    }`}
-                    disabled={applyingTemplate}
-                    title={autoT('ui_8165a84b8a72')}
-                  >{autoT('ui_8165a84b8a72')}</button>
-                  {PROJECT_TEMPLATES.map((tpl) => (
-                    <button
-                      key={tpl.key}
-                      type="button"
-                      onClick={() => void applyTemplate(tpl)}
-                      className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden relative ${
-                        selectedTemplateKey === tpl.key ? "border-viridian ring-2 ring-viridian/30" : "border-gray-200"
-                      }`}
-                      disabled={applyingTemplate}
-                      title={tpl.label}
+        <div
+          className="min-h-0 min-w-0 flex-1 overflow-y-auto"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={onDrop}
+        >
+          <div className="px-4 py-4 md:px-6 md:py-6">
+            {!initial?.id && (
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplates((s) => !s)}
+                  className="flex items-center gap-2 text-sm font-medium text-viridian hover:underline"
                 >
-                  <img
-                    src={tpl.image.previewUrl}
-                    alt={tpl.label}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/10" />
-                  <div className="absolute bottom-2 left-2 right-2 text-left">
-                    <div className="text-white text-sm font-semibold drop-shadow">{tpl.label}</div>
-                    <div className="text-white/90 text-[11px] leading-tight drop-shadow">
-                      {tpl.description}
+                  <Layers className="w-4 h-4" />
+                  {showTemplates ? autoT('ui_7ab64d33d06d') : autoT('ui_78704e7ad37d')}
+                  <span className="text-xs text-gray-500">
+                    {selectedTemplateKey ? autoT('ui_5f38ce090c08') : ''}
+                  </span>
+                </button>
+                {showTemplates && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="text-xs text-gray-600">{autoT('ui_2386e1a1c341')}</div>
+                      {applyingTemplate && (
+                        <div className="text-xs text-gray-500">{autoT('ui_49454a2df970')}</div>
+                      )}
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTemplateKey('');
+                          // Reset form to initial empty values
+                          setForm({
+                            title: '',
+                            type: 'project_open',
+                            targetGroup: '',
+                            description: '',
+                            imageUrl: '',
+                            categoryId: null,
+                            tag: '',
+                            color: '#7aa39a',
+                          });
+                        }}
+                        className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden flex items-center justify-center text-sm px-3 ${
+                          selectedTemplateKey === ''
+                            ? 'border-viridian ring-2 ring-viridian/30'
+                            : 'border-gray-200'
+                        }`}
+                        disabled={applyingTemplate}
+                        title={autoT('ui_8165a84b8a72')}
+                      >
+                        {autoT('ui_8165a84b8a72')}
+                      </button>
+                      {PROJECT_TEMPLATES.map((tpl) => (
+                        <button
+                          key={tpl.key}
+                          type="button"
+                          onClick={() => void applyTemplate(tpl)}
+                          className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden relative ${
+                            selectedTemplateKey === tpl.key
+                              ? 'border-viridian ring-2 ring-viridian/30'
+                              : 'border-gray-200'
+                          }`}
+                          disabled={applyingTemplate}
+                          title={tpl.label}
+                        >
+                          <img
+                            src={tpl.image.previewUrl}
+                            alt={tpl.label}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/10" />
+                          <div className="absolute bottom-2 left-2 right-2 text-left">
+                            <div className="text-white text-sm font-semibold drop-shadow">
+                              {tpl.label}
+                            </div>
+                            <div className="text-white/90 text-[11px] leading-tight drop-shadow">
+                              {tpl.description}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+
+                      {(orgTemplates || [])
+                        .filter((t) => !t.archived)
+                        .map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => void applyTemplate(t)}
+                            className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden relative ${
+                              selectedTemplateKey === `org:${t.id}`
+                                ? 'border-viridian ring-2 ring-viridian/30'
+                                : 'border-gray-200'
+                            }`}
+                            disabled={applyingTemplate}
+                            title={t.title}
+                          >
+                            {t.imageUrl ? (
+                              <ProtectedImage
+                                src={t.imageUrl}
+                                alt={t.title}
+                                className="absolute inset-0 w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="absolute inset-0 w-full h-full bg-gray-100" />
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/10" />
+                            <div className="absolute bottom-2 left-2 right-2 text-left">
+                              <div className="text-white text-sm font-semibold drop-shadow truncate">
+                                {t.title}
+                              </div>
+                              <div className="text-white/90 text-[11px] leading-tight drop-shadow line-clamp-2">
+                                {t.categoryName
+                                  ? `Kategorie: ${t.categoryName}`
+                                  : autoT('ui_4271557d9011')}
+                                {t.org?.name ? ` · ${t.org.name}` : ''}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
                     </div>
                   </div>
-                </button>
-              ))}
-
-              {(orgTemplates || [])
-                .filter((t) => !t.archived)
-                .map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => void applyTemplate(t)}
-                    className={`min-w-[160px] h-[96px] rounded-xl border overflow-hidden relative ${
-                      selectedTemplateKey === `org:${t.id}`
-                        ? "border-viridian ring-2 ring-viridian/30"
-                        : "border-gray-200"
-                    }`}
-                    disabled={applyingTemplate}
-                    title={t.title}
-                  >
-                    {t.imageUrl ? (
-                      <ProtectedImage
-                        src={t.imageUrl}
-                        alt={t.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 w-full h-full bg-gray-100" />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/10" />
-                    <div className="absolute bottom-2 left-2 right-2 text-left">
-                      <div className="text-white text-sm font-semibold drop-shadow truncate">
-                        {t.title}
-                      </div>
-                      <div className="text-white/90 text-[11px] leading-tight drop-shadow line-clamp-2">
-                        {t.categoryName ? `Kategorie: ${t.categoryName}` : autoT('ui_4271557d9011')}
-                        {t.org?.name ? ` · ${t.org.name}` : ''}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-                </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        <div className="space-y-5">
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.25fr),minmax(280px,0.75fr)] gap-5 items-start">
-            <section className={projectSectionClassName} style={projectSectionStyle}>
-              {renderSectionHeader('Basisinformationen')}
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-5">
+              <section className={projectSectionClassName} style={projectSectionStyle}>
+                {renderSectionHeader('Basisinformationen')}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1" htmlFor="project-title">
+                        {autoT('ui_a1710a47def7')}
+                      </label>
+                      <input
+                        id="project-title"
+                        ref={titleInputRef}
+                        value={form.title || ''}
+                        onChange={(e) => {
+                          update('title', e.target.value);
+                          if (showTitleValidation && e.target.value.trim())
+                            setShowTitleValidation(false);
+                        }}
+                        onBlur={() => {
+                          if (String(form.title || '').trim().length === 0)
+                            setShowTitleValidation(true);
+                        }}
+                        required
+                        maxLength={160}
+                        className={`${projectFieldClassName} ${
+                          showTitleValidation && isTitleMissing ? 'project-form-field-invalid' : ''
+                        }`}
+                      />
+                      {showTitleValidation && isTitleMissing ? (
+                        <p className="mt-1 text-xs text-red-600">{autoT('ui_59388bd303ec')}</p>
+                      ) : null}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1" htmlFor="project-type">
+                        {autoT('ui_79a5c2576972')}
+                      </label>
+                      <select
+                        id="project-type"
+                        value={form.type || 'project_open'}
+                        onChange={(e) => {
+                          const val = e.target.value as Project['type'];
+                          setForm((f) => ({
+                            ...f,
+                            type: val,
+                            ...(val === 'open_door' ? { categoryId: null } : {}),
+                          }));
+                        }}
+                        required
+                        className={projectFieldClassName}
+                      >
+                        <option value="open_door">{autoT('ui_a80778b6b148')}</option>
+                        <option value="project_open">{autoT('ui_00d882fbb5d4')}</option>
+                        <option value="project_closed">{autoT('ui_8f256393653e')}</option>
+                        <option value="event">{autoT('ui_e6fdb4cc8ce5')}</option>
+                        <option value="outreach">{autoT('ui_3c1538690eb7')}</option>
+                      </select>
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">{autoT('ui_a1710a47def7')}</label>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="project-target-group"
+                    >
+                      {autoT('ui_10f540533857')}
+                    </label>
                     <input
-                      ref={titleInputRef}
-                      value={form.title || ''}
-                      onChange={(e) => {
-                        update('title', e.target.value);
-                        if (showTitleValidation && e.target.value.trim()) setShowTitleValidation(false);
-                      }}
-                      onBlur={() => {
-                        if (String(form.title || '').trim().length === 0) setShowTitleValidation(true);
-                      }}
-                      required
-                      className={`${projectFieldClassName} ${
-                        showTitleValidation && isTitleMissing ? "project-form-field-invalid" : ''
-                      }`}
+                      id="project-target-group"
+                      value={form.targetGroup || ''}
+                      onChange={(e) => update('targetGroup', e.target.value)}
+                      maxLength={120}
+                      className={projectFieldClassName}
                     />
-                    {showTitleValidation && isTitleMissing ? (
-                      <p className="mt-1 text-xs text-red-600">{autoT('ui_59388bd303ec')}</p>
+                  </div>
+                  {form.type !== 'open_door' ? renderCategorySelector() : null}
+                  {renderTagSelector()}
+                  <div className="border-t border-[var(--border-subtle)] pt-4">
+                    <h5 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">
+                      Standardzeiten für Aktivitäten
+                    </h5>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label
+                          className="block text-sm font-medium mb-1"
+                          htmlFor="project-start-time"
+                        >
+                          {autoT('ui_4aa533c84189')}
+                        </label>
+                        <input
+                          id="project-start-time"
+                          type="time"
+                          value={form.defaultStartTime || ''}
+                          onChange={(e) => update('defaultStartTime', e.target.value)}
+                          aria-invalid={Boolean(defaultTimeRangeError)}
+                          aria-describedby={
+                            defaultTimeRangeError ? 'project-time-range-error' : undefined
+                          }
+                          className={`${projectFieldClassName} ${defaultTimeRangeError ? 'border-red-500' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-medium mb-1"
+                          htmlFor="project-end-time"
+                        >
+                          {autoT('ui_352471b9c9cc')}
+                        </label>
+                        <input
+                          id="project-end-time"
+                          type="time"
+                          value={form.defaultEndTime || ''}
+                          onChange={(e) => update('defaultEndTime', e.target.value)}
+                          aria-invalid={Boolean(defaultTimeRangeError)}
+                          aria-describedby={
+                            defaultTimeRangeError ? 'project-time-range-error' : undefined
+                          }
+                          className={`${projectFieldClassName} ${defaultTimeRangeError ? 'border-red-500' : ''}`}
+                        />
+                      </div>
+                    </div>
+                    {defaultTimeRangeError ? (
+                      <p id="project-time-range-error" className="mt-2 text-sm text-red-700">
+                        {defaultTimeRangeError}
+                      </p>
                     ) : null}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">{autoT('ui_79a5c2576972')}</label>
-                    <select
-                      value={form.type || 'project_open'}
-                      onChange={(e) => {
-                        const val = e.target.value as Project['type'];
-                        setForm((f) => ({
-                          ...f,
-                          type: val,
-                          ...(val === 'open_door' ? { categoryId: null } : {}),
-                        }));
-                      }}
-                      required
-                      className={projectFieldClassName}
-                    >
-                      <option value="open_door">{autoT('ui_a80778b6b148')}</option>
-                      <option value="project_open">{autoT('ui_00d882fbb5d4')}</option>
-                      <option value="project_closed">{autoT('ui_8f256393653e')}</option>
-                      <option value="event">{autoT('ui_e6fdb4cc8ce5')}</option>
-                      <option value="outreach">{autoT('ui_3c1538690eb7')}</option>
-                    </select>
+                </div>
+              </section>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+                <section className={projectSectionClassName} style={projectSectionStyle}>
+                  {renderSectionHeader('Bild & Farbe')}
+                  <div className="grid grid-cols-1 gap-4 items-start">
+                    {renderImageManager()}
+                    <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
+                      <label className="block text-sm font-medium mb-2" htmlFor="project-color">
+                        {autoT('ui_89b7957dae43')}
+                      </label>
+                      <ColorPicker
+                        id="project-color"
+                        value={(form.color as string) || '#7aa39a'}
+                        onChange={(color) => update('color', color)}
+                      />
+                    </div>
                   </div>
-                </div>
+                </section>
+
+                <section className={projectSectionClassName} style={projectSectionStyle}>
+                  {renderSectionHeader('Team & Rollen')}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {renderStaffSelectorCard({
+                      label: autoT('ui_93d76ef57f64'),
+                      field: 'defaultStaff',
+                      roles: ['lead', 'employee'],
+                      emptyLabel: autoT('ui_05425eed16e6'),
+                      createRole: 'employee',
+                    })}
+                    {renderStaffSelectorCard({
+                      label: autoT('ui_03c0ef3f0a42'),
+                      field: 'defaultVolunteers',
+                      roles: ['volunteer', 'helper'],
+                      emptyLabel: autoT('ui_191d98a5f4a2'),
+                      createRole: 'volunteer',
+                    })}
+                  </div>
+                </section>
+              </div>
+
+              <section className={projectSectionClassName} style={projectSectionStyle}>
+                {renderSectionHeader('Dokumente')}
+                {renderDocumentManager()}
+              </section>
+
+              <section className={projectSectionClassName} style={projectSectionStyle}>
+                {renderSectionHeader('Beschreibung')}
                 <div>
-                  <label className="block text-sm font-medium mb-1">{autoT('ui_10f540533857')}</label>
-                  <input
-                    value={form.targetGroup || ''}
-                    onChange={(e) => update('targetGroup', e.target.value)}
-                    className={projectFieldClassName}
-                  />
+                  <label id="project-description-label" className="block text-sm font-medium mb-1">
+                    {autoT('ui_b3c8defcacc0')}
+                  </label>
+                  <RichTextEditor
+                    value={normalizeProjectDescriptionHtml(form.description)}
+                    onChange={handleDescriptionChange}
+                    placeholder={autoT('ui_76aff3f51c45')}
+                    containerProps={{
+                      className: 'project-rich-text-editor',
+                      'aria-labelledby': 'project-description-label',
+                    }}
+                  >
+                    <Toolbar>
+                      <BtnUndo title={autoT('ui_b626f2e45925')} />
+                      <BtnRedo title={autoT('ui_6a36d3b72de1')} />
+                      <Separator />
+                      <BtnStyles title={autoT('ui_041a5dec481d')} />
+                      <Separator />
+                      <BtnBold title={autoT('ui_acf4dbde9afe')} />
+                      <BtnItalic title={autoT('ui_8a921708bc72')} />
+                      <Separator />
+                      <BtnBulletList title={autoT('ui_4231be174728')} />
+                      <BtnNumberedList title={autoT('ui_2f862a25f3a2')} />
+                      <Separator />
+                      <BtnClearFormatting title={autoT('ui_938bacda8725')} />
+                    </Toolbar>
+                  </RichTextEditor>
                 </div>
-                {form.type !== 'open_door' ? renderCategorySelector() : null}
-                {renderTagSelector()}
-              </div>
-            </section>
-
-            <section className={projectSectionClassName} style={projectSectionStyle}>
-              {renderSectionHeader('Zeit')}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">{autoT('ui_4aa533c84189')}</label>
-                  <input
-                    type="time"
-                    value={form.defaultStartTime || ''}
-                    onChange={(e) => update('defaultStartTime', e.target.value)}
-                    className={projectFieldClassName}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">{autoT('ui_352471b9c9cc')}</label>
-                  <input
-                    type="time"
-                    value={form.defaultEndTime || ''}
-                    onChange={(e) => update('defaultEndTime', e.target.value)}
-                    className={projectFieldClassName}
-                  />
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
-            <section className={projectSectionClassName} style={projectSectionStyle}>
-              {renderSectionHeader('Bild & Farbe')}
-              <div className="grid grid-cols-1 gap-4 items-start">
-                {renderImageManager()}
-                <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
-                  <label className="block text-sm font-medium mb-2" htmlFor="project-color">{autoT('ui_89b7957dae43')}</label>
-                  <ColorPicker
-                    id="project-color"
-                    value={(form.color as string) || '#7aa39a'}
-                    onChange={(color) => update('color', color)}
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section className={projectSectionClassName} style={projectSectionStyle}>
-              {renderSectionHeader('Team & Rollen')}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {renderStaffSelectorCard({
-                  label: autoT('ui_93d76ef57f64'),
-                  field: 'defaultStaff',
-                  roles: ['lead', 'employee'],
-                  emptyLabel: autoT('ui_05425eed16e6'),
-                  createRole: 'employee',
-                })}
-                {renderStaffSelectorCard({
-                  label: autoT('ui_03c0ef3f0a42'),
-                  field: 'defaultVolunteers',
-                  roles: ['volunteer', 'helper'],
-                  emptyLabel: autoT('ui_191d98a5f4a2'),
-                  createRole: 'volunteer',
-                })}
-              </div>
-            </section>
-          </div>
-
-          <section className={projectSectionClassName} style={projectSectionStyle}>
-            {renderSectionHeader('Dokumente')}
-            {renderDocumentManager()}
-          </section>
-
-          <section className={projectSectionClassName} style={projectSectionStyle}>
-            {renderSectionHeader('Beschreibung')}
-            <div>
-              <label className="block text-sm font-medium mb-1">{autoT('ui_b3c8defcacc0')}</label>
-              <RichTextEditor
-                value={normalizeProjectDescriptionHtml(form.description)}
-                onChange={handleDescriptionChange}
-                placeholder={autoT('ui_76aff3f51c45')}
-                containerProps={{ className: 'project-rich-text-editor' }}
-              >
-                <Toolbar>
-                  <BtnUndo title={autoT('ui_b626f2e45925')} />
-                  <BtnRedo title={autoT('ui_6a36d3b72de1')} />
-                  <Separator />
-                  <BtnStyles title={autoT('ui_041a5dec481d')} />
-                  <Separator />
-                  <BtnBold title={autoT('ui_acf4dbde9afe')} />
-                  <BtnItalic title={autoT('ui_8a921708bc72')} />
-                  <Separator />
-                  <BtnBulletList title={autoT('ui_4231be174728')} />
-                  <BtnNumberedList title={autoT('ui_2f862a25f3a2')} />
-                  <Separator />
-                  <BtnClearFormatting title={autoT('ui_938bacda8725')} />
-                </Toolbar>
-              </RichTextEditor>
+              </section>
             </div>
-          </section>
-        </div>
-        </div>
-
-        <EditorActions
-          className="project-modal-actions"
-          leading={initial?.id ? (
-            <ArchiveRestoreControls
-              id={initial.id as string}
-              archived={Boolean(initial.archived)}
-              archiving={archiving}
-              deleting={deleting}
-              fullWidth
-              onArchivingChange={setArchiving}
-              onDeletingChange={setDeleting}
-              onDeleted={onCancel}
-              onArchivedToggle={onCancel}
-            />
-          ) : undefined}
-          secondary={<Button variant="secondary" size="lg" onClick={handleClose}>{autoT('ui_07af7cb30fca')}</Button>}
-          primary={(
-            <Button
-              size="lg"
-              onClick={handleSave}
-              disabled={isTitleMissing || saving || applyingTemplate || archiving || deleting}
-            >
-              <SaveIcon className="h-4 w-4" />
-              {autoT('ui_70b73bbc118d')}
-            </Button>
-          )}
-        />
-      </div>
-
-      {tagCreateOpen ? (
-        <TagFormModal
-          initial={{ color: TAG_PALETTE[0] }}
-          onCancel={() => setTagCreateOpen(false)}
-          onSubmit={async (values) => {
-            const name = String(values.name || '').trim();
-            if (!name) return;
-            const existing = findNamedTaxonomyItem(allTags, name);
-            try {
-              await ensureTagByName(name, {
-                description: values.description,
-                color: values.color || TAG_PALETTE[0],
-              });
-              const next = new Set(selectedTags);
-              next.add(name);
-              update('tag', Array.from(next).join(', '));
-              showToast(
-                existing?.id ? `Tag "${name}" wurde zugeordnet.` : autoT('ui_5a6837b1f831', { value0: name }),
-                existing?.id ? { type: 'info' } : undefined,
-              );
-              setTagCreateOpen(false);
-            } catch {
-              showToast(autoT('ui_2cdd45e69756'), { type: 'error' });
-            }
-          }}
-        />
-      ) : null}
-
-      {categoryCreateOpen ? (
-        <CategoryFormModal
-          initial={{ color: FIXED_PALETTE[0] }}
-          onCancel={() => setCategoryCreateOpen(false)}
-          onSubmit={async (values) => {
-            const name = String(values.name || '').trim();
-            if (!name) return;
-            const existing = findNamedTaxonomyItem(allCategories, name);
-            try {
-              const ensured = await ensureCategoryByName(name, {
-                description: values.description,
-                standardRef: values.standardRef,
-                color: values.color || FIXED_PALETTE[0],
-              });
-              if (!ensured?.id) throw new Error('missing-category-id');
-              update('categoryId', ensured.id);
-              showToast(
-                existing?.id
-                  ? `Kategorie "${name}" wurde zugeordnet.`
-                  : autoT('ui_1335fd92fa57', { value0: name }),
-                existing?.id ? { type: 'info' } : undefined,
-              );
-              setCategoryCreateOpen(false);
-            } catch {
-              showToast(autoT('ui_0e7e0d8eb6c9'), { type: 'error' });
-            }
-          }}
-        />
-      ) : null}
-
-      {staffCreateState.open ? (
-        <StaffFormModal
-          initial={{ roles: [staffCreateState.role] }}
-          onCancel={() => setStaffCreateState((current) => ({ ...current, open: false }))}
-          onSubmit={async (values) => {
-            const name = String(values.name || '').trim();
-            if (!name) return;
-            const existing = (staff || []).find(
-              (person) => person.name.trim().toLowerCase() === name.toLowerCase(),
-            );
-            if (existing) {
-              mergeNameIntoField(staffCreateState.field, existing.name);
-              showToast(`Teammitglied "${existing.name}" wurde zugeordnet.`, { type: 'info' });
-              setStaffCreateState((current) => ({ ...current, open: false }));
-              return;
-            }
-
-            try {
-              const created = await createStaff.mutateAsync({
-                ...values,
-                roles:
-                  Array.isArray(values.roles) && values.roles.length > 0
-                    ? values.roles
-                    : [staffCreateState.role],
-              });
-              mergeNameIntoField(staffCreateState.field, created.name);
-              showToast(autoT('ui_4e679520fcfa', { value0: created.name }));
-              setStaffCreateState((current) => ({ ...current, open: false }));
-            } catch {
-              showToast(autoT('ui_0d661fd89ebb'), { type: 'error' });
-            }
-          }}
-        />
-      ) : null}
-
-      <Modal
-        open={imageIssue.open}
-        onClose={() => setImageIssue((s) => ({ ...s, open: false }))}
-        title={imageIssue.title}
-        maxWidth="sm"
-      >
-        <div className="text-sm text-gray-700 space-y-4">
-          <div>{imageIssue.message}</div>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              className="px-3 py-2 rounded bg-viridian text-white"
-              onClick={() => setImageIssue((s) => ({ ...s, open: false }))}
-            >{autoT('ui_b0a98216a324')}</button>
           </div>
-        </div>
-      </Modal>
 
-      <Modal
-        open={documentIssue.open}
-        onClose={() => setDocumentIssue((s) => ({ ...s, open: false }))}
-        title={documentIssue.title}
-        maxWidth="sm"
-      >
-        <div className="text-sm text-gray-700 space-y-4">
-          <div>{documentIssue.message}</div>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              className="px-3 py-2 rounded bg-viridian text-white"
-              onClick={() => setDocumentIssue((s) => ({ ...s, open: false }))}
-            >{autoT('ui_b0a98216a324')}</button>
-          </div>
+          <EditorActions
+            className="project-modal-actions md:sticky md:bottom-0 md:z-10"
+            leading={
+              initial?.id ? (
+                <ArchiveRestoreControls
+                  id={initial.id as string}
+                  archived={Boolean(initial.archived)}
+                  archiving={archiving}
+                  deleting={deleting}
+                  fullWidth
+                  onArchivingChange={setArchiving}
+                  onDeletingChange={setDeleting}
+                  onDeleted={onCancel}
+                  onArchivedToggle={onCancel}
+                />
+              ) : undefined
+            }
+            secondary={
+              <Button variant="secondary" size="lg" onClick={handleClose}>
+                {autoT('ui_07af7cb30fca')}
+              </Button>
+            }
+            primary={
+              <Button
+                size="lg"
+                onClick={handleSave}
+                disabled={
+                  isTitleMissing ||
+                  Boolean(defaultTimeRangeError) ||
+                  saving ||
+                  applyingTemplate ||
+                  archiving ||
+                  deleting
+                }
+              >
+                <SaveIcon className="h-4 w-4" />
+                {autoT('ui_70b73bbc118d')}
+              </Button>
+            }
+          />
         </div>
+
+        {tagCreateOpen ? (
+          <TagFormModal
+            initial={{ color: TAG_PALETTE[0] }}
+            onCancel={() => setTagCreateOpen(false)}
+            onSubmit={async (values) => {
+              const name = String(values.name || '').trim();
+              if (!name) return;
+              const existing = findNamedTaxonomyItem(allTags, name);
+              try {
+                await ensureTagByName(name, {
+                  description: values.description,
+                  color: values.color || TAG_PALETTE[0],
+                });
+                const next = new Set(selectedTags);
+                next.add(name);
+                update('tag', Array.from(next).join(', '));
+                showToast(
+                  existing?.id
+                    ? `Tag "${name}" wurde zugeordnet.`
+                    : autoT('ui_5a6837b1f831', { value0: name }),
+                  existing?.id ? { type: 'info' } : undefined,
+                );
+                setTagCreateOpen(false);
+              } catch {
+                showToast(autoT('ui_2cdd45e69756'), { type: 'error' });
+              }
+            }}
+          />
+        ) : null}
+
+        {categoryCreateOpen ? (
+          <CategoryFormModal
+            initial={{ color: FIXED_PALETTE[0] }}
+            onCancel={() => setCategoryCreateOpen(false)}
+            onSubmit={async (values) => {
+              const name = String(values.name || '').trim();
+              if (!name) return;
+              const existing = findNamedTaxonomyItem(allCategories, name);
+              try {
+                const ensured = await ensureCategoryByName(name, {
+                  description: values.description,
+                  standardRef: values.standardRef,
+                  color: values.color || FIXED_PALETTE[0],
+                });
+                if (!ensured?.id) throw new Error('missing-category-id');
+                update('categoryId', ensured.id);
+                showToast(
+                  existing?.id
+                    ? `Kategorie "${name}" wurde zugeordnet.`
+                    : autoT('ui_1335fd92fa57', { value0: name }),
+                  existing?.id ? { type: 'info' } : undefined,
+                );
+                setCategoryCreateOpen(false);
+              } catch {
+                showToast(autoT('ui_0e7e0d8eb6c9'), { type: 'error' });
+              }
+            }}
+          />
+        ) : null}
+
+        {staffCreateState.open ? (
+          <StaffFormModal
+            initial={{ roles: [staffCreateState.role] }}
+            onCancel={() => setStaffCreateState((current) => ({ ...current, open: false }))}
+            onSubmit={async (values) => {
+              const name = String(values.name || '').trim();
+              if (!name) return;
+              const existing = (staff || []).find(
+                (person) => person.name.trim().toLowerCase() === name.toLowerCase(),
+              );
+              if (existing) {
+                mergeNameIntoField(staffCreateState.field, existing.name);
+                showToast(`Teammitglied "${existing.name}" wurde zugeordnet.`, { type: 'info' });
+                setStaffCreateState((current) => ({ ...current, open: false }));
+                return;
+              }
+
+              try {
+                const created = await createStaff.mutateAsync({
+                  ...values,
+                  roles:
+                    Array.isArray(values.roles) && values.roles.length > 0
+                      ? values.roles
+                      : [staffCreateState.role],
+                });
+                mergeNameIntoField(staffCreateState.field, created.name);
+                showToast(autoT('ui_4e679520fcfa', { value0: created.name }));
+                setStaffCreateState((current) => ({ ...current, open: false }));
+              } catch {
+                showToast(autoT('ui_0d661fd89ebb'), { type: 'error' });
+              }
+            }}
+          />
+        ) : null}
+
+        <Modal
+          open={imageIssue.open}
+          onClose={() => setImageIssue((s) => ({ ...s, open: false }))}
+          title={imageIssue.title}
+          maxWidth="sm"
+        >
+          <div className="text-sm text-gray-700 space-y-4">
+            <div>{imageIssue.message}</div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="px-3 py-2 rounded bg-viridian text-white"
+                onClick={() => setImageIssue((s) => ({ ...s, open: false }))}
+              >
+                {autoT('ui_b0a98216a324')}
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        <Modal
+          open={documentIssue.open}
+          onClose={() => setDocumentIssue((s) => ({ ...s, open: false }))}
+          title={documentIssue.title}
+          maxWidth="sm"
+        >
+          <div className="text-sm text-gray-700 space-y-4">
+            <div>{documentIssue.message}</div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="px-3 py-2 rounded bg-viridian text-white"
+                onClick={() => setDocumentIssue((s) => ({ ...s, open: false }))}
+              >
+                {autoT('ui_b0a98216a324')}
+              </button>
+            </div>
+          </div>
+        </Modal>
       </Modal>
-    </Modal>
-    {discardDialog}
+      {discardDialog}
     </>
   );
 }
@@ -2462,7 +2707,7 @@ function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<P
     if (!Object.prototype.hasOwnProperty.call(v, key)) continue;
     const val = v[key];
     if (key === 'imageUrl') {
-      out[key] = typeof val === 'string' ? normalizeUploadPath(val) ?? '' : val;
+      out[key] = typeof val === 'string' ? (normalizeUploadPath(val) ?? '') : val;
       continue;
     }
     if (key === 'imageSize') {
@@ -2572,9 +2817,14 @@ export default function Projects() {
   );
 
   const syncProjectDocuments = useCallback(
-    async (projectId: string, submission: Pick<ProjectFormSubmission, 'pendingDocuments' | 'removedDocumentIds'>) => {
+    async (
+      projectId: string,
+      submission: Pick<ProjectFormSubmission, 'pendingDocuments' | 'removedDocumentIds'>,
+    ) => {
       const removedResults = await Promise.allSettled(
-        submission.removedDocumentIds.map((documentId) => removeProjectDocument(projectId, documentId)),
+        submission.removedDocumentIds.map((documentId) =>
+          removeProjectDocument(projectId, documentId),
+        ),
       );
       const uploadResults = await Promise.allSettled(
         submission.pendingDocuments.map((file) => uploadProjectDocument(projectId, file)),
@@ -2582,9 +2832,13 @@ export default function Projects() {
 
       await qc.invalidateQueries({ queryKey: ['projects'] });
 
-      const removedSuccess = removedResults.filter((result) => result.status === 'fulfilled').length;
+      const removedSuccess = removedResults.filter(
+        (result) => result.status === 'fulfilled',
+      ).length;
       const removedFailed = removedResults.length - removedSuccess;
-      const uploadedSuccess = uploadResults.filter((result) => result.status === 'fulfilled').length;
+      const uploadedSuccess = uploadResults.filter(
+        (result) => result.status === 'fulfilled',
+      ).length;
       const uploadedFailed = uploadResults.length - uploadedSuccess;
 
       return { removedSuccess, removedFailed, uploadedSuccess, uploadedFailed };
@@ -2600,7 +2854,9 @@ export default function Projects() {
           onClick={() => setModal({ mode: 'create', requestId: createClientRequestId() })}
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-viridian bg-viridian px-4 py-2 text-sm font-medium text-white transition-colors hover:border-cambridge-blue hover:bg-cambridge-blue"
         >
-          <Plus className="h-4 w-4" />{autoT('ui_4bc9d33f94ce')}</button>
+          <Plus className="h-4 w-4" />
+          {autoT('ui_4bc9d33f94ce')}
+        </button>
       </div>
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -2633,8 +2889,8 @@ export default function Projects() {
             title={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
             className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${
               starredFirst
-                ? "border-yellow-300 bg-yellow-100 text-yellow-700 shadow-sm"
-                : "border-gray-300 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                ? 'border-yellow-300 bg-yellow-100 text-yellow-700 shadow-sm'
+                : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700'
             }`}
           >
             {starredFirst ? <Star className="h-4 w-4" /> : <StarOff className="h-4 w-4" />}
@@ -2644,7 +2900,9 @@ export default function Projects() {
               checked={showArchived}
               onChange={setShowArchived}
               label={
-                <span>{autoT('ui_d9431e38c8b6')}<span className="text-xs text-gray-500">({archivedCount})</span>
+                <span>
+                  {autoT('ui_d9431e38c8b6')}
+                  <span className="text-xs text-gray-500">({archivedCount})</span>
                 </span>
               }
             />
@@ -2671,7 +2929,7 @@ export default function Projects() {
       ) : (
         <div
           className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${
-            isDesktopListView ? "md:grid-cols-1" : "lg:grid-cols-3"
+            isDesktopListView ? 'md:grid-cols-1' : 'lg:grid-cols-3'
           }`}
         >
           {sortedProjects.map((p) => {
@@ -2735,7 +2993,9 @@ export default function Projects() {
               />
             );
           })}
-          {sortedProjects.length === 0 && <div className="text-gray-500">{autoT('ui_ecf08df8331a')}</div>}
+          {sortedProjects.length === 0 && (
+            <div className="text-gray-500">{autoT('ui_ecf08df8331a')}</div>
+          )}
         </div>
       )}
 
@@ -2769,16 +3029,28 @@ export default function Projects() {
 
               if (documentResult.removedFailed || documentResult.uploadedFailed) {
                 showToast(
-                  autoT('ui_726210fb4613', { value0: modal.mode === 'create' ? autoT('ui_0699464a8d98') : autoT('ui_8ed74a6d7e2e'), value1: documentResult.uploadedSuccess, value2: documentResult.removedSuccess }),
+                  autoT('ui_726210fb4613', {
+                    value0:
+                      modal.mode === 'create' ? autoT('ui_0699464a8d98') : autoT('ui_8ed74a6d7e2e'),
+                    value1: documentResult.uploadedSuccess,
+                    value2: documentResult.removedSuccess,
+                  }),
                   { type: 'error', durationMs: 5500 },
                 );
               } else if (documentResult.uploadedSuccess || documentResult.removedSuccess) {
                 showToast(
-                  autoT('ui_f08e2c468069', { value0: modal.mode === 'create' ? autoT('ui_0699464a8d98') : autoT('ui_8ed74a6d7e2e'), value1: documentResult.uploadedSuccess, value2: documentResult.removedSuccess }),
+                  autoT('ui_f08e2c468069', {
+                    value0:
+                      modal.mode === 'create' ? autoT('ui_0699464a8d98') : autoT('ui_8ed74a6d7e2e'),
+                    value1: documentResult.uploadedSuccess,
+                    value2: documentResult.removedSuccess,
+                  }),
                   { type: 'success' },
                 );
               } else {
-                showToast(modal.mode === 'create' ? autoT('ui_0699464a8d98') : autoT('ui_8ed74a6d7e2e'));
+                showToast(
+                  modal.mode === 'create' ? autoT('ui_0699464a8d98') : autoT('ui_8ed74a6d7e2e'),
+                );
               }
             } catch (error) {
               const message = error instanceof Error ? error.message : autoT('ui_2bbd88460037');

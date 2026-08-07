@@ -162,6 +162,43 @@ function SurveyChartTooltip({
   );
 }
 
+type SurveyTrendTooltipPayload = {
+  value?: number | null;
+  name?: string;
+  color?: string;
+  dataKey?: string;
+  payload?: { name?: string };
+};
+
+function SurveyTrendTooltip({
+  active,
+  label,
+  payload,
+}: {
+  active?: boolean;
+  label?: string | number;
+  payload?: SurveyTrendTooltipPayload[];
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="survey-chart-tooltip" role="status">
+      <p className="survey-chart-tooltip-label">{label ?? payload[0]?.payload?.name}</p>
+      <div className="mt-1.5 space-y-1">
+        {payload.map((entry) => {
+          const value = entry.value === null || typeof entry.value === 'undefined' ? '–' : entry.value;
+          const suffix = entry.dataKey === 'ruecklauf' || entry.name?.includes('(%)') ? ' %' : '';
+          return (
+            <p key={`${entry.dataKey || entry.name}-${entry.value}`} className="survey-chart-tooltip-value">
+              <span style={{ color: entry.color || 'var(--text-primary)' }}>{entry.name || entry.dataKey}:</span>{' '}
+              {value}{suffix}
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SurveyQr({ url, onReady }: { url: string; onReady?: (src: string) => void }) {
   const [src, setSrc] = useState('');
   useEffect(() => {
@@ -362,7 +399,7 @@ function SurveyOverview({
                       <SurveyStatusBadge status={round.status} />
                     </td>
                     <td className="px-2 py-3 text-right">{round.responsesCount}</td>
-                    <td className="px-2 py-2 text-right">{round.status === 'draft' && (round.roundNumber || 1) > 1 ? <span className="tooltip-wrapper inline-flex"><Button size="icon" variant="ghost" className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700" aria-label={autoT('ui_55e51cea1246', { value0: round.roundNumber })} title={autoT('ui_f67f0f08e572')} onClick={(event) => { event.stopPropagation(); onDeleteDraftRound(round); }}><Trash2 className="h-4 w-4" /></Button><span className="tooltip-bubble">{autoT('ui_f67f0f08e572')}</span></span> : null}</td>
+                    <td className="px-2 py-2 text-right">{round.status === 'draft' && (round.roundNumber || 1) > 1 ? <span className="tooltip-wrapper inline-flex"><Button size="icon" variant="ghost" className="h-8 w-8 text-[var(--status-danger-text)] hover:bg-[var(--status-danger-bg)] hover:text-[var(--status-danger-text)]" aria-label={autoT('ui_55e51cea1246', { value0: round.roundNumber })} title={autoT('ui_f67f0f08e572')} onClick={(event) => { event.stopPropagation(); onDeleteDraftRound(round); }}><Trash2 className="h-4 w-4" /></Button><span className="tooltip-bubble">{autoT('ui_f67f0f08e572')}</span></span> : null}</td>
                   </tr>
                 ))}
               </tbody>
@@ -817,24 +854,36 @@ export default function SurveyDetail() {
           </div>
         }
       />
-      <div className="grid grid-cols-4 gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-1">
+      <div className="grid grid-cols-4 gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-1" role="tablist" aria-label="Umfrageansichten">
         <button
-          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'overview' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
+          type="button"
+          role="tab"
+          aria-selected={tab === 'overview'}
+          className={`survey-tab min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'overview' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
           onClick={() => setTab('overview')}
         >{autoT('ui_8f963287afb8')}</button>
         <button
-          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'responses' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
+          type="button"
+          role="tab"
+          aria-selected={tab === 'responses'}
+          className={`survey-tab min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'responses' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
           onClick={() => setTab('responses')}
         >
           <span className="sm:hidden">{autoT('ui_062c3d5e1537')}</span>
           <span className="hidden sm:inline">{autoT('ui_56ca593e977d')}</span>
         </button>
         <button
-          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'analytics' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
+          type="button"
+          role="tab"
+          aria-selected={tab === 'analytics'}
+          className={`survey-tab min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'analytics' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
           onClick={() => setTab('analytics')}
         >{autoT('ui_b794c8c5b654')}</button>
         <button
-          className={`min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'trend' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
+          type="button"
+          role="tab"
+          aria-selected={tab === 'trend'}
+          className={`survey-tab min-w-0 rounded-lg px-1 py-2 text-xs font-medium sm:px-3 sm:text-sm ${tab === 'trend' ? "bg-[var(--surface-elevated)] text-viridian shadow-sm" : "text-[var(--text-secondary)]"}`}
           onClick={() => setTab('trend')}
         >{autoT('ui_35bec7db746f')}</button>
       </div>
@@ -921,7 +970,7 @@ export default function SurveyDetail() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 text-red-700 hover:bg-red-50 hover:text-red-700"
+                          className="h-8 w-8 text-[var(--status-danger-text)] hover:bg-[var(--status-danger-bg)] hover:text-[var(--status-danger-text)]"
                           aria-label={autoT('ui_4cb587fdb765')}
                           title={autoT('ui_4cb587fdb765')}
                           onClick={() => setResponseToDelete(response.id)}
@@ -1127,23 +1176,23 @@ export default function SurveyDetail() {
                         ruecklauf: round.responseRate,
                       }))}
                     >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Legend />
+                      <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} axisLine={{ stroke: 'var(--border-strong)' }} tickLine={{ stroke: 'var(--border-strong)' }} />
+                      <YAxis allowDecimals={false} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} axisLine={{ stroke: 'var(--border-strong)' }} tickLine={{ stroke: 'var(--border-strong)' }} />
+                      <Tooltip content={<SurveyTrendTooltip />} />
+                      <Legend wrapperStyle={{ color: 'var(--text-secondary)', fontSize: '0.75rem', paddingTop: '0.5rem' }} />
                       <Line
                         type="monotone"
                         dataKey="antworten"
                         name={autoT('ui_062c3d5e1537')}
-                        stroke="#0f766e"
+                        stroke="var(--viridian)"
                         strokeWidth={2}
                       />
                       <Line
                         type="monotone"
                         dataKey="ruecklauf"
                         name={autoT('ui_46440c082ca2')}
-                        stroke="#2563eb"
+                        stroke="var(--cambridge-blue)"
                         strokeWidth={2}
                       />
                     </LineChart>
@@ -1165,16 +1214,16 @@ export default function SurveyDetail() {
                       <div className="mt-4 h-64">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis domain={[0, 5]} allowDecimals />
-                            <Tooltip />
-                            <Legend />
+                            <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                            <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} axisLine={{ stroke: 'var(--border-strong)' }} tickLine={{ stroke: 'var(--border-strong)' }} />
+                            <YAxis domain={[0, 5]} allowDecimals tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} axisLine={{ stroke: 'var(--border-strong)' }} tickLine={{ stroke: 'var(--border-strong)' }} />
+                            <Tooltip content={<SurveyTrendTooltip />} />
+                            <Legend wrapperStyle={{ color: 'var(--text-secondary)', fontSize: '0.75rem', paddingTop: '0.5rem' }} />
                             <Line
                               type="monotone"
                               dataKey="mittelwert"
                               name="Mittelwert"
-                              stroke="#0f766e"
+                              stroke="var(--viridian)"
                               strokeWidth={2}
                               connectNulls
                             />
@@ -1182,7 +1231,7 @@ export default function SurveyDetail() {
                               type="monotone"
                               dataKey="median"
                               name="Median"
-                              stroke="#2563eb"
+                              stroke="var(--cambridge-blue)"
                               strokeWidth={2}
                               connectNulls
                             />
@@ -1210,11 +1259,11 @@ export default function SurveyDetail() {
                       <div className="mt-4 h-64">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis domain={[0, 100]} unit=" %" />
-                            <Tooltip />
-                            <Legend />
+                            <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                            <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} axisLine={{ stroke: 'var(--border-strong)' }} tickLine={{ stroke: 'var(--border-strong)' }} />
+                            <YAxis domain={[0, 100]} unit=" %" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} axisLine={{ stroke: 'var(--border-strong)' }} tickLine={{ stroke: 'var(--border-strong)' }} />
+                            <Tooltip content={<SurveyTrendTooltip />} />
+                            <Legend wrapperStyle={{ color: 'var(--text-secondary)', fontSize: '0.75rem', paddingTop: '0.5rem' }} />
                             {(question.options || []).map((option, index) => (
                               <Line
                                 key={option.id}
@@ -1243,15 +1292,15 @@ export default function SurveyDetail() {
                     <div className="mt-4 h-56">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={data}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis allowDecimals={false} />
-                          <Tooltip />
+                          <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} axisLine={{ stroke: 'var(--border-strong)' }} tickLine={{ stroke: 'var(--border-strong)' }} />
+                          <YAxis allowDecimals={false} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} axisLine={{ stroke: 'var(--border-strong)' }} tickLine={{ stroke: 'var(--border-strong)' }} />
+                          <Tooltip content={<SurveyTrendTooltip />} />
                           <Line
                             type="monotone"
                             dataKey="antworten"
                             name={autoT('ui_062c3d5e1537')}
-                            stroke="#0f766e"
+                            stroke="var(--viridian)"
                             strokeWidth={2}
                             connectNulls
                           />
@@ -1308,24 +1357,24 @@ export default function SurveyDetail() {
         title={autoT('ui_8dbb5c1c7f40')}
         maxWidth="xl"
       >
-        <div className="space-y-4 text-sm text-gray-700">
+        <div className="space-y-4 text-sm text-[var(--text-secondary)]">
           <p>{autoT('ui_351754dd5117')}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-4 text-left transition-colors hover:border-[var(--interactive-soft-border)] hover:bg-[var(--surface-3)] disabled:cursor-wait disabled:opacity-60"
               disabled={activeCompleteAnalyticsExport !== null}
               onClick={() => {
                 setCompleteExportOpen(false);
                 void exportCompleteAnalytics('pdf');
               }}
             >
-              <div className="font-semibold text-gray-900">{autoT('ui_104827f9e0c7')}</div>
-              <div className="mt-1 text-xs text-gray-600">{autoT('ui_e05743742ed0')}</div>
+              <div className="font-semibold text-[var(--text-primary)]">{autoT('ui_104827f9e0c7')}</div>
+              <div className="mt-1 text-xs text-[var(--text-secondary)]">{autoT('ui_e05743742ed0')}</div>
             </button>
             <button
               type="button"
-              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-wait disabled:opacity-60"
+              className="rounded-xl border border-[var(--interactive-soft-border)] bg-[var(--interactive-soft)] p-4 text-left transition-colors hover:border-[var(--interactive-soft-border)] hover:bg-[var(--interactive-soft-strong)] disabled:cursor-wait disabled:opacity-60"
               disabled={activeCompleteAnalyticsExport !== null}
               onClick={() => {
                 setCompleteExportOpen(false);
@@ -1333,7 +1382,7 @@ export default function SurveyDetail() {
               }}
             >
               <div className="font-semibold text-viridian">{autoT('ui_3f995f9a80f3')}</div>
-              <div className="mt-1 text-xs text-gray-600">{autoT('ui_21fdb98658a3')}</div>
+              <div className="mt-1 text-xs text-[var(--text-secondary)]">{autoT('ui_21fdb98658a3')}</div>
             </button>
           </div>
         </div>

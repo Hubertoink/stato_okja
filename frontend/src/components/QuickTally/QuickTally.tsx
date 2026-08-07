@@ -289,7 +289,7 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
       </div>
 
       {/* Counter Grid - Scrollable */}
-      <div className="flex-1 overflow-auto p-4" style={{ backgroundColor: 'var(--surface-2)' }}>
+      <div className="flex-1 overflow-auto px-4 pb-4 pt-0 md:pt-4" style={{ backgroundColor: 'var(--surface-2)' }}>
         <div className="max-w-2xl mx-auto">
           <table className="w-full">
             <thead className="sticky top-0 z-10" style={{ backgroundColor: 'var(--surface-2)' }}>

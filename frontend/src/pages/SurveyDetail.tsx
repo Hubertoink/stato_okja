@@ -82,6 +82,55 @@ function loadSurveyExportDependencies() {
   return surveyExportDependenciesPromise;
 }
 
+function prepareSurveyExportClone(document: Document) {
+  const style = document.createElement('style');
+  style.textContent = `
+    [data-survey-export-root] {
+      --surface-1: #ffffff;
+      --surface-2: #f8fafc;
+      --surface-3: #f1f5f9;
+      --surface-elevated: #ffffff;
+      --text-primary: #1e293b;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --text-faint: #94a3b8;
+      --border-subtle: #dbe3f5;
+      --border-strong: #b8c5da;
+      --interactive-soft: #e2e8f0;
+      --interactive-soft-strong: #cbd5e1;
+      --interactive-soft-border: #94a3b8;
+      --viridian: #0f766e;
+      --cambridge-blue: #2563eb;
+      --chart-primary: #0f766e;
+      --card-shadow: none;
+      background: #ffffff !important;
+      color: #334155 !important;
+    }
+    [data-survey-export-root] * {
+      color: #334155 !important;
+      background: #ffffff !important;
+      background-image: none !important;
+      border-color: #dbe3f5 !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+    [data-survey-export-root] h1,
+    [data-survey-export-root] h2,
+    [data-survey-export-root] h3,
+    [data-survey-export-root] .text-viridian {
+      color: #0f766e !important;
+    }
+    [data-survey-export-root] svg {
+      color: #0f766e !important;
+      fill: none !important;
+    }
+    [data-survey-export-root] .recharts-bar-rectangle path {
+      fill: #0f766e !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -581,6 +630,7 @@ export default function SurveyDetail() {
       const canvas = await html2canvas(card, {
         scale: SURVEY_EXPORT_SCALE,
         backgroundColor: '#ffffff',
+        onclone: prepareSurveyExportClone,
         ignoreElements: (element) =>
           element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
       });
@@ -723,6 +773,7 @@ export default function SurveyDetail() {
         const canvas = await html2canvas(entry.node, {
           scale: SURVEY_EXPORT_SCALE,
           backgroundColor: '#ffffff',
+          onclone: prepareSurveyExportClone,
           ignoreElements: (element) =>
             element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
         });
@@ -997,7 +1048,7 @@ export default function SurveyDetail() {
             >
               <FileDown className="h-4 w-4" />{autoT('ui_f3e4fadb9e37')}</button>
           </div>
-          <div ref={analyticsSummaryRef} className="grid gap-4 sm:grid-cols-3">
+          <div ref={analyticsSummaryRef} data-survey-export-root="true" className="grid gap-4 sm:grid-cols-3">
             <SurfaceCard padding="sm">
               <div className="text-xs text-[var(--text-secondary)]">{autoT('ui_ccb381b8f440')}</div>
               <div className="mt-1 text-2xl font-bold text-viridian">
@@ -1058,6 +1109,7 @@ export default function SurveyDetail() {
                   <div
                     key={result.id}
                     className="group/chart-card"
+                    data-survey-export-root="true"
                     ref={(node) => {
                       analyticsCardRefs.current[result.id] = node;
                     }}
@@ -1105,6 +1157,7 @@ export default function SurveyDetail() {
                 <div
                   key={result.id}
                   className="group/chart-card"
+                  data-survey-export-root="true"
                   ref={(node) => {
                     analyticsCardRefs.current[result.id] = node;
                   }}

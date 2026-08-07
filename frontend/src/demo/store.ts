@@ -1378,10 +1378,11 @@ export function updateDemoProject(id: string, data: Partial<Project>): Project {
 }
 
 export function deleteDemoProject(id: string) {
+  const activityCount = store.activities.filter((activity) => activity.projectId === id).length;
+  if (activityCount > 0) {
+    throw new Error('Das Projekt kann nicht gelöscht werden, solange noch Aktivitäten zugeordnet sind.');
+  }
   store.projects = store.projects.filter((entry) => entry.id !== id);
-  store.activities.forEach((activity) => {
-    if (activity.projectId === id) activity.projectId = null;
-  });
   addAudit('project', id, 'delete', id);
 }
 

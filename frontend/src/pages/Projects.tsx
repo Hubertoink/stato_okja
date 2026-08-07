@@ -414,6 +414,24 @@ function ArchiveRestoreControls({
   });
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
 
+  const openDeleteConfirm = useCallback(async () => {
+    setConfirm({ open: true, loading: true });
+    try {
+      const res = await api.get('/activities', {
+        params: { projectIds: id, page: 1, limit: 1 },
+      });
+      const total =
+        typeof res?.data?.total === 'number'
+          ? res.data.total
+          : Array.isArray(res?.data)
+            ? res.data.length
+            : 0;
+      setConfirm({ open: true, loading: false, count: total });
+    } catch {
+      setConfirm({ open: true, loading: false, count: undefined });
+    }
+  }, [id]);
+
   const toggleArchivedState = useCallback(
     (nextArchived: boolean) => {
       onArchivingChange(true);
@@ -431,7 +449,7 @@ function ArchiveRestoreControls({
   );
 
   return (
-    <div className={fullWidth ? 'flex w-full items-center' : 'flex items-center gap-2'}>
+    <div className={fullWidth ? 'flex w-full flex-col gap-2' : 'flex items-center gap-2'}>
       {fullWidth ? (
         <Button
           variant="secondary"
@@ -476,6 +494,20 @@ function ArchiveRestoreControls({
           <span className="tooltip-bubble">{archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}</span>
         </span>
       )}
+      {fullWidth && archived ? (
+        <Button
+          variant="danger"
+          size="lg"
+          className="w-full"
+          title={autoT('ui_ffa5a8a7e21d')}
+          aria-label={autoT('ui_ffa5a8a7e21d')}
+          disabled={deleting || remove.isPending || archiving || archive.isPending}
+          onClick={() => void openDeleteConfirm()}
+        >
+          <Trash2 className="h-4 w-4" />
+          {autoT('ui_ffa5a8a7e21d')}
+        </Button>
+      ) : null}
       {archived && !fullWidth && (
         <span className="tooltip-wrapper">
           <button
@@ -484,24 +516,7 @@ function ArchiveRestoreControls({
             title={autoT('ui_ffa5a8a7e21d')}
             aria-label={autoT('ui_ffa5a8a7e21d')}
             disabled={deleting || remove.isPending}
-            onClick={async () => {
-              // Open modal and fetch affected activities count efficiently via paged endpoint
-              setConfirm({ open: true, loading: true });
-              try {
-                const res = await api.get('/activities', {
-                  params: { projectIds: id, page: 1, limit: 1 },
-                });
-                const total =
-                  typeof res?.data?.total === 'number'
-                    ? res.data.total
-                    : Array.isArray(res?.data)
-                      ? res.data.length
-                      : 0;
-                setConfirm({ open: true, loading: false, count: total });
-              } catch {
-                setConfirm({ open: true, loading: false, count: undefined });
-              }
-            }}
+            onClick={() => void openDeleteConfirm()}
           >
             <Trash2 className="w-5 h-5" />
           </button>
@@ -516,6 +531,10 @@ function ArchiveRestoreControls({
             <p>{autoT('ui_653f984e3e69')}</p>
             {confirm.loading ? (
               <p className="text-sm text-gray-500">{autoT('ui_7a67a2dd16a7')}</p>
+            ) : typeof confirm.count !== 'number' ? (
+              <p className="text-sm text-red-700">Aktivitäten konnten nicht geprüft werden. Das Projekt bleibt zur Sicherheit geschützt.</p>
+            ) : confirm.count > 0 ? (
+              <p className="text-sm text-red-700">Löschen nicht möglich: Bitte zuerst alle zugeordneten Aktivitäten löschen.</p>
             ) : (
               <p className="text-sm text-gray-700">{autoT('ui_8ae03f3803dd')}{' '}
                 <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong>
@@ -545,6 +564,7 @@ function ArchiveRestoreControls({
         }
         confirmLabel={autoT('ui_9df6718de96c')}
         onConfirm={() => {
+          if (typeof confirm.count !== 'number' || confirm.count > 0) return;
           setConfirm({ open: false });
           onDeletingChange(true);
           remove.mutate(id, {
@@ -554,6 +574,7 @@ function ArchiveRestoreControls({
             },
           });
         }}
+        confirmDisabled={confirm.loading || typeof confirm.count !== 'number' || confirm.count > 0}
         onCancel={() => setConfirm({ open: false })}
       />
       <ConfirmModal

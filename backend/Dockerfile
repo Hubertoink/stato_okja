@@ -11,7 +11,10 @@ RUN npm ci --workspace backend --include-workspace-root=false --no-audit --no-fu
 
 COPY backend ./backend
 WORKDIR /app/backend
-RUN npm run build
+# A host-side incremental build cache can be present in a source checkout while
+# its matching dist directory is excluded from the Docker context. Remove it
+# so Nest always emits the complete runtime bundle inside the image.
+RUN rm -f tsconfig.tsbuildinfo && npm run build
 
 FROM node:24-alpine AS runner
 WORKDIR /app

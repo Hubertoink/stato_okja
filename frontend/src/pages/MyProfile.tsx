@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, type AuthSessionPayload } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { applyTheme, THEME_DEFINITIONS } from '@/lib/theme';
+import { applyTheme, DEFAULT_DARK_THEME, DEFAULT_LIGHT_THEME, normalizeThemeMode, THEME_DEFINITIONS, type ThemeMode } from '@/lib/theme';
 import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -27,7 +27,7 @@ export default function MyProfile() {
       )}
       <div className="grid grid-cols-1 gap-6">
         {!mustChangePassword && (
-          <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || 'Light Steel'} locale={user?.locale || 'de'} />
+          <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || DEFAULT_LIGHT_THEME} themeMode={user?.themeMode || 'system'} locale={user?.locale || 'de'} />
         )}
         {!mustChangePassword && <MobileNavigationSettings userId={user?.id} />}
         <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={replaceSession} />
@@ -228,7 +228,7 @@ function SessionsSection() {
   );
 }
 
-function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, locale }: { userName: string; avatarUrl: string | null; email: string; theme: string; locale: AppLocale; onUpdated: ()=>Promise<void>|void }) {
+function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, locale }: { userName: string; avatarUrl: string | null; email: string; theme: string; themeMode: ThemeMode; locale: AppLocale; onUpdated: ()=>Promise<void>|void }) {
   const { t } = useTranslation('common');
   const [name, setName] = useState(userName);
   const [image, setImage] = useState<string | null>(normalizeUploadPath(avatarUrl) || null);
@@ -239,6 +239,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, locale }: {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>(theme);
+  const [selectedThemeMode, setSelectedThemeMode] = useState<ThemeMode>(normalizeThemeMode(themeMode));
   const [selectedLocale, setSelectedLocale] = useState<AppLocale>(locale);
   const [selectedBackground, setSelectedBackground] = useState<BackgroundId>(getStoredBackgroundId());
   const [appearanceExpanded, setAppearanceExpanded] = useState(false);
@@ -250,6 +251,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, locale }: {
   useEffect(() => setName(userName), [userName]);
   useEffect(() => setImage(normalizeUploadPath(avatarUrl) || null), [avatarUrl]);
   useEffect(() => setSelectedTheme(theme), [theme]);
+  useEffect(() => setSelectedThemeMode(normalizeThemeMode(themeMode)), [themeMode]);
   useEffect(() => setSelectedLocale(locale), [locale]);
 
   function errorMessage(error: unknown) {
@@ -257,7 +259,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, locale }: {
     return Array.isArray(message as string[]) ? (message as string[]).join(', ') : String(message);
   }
 
-  async function persistProfile(patch: { name?: string; avatarUrl?: string | null; theme?: string; locale?: AppLocale }, successMessage: string) {
+  async function persistProfile(patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; locale?: AppLocale }, successMessage: string) {
     setMsg(null);
     setErr(null);
     try {
@@ -310,7 +312,14 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, locale }: {
             <button
               type="button"
               className="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-azure-web text-gray-500 transition-transform hover:scale-[1.02] md:h-28 md:w-28"
-              onClick={()=> setAvatarActionOpen(true)}
+              onClick={() => {
+                if (savingAvatar) return;
+                if (image) {
+                  setAvatarActionOpen(true);
+                } else {
+                  requestAnimationFrame(() => fileInputRef.current?.click());
+                }
+              }}
               aria-label={image ? autoT('ui_738c85f6e1ca') : autoT('ui_80417a3b01af')}
               title={image ? autoT('ui_738c85f6e1ca') : autoT('ui_80417a3b01af')}
             >
@@ -384,7 +393,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, locale }: {
             >
               <div>
                 <div className="text-sm font-medium">{autoT('ui_76a523492a64')}</div>
-                <div className="mt-1 text-xs text-gray-500">{autoT('ui_0485a0265960')}{' '}{selectedTheme}{' '}{autoT('ui_f18a95c05f75')}{' '}{selectedBackgroundLabel}</div>
+                <div className="mt-1 text-xs text-gray-500">{autoT('ui_0485a0265960')}{' '}{selectedThemeMode === 'system' ? 'System' : selectedThemeMode === 'light' ? 'Hell' : selectedThemeMode === 'dark' ? 'Dunkel' : selectedTheme}{' · '}{selectedBackgroundLabel}</div>
               </div>
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--text-secondary)]">
                 {appearanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -394,25 +403,57 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, locale }: {
             {appearanceExpanded && (
               <div className="mt-4 space-y-4 border-t border-[var(--border-subtle)] pt-4">
                 <div>
+                  <label className="block text-sm font-medium mb-1" htmlFor="profile-theme-mode">Helligkeit</label>
+                  <select
+                    id="profile-theme-mode"
+                    className="mt-1 w-full rounded border px-3 py-2"
+                    value={selectedThemeMode}
+                    disabled={savingAppearance}
+                    onChange={(event) => {
+                      const nextMode = normalizeThemeMode(event.target.value);
+                      const previousMode = selectedThemeMode;
+                      setSelectedThemeMode(nextMode);
+                      applyTheme(selectedTheme, nextMode);
+                      setSavingAppearance(true);
+                      void persistProfile({ themeMode: nextMode }, 'Darstellung aktualisiert').then((saved) => {
+                        if (!saved) {
+                          setSelectedThemeMode(previousMode);
+                          applyTheme(selectedTheme, previousMode);
+                        }
+                        setSavingAppearance(false);
+                      });
+                    }}
+                  >
+                    <option value="system">System (empfohlen)</option>
+                    <option value="light">Hell · {DEFAULT_LIGHT_THEME}</option>
+                    <option value="dark">Dunkel · {DEFAULT_DARK_THEME}</option>
+                    <option value="custom">Individuelles Design-Theme</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">System nutzt hell das Standard-Theme und dunkel Catppuccin Mocha.</p>
+                </div>
+                {selectedThemeMode === 'custom' && <div>
                   <label className="block text-sm font-medium mb-1">{autoT('ui_b1f7fecaf7ce')}</label>
                   <ThemePicker
                     value={selectedTheme}
                     onChange={(nextTheme) => {
                       const previousTheme = selectedTheme;
                       setSelectedTheme(nextTheme);
-                      applyTheme(nextTheme);
+                      const previousMode = selectedThemeMode;
+                      setSelectedThemeMode('custom');
+                      applyTheme(nextTheme, 'custom');
                       setSavingAppearance(true);
-                      void persistProfile({ theme: nextTheme }, 'Darstellung aktualisiert').then((saved) => {
+                      void persistProfile({ theme: nextTheme, themeMode: 'custom' }, 'Darstellung aktualisiert').then((saved) => {
                         if (!saved) {
                           setSelectedTheme(previousTheme);
-                          applyTheme(previousTheme);
+                          setSelectedThemeMode(previousMode);
+                          applyTheme(previousTheme, previousMode);
                         }
                         setSavingAppearance(false);
                       });
                     }}
                   />
                   {savingAppearance && <div className="mt-2 text-xs text-gray-500">{autoT('ui_ec67d4590e12')}</div>}
-                </div>
+                </div>}
                 <div>
                   <label className="block text-sm font-medium mb-1">{autoT('ui_6ea4ea25fb03')}</label>
                   <BackgroundPicker

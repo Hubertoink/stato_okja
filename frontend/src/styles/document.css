@@ -1,0 +1,42 @@
+/* Default Theme (modern blue/purple) - duplicate selector removed, see top */
+
+html {
+  /* Keep the page scrollbar at the viewport edge. Modal-specific scroll
+   * containers handle their own gutter so it does not appear inset from the
+   * right edge on mobile activity/project views. */
+  scrollbar-gutter: auto;
+}
+
+body {
+  margin: 0;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    'Oxygen',
+    'Ubuntu',
+    'Cantarell',
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-primary);
+}
+
+body,
+.app-background {
+  background-color: var(--app-bg);
+  background-image: var(--app-bg-overlay), var(--app-bg-image);
+  background-size: cover, cover;
+  background-repeat: no-repeat, no-repeat;
+  background-attachment: fixed;
+  background-position: center;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}

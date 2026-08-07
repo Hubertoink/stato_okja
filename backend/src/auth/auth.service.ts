@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, ConflictException, ForbiddenException,
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes, randomInt } from 'crypto';
-import { SUPPORTED_LOCALES, type SupportedLocale, User } from '../users/entities/user.entity';
+import { SUPPORTED_LOCALES, type SupportedLocale, SUPPORTED_THEME_MODES, type ThemeMode, User } from '../users/entities/user.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
 import { RefreshSession } from './entities/refresh-session.entity';
@@ -38,6 +38,7 @@ export type AuthUserResponse = {
   orgName: string | null;
   avatarUrl: string | null;
   theme: string;
+  themeMode: ThemeMode;
   locale: SupportedLocale;
   mustChangePassword: boolean;
   termsAcceptanceRequired: boolean;
@@ -217,6 +218,10 @@ export class AuthService {
       !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
         ? 'Default Theme'
         : rawTheme;
+    const rawThemeMode = (user as unknown as { themeMode?: string }).themeMode;
+    const themeMode: ThemeMode = SUPPORTED_THEME_MODES.includes(rawThemeMode as ThemeMode)
+      ? rawThemeMode as ThemeMode
+      : 'system';
 
     return {
       id: user.id,
@@ -227,6 +232,7 @@ export class AuthService {
       orgName,
       avatarUrl,
       theme,
+      themeMode,
       locale: resolveLocale(user.locale ?? org?.defaultLocale),
       mustChangePassword: user.mustChangePassword === true,
       termsAcceptanceRequired: user.termsAcceptedVersion !== (await getTermsOfUseVersion()),
@@ -869,7 +875,7 @@ export class AuthService {
 
   async updateProfile(
     userId: string,
-    patch: { name?: string; avatarUrl?: string | null; theme?: string; locale?: SupportedLocale },
+    patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; locale?: SupportedLocale },
   ) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
@@ -881,6 +887,9 @@ export class AuthService {
     }
     if (typeof patch.theme === 'string') {
       (user as unknown as { theme?: string }).theme = patch.theme;
+    }
+    if (typeof patch.themeMode === 'string' && SUPPORTED_THEME_MODES.includes(patch.themeMode)) {
+      (user as unknown as { themeMode?: ThemeMode }).themeMode = patch.themeMode;
     }
     if (typeof patch.locale === 'string') user.locale = resolveLocale(patch.locale);
     await this.users.save(user);

@@ -44,6 +44,7 @@ import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import { Button } from '@/components/ui/Button';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
 type FormState = {
   occurredAt: string;
@@ -177,29 +178,64 @@ function ActivityPickerModal({
           className="mb-3 w-full shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
         />
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-        {visible.map((activity) => (
-          <button
-            key={activity.id}
-            type="button"
-            onClick={() => {
-              onPick(activity.id);
-              onClose();
-            }}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left transition hover:border-viridian hover:bg-viridian/5"
-          >
-            <span className="min-w-0">
-              <span className="block font-semibold text-gray-800">
-                {activity.title || activity.project?.title || autoT('ui_1c4aaccf808e')}
+        {visible.map((activity) => {
+          const project = activity.project;
+          const projectColor = project
+            ? project.color || colorFromStringHash(project.title)
+            : undefined;
+
+          return (
+            <button
+              key={activity.id}
+              type="button"
+              onClick={() => {
+                onPick(activity.id);
+                onClose();
+              }}
+              className="relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border border-gray-100 bg-white p-3 text-left transition hover:border-viridian hover:bg-viridian/5"
+            >
+              {project?.imageUrl ? (
+                <>
+                  <ProtectedImage
+                    src={project.imageUrl}
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-y-0 right-0 h-full w-1/3 object-cover opacity-85 sm:w-1/4"
+                  />
+                  <div
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-1/3 sm:w-1/4"
+                    aria-hidden
+                  />
+                </>
+              ) : projectColor ? (
+                <>
+                  <div
+                    className="absolute inset-y-0 right-0 w-1/3 opacity-80 sm:w-1/4"
+                    style={{
+                      background: `linear-gradient(135deg, ${projectColor} 0%, color-mix(in srgb, ${projectColor} 68%, white) 100%)`,
+                    }}
+                    aria-hidden
+                  />
+                  <div
+                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-1/3 sm:w-1/4"
+                    aria-hidden
+                  />
+                </>
+              ) : null}
+              <span className="relative z-10 min-w-0">
+                <span className="block font-semibold text-gray-800">
+                  {activity.title || project?.title || autoT('ui_1c4aaccf808e')}
+                </span>
+                <span className="mt-1 block text-xs text-gray-500">
+                  {new Date(`${activity.date}T12:00:00`).toLocaleDateString(getCurrentIntlLocale())} ·{' '}
+                  {project?.title || autoT('ui_5b4a4a84148c')}
+                </span>
               </span>
-              <span className="mt-1 block text-xs text-gray-500">
-                {new Date(`${activity.date}T12:00:00`).toLocaleDateString(getCurrentIntlLocale())} ·{' '}
-                {activity.project?.title || autoT('ui_5b4a4a84148c')}
-              </span>
-            </span>
-            <span className="shrink-0 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600">
-              {activity.countTotal || 0}{autoT('ui_f79fa2d4a0a2')}</span>
-          </button>
-        ))}
+              <span className="relative z-10 shrink-0 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                {activity.countTotal || 0}{autoT('ui_f79fa2d4a0a2')}</span>
+            </button>
+          );
+        })}
         {visible.length === 0 && (
           <p className="py-8 text-center text-sm text-gray-500">{autoT('ui_dfc3488ab197')}</p>
         )}
@@ -237,6 +273,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
     isNew || !!embeddedEntryId || location.pathname.endsWith('/edit'),
   );
   const [form, setForm] = useState<FormState>(() => emptyForm(search));
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, { enabled: editing });
   const [comment, setComment] = useState('');
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
@@ -261,7 +298,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
 
   useEffect(() => {
     if (!entry) return;
-    setForm({
+    const nextForm = {
       occurredAt: toInputDate(entry.occurredAt),
       type: entry.type,
       title: entry.title,
@@ -273,8 +310,10 @@ export default function LogbookEntryPage(props: unknown = {}) {
       visibility: entry.visibility,
       activityId: entry.activityId || '',
       projectId: entry.projectId || '',
-    });
-  }, [entry]);
+    };
+    setForm(nextForm);
+    reset(nextForm);
+  }, [entry, reset]);
 
   useEffect(() => {
     if (!isNew) setEditing(!!embeddedEntryId || location.pathname.endsWith('/edit'));
@@ -291,11 +330,11 @@ export default function LogbookEntryPage(props: unknown = {}) {
     navigate(destination ?? returnTo);
   };
   const closeEditing = () =>
-    closeEditor(
+    requestDiscard(() => closeEditor(
       isNew || returnTo === '/dashboard'
         ? returnTo
         : `/logbook?entry=${encodeURIComponent(id || '')}`,
-    );
+    ));
 
   const canManage =
     !!entry &&
@@ -329,6 +368,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
       if (isNew) {
         const created = await create.mutateAsync(formPayload);
         showToast(autoT('ui_bfeed61d0034'), { type: 'success' });
+        reset(form);
         if (embeddedOnClose) {
           embeddedOnClose();
         } else {
@@ -342,6 +382,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
       } else if (id) {
         await update.mutateAsync({ id, data: formPayload });
         showToast(autoT('ui_e1bd2c4575ee'), { type: 'success' });
+        reset(form);
         if (embeddedOnClose) {
           embeddedOnClose();
         } else {
@@ -436,7 +477,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                     type="datetime-local"
                     value={form.occurredAt}
                     onChange={(event) => setForm({ ...form, occurredAt: event.target.value })}
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                   />
                 </label>
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_f4b0e988965d')}<select
@@ -444,7 +485,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                     onChange={(event) =>
                       setForm({ ...form, type: event.target.value as LogbookEntryType })
                     }
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                    className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                   >
                     {Object.entries(logbookTypeLabels).map(([value, label]) => (
                       <option key={value} value={value}>
@@ -460,7 +501,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   value={form.title}
                   onChange={(event) => setForm({ ...form, title: event.target.value })}
                   placeholder={autoT('ui_b1654f25a69e')}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                  className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                 />
               </label>
               <label className="block text-sm font-medium text-gray-700">{autoT('ui_b3c8defcacc0')}<textarea
@@ -470,7 +511,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   value={form.body}
                   onChange={(event) => setForm({ ...form, body: event.target.value })}
                   placeholder={autoT('ui_c64d2713db08')}
-                  className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                  className="editor-field mt-1 w-full resize-y border border-gray-200 bg-white px-3 py-2.5"
                 />
               </label>
               <details
@@ -483,21 +524,21 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       rows={3}
                       value={form.highlights}
                       onChange={(event) => setForm({ ...form, highlights: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      className="editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                   <label className="block text-sm font-medium text-[var(--text-primary)]">{autoT('ui_24cb5c6fa8e6')}<textarea
                       rows={3}
                       value={form.challenges}
                       onChange={(event) => setForm({ ...form, challenges: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      className="editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                   <label className="block text-sm font-medium text-[var(--text-primary)]">{autoT('ui_76231e1d047c')}<textarea
                       rows={3}
                       value={form.nextSteps}
                       onChange={(event) => setForm({ ...form, nextSteps: event.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      className="editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     />
                   </label>
                 </div>
@@ -513,7 +554,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       {selectedProject ? (
                         <span className="flex min-w-0 items-center gap-2">
                           <span
-                            className="h-8 w-8 overflow-hidden rounded-lg bg-gray-100"
+                            className="h-8 w-8 overflow-hidden rounded-lg"
                             style={{ backgroundColor: selectedProject.color || colorFromStringHash(selectedProject.title) }}
                           >
                             {selectedProject.imageUrl && (
@@ -585,7 +626,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       onChange={(event) =>
                         setForm({ ...form, visibility: event.target.value as 'team' | 'admins' })
                       }
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                      className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                     >
                       <option value="team">{autoT('ui_adc88eec60e4')}</option>
                       <option value="admins">{autoT('ui_db8e800f08e5')}</option>
@@ -620,6 +661,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
           onPick={(activityId) => setForm({ ...form, activityId })}
           occurredAt={form.occurredAt}
         />
+        {discardDialog}
       </>
     );
 
@@ -803,7 +845,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 rows={3}
                 maxLength={4000}
                 placeholder={autoT('ui_6119b63de1a4')}
-                className="mt-1 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                className="editor-field mt-1 w-full resize-y border border-gray-200 bg-white px-3 py-2.5"
               />
             </label>
             <div className="mt-2 flex justify-end">

@@ -1,0 +1,262 @@
+/* ZenNotes-inspired theme families.  They share the Stato token contract, so
+   every responsive layout (including the desktop shell) changes together. */
+:root[data-theme='Gruvbox Material · Light'] {
+  color-scheme: light;
+  --viridian: #6f8352;
+  --cambridge-blue: #45707a;
+  --mint-green: #dde5c7;
+  --azure-web: #f2ecd5;
+  --mint-cream: #f9f5d7;
+  --app-bg: #f9f5d7;
+  --app-bg-image: none;
+  --app-bg-overlay: radial-gradient(circle at 14% 18%, rgba(111, 131, 82, 0.14) 0%, transparent 30%), radial-gradient(circle at 84% 78%, rgba(193, 143, 65, 0.13) 0%, transparent 26%), linear-gradient(145deg, #fbf8df 0%, #f9f5d7 58%, #f3ecd4 100%);
+  --surface-1: #fffdf1;
+  --surface-2: #f2ecd5;
+  --surface-3: #e5ddc2;
+  --surface-elevated: #fffdf1;
+  --text-primary: #3c3836;
+  --text-secondary: #5d574f;
+  --text-muted: #7c7368;
+  --text-faint: #9b9184;
+  --border-subtle: rgba(60, 56, 54, 0.15);
+  --border-strong: rgba(60, 56, 54, 0.28);
+  --header-surface-bg: rgba(255, 253, 241, 0.78);
+  --nav-surface-bg: rgba(242, 236, 213, 0.88);
+  --footer-surface-bg: linear-gradient(180deg, rgba(255, 253, 241, 0.86) 0%, rgba(242, 236, 213, 0.92) 100%);
+  --input-bg: #fffdf1;
+  --input-disabled-bg: #e9e2ca;
+  --focus-ring: rgba(111, 131, 82, 0.3);
+  --calendar-surface-bg: #fffdf1;
+  --calendar-header-bg: #f2ecd5;
+  --calendar-grid-border: rgba(60, 56, 54, 0.18);
+  --calendar-cell-bg: #fffdf1;
+  --calendar-cell-hover: #f2ecd5;
+  --calendar-cell-other-bg: rgba(229, 221, 194, 0.56);
+  --calendar-cell-other-text: #8d8375;
+  --calendar-today-bg: rgba(111, 131, 82, 0.13);
+  --calendar-today-ring: rgba(111, 131, 82, 0.7);
+  --accent-orange: #c18f41;
+  --accent-green: #6f8352;
+  --accent-pink: #c14a4a;
+  --accent-teal: #45707a;
+  --accent-purple: #8f6f9d;
+  --card-shadow: 0 8px 26px rgba(72, 65, 51, 0.1);
+}
+
+:root[data-theme='Catppuccin Latte'] {
+  color-scheme: light;
+  --viridian: #8839ef;
+  --cambridge-blue: #1e66f5;
+  --mint-green: #dce1f4;
+  --azure-web: #e6e9ef;
+  --mint-cream: #eff1f5;
+  --app-bg: #eff1f5;
+  --app-bg-image: none;
+  --app-bg-overlay: radial-gradient(circle at 12% 18%, rgba(136, 57, 239, 0.12) 0%, transparent 30%), radial-gradient(circle at 84% 78%, rgba(30, 102, 245, 0.1) 0%, transparent 26%), linear-gradient(145deg, #f7f8fb 0%, #eff1f5 60%, #e6e9ef 100%);
+  --surface-1: #ffffff;
+  --surface-2: #e6e9ef;
+  --surface-3: #dce0e8;
+  --surface-elevated: #ffffff;
+  --text-primary: #4c4f69;
+  --text-secondary: #5c5f77;
+  --text-muted: #7c7f93;
+  --text-faint: #9ca0b0;
+  --border-subtle: rgba(76, 79, 105, 0.18);
+  --border-strong: rgba(76, 79, 105, 0.34);
+  --header-surface-bg: rgba(255, 255, 255, 0.76);
+  --nav-surface-bg: rgba(230, 233, 239, 0.86);
+  --footer-surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(230, 233, 239, 0.92) 100%);
+  --input-bg: #ffffff;
+  --input-disabled-bg: #e6e9ef;
+  --project-form-section-bg: #dce0e8;
+  --project-form-field-bg: #ffffff;
+  --project-form-inner-card-bg: #f7f8fb;
+  --focus-ring: rgba(136, 57, 239, 0.28);
+  --calendar-surface-bg: #ffffff;
+  --calendar-header-bg: #e6e9ef;
+  --calendar-grid-border: rgba(76, 79, 105, 0.18);
+  --calendar-cell-bg: #ffffff;
+  --calendar-cell-hover: #e6e9ef;
+  --calendar-cell-other-bg: rgba(220, 224, 232, 0.56);
+  --calendar-cell-other-text: #9ca0b0;
+  --calendar-today-bg: rgba(136, 57, 239, 0.12);
+  --calendar-today-ring: rgba(136, 57, 239, 0.68);
+  --accent-orange: #df8e1d;
+  --accent-green: #40a02b;
+  --accent-pink: #d20f39;
+  --accent-teal: #179299;
+  --accent-purple: #8839ef;
+  --card-shadow: 0 8px 26px rgba(76, 79, 105, 0.1);
+}
+
+:root:is(
+  [data-theme='Gruvbox Material · Hard'],
+  [data-theme='Gruvbox Material · Medium'],
+  [data-theme='Gruvbox Material · Soft'],
+  [data-theme='Catppuccin Mocha'],
+  [data-theme='Nord'],
+  [data-theme='Tokyo Night']
+) {
+  color-scheme: dark;
+  --viridian: var(--theme-primary);
+  --cambridge-blue: var(--theme-secondary);
+  --mint-green: var(--theme-surface-3);
+  --azure-web: var(--theme-surface-2);
+  --mint-cream: var(--theme-bg);
+  --app-bg: var(--theme-bg);
+  --app-bg-image: none;
+  --app-bg-overlay: radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--theme-primary) 18%, transparent) 0%, transparent 30%), radial-gradient(circle at 84% 78%, color-mix(in srgb, var(--theme-secondary) 13%, transparent) 0%, transparent 26%), linear-gradient(145deg, color-mix(in srgb, var(--theme-bg) 94%, black) 0%, var(--theme-bg) 55%, color-mix(in srgb, var(--theme-bg) 90%, black) 100%);
+  --surface-1: var(--theme-surface-1);
+  --surface-2: var(--theme-surface-2);
+  --surface-3: var(--theme-surface-3);
+  --surface-elevated: var(--theme-surface-2);
+  --text-primary: var(--theme-text);
+  --text-secondary: var(--theme-text-secondary);
+  --text-muted: var(--theme-text-muted);
+  --text-faint: var(--theme-text-faint);
+  --border-subtle: color-mix(in srgb, var(--theme-text) 15%, transparent);
+  --border-strong: color-mix(in srgb, var(--theme-text) 29%, transparent);
+  --project-form-section-border: color-mix(in srgb, var(--theme-text) 30%, transparent);
+  --project-form-inner-border: color-mix(in srgb, var(--theme-text) 25%, transparent);
+  --project-form-field-border: color-mix(in srgb, var(--theme-text) 38%, transparent);
+  --header-surface-bg: color-mix(in srgb, var(--theme-bg) 84%, transparent);
+  --nav-surface-bg: color-mix(in srgb, var(--theme-surface-1) 90%, transparent);
+  --footer-surface-bg: linear-gradient(180deg, color-mix(in srgb, var(--theme-surface-2) 90%, transparent) 0%, color-mix(in srgb, var(--theme-bg) 88%, transparent) 100%);
+  --overlay-backdrop: rgba(0, 0, 0, 0.62);
+  --input-bg: var(--theme-surface-2);
+  --input-disabled-bg: var(--theme-surface-1);
+  --focus-ring: color-mix(in srgb, var(--theme-primary) 36%, transparent);
+  --interactive-soft: color-mix(in srgb, var(--theme-primary) 17%, transparent);
+  --interactive-soft-strong: color-mix(in srgb, var(--theme-primary) 27%, transparent);
+  --interactive-soft-border: color-mix(in srgb, var(--theme-primary) 42%, transparent);
+  --calendar-surface-bg: var(--theme-bg);
+  --calendar-header-bg: var(--theme-surface-2);
+  --calendar-grid-border: color-mix(in srgb, var(--theme-text) 18%, transparent);
+  --calendar-cell-bg: var(--theme-surface-1);
+  --calendar-cell-hover: var(--theme-surface-2);
+  --calendar-cell-other-bg: color-mix(in srgb, var(--theme-surface-3) 55%, transparent);
+  --calendar-cell-other-text: var(--theme-text-faint);
+  --calendar-today-bg: color-mix(in srgb, var(--theme-primary) 16%, transparent);
+  --calendar-today-ring: color-mix(in srgb, var(--theme-primary) 80%, transparent);
+  --calendar-holiday-bg: color-mix(in srgb, #ea6962 28%, var(--theme-bg));
+  --calendar-holiday-border: color-mix(in srgb, #ea6962 55%, transparent);
+  --calendar-holiday-text: #ffd5d1;
+  --calendar-school-bg: color-mix(in srgb, var(--theme-warning) 23%, var(--theme-bg));
+  --calendar-school-border: color-mix(in srgb, var(--theme-warning) 50%, transparent);
+  --calendar-school-text: #ffe3ad;
+  --accent-orange: var(--theme-warning);
+  --accent-green: var(--theme-success);
+  --accent-pink: #ea6962;
+  --accent-teal: var(--theme-secondary);
+  --accent-purple: var(--theme-primary);
+  --card-shadow: 0 10px 34px rgba(0, 0, 0, 0.38);
+}
+
+:root:is([data-theme='Gruvbox Material · Hard'], [data-theme='Gruvbox Material · Medium'], [data-theme='Gruvbox Material · Soft']) {
+  --theme-primary: #a9b665;
+  --theme-secondary: #7daea3;
+  --theme-surface-3: #504945;
+  --theme-text: #d4be98;
+  --theme-text-secondary: #c5b18d;
+  --theme-text-muted: #a89984;
+  --theme-text-faint: #928374;
+  --theme-warning: #d8a657;
+  --theme-success: #a9b665;
+}
+
+:root[data-theme='Gruvbox Material · Hard'] { --theme-bg: #1d2021; --theme-surface-1: #282828; --theme-surface-2: #32302f; }
+:root[data-theme='Gruvbox Material · Medium'] { --theme-bg: #282828; --theme-surface-1: #32302f; --theme-surface-2: #3c3836; }
+:root[data-theme='Gruvbox Material · Soft'] { --theme-bg: #32302f; --theme-surface-1: #3c3836; --theme-surface-2: #45403d; }
+
+:root[data-theme='Catppuccin Mocha'] { --theme-bg: #1e1e2e; --theme-surface-1: #252536; --theme-surface-2: #313244; --theme-surface-3: #45475a; --theme-primary: #cba6f7; --theme-secondary: #89b4fa; --theme-text: #cdd6f4; --theme-text-secondary: #bac2de; --theme-text-muted: #a6adc8; --theme-text-faint: #7f849c; --theme-warning: #f9e2af; --theme-success: #a6e3a1; }
+:root[data-theme='Nord'] { --theme-bg: #2e3440; --theme-surface-1: #343c4a; --theme-surface-2: #3b4555; --theme-surface-3: #4c566a; --theme-primary: #88c0d0; --theme-secondary: #81a1c1; --theme-text: #eceff4; --theme-text-secondary: #d8dee9; --theme-text-muted: #aeb9c8; --theme-text-faint: #8793a5; --theme-warning: #ebcb8b; --theme-success: #a3be8c; }
+:root[data-theme='Tokyo Night'] { --theme-bg: #1a1b26; --theme-surface-1: #202231; --theme-surface-2: #292e42; --theme-surface-3: #3b4261; --theme-primary: #7aa2f7; --theme-secondary: #7dcfff; --theme-text: #c0caf5; --theme-text-secondary: #a9b1d6; --theme-text-muted: #8f97ba; --theme-text-faint: #6f7699; --theme-warning: #e0af68; --theme-success: #9ece6a; }
+
+/* Dark utility colors previously only covered Stato's two original dark skins.
+   The explicit mode attribute keeps all new families consistent in the desktop
+   layout, mobile layout, modals, tables and form controls. */
+:root[data-color-mode='dark'] {
+  /* Tailwind's ring-offset defaults to white; use the elevated dark surface
+     so focused icon buttons do not get a bright halo. */
+  --tw-ring-offset-color: var(--surface-elevated);
+  --status-success-bg: color-mix(in srgb, #166534 46%, var(--surface-1));
+  --status-success-text: #bbf7d0;
+  --status-warning-bg: color-mix(in srgb, #92400e 46%, var(--surface-1));
+  --status-warning-text: #fde68a;
+  --status-info-bg: color-mix(in srgb, #1d4ed8 43%, var(--surface-1));
+  --status-info-text: #bfdbfe;
+  --status-danger-bg: color-mix(in srgb, #991b1b 44%, var(--surface-1));
+  --status-danger-text: #fecaca;
+}
+
+:root[data-color-mode='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+:root[data-color-mode='dark'] select,
+:root[data-color-mode='dark'] textarea { color: var(--text-primary); background: var(--input-bg); border-color: var(--border-subtle); }
+:root[data-color-mode='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):disabled,
+:root[data-color-mode='dark'] select:disabled,
+:root[data-color-mode='dark'] textarea:disabled { background: var(--input-disabled-bg); color: var(--text-muted); }
+:root[data-color-mode='dark'] input[type='date'],
+:root[data-color-mode='dark'] input[type='time'] { color-scheme: dark; }
+:root[data-color-mode='dark'] input[type='date']::-webkit-calendar-picker-indicator,
+:root[data-color-mode='dark'] input[type='time']::-webkit-calendar-picker-indicator { opacity: 0.72; }
+
+:root[data-color-mode='dark'] .project-form-field,
+:root[data-color-mode='dark'] .project-rich-text-editor.rsw-editor {
+  border-color: var(--project-form-field-border, var(--border-strong));
+}
+:root[data-color-mode='dark'] input::placeholder,
+:root[data-color-mode='dark'] textarea::placeholder { color: var(--text-faint); }
+:root[data-color-mode='dark'] .bg-white,
+:root[data-color-mode='dark'] .bg-white\/95,
+:root[data-color-mode='dark'] .bg-white\/90,
+:root[data-color-mode='dark'] .bg-white\/80,
+:root[data-color-mode='dark'] .bg-gray-50 { background-color: var(--surface-1) !important; }
+:root[data-color-mode='dark'] .bg-gray-100,
+:root[data-color-mode='dark'] .bg-gray-200 { background-color: var(--surface-2) !important; }
+:root[data-color-mode='dark'] .border-gray-100,
+:root[data-color-mode='dark'] .border-gray-200,
+:root[data-color-mode='dark'] .border-gray-300,
+:root[data-color-mode='dark'] .border-gray-400 { border-color: var(--border-subtle) !important; }
+:root[data-color-mode='dark'] .text-gray-900,
+:root[data-color-mode='dark'] .text-gray-800,
+:root[data-color-mode='dark'] .text-gray-700 { color: var(--text-primary) !important; }
+:root[data-color-mode='dark'] .text-gray-600,
+:root[data-color-mode='dark'] .text-gray-500 { color: var(--text-secondary) !important; }
+:root[data-color-mode='dark'] .text-gray-400 { color: var(--text-faint) !important; }
+:root[data-color-mode='dark'] .hover\:bg-gray-50:hover,
+:root[data-color-mode='dark'] .hover\:bg-gray-100:hover,
+:root[data-color-mode='dark'] .hover\:bg-gray-300:hover,
+:root[data-color-mode='dark'] .hover\:bg-azure-web:hover { background-color: var(--surface-2) !important; }
+:root[data-color-mode='dark'] .hover\:border-gray-300:hover,
+:root[data-color-mode='dark'] .hover\:border-gray-400:hover { border-color: var(--border-strong) !important; }
+:root[data-color-mode='dark'] .shadow,
+:root[data-color-mode='dark'] .shadow-sm,
+:root[data-color-mode='dark'] .shadow-lg,
+:root[data-color-mode='dark'] .shadow-xl { box-shadow: var(--card-shadow) !important; }
+:root[data-color-mode='dark'] .disabled\:hover\:bg-white:disabled:hover { background-color: var(--surface-1) !important; }
+:root[data-color-mode='dark'] .modal-sticky-actions {
+  background: color-mix(in srgb, var(--surface-1) 95%, transparent);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+
+:root[data-color-mode='dark'] .settings-page .border:not([style]),
+:root[data-color-mode='dark'] .settings-page .border-2:not([style]) {
+  border-color: var(--border-subtle) !important;
+}
+
+:root[data-color-mode='dark'] .settings-page .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border-subtle) !important;
+}
+:root[data-color-mode='dark'] .settings-modal-actions {
+  border-top-color: var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-1) 95%, transparent);
+}
+:root[data-color-mode='dark'] .export-xlsx-button {
+  border: 1px solid var(--interactive-soft-border);
+  background: var(--interactive-soft-strong);
+  color: var(--text-primary);
+}
+:root[data-color-mode='dark'] .export-xlsx-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--interactive-soft-strong) 78%, var(--surface-3));
+}
+:root[data-color-mode='dark'] .gradient-border { background: var(--surface-1); }

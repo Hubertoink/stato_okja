@@ -23,7 +23,7 @@ describe('EditorFrame', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it('keeps mobile actions in document flow with save before cancel', () => {
+  it('keeps mobile actions in document flow and aligns desktop actions to the right', () => {
     render(
       <EditorActions
         secondary={<button>Abbrechen</button>}
@@ -34,6 +34,7 @@ describe('EditorFrame', () => {
     const footer = screen.getByText('Speichern').closest('footer');
     expect(footer).not.toHaveClass('fixed');
     expect(footer).not.toHaveClass('sticky');
+    expect(footer).toHaveClass('md:justify-end');
     expect(screen.getByText('Speichern').parentElement).toHaveClass('order-1');
     expect(screen.getByText('Abbrechen').parentElement).toHaveClass('order-2');
   });

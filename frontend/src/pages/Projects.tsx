@@ -22,7 +22,6 @@ import {
   Plus,
   Search,
   Save as SaveIcon,
-  X as XIcon,
   XCircle,
   Archive as ArchiveIcon,
   ArchiveRestore as ArchiveRestoreIcon,
@@ -52,11 +51,9 @@ import { defaultCategoryByName } from '@/lib/defaultCategories';
 import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTemplatesApi';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import ProtectedImage from '@/components/ProtectedImage';
-import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
-import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useAuth } from '@/lib/auth';
 import RichTextEditor, {
@@ -806,7 +803,7 @@ function ProjectListRow({
               {project.title}
             </button>
             {project.targetGroup && (
-              <div className="mt-1 text-sm font-medium text-gray-700">{autoT('ui_e5e954075491')}<span className="font-normal text-gray-800">{project.targetGroup}</span>
+              <div className="mt-1 text-sm font-medium text-gray-700">{autoT('ui_e5e954075491')}{' '}<span className="font-normal text-gray-800">{project.targetGroup}</span>
               </div>
             )}
             {Array.isArray(project.documents) && project.documents.length > 0 && (
@@ -932,13 +929,9 @@ function ProjectForm({
   onCancel: () => void;
   saving?: boolean;
 }) {
-  useBodyScrollLock(true);
-  const keyboardOpen = useKeyboardOpen();
   const { user } = useAuth();
   const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const handlePanelFocus = useFocusedFieldVisibility(panelRef, keyboardOpen);
   const submitLockedRef = useRef(false);
   const [form, setForm] = useState<Partial<Project>>(() => {
     const base: Partial<Project> = {
@@ -978,6 +971,16 @@ function ProjectForm({
   const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
   const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
   const [showTitleValidation, setShowTitleValidation] = useState(false);
+  const initialBaselineSetRef = useRef(false);
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard({
+    form,
+    pendingDocuments: pendingDocuments.map((file) => ({
+      lastModified: file.lastModified,
+      name: file.name,
+      size: file.size,
+    })),
+    removedDocumentIds,
+  });
   const [tagCreateOpen, setTagCreateOpen] = useState(false);
   const [categoryCreateOpen, setCategoryCreateOpen] = useState(false);
   const [staffCreateState, setStaffCreateState] = useState<{
@@ -999,16 +1002,16 @@ function ProjectForm({
     ? (initial.documents as ProjectDocument[])
     : [];
   const removedDocumentIdSet = new Set(removedDocumentIds);
-  const projectFieldClassName = 'project-form-field w-full rounded px-3 py-2';
+  const projectFieldClassName = 'project-form-field editor-field w-full px-3 py-2';
   const projectSectionClassName = 'rounded-xl border p-4 md:p-5';
   const projectInnerCardClassName = 'rounded-xl border p-4';
   const projectSectionStyle = {
     background: 'var(--project-form-section-bg, color-mix(in srgb, var(--surface-2) 88%, transparent))',
-    borderColor: 'var(--border-subtle)',
+    borderColor: 'var(--project-form-section-border, var(--border-subtle))',
   } as const;
   const projectInnerCardStyle = {
     background: 'var(--project-form-inner-card-bg, var(--surface-1))',
-    borderColor: 'var(--border-subtle)',
+    borderColor: 'var(--project-form-inner-border, var(--border-subtle))',
   } as const;
   const projectSecondaryButtonClassName = 'inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm';
   const projectAddActionButtonClassName =
@@ -1334,8 +1337,8 @@ function ProjectForm({
       setDocumentIssue((state) => ({ ...state, open: false }));
       return;
     }
-    onCancel();
-  }, [documentIssue.open, imageIssue.open, onCancel]);
+    requestDiscard(onCancel);
+  }, [documentIssue.open, imageIssue.open, onCancel, requestDiscard]);
 
   const handleSave = useCallback(() => {
     if (saving || submitLockedRef.current) return;
@@ -1424,9 +1427,34 @@ function ProjectForm({
   }, [form, isTitleMissing, onSubmit, pendingDocuments, removedDocumentIds, saving, staff]);
 
   useEffect(() => {
-    if (!staff?.length) return;
+    // Existing projects must remain untouched while opening the editor. The
+    // save path still normalizes legacy staff assignments before persisting;
+    // doing it here would make only some projects appear dirty on open.
+    if (initial?.id || !staff?.length) return;
     setForm((current) => normalizeProjectStaffAssignments(current, staff, ''));
-  }, [staff]);
+  }, [initial?.id, staff]);
+
+  // Loading staff can normalize legacy assignments once after the project has
+  // opened. Establish the clean snapshot only after that initial prefill so an
+  // unchanged edit does not trigger the discard dialog.
+  useEffect(() => {
+    const initialDataReady = true;
+    if (!initialDataReady || initialBaselineSetRef.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (initialBaselineSetRef.current) return;
+      reset({
+        form,
+        pendingDocuments: pendingDocuments.map((file) => ({
+          lastModified: file.lastModified,
+          name: file.name,
+          size: file.size,
+        })),
+        removedDocumentIds,
+      });
+      initialBaselineSetRef.current = true;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [form, initial?.id, pendingDocuments, removedDocumentIds, reset, staff]);
 
   useEffect(() => {
     if (!saving) submitLockedRef.current = false;
@@ -1902,44 +1930,30 @@ function ProjectForm({
   };
 
   return (
-    <div className="visual-viewport-fixed bg-black/30 z-[60] flex items-end md:items-center justify-center p-0 md:p-6">
+    <>
+      <Modal
+        open
+        onClose={handleClose}
+        title={initial?.id ? autoT('ui_82ef22dfb102') : autoT('ui_4bc9d33f94ce')}
+        maxWidth="5xl"
+        variant="form"
+        headerActions={
+          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{
+            background: initial?.archived
+              ? 'color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))'
+              : 'color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))',
+            color: initial?.archived
+              ? 'color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))'
+              : 'var(--viridian)',
+          }}>{autoT('ui_11dc9e195292')}{initial?.archived ? autoT('ui_7d6b45e9c890') : autoT('ui_16a766caf92d')}</span>
+        }
+      >
       <div
-        ref={panelRef}
-        onFocusCapture={handlePanelFocus}
-        className={`modal-panel-roomy bg-white w-full md:max-w-4xl lg:max-w-5xl rounded-t-2xl md:rounded-lg px-4 md:px-6 bottom-sheet-animate flex flex-col overflow-x-hidden ${keyboardOpen ? 'overflow-y-auto pt-2 md:pt-6' : 'overflow-hidden pt-4 md:pt-6'}`}
+        className="flex min-h-0 flex-1 flex-col"
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
       >
-        <div className={`shrink-0 flex items-start justify-between gap-3 ${keyboardOpen ? 'mb-2' : 'mb-4'}`}>
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold text-viridian">
-              {initial?.id ? autoT('ui_82ef22dfb102') : autoT('ui_4bc9d33f94ce')}
-            </h3>
-            <span
-              className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
-              style={{
-                background: initial?.archived
-                  ? "color-mix(in srgb, var(--accent-pink) 14%, var(--surface-1))"
-                  : "color-mix(in srgb, var(--interactive-soft) 54%, var(--surface-1))",
-                color: initial?.archived
-                  ? "color-mix(in srgb, var(--accent-pink) 80%, var(--text-primary))"
-                  : "var(--viridian)",
-              }}
-            >{autoT('ui_11dc9e195292')}{initial?.archived ? autoT('ui_7d6b45e9c890') : autoT('ui_16a766caf92d')}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="hidden md:inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-            title={autoT('ui_44424b18700e')}
-            aria-label={autoT('ui_44424b18700e')}
-          >
-            <XIcon className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className={keyboardOpen ? 'min-w-0 flex-none overflow-visible pb-2' : 'min-w-0 min-h-0 flex-1 overflow-y-auto pb-4 md:pb-6'}>
+        <div className="min-w-0 min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
 
         {!initial?.id && (
           <div className="mb-4">
@@ -2213,42 +2227,34 @@ function ProjectForm({
         </div>
         </div>
 
-        <div className={`shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 -mx-4 md:-mx-6 px-4 md:px-6 ${keyboardOpen ? '' : 'pb-safe'}`}>
-          <div className="flex items-center justify-between gap-3">
-            <span className="tooltip-wrapper">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="inline-flex md:hidden items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-                title={autoT('ui_07af7cb30fca')}
-                aria-label={autoT('ui_07af7cb30fca')}
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-              <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
-            </span>
+        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 px-4 pb-safe md:px-6">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
             {initial?.id && (
-              <ArchiveRestoreControls
-                id={initial.id as string}
-                archived={Boolean(initial.archived)}
-                archiving={archiving}
-                deleting={deleting}
-                onArchivingChange={setArchiving}
-                onDeletingChange={setDeleting}
-                onDeleted={onCancel}
-                onArchivedToggle={onCancel}
-              />
+              <div className="order-3 self-start md:order-1 md:mr-auto">
+                <ArchiveRestoreControls
+                  id={initial.id as string}
+                  archived={Boolean(initial.archived)}
+                  archiving={archiving}
+                  deleting={deleting}
+                  onArchivingChange={setArchiving}
+                  onDeletingChange={setDeleting}
+                  onDeleted={onCancel}
+                  onArchivedToggle={onCancel}
+                />
+              </div>
             )}
-            <span className="tooltip-wrapper">
+            <span className="order-1 tooltip-wrapper">
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={isTitleMissing || saving || applyingTemplate || archiving || deleting}
-                className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-viridian px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 md:min-h-0 md:w-auto md:rounded-full md:p-2"
                 title={autoT('ui_70b73bbc118d')}
                 aria-label={autoT('ui_70b73bbc118d')}
               >
-                <SaveIcon className="w-5 h-5" />
+                <SaveIcon className="h-4 w-4 md:hidden" />
+                <Plus className="hidden h-5 w-5 md:block" />
+                <span className="md:hidden">{autoT('ui_70b73bbc118d')}</span>
               </button>
               <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
             </span>
@@ -2384,7 +2390,9 @@ function ProjectForm({
           </div>
         </div>
       </Modal>
-    </div>
+    </Modal>
+    {discardDialog}
+    </>
   );
 }
 

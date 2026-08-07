@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Save as SaveIcon, Trash2 as TrashIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
@@ -47,6 +47,8 @@ import { EditorActions, EditorHeader, EditorSurface } from '@/components/ui/Edit
 import { Button } from '@/components/ui/Button';
 import { useTranslation } from 'react-i18next';
 import { autoT } from '@/i18n/auto';
+import SingleLineTextField from '@/components/SingleLineTextField';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 
 export default function ActivityEditPage() {
   const { t } = useTranslation(['activities', 'common']);
@@ -84,14 +86,22 @@ export default function ActivityEditPage() {
   })();
 
   const [form, setForm] = useState<ActivityFormState>({ cohortCounts: {} });
+  const [validationErrors, setValidationErrors] = useState<{ date?: string; project?: string }>({});
+  const dateFieldRef = useRef<HTMLInputElement | null>(null);
+  const projectFieldRef = useRef<HTMLButtonElement | null>(null);
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
+    enabled: Boolean(activity),
+  });
 
   useEffect(() => {
     if (!activity) return;
-    setForm({
+    const nextForm = {
       ...getActivityFormStateFromActivity(activity),
       executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-    });
-  }, [activity]);
+    };
+    setForm(nextForm);
+    reset(nextForm);
+  }, [activity, reset]);
 
   const selectedProject: Project | undefined = useMemo(
     () => (projects || []).find((p) => p.id === form.projectId),
@@ -165,11 +175,24 @@ export default function ActivityEditPage() {
       setDeleteOpen(false);
       return;
     }
-    navigate(-1);
+    requestDiscard(() => navigate(-1));
   };
 
   const handleSave = () => {
-    if (!form.projectId) return;
+    const nextErrors = {
+      ...(!form.date ? { date: t('quickAdd.chooseDate') } : {}),
+      ...(!form.projectId ? { project: t('quickAdd.chooseProject') } : {}),
+    };
+    if (Object.keys(nextErrors).length) {
+      setValidationErrors(nextErrors);
+      window.requestAnimationFrame(() => {
+        const target = nextErrors.date ? dateFieldRef.current : projectFieldRef.current;
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    setValidationErrors({});
     const payload = buildActivitySavePayload({
       form: {
         ...form,
@@ -225,12 +248,19 @@ export default function ActivityEditPage() {
             )}
           </div>
           <input
+            ref={dateFieldRef}
             id="activity-date-edit-page"
             type="date"
             value={(form.date || '').slice(0, 10)}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
-            className="w-full border rounded px-3 py-2"
+            onChange={(e) => {
+              setForm({ ...form, date: e.target.value });
+              setValidationErrors((errors) => ({ ...errors, date: undefined }));
+            }}
+            aria-invalid={Boolean(validationErrors.date)}
+            aria-describedby={validationErrors.date ? 'activity-date-edit-error' : undefined}
+            className={`editor-field w-full border px-3 py-2 ${validationErrors.date ? 'border-red-500' : ''}`}
           />
+          {validationErrors.date ? <p id="activity-date-edit-error" className="mt-1 text-sm text-red-700">{validationErrors.date}</p> : null}
         </div>
 
         <div>
@@ -241,7 +271,7 @@ export default function ActivityEditPage() {
             id="location-select-edit"
             value={form.locationId || ''}
             onChange={(e) => setForm({ ...form, locationId: e.target.value || undefined })}
-            className="w-full border rounded px-3 py-2"
+            className="editor-field w-full border px-3 py-2"
           >
             <option value="">{t('quickAdd.selectLocation')}</option>
             {(locations || []).map((l) => (
@@ -253,24 +283,34 @@ export default function ActivityEditPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">{t('quickAdd.titleField')}</label>
-          <input
+          <label className="block text-sm font-medium mb-1" htmlFor="activity-title-edit">
+            {t('quickAdd.titleField')}
+          </label>
+          <SingleLineTextField
+            id="activity-title-edit"
             value={form.title || ''}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            className="w-full border rounded px-3 py-2"
+            onValueChange={(title) => setForm({ ...form, title })}
+            className="editor-field w-full border px-3 py-2"
             placeholder={t('quickAdd.titlePlaceholder')}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">{t('quickAdd.project')}</label>
+          <label className="block text-sm font-medium mb-1" htmlFor="activity-project-edit">{t('quickAdd.project')}</label>
           {selectedProject ? (
             <button
+              ref={projectFieldRef}
+              id="activity-project-edit"
               type="button"
               onClick={() => setPicker(true)}
-              className="w-full border rounded p-2 flex items-center gap-3 text-left"
+              aria-invalid={Boolean(validationErrors.project)}
+              aria-describedby={validationErrors.project ? 'activity-project-edit-error' : undefined}
+              className={`editor-field w-full border p-2 flex items-center gap-3 text-left ${validationErrors.project ? 'border-red-500' : ''}`}
             >
-              <div className="w-12 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+              <div
+                className="w-12 h-10 rounded overflow-hidden flex items-center justify-center"
+                style={selectedProject.imageUrl ? undefined : { backgroundColor: selectedProject.color || 'var(--interactive-soft-strong)' }}
+              >
                 {selectedProject.imageUrl ? (
                   <ProtectedImage
                     src={selectedProject.imageUrl}
@@ -278,7 +318,7 @@ export default function ActivityEditPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <Boxes className="w-6 h-6 text-gray-500" />
+                  <Boxes className="w-6 h-6 text-white/90" />
                 )}
               </div>
               <div>
@@ -288,13 +328,18 @@ export default function ActivityEditPage() {
             </button>
           ) : (
             <button
+              ref={projectFieldRef}
+              id="activity-project-edit"
               type="button"
               onClick={() => setPicker(true)}
-              className="w-full border rounded p-3 text-left text-gray-600"
+              aria-invalid={Boolean(validationErrors.project)}
+              aria-describedby={validationErrors.project ? 'activity-project-edit-error' : undefined}
+              className={`editor-field w-full border p-3 text-left text-gray-600 ${validationErrors.project ? 'border-red-500' : ''}`}
             >
               {t('quickAdd.selectProject')}
             </button>
           )}
+          {validationErrors.project ? <p id="activity-project-edit-error" className="mt-1 text-sm text-red-700">{validationErrors.project}</p> : null}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -307,7 +352,7 @@ export default function ActivityEditPage() {
               type="time"
               value={form.start || ''}
               onChange={(e) => setForm({ ...form, start: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className="editor-field w-full border px-3 py-2"
               placeholder={autoT('ui_a4c7ee9ba5c9')}
               title={t('quickAdd.start')}
             />
@@ -321,7 +366,7 @@ export default function ActivityEditPage() {
               type="time"
               value={form.end || ''}
               onChange={(e) => setForm({ ...form, end: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className="editor-field w-full border px-3 py-2"
               placeholder={autoT('ui_a4c7ee9ba5c9')}
               title={t('quickAdd.end')}
             />
@@ -468,6 +513,12 @@ export default function ActivityEditPage() {
           </div>
         </div>
 
+        <details className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 md:p-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-[var(--text-primary)]">
+            <span>{t('quickAdd.assignment')}</span>
+            <span className="text-xs font-normal text-[var(--text-secondary)]">{t('quickAdd.assignmentSummary', { tags: form.tagIds?.length || 0, staff: form.staffIds?.length || 0 })}</span>
+          </summary>
+          <div className="mt-4 space-y-4">
         {/* Kategorien */}
         {selectedProject?.type !== 'open_door' && (
           <div>
@@ -664,9 +715,15 @@ export default function ActivityEditPage() {
           </div>
         </div>
         )}
+          </div>
+        </details>
 
-        {/* Notes */}
-        <div>
+        <details className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 md:p-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-[var(--text-primary)]">
+            <span>{t('quickAdd.additionalDetails')}</span>
+            <span className="text-xs font-normal text-[var(--text-secondary)]">{t('quickAdd.notesSummary')}</span>
+          </summary>
+          <div className="mt-4">
           <label className="block text-sm font-medium mb-1" htmlFor="activity-notes-edit">
             {t('quickAdd.notes')}
           </label>
@@ -675,11 +732,12 @@ export default function ActivityEditPage() {
             value={form.notes || ''}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             rows={3}
-            className="w-full border rounded px-3 py-2"
+            className="editor-field w-full border px-3 py-2"
             placeholder={t('quickAdd.notesPlaceholder')}
             aria-label={t('quickAdd.notes')}
           />
-        </div>
+          </div>
+        </details>
 
         </div>
         <EditorActions
@@ -689,7 +747,7 @@ export default function ActivityEditPage() {
               {t('quickAdd.delete')}
             </Button>
           )}
-          secondary={<Button variant="ghost" size="lg" onClick={() => navigate(-1)}>{t('common:actions.cancel')}</Button>}
+          secondary={<Button variant="ghost" size="lg" onClick={handleClose}>{t('common:actions.cancel')}</Button>}
           primary={(
             <Button size="lg" onClick={handleSave} disabled={update.isPending || picker || deleteOpen}>
               <SaveIcon className="h-4 w-4" />
@@ -723,6 +781,7 @@ export default function ActivityEditPage() {
                 return Array.from(set);
               })(),
             }));
+            setValidationErrors((errors) => ({ ...errors, project: undefined }));
             setPicker(false);
           }}
           onClose={() => setPicker(false)}
@@ -753,6 +812,7 @@ export default function ActivityEditPage() {
           confirmLabel={t('quickAdd.delete')}
         />
       )}
+      {discardDialog}
     </div>
   );
 }

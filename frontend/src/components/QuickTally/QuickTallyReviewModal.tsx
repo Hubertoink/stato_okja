@@ -9,6 +9,7 @@ import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useToast } from '@/components/Toast';
 import type { TallySession } from './useQuickTallySession';
 import { autoT } from '@/i18n/auto';
+import ActivityTitleField from '@/components/ActivityTitleField';
 
 interface QuickTallyReviewModalProps {
   session: TallySession;
@@ -287,11 +288,13 @@ export default function QuickTallyReviewModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">{autoT('ui_81bb3e27efd1')}</label>
-            <input
-              type="text"
+            <label className="block text-sm font-medium mb-1" htmlFor="quick-tally-title">
+              {autoT('ui_81bb3e27efd1')}
+            </label>
+            <ActivityTitleField
+              id="quick-tally-title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onValueChange={setTitle}
               placeholder={autoT('ui_b2459f8b2a18')}
               className="w-full border rounded-lg px-4 py-3"
               style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}

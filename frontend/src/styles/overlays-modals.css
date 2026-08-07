@@ -1,0 +1,302 @@
+/* Hide scrollbars but keep scrolling (used for modals) */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Prevent scroll chaining from modal content to page */
+.modal-overlay {
+  overscroll-behavior: contain;
+  background: var(--overlay-backdrop);
+}
+
+.editor-modal-header {
+  background: color-mix(in srgb, var(--interactive-soft) 28%, var(--surface-elevated));
+}
+
+/* Shared radius for all editor controls. */
+.editor-field {
+  border-radius: 0.75rem;
+}
+
+/* Keep the smaller settings and utility modals on the same control radius. */
+.modal-overlay :is(input, select, textarea) {
+  border-radius: var(--editor-field-radius, 0.75rem);
+}
+
+.visual-viewport-fixed {
+  position: fixed;
+  inset-inline: 0;
+  top: var(--visual-viewport-offset-top, 0px);
+  height: var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100vh));
+}
+
+/* The picker keeps its visual padding for cards, while the scrollbar itself
+ * belongs to the modal edge instead of stopping one padding-width early. */
+.project-picker-scroll {
+  margin-right: -1rem;
+  padding-right: 1rem;
+}
+
+/* The activity editor uses a nested form scroller. Align it with the modal
+ * edge while retaining horizontal breathing room for its fields. */
+.activity-editor-scroll {
+  margin-right: -0.75rem;
+  padding-right: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .project-picker-scroll {
+    margin-right: -1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .activity-editor-scroll {
+    margin-right: -1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .activity-editor-scroll {
+    margin-right: -1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+.modal-panel-roomy {
+  max-height: calc(var(--visual-viewport-height, 100vh) - 0.75rem);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+}
+
+.project-form-field {
+  background: var(--project-form-field-bg, color-mix(in srgb, var(--surface-2) 84%, var(--surface-3)));
+  border: 1px solid var(--project-form-field-border, var(--border-strong));
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.04);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.project-form-field:hover {
+  border-color: color-mix(in srgb, var(--viridian) 34%, var(--border-strong));
+}
+
+.project-form-field:focus {
+  outline: none;
+  border-color: var(--viridian);
+  box-shadow:
+    0 0 0 4px var(--focus-ring),
+    inset 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.project-form-field:disabled {
+  background: var(--input-disabled-bg);
+  color: var(--text-muted);
+}
+
+.project-form-field::placeholder {
+  color: var(--text-faint);
+}
+
+.project-form-field-invalid {
+  background: color-mix(in srgb, var(--accent-pink) 8%, var(--input-bg));
+  border-color: var(--accent-pink);
+}
+
+.project-form-field-invalid:focus {
+  border-color: var(--accent-pink);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent-pink) 22%, transparent),
+    inset 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.project-rich-text-editor.rsw-editor {
+  min-height: 190px;
+  background: var(--project-form-field-bg, color-mix(in srgb, var(--surface-2) 84%, var(--surface-3)));
+  border: 1px solid var(--project-form-field-border, var(--border-strong));
+  border-radius: 0.5rem;
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.04);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.project-rich-text-editor.rsw-editor:hover {
+  border-color: color-mix(in srgb, var(--viridian) 34%, var(--border-strong));
+}
+
+.project-rich-text-editor.rsw-editor:focus-within {
+  border-color: var(--viridian);
+  box-shadow:
+    0 0 0 4px var(--focus-ring),
+    inset 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.project-rich-text-editor .rsw-toolbar {
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding: 0.45rem;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.project-rich-text-editor .rsw-dd {
+  min-width: 8.5rem;
+  height: 2rem;
+  padding: 0 1.75rem 0 0.625rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.375rem;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.project-rich-text-editor .rsw-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  color: var(--text-primary);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.project-rich-text-editor .rsw-btn[data-active='true'] {
+  background: var(--interactive-soft-strong);
+  color: var(--viridian);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--viridian) 28%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .project-rich-text-editor .rsw-btn:hover {
+    background: var(--interactive-soft);
+  }
+}
+
+.project-rich-text-editor .rsw-separator {
+  border-right-color: var(--border-subtle);
+  margin: 0 0.125rem;
+}
+
+.project-rich-text-editor .rsw-ce {
+  min-height: 145px;
+  padding: 0.75rem;
+  line-height: 1.55;
+}
+
+.project-rich-text-editor .rsw-ce:focus {
+  outline: none;
+}
+
+.project-rich-text-editor .rsw-ce ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.project-rich-text-editor .rsw-ce ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+
+.project-rich-text-editor .rsw-ce p,
+.project-rich-text-editor .rsw-ce div {
+  margin: 0 0 0.5rem;
+}
+
+.project-rich-text-editor .rsw-ce h1,
+.project-rich-text-editor .rsw-ce h2 {
+  margin: 0 0 0.65rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.project-rich-text-editor .rsw-ce h1 {
+  font-size: 1.375rem;
+}
+
+.project-rich-text-editor .rsw-ce h2 {
+  font-size: 1.125rem;
+}
+
+.modal-sticky-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 0.5rem 1rem max(env(safe-area-inset-bottom, 0px), 16px);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.94) 22%,
+    rgba(255, 255, 255, 0.98) 100%
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.08);
+}
+
+.org-taxonomy-modal-actions {
+  bottom: -1rem;
+}
+
+@media (min-width: 768px) {
+  .org-taxonomy-modal-actions {
+    bottom: -1.5rem;
+  }
+}
+
+.settings-modal-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 0.5rem 1rem max(env(safe-area-inset-bottom, 0px), 0.5rem);
+  border-top: 1px solid rgba(229, 231, 235, 0.85);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.roomy-settings-modal-actions {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.25rem);
+}
+
+@media (max-width: 767px) {
+  .settings-modal-actions {
+    justify-content: flex-end;
+    gap: 1.25rem;
+    padding-inline-end: 1.25rem;
+  }
+
+  .settings-modal-actions > .flex-1 {
+    flex: 0 0 auto;
+  }
+
+  .settings-modal-actions > .flex-1:empty {
+    display: none;
+  }
+}
+.survey-question-card-active {
+  background: color-mix(in srgb, var(--interactive-soft) 58%, var(--surface-1));
+  box-shadow: 0 0 0 1px var(--interactive-soft-border), var(--card-shadow);
+}

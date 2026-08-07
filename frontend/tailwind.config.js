@@ -1,3 +1,14 @@
+/**
+ * Keeps Tailwind's semantic palette connected to the active CSS theme.
+ * Full-color utilities remain CSS2-compatible for exports; opacity variants
+ * use color-mix because the theme tokens are hexadecimal CSS custom properties.
+ */
+const themedColor = (token) => ({ opacityValue, opacityVariable }) => {
+  if (opacityVariable) return `var(--${token})`;
+  if (opacityValue) return `color-mix(in srgb, var(--${token}) calc(${opacityValue} * 100%), transparent)`;
+  return `var(--${token})`;
+};
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -7,17 +18,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        viridian: '#5B6CFF',
-        'cambridge-blue': '#7C8FFF',
-        'mint-green': '#E8EBFF',
-        'azure-web': '#F5F7FF',
-        'mint-cream': '#FAFBFF',
-        // Modern accent colors
-        'accent-orange': '#FF9F43',
-        'accent-green': '#28C76F',
-        'accent-pink': '#EA5455',
-        'accent-teal': '#00CFE8',
-        'accent-purple': '#9F7AEA',
+        viridian: themedColor('viridian'),
+        'cambridge-blue': themedColor('cambridge-blue'),
+        'mint-green': themedColor('mint-green'),
+        'azure-web': themedColor('azure-web'),
+        'mint-cream': themedColor('mint-cream'),
+        'accent-orange': themedColor('accent-orange'),
+        'accent-green': themedColor('accent-green'),
+        'accent-pink': themedColor('accent-pink'),
+        'accent-teal': themedColor('accent-teal'),
+        'accent-purple': themedColor('accent-purple'),
       },
       borderRadius: {
         'xl': '16px',

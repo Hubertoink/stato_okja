@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { ActivityType, AuditAction } from '../common/enums';
 
@@ -10,6 +10,7 @@ describe('ProjectsService idempotent create', () => {
       {} as never,
       {} as never,
       { log: jest.fn().mockResolvedValue(undefined) } as never,
+      {} as never,
     );
   }
 
@@ -34,6 +35,7 @@ describe('ProjectsService idempotent create', () => {
       {} as never,
       {} as never,
       audit as never,
+      {} as never,
     );
 
     const result = await service.create(
@@ -84,6 +86,7 @@ describe('ProjectsService idempotent create', () => {
       {} as never,
       {} as never,
       audit as never,
+      {} as never,
     );
 
     const result = await service.create(
@@ -136,5 +139,45 @@ describe('ProjectsService idempotent create', () => {
 
     expect(projectRepository.update).toHaveBeenCalledWith('project-1', expect.objectContaining({ title: 'Child edit' }));
     expect(result).toMatchObject({ id: 'project-1', orgId: 'child-1' });
+  });
+
+  it('requires archived projects without activities before permanent deletion', async () => {
+    const projectRepository = {
+      findOne: jest.fn().mockResolvedValue({ id: 'project-1', archived: true, documents: [] }),
+      delete: jest.fn(),
+    };
+    const activityRepository = { count: jest.fn().mockResolvedValue(2) };
+    const service = new ProjectsService(
+      projectRepository as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { log: jest.fn() } as never,
+      activityRepository as never,
+    );
+
+    await expect(service.remove('project-1')).rejects.toBeInstanceOf(ConflictException);
+    expect(projectRepository.delete).not.toHaveBeenCalled();
+  });
+
+  it('deletes an archived project only after confirming no activities reference it', async () => {
+    const projectRepository = {
+      findOne: jest.fn().mockResolvedValue({ id: 'project-1', title: 'Werkraum', archived: true, documents: [] }),
+      delete: jest.fn().mockResolvedValue(undefined),
+    };
+    const activityRepository = { count: jest.fn().mockResolvedValue(0) };
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const service = new ProjectsService(
+      projectRepository as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      audit as never,
+      activityRepository as never,
+    );
+
+    await service.remove('project-1');
+    expect(activityRepository.count).toHaveBeenCalledWith({ where: { projectId: 'project-1' } });
+    expect(projectRepository.delete).toHaveBeenCalledWith('project-1');
   });
 });

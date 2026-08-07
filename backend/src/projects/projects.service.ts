@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, FindOptionsWhere, Equal, IsNull } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectDocument } from './entities/project-document.entity';
+import { Activity } from '../activities/entities/activity.entity';
 import { Category } from '../taxonomy/entities/category.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
@@ -24,6 +25,8 @@ export class ProjectsService {
     private categoryRepository: Repository<Category>,
     private readonly orgs: OrgsService,
     private readonly audit: AuditService,
+    @InjectRepository(Activity)
+    private readonly activityRepository: Repository<Activity>,
   ) {}
 
   private withDocumentUrl(document: ProjectDocument): ProjectDocument {
@@ -229,6 +232,16 @@ export class ProjectsService {
       where: { id },
       relations: { documents: true },
     });
+    if (!existing) return;
+    if (!existing.archived) {
+      throw new ConflictException('Ein Projekt muss vor dem Löschen archiviert werden.');
+    }
+    const activityCount = await this.activityRepository.count({ where: { projectId: id } });
+    if (activityCount > 0) {
+      throw new ConflictException(
+        'Das Projekt kann nicht gelöscht werden, solange noch Aktivitäten zugeordnet sind.',
+      );
+    }
     await this.projectRepository.delete(id);
     await this.audit.log({
       action: AuditAction.DELETE,

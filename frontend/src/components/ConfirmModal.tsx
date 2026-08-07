@@ -16,6 +16,7 @@ export default function ConfirmModal({
   secondaryLabel,
   onSecondaryConfirm,
   primaryAction = 'confirm',
+  confirmDisabled = false,
 }: {
   open: boolean;
   title?: string;
@@ -28,6 +29,7 @@ export default function ConfirmModal({
   secondaryLabel?: string;
   onSecondaryConfirm?: () => void;
   primaryAction?: 'confirm' | 'secondary';
+  confirmDisabled?: boolean;
 }) {
   const { t } = useTranslation('common');
   // Lock background scroll while this modal is open
@@ -77,12 +79,13 @@ export default function ConfirmModal({
           )}
           <button
             type="button"
-            className={`w-full shrink-0 whitespace-nowrap rounded px-4 py-2 text-center sm:w-auto ${
+            className={`w-full shrink-0 whitespace-nowrap rounded px-4 py-2 text-center sm:w-auto disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 ${
               primaryAction === 'secondary'
                 ? 'border border-[var(--status-danger-text)] bg-transparent text-[var(--status-danger-text)] hover:bg-[var(--status-danger-bg)]'
                 : 'bg-viridian text-white'
             }`}
             onClick={onConfirm}
+            disabled={confirmDisabled}
           >
             {confirmLabel}
           </button>

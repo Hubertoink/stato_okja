@@ -5,6 +5,13 @@ input[type='password']::-ms-clear {
   display: none;
 }
 
+/* Search fields use the shared clear button from HeaderSearchAction. */
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 :root {
   --app-bg-image: url('/Background_Stato.jpg');
   --app-bg: #fafbff;
@@ -48,6 +55,8 @@ input[type='password']::-ms-clear {
   --status-info-bg: #dbeafe;
   --status-info-text: #1d4ed8;
   --status-danger-bg: #fee2e2;
+  --status-danger-bg-strong: color-mix(in srgb, var(--status-danger-bg) 78%, var(--status-danger-text));
+  --status-danger-border: color-mix(in srgb, var(--status-danger-text) 34%, var(--border-subtle));
   --status-danger-text: #b91c1c;
   --calendar-surface-bg: rgba(255, 255, 255, 0.99);
   --calendar-header-bg: rgba(245, 247, 255, 0.96);

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth, type AuthSessionPayload } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { applyTheme, DEFAULT_DARK_THEME, DEFAULT_LIGHT_THEME, normalizeThemeMode, THEME_DEFINITIONS, type ThemeMode } from '@/lib/theme';
-import { applyBackground, BACKGROUNDS, getStoredBackgroundId, type BackgroundId } from '@/lib/background';
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
@@ -15,6 +14,7 @@ import { setPreferredLocale } from '@/i18n';
 import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { useToast } from '@/components/Toast';
 
 export default function MyProfile() {
   const { user, refresh, replaceSession } = useAuth();
@@ -230,22 +230,19 @@ function SessionsSection() {
 
 function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, locale }: { userName: string; avatarUrl: string | null; email: string; theme: string; themeMode: ThemeMode; locale: AppLocale; onUpdated: ()=>Promise<void>|void }) {
   const { t } = useTranslation('common');
+  const { showToast } = useToast();
   const [name, setName] = useState(userName);
   const [image, setImage] = useState<string | null>(normalizeUploadPath(avatarUrl) || null);
   const [savingName, setSavingName] = useState(false);
   const [savingAppearance, setSavingAppearance] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [savingLocale, setSavingLocale] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>(theme);
   const [selectedThemeMode, setSelectedThemeMode] = useState<ThemeMode>(normalizeThemeMode(themeMode));
   const [selectedLocale, setSelectedLocale] = useState<AppLocale>(locale);
-  const [selectedBackground, setSelectedBackground] = useState<BackgroundId>(getStoredBackgroundId());
   const [appearanceExpanded, setAppearanceExpanded] = useState(false);
   const [avatarActionOpen, setAvatarActionOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const selectedBackgroundLabel = BACKGROUNDS.find((background) => background.id === selectedBackground)?.label || autoT('ui_2dfa66079d9b');
   const nameChanged = name.trim() !== userName.trim();
 
   useEffect(() => setName(userName), [userName]);
@@ -260,15 +257,13 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, 
   }
 
   async function persistProfile(patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; locale?: AppLocale }, successMessage: string) {
-    setMsg(null);
-    setErr(null);
     try {
       await api.patch('/auth/me', patch);
-      setMsg(successMessage);
+      showToast(successMessage);
       await onUpdated();
       return true;
     } catch (error: unknown) {
-      setErr(errorMessage(error));
+      showToast(errorMessage(error), { type: 'error' });
       return false;
     }
   }
@@ -301,7 +296,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, 
                 setImage(url);
                 if (!(await persistProfile({ avatarUrl: url }, 'Profilbild aktualisiert'))) setImage(previousImage);
               } catch (error: unknown) {
-                setErr(errorMessage(error));
+                showToast(errorMessage(error), { type: 'error' });
               } finally {
                 setSavingAvatar(false);
                 event.target.value = '';
@@ -393,7 +388,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, 
             >
               <div>
                 <div className="text-sm font-medium">{autoT('ui_76a523492a64')}</div>
-                <div className="mt-1 text-xs text-gray-500">{autoT('ui_0485a0265960')}{' '}{selectedThemeMode === 'system' ? 'System' : selectedThemeMode === 'light' ? 'Hell' : selectedThemeMode === 'dark' ? 'Dunkel' : selectedTheme}{' · '}{selectedBackgroundLabel}</div>
+                <div className="mt-1 text-xs text-gray-500">{autoT('ui_0485a0265960')}{' '}{selectedThemeMode === 'system' ? 'System' : selectedThemeMode === 'light' ? 'Hell' : selectedThemeMode === 'dark' ? 'Dunkel' : selectedTheme}</div>
               </div>
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--text-secondary)]">
                 {appearanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -454,23 +449,9 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, 
                   />
                   {savingAppearance && <div className="mt-2 text-xs text-gray-500">{autoT('ui_ec67d4590e12')}</div>}
                 </div>}
-                <div>
-                  <label className="block text-sm font-medium mb-1">{autoT('ui_6ea4ea25fb03')}</label>
-                  <BackgroundPicker
-                    value={selectedBackground}
-                    onChange={(bg) => {
-                      setSelectedBackground(bg);
-                      applyBackground(bg);
-                      setMsg('Hintergrund aktualisiert');
-                      setErr(null);
-                    }}
-                  />
-                </div>
               </div>
             )}
           </div>
-          {msg && <div className="text-green-700 text-sm">{msg}</div>}
-          {err && <div className="text-red-600 text-sm">{err}</div>}
         </div>
       </div>
       </div>
@@ -704,26 +685,3 @@ function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)
   );
 }
 
-function BackgroundPicker({ value, onChange }: { value: BackgroundId; onChange: (b: BackgroundId) => void }) {
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {BACKGROUNDS.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            onClick={() => onChange(b.id)}
-            className={`border rounded p-2 text-left ${value === b.id ? "ring-2 ring-viridian" : ''}`}
-          >
-            <div className="font-medium text-sm mb-2">{b.label}</div>
-            <div
-              className="w-full h-16 rounded border bg-cover bg-center"
-              style={{ backgroundImage: `url(${b.url})` }}
-            />
-          </button>
-        ))}
-      </div>
-      <div className="text-xs text-gray-500">{autoT('ui_8df4abf93cee')}</div>
-    </div>
-  );
-}

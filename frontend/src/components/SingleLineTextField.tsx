@@ -1,4 +1,5 @@
 import type { KeyboardEvent, TextareaHTMLAttributes } from 'react';
+import { fieldControlClassName } from '@/components/ui/Field';
 
 type SingleLineTextFieldProps = Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
@@ -11,5 +12,5 @@ export default function SingleLineTextField({ className = '', onKeyDown, onValue
     if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); }
     onKeyDown?.(event);
   };
-  return <textarea {...props} value={value} rows={1} wrap="off" autoComplete="off" enterKeyHint="done" className={`block resize-none overflow-hidden ${className}`.trim()} onChange={(event) => onValueChange(event.target.value.replace(/[\r\n]+/g, ' '))} onKeyDown={handleKeyDown} />;
+  return <textarea {...props} value={value} rows={1} wrap="off" autoComplete="off" enterKeyHint="done" className={fieldControlClassName({ className: `block resize-none overflow-hidden ${className}` })} onChange={(event) => onValueChange(event.target.value.replace(/[\r\n]+/g, ' '))} onKeyDown={handleKeyDown} />;
 }

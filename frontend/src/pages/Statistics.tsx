@@ -22,7 +22,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { colorForActivityType, translucent } from '@/lib/colors';
 import { isDarkThemeName, resolveThemeName } from '../lib/theme';
 import type jsPDF from 'jspdf';
-import { FileDown, X as XIcon, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileDown, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -65,6 +65,9 @@ import CustomKpiCards from '@/components/CustomKpiCards';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { Button, IconButton } from '@/components/ui/Button';
+import { FieldLabel, Input } from '@/components/ui/Field';
+import { FilterChip } from '@/components/ui/FilterChip';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { loadStatisticsViewPreferences, saveStatisticsViewPreferences } from '@/lib/statisticsViewPreferences';
@@ -2212,36 +2215,31 @@ export default function Statistics() {
                       </span>
                     )}
 
-                    {hasAdvancedFilter && (
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-2 rounded-full border border-viridian/20 bg-viridian/10 px-3 py-1.5 text-sm font-medium text-viridian"
-                        onClick={resetAdvancedFilters}
-                        title={autoT('ui_9ba399b38183')}
-                      >
-                        <XIcon className="h-3.5 w-3.5" />{autoT('ui_a4565af537e2')}</button>
-                    )}
+                    {hasAdvancedFilter ? (
+                      <FilterChip onRemove={resetAdvancedFilters}>
+                        <Calendar className="h-3.5 w-3.5" />
+                        {formatAdvancedFilterDisplay()}
+                      </FilterChip>
+                    ) : null}
                   </div>
 
                   <div className="mt-4 flex items-center gap-2">
-                    <button
-                      type="button"
-                      className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
-                        hasAdvancedFilter
-                          ? "border-viridian bg-viridian/5 text-viridian"
-                          : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`
-                      }`}
+                    <Button
+                      className={`min-w-0 flex-1 ${hasAdvancedFilter ? "border-viridian bg-viridian/5 text-viridian hover:bg-viridian/10" : `${mobileSurfaceClass} ${mobileSurfaceHoverClass}`}`}
                       onClick={openAdvancedFilters}
+                      variant="secondary"
                     >
-                      <SlidersHorizontal className="h-4 w-4" />{autoT('ui_dc3decbb9384')}</button>
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-cambridge-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-viridian disabled:cursor-wait disabled:opacity-60"
+                      <SlidersHorizontal aria-hidden="true" />
+                      {autoT('ui_dc3decbb9384')}
+                    </Button>
+                    <Button
                       disabled={isExportInProgress}
                       onClick={() => setReportExportOpen(true)}
                       title={autoT('ui_8dbb5c1c7f40')}
                     >
-                      <FileDown className="h-4 w-4" />{autoT('ui_f3e4fadb9e37')}</button>
+                      <FileDown aria-hidden="true" />
+                      {autoT('ui_f3e4fadb9e37')}
+                    </Button>
                   </div>
                 </div>
 
@@ -2262,28 +2260,32 @@ export default function Statistics() {
                       {filterMode === 'month' && !isCustomRange ? (
                         <>
                           <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border ${mobileSurfaceClass}`}
+                            <IconButton
+                              aria-label={autoT('ui_9c52ab5061fe')}
+                              className={mobileSurfaceClass}
                               onClick={() => navigateMonth('prev')}
+                              size="icon-touch"
                               title={autoT('ui_9c52ab5061fe')}
+                              variant="secondary"
                             >
-                              <ChevronLeft className="h-4 w-4" />
-                            </button>
+                              <ChevronLeft aria-hidden="true" />
+                            </IconButton>
                             <div className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-medium ${mobileSoftSurfaceClass}`}>
                               <Calendar className={`h-4 w-4 ${mobileLabelTextClass}`} />
                               <span className="truncate">
                                 {selectedMonth !== null ? MONTH_NAMES[selectedMonth - 1] : MONTH_NAMES[currentMonth - 1]} {selectedYear || currentYear}
                               </span>
                             </div>
-                            <button
-                              type="button"
-                              className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border ${mobileSurfaceClass}`}
+                            <IconButton
+                              aria-label={autoT('ui_ad21607e5b49')}
+                              className={mobileSurfaceClass}
                               onClick={() => navigateMonth('next')}
+                              size="icon-touch"
                               title={autoT('ui_ad21607e5b49')}
+                              variant="secondary"
                             >
-                              <ChevronRight className="h-4 w-4" />
-                            </button>
+                              <ChevronRight aria-hidden="true" />
+                            </IconButton>
                           </div>
                           <div className="grid grid-cols-3 gap-2">
                             {MONTH_NAMES_SHORT.map((name, idx) => {
@@ -2512,28 +2514,28 @@ export default function Statistics() {
                 <div className="flex items-center gap-2 flex-wrap">
                   {filterMode === 'month' && !isCustomRange ? (
                     <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
+                      <IconButton
+                        aria-label={autoT('ui_9c52ab5061fe')}
                         onClick={() => navigateMonth('prev')}
                         title={autoT('ui_9c52ab5061fe')}
+                        variant="secondary"
                       >
-                        <ChevronLeft className="h-4 w-4" />
-                      </button>
+                        <ChevronLeft aria-hidden="true" />
+                      </IconButton>
                       <div className="flex items-center gap-1 bg-gray-50 rounded-lg px-3 py-2 min-w-[140px] justify-center">
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <span className="font-medium text-gray-800">
                           {selectedMonth !== null ? MONTH_NAMES_SHORT[selectedMonth - 1] : MONTH_NAMES_SHORT[currentMonth - 1]} {selectedYear || currentYear}
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 touch-manipulation"
+                      <IconButton
+                        aria-label={autoT('ui_ad21607e5b49')}
                         onClick={() => navigateMonth('next')}
                         title={autoT('ui_ad21607e5b49')}
+                        variant="secondary"
                       >
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
+                        <ChevronRight aria-hidden="true" />
+                      </IconButton>
                     </div>
                   ) : (
                     <SegmentedControl
@@ -2549,46 +2551,32 @@ export default function Statistics() {
                 </div>
 
                 <div className="flex items-center gap-2 sm:ml-auto">
-                  {hasAdvancedFilter && (
-                    <div className="flex items-center gap-2 bg-viridian/10 text-viridian px-3 py-1.5 rounded-lg text-sm">
+                  {hasAdvancedFilter ? (
+                    <FilterChip onRemove={resetAdvancedFilters}>
                       <Calendar className="h-4 w-4" />
-                      <span className="font-medium">{formatAdvancedFilterDisplay()}</span>
-                      <button
-                        type="button"
-                        className="p-0.5 hover:bg-viridian/20 rounded"
-                        onClick={resetAdvancedFilters}
-                        title={autoT('ui_a4565af537e2')}
-                      >
-                        <XIcon className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    className={`p-2 rounded-lg border transition-colors touch-manipulation ${
-                      hasAdvancedFilter
-                        ? "border-viridian text-viridian bg-viridian/5"
-                        : "border-gray-300 text-gray-600 hover:bg-gray-50"
-                    }`}
+                      {formatAdvancedFilterDisplay()}
+                    </FilterChip>
+                  ) : null}
+                  <IconButton
+                    aria-label={autoT('ui_c78a00fa35d9')}
+                    className={hasAdvancedFilter ? "border-viridian bg-viridian/5 text-viridian hover:bg-viridian/10" : ''}
                     onClick={openAdvancedFilters}
                     title={autoT('ui_c78a00fa35d9')}
+                    variant="secondary"
                   >
-                    <SlidersHorizontal className="h-4 w-4" />
-                  </button>
+                    <SlidersHorizontal aria-hidden="true" />
+                  </IconButton>
                 </div>
 
                 <div className="flex items-center gap-2 sm:ml-0">
-                  <button
-                    type="button"
-                    className="bg-cambridge-blue text-white px-4 md:px-6 py-2 rounded-lg hover:bg-viridian transition-colors inline-flex items-center gap-2 text-sm touch-manipulation disabled:cursor-wait disabled:opacity-60"
+                  <Button
                     disabled={isExportInProgress}
                     onClick={() => setReportExportOpen(true)}
                     title={autoT('ui_4e4a0d7117ee')}
                   >
-                    <FileDown className="h-4 w-4" />
-                    <span className="hidden sm:inline">{autoT('ui_f3e4fadb9e37')}</span>
-                    <span className="sm:hidden">{autoT('ui_f3e4fadb9e37')}</span>
-                  </button>
+                    <FileDown aria-hidden="true" />
+                    {autoT('ui_f3e4fadb9e37')}
+                  </Button>
                 </div>
               </div>
 
@@ -3183,24 +3171,26 @@ export default function Statistics() {
               <div className="mb-3 text-xs text-gray-500 sm:mb-0">{autoT('ui_6e7156111137')}{' '}{((activitiesPage - 1) * ACTIVITIES_PER_PAGE) + 1}–{Math.min(activitiesPage * ACTIVITIES_PER_PAGE, totalActivities)}{' '}{autoT('ui_445584edc4cc')}{' '}{totalActivities}
               </div>
               <div className={`flex gap-1 ${isMobile ? "flex-wrap items-center justify-start" : "items-center justify-end"}`}>
-                <button
+                <IconButton
+                  aria-label={autoT('ui_f4b057452fde')}
                   onClick={() => setActivitiesPage(1)}
                   disabled={activitiesPage === 1}
-                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  size="icon-compact"
                   title={autoT('ui_f4b057452fde')}
-                  aria-label={autoT('ui_f4b057452fde')}
+                  variant="secondary"
                 >
                   ««
-                </button>
-                <button
+                </IconButton>
+                <IconButton
+                  aria-label={autoT('ui_f6bc60bc537b')}
                   onClick={() => setActivitiesPage((p) => Math.max(1, p - 1))}
                   disabled={activitiesPage === 1}
-                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  size="icon-compact"
                   title={autoT('ui_f6bc60bc537b')}
-                  aria-label={autoT('ui_f6bc60bc537b')}
+                  variant="secondary"
                 >
                   «
-                </button>
+                </IconButton>
                 
                 {/* Page number buttons */}
                 {(() => {
@@ -3224,39 +3214,39 @@ export default function Statistics() {
                     p === 'ellipsis' ? (
                       <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">…</span>
                     ) : (
-                      <button
+                      <Button
                         key={p}
                         onClick={() => setActivitiesPage(p)}
-                        className={`px-3 py-1 text-xs rounded border ${
-                          p === current
-                            ? "bg-viridian text-white border-viridian"
-                            : "border-gray-200 hover:bg-gray-50"
-                        }`}
+                        aria-current={p === current ? 'page' : undefined}
+                        size="sm"
+                        variant={p === current ? 'primary' : 'secondary'}
                       >
                         {p}
-                      </button>
+                      </Button>
                     )
                   );
                 })()}
                 
-                <button
+                <IconButton
+                  aria-label={autoT('ui_d3e6a4a47b5f')}
                   onClick={() => setActivitiesPage((p) => Math.min(totalActivityPages, p + 1))}
                   disabled={activitiesPage === totalActivityPages}
-                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  size="icon-compact"
                   title={autoT('ui_d3e6a4a47b5f')}
-                  aria-label={autoT('ui_d3e6a4a47b5f')}
+                  variant="secondary"
                 >
                   »
-                </button>
-                <button
+                </IconButton>
+                <IconButton
+                  aria-label={autoT('ui_58365134024f')}
                   onClick={() => setActivitiesPage(totalActivityPages)}
                   disabled={activitiesPage === totalActivityPages}
-                  className="bg-white border text-gray-700 px-2 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  size="icon-compact"
                   title={autoT('ui_58365134024f')}
-                  aria-label={autoT('ui_58365134024f')}
+                  variant="secondary"
                 >
                   »»
-                </button>
+                </IconButton>
               </div>
             </div>
           )}
@@ -3493,33 +3483,39 @@ export default function Statistics() {
             </span>
           </label>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <button
-              type="button"
-              className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60"
+            <Button
+              className="h-auto min-h-28 w-full items-start justify-start p-4 text-left"
               disabled={isExportInProgress}
               onClick={() => { setReportExportOpen(false); void exportPdf(includeActivitiesInPdf); }}
+              variant="secondary"
             >
-              <div className="font-semibold text-gray-900">{autoT('ui_104827f9e0c7')}</div>
-              <div className="mt-1 text-xs text-gray-600">{autoT('ui_49b7d61d6e43')}</div>
-            </button>
-            <button
-              type="button"
-              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-wait disabled:opacity-60"
+              <span>
+                <span className="block font-semibold text-[var(--text-primary)]">{autoT('ui_104827f9e0c7')}</span>
+                <span className="mt-1 block text-xs font-normal text-[var(--text-secondary)]">{autoT('ui_49b7d61d6e43')}</span>
+              </span>
+            </Button>
+            <Button
+              className="h-auto min-h-28 w-full items-start justify-start p-4 text-left"
               disabled={isExportInProgress}
               onClick={() => { setReportExportOpen(false); void exportActivitiesTable('xlsx'); }}
+              variant="secondary"
             >
-              <div className="font-semibold text-viridian">{autoT('ui_db0d32742b50')}</div>
-              <div className="mt-1 text-xs text-gray-600">{autoT('ui_c40ca967212f')}</div>
-            </button>
-            <button
-              type="button"
-              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-wait disabled:opacity-60"
+              <span>
+                <span className="block font-semibold text-[var(--text-primary)]">{autoT('ui_db0d32742b50')}</span>
+                <span className="mt-1 block text-xs font-normal text-[var(--text-secondary)]">{autoT('ui_c40ca967212f')}</span>
+              </span>
+            </Button>
+            <Button
+              className="h-auto min-h-28 w-full items-start justify-start p-4 text-left"
               disabled={isExportInProgress || isControllingExporting}
               onClick={() => { setReportExportOpen(false); void exportControllingData(); }}
+              variant="secondary"
             >
-              <div className="font-semibold text-viridian">{autoT('ui_601dd4ee44ea')}</div>
-              <div className="mt-1 text-xs text-gray-600">{autoT('ui_b56d47e133a3')}</div>
-            </button>
+              <span>
+                <span className="block font-semibold text-[var(--text-primary)]">{autoT('ui_601dd4ee44ea')}</span>
+                <span className="mt-1 block text-xs font-normal text-[var(--text-secondary)]">{autoT('ui_b56d47e133a3')}</span>
+              </span>
+            </Button>
           </div>
         </div>
       </Modal>
@@ -3536,19 +3532,17 @@ export default function Statistics() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_a4b078f9eb7b')}</label>
-              <input
+              <FieldLabel className="mb-1">{autoT('ui_a4b078f9eb7b')}</FieldLabel>
+              <Input
                 type="date"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
                 value={tempFrom}
                 onChange={(e) => setTempFrom(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{autoT('ui_0afaa0e566a1')}</label>
-              <input
+              <FieldLabel className="mb-1">{autoT('ui_0afaa0e566a1')}</FieldLabel>
+              <Input
                 type="date"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-viridian focus:border-viridian"
                 value={tempTo}
                 onChange={(e) => setTempTo(e.target.value)}
               />
@@ -3560,19 +3554,19 @@ export default function Statistics() {
             <div className="pt-2 border-t">
               <div className="text-xs font-medium text-gray-500 mb-2">{autoT('ui_37b72d9d418d')}</div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                <Button
+                  size="sm"
+                  variant="secondary"
                   onClick={() => {
                     const today = new Date();
                     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
                     setTempFrom(formatLocalDateInputValue(firstDay));
                     setTempTo(formatLocalDateInputValue(today));
                   }}
-                >{autoT('ui_f172e749dcc9')}</button>
-                <button
-                  type="button"
-                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >{autoT('ui_f172e749dcc9')}</Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
                   onClick={() => {
                     const today = new Date();
                     const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -3580,37 +3574,37 @@ export default function Statistics() {
                     setTempFrom(formatLocalDateInputValue(lastMonth));
                     setTempTo(formatLocalDateInputValue(lastDay));
                   }}
-                >{autoT('ui_46ae17ce0436')}</button>
-                <button
-                  type="button"
-                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >{autoT('ui_46ae17ce0436')}</Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
                   onClick={() => {
                     const today = new Date();
                     const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
                     setTempFrom(formatLocalDateInputValue(threeMonthsAgo));
                     setTempTo(formatLocalDateInputValue(today));
                   }}
-                >{autoT('ui_2c02931c55c8')}</button>
-                <button
-                  type="button"
-                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >{autoT('ui_2c02931c55c8')}</Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
                   onClick={() => {
                     const today = new Date();
                     const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
                     setTempFrom(formatLocalDateInputValue(sixMonthsAgo));
                     setTempTo(formatLocalDateInputValue(today));
                   }}
-                >{autoT('ui_dca13e4c1f6d')}</button>
-                <button
-                  type="button"
-                  className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >{autoT('ui_dca13e4c1f6d')}</Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
                   onClick={() => {
                     const today = new Date();
                     const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
                     setTempFrom(formatLocalDateInputValue(yearAgo));
                     setTempTo(formatLocalDateInputValue(today));
                   }}
-                >{autoT('ui_6e1af626e810')}</button>
+                >{autoT('ui_6e1af626e810')}</Button>
               </div>
             </div>
 
@@ -3728,16 +3722,13 @@ export default function Statistics() {
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            <Button
               onClick={() => setCustomFilterOpen(false)}
-            >{autoT('ui_07af7cb30fca')}</button>
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
+              variant="secondary"
+            >{autoT('ui_07af7cb30fca')}</Button>
+            <Button
               onClick={applyCustomRange}
-            >{autoT('ui_594308426372')}</button>
+            >{autoT('ui_594308426372')}</Button>
           </div>
         </div>
       </Modal>

@@ -105,6 +105,19 @@ export default function ActivityQuickAdd({
   const { user } = useAuth();
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
   const [form, setForm] = useState<ActivityFormState>(() => {
+    if (activity) {
+      const activityForm = getActivityFormStateFromActivity(activity, {
+        date: dateISO,
+        projectId: initialProject?.id,
+        start: initialProject?.defaultStartTime || '15:00',
+        end: initialProject?.defaultEndTime || '17:00',
+      });
+      return {
+        ...activityForm,
+        executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+        cohortCounts: getActivityCohortCounts(activity),
+      };
+    }
     return {
       cohortCounts: {},
       date: (dateISO || '').slice(0, 10),
@@ -112,8 +125,10 @@ export default function ActivityQuickAdd({
     };
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form);
   const initialFormBaselineSetRef = useRef(false);
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
+    enabled: initialFormBaselineSetRef.current,
+  });
   const selectedProject: Project | undefined = useMemo(
     () => (projects || []).find((p: Project) => p.id === form.projectId) || initialProject,
     [projects, form.projectId, initialProject],
@@ -271,11 +286,11 @@ export default function ActivityQuickAdd({
 
   // Prefill default staff/category from project if provided
   useEffect(() => {
-    if (!initialProject) return;
+    if (activity || !initialProject) return;
     setForm((f: ActivityFormState) => {
       return { ...f, staffIds: mergeProjectStaffIds(f.staffIds, initialProject, staff) };
     });
-  }, [initialProject, staff]);
+  }, [activity, initialProject, staff]);
 
   // Project defaults and the edit payload are populated asynchronously. They
   // define the initial state of this editor and must not trigger a discard

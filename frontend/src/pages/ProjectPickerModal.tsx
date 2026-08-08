@@ -3,13 +3,15 @@ import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { Link } from 'react-router-dom';
-import { Grid2x2, Rows3, Star, X as XIcon } from 'lucide-react';
+import { Grid2x2, Rows3, X as XIcon } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useTranslation } from 'react-i18next';
 import { compareLocalized } from '@/i18n/formatters';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { useModalHistory } from '@/components/Modal';
+import { IconButton } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
+import { ProjectStarIndicator } from '@/components/ui/ProjectStar';
 
 function backgroundColorForProject(project: Project) {
   return project.color || colorFromStringHash(project.title);
@@ -26,7 +28,6 @@ export default function ProjectPickerModal({
   const { dismiss } = useModalHistory(onClose);
   // This component mounts only when open – lock body scroll while mounted
   useBodyScrollLock(true);
-  const keyboardOpen = useKeyboardOpen();
   const [search, setSearch] = useState('');
   const { data } = useProjects({ archived: false, search });
   const projects = useMemo(() => {
@@ -75,20 +76,21 @@ export default function ProjectPickerModal({
       <div className="modal-panel-roomy bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 flex flex-col overflow-hidden bottom-sheet-animate">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xl font-semibold text-viridian">{t('projectPicker.title')}</h3>
-          <button
-            className="modal-close-button inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+          <IconButton
+            className="modal-close-button"
             onClick={dismiss}
             aria-label={t('actions.close')}
+            variant="danger-ghost"
           >
             <XIcon className="w-5 h-5" />
-          </button>
+          </IconButton>
         </div>
         <div className="flex items-center gap-2 mb-3">
-          <input
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('actions.search')}
-            className="flex-1 border rounded px-3 py-2"
+            className="flex-1"
           />
           <button
             type="button"
@@ -139,11 +141,7 @@ export default function ProjectPickerModal({
                         {typeLabel[p.type] || p.type}
                       </span>
                     </div>
-                    {getStarredProjectIds().includes(p.id) && (
-                      <div className="absolute top-1 right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400 shadow">
-                        <Star className="w-3.5 h-3.5 text-gray-900" />
-                      </div>
-                    )}
+                    {getStarredProjectIds().includes(p.id) && <ProjectStarIndicator className="absolute right-2 top-2 z-10 text-amber-300" size="sm" />}
                   </div>
                   <div className="p-2">
                     <div className="font-medium text-viridian truncate">{p.title}</div>
@@ -169,9 +167,9 @@ export default function ProjectPickerModal({
           )}
 
           {compact && (
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-3 divide-y md:divide-y-0 border rounded">
+            <ul className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--border-subtle)] md:grid-cols-2">
               {projects.map((p) => (
-                <li key={p.id} className="md:border-b md:last:border-b-0 md:odd:border-r">
+                <li key={p.id} className="bg-[var(--surface-1)]">
                   <button
                     onClick={() => onPick(p)}
                     className="w-full text-left flex items-center gap-3 px-3 py-2 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-viridian"
@@ -187,9 +185,7 @@ export default function ProjectPickerModal({
                       <div className="font-medium text-viridian truncate">{p.title}</div>
                       <div className="text-[11px] text-gray-600">{typeLabel[p.type] || p.type}</div>
                     </div>
-                    {getStarredProjectIds().includes(p.id) && (
-                      <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                    )}
+                    {getStarredProjectIds().includes(p.id) && <ProjectStarIndicator size="sm" />}
                   </button>
                 </li>
               ))}
@@ -201,11 +197,6 @@ export default function ProjectPickerModal({
             </ul>
           )}
         </div>
-        {!keyboardOpen && <div className="mt-4 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 py-2 pb-safe -mx-4 md:-mx-6 px-4 md:px-6 md:border-t md:border-gray-100">
-          <div className="text-xs text-gray-600">
-            {t('projectPicker.tip')}
-          </div>
-        </div>}
       </div>
     </div>
   );

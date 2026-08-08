@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects, type Project } from '@/lib/projects';
-import { ArrowLeft, Grid2x2, Rows3, Star } from 'lucide-react';
+import { ArrowLeft, Grid2x2, Rows3 } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
 import { colorFromStringHash } from '@/lib/colors';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useTranslation } from 'react-i18next';
 import { compareLocalized } from '@/i18n/formatters';
+import { IconButton } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
+import { ProjectStarIndicator } from '@/components/ui/ProjectStar';
 
 function backgroundColorForProject(project: Project) {
   return project.color || colorFromStringHash(project.title);
@@ -19,16 +22,16 @@ export default function ProjectPickerPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const { data } = useProjects({ archived: false, search });
+  const starredProjectIds = useMemo(() => new Set(getStarredProjectIds()), [data]);
   const projects = useMemo(() => {
     const list = data || [];
-    const starred = new Set(getStarredProjectIds());
     return list.slice().sort((a, b) => {
-      const sa = starred.has(a.id) ? 1 : 0;
-      const sb = starred.has(b.id) ? 1 : 0;
+      const sa = starredProjectIds.has(a.id) ? 1 : 0;
+      const sb = starredProjectIds.has(b.id) ? 1 : 0;
       if (sa !== sb) return sb - sa; // starred first
       return compareLocalized(a.title, b.title);
     });
-  }, [data]);
+  }, [data, starredProjectIds]);
   // Lade Kompakt-Einstellung aus localStorage, damit sie beim Wiederkommen erhalten bleibt
   const [compact, setCompact] = useState<boolean>(() => {
     try {
@@ -65,34 +68,36 @@ export default function ProjectPickerPage() {
     <div className="min-h-[100dvh] bg-white">
       {/* Simple page header for mobile */}
       <div className="sticky top-0 z-10 bg-viridian text-white px-4 py-3 flex items-center gap-3 shadow">
-        <button
-          type="button"
+        <IconButton
           onClick={() => navigate(-1)}
-          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/15"
+          className="bg-white/15 text-white hover:bg-white/25 hover:text-white"
           aria-label={t('actions.back')}
+          size="icon-compact"
+          variant="ghost"
         >
           <ArrowLeft className="w-5 h-5" />
-        </button>
+        </IconButton>
         <h2 className="text-lg font-semibold">{t('projectPicker.title')}</h2>
       </div>
 
       <div className="px-4 py-3">
         <div className="flex items-center gap-2 mb-3">
-          <input
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('actions.search')}
-            className="flex-1 border rounded px-3 py-2"
+            className="flex-1"
           />
-          <button
-            type="button"
+          <IconButton
             onClick={() => toggleCompact(!compact)}
-            className={`inline-flex sm:hidden items-center justify-center h-10 w-10 rounded border transition-colors ${compact ? "border-viridian bg-viridian text-white" : "border-gray-300 bg-white text-gray-700"}`}
+            className="sm:hidden"
             aria-label={compactToggleLabel}
             title={compactToggleLabel}
+            size="icon"
+            variant={compact ? "primary" : "secondary"}
           >
             {compact ? <Grid2x2 className="w-4 h-4" /> : <Rows3 className="w-4 h-4" />}
-          </button>
+          </IconButton>
           <label className="hidden sm:flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -128,11 +133,7 @@ export default function ProjectPickerPage() {
                       {typeLabel[p.type] || p.type}
                     </span>
                   </div>
-                  {getStarredProjectIds().includes(p.id) && (
-                    <div className="absolute top-1 right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400 shadow">
-                      <Star className="w-3.5 h-3.5 text-gray-900" />
-                    </div>
-                  )}
+                  {starredProjectIds.has(p.id) && <ProjectStarIndicator className="absolute right-2 top-2 z-10 text-amber-300" size="sm" />}
                 </div>
                 <div className="p-2">
                   <div className="font-medium text-viridian truncate">{p.title}</div>
@@ -148,9 +149,9 @@ export default function ProjectPickerPage() {
         )}
 
         {compact && (
-          <ul className="divide-y border rounded">
+          <ul className="grid gap-px overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--border-subtle)]">
             {(projects || []).map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className="bg-[var(--surface-1)]">
                 <button
                   onClick={() => onPick(p)}
                   className="w-full text-left flex items-center gap-3 px-3 py-2 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-viridian"
@@ -166,9 +167,7 @@ export default function ProjectPickerPage() {
                     <div className="font-medium text-viridian truncate">{p.title}</div>
                     <div className="text-[11px] text-gray-600">{typeLabel[p.type] || p.type}</div>
                   </div>
-                  {getStarredProjectIds().includes(p.id) && (
-                    <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                  )}
+                  {starredProjectIds.has(p.id) && <ProjectStarIndicator size="sm" />}
                 </button>
               </li>
             ))}

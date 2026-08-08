@@ -20,6 +20,23 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.4.7] - 2026-08-08
+
+### Changed
+- Buttons, Icon-Aktionen und Eingabefelder verwenden in den zentralen
+  Arbeitsbereichen nun gemeinsame, themefähige UI-Primitives. Das umfasst
+  unter anderem Projekte, Aktivitäten, Logbuch, Umfragen, Statistik und Kalender.
+- Projektfilter und Archivansicht bleiben lokal erhalten; Suche und geöffnete
+  Filterdialoge bleiben bewusst temporär.
+
+### Fixed
+- Die Kalendernavigation verwendet konsistente Chevron-Buttons mit passenden
+  Touchzielen.
+- Das direkte Schließen einer unveränderten Kalender-Aktivität löst keinen
+  Verwerf-Dialog mehr aus.
+
+---
+
 ## [1.4.6] - 2026-08-08
 
 ### Changed

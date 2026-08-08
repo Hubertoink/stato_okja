@@ -27,7 +27,6 @@ import {
   Shield,
   User as UserIcon,
   Trash2,
-  Plus,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -53,7 +52,7 @@ import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getEmailValidationMessage } from '@/lib/emailValidation';
 import { autoT } from '@/i18n/auto';
 import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
-import { Button } from '@/components/ui/Button';
+import { Button, CreateButton } from '@/components/ui/Button';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import {
   downloadBlob,
@@ -1571,16 +1570,14 @@ export default function AdminOrgSetup() {
             <h2 className="text-3xl font-bold text-viridian">{autoT('ui_4048d8ed39f2')}</h2>
             <p className="text-sm text-[var(--text-secondary)] mt-1">{autoT('ui_7344d9db4825')}</p>
           </div>
-          <button
-            className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
+          <CreateButton
             onClick={() => {
               resetCreateForm();
               setCreateModalOpen(true);
             }}
           >
-            <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">{autoT('ui_e769bc597b64')}</span>
-          </button>
+            {autoT('ui_e769bc597b64')}
+          </CreateButton>
         </div>
       </DemoHoverHint>
 
@@ -1641,16 +1638,14 @@ export default function AdminOrgSetup() {
                 <div className="text-center py-12">
                   <Building2 className="w-12 h-12 text-[var(--text-faint)] mx-auto mb-3" />
                   <p className="text-[var(--text-muted)] mb-4">{autoT('ui_e7c1e646423c')}</p>
-                  <button
-                    className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg"
+                  <CreateButton
                     onClick={() => {
                       resetCreateForm();
                       setCreateModalOpen(true);
                     }}
                   >
-                    <Plus className="w-4 h-4" />
                     {autoT('ui_d2d6d3930079')}
-                  </button>
+                  </CreateButton>
                 </div>
               )}
               {!loading && orgs.length > 0 && (

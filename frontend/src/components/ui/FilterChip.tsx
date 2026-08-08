@@ -16,7 +16,7 @@ export function FilterChip({
         <button
           type="button"
           onClick={onRemove}
-          className="rounded-full p-0.5 text-viridian/75 transition-colors hover:bg-[var(--interactive-soft-strong)] hover:text-viridian"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--surface-2)] text-viridian/80 transition-colors hover:bg-[var(--interactive-soft-strong)] hover:text-viridian"
           aria-label={autoT('ui_65768a88a10d')}
         >
           <X className="h-3.5 w-3.5" />

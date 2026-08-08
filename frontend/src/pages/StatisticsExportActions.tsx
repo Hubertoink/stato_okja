@@ -1,5 +1,6 @@
 import { FileDown } from 'lucide-react';
 import { autoT } from '@/i18n/auto';
+import { Button, IconButton } from '@/components/ui/Button';
 
 type StatisticsExportOption = {
   label: string;
@@ -20,16 +21,16 @@ export function StatisticsExportActions({
 }) {
   return (
     <div className="group/chart-export relative shrink-0">
-      <button
-        type="button"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-viridian hover:text-viridian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viridian/30 opacity-100 md:opacity-0 md:group-hover/chart-card:opacity-100 md:group-focus-within/chart-card:opacity-100"
+      <IconButton
         aria-label={triggerLabel}
+        className="rounded-full shadow-sm opacity-100 md:opacity-0 md:group-hover/chart-card:opacity-100 md:group-focus-within/chart-card:opacity-100"
         title={triggerLabel}
         disabled={isExporting}
+        variant="secondary"
         style={isExporting ? { visibility: 'hidden' } : undefined}
       >
-        <FileDown className="h-4 w-4" />
-      </button>
+        <FileDown aria-hidden="true" />
+      </IconButton>
 
       <div
         className="invisible pointer-events-none absolute right-0 top-full z-20 mt-2 w-44 translate-y-1 rounded-xl border border-gray-200 bg-white p-2 opacity-0 shadow-xl transition-all group-hover/chart-export:visible group-hover/chart-export:pointer-events-auto group-hover/chart-export:translate-y-0 group-hover/chart-export:opacity-100 group-focus-within/chart-export:visible group-focus-within/chart-export:pointer-events-auto group-focus-within/chart-export:translate-y-0 group-focus-within/chart-export:opacity-100"
@@ -39,16 +40,17 @@ export function StatisticsExportActions({
           {menuTitle}
         </div>
         {options.map((option, index) => (
-          <button
+          <Button
             key={`${option.label}-${option.meta}`}
-            type="button"
-            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60${index > 0 ? "mt-1" : ''}`}
+            className={`w-full justify-between ${index > 0 ? "mt-1" : ''}`}
             onClick={option.onClick}
             disabled={isExporting}
+            size="sm"
+            variant="ghost"
           >
             <span>{option.label}</span>
-            <span className="text-xs text-gray-400">{option.meta}</span>
-          </button>
+            <span className="text-xs text-[var(--text-muted)]">{option.meta}</span>
+          </Button>
         ))}
         {isExporting && (
           <div className="px-3 pt-2 text-xs text-gray-500">{autoT('ui_bfbe8402858e')}</div>

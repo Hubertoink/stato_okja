@@ -22,14 +22,14 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import type React from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight, Building2, Pencil, Plus } from 'lucide-react';
+import { ArrowRight, Building2, ChevronLeft, ChevronRight, Pencil, Plus } from 'lucide-react';
 import ProtectedImage from '@/components/ProtectedImage';
 import CalendarClosureModal from '@/components/CalendarClosureModal';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity } from '@/lib/activityExecutionStatus';
 import DemoHoverHint from '@/demo/DemoHoverHint';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Button } from '@/components/ui/Button';
+import { Button, IconButton } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { autoT } from '@/i18n/auto';
@@ -1113,18 +1113,24 @@ export default function Calendar() {
             {showTodayButton && (
               <Button className="rounded-lg px-2.5 py-1.5" size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
             )}
-            <button
-              className="calendar-control px-2 py-1.5 rounded text-sm"
+            <IconButton
+              aria-label="Vorheriger Zeitraum"
               onClick={goToPrevious}
+              size="icon-touch"
+              title="Vorheriger Zeitraum"
+              variant="secondary"
             >
-              «
-            </button>
-            <button
-              className="calendar-control px-2 py-1.5 rounded text-sm"
+              <ChevronLeft aria-hidden="true" />
+            </IconButton>
+            <IconButton
+              aria-label="Nächster Zeitraum"
               onClick={goToNext}
+              size="icon-touch"
+              title="Nächster Zeitraum"
+              variant="secondary"
             >
-              »
-            </button>
+              <ChevronRight aria-hidden="true" />
+            </IconButton>
           </div>
         </div>
         {/* Desktop controls */}
@@ -1138,18 +1144,22 @@ export default function Calendar() {
             {showTodayButton && (
               <Button onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
             )}
-            <button
-              className="calendar-control px-3 py-2 rounded"
+            <IconButton
+              aria-label="Vorheriger Zeitraum"
               onClick={goToPrevious}
+              title="Vorheriger Zeitraum"
+              variant="secondary"
             >
-              «
-            </button>
-            <button
-              className="calendar-control px-3 py-2 rounded"
+              <ChevronLeft aria-hidden="true" />
+            </IconButton>
+            <IconButton
+              aria-label="Nächster Zeitraum"
               onClick={goToNext}
+              title="Nächster Zeitraum"
+              variant="secondary"
             >
-              »
-            </button>
+              <ChevronRight aria-hidden="true" />
+            </IconButton>
             <SegmentedControl<'month' | 'week'>
               ariaLabel={autoT('ui_d256a4d045f0')}
               onChange={setView}
@@ -1441,15 +1451,14 @@ export default function Calendar() {
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                className="calendar-control inline-flex h-10 w-10 items-center justify-center rounded-lg"
-                onClick={() => openFilteredActivitiesForDate(selectedDateISO)}
+              <IconButton
                 aria-label={autoT('ui_64e1a53052c0', { value0: selectedDateLabel })}
+                onClick={() => openFilteredActivitiesForDate(selectedDateISO)}
                 title={autoT('ui_6e613f438423')}
+                variant="secondary"
               >
-                <ArrowRight className="h-4 w-4" />
-              </button>
+                <ArrowRight aria-hidden="true" />
+              </IconButton>
               <Button onClick={() => openAddActivityForDate(selectedDateISO)}>{autoT('ui_400d9bb7617f')}</Button>
             </div>
           </div>

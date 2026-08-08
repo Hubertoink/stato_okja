@@ -7,6 +7,8 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
 import { useModalHistory } from '@/components/Modal';
+import { IconButton } from '@/components/ui/Button';
+import { Input, Select, Textarea } from '@/components/ui/Field';
 
 export const STAFF_ROLE_LABEL: Partial<Record<StaffRole, string>> = {
   employee: 'Mitarbeitende',
@@ -51,12 +53,12 @@ export function TagFormModal({
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="tag-name">{autoT('ui_d145bb830936')}</label>
-            <input
+            <Input
               id="tag-name"
               placeholder={autoT('ui_9a833db2ca8f')}
               value={form.name || ''}
               onChange={(event) => update('name', event.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full"
             />
           </div>
           <div>
@@ -65,58 +67,54 @@ export function TagFormModal({
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="tag-desc">{autoT('ui_b3c8defcacc0')}</label>
-            <textarea
+            <Textarea
               id="tag-desc"
               placeholder={autoT('ui_b93e372c4a97')}
               value={form.description || ''}
               onChange={(event) => update('description', event.target.value)}
               rows={3}
-              className="w-full border rounded px-3 py-2"
+              className="w-full"
             />
           </div>
         </div>
         <div className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           <div className="flex-1 flex items-center">
             <span className="tooltip-wrapper">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+              <IconButton
+                variant="danger-ghost"
                 onClick={dismiss}
                 title={autoT('ui_07af7cb30fca')}
                 aria-label={autoT('ui_07af7cb30fca')}
               >
                 <XIcon className="w-5 h-5" />
-              </button>
+              </IconButton>
               <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
           </div>
           <div className="flex-1 flex items-center justify-center">
             {initial?.id && onArchive ? (
               <span className="tooltip-wrapper">
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 bg-white"
+                <IconButton
+                  variant="secondary"
                   onClick={onArchive}
                   title={autoT('ui_b81f3298d960')}
                   aria-label={autoT('ui_b81f3298d960')}
                 >
                   <ArchiveIcon className="w-5 h-5" />
-                </button>
+                </IconButton>
                 <span className="tooltip-bubble">{autoT('ui_b81f3298d960')}</span>
               </span>
             ) : null}
           </div>
           <div className="flex-1 flex items-center justify-end">
             <span className="tooltip-wrapper">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+              <IconButton
                 onClick={handleSave}
                 title={autoT('ui_70b73bbc118d')}
                 aria-label={autoT('ui_70b73bbc118d')}
               >
                 <SaveIcon className="w-5 h-5" />
-              </button>
+              </IconButton>
               <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
             </span>
           </div>
@@ -163,34 +161,34 @@ export function CategoryFormModal({
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="category-name">{autoT('ui_d145bb830936')}</label>
-            <input
+            <Input
               id="category-name"
               placeholder={autoT('ui_98ec9686a395')}
               value={form.name || ''}
               onChange={(event) => update('name', event.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full"
             />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="category-desc">{autoT('ui_b3c8defcacc0')}</label>
-            <textarea
+            <Textarea
               id="category-desc"
               placeholder={autoT('ui_b93e372c4a97')}
               value={form.description || ''}
               onChange={(event) => update('description', event.target.value)}
               rows={3}
-              className="w-full border rounded px-3 py-2"
+              className="w-full"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">{autoT('ui_7611b749500a')}</label>
-              <input
+              <Input
                 id="category-standard-ref"
                 placeholder={autoT('ui_3d87605003c7')}
                 value={form.standardRef || ''}
                 onChange={(event) => update('standardRef', event.target.value)}
-                className="w-full border rounded px-3 py-2"
+                className="w-full"
               />
             </div>
             <div>
@@ -202,45 +200,41 @@ export function CategoryFormModal({
         <div className="settings-modal-actions roomy-settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           <div className="flex-1 flex items-center">
             <span className="tooltip-wrapper">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+              <IconButton
+                variant="danger-ghost"
                 onClick={dismiss}
                 title={autoT('ui_07af7cb30fca')}
                 aria-label={autoT('ui_07af7cb30fca')}
               >
                 <XIcon className="w-5 h-5" />
-              </button>
+              </IconButton>
               <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
           </div>
           <div className="flex-1 flex items-center justify-center">
             {initial?.id && onArchive ? (
               <span className="tooltip-wrapper">
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 bg-white"
+                <IconButton
+                  variant="secondary"
                   onClick={onArchive}
                   title={autoT('ui_b81f3298d960')}
                   aria-label={autoT('ui_b81f3298d960')}
                 >
                   <ArchiveIcon className="w-5 h-5" />
-                </button>
+                </IconButton>
                 <span className="tooltip-bubble">{autoT('ui_b81f3298d960')}</span>
               </span>
             ) : null}
           </div>
           <div className="flex-1 flex items-center justify-end">
             <span className="tooltip-wrapper">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+              <IconButton
                 onClick={handleSave}
                 title={autoT('ui_70b73bbc118d')}
                 aria-label={autoT('ui_70b73bbc118d')}
               >
                 <SaveIcon className="w-5 h-5" />
-              </button>
+              </IconButton>
               <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
             </span>
           </div>
@@ -289,41 +283,41 @@ export function StaffFormModal({
         <div className="space-y-4">
           <div>
             <label htmlFor="staff-name" className="block text-sm font-medium mb-1">{autoT('ui_d145bb830936')}</label>
-            <input
+            <Input
               id="staff-name"
               placeholder={autoT('ui_c3c4779024d4')}
               value={form.name || ''}
               onChange={(event) => update('name', event.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="staff-email" className="block text-sm font-medium mb-1">{autoT('ui_9eeffe4b7b6e')}</label>
-              <input
+              <Input
                 id="staff-email"
                 type="email"
                 placeholder={autoT('ui_24fe902c0a81')}
                 value={form.email || ''}
                 onChange={(event) => update('email', event.target.value)}
-                className="w-full border rounded px-3 py-2"
+                className="w-full"
               />
             </div>
             <div>
               <label htmlFor="staff-phone" className="block text-sm font-medium mb-1">{autoT('ui_40314f882822')}</label>
-              <input
+              <Input
                 id="staff-phone"
                 type="tel"
                 placeholder={autoT('ui_bf47e88b120b')}
                 value={form.phone || ''}
                 onChange={(event) => update('phone', event.target.value)}
-                className="w-full border rounded px-3 py-2"
+                className="w-full"
               />
             </div>
           </div>
           <div>
             <label htmlFor="staff-role" className="block text-sm font-medium mb-1">{autoT('ui_6237f0afe77f')}</label>
-            <select
+            <Select
               id="staff-role"
               value={
                 Array.isArray(form.roles)
@@ -333,50 +327,47 @@ export function StaffFormModal({
                     : "employee"
               }
               onChange={(event) => update('roles', [event.target.value as StaffRole])}
-              className="w-full border rounded px-3 py-2"
+              className="w-full"
             >
               {(['employee', 'volunteer', 'helper'] as StaffRole[]).map((role) => (
                 <option key={role} value={role}>
                   {STAFF_ROLE_LABEL[role]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label htmlFor="staff-notes" className="block text-sm font-medium mb-1">{autoT('ui_7e458d013900')}</label>
-            <textarea
+            <Textarea
               id="staff-notes"
               placeholder={autoT('ui_a6853cdd477f')}
               value={form.notes || ''}
               onChange={(event) => update('notes', event.target.value)}
               rows={3}
-              className="w-full border rounded px-3 py-2"
+              className="w-full"
             />
           </div>
         </div>
         <div className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
           <span className="tooltip-wrapper">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+            <IconButton
+              variant="danger-ghost"
               onClick={dismiss}
               title={autoT('ui_07af7cb30fca')}
               aria-label={autoT('ui_07af7cb30fca')}
             >
               <XIcon className="w-5 h-5" />
-            </button>
+            </IconButton>
             <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
           </span>
           <span className="tooltip-wrapper">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
+            <IconButton
               onClick={handleSave}
               title={autoT('ui_70b73bbc118d')}
               aria-label={autoT('ui_70b73bbc118d')}
             >
               <SaveIcon className="w-5 h-5" />
-            </button>
+            </IconButton>
             <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
           </span>
         </div>

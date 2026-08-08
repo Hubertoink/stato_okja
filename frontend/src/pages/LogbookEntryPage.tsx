@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
-import { useActivities } from '@/lib/activities';
+import { useActivity, useActivitiesPaged } from '@/lib/activities';
 import {
   type LogbookEntryInput,
   type LogbookEntryStatus,
@@ -162,12 +162,13 @@ function ActivityPickerModal({
     after.setDate(after.getDate() + 14);
     return { from: before.toISOString().slice(0, 10), to: after.toISOString().slice(0, 10) };
   }, [occurredAt]);
-  const { data: activities = [] } = useActivities({ ...range, order: 'desc' });
-  const visible = activities.filter((activity) =>
-    `${activity.title || ''} ${activity.project?.title || ''}`
-      .toLowerCase()
-      .includes(search.trim().toLowerCase()),
+  const { data: activityPage, isLoading } = useActivitiesPaged(
+    { ...range, search: search.trim() || undefined, order: 'desc' },
+    1,
+    50,
+    { staleTimeMs: 30_000 },
   );
+  const activities = activityPage?.data || [];
   return (
     <Modal open={open} onClose={onClose} title={autoT('ui_ab6635285bc7')} maxWidth="2xl" variant="form">
       <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 md:px-6 md:pb-6">
@@ -179,7 +180,8 @@ function ActivityPickerModal({
           className="mb-3 w-full shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
         />
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-        {visible.map((activity) => {
+        {isLoading ? <p className="py-6 text-center text-sm text-gray-500">{autoT('ui_a7151ad4e39f')}</p> : null}
+        {!isLoading && activities.map((activity) => {
           const project = activity.project;
           const projectColor = project
             ? project.color || colorFromStringHash(project.title)
@@ -213,7 +215,7 @@ function ActivityPickerModal({
                   <div
                     className="absolute inset-y-0 right-0 w-1/3 opacity-80 sm:w-1/4"
                     style={{
-                      background: `linear-gradient(135deg, ${projectColor} 0%, color-mix(in srgb, ${projectColor} 68%, white) 100%)`,
+                      background: `linear-gradient(225deg, ${projectColor} 0%, color-mix(in srgb, ${projectColor} 68%, white) 100%)`,
                     }}
                     aria-hidden
                   />
@@ -237,9 +239,9 @@ function ActivityPickerModal({
             </button>
           );
         })}
-        {visible.length === 0 && (
-          <p className="py-8 text-center text-sm text-gray-500">{autoT('ui_dfc3488ab197')}</p>
-        )}
+        {!isLoading && activities.length === 0 ? (
+          <p className="py-6 text-center text-sm text-gray-500">{autoT('ui_118fdc8c2826')}</p>
+        ) : null}
         </div>
       </div>
     </Modal>
@@ -287,13 +289,9 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const createComment = useCreateLogbookComment();
   const removeComment = useRemoveLogbookComment();
   const { data: projects = [] } = useProjects({ archived: false });
-  const now = new Date();
-  const from = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const to = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const { data: activities = [] } = useActivities({ from, to, order: 'desc' });
+  const { data: selectedActivityFromApi } = useActivity(form.activityId || entry?.activityId || undefined);
   const selectedProject = projects.find((project) => project.id === form.projectId);
-  const selectedActivity =
-    activities.find((activity) => activity.id === form.activityId) ||
+  const selectedActivity = selectedActivityFromApi ||
     (entry?.activityId === form.activityId ? entry.activity : undefined);
   const occurredAtWeekday = useMemo(() => getWeekdayLabel(form.occurredAt), [form.occurredAt]);
 
@@ -507,7 +505,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   value={form.title}
                   onChange={(event) => setForm({ ...form, title: event.target.value })}
                   placeholder={autoT('ui_b1654f25a69e')}
-                  className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
+                  className="editor-field mt-1 w-full border px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)]"
                 />
               </label>
               <label className="block text-sm font-medium text-gray-700">{autoT('ui_b3c8defcacc0')}<textarea
@@ -517,7 +515,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   value={form.body}
                   onChange={(event) => setForm({ ...form, body: event.target.value })}
                   placeholder={autoT('ui_c64d2713db08')}
-                  className="editor-field mt-1 w-full resize-y border border-gray-200 bg-white px-3 py-2.5"
+                  className="editor-field mt-1 w-full resize-y border px-3 py-2.5 text-[var(--text-primary)] placeholder:text-[var(--text-faint)]"
                 />
               </label>
               <details

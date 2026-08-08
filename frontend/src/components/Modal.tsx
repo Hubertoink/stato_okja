@@ -1,17 +1,91 @@
 import { X as XIcon } from 'lucide-react';
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { useTranslation } from 'react-i18next';
 import { EditorHeader } from '@/components/ui/EditorFrame';
 
+/** Visual backdrop for custom dialogs that do not use the shared Modal shell. */
+export function ModalBackdrop({ className = '', onClick }: { className?: string; onClick?: () => void }) {
+  return <div aria-hidden="true" className={`absolute inset-0 ${className}`} onClick={onClick} />;
+}
+
+type ModalHistoryState = { __statoModalStack?: string[] };
+
 /**
- * A visual modal backdrop that deliberately does not handle clicks.
- * Dialogs are closed through their explicit controls so unsaved work cannot
- * disappear from an incidental click outside the panel.
+ * Keeps modal navigation inside the current page. On mobile, a browser-back
+ * gesture first dismisses the topmost dialog. Callers keep their existing
+ * onClose guards, so unsaved-change confirmation continues to decide whether
+ * the dialog may actually close.
  */
-export function ModalBackdrop({ className = '' }: { className?: string }) {
-  return <div aria-hidden="true" className={`pointer-events-none absolute inset-0 ${className}`} />;
+export function useModalHistory(onClose: () => void, open = true) {
+  const modalId = useId();
+  const onCloseRef = useRef(onClose);
+  const dismissingRef = useRef(false);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+
+    const getStack = (state: ModalHistoryState | null | undefined) => state?.__statoModalStack || [];
+    const currentStack = getStack(window.history.state as ModalHistoryState);
+    window.history.pushState(
+      { ...(window.history.state || {}), __statoModalStack: [...currentStack, modalId] },
+      '',
+      window.location.href,
+    );
+
+    const handlePopState = (event: PopStateEvent) => {
+      const nextStack = getStack(event.state as ModalHistoryState);
+      if (nextStack.includes(modalId)) return;
+
+      // Restore the modal history entry before delegating to onClose. This is
+      // important when an unsaved-changes guard declines the close request.
+      window.history.pushState(
+        { ...(event.state || {}), __statoModalStack: [...nextStack, modalId] },
+        '',
+        window.location.href,
+      );
+      dismissingRef.current = true;
+      onCloseRef.current();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Let a replacement modal register itself first. Selecting a project,
+      // for example, swaps the picker for the activity editor in one React
+      // update. Removing the old history entry synchronously would otherwise
+      // deliver its pending popstate to the newly opened editor and close it.
+      window.setTimeout(() => {
+        const state = window.history.state as ModalHistoryState;
+        const stack = getStack(state);
+        const index = stack.lastIndexOf(modalId);
+        if (index < 0) return;
+        if (index === stack.length - 1) {
+          window.history.back();
+          return;
+        }
+        window.history.replaceState(
+          { ...(state || {}), __statoModalStack: stack.filter((id) => id !== modalId) },
+          '',
+          window.location.href,
+        );
+      }, 0);
+    };
+  }, [modalId, open]);
+
+  return useCallback(() => {
+    const stack = ((window.history.state as ModalHistoryState | null)?.__statoModalStack || []);
+    if (!dismissingRef.current && stack.at(-1) === modalId) {
+      window.history.back();
+      return;
+    }
+    onCloseRef.current();
+  }, [modalId]);
 }
 
 export default function Modal({
@@ -40,6 +114,7 @@ export default function Modal({
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
+  const dismiss = useModalHistory(onClose, open);
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
 
@@ -61,7 +136,7 @@ export default function Modal({
     if (event.defaultPrevented) return;
     if (event.key === 'Escape') {
       event.preventDefault();
-      onClose();
+      dismiss();
       return;
     }
     if (event.key !== 'Tab' || !dialogRef.current) return;
@@ -105,6 +180,9 @@ export default function Modal({
     <div
       className={`visual-viewport-fixed z-[70] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? "backdrop-blur-sm" : ''}`}
       onWheel={(e) => e.stopPropagation()}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) dismiss();
+      }}
     >
       <div
         ref={dialogRef}
@@ -121,7 +199,7 @@ export default function Modal({
             title={title}
             titleId={titleId}
             actions={headerActions}
-            onClose={onClose}
+            onClose={dismiss}
             closeLabel={t('actions.close')}
             showCloseButton={showCloseButton}
           />
@@ -130,8 +208,8 @@ export default function Modal({
             <h3 className="text-lg font-bold gradient-text">{title}</h3>
             {showCloseButton && (
             <button
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--surface-2)] p-2 text-[var(--text-secondary)] transition-all duration-200 hover:scale-105 hover:bg-[var(--surface-3)]"
-              onClick={onClose}
+              className="modal-close-button inline-flex items-center justify-center rounded-xl bg-[var(--surface-2)] p-2 text-[var(--text-secondary)] transition-all duration-200 hover:scale-105 hover:bg-[var(--surface-3)]"
+              onClick={dismiss}
               aria-label={t('actions.close')}
             >
               <XIcon className="w-5 h-5" />

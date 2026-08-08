@@ -20,6 +20,28 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.4.6] - 2026-08-08
+
+### Changed
+- Modale folgen nun einheitlich dem StatO-Design: Textfelder haben in allen
+  Editoren eine dezente, themefähige Abhebung; Verlaufsschalter und der
+  Login-Button sind einfarbig.
+- Modale lassen sich konsistent per Klick außerhalb schließen; auf Mobilgeräten
+  schließt die Browser-Zurückgeste zuerst das geöffnete Modal.
+- Die Auswahl von Logbuch-Aktivitäten lädt nur noch die benötigte Seite statt
+  alle Aktivitäten auf einmal.
+
+### Fixed
+- Die mobile Loginansicht ist statisch und kann nicht mehr unnötig vertikal
+  verschoben werden.
+- Das Verknüpfen einer Aktivität im Logbuch öffnet anschließend zuverlässig
+  den Logbucheintrag.
+- Zählfelder für Alterskohorten ignorieren Scrollgesten. Vom gespeicherten
+  Stand abweichende Werte werden im Bearbeitungsmodus sichtbar markiert und
+  geben nach bewussten Änderungen direktes Feedback.
+
+---
+
 ## [1.4.5] - 2026-08-07
 
 ### Changed

@@ -62,6 +62,7 @@ import { EditorActions } from '@/components/ui/EditorFrame';
 import ActivityTitleField from '@/components/ActivityTitleField';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { getTimeRangeValidationIssue } from '@/lib/timeRange';
+import { useModalHistory } from '@/components/Modal';
 
 export default function ActivityQuickAdd({
   dateISO,
@@ -309,6 +310,7 @@ export default function ActivityQuickAdd({
     }
     requestDiscard(onClose);
   };
+  const dismiss = useModalHistory(handleClose);
 
   const handleSave = () => {
     if (create.isPending || update.isPending || submitLockedRef.current) return;
@@ -389,6 +391,9 @@ export default function ActivityQuickAdd({
     <div
       className="visual-viewport-fixed z-[60] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) dismiss();
+      }}
     >
       <div
         ref={panelRef}
@@ -415,8 +420,8 @@ export default function ActivityQuickAdd({
             />
             <button
               type="button"
-              onClick={handleClose}
-              className="hidden h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-2)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-3)] md:inline-flex"
+              onClick={dismiss}
+              className="modal-close-button hidden h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-2)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-3)] md:inline-flex"
               title={t('quickAdd.close')}
               aria-label={t('quickAdd.close')}
             >
@@ -975,7 +980,7 @@ export default function ActivityQuickAdd({
             ) : undefined
           }
           secondary={
-            <Button variant="secondary" size="lg" onClick={handleClose}>
+            <Button variant="secondary" size="lg" onClick={dismiss}>
               {t('quickAdd.cancel')}
             </Button>
           }

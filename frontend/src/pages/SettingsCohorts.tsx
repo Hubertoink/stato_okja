@@ -8,10 +8,12 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
+import { useModalHistory } from '@/components/Modal';
 
 function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void }) {
   const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
   useBodyScrollLock(true);
+  const dismiss = useModalHistory(onCancel);
   const update = <K extends keyof Cohort>(k: K, v: Cohort[K]) => setForm((f) => ({ ...f, [k]: v }));
   const handleSave = () => {
     const cleaned = Object.fromEntries(
@@ -26,7 +28,10 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
   });
 
   return (
-  <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6">
+  <div
+    className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6"
+    onClick={(event) => { if (event.target === event.currentTarget) dismiss(); }}
+  >
   <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">{initial?.id ? autoT('ui_310943ff21e8') : autoT('ui_3422b6e6c87f')}</h3>
         <div className="space-y-3">
@@ -52,7 +57,7 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
         </div>
   <div className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           <div className="flex-1 flex items-center">
-            <span className="tooltip-wrapper"><button type="button" className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={onCancel} title={autoT('ui_07af7cb30fca')} aria-label={autoT('ui_07af7cb30fca')}>
+            <span className="tooltip-wrapper"><button type="button" className="modal-close-button inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={dismiss} title={autoT('ui_07af7cb30fca')} aria-label={autoT('ui_07af7cb30fca')}>
               <XIcon className="w-5 h-5" />
             </button><span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span></span>
           </div>

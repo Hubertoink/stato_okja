@@ -36,6 +36,10 @@
  * authenticated shell makes the login screen follow the last known user/org
  * preference without duplicating theme-specific colors in JSX. */
 .login-screen {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
   color: var(--text-primary);
   background:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--cambridge-blue) 42%, transparent), transparent 34%),
@@ -47,6 +51,32 @@
   color: var(--text-primary);
   background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
   border: 1px solid color-mix(in srgb, var(--border-strong) 62%, transparent);
+}
+
+.login-screen .btn-modern {
+  background: var(--viridian);
+}
+
+.login-screen .btn-modern::before {
+  display: none;
+}
+
+@media (max-width: 767px) and (max-height: 760px) {
+  .login-screen {
+    padding: 0.75rem;
+  }
+
+  .login-card {
+    padding: 1.25rem;
+  }
+
+  .login-card .mb-8 {
+    margin-bottom: 1.25rem;
+  }
+
+  .login-card .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem;
+  }
 }
 
 .login-label { color: var(--text-primary); }

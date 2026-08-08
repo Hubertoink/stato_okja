@@ -6,6 +6,7 @@ import { type StaffMember, type StaffRole } from '@/lib/staff';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
+import { useModalHistory } from '@/components/Modal';
 
 export const STAFF_ROLE_LABEL: Partial<Record<StaffRole, string>> = {
   employee: 'Mitarbeitende',
@@ -26,6 +27,7 @@ export function TagFormModal({
 }) {
   const [form, setForm] = useState<Partial<Tag>>({ active: true, ...initial });
   useBodyScrollLock(true);
+  const dismiss = useModalHistory(onCancel);
   const update = <K extends keyof Tag>(key: K, value: Tag[K]) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleSave = () => {
@@ -41,7 +43,7 @@ export function TagFormModal({
   });
 
   return (
-    <div className="modal-overlay visual-viewport-fixed z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6">
+    <div className="modal-overlay visual-viewport-fixed z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6" onClick={(event) => { if (event.target === event.currentTarget) dismiss(); }}>
       <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? autoT('ui_c7f5b6bae389') : autoT('ui_dacb43d1a177')}
@@ -79,7 +81,7 @@ export function TagFormModal({
               <button
                 type="button"
                 className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-                onClick={onCancel}
+                onClick={dismiss}
                 title={autoT('ui_07af7cb30fca')}
                 aria-label={autoT('ui_07af7cb30fca')}
               >
@@ -137,6 +139,7 @@ export function CategoryFormModal({
 }) {
   const [form, setForm] = useState<Partial<Category>>({ active: true, ...initial });
   useBodyScrollLock(true);
+  const dismiss = useModalHistory(onCancel);
   const update = <K extends keyof Category>(key: K, value: Category[K]) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleSave = () => {
@@ -152,7 +155,7 @@ export function CategoryFormModal({
   });
 
   return (
-    <div className="modal-overlay visual-viewport-fixed z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6">
+    <div className="modal-overlay visual-viewport-fixed z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6" onClick={(event) => { if (event.target === event.currentTarget) dismiss(); }}>
       <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? autoT('ui_a396ad29224c') : autoT('ui_f65f5413c438')}
@@ -202,7 +205,7 @@ export function CategoryFormModal({
               <button
                 type="button"
                 className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-                onClick={onCancel}
+                onClick={dismiss}
                 title={autoT('ui_07af7cb30fca')}
                 aria-label={autoT('ui_07af7cb30fca')}
               >
@@ -262,6 +265,7 @@ export function StaffFormModal({
     ...initial,
   });
   useBodyScrollLock(true);
+  const dismiss = useModalHistory(onCancel);
   const update = <K extends keyof StaffMember>(key: K, value: StaffMember[K]) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleSave = () => {
@@ -277,7 +281,7 @@ export function StaffFormModal({
   });
 
   return (
-    <div className="modal-overlay visual-viewport-fixed z-[60] bg-black/30 flex items-end md:items-center justify-center overflow-x-hidden p-0 md:p-6">
+    <div className="modal-overlay visual-viewport-fixed z-[60] bg-black/30 flex items-end md:items-center justify-center overflow-x-hidden p-0 md:p-6" onClick={(event) => { if (event.target === event.currentTarget) dismiss(); }}>
       <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
         <h3 className="text-xl font-semibold text-viridian mb-4">
           {initial?.id ? autoT('ui_362bc3480705') : autoT('ui_561b3cbf4717')}
@@ -355,7 +359,7 @@ export function StaffFormModal({
             <button
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-              onClick={onCancel}
+              onClick={dismiss}
               title={autoT('ui_07af7cb30fca')}
               aria-label={autoT('ui_07af7cb30fca')}
             >

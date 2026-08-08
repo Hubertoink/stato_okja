@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pencil, Trash2, X } from 'lucide-react';
 import { api } from '@/lib/api';
-import Modal from '@/components/Modal';
+import Modal, { useModalHistory } from '@/components/Modal';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -57,6 +57,7 @@ export default function SettingsProjectTemplates() {
   const del = useDeleteProjectTemplate();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const dismissTemplateModal = useModalHistory(() => setModalOpen(false), modalOpen);
   const [editing, setEditing] = useState<ProjectTemplateDto | null>(null);
   const [confirm, setConfirm] = useState<{ open: boolean; id?: string; title?: string }>({ open: false });
 
@@ -181,7 +182,7 @@ export default function SettingsProjectTemplates() {
 
   useEditorShortcuts({
     enabled: modalOpen && !newCatModal && !newTagModal && !imageIssue.open,
-    onClose: () => setModalOpen(false),
+    onClose: dismissTemplateModal,
     onSave:
       !String(form.title || '').trim() || create.isPending || update.isPending
         ? undefined
@@ -361,7 +362,10 @@ export default function SettingsProjectTemplates() {
 
       {/* Template Edit/Create Modal - styled like project modal */}
       {modalOpen && (
-        <div className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center p-0 md:items-center md:p-6">
+        <div
+          className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center p-0 md:items-center md:p-6"
+          onClick={(event) => { if (event.target === event.currentTarget) dismissTemplateModal(); }}
+        >
           <div
             className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate"
             onDragOver={(e) => e.preventDefault()}
@@ -373,7 +377,7 @@ export default function SettingsProjectTemplates() {
               </h3>
               <button
                 type="button"
-                onClick={() => setModalOpen(false)}
+                onClick={dismissTemplateModal}
                 className="p-2 rounded hover:bg-gray-100"
               >
                 <X className="w-5 h-5" />
@@ -620,7 +624,7 @@ export default function SettingsProjectTemplates() {
             <div className="sticky bottom-0 bg-white border-t mt-4 py-4 flex items-center justify-end gap-2">
               <button
                 className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
-                onClick={() => setModalOpen(false)}
+                onClick={dismissTemplateModal}
               >{autoT('ui_07af7cb30fca')}</button>
               <button
                 className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"

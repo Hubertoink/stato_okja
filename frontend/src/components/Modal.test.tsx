@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import Modal, { ModalBackdrop } from './Modal';
 
 describe('Modal', () => {
-  it('keeps visual backdrops from intercepting dialog interactions', () => {
-    const { container } = render(<ModalBackdrop />);
+  it('lets custom dialogs attach a backdrop-close action', () => {
+    const onClick = vi.fn();
+    const { container } = render(<ModalBackdrop onClick={onClick} />);
 
-    expect(container.querySelector('[aria-hidden="true"]')).toHaveClass('pointer-events-none');
+    fireEvent.click(container.querySelector('[aria-hidden="true"]')!);
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the header separate from the scrolling content for information modals', () => {
@@ -60,6 +62,22 @@ describe('Modal', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Form' });
     fireEvent.keyDown(dialog, { key: 'Escape' });
+    fireEvent.popState(window, { state: {} });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes when the modal backdrop is clicked', () => {
+    const onClose = vi.fn();
+    render(
+      <Modal open onClose={onClose} title="Form" variant="form">
+        <input aria-label="Field" />
+      </Modal>,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Form' });
+    fireEvent.click(dialog.parentElement!);
+    fireEvent.popState(window, { state: {} });
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

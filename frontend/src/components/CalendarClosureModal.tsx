@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Clock3, Save, Trash2, X } from 'lucide-react';
 import type { OrganizationClosureDay } from '@/lib/orgs';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
-import { ModalBackdrop } from '@/components/Modal';
+import { ModalBackdrop, useModalHistory } from '@/components/Modal';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 
@@ -38,6 +38,7 @@ export default function CalendarClosureModal({
   deleting?: boolean;
 }) {
   useBodyScrollLock(true);
+  const dismiss = useModalHistory(onClose);
   const [fullDay, setFullDay] = useState(!(closureDay?.from || closureDay?.to));
   const [from, setFrom] = useState(closureDay?.from ?? '08:00');
   const [to, setTo] = useState(closureDay?.to ?? '17:00');
@@ -56,7 +57,7 @@ export default function CalendarClosureModal({
       className="fixed inset-0 z-[70] flex items-end justify-center p-0 md:items-center md:p-4"
       onWheel={(event) => event.stopPropagation()}
     >
-      <ModalBackdrop className="modal-overlay bg-black/45" />
+      <ModalBackdrop className="modal-overlay bg-black/45" onClick={dismiss} />
       <div
         aria-label={autoT('ui_afd5e7713414')}
         aria-modal="true"
@@ -77,9 +78,9 @@ export default function CalendarClosureModal({
           </div>
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
+            className="modal-close-button inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
             style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
-            onClick={onClose}
+            onClick={dismiss}
             aria-label={autoT('ui_44424b18700e')}
             title={autoT('ui_44424b18700e')}
           >
@@ -160,7 +161,7 @@ export default function CalendarClosureModal({
               type="button"
               className="inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors"
               style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
-              onClick={onClose}
+              onClick={dismiss}
             >{autoT('ui_07af7cb30fca')}</button>
             <button
               type="button"

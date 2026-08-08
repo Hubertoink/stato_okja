@@ -9,6 +9,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 import { useTranslation } from 'react-i18next';
 import { compareLocalized } from '@/i18n/formatters';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+import { useModalHistory } from '@/components/Modal';
 
 function backgroundColorForProject(project: Project) {
   return project.color || colorFromStringHash(project.title);
@@ -22,6 +23,7 @@ export default function ProjectPickerModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation(['common', 'activities']);
+  const dismiss = useModalHistory(onClose);
   // This component mounts only when open – lock body scroll while mounted
   useBodyScrollLock(true);
   const keyboardOpen = useKeyboardOpen();
@@ -66,13 +68,16 @@ export default function ProjectPickerModal({
     <div
       className="visual-viewport-fixed z-[80] bg-black/30 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay"
       onWheel={(e) => e.stopPropagation()}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) dismiss();
+      }}
     >
       <div className="modal-panel-roomy bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 flex flex-col overflow-hidden bottom-sheet-animate">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xl font-semibold text-viridian">{t('projectPicker.title')}</h3>
           <button
-            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
-            onClick={onClose}
+            className="modal-close-button inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+            onClick={dismiss}
             aria-label={t('actions.close')}
           >
             <XIcon className="w-5 h-5" />
@@ -153,7 +158,7 @@ export default function ProjectPickerModal({
                     <Link
                       to="/projects"
                       className="text-viridian hover:underline ml-1"
-                      onClick={onClose}
+                      onClick={dismiss}
                     >
                       {t('projectPicker.projectsPage')}
                     </Link>

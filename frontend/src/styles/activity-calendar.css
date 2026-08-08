@@ -16,6 +16,15 @@
   gap: 0.375rem;
 }
 
+/* Cohort values changed from the saved activity state remain clearly visible
+ * until the editor is saved or reset. */
+.activity-cohort-count--changed {
+  background-color: color-mix(in srgb, var(--viridian) 13%, var(--surface-1)) !important;
+  border-color: color-mix(in srgb, var(--viridian) 62%, var(--border-strong)) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--viridian) 16%, transparent) !important;
+  color: var(--text-primary) !important;
+}
+
 @media (min-width: 640px) {
   .activity-cohort-grid {
     grid-template-columns: minmax(0, 1fr) repeat(3, minmax(3rem, 3.75rem)) minmax(2.5rem, 3rem);
@@ -248,7 +257,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 }
 
 .segmented-control--emphasis .segmented-control-indicator {
-  background: linear-gradient(135deg, var(--viridian), var(--cambridge-blue));
+  background: var(--viridian);
 }
 
 .stats-kpi-toggle {

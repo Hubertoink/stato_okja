@@ -235,6 +235,67 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
     document.body,
   );
 }
+
+interface MoreActivitiesTooltipProps {
+  activities: Activity[] | null;
+  position: { x: number; y: number } | null;
+  typeLabel: Record<string, string>;
+  fmtTimeRange: (s?: string | null, e?: string | null) => string;
+}
+
+function MoreActivitiesTooltip({ activities, position, typeLabel, fmtTimeRange }: MoreActivitiesTooltipProps) {
+  const visible = Boolean(activities?.length && position);
+  const { ref, layout } = useClampedTooltipLayout(position, visible, {
+    preferBelow: true,
+    preferBelowOnOverflow: true,
+  });
+
+  if (!activities?.length || !position) return null;
+
+  const panelClass = 'calendar-tooltip-panel flex flex-col overflow-hidden text-xs rounded-xl px-3.5 py-2.5 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border';
+  const content = (
+    <>
+      <div className="mb-1.5 shrink-0 border-b pb-1 font-semibold text-viridian" style={{ borderColor: 'var(--border-strong)' }}>
+        +{activities.length} {autoT('ui_d055c3b1006a')}
+      </div>
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+        {activities.map((activity) => {
+          const label = `${activity.project?.title || typeLabel[activity.type] || activity.type}${activity.title ? ` (${activity.title})` : ''}`;
+          const time = fmtTimeRange(activity.startTime, activity.endTime);
+          return (
+            <div key={activity.id} className="calendar-tooltip-body leading-snug">
+              <span className="font-medium text-[color:var(--text-primary)]">{label}</span>
+              {time && <span className="calendar-tooltip-meta ml-1 text-[10px]">{time}</span>}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  if (!layout) {
+    return createPortal(
+      <div className="fixed left-[-9999px] top-[-9999px] z-[55] pointer-events-none" aria-hidden>
+        <div ref={ref} className={panelClass}>
+          {content}
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  return createPortal(
+    <div
+      className="fixed z-[55] pointer-events-none animate-tooltip-fade-in"
+      style={{ left: layout.left, top: layout.top, transform: layout.transform }}
+    >
+      <div ref={ref} className={panelClass} style={{ maxHeight: layout.maxHeight }}>
+        {content}
+      </div>
+    </div>,
+    document.body,
+  );
+}
 // duplicate import removed
 
 type View = 'month' | 'week' | 'three-day';
@@ -897,8 +958,7 @@ export default function Calendar() {
     clearActivityTooltipOpen();
     scheduleActivityTooltipClose();
   };
-  
-  // State for "+x more" tooltip
+
   const [moreTooltip, setMoreTooltip] = useState<{ activities: Activity[]; position: { x: number; y: number } } | null>(null);
   const moreTooltipOpenTimeoutRef = useRef<number | null>(null);
   const moreTooltipCloseTimeoutRef = useRef<number | null>(null);
@@ -909,34 +969,31 @@ export default function Calendar() {
       moreTooltipOpenTimeoutRef.current = null;
     }
   };
+
   const clearMoreTooltipClose = () => {
     if (moreTooltipCloseTimeoutRef.current) {
       clearTimeout(moreTooltipCloseTimeoutRef.current);
       moreTooltipCloseTimeoutRef.current = null;
     }
   };
-  const scheduleMoreTooltipClose = () => {
-    clearMoreTooltipClose();
-    clearMoreTooltipOpen();
-    moreTooltipCloseTimeoutRef.current = window.setTimeout(() => {
-      setMoreTooltip(null);
-      moreTooltipCloseTimeoutRef.current = null;
-    }, 180);
-  };
 
-  const handleMoreMouseEnter = (e: React.MouseEvent, hiddenActivities: Activity[]) => {
+  const handleMoreMouseEnter = (event: React.MouseEvent, hiddenActivities: Activity[]) => {
     clearMoreTooltipClose();
     clearMoreTooltipOpen();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pos = { x: rect.left + rect.width / 2, y: rect.bottom };
+    const rect = event.currentTarget.getBoundingClientRect();
     moreTooltipOpenTimeoutRef.current = window.setTimeout(() => {
-      setMoreTooltip({ activities: hiddenActivities, position: pos });
+      setMoreTooltip({ activities: hiddenActivities, position: { x: rect.left + rect.width / 2, y: rect.bottom } });
       moreTooltipOpenTimeoutRef.current = null;
     }, 600);
   };
 
   const handleMoreMouseLeave = () => {
-    scheduleMoreTooltipClose();
+    clearMoreTooltipOpen();
+    clearMoreTooltipClose();
+    moreTooltipCloseTimeoutRef.current = window.setTimeout(() => {
+      setMoreTooltip(null);
+      moreTooltipCloseTimeoutRef.current = null;
+    }, 120);
   };
 
   useEffect(() => {
@@ -1010,9 +1067,9 @@ export default function Calendar() {
           );
         })}
         {hidden > 0 && (
-          <div 
-            className="calendar-more-badge h-4 rounded border px-1 text-[9px] font-semibold leading-4 cursor-pointer transition-colors md:h-5 md:text-[10px] md:leading-5"
-            onMouseEnter={(e) => handleMoreMouseEnter(e, hiddenItems)}
+          <div
+            className="calendar-more-badge h-4 cursor-pointer rounded border px-1 text-[9px] font-semibold leading-4 transition-colors md:h-5 md:text-[10px] md:leading-5"
+            onMouseEnter={(event) => handleMoreMouseEnter(event, hiddenItems)}
             onMouseLeave={handleMoreMouseLeave}
           >
             +{hidden}
@@ -1613,77 +1670,13 @@ export default function Calendar() {
         typeLabel={typeLabel}
         fmtTimeRange={fmtTimeRange}
       />
+      <MoreActivitiesTooltip
+        activities={moreTooltip?.activities ?? null}
+        position={moreTooltip?.position ?? null}
+        typeLabel={typeLabel}
+        fmtTimeRange={fmtTimeRange}
+      />
       
-      {/* Tooltip for "+x more" badge */}
-      {moreTooltip && (() => {
-        const MoreTooltipContent = () => {
-          const { ref, layout } = useClampedTooltipLayout(moreTooltip.position, true, {
-            preferBelow: true,
-            preferBelowOnOverflow: true,
-          });
-
-          if (!layout) {
-            return (
-              <div className="fixed left-[-9999px] top-[-9999px] z-[9999] pointer-events-none" aria-hidden>
-                <div
-                  ref={ref}
-                  className="calendar-tooltip-panel text-xs rounded-xl px-3.5 py-2.5 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border"
-                >
-                  <div className="font-semibold mb-1.5 border-b pb-1 text-viridian" style={{ borderColor: 'var(--border-strong)' }}>
-                    +{moreTooltip.activities.length}{autoT('ui_d055c3b1006a')}</div>
-                  <div className="space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(50vh - 60px)' }}>
-                    {moreTooltip.activities.map((a, i) => {
-                      const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
-                      const time = fmtTimeRange(a.startTime, a.endTime);
-                      return (
-                        <div key={i} className="calendar-tooltip-body leading-snug">
-                          <span className="font-medium text-[color:var(--text-primary)]">{label}</span>
-                          {time && <span className="calendar-tooltip-meta ml-1 text-[10px]">{time}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
-          return (
-            <div
-              className="fixed z-[9999] pointer-events-none animate-tooltip-fade-in"
-              style={{ left: layout.left, top: layout.top, transform: layout.transform }}
-            >
-              <div
-                ref={ref}
-                className="calendar-tooltip-panel relative flex flex-col overflow-hidden text-xs rounded-xl px-3.5 py-2.5 shadow-xl w-[320px] max-w-[calc(100vw-24px)] border"
-                style={{ maxHeight: layout.maxHeight }}
-              >
-                <div className="font-semibold mb-1.5 shrink-0 border-b pb-1 text-viridian" style={{ borderColor: 'var(--border-strong)' }}>
-                  +{moreTooltip.activities.length}{autoT('ui_d055c3b1006a')}</div>
-                <div className="space-y-1 overflow-y-auto min-h-0 flex-1 pr-1">
-                  {moreTooltip.activities.map((a, i) => {
-                    const label = `${a.project?.title || typeLabel[a.type] || a.type}${a.title ? ` (${a.title})` : ''}`;
-                    const time = fmtTimeRange(a.startTime, a.endTime);
-                    return (
-                      <div key={i} className="calendar-tooltip-body leading-snug">
-                        <span className="font-medium text-[color:var(--text-primary)]">{label}</span>
-                        {time && <span className="calendar-tooltip-meta ml-1 text-[10px]">{time}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Tooltip arrow */}
-                <div
-                  className={`absolute w-2 h-2 -translate-x-1/2 ${layout.arrowClass}`}
-                  style={{ left: layout.arrowCenterPx, backgroundColor: 'var(--surface-elevated)', borderColor: 'var(--border-strong)', borderRightWidth: '1px', borderBottomWidth: '1px' }}
-                />
-              </div>
-            </div>
-          );
-        };
-
-        return createPortal(<MoreTooltipContent />, document.body);
-      })()}
     </div>
   );
 }

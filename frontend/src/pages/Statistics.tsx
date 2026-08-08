@@ -722,6 +722,7 @@ export default function Statistics() {
   const totalActivities = activitiesPageQ.data?.total ?? summary?.totalActivities ?? 0;
   const { data: tagsAll = [] } = useTags({ active: true });
   const { data: cohortsAll = [] } = useCohorts({ active: true });
+  const { data: cohortsForStatistics = [] } = useCohorts();
   const { data: projectsAll = [] } = useProjects();
 
   const statsRunKey = useMemo(
@@ -1388,11 +1389,14 @@ export default function Statistics() {
         })
         .filter((entry) => (entry.metricValue ?? 0) > 0)
         .map((entry, index) => ({
-          name: entry.name,
+          name: (() => {
+            const cohort = (cohortsForStatistics as Cohort[]).find((item) => item.id === entry.cohortId);
+            return cohort ? `${cohort.minAge}–${cohort.maxAge} ${autoT('ui_b0bf2144b683')}` : entry.name;
+          })(),
           value: entry.metricValue,
           color: fallbackBarColors[index % fallbackBarColors.length],
         })),
-    [cohortChartData, fallbackBarColors, showAverage],
+    [cohortChartData, cohortsForStatistics, fallbackBarColors, showAverage],
   );
 
   const renderPieValueLabel = (showAbsoluteValue: boolean) =>

@@ -12,6 +12,11 @@
   box-shadow: var(--card-shadow);
 }
 
+.dashboard-activity-card {
+  background: var(--surface-1);
+  box-shadow: var(--card-shadow);
+}
+
 .recent-actions-group {
   background: color-mix(in srgb, var(--surface-1) 94%, transparent);
   border: 1px solid var(--border-subtle);

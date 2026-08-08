@@ -20,6 +20,23 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.5.0] - 2026-08-08
+
+### Changed
+- KPI- und Projekt-Editoren folgen jetzt dem gemeinsamen, themefähigen
+  Formularstandard der Aktivitäten. Der Projekt-Editor ist kompakter und
+  verwendet konsistente Oberflächen für seine Bereiche.
+- Logbuch- und Daily-Log-Karten auf dem Dashboard verwenden denselben
+  rahmenlosen Kartenstil wie die Statistik.
+
+### Fixed
+- Die Statistik zeigt für Alterskohorten den hinterlegten Altersbereich statt
+  der frei wählbaren Kohortenbezeichnung.
+- Der Hinweis für weitere Kalenderaktivitäten ist wieder verfügbar und nutzt
+  den üblichen Tooltip-Stil ohne Pfeil.
+
+---
+
 ## [1.4.8] - 2026-08-08
 
 ### Changed

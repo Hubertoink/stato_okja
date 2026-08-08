@@ -1000,7 +1000,7 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {dailyLog.map((item) => (
-              <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4">
+              <div key={item.id} className="dashboard-activity-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2 gap-2">
                   <h4 className="font-medium text-gray-800 truncate" title={item.title}>
                     {item.title}

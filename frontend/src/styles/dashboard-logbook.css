@@ -234,11 +234,11 @@
 }
 
 .dashboard-logbook-entry {
-  border: 1px solid var(--border-subtle);
   background: var(--surface-1);
+  box-shadow: var(--card-shadow);
   transition:
     background-color 150ms ease,
-    border-color 150ms ease,
+    box-shadow 150ms ease,
     transform 150ms ease;
 }
 
@@ -272,7 +272,6 @@
 
 .dashboard-logbook-entry:hover,
 .dashboard-logbook-entry:focus-visible {
-  border-color: var(--interactive-soft-border);
   background: var(--interactive-soft);
 }
 

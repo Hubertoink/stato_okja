@@ -14,7 +14,6 @@ import {
   Trash2,
   KeyRound,
   Users,
-  Plus,
   Shield,
   User as UserIcon,
   Building2,
@@ -40,6 +39,8 @@ import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getEmailValidationMessage } from '@/lib/emailValidation';
 import { autoT } from '@/i18n/auto';
 import { useTranslation } from 'react-i18next';
+import { Button, CreateButton } from '@/components/ui/Button';
+import { FieldError, Input, Select } from '@/components/ui/Field';
 
 type UserGroup = { key: string; name: string; users: UserDto[] };
 
@@ -292,8 +293,8 @@ export default function OrgUserManagement() {
                 : t('userManagement.unassignedUsers')}
           </p>
         </div>
-        <button
-          className="inline-flex shrink-0 items-center justify-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg shadow hover:bg-cambridge-blue transition-colors"
+        <CreateButton
+          className="shrink-0"
           onClick={() => {
             resetCreateForm();
             setCreateModalOpen(true);
@@ -304,13 +305,12 @@ export default function OrgUserManagement() {
               : autoT('ui_744a87e36886')
           }
         >
-          <Plus className="w-5 h-5" />
           <span className="hidden sm:inline">
             {publicConfig.userProvisioningMode === 'local'
               ? autoT('ui_1614f4af1460')
               : autoT('ui_744a87e36886')}
           </span>
-        </button>
+        </CreateButton>
       </div>
 
       {/* Search & User List */}
@@ -327,12 +327,12 @@ export default function OrgUserManagement() {
             {/* Search */}
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
+              <Input
                 type="text"
                 placeholder={autoT('ui_d26ce4a1305c')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border rounded-lg pl-9 pr-3 py-2 text-sm w-full sm:w-48 focus:ring-2 focus:ring-viridian focus:border-viridian"
+                className="pl-9 pr-3 w-full sm:w-48"
               />
             </div>
           </div>
@@ -361,16 +361,14 @@ export default function OrgUserManagement() {
                     })}
               </p>
               {!searchQuery && (
-                <button
-                  className="inline-flex items-center gap-2 bg-viridian text-white px-4 py-2 rounded-lg"
+                <CreateButton
                   onClick={() => {
                     resetCreateForm();
                     setCreateModalOpen(true);
                   }}
                 >
-                  <Plus className="w-4 h-4" />
                   {autoT('ui_ef5bcd6a81e1')}
-                </button>
+                </CreateButton>
               )}
             </div>
           )}
@@ -451,10 +449,10 @@ export default function OrgUserManagement() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {autoT('ui_709a23220f2c')}
               </label>
-              <input
+              <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
+                className="w-full"
                 placeholder={autoT('ui_57d950a48336')}
               />
               <p className="text-xs text-gray-500 mt-1">{autoT('ui_14c8987e027b')}</p>
@@ -463,17 +461,17 @@ export default function OrgUserManagement() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {autoT('ui_9811c39359c5')}
               </label>
-              <input
+              <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={`border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian ${emailValidationMessage ? 'border-red-500' : ''}`}
+                className="w-full"
                 placeholder={autoT('ui_15c8c90e4b60')}
                 autoFocus
-                aria-invalid={Boolean(emailValidationMessage)}
+                invalid={Boolean(emailValidationMessage)}
               />
               {emailValidationMessage && (
-                <p className="text-xs text-red-600 mt-1">{emailValidationMessage}</p>
+                <FieldError>{emailValidationMessage}</FieldError>
               )}
             </div>
           </div>
@@ -483,11 +481,11 @@ export default function OrgUserManagement() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {autoT('ui_c07dc032f12a')}
               </label>
-              <input
+              <Input
                 type="password"
                 value={temporaryPassword}
                 onChange={(event) => setTemporaryPassword(event.target.value)}
-                className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
+                className="w-full"
                 autoComplete="new-password"
               />
               <PasswordRequirementsHint password={temporaryPassword} className="mt-2" />
@@ -500,8 +498,8 @@ export default function OrgUserManagement() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {autoT('ui_695feaaed412')}
               </label>
-              <select
-                className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
+              <Select
+                className="w-full"
                 value={targetOrgId}
                 onChange={(e) => setTargetOrgId(e.target.value)}
               >
@@ -511,21 +509,21 @@ export default function OrgUserManagement() {
                     {o.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {autoT('ui_6237f0afe77f')}
               </label>
-              <select
+              <Select
                 value={role}
                 onChange={(e) => setRole(e.target.value as Exclude<Role, 'superadmin'>)}
-                className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-viridian focus:border-viridian"
+                className="w-full"
               >
                 <option value="user">{autoT('ui_bd26f3d230af')}</option>
                 <option value="editor">Editor</option>
                 <option value="org_admin">{autoT('ui_1eda23758be9')}</option>
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -547,14 +545,13 @@ export default function OrgUserManagement() {
 
           {/* Buttons */}
           <div className="flex items-center justify-end gap-3 pt-2 border-t">
-            <button
-              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            <Button
+              variant="secondary"
               onClick={() => setCreateModalOpen(false)}
             >
               {autoT('ui_07af7cb30fca')}
-            </button>
-            <button
-              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            </Button>
+            <Button
               disabled={
                 !email.trim() ||
                 Boolean(emailValidationMessage) ||
@@ -576,7 +573,7 @@ export default function OrgUserManagement() {
               {publicConfig.userProvisioningMode === 'local'
                 ? autoT('ui_464d554f6c6d')
                 : autoT('ui_39e31ae7a854')}
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>

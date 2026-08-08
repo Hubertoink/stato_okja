@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon, Globe2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import LanguagePickerModal from '@/components/LanguagePickerModal';
+import { Button, IconButton } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
 import { autoT } from '@/i18n/auto';
 
 export default function Login() {
@@ -150,54 +152,57 @@ export default function Login() {
             <div>
               <label className="login-label mb-2 block text-sm font-semibold">{t('login.adminPassword')}</label>
               <div className="relative">
-                <input
+                <Input
                   type={showSetupPassword ? 'text' : 'password'}
                   required
                   minLength={12}
                   value={setupPassword}
                   onChange={(event) => setSetupPassword(event.target.value)}
-                  className="input-modern w-full pr-10"
+                  className="w-full pr-10"
                   placeholder={t('login.minimumTwelve')}
                   autoComplete="new-password"
                 />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-2 flex items-center px-2 text-gray-400 transition-colors hover:text-viridian"
+                <IconButton
+                  size="icon-compact"
+                  variant="ghost"
+                  className="absolute inset-y-0 right-2 my-auto text-[var(--text-muted)] hover:text-viridian"
                   aria-label={showSetupPassword ? t('login.hidePassword') : t('login.showPassword')}
                   title={showSetupPassword ? t('login.hidePassword') : t('login.showPassword')}
                   onClick={() => setShowSetupPassword((visible) => !visible)}
                 >
                   {showSetupPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                </button>
+                </IconButton>
               </div>
               <PasswordRequirementsHint password={setupPassword} className="mt-2" />
             </div>
             <div>
               <label className="login-label mb-2 block text-sm font-semibold">{t('login.repeatPassword')}</label>
               <div className="relative">
-                <input
+                <Input
                   type={showSetupPasswordConfirmation ? 'text' : 'password'}
                   required
                   value={setupPasswordConfirmation}
                   onChange={(event) => setSetupPasswordConfirmation(event.target.value)}
-                  className="input-modern w-full pr-10"
+                  className="w-full pr-10"
                   placeholder={t('login.repeatPassword')}
                   autoComplete="new-password"
                 />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-2 flex items-center px-2 text-gray-400 transition-colors hover:text-viridian"
+                <IconButton
+                  size="icon-compact"
+                  variant="ghost"
+                  className="absolute inset-y-0 right-2 my-auto text-[var(--text-muted)] hover:text-viridian"
                   aria-label={showSetupPasswordConfirmation ? t('login.hidePassword') : t('login.showPassword')}
                   title={showSetupPasswordConfirmation ? t('login.hidePassword') : t('login.showPassword')}
                   onClick={() => setShowSetupPasswordConfirmation((visible) => !visible)}
                 >
                   {showSetupPasswordConfirmation ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                </button>
+                </IconButton>
               </div>
             </div>
-            <button
+            <Button
               type="submit"
-              className="btn-modern w-full py-3"
+              size="lg"
+              className="w-full"
               disabled={
                 busy ||
                 !setupPassword ||
@@ -207,7 +212,7 @@ export default function Login() {
               }
             >
               {t('login.setupAdmin')}
-            </button>
+            </Button>
             {error && <div className="chip chip-danger mt-2 w-full justify-center">{error}</div>}
           </form>
         ) : (
@@ -216,30 +221,31 @@ export default function Login() {
             <>
               <div>
                 <label className="login-label block text-sm font-semibold mb-2">{t('login.email')}</label>
-                <input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="input-modern w-full" placeholder={autoT('ui_9395988394d4')} />
+                <Input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="w-full" placeholder={autoT('ui_9395988394d4')} />
               </div>
 
               <div>
                 <label className="login-label block text-sm font-semibold mb-2">{t('login.password')}</label>
                 <div className="relative">
-                  <input
+                  <Input
                     type={showPwd ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e)=>setPassword(e.target.value)}
-                    className="input-modern w-full pr-10"
+                    className="w-full pr-10"
                     placeholder="••••••••"
                     autoComplete="current-password"
                   />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-2 px-2 flex items-center text-gray-400 hover:text-viridian transition-colors"
+                  <IconButton
+                    size="icon-compact"
+                    variant="ghost"
+                    className="absolute inset-y-0 right-2 my-auto text-[var(--text-muted)] hover:text-viridian"
                     aria-label={showPwd ? t('login.hidePassword') : t('login.showPassword')}
                     title={showPwd ? t('login.hidePassword') : t('login.showPassword')}
                     onClick={() => setShowPwd((v) => !v)}
                   >
                     {showPwd ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                  </button>
+                  </IconButton>
                 </div>
               </div>
               {branding.twoFactorEnabled && (
@@ -247,9 +253,9 @@ export default function Login() {
                   {t('login.twoFactorInfo')}
                 </div>
               )}
-              <button type="submit" className="btn-modern w-full py-3" disabled={busy}>
+              <Button type="submit" size="lg" className="w-full" disabled={busy}>
                 {t('login.login')}
-              </button>
+              </Button>
             </>
           ) : (
             <>
@@ -261,20 +267,20 @@ export default function Login() {
               </div>
               <div>
                 <label className="login-label block text-sm font-semibold mb-2">{t('login.securityCode')}</label>
-                <input
+                <Input
                   inputMode="numeric"
                   pattern="[0-9]*"
                   required
                   value={twoFactorCode}
                   onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="input-modern w-full tracking-[0.35em] text-center text-2xl"
+                  className="w-full tracking-[0.35em] text-center text-2xl"
                   placeholder={autoT('ui_c984aed014ae')}
                   autoComplete="one-time-code"
                 />
               </div>
-              <button type="submit" className="btn-modern w-full py-3" disabled={busy || twoFactorCode.length !== 6}>
+              <Button type="submit" size="lg" className="w-full" disabled={busy || twoFactorCode.length !== 6}>
                 {t('login.verifyCode')}
-              </button>
+              </Button>
               <div className="flex items-center justify-between gap-3 text-sm">
                 <button
                   type="button"
@@ -365,15 +371,16 @@ export default function Login() {
         </div>
 
         <div className="login-footer relative mt-4 flex items-center justify-center text-sm">
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="icon-compact"
             onClick={() => setLanguageModalOpen(true)}
-            className="absolute left-0 inline-flex items-center justify-center rounded-md bg-viridian/10 p-1.5 text-viridian transition-colors hover:bg-viridian/20 hover:text-cambridge-blue"
+            className="absolute left-0 bg-[var(--interactive-soft)] text-viridian hover:bg-[var(--interactive-soft-strong)] hover:text-cambridge-blue"
             aria-label={t('common:language.label')}
             title={t('common:language.label')}
           >
             <Globe2 className="h-5 w-5" aria-hidden="true" />
-          </button>
+          </IconButton>
           <p>
             © {new Date().getFullYear()}{' '}{autoT('ui_65966d2d167a')}{' '}<a href="mailto:hubertoink@outlook.com" className="hover:text-viridian transition-colors">{autoT('ui_dba32cb2a55d')}</a>
           </p>

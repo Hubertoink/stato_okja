@@ -57,7 +57,7 @@ export default function SettingsProjectTemplates() {
   const del = useDeleteProjectTemplate();
 
   const [modalOpen, setModalOpen] = useState(false);
-  const dismissTemplateModal = useModalHistory(() => setModalOpen(false), modalOpen);
+  const { dismiss: dismissTemplateModal } = useModalHistory(() => setModalOpen(false), modalOpen);
   const [editing, setEditing] = useState<ProjectTemplateDto | null>(null);
   const [confirm, setConfirm] = useState<{ open: boolean; id?: string; title?: string }>({ open: false });
 

@@ -20,9 +20,7 @@ import {
   Layers,
   Pencil,
   Plus,
-  Search,
   Save as SaveIcon,
-  XCircle,
   Archive as ArchiveIcon,
   ArchiveRestore as ArchiveRestoreIcon,
   Trash2,
@@ -36,7 +34,6 @@ import {
   ChevronRight,
   ImagePlus,
 } from 'lucide-react';
-import { Star, StarOff } from 'lucide-react';
 import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
 import { api } from '@/lib/api';
 import { useCategories, useTags, useTaxonomyAccess, useUpdateCategory } from '@/lib/taxonomy';
@@ -78,8 +75,14 @@ import RichTextEditor, {
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { Button } from '@/components/ui/Button';
+import { Button, CreateButton, IconButton } from '@/components/ui/Button';
 import { EditorActions } from '@/components/ui/EditorFrame';
+import { fieldControlClassName } from '@/components/ui/Field';
+import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { ProjectStarButton } from '@/components/ui/ProjectStar';
+import { FilterChip } from '@/components/ui/FilterChip';
+import { loadProjectsFilters, saveProjectsFilters } from '@/lib/projectsFilterStorage';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
 const PROJECTS_STARRED_FIRST_STORAGE_KEY = 'projects:starred-first';
@@ -737,20 +740,11 @@ function ProjectGridCard({
               <span className="tooltip-bubble">{autoT('ui_8587eefe7ef8')}</span>
             </span>
             <span className="tooltip-wrapper">
-              <button
-                type="button"
+              <ProjectStarButton
+                ariaLabel={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
                 onClick={onToggleStar}
-                className={`opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full p-1.5 ${
-                  starred ? 'bg-yellow-400/90' : 'bg-white/20 hover:bg-white/30'
-                }`}
-                aria-label={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
-              >
-                {starred ? (
-                  <Star className="w-4 h-4 text-gray-900" />
-                ) : (
-                  <StarOff className="w-4 h-4 text-white" />
-                )}
-              </button>
+                starred={starred}
+              />
               <span className="tooltip-bubble">
                 {starred ? autoT('ui_28f4ed84c2f4') : autoT('ui_e1da9275bc5b')}
               </span>
@@ -911,18 +905,11 @@ function ProjectListRow({
               <span className="tooltip-bubble">{autoT('ui_8587eefe7ef8')}</span>
             </span>
             <span className="tooltip-wrapper">
-              <button
-                type="button"
+              <ProjectStarButton
+                ariaLabel={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
                 onClick={onToggleStar}
-                aria-label={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
-                className={`inline-flex items-center justify-center rounded-full border p-2 transition-colors ${
-                  starred
-                    ? 'border-yellow-400 bg-yellow-100 text-yellow-800'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:text-yellow-700'
-                }`}
-              >
-                {starred ? <Star className="w-4 h-4" /> : <StarOff className="w-4 h-4" />}
-              </button>
+                starred={starred}
+              />
               <span className="tooltip-bubble">
                 {starred ? autoT('ui_054cf53eb7ef') : autoT('ui_2ed72c09fb1f')}
               </span>
@@ -1096,7 +1083,7 @@ function ProjectForm({
     ? (initial.documents as ProjectDocument[])
     : [];
   const removedDocumentIdSet = new Set(removedDocumentIds);
-  const projectFieldClassName = 'project-form-field editor-field w-full px-3 py-2';
+  const projectFieldClassName = fieldControlClassName({ className: 'project-form-field' });
   const projectSectionClassName = 'rounded-xl border p-4 md:p-5';
   const projectInnerCardClassName = 'min-w-0 py-1';
   const projectSectionStyle = {
@@ -2729,13 +2716,18 @@ export default function Projects() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   // Debounce the search to prevent firing a request for every keystroke on first usage
   const [debounced, setDebounced] = useState('');
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 200);
     return () => clearTimeout(t);
   }, [search]);
-  const [showArchived, setShowArchived] = useState(false);
+  const [initialProjectFilters] = useState(loadProjectsFilters);
+  const [showArchived, setShowArchived] = useState(initialProjectFilters.showArchived);
+  const [projectTypeFilterOpen, setProjectTypeFilterOpen] = useState(false);
+  const [projectTypeFilters, setProjectTypeFilters] = useState<string[]>(initialProjectFilters.types);
+  const projectTypeFilterRef = useRef<HTMLDivElement | null>(null);
   const [desktopView, setDesktopView] = useState<ProjectsDesktopView>(() => {
     try {
       return localStorage.getItem(PROJECTS_DESKTOP_VIEW_STORAGE_KEY) === 'list' ? 'list' : 'grid';
@@ -2750,6 +2742,24 @@ export default function Projects() {
       /* ignore */
     }
   }, [desktopView]);
+  useEffect(() => {
+    saveProjectsFilters({ showArchived, types: projectTypeFilters });
+  }, [projectTypeFilters, showArchived]);
+  useEffect(() => {
+    if (!projectTypeFilterOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!projectTypeFilterRef.current?.contains(event.target as Node)) setProjectTypeFilterOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setProjectTypeFilterOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [projectTypeFilterOpen]);
   const [modal, setModal] = useState<{
     mode: 'create' | 'edit';
     project?: Project;
@@ -2777,6 +2787,24 @@ export default function Projects() {
   const update = useUpdateProject();
 
   const projects = data || [];
+  const projectTypes = useMemo(
+    () => Array.from(new Set(projects.map((project) => project.type))).sort((left, right) =>
+      (PROJECT_TYPE_LABELS[left] || left).localeCompare(PROJECT_TYPE_LABELS[right] || right, 'de'),
+    ),
+    [projects],
+  );
+  const filteredProjects = useMemo(
+    () => projectTypeFilters.length === 0
+      ? projects
+      : projects.filter((project) => projectTypeFilters.includes(project.type)),
+    [projects, projectTypeFilters],
+  );
+  const projectTypeFilterLabel = useMemo(() => {
+    if (projectTypeFilters.length === 1) {
+      return `Projektart: ${PROJECT_TYPE_LABELS[projectTypeFilters[0]] || projectTypeFilters[0]}`;
+    }
+    return `Projektarten: ${projectTypeFilters.length} ausgewählt`;
+  }, [projectTypeFilters]);
   const isDesktopListView = desktopView === 'list';
   const [starred, setStarred] = useState<string[]>(() => getStarredProjectIds());
   useEffect(() => {
@@ -2799,15 +2827,15 @@ export default function Projects() {
     return m;
   }, [tagsList]);
   const sortedProjects = useMemo(() => {
-    if (!starredFirst || projects.length < 2 || starred.length === 0) return projects;
+    if (!starredFirst || filteredProjects.length < 2 || starred.length === 0) return filteredProjects;
     const starredIds = new Set(starred);
-    return [...projects].sort((left, right) => {
+    return [...filteredProjects].sort((left, right) => {
       const leftStarred = starredIds.has(left.id);
       const rightStarred = starredIds.has(right.id);
       if (leftStarred === rightStarred) return 0;
       return leftStarred ? -1 : 1;
     });
-  }, [projects, starred, starredFirst]);
+  }, [filteredProjects, starred, starredFirst]);
 
   const openProjectActivities = useCallback(
     (projectId: string) => {
@@ -2848,68 +2876,106 @@ export default function Projects() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 mt-1">
-        <h2 className="text-3xl font-bold text-viridian">{autoT('ui_44772dcbbde7')}</h2>
-        <button
-          onClick={() => setModal({ mode: 'create', requestId: createClientRequestId() })}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-viridian bg-viridian px-4 py-2 text-sm font-medium text-white transition-colors hover:border-cambridge-blue hover:bg-cambridge-blue"
-        >
-          <Plus className="h-4 w-4" />
-          {autoT('ui_4bc9d33f94ce')}
-        </button>
-      </div>
-
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-0 flex-1 md:w-80 md:flex-none">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+      <PageHeader
+        className="mb-4"
+        title={autoT('ui_44772dcbbde7')}
+        actions={(
+          <div className="flex flex-wrap justify-end gap-2">
+            <HeaderSearchAction
+              clearLabel={autoT('ui_1d33e9091bc9')}
+              closeLabel="Suche schließen"
+              onClear={() => { setSearch(''); setSearchOpen(false); }}
+              onOpenChange={setSearchOpen}
+              onValueChange={setSearch}
+              open={searchOpen}
+              openLabel="Projekte durchsuchen"
               placeholder={autoT('ui_d26ce4a1305c')}
-              className="w-full rounded-xl border border-gray-300 py-2 pl-9 pr-10"
+              value={search}
             />
-            {search.trim() && (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                aria-label={autoT('ui_1d33e9091bc9')}
-                title={autoT('ui_1d33e9091bc9')}
-              >
-                <XCircle className="h-4 w-4" />
-              </button>
-            )}
+            <div ref={projectTypeFilterRef} className="relative">
+              <HeaderFilterButton
+                aria-expanded={projectTypeFilterOpen}
+                aria-label="Projekte filtern"
+                aria-pressed={projectTypeFilters.length > 0 || showArchived}
+                onClick={() => setProjectTypeFilterOpen((open) => !open)}
+                title="Projekte filtern"
+              />
+              {projectTypeFilterOpen ? (
+                <div aria-label="Projekte filtern" className="header-action-popover z-30 w-64" role="group">
+                  <div className="mb-2 flex items-center">
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">Projektarten</span>
+                  </div>
+                  <div className="grid gap-1">
+                    {projectTypes.map((type) => {
+                      const selected = projectTypeFilters.includes(type);
+                      return (
+                        <Button
+                          key={type}
+                          aria-pressed={selected}
+                          className="justify-start"
+                          onClick={() => setProjectTypeFilters((current) =>
+                            selected ? current.filter((entry) => entry !== type) : [...current, type],
+                          )}
+                          size="sm"
+                          variant={selected ? 'primary' : 'secondary'}
+                        >
+                          {PROJECT_TYPE_LABELS[type] || type}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">Archiv</p>
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        Archivierte Projekte einblenden
+                        {archivedCount > 0 ? ` (${archivedCount})` : ''}
+                      </p>
+                    </div>
+                    <Toggle
+                      ariaLabel="Archivierte Projekte einblenden"
+                      checked={showArchived}
+                      onChange={setShowArchived}
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <IconButton
+              aria-label={autoT('ui_4bc9d33f94ce')}
+              className="rounded-full md:hidden"
+              onClick={() => setModal({ mode: 'create', requestId: createClientRequestId() })}
+              title={autoT('ui_4bc9d33f94ce')}
+              variant="primary"
+            >
+              <Plus aria-hidden="true" />
+            </IconButton>
+            <CreateButton
+              className="hidden md:inline-flex"
+              onClick={() => setModal({ mode: 'create', requestId: createClientRequestId() })}
+            >
+              {autoT('ui_4bc9d33f94ce')}
+            </CreateButton>
           </div>
-          <button
-            type="button"
-            onClick={() => setStarredFirst((current) => !current)}
-            aria-pressed={starredFirst}
-            aria-label={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
-            title={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${
-              starredFirst
-                ? 'border-yellow-300 bg-yellow-100 text-yellow-700 shadow-sm'
-                : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-            }`}
-          >
-            {starredFirst ? <Star className="h-4 w-4" /> : <StarOff className="h-4 w-4" />}
-          </button>
-          {archivedCount > 0 && (
-            <Toggle
-              checked={showArchived}
-              onChange={setShowArchived}
-              label={
-                <span>
-                  {autoT('ui_d9431e38c8b6')}
-                  <span className="text-xs text-gray-500">({archivedCount})</span>
-                </span>
-              }
-            />
-          )}
-        </div>
+        )}
+      />
 
-        <div className="hidden md:flex items-center gap-3 self-start md:self-auto">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {projectTypeFilters.length > 0 ? (
+            <FilterChip onRemove={() => setProjectTypeFilters([])}>
+              {projectTypeFilterLabel}
+            </FilterChip>
+          ) : null}
+          <ProjectStarButton
+            ariaLabel={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
+            onClick={() => setStarredFirst((current) => !current)}
+            size="icon"
+            starred={starredFirst}
+            title={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
+          />
+        </div>
+        <div className="hidden md:flex items-center gap-3">
           <span className="text-sm font-medium text-gray-700">{autoT('ui_5c388792c607')}</span>
           <SegmentedControl<ProjectsDesktopView>
             ariaLabel={autoT('ui_5c388792c607')}

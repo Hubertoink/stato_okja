@@ -22,4 +22,6 @@ Die Aufteilung ist zunächst verhaltensneutral aus dem früheren `index.css` üb
 - Dark-Mode-Regeln verwenden `:root[data-color-mode='dark']`, nicht einzelne Theme-Namen.
 - `!important` ist grundsätzlich eine Ausnahme. Es ist für die zentralen Tailwind-Kompatibilitätsadapter sowie isolierte Export-Styles zulässig; jede neue Verwendung braucht eine kurze Begründung.
 - Eine Regel erhält genau ein zuständiges Modul. Gemeinsame UI-Regeln gehören nach `common.css`, seitenbezogene Regeln in ihr Feature-Modul.
+- Native Textfelder verwenden `Input`, `Select` oder `Textarea` aus `components/ui/Field`. Nur technische Spezialcontrols dürfen `fieldControlClassName` direkt verwenden.
+- Interaktive Standardaktionen verwenden `Button`, `IconButton` oder `CreateButton`. `npm run check:ui-primitives` verhindert bis zur vollständigen Migration neue direkte Standard-Controls.
 - Vor einem neuen Breakpoint prüfen, ob die bestehende Skala `640 / 768 / 1024 / 1101 / 1200 px` ausreicht.

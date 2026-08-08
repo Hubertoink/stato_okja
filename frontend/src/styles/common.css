@@ -21,15 +21,68 @@
     0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Modern input styling */
+/* Shared native field treatment. All generic text controls should use the
+ * Field primitives or this class for a specialised native control. */
+.ui-field-control,
+.editor-field,
 .input-modern {
-  background: var(--input-bg);
-  border: 2px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-size: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--editor-field-bg, var(--input-bg));
   color: var(--text-primary);
-  transition: all 0.2s ease;
+  box-shadow: var(--editor-field-shadow);
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ui-field-control:hover:not(:disabled):not([readonly]),
+.editor-field:hover:not(:disabled):not([readonly]),
+.input-modern:hover:not(:disabled):not([readonly]) {
+  border-color: var(--border-strong);
+  box-shadow: var(--editor-field-shadow-hover);
+}
+
+.ui-field-control:focus,
+.ui-field-control:focus-within,
+.editor-field:focus,
+.editor-field:focus-within,
+.input-modern:focus,
+.input-modern:focus-within {
+  outline: none;
+  border-color: var(--viridian);
+  box-shadow: 0 0 0 3px var(--focus-ring), var(--editor-field-shadow);
+}
+
+.ui-field-control:disabled,
+.ui-field-control[readonly] {
+  background: var(--input-disabled-bg);
+  color: var(--text-muted);
+}
+
+.header-action-popover {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  margin-top: 0.5rem;
+  width: min(22rem, calc(100vw - 2rem));
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--surface-elevated);
+  padding: 0.5rem;
+  box-shadow: 0 1.25rem 2.75rem rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.ui-field-control-invalid,
+.ui-field-control[aria-invalid='true'] {
+  border-color: var(--accent-pink);
+  background: color-mix(in srgb, var(--accent-pink) 8%, var(--input-bg));
+}
+
+.ui-field-control-invalid:focus,
+.ui-field-control[aria-invalid='true']:focus {
+  border-color: var(--accent-pink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-pink) 22%, transparent), var(--editor-field-shadow);
 }
 
 /* Theme-aware public authentication surface. Keeping these styles outside the
@@ -91,11 +144,6 @@
   background: color-mix(in srgb, var(--viridian) 10%, transparent);
 }
 
-.input-modern:focus {
-  outline: none;
-  border-color: var(--viridian);
-  box-shadow: 0 0 0 4px var(--focus-ring);
-}
 
 /* Emphasis text utility */
 .gradient-text {

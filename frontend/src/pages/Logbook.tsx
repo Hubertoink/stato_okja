@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, RotateCcw, Search, SlidersHorizontal, XCircle } from 'lucide-react';
+import { Plus, RotateCcw } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLogbookEntries } from '@/lib/logbook';
 import {
@@ -11,10 +11,10 @@ import LogbookFilterDrawer from '@/components/LogbookFilterDrawer';
 import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
 import LogbookCardView from '@/components/LogbookCard';
 import { Badge } from '@/components/ui/Badge';
-import { Button, IconButton } from '@/components/ui/Button';
+import { Button, CreateButton, IconButton } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterChip } from '@/components/ui/FilterChip';
-import { Input } from '@/components/ui/Field';
+import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ErrorState, LoadingState } from '@/components/ui/StatePanel';
 import { useTranslation } from 'react-i18next';
@@ -121,49 +121,22 @@ export default function Logbook() {
         title={t('title')}
         actions={(
         <div className="flex justify-end gap-2">
-          <div className="relative">
-            {searchOpen && (
-              <div className="absolute right-0 top-full z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-2 shadow-xl backdrop-blur-md">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-faint)]" />
-                  <Input
-                    autoFocus
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder={t('search')}
-                    className="mt-0 py-2 pl-9 pr-10"
-                  />
-                  {search && (
-                    <button
-                      type="button"
-                      onClick={() => setSearch('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                      aria-label={t('clearSearch')}
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            <IconButton
-              variant="secondary"
-              onClick={() => setSearchOpen((open) => !open)}
-              title={searchOpen ? t('closeSearch') : t('openSearch')}
-              aria-label={searchOpen ? t('closeSearch') : t('openSearch')}
-            >
-              <Search className="h-5 w-5" />
-            </IconButton>
-          </div>
-          <IconButton
-            variant="secondary"
+          <HeaderSearchAction
+            clearLabel={t('clearSearch')}
+            closeLabel={t('closeSearch')}
+            onClear={() => setSearch('')}
+            onOpenChange={setSearchOpen}
+            onValueChange={setSearch}
+            open={searchOpen}
+            openLabel={t('openSearch')}
+            placeholder={t('search')}
+            value={search}
+          />
+          <HeaderFilterButton
             onClick={() => setFilterDrawer(true)}
-            className={hasAdvancedFilters ? "border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20" : ''}
             title={t('advancedFilter')}
             aria-label={t('advancedFilter')}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-          </IconButton>
+          />
           <IconButton
             variant="primary"
             className="rounded-full md:hidden"
@@ -173,12 +146,12 @@ export default function Logbook() {
           >
             <Plus className="h-5 w-5" />
           </IconButton>
-          <Button
+          <CreateButton
             className="hidden md:inline-flex"
             onClick={() => navigate('/logbook/new')}
           >
-            + {t('new')}
-          </Button>
+            {t('new')}
+          </CreateButton>
         </div>
         )}
       />

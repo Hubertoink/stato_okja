@@ -6,7 +6,28 @@ import type {
   TextareaHTMLAttributes,
 } from 'react';
 
-const controlClassName = 'editor-field mt-1 w-full border border-[var(--border-subtle)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm transition-colors placeholder:text-[var(--text-faint)] hover:border-[var(--border-strong)] focus:border-viridian focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-[var(--input-disabled-bg)] disabled:opacity-70';
+export type FieldControlSize = 'sm' | 'md' | 'lg';
+
+const sizeClasses: Record<FieldControlSize, string> = {
+  sm: 'min-h-8 px-2.5 py-1.5 text-xs',
+  md: 'min-h-10 px-3 py-2 text-sm',
+  lg: 'min-h-11 px-3.5 py-2.5 text-sm',
+};
+
+/** Reuse this for native controls that need special behaviour but the standard field treatment. */
+export function fieldControlClassName({
+  className = '',
+  invalid = false,
+  size = 'md',
+}: {
+  className?: string;
+  invalid?: boolean;
+  size?: FieldControlSize;
+} = {}) {
+  return `ui-field-control w-full ${sizeClasses[size]} ${invalid ? 'ui-field-control-invalid' : ''} ${className}`.trim();
+}
+
+type FieldControlProps = { invalid?: boolean; size?: FieldControlSize };
 
 export function FieldLabel({ children, className = '', ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
@@ -16,18 +37,22 @@ export function FieldLabel({ children, className = '', ...props }: LabelHTMLAttr
   );
 }
 
-export function Input({ className = '', ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={`${controlClassName} ${className}`} {...props} />;
+export function Input({ className = '', invalid = false, size, ...props }: InputHTMLAttributes<HTMLInputElement> & FieldControlProps) {
+  return <input aria-invalid={invalid || props['aria-invalid']} className={fieldControlClassName({ className, invalid, size })} {...props} />;
 }
 
-export function Select({ children, className = '', ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={`${controlClassName} ${className}`} {...props}>{children}</select>;
+export function Select({ children, className = '', invalid = false, size, ...props }: SelectHTMLAttributes<HTMLSelectElement> & FieldControlProps) {
+  return <select aria-invalid={invalid || props['aria-invalid']} className={fieldControlClassName({ className, invalid, size })} {...props}>{children}</select>;
 }
 
-export function Textarea({ className = '', ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={`${controlClassName} ${className}`} {...props} />;
+export function Textarea({ className = '', invalid = false, size, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & FieldControlProps) {
+  return <textarea aria-invalid={invalid || props['aria-invalid']} className={fieldControlClassName({ className, invalid, size })} {...props} />;
 }
 
 export function FieldHint({ children }: { children: ReactNode }) {
   return <p className="mt-1 text-xs text-[var(--text-secondary)]">{children}</p>;
+}
+
+export function FieldError({ children, id }: { children: ReactNode; id?: string }) {
+  return <p id={id} role="alert" className="mt-1 text-xs font-medium text-[var(--status-danger-text)]">{children}</p>;
 }

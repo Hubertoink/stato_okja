@@ -17,59 +17,6 @@
   background: color-mix(in srgb, var(--interactive-soft) 28%, var(--surface-elevated));
 }
 
-/* Shared radius for all editor controls. */
-.editor-field {
-  border-radius: 0.75rem;
-  background: var(--editor-field-bg, var(--input-bg));
-  border-color: var(--border-subtle);
-  box-shadow: var(--editor-field-shadow) !important;
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease;
-}
-
-.editor-field:hover:not(:disabled) {
-  border-color: var(--border-strong);
-  box-shadow: var(--editor-field-shadow-hover) !important;
-}
-
-.editor-field:focus,
-.editor-field:focus-within {
-  outline: none;
-  border-color: var(--viridian);
-  box-shadow: 0 0 0 3px var(--focus-ring), var(--editor-field-shadow) !important;
-}
-
-/* Every text control inside a modal uses the same restrained elevation. This
- * covers new editors automatically, while the editor-field utility extends
- * the exact treatment to controls outside a modal shell. */
-.modal-overlay :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), select, textarea) {
-  border-radius: var(--editor-field-radius, 0.75rem);
-  background: var(--editor-field-bg, var(--input-bg));
-  border-color: var(--border-subtle);
-  box-shadow: var(--editor-field-shadow) !important;
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease;
-}
-
-.modal-overlay :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), select, textarea):hover:not(:disabled) {
-  border-color: var(--border-strong);
-  box-shadow: var(--editor-field-shadow-hover) !important;
-}
-
-.modal-overlay :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), select, textarea):focus {
-  outline: none;
-  border-color: var(--viridian);
-  box-shadow: 0 0 0 3px var(--focus-ring), var(--editor-field-shadow) !important;
-}
-
-.modal-overlay :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), select, textarea)[aria-invalid='true'] {
-  border-color: var(--accent-pink);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-pink) 22%, transparent), var(--editor-field-shadow) !important;
-}
 
 /* Give dialog close controls a clear, theme-safe danger feedback. */
 :is(.modal-close-button, .editor-close-button):hover:not(:disabled) {

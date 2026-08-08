@@ -11,6 +11,11 @@ export function ModalBackdrop({ className = '', onClick }: { className?: string;
 }
 
 type ModalHistoryState = { __statoModalStack?: string[] };
+type ModalHistoryControls = {
+  dismiss: () => void;
+  /** Removes the modal-only browser-history entry without invoking onClose. */
+  dismissWithoutCallback: (afterDismiss: () => void) => boolean;
+};
 
 /**
  * Keeps modal navigation inside the current page. On mobile, a browser-back
@@ -18,10 +23,12 @@ type ModalHistoryState = { __statoModalStack?: string[] };
  * onClose guards, so unsaved-change confirmation continues to decide whether
  * the dialog may actually close.
  */
-export function useModalHistory(onClose: () => void, open = true) {
+export function useModalHistory(onClose: () => void, open = true): ModalHistoryControls {
   const modalId = useId();
   const onCloseRef = useRef(onClose);
   const dismissingRef = useRef(false);
+  const suppressCloseRef = useRef(false);
+  const silentDismissActionRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -41,6 +48,14 @@ export function useModalHistory(onClose: () => void, open = true) {
     const handlePopState = (event: PopStateEvent) => {
       const nextStack = getStack(event.state as ModalHistoryState);
       if (nextStack.includes(modalId)) return;
+
+      if (suppressCloseRef.current) {
+        suppressCloseRef.current = false;
+        const afterDismiss = silentDismissActionRef.current;
+        silentDismissActionRef.current = null;
+        afterDismiss?.();
+        return;
+      }
 
       // Restore the modal history entry before delegating to onClose. This is
       // important when an unsaved-changes guard declines the close request.
@@ -78,7 +93,7 @@ export function useModalHistory(onClose: () => void, open = true) {
     };
   }, [modalId, open]);
 
-  return useCallback(() => {
+  const dismiss = useCallback(() => {
     const stack = ((window.history.state as ModalHistoryState | null)?.__statoModalStack || []);
     if (!dismissingRef.current && stack.at(-1) === modalId) {
       window.history.back();
@@ -86,6 +101,17 @@ export function useModalHistory(onClose: () => void, open = true) {
     }
     onCloseRef.current();
   }, [modalId]);
+
+  const dismissWithoutCallback = useCallback((afterDismiss: () => void) => {
+    const stack = ((window.history.state as ModalHistoryState | null)?.__statoModalStack || []);
+    if (stack.at(-1) !== modalId) return false;
+    suppressCloseRef.current = true;
+    silentDismissActionRef.current = afterDismiss;
+    window.history.back();
+    return true;
+  }, [modalId]);
+
+  return { dismiss, dismissWithoutCallback };
 }
 
 export default function Modal({
@@ -114,7 +140,7 @@ export default function Modal({
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
-  const dismiss = useModalHistory(onClose, open);
+  const { dismiss } = useModalHistory(onClose, open);
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
 

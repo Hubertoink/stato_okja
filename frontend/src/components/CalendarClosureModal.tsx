@@ -6,6 +6,8 @@ import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { ModalBackdrop, useModalHistory } from '@/components/Modal';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { Button, IconButton } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
 
 function formatDateLabel(date: string): string {
   const [year, month, day] = date.split('-').map((value) => Number(value));
@@ -38,7 +40,7 @@ export default function CalendarClosureModal({
   deleting?: boolean;
 }) {
   useBodyScrollLock(true);
-  const dismiss = useModalHistory(onClose);
+  const { dismiss } = useModalHistory(onClose);
   const [fullDay, setFullDay] = useState(!(closureDay?.from || closureDay?.to));
   const [from, setFrom] = useState(closureDay?.from ?? '08:00');
   const [to, setTo] = useState(closureDay?.to ?? '17:00');
@@ -76,16 +78,15 @@ export default function CalendarClosureModal({
             <div className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-faint)' }}>{autoT('ui_afd5e7713414')}</div>
             <h3 className="mt-1 text-lg font-semibold">{dateLabel}</h3>
           </div>
-          <button
-            type="button"
-            className="modal-close-button inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
-            style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+          <IconButton
+            className="modal-close-button rounded-full"
             onClick={dismiss}
             aria-label={autoT('ui_44424b18700e')}
             title={autoT('ui_44424b18700e')}
+            variant="ghost"
           >
-            <X className="h-4 w-4" />
-          </button>
+            <X aria-hidden="true" />
+          </IconButton>
         </div>
 
         <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{autoT('ui_aaa8dd1e7161')}</p>
@@ -105,31 +106,19 @@ export default function CalendarClosureModal({
             <label className="rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="mb-2 inline-flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                 <Clock3 className="h-4 w-4" />{autoT('ui_a4b078f9eb7b')}</div>
-              <input
+              <Input
                 type="time"
                 value={from}
                 onChange={(event) => setFrom(event.target.value)}
-                className="w-full rounded-xl border px-3 py-2 text-sm"
-                style={{
-                  background: 'var(--input-bg)',
-                  borderColor: 'var(--border-subtle)',
-                  color: 'var(--text-primary)',
-                }}
               />
             </label>
             <label className="rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="mb-2 inline-flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                 <Clock3 className="h-4 w-4" />{autoT('ui_0afaa0e566a1')}</div>
-              <input
+              <Input
                 type="time"
                 value={to}
                 onChange={(event) => setTo(event.target.value)}
-                className="w-full rounded-xl border px-3 py-2 text-sm"
-                style={{
-                  background: 'var(--input-bg)',
-                  borderColor: 'var(--border-subtle)',
-                  color: 'var(--text-primary)',
-                }}
               />
             </label>
           </div>
@@ -140,38 +129,29 @@ export default function CalendarClosureModal({
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {closureDay ? (
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors sm:w-auto"
-                style={{
-                  borderColor: 'rgba(248, 113, 113, 0.28)',
-                  background: 'rgba(248, 113, 113, 0.10)',
-                  color: '#dc2626',
-                }}
+              <Button
+                className="w-full sm:w-auto"
                 onClick={onDelete}
                 disabled={deleting}
+                variant="danger"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 aria-hidden="true" />
                 {deleting ? autoT('ui_2b5a5dd9afbb') : autoT('ui_c7728aae980f')}
-              </button>
+              </Button>
             ) : null}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors"
-              style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+            <Button
               onClick={dismiss}
-            >{autoT('ui_07af7cb30fca')}</button>
-            <button
-              type="button"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-viridian px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cambridge-blue disabled:cursor-not-allowed disabled:opacity-60"
+              variant="secondary"
+            >{autoT('ui_07af7cb30fca')}</Button>
+            <Button
               disabled={!canSave || saving}
               onClick={() => onSave(fullDay ? { from: null, to: null } : { from, to })}
             >
-              <Save className="h-4 w-4" />
+              <Save aria-hidden="true" />
               {saving ? autoT('ui_b202bdfb661a') : closureDay ? "Aktualisieren" : autoT('ui_70b73bbc118d')}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

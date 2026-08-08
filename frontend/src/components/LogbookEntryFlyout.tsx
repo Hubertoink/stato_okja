@@ -114,7 +114,7 @@ export default function LogbookEntryFlyout({
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   useBodyScrollLock(open);
-  const dismiss = useModalHistory(onClose, open);
+  const { dismiss } = useModalHistory(onClose, open);
 
   useEffect(() => {
     if (!open) return;

@@ -12,7 +12,7 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
   const [form, setForm] = useState<Partial<Location>>({ ...initial });
   const [saving, setSaving] = useState(false);
   useBodyScrollLock(true);
-  const dismiss = useModalHistory(onClose);
+  const { dismiss } = useModalHistory(onClose);
   const update = <K extends keyof Location>(k: K, v: Location[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {

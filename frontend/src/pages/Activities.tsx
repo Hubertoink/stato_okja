@@ -13,8 +13,6 @@ import {
   ChevronsRight,
   Download,
   Plus,
-  Search,
-  SlidersHorizontal,
 } from 'lucide-react';
 // switched to xlsx-js-style inside the export handler to support cell styling
 // basic location quick filter removed
@@ -53,8 +51,8 @@ import {
 } from '@/lib/activitiesFilterStorage';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';
-import { Button, IconButton } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Field';
+import { Button, CreateButton, IconButton } from '@/components/ui/Button';
+import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useTranslation } from 'react-i18next';
 import { formatDate, formatNumber } from '@/i18n/formatters';
@@ -111,45 +109,53 @@ function ActivitiesPaginationControls({
   const { t } = useTranslation('activities');
   return (
     <div className={`flex items-center ${compact ? "gap-1.5" : "gap-2"}`}>
-      <button
-        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+      <IconButton
+        className="shrink-0"
         onClick={onFirst}
         disabled={page <= 1}
         title={t('pagination.first')}
         aria-label={t('pagination.first')}
+        size={compact ? "icon-compact" : "icon"}
+        variant="secondary"
       >
         <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
-      </button>
-      <button
-        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+      </IconButton>
+      <IconButton
+        className="shrink-0"
         onClick={onPrevious}
         disabled={page <= 1}
         title={t('pagination.previous')}
         aria-label={t('pagination.previous')}
+        size={compact ? "icon-compact" : "icon"}
+        variant="secondary"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-      </button>
+      </IconButton>
       <span className={`${compact ? "text-xs" : "text-sm"} text-gray-700`}>
         {page} / {pageCount}
       </span>
-      <button
-        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+      <IconButton
+        className="shrink-0"
         onClick={onNext}
         disabled={page >= pageCount}
         title={t('pagination.next')}
         aria-label={t('pagination.next')}
+        size={compact ? "icon-compact" : "icon"}
+        variant="secondary"
       >
         <ChevronRight className="h-4 w-4" aria-hidden="true" />
-      </button>
-      <button
-        className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+      </IconButton>
+      <IconButton
+        className="shrink-0"
         onClick={onLast}
         disabled={page >= pageCount}
         title={t('pagination.last')}
         aria-label={t('pagination.last')}
+        size={compact ? "icon-compact" : "icon"}
+        variant="secondary"
       >
         <ChevronsRight className="h-4 w-4" aria-hidden="true" />
-      </button>
+      </IconButton>
     </div>
   );
 }
@@ -756,48 +762,17 @@ export default function Activities() {
         >
           <div className="flex justify-end">
             <div className="flex gap-2 flex-wrap justify-end">
-            <div className="relative">
-              {searchOpen && (
-                <div
-                  className={`absolute top-full mt-2 z-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-2 shadow-xl backdrop-blur-md ${
-                    isMobile
-                      ? "-right-1 w-[min(16rem,calc(100vw-1.25rem))] max-w-[calc(100vw-1.25rem)]"
-                      : "right-0 w-[min(18rem,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)]"
-                  }`}
-                >
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-faint)]" />
-                    <Input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder={t('search.placeholder')}
-                      className="mt-0 py-2 pl-9 pr-10"
-                      autoFocus
-                    />
-                    {searchTerm.trim() && (
-                      <button
-                        type="button"
-                        onClick={clearSearch}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                        aria-label={t('search.clear')}
-                        title={t('search.clear')}
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-              <IconButton
-                variant="secondary"
-                title={searchOpen ? t('search.close') : t('search.open')}
-                aria-label={searchOpen ? t('search.close') : t('search.open')}
-                onClick={() => setSearchOpen((open) => !open)}
-              >
-                <Search className="w-5 h-5" />
-              </IconButton>
-            </div>
+            <HeaderSearchAction
+              clearLabel={t('search.clear')}
+              closeLabel={t('search.close')}
+              onClear={clearSearch}
+              onOpenChange={setSearchOpen}
+              onValueChange={setSearchTerm}
+              open={searchOpen}
+              openLabel={t('search.open')}
+              placeholder={t('search.placeholder')}
+              value={searchTerm}
+            />
           <IconButton
             variant="secondary"
             className="relative md:hidden"
@@ -818,15 +793,12 @@ export default function Activities() {
           >
             <Download className="h-5 w-5" />
           </Button>
-          <IconButton
-            variant="secondary"
-            className={`touch-manipulation ${hasAdvancedFilters ? "border-viridian/40 bg-[var(--interactive-soft)] text-viridian ring-1 ring-viridian/20" : ''}`}
+          <HeaderFilterButton
+            className="touch-manipulation"
             onClick={() => setFilterDrawer(true)}
             title={t('filters.advanced')}
             aria-label={t('filters.advanced')}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-          </IconButton>
+          />
           {/* Mobile icon-only: New activity */}
           <IconButton
             variant="primary"
@@ -841,12 +813,12 @@ export default function Activities() {
             <Plus className="w-5 h-5" />
           </IconButton>
           {/* Desktop: New activity text button */}
-          <Button
+          <CreateButton
             className="hidden md:inline-flex"
             onClick={() => setPicker(true)}
           >
-            + {t('actions.new')}
-          </Button>
+            {t('actions.new')}
+          </CreateButton>
             </div>
           </div>
           </DemoHoverHint>

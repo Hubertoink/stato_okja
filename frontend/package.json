@@ -1,6 +1,6 @@
 {
   "name": "stato-frontend",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "npm run type-check && npm run test:ui",
+    "test": "npm run type-check && npm run check:ui-primitives && npm run test:ui",
+    "check:ui-primitives": "node scripts/check-ui-primitives.mjs",
     "test:ui": "vitest run",
     "test:ui:watch": "vitest",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",

@@ -202,15 +202,6 @@
     color 160ms ease;
 }
 
-.org-tree-delete-button {
-  background: color-mix(in srgb, var(--accent-pink) 10%, var(--surface-1));
-  color: color-mix(in srgb, var(--accent-pink) 82%, var(--text-primary));
-}
-
-.org-tree-delete-button:hover {
-  background: color-mix(in srgb, var(--accent-pink) 16%, var(--surface-1));
-}
-
 .taxonomy-context-stat,
 .taxonomy-rule-summary-card,
 .taxonomy-rule-control {

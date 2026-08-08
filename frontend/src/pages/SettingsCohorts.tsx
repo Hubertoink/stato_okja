@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Toggle from '@/components/Toggle';
 import { Cohort, useCohorts, useCreateCohort, useDeleteCohort, useTaxonomyAccess, useUpdateCohort } from '@/lib/taxonomy';
-import { Pencil, Save as SaveIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
+import { Pencil, Save as SaveIcon, Archive as ArchiveIcon } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
@@ -9,7 +9,7 @@ import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useModalHistory } from '@/components/Modal';
-import { CloseButton } from '@/components/ui/Button';
+import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
 
 function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void }) {
   const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
@@ -159,8 +159,8 @@ export default function SettingsCohorts() {
                   >
                     <Pencil className="w-4 h-4 text-viridian" />
                   </button>
-                  {canDeleteTaxonomy && <button
-                    className="danger-icon-button p-1.5"
+                  {canDeleteTaxonomy && <DeleteIconButton
+                    size="icon-compact"
                     aria-label={autoT('ui_ffa5a8a7e21d')}
                     title={autoT('ui_ffa5a8a7e21d')}
                     onClick={async () => {
@@ -176,9 +176,7 @@ export default function SettingsCohorts() {
                       setConfirm((prv) => ({ ...prv, loading: false }));
                     }
                     }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>}
+                  />}
                 </>
               )}
             </div>

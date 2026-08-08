@@ -26,7 +26,6 @@ import { canAccessOrgMove } from '@/lib/orgMoveConfig';
 import {
   Shield,
   User as UserIcon,
-  Trash2,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -52,7 +51,7 @@ import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getEmailValidationMessage } from '@/lib/emailValidation';
 import { autoT } from '@/i18n/auto';
 import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
-import { Button, CreateButton } from '@/components/ui/Button';
+import { Button, CreateButton, DeleteIconButton } from '@/components/ui/Button';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import {
   downloadBlob,
@@ -2153,16 +2152,16 @@ function OrgRow({
             </button>
           )}
           {user?.role === 'superadmin' && (
-            <button
-              className="org-tree-delete-button inline-flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs flex-shrink-0"
+            <DeleteIconButton
+              size="icon-compact"
+              className="shrink-0"
+              aria-label={autoT('ui_3974dc710086')}
               title={autoT('ui_3974dc710086')}
               onClick={() => {
                 onSelectOrg(org);
                 setDeleteModalOpen(true);
               }}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            />
           )}
         </div>
       </div>
@@ -2251,16 +2250,15 @@ function OrgRow({
 
         {/* Delete Button (nur für Superadmin) */}
         {user?.role === 'superadmin' && (
-          <button
-            className="org-tree-delete-button inline-flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs"
+          <DeleteIconButton
+            size="icon-compact"
+            aria-label={autoT('ui_3974dc710086')}
             title={autoT('ui_3974dc710086')}
             onClick={() => {
               onSelectOrg(org);
               setDeleteModalOpen(true);
             }}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          />
         )}
       </div>
 

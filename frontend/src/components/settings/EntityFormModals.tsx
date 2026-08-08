@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Archive as ArchiveIcon, Save as SaveIcon } from 'lucide-react';
+import { Save as SaveIcon } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { type Category, type Tag } from '@/lib/taxonomy';
 import { type StaffMember, type StaffRole } from '@/lib/staff';
@@ -7,7 +7,7 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
 import { useModalHistory } from '@/components/Modal';
-import { CloseButton, IconButton } from '@/components/ui/Button';
+import { ArchiveIconButton, CloseButton, IconButton } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Field';
 
 export const STAFF_ROLE_LABEL: Partial<Record<StaffRole, string>> = {
@@ -91,14 +91,11 @@ export function TagFormModal({
           <div className="flex-1 flex items-center justify-center">
             {initial?.id && onArchive ? (
               <span className="tooltip-wrapper">
-                <IconButton
-                  variant="secondary"
+                <ArchiveIconButton
                   onClick={onArchive}
                   title={autoT('ui_b81f3298d960')}
                   aria-label={autoT('ui_b81f3298d960')}
-                >
-                  <ArchiveIcon className="w-5 h-5" />
-                </IconButton>
+                />
                 <span className="tooltip-bubble">{autoT('ui_b81f3298d960')}</span>
               </span>
             ) : null}
@@ -208,14 +205,11 @@ export function CategoryFormModal({
           <div className="flex-1 flex items-center justify-center">
             {initial?.id && onArchive ? (
               <span className="tooltip-wrapper">
-                <IconButton
-                  variant="secondary"
+                <ArchiveIconButton
                   onClick={onArchive}
                   title={autoT('ui_b81f3298d960')}
                   aria-label={autoT('ui_b81f3298d960')}
-                >
-                  <ArchiveIcon className="w-5 h-5" />
-                </IconButton>
+                />
                 <span className="tooltip-bubble">{autoT('ui_b81f3298d960')}</span>
               </span>
             ) : null}

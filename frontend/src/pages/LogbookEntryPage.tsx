@@ -690,8 +690,8 @@ export default function LogbookEntryPage(props: unknown = {}) {
               <Edit3 className="h-4 w-4" />
               <span className="hidden sm:inline">{autoT('ui_104f3bfdc340')}</span>
             </button>
-            <button
-              type="button"
+            <Button
+              variant="warning"
               disabled={archived || archive.isPending}
               onClick={async () => {
                 if (!window.confirm(autoT('ui_14cdcb1a47ae'))) return;
@@ -699,11 +699,10 @@ export default function LogbookEntryPage(props: unknown = {}) {
                 showToast(autoT('ui_e041a9132c74'), { type: 'success' });
                 navigate('/logbook');
               }}
-              className="logbook-archive-button inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold disabled:opacity-40"
             >
               <Archive className="h-4 w-4" />
               <span className="hidden sm:inline">{autoT('ui_b81f3298d960')}</span>
-            </button>
+            </Button>
           </div>
         )}
       </div>

@@ -8,12 +8,13 @@ import {
   useStaff,
   useUpdateStaff,
 } from '@/lib/staff';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { STAFF_ROLE_LABEL, StaffFormModal } from '@/components/settings/EntityFormModals';
 import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
+import { DeleteIconButton } from '@/components/ui/Button';
 
 export default function SettingsTeam() {
   const { user } = useAuth();
@@ -138,8 +139,8 @@ export default function SettingsTeam() {
                   }
                 >{autoT('ui_98f492b5e015')}</button>
               )}
-              {canManageDestructiveActions && <button
-                className="danger-icon-button p-1.5"
+              {canManageDestructiveActions && <DeleteIconButton
+                size="icon-compact"
                 title={autoT('ui_ffa5a8a7e21d')}
                 aria-label={autoT('ui_b607bbd2d882', { value0: m.name })}
                 onClick={async () => {
@@ -156,9 +157,7 @@ export default function SettingsTeam() {
                     setConfirm({ open: true, member: m, count: 0, loading: false });
                   }
                 }}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>}
+              />}
             </div>
           </div>
         ))}

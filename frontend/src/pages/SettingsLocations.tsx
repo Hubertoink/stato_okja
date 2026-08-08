@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useLocations, Location } from '@/lib/locations';
 import { api } from '@/lib/api';
-import { Pencil, Save as SaveIcon, Trash2 } from 'lucide-react';
+import { Pencil, Save as SaveIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useModalHistory } from '@/components/Modal';
-import { CloseButton } from '@/components/ui/Button';
+import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
 
 function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Location>; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation(['settings', 'common']);
@@ -97,7 +97,7 @@ export default function SettingsLocations() {
             </div>
             <div className="flex shrink-0 gap-2">
               <button className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5" onClick={()=> setModal({ mode: 'edit', loc: l })} aria-label={t('common:actions.edit')}><Pencil className="w-4 h-4 text-viridian"/></button>
-              {canManageDestructiveActions && <button className="danger-icon-button p-1.5" onClick={async ()=> { if (!confirm(t('locations.deleteConfirm'))) return; await api.delete(`/locations/${l.id}`); await refetch(); }} aria-label={t('common:actions.delete')}><Trash2 className="w-4 h-4"/></button>}
+              {canManageDestructiveActions && <DeleteIconButton size="icon-compact" onClick={async ()=> { if (!confirm(t('locations.deleteConfirm'))) return; await api.delete(`/locations/${l.id}`); await refetch(); }} aria-label={t('common:actions.delete')} />}
             </div>
           </div>
         ))}

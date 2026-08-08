@@ -75,7 +75,7 @@ import RichTextEditor, {
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { Button, CreateButton, IconButton } from '@/components/ui/Button';
+import { ArchiveIconButton, Button, CreateButton, DeleteIconButton, IconButton } from '@/components/ui/Button';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import { fieldControlClassName } from '@/components/ui/Field';
 import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
@@ -468,9 +468,9 @@ function ArchiveRestoreControls({
     <div className={fullWidth ? 'flex w-full items-center gap-2' : 'flex items-center gap-2'}>
       {fullWidth ? (
         <Button
-          variant="secondary"
+          variant={archived ? 'secondary' : 'warning'}
           size="lg"
-          className={`${fullWidth ? 'min-w-0 flex-1' : 'w-full'} ${archived ? '' : 'logbook-archive-button'}`}
+          className={fullWidth ? 'min-w-0 flex-1' : 'w-full'}
           title={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           aria-label={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           disabled={archiving || archive.isPending}
@@ -491,9 +491,9 @@ function ArchiveRestoreControls({
         </Button>
       ) : (
         <span className="tooltip-wrapper">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-1)] p-2 text-[var(--text-secondary)] disabled:opacity-50"
+          <ArchiveIconButton
+            size="icon"
+            restore={archived}
             title={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
             aria-label={archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
             disabled={archiving || archive.isPending}
@@ -504,13 +504,7 @@ function ArchiveRestoreControls({
               }
               setArchiveConfirmOpen(true);
             }}
-          >
-            {archived ? (
-              <ArchiveRestoreIcon className="w-5 h-5" />
-            ) : (
-              <ArchiveIcon className="w-5 h-5" />
-            )}
-          </button>
+          />
           <span className="tooltip-bubble">
             {archived ? autoT('ui_98f492b5e015') : autoT('ui_b81f3298d960')}
           </span>
@@ -532,16 +526,13 @@ function ArchiveRestoreControls({
       ) : null}
       {archived && !fullWidth && (
         <span className="tooltip-wrapper">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-full border border-red-300 bg-red-50 p-2 text-red-700 disabled:opacity-50 dark:border-red-400/40 dark:bg-red-950/30 dark:text-red-300"
+          <DeleteIconButton
+            size="icon"
             title={autoT('ui_ffa5a8a7e21d')}
             aria-label={autoT('ui_ffa5a8a7e21d')}
             disabled={deleting || remove.isPending}
             onClick={() => void openDeleteConfirm()}
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
+          />
           <span className="tooltip-bubble">{autoT('ui_ffa5a8a7e21d')}</span>
         </span>
       )}

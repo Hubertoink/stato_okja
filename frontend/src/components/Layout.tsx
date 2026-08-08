@@ -732,7 +732,7 @@ export default function Layout() {
 
       {/* Main Content */}
       <main
-        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-hidden px-2 sm:px-3 md:px-4 py-8 ${usesCompactMobileEditorSpacing ? 'pt-[4.25rem]' : 'pt-24'} md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
+        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 ${usesCompactMobileEditorSpacing ? 'pt-[4.25rem]' : 'pt-24'} md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
         <Outlet key={scopeKey} context={{ openQuickTally }} />
       </main>

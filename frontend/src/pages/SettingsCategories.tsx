@@ -11,10 +11,11 @@ import {
 } from '@/lib/taxonomy';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { CategoryFormModal } from '@/components/settings/EntityFormModals';
 import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
+import { DeleteIconButton } from '@/components/ui/Button';
 
 export default function SettingsCategories() {
   const { user } = useAuth();
@@ -174,8 +175,8 @@ export default function SettingsCategories() {
                 >
                   <Pencil className="w-4 h-4 text-viridian" />
                 </button>}
-                {canManage && canDeleteTaxonomy && <button
-                  className="danger-icon-button p-1.5"
+                {canManage && canDeleteTaxonomy && <DeleteIconButton
+                  size="icon-compact"
                   aria-label={autoT('ui_ffa5a8a7e21d')}
                   title={autoT('ui_ffa5a8a7e21d')}
                   onClick={async () => {
@@ -192,9 +193,7 @@ export default function SettingsCategories() {
                       setConfirm((prv) => ({ ...prv, loading: false }));
                     }
                   }}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>}
+                />}
               </div>
             </div>
           );

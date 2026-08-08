@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Clock3, X, Play, Users, CheckCircle, Minimize2, ChevronRight } from 'lucide-react';
+import { Clock3, Play, Users, CheckCircle, Minimize2, ChevronRight } from 'lucide-react';
 import { useProjects, type Project } from '@/lib/projects';
 import { colorFromStringHash } from '@/lib/colors';
 import { useCohorts } from '@/lib/taxonomy';
@@ -12,6 +12,7 @@ import QuickTallyReviewModal from './QuickTallyReviewModal';
 import { useQuickTallySession } from './useQuickTallySession';
 import ProtectedImage from '@/components/ProtectedImage';
 import { autoT } from '@/i18n/auto';
+import { CloseButton } from '@/components/ui/Button';
 
 type GenderKey = 'm' | 'w' | 'd';
 
@@ -123,14 +124,12 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                 </div>
               </div>
               {onClose && (
-                <button
-                  type="button"
+                <CloseButton
                   onClick={onClose}
-                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-2 transition-colors hover:bg-white/20"
+                  className="border-white/30 bg-white/10 text-white"
+                  size="icon-touch"
                   aria-label={autoT('ui_07af7cb30fca')}
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                />
               )}
             </div>
           </div>
@@ -275,15 +274,13 @@ export default function QuickTally({ onClose, onMinimize }: QuickTallyProps) {
                 <Minimize2 className="w-5 h-5" />
               </button>
             )}
-            <button
-              type="button"
+            <CloseButton
               onClick={handleCancel}
-              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-2 transition-colors hover:bg-white/20"
+              className="border-white/30 bg-white/10 text-white"
+              size="icon-touch"
               title={autoT('ui_07af7cb30fca')}
               aria-label={autoT('ui_07af7cb30fca')}
-            >
-              <X className="w-5 h-5" />
-            </button>
+            />
           </div>
         </div>
       </div>

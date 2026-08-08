@@ -2892,6 +2892,13 @@ export default function Projects() {
               placeholder={autoT('ui_d26ce4a1305c')}
               value={search}
             />
+            <ProjectStarButton
+              ariaLabel={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
+              onClick={() => setStarredFirst((current) => !current)}
+              size="icon"
+              starred={starredFirst}
+              title={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
+            />
             <div ref={projectTypeFilterRef} className="relative">
               <HeaderFilterButton
                 aria-expanded={projectTypeFilterOpen}
@@ -2967,13 +2974,6 @@ export default function Projects() {
               {projectTypeFilterLabel}
             </FilterChip>
           ) : null}
-          <ProjectStarButton
-            ariaLabel={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
-            onClick={() => setStarredFirst((current) => !current)}
-            size="icon"
-            starred={starredFirst}
-            title={starredFirst ? autoT('ui_d06210cb20b1') : autoT('ui_9343c9b50c46')}
-          />
         </div>
         <div className="hidden md:flex items-center gap-3">
           <span className="text-sm font-medium text-gray-700">{autoT('ui_5c388792c607')}</span>

@@ -3,7 +3,7 @@ import { useActivity } from '@/lib/activities';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import ProtectedImage from '@/components/ProtectedImage';
 import {
-  X as XIcon,
+  ArrowLeft,
   Calendar as CalendarIcon,
   Clock3,
   MapPin,
@@ -17,6 +17,7 @@ import { getBadgeBackgroundColor } from '@/lib/colorPalette';
 import { isCancelledActivity } from '@/lib/activityExecutionStatus';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/i18n/formatters';
+import { IconButton } from '@/components/ui/Button';
 
 export default function ActivityDetailPage() {
   const { t } = useTranslation(['activities', 'common']);
@@ -121,14 +122,14 @@ export default function ActivityDetailPage() {
               <Pencil className="w-5 h-5" />
             </button>
           )}
-          <button
+          <IconButton
             onClick={() => navigate(-1)}
             aria-label={t('common:actions.back')}
             title={t('common:actions.back')}
-            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+            variant="secondary"
           >
-            <XIcon className="w-5 h-5" />
-          </button>
+            <ArrowLeft />
+          </IconButton>
         </div>
       </div>
 

@@ -3,12 +3,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import {
   Save as SaveIcon,
-  X as XIcon,
   Boxes,
   Plus as PlusIcon,
   Trash2 as TrashIcon,
 } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
+import { CloseButton } from '@/components/ui/Button';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useCreateStaff, useStaff } from '@/lib/staff';
 import {
@@ -126,6 +126,9 @@ export default function ActivityQuickAdd({
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const initialFormBaselineSetRef = useRef(false);
+  const initialCohortCountsRef = useRef<NonNullable<ActivityFormState['cohortCounts']>>(
+    activity ? getActivityCohortCounts(activity) : {},
+  );
   const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
     enabled: initialFormBaselineSetRef.current,
   });
@@ -136,6 +139,8 @@ export default function ActivityQuickAdd({
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
+  const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
+    Boolean(activity) && (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
   const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end);
   const timeRangeError = timeRangeIssue
     ? t(
@@ -256,6 +261,8 @@ export default function ActivityQuickAdd({
   useEffect(() => {
     // Prefill for edit mode
     if (activity) {
+      const cohortCounts = getActivityCohortCounts(activity);
+      initialCohortCountsRef.current = cohortCounts;
       setForm((f: ActivityFormState) => ({
         ...f,
         ...getActivityFormStateFromActivity(activity, {
@@ -266,10 +273,7 @@ export default function ActivityQuickAdd({
         }),
         executionStatus:
           activity.executionStatus || f.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-        cohortCounts: (() => {
-          const cohortCounts = getActivityCohortCounts(activity);
-          return Object.keys(cohortCounts).length ? cohortCounts : f.cohortCounts;
-        })(),
+        cohortCounts: Object.keys(cohortCounts).length ? cohortCounts : f.cohortCounts,
       }));
       return;
     }
@@ -418,7 +422,7 @@ export default function ActivityQuickAdd({
         tabIndex={-1}
         onKeyDown={handleDialogKeyDown}
         onFocusCapture={handlePanelFocus}
-        className={`modal-panel-roomy bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-2xl px-3 sm:px-4 md:px-6 bottom-sheet-animate flex flex-col ${keyboardOpen ? 'overflow-y-auto' : 'overflow-hidden'}`}
+        className={`modal-panel-roomy modal-editor-surface bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-2xl px-3 sm:px-4 md:px-6 bottom-sheet-animate flex flex-col ${keyboardOpen ? 'overflow-y-auto' : 'overflow-hidden'}`}
       >
         <div className="editor-modal-header shrink-0 -mx-3 sm:-mx-4 md:-mx-6 flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-3 pb-3 pt-4 sm:px-4 md:pt-6">
           <h2 id="activity-editor-title" className="text-2xl font-bold text-viridian">
@@ -433,15 +437,13 @@ export default function ActivityQuickAdd({
                 setForm((current) => ({ ...current, executionStatus }))
               }
             />
-            <button
-              type="button"
+            <CloseButton
               onClick={dismiss}
-              className="modal-close-button hidden h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-2)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-3)] md:inline-flex"
+              className="hidden md:inline-flex"
+              size="icon-touch"
               title={t('quickAdd.close')}
               aria-label={t('quickAdd.close')}
-            >
-              <XIcon className="w-5 h-5" />
-            </button>
+            />
           </div>
         </div>
         <div
@@ -748,6 +750,7 @@ export default function ActivityQuickAdd({
                             }
                             cohortId={c.id}
                             gender={g}
+                            changed={isCohortValueChanged(c.id, g, entry[g] || 0)}
                             placeholder={g}
                             ariaLabel={`${c.name} ${g.toUpperCase()}`}
                           />

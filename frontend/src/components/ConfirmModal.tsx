@@ -1,9 +1,9 @@
-import { X as XIcon } from 'lucide-react';
 import React from 'react';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useModalHistory } from '@/components/Modal';
+import { CloseButton } from '@/components/ui/Button';
 
 export default function ConfirmModal({
   open,
@@ -56,13 +56,10 @@ export default function ConfirmModal({
       <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-lg p-4 md:p-6 max-h-[80vh] overflow-y-auto bottom-sheet-animate">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-semibold text-viridian">{title || t('dialog.title')}</h3>
-          <button
-            className="modal-close-button inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700"
+          <CloseButton
             onClick={dismiss}
             aria-label={t('actions.close')}
-          >
-            <XIcon className="w-5 h-5" />
-          </button>
+          />
         </div>
         <div className="text-gray-700 text-sm">
           {typeof message === 'string' ? <p>{message}</p> : message}

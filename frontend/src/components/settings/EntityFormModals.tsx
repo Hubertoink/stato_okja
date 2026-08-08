@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Archive as ArchiveIcon, Save as SaveIcon, X as XIcon } from 'lucide-react';
+import { Archive as ArchiveIcon, Save as SaveIcon } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { type Category, type Tag } from '@/lib/taxonomy';
 import { type StaffMember, type StaffRole } from '@/lib/staff';
@@ -7,7 +7,7 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
 import { useModalHistory } from '@/components/Modal';
-import { IconButton } from '@/components/ui/Button';
+import { CloseButton, IconButton } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Field';
 
 export const STAFF_ROLE_LABEL: Partial<Record<StaffRole, string>> = {
@@ -80,14 +80,11 @@ export function TagFormModal({
         <div className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           <div className="flex-1 flex items-center">
             <span className="tooltip-wrapper">
-              <IconButton
-                variant="danger-ghost"
+              <CloseButton
                 onClick={dismiss}
                 title={autoT('ui_07af7cb30fca')}
                 aria-label={autoT('ui_07af7cb30fca')}
-              >
-                <XIcon className="w-5 h-5" />
-              </IconButton>
+              />
               <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
           </div>
@@ -200,14 +197,11 @@ export function CategoryFormModal({
         <div className="settings-modal-actions roomy-settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           <div className="flex-1 flex items-center">
             <span className="tooltip-wrapper">
-              <IconButton
-                variant="danger-ghost"
+              <CloseButton
                 onClick={dismiss}
                 title={autoT('ui_07af7cb30fca')}
                 aria-label={autoT('ui_07af7cb30fca')}
-              >
-                <XIcon className="w-5 h-5" />
-              </IconButton>
+              />
               <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
           </div>
@@ -350,14 +344,11 @@ export function StaffFormModal({
         </div>
         <div className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
           <span className="tooltip-wrapper">
-            <IconButton
-              variant="danger-ghost"
+            <CloseButton
               onClick={dismiss}
               title={autoT('ui_07af7cb30fca')}
               aria-label={autoT('ui_07af7cb30fca')}
-            >
-              <XIcon className="w-5 h-5" />
-            </IconButton>
+            />
             <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
           </span>
           <span className="tooltip-wrapper">

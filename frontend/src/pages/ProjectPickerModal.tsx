@@ -3,13 +3,13 @@ import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { Link } from 'react-router-dom';
-import { Grid2x2, Rows3, X as XIcon } from 'lucide-react';
+import { Grid2x2, Rows3 } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useTranslation } from 'react-i18next';
 import { compareLocalized } from '@/i18n/formatters';
 import { useModalHistory } from '@/components/Modal';
-import { IconButton } from '@/components/ui/Button';
+import { CloseButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import { ProjectStarIndicator } from '@/components/ui/ProjectStar';
 
@@ -76,14 +76,10 @@ export default function ProjectPickerModal({
       <div className="modal-panel-roomy bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 flex flex-col overflow-hidden bottom-sheet-animate">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xl font-semibold text-viridian">{t('projectPicker.title')}</h3>
-          <IconButton
-            className="modal-close-button"
+          <CloseButton
             onClick={dismiss}
             aria-label={t('actions.close')}
-            variant="danger-ghost"
-          >
-            <XIcon className="w-5 h-5" />
-          </IconButton>
+          />
         </div>
         <div className="flex items-center gap-2 mb-3">
           <Input

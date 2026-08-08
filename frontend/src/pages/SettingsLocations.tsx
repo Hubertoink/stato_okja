@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useLocations, Location } from '@/lib/locations';
 import { api } from '@/lib/api';
-import { Pencil, Save as SaveIcon, X as XIcon, Trash2 } from 'lucide-react';
+import { Pencil, Save as SaveIcon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useModalHistory } from '@/components/Modal';
+import { CloseButton } from '@/components/ui/Button';
 
 function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Location>; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation(['settings', 'common']);
@@ -55,7 +56,7 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
           {/* Locations are always active; no UI toggle */}
         </div>
         <div className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
-          <button type="button" className="modal-close-button inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={dismiss} aria-label={t('common:actions.cancel')}><XIcon className="w-5 h-5"/></button>
+          <CloseButton onClick={dismiss} aria-label={t('common:actions.cancel')} />
           <button type="button" disabled={saving} className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:opacity-50" onClick={save} aria-label={t('common:actions.save')}><SaveIcon className="w-5 h-5"/></button>
         </div>
       </div>

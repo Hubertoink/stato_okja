@@ -20,6 +20,22 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.4.8] - 2026-08-08
+
+### Changed
+- Schließen-, Highlight-, Such-, Filter- und Formularaktionen wurden weiter
+  auf gemeinsame UI-Primitives vereinheitlicht.
+- Formmodale für Projekte, Aktivitäten, Logbuch und Umfragen verwenden jetzt
+  dieselben Oberflächenebenen und einheitlich abgesetzte Eingabefelder.
+
+### Fixed
+- Der PNG- und PDF-Export des Teilnehmer-Zeitverlaufs verwendet eine direkte,
+  robuste SVG-Erfassung.
+- Änderungen an Alterskohorten werden auch im Aktivitätsmodal auf dem Desktop
+  sichtbar hervorgehoben.
+
+---
+
 ## [1.4.7] - 2026-08-08
 
 ### Changed

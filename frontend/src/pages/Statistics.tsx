@@ -10,7 +10,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  LabelList,
 } from 'recharts';
 import { useAuth } from '@/lib/auth';
 import { fetchAllActivities, useActivitiesPaged, type Activity } from '@/lib/activities';
@@ -49,7 +48,6 @@ import {
 } from './statisticsHelpers';
 import {
   createBarValueLabelRenderer,
-  createLineValueLabelRenderer,
   createPieValueLabelRenderer,
 } from './statisticsChartLabels';
 import {
@@ -244,6 +242,77 @@ function canvasToBlob(canvas: HTMLCanvasElement) {
       reject(new Error('Canvas export failed.'));
     }, 'image/png');
   });
+}
+
+/**
+ * The participant trend is a dense Recharts SVG. Rendering its surrounding
+ * card through html2canvas is unnecessarily brittle (and has failed on some
+ * browser/theme combinations). Capture the SVG itself instead: all chart
+ * geometry is already present as SVG attributes, so this path is independent
+ * of computed CSS from the page.
+ */
+async function renderParticipantsTrendCanvas(card: HTMLDivElement, title: string) {
+  const sourceSvg = card.querySelector<SVGSVGElement>('svg.recharts-surface');
+  if (!sourceSvg) throw new Error('Participant trend SVG is unavailable.');
+
+  const bounds = sourceSvg.getBoundingClientRect();
+  const chartWidth = Math.round(bounds.width);
+  const chartHeight = Math.round(bounds.height);
+  if (chartWidth <= 0 || chartHeight <= 0) {
+    throw new Error('Participant trend SVG has no visible dimensions.');
+  }
+
+  const svg = sourceSvg.cloneNode(true) as SVGSVGElement;
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  svg.setAttribute('width', String(chartWidth));
+  svg.setAttribute('height', String(chartHeight));
+  svg.setAttribute('viewBox', sourceSvg.getAttribute('viewBox') || `0 0 ${chartWidth} ${chartHeight}`);
+  svg.style.fontFamily = 'Inter, Arial, sans-serif';
+
+  // Export against a static light surface so labels remain legible regardless
+  // of the active application theme.
+  svg.querySelectorAll('text').forEach((element) => element.setAttribute('fill', '#475569'));
+  svg.querySelectorAll('.recharts-cartesian-grid line').forEach((element) =>
+    element.setAttribute('stroke', '#cbd5e1'),
+  );
+  svg.querySelectorAll('.recharts-line-curve').forEach((element) =>
+    element.setAttribute('stroke', '#10b981'),
+  );
+  svg.querySelectorAll('.recharts-dot').forEach((element) => {
+    element.setAttribute('fill', '#10b981');
+    element.setAttribute('stroke', '#ffffff');
+  });
+
+  const serializedSvg = new XMLSerializer().serializeToString(svg);
+  const blobUrl = URL.createObjectURL(new Blob([serializedSvg], { type: 'image/svg+xml;charset=utf-8' }));
+
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Participant trend SVG could not be rendered.'));
+      image.src = blobUrl;
+    });
+
+    const padding = 24;
+    const titleHeight = 40;
+    const canvas = document.createElement('canvas');
+    canvas.width = (chartWidth + padding * 2) * PDF_RENDER_SCALE;
+    canvas.height = (chartHeight + titleHeight + padding * 2) * PDF_RENDER_SCALE;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Export canvas is unavailable.');
+
+    context.scale(PDF_RENDER_SCALE, PDF_RENDER_SCALE);
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width / PDF_RENDER_SCALE, canvas.height / PDF_RENDER_SCALE);
+    context.fillStyle = '#1f2937';
+    context.font = '600 18px Inter, Arial, sans-serif';
+    context.fillText(title, padding, padding + 19);
+    context.drawImage(image, padding, padding + titleHeight, chartWidth, chartHeight);
+    return canvas;
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
 }
 
 function getActivityTypeLabel(type?: string | null) {
@@ -1343,15 +1412,6 @@ export default function Statistics() {
     [chartValueLabelColor, chartValueLabelStroke],
   );
 
-  const LineValueLabel = useMemo(
-    () =>
-      createLineValueLabelRenderer({
-        fillColor: chartValueLabelColor,
-        strokeColor: chartValueLabelStroke,
-      }),
-    [chartValueLabelColor, chartValueLabelStroke],
-  );
-
   const exportRangeLabel = buildStatisticsExportRangeLabel(from, to);
   const isActivityTypesExporting = activeChartExport?.startsWith('activity-types:') ?? false;
   const isGenderDistributionExporting =
@@ -1880,12 +1940,15 @@ export default function Statistics() {
       await new Promise(requestAnimationFrame);
       await new Promise(requestAnimationFrame);
 
-      const canvas = await html2canvas(card, {
-        scale: PDF_RENDER_SCALE,
-        backgroundColor: '#ffffff',
-        ignoreElements: (element) =>
-          element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
-      });
+      const canvas =
+        chartId === 'participants-trend'
+          ? await renderParticipantsTrendCanvas(card, chartTitle)
+          : await html2canvas(card, {
+              scale: PDF_RENDER_SCALE,
+              backgroundColor: '#ffffff',
+              ignoreElements: (element) =>
+                element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
+            });
 
       if (format === 'png') {
         setExportProgress(autoT('ui_8b3d272f0e55'));
@@ -2898,11 +2961,7 @@ export default function Statistics() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={aggregatedTimeseries}
-                  margin={
-                    isParticipantsTrendExporting
-                      ? { ...lineChartMargin, top: Math.max(lineChartMargin.top, 28) }
-                      : lineChartMargin
-                  }
+                  margin={lineChartMargin}
                 >
                   <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" />
                   <XAxis
@@ -2935,16 +2994,8 @@ export default function Statistics() {
                     strokeWidth={2}
                     isAnimationActive={!isParticipantsTrendExporting}
                     activeDot={{ r: 6, fill: '#10b981', stroke: isDarkTheme ? "#ecf3ff" : "#ffffff", strokeWidth: 2 }}
-                    dot={
-                      isParticipantsTrendExporting
-                        ? { r: 4, fill: '#10b981', stroke: isDarkTheme ? "#ecf3ff" : "#ffffff", strokeWidth: 2 }
-                        : timeAggregation !== 'day'
-                    }
-                  >
-                    {isParticipantsTrendExporting && (
-                      <LabelList dataKey="totalParticipants" content={<LineValueLabel />} />
-                    )}
-                  </Line>
+                    dot={timeAggregation !== 'day'}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>

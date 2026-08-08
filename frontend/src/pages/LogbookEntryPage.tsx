@@ -43,7 +43,7 @@ import { colorFromStringHash } from '@/lib/colors';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { EditorActions } from '@/components/ui/EditorFrame';
-import { Button } from '@/components/ui/Button';
+import { Button, IconButton } from '@/components/ui/Button';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 
@@ -469,7 +469,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
         >
           <form
             onSubmit={save}
-            className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface-elevated)]"
+            className="modal-editor-body min-h-0 flex-1 overflow-y-auto"
           >
             <div className="space-y-4 p-4 md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -576,14 +576,15 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       )}
                     </button>
                     {form.projectId && (
-                      <button
+                      <IconButton
                         type="button"
                         onClick={() => setForm({ ...form, projectId: '' })}
-                        className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600"
+                        size="icon-touch"
+                        variant="danger-ghost"
                         aria-label={autoT('ui_0fb18f089b5a')}
                       >
-                        <X className="h-4 w-4" />
-                      </button>
+                        <X />
+                      </IconButton>
                     )}
                   </div>
                 </div>
@@ -610,14 +611,15 @@ export default function LogbookEntryPage(props: unknown = {}) {
                       )}
                     </button>
                     {form.activityId && (
-                      <button
+                      <IconButton
                         type="button"
                         onClick={() => setForm({ ...form, activityId: '' })}
-                        className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600"
+                        size="icon-touch"
+                        variant="danger-ghost"
                         aria-label={autoT('ui_5740ee577fe9')}
                       >
-                        <X className="h-4 w-4" />
-                      </button>
+                        <X />
+                      </IconButton>
                     )}
                   </div>
                 </div>

@@ -203,6 +203,15 @@
 :root[data-color-mode='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
 :root[data-color-mode='dark'] select,
 :root[data-color-mode='dark'] textarea { color: var(--text-primary); background: var(--input-bg); border-color: var(--border-subtle); }
+
+/* Field primitives always use the editor control level, including inside the
+ * survey editor. This wins over the native dark-control fallback above. */
+:root[data-color-mode='dark'] input.ui-field-control,
+:root[data-color-mode='dark'] select.ui-field-control,
+:root[data-color-mode='dark'] textarea.ui-field-control {
+  background: var(--editor-field-bg);
+  border-color: var(--border-subtle);
+}
 :root[data-color-mode='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):disabled,
 :root[data-color-mode='dark'] select:disabled,
 :root[data-color-mode='dark'] textarea:disabled { background: var(--input-disabled-bg); color: var(--text-muted); }

@@ -1,9 +1,9 @@
-import { X as XIcon } from 'lucide-react';
 import React, { useCallback, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { useTranslation } from 'react-i18next';
 import { EditorHeader } from '@/components/ui/EditorFrame';
+import { CloseButton } from '@/components/ui/Button';
 
 /** Visual backdrop for custom dialogs that do not use the shared Modal shell. */
 export function ModalBackdrop({ className = '', onClick }: { className?: string; onClick?: () => void }) {
@@ -215,7 +215,7 @@ export default function Modal({
         aria-label={title ? undefined : t('dialog.ariaLabel')}
         aria-labelledby={title ? titleId : undefined}
         aria-modal="true"
-        className={`w-full ${maxW} max-h-[85vh] rounded-t-3xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl bottom-sheet-animate modal-panel-roomy md:rounded-2xl ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
+        className={`w-full ${maxW} max-h-[85vh] rounded-t-3xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl bottom-sheet-animate modal-panel-roomy ${variant === 'form' ? 'modal-editor-surface' : ''} md:rounded-2xl ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
         role="dialog"
         tabIndex={-1}
         onKeyDown={handleDialogKeyDown}
@@ -233,13 +233,10 @@ export default function Modal({
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-bold gradient-text">{title}</h3>
             {showCloseButton && (
-            <button
-              className="modal-close-button inline-flex items-center justify-center rounded-xl bg-[var(--surface-2)] p-2 text-[var(--text-secondary)] transition-all duration-200 hover:scale-105 hover:bg-[var(--surface-3)]"
+            <CloseButton
               onClick={dismiss}
               aria-label={t('actions.close')}
-            >
-              <XIcon className="w-5 h-5" />
-            </button>
+            />
             )}
           </div>
         )}

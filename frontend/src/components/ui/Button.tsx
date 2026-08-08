@@ -1,13 +1,22 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Plus, Trash2, X } from 'lucide-react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost';
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'ghost'
+  | 'warning'
+  | 'warning-ghost'
+  | 'danger'
+  | 'danger-ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon-compact' | 'icon' | 'icon-touch';
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: 'border border-viridian bg-viridian text-white hover:bg-cambridge-blue hover:border-cambridge-blue',
   secondary: 'border border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:bg-[var(--interactive-soft)] hover:border-[var(--interactive-soft-border)]',
   ghost: 'border border-transparent bg-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]',
+  warning: 'border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] hover:bg-[var(--status-warning-bg-strong)]',
+  'warning-ghost': 'border border-transparent bg-transparent text-[var(--text-secondary)] hover:border-[var(--status-warning-border)] hover:bg-[var(--status-warning-bg)] hover:text-[var(--status-warning-text)]',
   danger: 'border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)] hover:bg-[var(--status-danger-bg-strong)]',
   'danger-ghost': 'border border-transparent bg-transparent text-[var(--text-secondary)] hover:border-[var(--status-danger-border)] hover:bg-[var(--status-danger-bg)] hover:text-[var(--status-danger-text)]',
 };
@@ -82,6 +91,54 @@ export function CloseButton({
       {...props}
     >
       <X aria-hidden="true" />
+    </IconButton>
+  );
+}
+
+/** Shared archive action. Archiving is intentionally distinct from deletion. */
+export function ArchiveIconButton({
+  'aria-label': ariaLabel,
+  className = '',
+  restore = false,
+  size = 'icon',
+  ...props
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
+  'aria-label': string;
+  restore?: boolean;
+  size?: Extract<ButtonSize, 'icon-compact' | 'icon' | 'icon-touch'>;
+}) {
+  return (
+    <IconButton
+      aria-label={ariaLabel}
+      className={`rounded-full ${className}`}
+      size={size}
+      variant={restore ? 'secondary' : 'warning'}
+      {...props}
+    >
+      {restore ? <ArchiveRestore aria-hidden="true" /> : <Archive aria-hidden="true" />}
+    </IconButton>
+  );
+}
+
+/** Shared destructive icon action with consistent color, focus and hit area. */
+export function DeleteIconButton({
+  'aria-label': ariaLabel,
+  className = '',
+  size = 'icon',
+  ...props
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
+  'aria-label': string;
+  size?: Extract<ButtonSize, 'icon-compact' | 'icon' | 'icon-touch'>;
+}) {
+  return (
+    <IconButton
+      aria-label={ariaLabel}
+      className={`rounded-full ${className}`}
+      size={size}
+      variant="danger"
+      {...props}
+    >
+      <Trash2 aria-hidden="true" />
     </IconButton>
   );
 }

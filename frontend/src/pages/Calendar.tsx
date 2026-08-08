@@ -1298,7 +1298,7 @@ export default function Calendar() {
               {schoolHolidaySegmentsForWeek(week).map((segment) => (
                 <div
                   key={`${segment.name}-${segment.start}-${segment.end}`}
-                  className="calendar-school-badge pointer-events-none absolute top-8 z-[4] h-3.5 overflow-hidden rounded-sm border px-1 text-[9px] leading-[14px] md:text-[10px]"
+                  className="calendar-school-badge calendar-school-band pointer-events-none absolute top-8 z-[1] h-3.5 overflow-hidden rounded-sm border px-1 text-[9px] leading-[14px] md:text-[10px]"
                   style={{
                     left: `${(segment.start / 7) * 100}%`,
                     width: `${((segment.end - segment.start + 1) / 7) * 100}%`,

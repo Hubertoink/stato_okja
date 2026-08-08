@@ -935,9 +935,9 @@ export default function Activities() {
         placement="bottom"
         className="demo-hover-hint-anchor-top"
       >
-        <div className="activities-desktop-table-shell bg-white rounded-lg shadow hidden md:block overflow-x-auto">
+        <div className="activities-desktop-table-shell bg-white rounded-lg shadow hidden md:block overflow-x-auto md:overflow-visible">
         <table className="activities-desktop-table w-full min-w-[700px]">
-          <thead className="bg-azure-web">
+          <thead className="activities-desktop-table-header bg-azure-web">
             <tr>
               <th className="activities-col-date px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">
                 <button

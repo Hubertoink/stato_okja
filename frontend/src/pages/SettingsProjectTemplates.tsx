@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
 import Modal, { useModalHistory } from '@/components/Modal';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
@@ -20,7 +20,7 @@ import {
   useUpdateProjectTemplate,
 } from '@/lib/projectTemplatesApi';
 import { autoT } from '@/i18n/auto';
-import { CloseButton } from '@/components/ui/Button';
+import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
 
 type TagWithColor = { name: string; color: string };
 
@@ -329,14 +329,12 @@ export default function SettingsProjectTemplates() {
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
-                    <button
-                      type="button"
-                      className="danger-icon-button p-2"
+                    <DeleteIconButton
+                      size="icon"
+                      aria-label={autoT('ui_ffa5a8a7e21d')}
                       title={autoT('ui_ffa5a8a7e21d')}
                       onClick={() => setConfirm({ open: true, id: t.id, title: t.title })}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    />
                   </div>
                 </div>
                 {t.tags && (

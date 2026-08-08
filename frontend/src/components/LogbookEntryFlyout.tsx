@@ -227,14 +227,14 @@ export default function LogbookEntryFlyout({
               </IconButton>
             )}
             {canManage && !archived && (
-              <button
-                type="button"
+              <Button
+                variant="warning"
+                size="md"
                 onClick={() => setArchiveConfirmOpen(true)}
-                className="logbook-archive-button inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold"
               >
                 <Archive className="h-4 w-4" />
                 <span className="hidden sm:inline">{autoT('ui_b81f3298d960')}</span>
-              </button>
+              </Button>
             )}
             <CloseButton
               onClick={dismiss}

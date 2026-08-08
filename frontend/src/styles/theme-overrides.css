@@ -182,7 +182,9 @@
   --status-success-bg: color-mix(in srgb, #166534 46%, var(--surface-1));
   --status-success-text: #bbf7d0;
   --status-warning-bg: color-mix(in srgb, #92400e 46%, var(--surface-1));
+  --status-warning-bg-strong: color-mix(in srgb, #92400e 62%, var(--surface-1));
   --status-warning-text: #fde68a;
+  --status-warning-border: color-mix(in srgb, #fde68a 42%, var(--border-subtle));
   --status-info-bg: color-mix(in srgb, #1d4ed8 43%, var(--surface-1));
   --status-info-text: #bfdbfe;
   --status-danger-bg: color-mix(in srgb, #991b1b 44%, var(--surface-1));

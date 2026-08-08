@@ -51,7 +51,9 @@ input[type='search']::-webkit-search-decoration {
   --status-success-bg: #dcfce7;
   --status-success-text: #15803d;
   --status-warning-bg: #fef3c7;
+  --status-warning-bg-strong: color-mix(in srgb, var(--status-warning-bg) 76%, var(--status-warning-text));
   --status-warning-text: #b45309;
+  --status-warning-border: color-mix(in srgb, var(--status-warning-text) 34%, var(--border-subtle));
   --status-info-bg: #dbeafe;
   --status-info-text: #1d4ed8;
   --status-danger-bg: #fee2e2;

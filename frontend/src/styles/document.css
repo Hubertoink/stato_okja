@@ -1,10 +1,10 @@
 /* Default Theme (modern blue/purple) - duplicate selector removed, see top */
 
 html {
-  /* Keep the page scrollbar at the viewport edge. Modal-specific scroll
-   * containers handle their own gutter so it does not appear inset from the
-   * right edge on mobile activity/project views. */
-  scrollbar-gutter: auto;
+  /* Reserve the page scrollbar space before it is needed. This keeps the
+   * content column stable when a view grows from short to scrollable. Modal
+   * scroll containers still manage their own gutter independently. */
+  scrollbar-gutter: stable;
 }
 
 body {

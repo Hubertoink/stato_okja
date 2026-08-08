@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
-import { Button, CreateButton, IconButton } from './Button';
+import { Button, CloseButton, CreateButton, IconButton } from './Button';
 import { ColorPicker } from './ColorPicker';
 import { FilterChip } from './FilterChip';
 import { ErrorState, LoadingState } from './StatePanel';
@@ -38,6 +38,15 @@ describe('shared UI components', () => {
 
     expect(screen.getByRole('button', { name: 'Löschen' })).toHaveClass('bg-[var(--status-danger-bg)]', 'text-[var(--status-danger-text)]');
     expect(screen.getByRole('button', { name: 'Bearbeiten' })).toHaveClass('h-11', 'w-11');
+  });
+
+  it('provides one neutral close button with danger feedback', () => {
+    render(<CloseButton aria-label="Dialog schließen" size="icon-touch" />);
+
+    const button = screen.getByRole('button', { name: 'Dialog schließen' });
+    expect(button).toHaveClass('h-11', 'w-11', 'rounded-full', 'border-[var(--border-subtle)]', 'bg-[var(--surface-2)]');
+    expect(button).toHaveClass('hover:border-[var(--status-danger-border)]', 'hover:bg-[var(--status-danger-bg)]');
+    expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('uses the same compact, frameless treatment for both project-highlight states', () => {

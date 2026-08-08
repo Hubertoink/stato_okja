@@ -20,6 +20,7 @@ import {
 } from '@/lib/customKpis';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { IconButton } from '@/components/ui/Button';
 
 type CustomKpiCardsProps = {
   surface: Exclude<CustomKpiSurface, 'both'>;
@@ -657,15 +658,16 @@ export default function CustomKpiCards({
                       )}
                     </button>
                     {form.projectId && (
-                      <button
+                      <IconButton
                         type="button"
                         onClick={() => setForm((current) => ({ ...current, projectId: '' }))}
-                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                        className="shrink-0"
+                        variant="danger-ghost"
                         aria-label={autoT('ui_a79e1aeb2ec5')}
                         title={autoT('ui_a79e1aeb2ec5')}
                       >
-                        <X className="h-4 w-4" />
-                      </button>
+                        <X />
+                      </IconButton>
                     )}
                   </div>
                 </div>

@@ -1,6 +1,5 @@
-import { X } from 'lucide-react';
 import type { HTMLAttributes, ReactNode } from 'react';
-import { IconButton } from './Button';
+import { CloseButton } from './Button';
 
 export function EditorHeader({
   actions,
@@ -25,15 +24,11 @@ export function EditorHeader({
       <div className="flex shrink-0 items-center gap-2">
         {actions}
         {showCloseButton ? (
-          <IconButton
-            variant="secondary"
-            className="editor-close-button rounded-full"
+          <CloseButton
             onClick={onClose}
             aria-label={closeLabel}
             title={closeLabel}
-          >
-            <X className="h-5 w-5" />
-          </IconButton>
+          />
         ) : null}
       </div>
     </header>

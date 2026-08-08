@@ -18,13 +18,6 @@
 }
 
 
-/* Give dialog close controls a clear, theme-safe danger feedback. */
-:is(.modal-close-button, .editor-close-button):hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--status-danger-text) 42%, var(--border-subtle)) !important;
-  background: var(--status-danger-bg) !important;
-  color: var(--status-danger-text) !important;
-}
-
 .visual-viewport-fixed {
   position: fixed;
   inset-inline: 0;
@@ -73,6 +66,18 @@
   border: 1px solid var(--border-subtle);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
   scrollbar-color: color-mix(in srgb, var(--viridian) 45%, var(--border-strong)) transparent;
+}
+
+/* Form modals deliberately use two surface levels: the editor itself sits on
+ * surface 1 while editable controls recede to the shared editor-field level.
+ * This keeps projects, activities, logbook entries and surveys visually
+ * aligned in every theme. */
+.modal-editor-surface {
+  background: var(--surface-1) !important;
+}
+
+.modal-editor-body {
+  background: var(--surface-1);
 }
 
 .modal-panel-roomy ::-webkit-scrollbar-track {

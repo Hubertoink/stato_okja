@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import Modal, { useModalHistory } from '@/components/Modal';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
@@ -20,6 +20,7 @@ import {
   useUpdateProjectTemplate,
 } from '@/lib/projectTemplatesApi';
 import { autoT } from '@/i18n/auto';
+import { CloseButton } from '@/components/ui/Button';
 
 type TagWithColor = { name: string; color: string };
 
@@ -375,13 +376,11 @@ export default function SettingsProjectTemplates() {
               <h3 className="text-xl font-semibold text-viridian">
                 {editing ? autoT('ui_bd648e366f1c') : autoT('ui_ff11b97abdfe')}
               </h3>
-              <button
-                type="button"
+              <CloseButton
                 onClick={dismissTemplateModal}
-                className="p-2 rounded hover:bg-gray-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
+                aria-label={autoT('ui_07af7cb30fca')}
+                title={autoT('ui_07af7cb30fca')}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

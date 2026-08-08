@@ -1,6 +1,5 @@
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 type BarLabelProps = { x?: number; y?: number; width?: number; value?: number | string };
-type LineLabelProps = { x?: number; y?: number; value?: number | string };
 type PieLabelProps = {
   cx?: number;
   x?: number;
@@ -15,7 +14,6 @@ function formatChartValue(value?: number | string) {
     ? value.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 })
     : String(value ?? '');
 }
-
 export function createPieValueLabelRenderer({
   showAbsoluteValue,
   fallbackColor,
@@ -59,7 +57,6 @@ export function createPieValueLabelRenderer({
     );
   };
 }
-
 export function createBarValueLabelRenderer({
   fillColor,
   strokeColor,
@@ -86,35 +83,6 @@ export function createBarValueLabelRenderer({
         fontWeight={600}
       >
         {text}
-      </text>
-    );
-  };
-}
-
-export function createLineValueLabelRenderer({
-  fillColor,
-  strokeColor,
-}: {
-  fillColor: string;
-  strokeColor: string;
-}) {
-  return function LineValueLabel(props: LineLabelProps) {
-    const { x, y, value } = props;
-    if (typeof x !== 'number' || typeof y !== 'number') return null;
-
-    return (
-      <text
-        x={x}
-        y={y - 12}
-        textAnchor="middle"
-        fill={fillColor}
-        stroke={strokeColor}
-        strokeWidth={2}
-        paintOrder="stroke"
-        fontSize={12}
-        fontWeight={600}
-      >
-        {formatChartValue(value)}
       </text>
     );
   };

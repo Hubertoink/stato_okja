@@ -10,7 +10,6 @@ import {
   MessageCircle,
   Send,
   Trash2,
-  X,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -31,7 +30,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
-import { Button, IconButton } from '@/components/ui/Button';
+import { Button, CloseButton, IconButton } from '@/components/ui/Button';
 import { FieldLabel, Textarea } from '@/components/ui/Field';
 import { Menu, MenuItem } from '@/components/ui/Menu';
 import { autoT } from '@/i18n/auto';
@@ -237,14 +236,10 @@ export default function LogbookEntryFlyout({
                 <span className="hidden sm:inline">{autoT('ui_b81f3298d960')}</span>
               </button>
             )}
-            <IconButton
-              variant="secondary"
-              className="modal-close-button"
+            <CloseButton
               onClick={dismiss}
               aria-label={autoT('ui_44424b18700e')}
-            >
-              <X className="h-5 w-5" />
-            </IconButton>
+            />
           </div>
         </header>
 

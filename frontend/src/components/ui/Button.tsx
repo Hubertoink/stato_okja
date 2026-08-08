@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon-compact' | 'icon' | 'icon-touch';
@@ -60,6 +60,29 @@ export function IconButton({
     <Button aria-label={ariaLabel} className={className} size={size} {...props}>
       {children}
     </Button>
+  );
+}
+
+/** Shared dismiss action for dialogs, drawers and overlays. */
+export function CloseButton({
+  'aria-label': ariaLabel,
+  className = '',
+  size = 'icon',
+  ...props
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
+  'aria-label': string;
+  size?: Extract<ButtonSize, 'icon-compact' | 'icon' | 'icon-touch'>;
+}) {
+  return (
+    <IconButton
+      aria-label={ariaLabel}
+      className={`rounded-full border-[var(--border-subtle)] bg-[var(--surface-2)] ${className}`}
+      size={size}
+      variant="danger-ghost"
+      {...props}
+    >
+      <X aria-hidden="true" />
+    </IconButton>
   );
 }
 

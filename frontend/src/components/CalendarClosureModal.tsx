@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Clock3, Save, Trash2, X } from 'lucide-react';
+import { Clock3, Save, Trash2 } from 'lucide-react';
 import type { OrganizationClosureDay } from '@/lib/orgs';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { ModalBackdrop, useModalHistory } from '@/components/Modal';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
-import { Button, IconButton } from '@/components/ui/Button';
+import { Button, CloseButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 
 function formatDateLabel(date: string): string {
@@ -78,15 +78,11 @@ export default function CalendarClosureModal({
             <div className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-faint)' }}>{autoT('ui_afd5e7713414')}</div>
             <h3 className="mt-1 text-lg font-semibold">{dateLabel}</h3>
           </div>
-          <IconButton
-            className="modal-close-button rounded-full"
+          <CloseButton
             onClick={dismiss}
             aria-label={autoT('ui_44424b18700e')}
             title={autoT('ui_44424b18700e')}
-            variant="ghost"
-          >
-            <X aria-hidden="true" />
-          </IconButton>
+          />
         </div>
 
         <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{autoT('ui_aaa8dd1e7161')}</p>

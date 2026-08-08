@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Toggle from '@/components/Toggle';
 import { Cohort, useCohorts, useCreateCohort, useDeleteCohort, useTaxonomyAccess, useUpdateCohort } from '@/lib/taxonomy';
-import { Pencil, Save as SaveIcon, X as XIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
+import { Pencil, Save as SaveIcon, Archive as ArchiveIcon, Trash2 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
@@ -9,6 +9,7 @@ import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useModalHistory } from '@/components/Modal';
+import { CloseButton } from '@/components/ui/Button';
 
 function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void }) {
   const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
@@ -57,9 +58,7 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
         </div>
   <div className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           <div className="flex-1 flex items-center">
-            <span className="tooltip-wrapper"><button type="button" className="modal-close-button inline-flex items-center justify-center p-2 rounded-full bg-gray-200 text-gray-700" onClick={dismiss} title={autoT('ui_07af7cb30fca')} aria-label={autoT('ui_07af7cb30fca')}>
-              <XIcon className="w-5 h-5" />
-            </button><span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span></span>
+            <span className="tooltip-wrapper"><CloseButton onClick={dismiss} title={autoT('ui_07af7cb30fca')} aria-label={autoT('ui_07af7cb30fca')} /><span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span></span>
           </div>
           <div className="flex-1 flex items-center justify-center">
             {initial?.id && onArchive ? (

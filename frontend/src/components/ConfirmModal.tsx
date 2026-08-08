@@ -33,9 +33,17 @@ export default function ConfirmModal({
   confirmDisabled?: boolean;
 }) {
   const { t } = useTranslation('common');
-  const dismiss = useModalHistory(onCancel, open);
+  const { dismiss, dismissWithoutCallback } = useModalHistory(onCancel, open);
   // Lock background scroll while this modal is open
   useBodyScrollLock(open);
+  const handleConfirm = () => {
+    if (dismissWithoutCallback(onConfirm)) {
+      // The callback runs from the popstate handler, after the modal-only
+      // entry has been removed and before the editor consumes its route entry.
+      return;
+    }
+    onConfirm();
+  };
   if (!open) return null;
   const content = (
     <div
@@ -89,7 +97,7 @@ export default function ConfirmModal({
                 ? 'border border-[var(--status-danger-text)] bg-transparent text-[var(--status-danger-text)] hover:bg-[var(--status-danger-bg)]'
                 : 'bg-viridian text-white'
             }`}
-            onClick={onConfirm}
+            onClick={handleConfirm}
             disabled={confirmDisabled}
           >
             {confirmLabel}

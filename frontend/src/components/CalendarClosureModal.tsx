@@ -38,7 +38,7 @@ export default function CalendarClosureModal({
   deleting?: boolean;
 }) {
   useBodyScrollLock(true);
-  const dismiss = useModalHistory(onClose);
+  const { dismiss } = useModalHistory(onClose);
   const [fullDay, setFullDay] = useState(!(closureDay?.from || closureDay?.to));
   const [from, setFrom] = useState(closureDay?.from ?? '08:00');
   const [to, setTo] = useState(closureDay?.to ?? '17:00');

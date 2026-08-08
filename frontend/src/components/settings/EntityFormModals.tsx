@@ -27,7 +27,7 @@ export function TagFormModal({
 }) {
   const [form, setForm] = useState<Partial<Tag>>({ active: true, ...initial });
   useBodyScrollLock(true);
-  const dismiss = useModalHistory(onCancel);
+  const { dismiss } = useModalHistory(onCancel);
   const update = <K extends keyof Tag>(key: K, value: Tag[K]) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleSave = () => {
@@ -139,7 +139,7 @@ export function CategoryFormModal({
 }) {
   const [form, setForm] = useState<Partial<Category>>({ active: true, ...initial });
   useBodyScrollLock(true);
-  const dismiss = useModalHistory(onCancel);
+  const { dismiss } = useModalHistory(onCancel);
   const update = <K extends keyof Category>(key: K, value: Category[K]) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleSave = () => {
@@ -265,7 +265,7 @@ export function StaffFormModal({
     ...initial,
   });
   useBodyScrollLock(true);
-  const dismiss = useModalHistory(onCancel);
+  const { dismiss } = useModalHistory(onCancel);
   const update = <K extends keyof StaffMember>(key: K, value: StaffMember[K]) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleSave = () => {

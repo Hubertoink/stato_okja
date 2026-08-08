@@ -23,7 +23,7 @@ export default function ProjectPickerModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation(['common', 'activities']);
-  const dismiss = useModalHistory(onClose);
+  const { dismiss } = useModalHistory(onClose);
   // This component mounts only when open – lock body scroll while mounted
   useBodyScrollLock(true);
   const keyboardOpen = useKeyboardOpen();

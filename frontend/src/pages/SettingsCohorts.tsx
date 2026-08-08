@@ -13,7 +13,7 @@ import { useModalHistory } from '@/components/Modal';
 function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void }) {
   const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
   useBodyScrollLock(true);
-  const dismiss = useModalHistory(onCancel);
+  const { dismiss } = useModalHistory(onCancel);
   const update = <K extends keyof Cohort>(k: K, v: Cohort[K]) => setForm((f) => ({ ...f, [k]: v }));
   const handleSave = () => {
     const cleaned = Object.fromEntries(

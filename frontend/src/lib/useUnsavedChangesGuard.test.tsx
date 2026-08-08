@@ -43,6 +43,8 @@ describe('useUnsavedChangesGuard', () => {
     expect(screen.getByText('Ungespeicherte Änderungen')).toBeInTheDocument();
     expect(onDiscard).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Änderungen verwerfen' }));
+    window.history.replaceState({}, '', window.location.href);
+    fireEvent.popState(window, { state: {} });
     expect(onDiscard).toHaveBeenCalledOnce();
   });
 

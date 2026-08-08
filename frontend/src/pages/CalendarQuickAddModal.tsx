@@ -310,7 +310,7 @@ export default function ActivityQuickAdd({
     }
     requestDiscard(onClose);
   };
-  const dismiss = useModalHistory(handleClose);
+  const { dismiss } = useModalHistory(handleClose);
 
   const handleSave = () => {
     if (create.isPending || update.isPending || submitLockedRef.current) return;

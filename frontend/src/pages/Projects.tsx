@@ -1075,12 +1075,11 @@ function ProjectForm({
     : [];
   const removedDocumentIdSet = new Set(removedDocumentIds);
   const projectFieldClassName = fieldControlClassName({ className: 'project-form-field' });
-  const projectSectionClassName = 'rounded-xl border p-4 md:p-5';
+  const projectSectionClassName = 'rounded-xl border p-4';
   const projectInnerCardClassName = 'min-w-0 py-1';
   const projectSectionStyle = {
-    background:
-      'var(--project-form-section-bg, color-mix(in srgb, var(--surface-2) 88%, transparent))',
-    borderColor: 'var(--project-form-section-border, var(--border-subtle))',
+    background: 'var(--surface-1)',
+    borderColor: 'var(--border-subtle)',
   } as const;
   const projectInnerCardStyle = {} as const;
   const projectSecondaryButtonClassName =
@@ -2027,7 +2026,7 @@ function ProjectForm({
   );
 
   const renderSectionHeader = (title: string) => (
-    <div className="mb-4">
+    <div className="mb-3">
       <h4
         className="text-sm font-semibold uppercase tracking-[0.08em]"
         style={{ color: 'var(--viridian)' }}
@@ -2147,7 +2146,7 @@ function ProjectForm({
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
         >
-          <div className="px-4 py-4 md:px-6 md:py-6">
+          <div className="px-4 py-4 md:px-5 md:py-5">
             {!initial?.id && (
               <div className="mb-4">
                 <button
@@ -2270,11 +2269,11 @@ function ProjectForm({
               </div>
             )}
 
-            <div className="space-y-5">
+            <div className="space-y-3">
               <section className={projectSectionClassName} style={projectSectionStyle}>
                 {renderSectionHeader('Basisinformationen')}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div>
                       <label className="block text-sm font-medium mb-1" htmlFor="project-title">
                         {autoT('ui_a1710a47def7')}
@@ -2345,11 +2344,11 @@ function ProjectForm({
                   </div>
                   {form.type !== 'open_door' ? renderCategorySelector() : null}
                   {renderTagSelector()}
-                  <div className="border-t border-[var(--border-subtle)] pt-4">
-                    <h5 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">
+                  <div className="border-t border-[var(--border-subtle)] pt-3">
+                    <h5 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
                       Standardzeiten für Aktivitäten
                     </h5>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                       <div>
                         <label
                           className="block text-sm font-medium mb-1"
@@ -2398,10 +2397,10 @@ function ProjectForm({
                 </div>
               </section>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+              <div className="grid grid-cols-1 items-start gap-3 xl:grid-cols-2">
                 <section className={projectSectionClassName} style={projectSectionStyle}>
                   {renderSectionHeader('Bild & Farbe')}
-                  <div className="grid grid-cols-1 gap-4 items-start">
+                  <div className="grid grid-cols-1 items-start gap-3">
                     {renderImageManager()}
                     <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
                       <label className="block text-sm font-medium mb-2" htmlFor="project-color">
@@ -2418,7 +2417,7 @@ function ProjectForm({
 
                 <section className={projectSectionClassName} style={projectSectionStyle}>
                   {renderSectionHeader('Team & Rollen')}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     {renderStaffSelectorCard({
                       label: autoT('ui_93d76ef57f64'),
                       field: 'defaultStaff',

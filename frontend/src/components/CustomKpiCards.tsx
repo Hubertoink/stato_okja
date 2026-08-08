@@ -21,6 +21,7 @@ import {
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { IconButton } from '@/components/ui/Button';
+import { fieldControlClassName } from '@/components/ui/Field';
 
 type CustomKpiCardsProps = {
   surface: Exclude<CustomKpiSurface, 'both'>;
@@ -270,6 +271,7 @@ export default function CustomKpiCards({
   refreshOptions,
 }: CustomKpiCardsProps) {
   const resolvedTitle = title ?? autoT('ui_88fe92182f1a');
+  const kpiFieldClassName = fieldControlClassName();
   const [isDarkTheme, setIsDarkTheme] = useState(() => isDarkKpiTheme());
   const colorOptions = isDarkTheme ? DARK_KPI_COLOR_OPTIONS : LIGHT_KPI_COLOR_OPTIONS;
   const defaultBackgroundColor = colorOptions[0];
@@ -513,7 +515,7 @@ export default function CustomKpiCards({
                   onChange={(event) =>
                     setForm((current) => ({ ...current, title: event.target.value }))
                   }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                  className={kpiFieldClassName}
                   placeholder={autoT('ui_0b9c251f6cac')}
                 />
               </label>
@@ -528,7 +530,7 @@ export default function CustomKpiCards({
                       metric: event.target.value as CustomKpiMetric,
                     }))
                   }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                  className={kpiFieldClassName}
                 >
                   {METRIC_OPTIONS.map((metric) => (
                     <option key={metric.value} value={metric.value}>
@@ -563,7 +565,7 @@ export default function CustomKpiCards({
                         surface: event.target.value as CustomKpiSurface,
                       }))
                     }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                    className={kpiFieldClassName}
                   >
                     <option value="both">{autoT('ui_9ed1b4491ea9')}</option>
                     <option value="dashboard">{autoT('ui_d87f47b47e4d')}</option>
@@ -581,7 +583,7 @@ export default function CustomKpiCards({
                         dateMode: event.target.value as KpiFormState['dateMode'],
                       }))
                     }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                    className={kpiFieldClassName}
                   >
                     {DATE_MODE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -606,7 +608,7 @@ export default function CustomKpiCards({
                         rollingWeeks: Number(event.target.value) || 4,
                       }))
                     }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                    className={kpiFieldClassName}
                   />
                 </label>
               )}
@@ -619,7 +621,7 @@ export default function CustomKpiCards({
                     onChange={(event) =>
                       setForm((current) => ({ ...current, type: event.target.value }))
                     }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                    className={kpiFieldClassName}
                   >
                     {TYPE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -635,7 +637,7 @@ export default function CustomKpiCards({
                     <button
                       type="button"
                       onClick={() => setProjectPickerOpen(true)}
-                      className="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-left transition-colors hover:border-viridian focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                      className={`${fieldControlClassName({ className: 'flex min-w-0 flex-1 items-center gap-2 text-left transition-colors' })} hover:border-viridian`}
                     >
                       {selectedProject ? (
                         <>
@@ -684,7 +686,7 @@ export default function CustomKpiCards({
                         .value as KpiFormState['executionStatusMode'],
                     }))
                   }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-viridian focus:outline-none focus:ring-2 focus:ring-viridian/20"
+                  className={kpiFieldClassName}
                 >
                   <option value="completed">{autoT('ui_c67eb2ee2fbc')}</option>
                   <option value="all">{autoT('ui_087a7dedf105')}</option>

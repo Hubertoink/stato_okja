@@ -87,6 +87,7 @@ export default function ActivityEditPage() {
   })();
 
   const [form, setForm] = useState<ActivityFormState>({ cohortCounts: {} });
+  const initialCohortCountsRef = useRef<NonNullable<ActivityFormState['cohortCounts']>>({});
   const [validationErrors, setValidationErrors] = useState<{ date?: string; project?: string }>({});
   const dateFieldRef = useRef<HTMLInputElement | null>(null);
   const projectFieldRef = useRef<HTMLButtonElement | null>(null);
@@ -100,6 +101,7 @@ export default function ActivityEditPage() {
       ...getActivityFormStateFromActivity(activity),
       executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
     };
+    initialCohortCountsRef.current = nextForm.cohortCounts || {};
     setForm(nextForm);
     reset(nextForm);
   }, [activity, reset]);
@@ -163,6 +165,8 @@ export default function ActivityEditPage() {
   // Derive cohort-based totals
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
+  const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
+    (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
   const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end);
   const timeRangeError = timeRangeIssue
     ? t(
@@ -558,6 +562,7 @@ export default function ActivityEditPage() {
                           }
                           cohortId={c.id}
                           gender={g}
+                          changed={isCohortValueChanged(c.id, g, entry[g] || 0)}
                           placeholder={g}
                           ariaLabel={`${c.name} ${g.toUpperCase()}`}
                         />

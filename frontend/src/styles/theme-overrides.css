@@ -187,6 +187,9 @@
   --status-info-text: #bfdbfe;
   --status-danger-bg: color-mix(in srgb, #991b1b 44%, var(--surface-1));
   --status-danger-text: #fecaca;
+  --editor-field-bg: color-mix(in srgb, var(--input-bg) 94%, var(--surface-elevated));
+  --editor-field-shadow: 0 2px 8px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --editor-field-shadow-hover: 0 3px 10px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
   /* Project sections stay on the elevated surface; editable controls recede
      one level so the long project editor keeps the same field hierarchy as
@@ -210,8 +213,8 @@
 
 :root[data-color-mode='dark'] .project-form-field,
 :root[data-color-mode='dark'] .project-rich-text-editor.rsw-editor {
-  background: var(--project-form-field-bg, var(--input-bg));
-  border-color: var(--project-form-field-border, var(--border-strong));
+  background: var(--editor-field-bg);
+  border-color: var(--border-subtle);
 }
 :root[data-color-mode='dark'] .summary-metric-card {
   background: var(--surface-1);
@@ -223,6 +226,10 @@
 }
 :root[data-color-mode='dark'] input::placeholder,
 :root[data-color-mode='dark'] textarea::placeholder { color: var(--text-faint); }
+:root[data-color-mode='dark'] .editor-field {
+  background: var(--editor-field-bg);
+  border-color: var(--border-subtle);
+}
 :root[data-color-mode='dark'] .bg-white,
 :root[data-color-mode='dark'] .bg-white\/95,
 :root[data-color-mode='dark'] .bg-white\/90,

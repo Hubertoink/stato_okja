@@ -26,7 +26,7 @@ import {
 } from '@/lib/logbook';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
-import { ModalBackdrop } from '@/components/Modal';
+import { ModalBackdrop, useModalHistory } from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
@@ -114,15 +114,16 @@ export default function LogbookEntryFlyout({
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   useBodyScrollLock(open);
+  const dismiss = useModalHistory(onClose, open);
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !archiveConfirmOpen) onClose();
+      if (event.key === 'Escape' && !archiveConfirmOpen) dismiss();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [archiveConfirmOpen, onClose, open]);
+  }, [archiveConfirmOpen, dismiss, open]);
 
   useEffect(() => {
     if (!open) setComment('');
@@ -154,7 +155,7 @@ export default function LogbookEntryFlyout({
       className="fixed inset-0 z-[60] flex items-stretch justify-center md:items-center md:p-6"
       role="presentation"
     >
-      <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" />
+      <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" onClick={dismiss} />
       <aside
         role="dialog"
         aria-modal="true"
@@ -238,7 +239,8 @@ export default function LogbookEntryFlyout({
             )}
             <IconButton
               variant="secondary"
-              onClick={onClose}
+              className="modal-close-button"
+              onClick={dismiss}
               aria-label={autoT('ui_44424b18700e')}
             >
               <X className="h-5 w-5" />

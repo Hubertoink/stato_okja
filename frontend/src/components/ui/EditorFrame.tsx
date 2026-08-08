@@ -27,7 +27,7 @@ export function EditorHeader({
         {showCloseButton ? (
           <IconButton
             variant="secondary"
-            className="rounded-full"
+            className="editor-close-button rounded-full"
             onClick={onClose}
             aria-label={closeLabel}
             title={closeLabel}

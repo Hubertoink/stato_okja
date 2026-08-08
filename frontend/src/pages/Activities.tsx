@@ -1234,7 +1234,7 @@ export default function Activities() {
                   <div
                     className="absolute inset-y-0 right-0 w-[42%] opacity-80"
                     style={{
-                      background: `linear-gradient(135deg, ${a.project.color} 0%, color-mix(in srgb, ${a.project.color} 68%, white) 100%)`,
+                      background: `linear-gradient(225deg, ${a.project.color} 0%, color-mix(in srgb, ${a.project.color} 68%, white) 100%)`,
                     }}
                     aria-hidden
                   />

@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import { autoT } from '@/i18n/auto';
 
 interface QuickTallyButtonProps {
@@ -14,7 +14,7 @@ interface QuickTallyButtonProps {
  * Touch-optimized counter button for quick tally.
  * - Tap: +1
  * - Long press (500ms): -1
- * - Swipe down: -1
+ * Touch movement is deliberately ignored so scrolling a list never changes a count.
  */
 export default function QuickTallyButton({
   value,
@@ -25,9 +25,26 @@ export default function QuickTallyButton({
   valueClassName,
 }: QuickTallyButtonProps) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartY = useRef<number | null>(null);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosition = useRef<{ x: number; y: number } | null>(null);
+  const touchMoved = useRef(false);
   const wasLongPress = useRef(false);
   const lastTouchAt = useRef<number>(0);
+  const [feedback, setFeedback] = useState<1 | -1 | null>(null);
+
+  useEffect(
+    () => () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    },
+    [],
+  );
+
+  const showFeedback = useCallback((delta: 1 | -1) => {
+    setFeedback(delta);
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    feedbackTimer.current = setTimeout(() => setFeedback(null), 900);
+  }, []);
 
   const isLikelySyntheticMouseEvent = useCallback(() => {
     // Mobile browsers often fire mouse events after touch.
@@ -45,20 +62,26 @@ export default function QuickTallyButton({
     if (disabled) return;
     triggerHaptic();
     onChange(value + 1);
-  }, [value, onChange, disabled, triggerHaptic]);
+    showFeedback(1);
+  }, [value, onChange, disabled, showFeedback, triggerHaptic]);
 
   const decrement = useCallback(() => {
     if (disabled || value <= 0) return;
     triggerHaptic();
     onChange(Math.max(0, value - 1));
-  }, [value, onChange, disabled, triggerHaptic]);
+    showFeedback(-1);
+  }, [value, onChange, disabled, showFeedback, triggerHaptic]);
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (disabled) return;
 
       lastTouchAt.current = Date.now();
-      touchStartY.current = e.touches[0].clientY;
+      touchStartPosition.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+      touchMoved.current = false;
       wasLongPress.current = false;
 
       longPressTimer.current = setTimeout(() => {
@@ -70,43 +93,53 @@ export default function QuickTallyButton({
   );
 
   const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
+    () => {
       lastTouchAt.current = Date.now();
       if (longPressTimer.current) {
         clearTimeout(longPressTimer.current);
         longPressTimer.current = null;
       }
 
-      // Detect swipe down
-      if (touchStartY.current !== null) {
-        const touchEndY = e.changedTouches[0].clientY;
-        const deltaY = touchEndY - touchStartY.current;
+      const wasScrollGesture = touchMoved.current;
+      touchStartPosition.current = null;
+      touchMoved.current = false;
 
-        if (deltaY > 30) {
-          // Swipe down detected
-          decrement();
-          touchStartY.current = null;
-          return;
-        }
-      }
-
-      touchStartY.current = null;
+      if (wasScrollGesture) return;
 
       // Only increment if it wasn't a long press
       if (!wasLongPress.current) {
         increment();
       }
     },
-    [increment, decrement]
+    [increment]
   );
 
-  const handleTouchMove = useCallback(() => {
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
     lastTouchAt.current = Date.now();
-    // Cancel long press if user moves finger
+    const start = touchStartPosition.current;
+    const touch = e.touches[0];
+    if (
+      start &&
+      touch &&
+      (Math.abs(touch.clientX - start.x) > 10 || Math.abs(touch.clientY - start.y) > 10)
+    ) {
+      touchMoved.current = true;
+    }
+    // A real gesture cancels a pending long press as well as the final tap.
+    if (!touchMoved.current) return;
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+  }, []);
+
+  const handleTouchCancel = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    touchStartPosition.current = null;
+    touchMoved.current = true;
   }, []);
 
   const handleMouseDown = useCallback(() => {
@@ -168,6 +201,7 @@ export default function QuickTallyButton({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchMove}
+      onTouchCancel={handleTouchCancel}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
@@ -193,6 +227,16 @@ export default function QuickTallyButton({
       aria-label={label ? `${label}: ${value}` : autoT('ui_4d730a6286e0', { value0: value })}
     >
       <span className={`text-2xl tabular-nums ${valueClassName || ''}`}>{value}</span>
+      {feedback ? (
+        <span
+          aria-live="polite"
+          className={`pointer-events-none absolute -right-1 -top-2 rounded-full bg-[var(--surface-elevated)] px-1.5 py-0.5 text-xs font-bold shadow-sm ${
+            feedback === -1 ? 'text-[var(--status-danger-text)]' : 'text-[var(--viridian)]'
+          }`}
+        >
+          {feedback === -1 ? '−1' : '+1'}
+        </span>
+      ) : null}
     </button>
   );
 }

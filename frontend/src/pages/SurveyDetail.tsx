@@ -58,6 +58,7 @@ import ExportProgressModal from '@/components/ExportProgressModal';
 import Modal from '@/components/Modal';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { captureExportNode } from '@/lib/htmlCanvasExport';
 
 const SURVEY_EXPORT_SCALE = 2;
 const SURVEY_EXPORT_MARGIN_MM = 10;
@@ -66,69 +67,18 @@ const TREND_COLORS = ['#0f766e', '#2563eb', '#9333ea', '#ea580c', '#db2777', '#0
 
 let surveyExportDependenciesPromise: Promise<{
   JsPDF: typeof import('jspdf').default;
-  html2canvas: typeof import('html2canvas').default;
 }> | null = null;
 
 function loadSurveyExportDependencies() {
   if (!surveyExportDependenciesPromise) {
-    surveyExportDependenciesPromise = Promise.all([import('jspdf'), import('html2canvas')]).then(
-      ([jspdfModule, html2canvasModule]) => ({
+    surveyExportDependenciesPromise = import('jspdf').then(
+      (jspdfModule) => ({
         JsPDF: jspdfModule.default,
-        html2canvas: html2canvasModule.default,
       }),
     );
   }
 
   return surveyExportDependenciesPromise;
-}
-
-function prepareSurveyExportClone(document: Document) {
-  const style = document.createElement('style');
-  style.textContent = `
-    [data-survey-export-root] {
-      --surface-1: #ffffff;
-      --surface-2: #f8fafc;
-      --surface-3: #f1f5f9;
-      --surface-elevated: #ffffff;
-      --text-primary: #1e293b;
-      --text-secondary: #475569;
-      --text-muted: #64748b;
-      --text-faint: #94a3b8;
-      --border-subtle: #dbe3f5;
-      --border-strong: #b8c5da;
-      --interactive-soft: #e2e8f0;
-      --interactive-soft-strong: #cbd5e1;
-      --interactive-soft-border: #94a3b8;
-      --viridian: #0f766e;
-      --cambridge-blue: #2563eb;
-      --chart-primary: #0f766e;
-      --card-shadow: none;
-      background: #ffffff !important;
-      color: #334155 !important;
-    }
-    [data-survey-export-root] * {
-      color: #334155 !important;
-      background: #ffffff !important;
-      background-image: none !important;
-      border-color: #dbe3f5 !important;
-      box-shadow: none !important;
-      text-shadow: none !important;
-    }
-    [data-survey-export-root] h1,
-    [data-survey-export-root] h2,
-    [data-survey-export-root] h3,
-    [data-survey-export-root] .text-viridian {
-      color: #0f766e !important;
-    }
-    [data-survey-export-root] svg {
-      color: #0f766e !important;
-      fill: none !important;
-    }
-    [data-survey-export-root] .recharts-bar-rectangle path {
-      fill: #0f766e !important;
-    }
-  `;
-  document.head.appendChild(style);
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -624,13 +574,11 @@ export default function SurveyDetail() {
         : autoT('ui_41bc3dcad7cc'),
     );
     try {
-      const { JsPDF, html2canvas } = await loadSurveyExportDependencies();
+      const { JsPDF } = await loadSurveyExportDependencies();
       await new Promise(requestAnimationFrame);
       await new Promise(requestAnimationFrame);
-      const canvas = await html2canvas(card, {
+      const canvas = await captureExportNode(card, {
         scale: SURVEY_EXPORT_SCALE,
-        backgroundColor: '#ffffff',
-        onclone: prepareSurveyExportClone,
         ignoreElements: (element) =>
           element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
       });
@@ -765,15 +713,13 @@ export default function SurveyDetail() {
         })),
       ].filter((entry): entry is { node: HTMLDivElement; label: string } => !!entry.node);
       if (!nodes.length) throw new Error('No survey analytics to export.');
-      const { JsPDF, html2canvas } = await loadSurveyExportDependencies();
+      const { JsPDF } = await loadSurveyExportDependencies();
       let pdf: InstanceType<typeof JsPDF> | null = null;
       for (const [index, entry] of nodes.entries()) {
         setExportProgress(autoT('ui_00988b3b2777', { value0: index + 1, value1: nodes.length }));
         await new Promise(requestAnimationFrame);
-        const canvas = await html2canvas(entry.node, {
+        const canvas = await captureExportNode(entry.node, {
           scale: SURVEY_EXPORT_SCALE,
-          backgroundColor: '#ffffff',
-          onclone: prepareSurveyExportClone,
           ignoreElements: (element) =>
             element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
         });
@@ -1176,12 +1122,20 @@ export default function SurveyDetail() {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 4 }}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis type="number" allowDecimals={false} />
+                          <XAxis
+                            type="number"
+                            allowDecimals={false}
+                            tick={{ fill: 'var(--text-primary)', fontSize: 12 }}
+                            axisLine={{ stroke: 'var(--border-strong)' }}
+                            tickLine={{ stroke: 'var(--border-strong)' }}
+                          />
                           <YAxis
                             type="category"
                             dataKey="name"
                             width={question?.type === 'scale' ? 112 : 96}
-                            tick={{ fontSize: 12 }}
+                            tick={{ fill: 'var(--text-primary)', fontSize: 12 }}
+                            axisLine={{ stroke: 'var(--border-strong)' }}
+                            tickLine={{ stroke: 'var(--border-strong)' }}
                           />
                           <Tooltip content={<SurveyChartTooltip />} />
                           <Bar

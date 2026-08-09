@@ -44,7 +44,7 @@ import {
 } from '@/lib/activitiesFilterStorage';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';
-import { Button, CreateButton, IconButton } from '@/components/ui/Button';
+import { CreateButton, IconButton } from '@/components/ui/Button';
 import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ResponsiveFilterPanel } from '@/components/ui/ResponsiveFilterPanel';
@@ -709,7 +709,7 @@ export default function Activities() {
             <Download className="w-5 h-5" />
           </IconButton>
           <div ref={exportTriggerRef} className="hidden md:block">
-            <Button
+            <IconButton
               variant="secondary"
               title={t('export.title')}
               aria-label={t('export.title')}
@@ -717,7 +717,7 @@ export default function Activities() {
               onClick={() => setExportModalOpen(true)}
             >
               <Download className="h-5 w-5" />
-            </Button>
+            </IconButton>
           </div>
           <div className="relative">
             <HeaderFilterButton

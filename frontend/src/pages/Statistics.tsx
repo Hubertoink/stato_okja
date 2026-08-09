@@ -69,6 +69,7 @@ import { FilterChip } from '@/components/ui/FilterChip';
 import { ResponsiveFilterPanel } from '@/components/ui/ResponsiveFilterPanel';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { captureExportNode } from '@/lib/htmlCanvasExport';
 import { loadStatisticsViewPreferences, saveStatisticsViewPreferences } from '@/lib/statisticsViewPreferences';
 import activitiesKpiIcon from '../../assets/Illust_Amigos/Aktivitäten.svg';
 import participantsKpiIcon from '../../assets/Illust_Amigos/Teilnehmende.svg';
@@ -204,16 +205,14 @@ const CHART_EXPORT_HEADER_HEIGHT_MM = 26;
 let pdfExportDependenciesPromise:
   | Promise<{
       JsPDF: typeof import('jspdf').default;
-      html2canvas: typeof import('html2canvas').default;
     }>
   | null = null;
 
 function loadPdfExportDependencies() {
   if (!pdfExportDependenciesPromise) {
-    pdfExportDependenciesPromise = Promise.all([import('jspdf'), import('html2canvas')]).then(
-      ([jspdfModule, html2canvasModule]) => ({
+    pdfExportDependenciesPromise = import('jspdf').then(
+      (jspdfModule) => ({
         JsPDF: jspdfModule.default,
-        html2canvas: html2canvasModule.default,
       }),
     );
   }
@@ -247,7 +246,7 @@ function canvasToBlob(canvas: HTMLCanvasElement) {
 
 /**
  * The participant trend is a dense Recharts SVG. Rendering its surrounding
- * card through html2canvas is unnecessarily brittle (and has failed on some
+ * card through a generic DOM renderer is unnecessarily brittle (and has failed on some
  * browser/theme combinations). Capture the SVG itself instead: all chart
  * geometry is already present as SVG attributes, so this path is independent
  * of computed CSS from the page.
@@ -1116,8 +1115,7 @@ export default function Statistics() {
     ? { top: 16, right: 6, left: -14, bottom: 4 }
     : { top: 20, right: 20, left: 0, bottom: 8 };
   const chartTooltipContentStyle = {
-    // Keep chart tooltip styles in CSS2-compatible colors so html2canvas can
-    // parse them during both report and single-chart exports.
+    // Keep tooltip colors explicit so interactive and exported charts remain legible.
     backgroundColor: isDarkTheme ? 'rgba(30, 34, 52, 0.96)' : 'rgba(255, 255, 255, 0.96)',
     borderColor: isDarkTheme ? 'rgba(148, 163, 184, 0.32)' : 'rgba(107, 114, 128, 0.24)',
     borderRadius: '12px',
@@ -1937,22 +1935,20 @@ export default function Statistics() {
     const exportKey = `${chartId}:${format}`;
     setActiveChartExport(exportKey);
     setExportProgress(format === 'pdf' ? autoT('ui_70aa98ab3b7d') : 'Diagramm wird als Bild aufbereitet …');
-    // Reuse the same static export palette as the full statistics PDF. The
-    // class must live on the captured node itself because html2canvas only
-    // clones that node, not its styled ancestors.
+    // The browser-native export capture applies a static export palette to
+    // the cloned chart, leaving the interactive page untouched.
     card.classList.add('statistics-pdf-export-card');
 
     try {
-      const { JsPDF, html2canvas } = await loadPdfExportDependencies();
+      const { JsPDF } = await loadPdfExportDependencies();
       await new Promise(requestAnimationFrame);
       await new Promise(requestAnimationFrame);
 
       const canvas =
         chartId === 'participants-trend'
           ? await renderParticipantsTrendCanvas(card, chartTitle)
-          : await html2canvas(card, {
+          : await captureExportNode(card, {
               scale: PDF_RENDER_SCALE,
-              backgroundColor: '#ffffff',
               ignoreElements: (element) =>
                 element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
             });
@@ -2074,7 +2070,7 @@ export default function Statistics() {
       const activitiesForPdf = includeActivities ? await fetchAllFilteredActivities() : [];
       setPdfMode(true);
       setExportProgress(autoT('ui_c49a3f591c68'));
-      const { JsPDF, html2canvas } = await loadPdfExportDependencies();
+      const { JsPDF } = await loadPdfExportDependencies();
       await new Promise(requestAnimationFrame);
       const el = reportRef.current;
       if (!el) return;
@@ -2084,9 +2080,8 @@ export default function Statistics() {
         PDF_RENDER_SCALE,
         Math.max(1, PDF_MAX_RENDER_HEIGHT_PX / Math.max(el.scrollHeight, 1)),
       );
-      const canvas = await html2canvas(el, {
+      const canvas = await captureExportNode(el, {
         scale: renderScale,
-        backgroundColor: '#ffffff',
       });
 
       const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -2804,8 +2799,7 @@ export default function Statistics() {
       </SurfaceCard>
 
       <div ref={reportRef} className={pdfMode ? 'statistics-pdf-report' : ''}>
-        {/* Interactive controls use CSS Color 4. Omit them from the report so
-            html2canvas only receives export-safe, static report content. */}
+        {/* Interactive controls are omitted from the static report export. */}
         {!pdfMode && (
           <div className="flex items-center justify-end mb-4" data-pdf-section>
             <SegmentedControl<'absolute' | 'average'>
@@ -3613,8 +3607,6 @@ export default function Statistics() {
         title={autoT('ui_c78a00fa35d9')}
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">{autoT('ui_d7aaf75d8532')}</p>
-          
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <FieldLabel className="mb-1">{autoT('ui_a4b078f9eb7b')}</FieldLabel>
@@ -3633,8 +3625,6 @@ export default function Statistics() {
               />
             </div>
           </div>
-
-          <p className="text-xs text-gray-500">{autoT('ui_3a315ae104b5')}</p>
 
             <div className="pt-2 border-t">
               <div className="text-xs font-medium text-gray-500 mb-2">{autoT('ui_37b72d9d418d')}</div>
@@ -3727,7 +3717,6 @@ export default function Statistics() {
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-gray-500">{autoT('ui_99b2f97806df')}</p>
           </div>
 
           <div className="pt-2 border-t">
@@ -3763,7 +3752,6 @@ export default function Statistics() {
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-gray-500">{autoT('ui_e303090e1632')}</p>
           </div>
 
           <div className="pt-2 border-t">
@@ -3803,7 +3791,6 @@ export default function Statistics() {
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-gray-500">{autoT('ui_c05c93e50e33')}</p>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">

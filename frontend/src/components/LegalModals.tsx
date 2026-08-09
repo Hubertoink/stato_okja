@@ -7,10 +7,12 @@ function LegalDocumentModal({
   documentKey,
   open,
   onClose,
+  theme,
 }: {
   documentKey: LegalDocumentKey;
   open: boolean;
   onClose: () => void;
+  theme?: 'app' | 'public';
 }) {
   const { t } = useTranslation('common');
   const { data, isError, isLoading } = useLegalContent();
@@ -22,7 +24,7 @@ function LegalDocumentModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={document?.title || fallbackTitles[documentKey]} maxWidth="lg" variant="information">
+    <Modal open={open} onClose={onClose} title={document?.title || fallbackTitles[documentKey]} maxWidth="lg" variant="information" theme={theme}>
       {isLoading ? <p className="py-4 text-sm text-gray-600">{t('legalDocuments.loading')}</p> : null}
       {isError ? <p className="py-4 text-sm text-red-700">{t('legalDocuments.loadError')}</p> : null}
       {document ? <LegalDocumentContent content={document.content} /> : null}
@@ -33,22 +35,24 @@ function LegalDocumentModal({
   );
 }
 
-export function ImprintModal(props: { open: boolean; onClose: () => void }) {
+type LegalModalProps = { open: boolean; onClose: () => void; theme?: 'app' | 'public' };
+
+export function ImprintModal(props: LegalModalProps) {
   return <LegalDocumentModal {...props} documentKey="imprint" />;
 }
 
-export function PrivacyNoticeModal(props: { open: boolean; onClose: () => void }) {
+export function PrivacyNoticeModal(props: LegalModalProps) {
   return <LegalDocumentModal {...props} documentKey="privacy" />;
 }
 
-export function TermsOfUseModal(props: { open: boolean; onClose: () => void }) {
+export function TermsOfUseModal(props: LegalModalProps) {
   return <LegalDocumentModal {...props} documentKey="terms" />;
 }
 
-export function CookieNoticeModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CookieNoticeModal({ open, onClose, theme }: LegalModalProps) {
   const { t } = useTranslation('common');
   return (
-    <Modal open={open} onClose={onClose} title={t('legalDocuments.cookieTitle')} maxWidth="lg" variant="information">
+    <Modal open={open} onClose={onClose} title={t('legalDocuments.cookieTitle')} maxWidth="lg" variant="information" theme={theme}>
       <div className="space-y-5 text-sm text-gray-700">
         <section className="space-y-2">
           <h3 className="text-base font-semibold text-gray-900">{t('legalDocuments.summaryTitle')}</h3>

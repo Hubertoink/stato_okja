@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, ChevronDown, ClipboardList } from 'lucide-react';
+import { CalendarClock, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ActiveSurveyDashboardSummary } from '@/lib/surveys';
 import { formatDate, formatNumber, getCurrentIntlLocale } from '@/i18n/formatters';
@@ -53,17 +53,9 @@ export default function DashboardActiveSurveys({
   return (
     <section className="dashboard-active-surveys mb-6" aria-labelledby="dashboard-active-surveys-title">
       <div className="dashboard-active-surveys-header mb-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="dashboard-active-surveys-icon">
-            <ClipboardList className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h2 id="dashboard-active-surveys-title" className="text-lg font-semibold text-[var(--text-primary)]">
-              {t('surveys.title')}
-            </h2>
-            <p className="dashboard-active-surveys-subtitle">{t('surveys.liveSummary')}</p>
-          </div>
-        </div>
+        <h2 id="dashboard-active-surveys-title" className="min-w-0 text-lg font-semibold text-[var(--text-primary)]">
+          {t('surveys.title')}
+        </h2>
         <span className="dashboard-active-surveys-count">
           {t('surveys.activeCount', { count: surveys.length })}
         </span>

@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/auth';
 import { type LogbookEntry, useSetLogbookStatus } from '@/lib/logbook';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
+import LogbookTypeBadge from '@/components/LogbookTypeBadge';
 import { Badge } from '@/components/ui/Badge';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/i18n/formatters';
@@ -35,18 +36,23 @@ export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; on
           onOpen(entry.id);
         }
       }}
-      className="modern-card interactive-card cursor-pointer p-4 sm:p-5"
+      className="modern-card interactive-card relative cursor-pointer p-4 sm:p-5"
     >
+      {entry.isUnread ? (
+        <Badge className="absolute right-4 top-4 z-10 shadow-sm" variant="accent">
+          {t('newBadge')}
+        </Badge>
+      ) : null}
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
             <span>{formatDate(entry.occurredAt, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-            <Badge variant="neutral">{t(`types.${entry.type}`)}</Badge>
+            <LogbookTypeBadge label={t(`types.${entry.type}`)} type={entry.type} />
             {entry.visibility === 'admins' ? <Badge className="bg-violet-100 text-violet-700">{t('card.internal')}</Badge> : null}
           </div>
           <h3 className="truncate text-base font-semibold text-[var(--text-primary)] sm:text-lg">{entry.title}</h3>
         </div>
-        <LogbookStatusBadge className="shrink-0" status={entry.status} />
+        <LogbookStatusBadge className={`shrink-0 ${entry.isUnread ? 'mr-14' : ''}`} status={entry.status} />
       </div>
       <p className="mb-4 line-clamp-3 whitespace-pre-wrap text-sm text-[var(--text-secondary)]">{entry.body}</p>
       {(entry.project?.title || entry.activity?.title) ? (

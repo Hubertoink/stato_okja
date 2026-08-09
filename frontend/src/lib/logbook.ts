@@ -55,6 +55,8 @@ export interface LogbookEntry {
   updatedAt: string;
   comments?: LogbookComment[];
   commentCount?: number;
+  /** True until the current user has opened the entry. */
+  isUnread?: boolean;
 }
 
 export type LogbookFilters = {

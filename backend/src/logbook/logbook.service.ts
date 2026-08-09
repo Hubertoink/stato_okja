@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction, LogbookEntryStatus, LogbookEntryType, LogbookVisibility } from '../common/enums';
@@ -8,6 +8,7 @@ import { Project } from '../projects/entities/project.entity';
 import { User } from '../users/entities/user.entity';
 import { LogbookComment } from './entities/logbook-comment.entity';
 import { LogbookEntry } from './entities/logbook-entry.entity';
+import { LogbookEntryView } from './entities/logbook-entry-view.entity';
 
 type RequestUser = { id: string; name?: string | null; role: string; orgId?: string | null };
 type EntryInput = Partial<Pick<
@@ -24,6 +25,7 @@ export class LogbookService {
   constructor(
     @InjectRepository(LogbookEntry) private readonly entries: Repository<LogbookEntry>,
     @InjectRepository(LogbookComment) private readonly comments: Repository<LogbookComment>,
+    @InjectRepository(LogbookEntryView) private readonly entryViews: Repository<LogbookEntryView>,
     @InjectRepository(Activity) private readonly activities: Repository<Activity>,
     @InjectRepository(Project) private readonly projects: Repository<Project>,
     private readonly audit: AuditService,
@@ -120,6 +122,11 @@ export class LogbookService {
     }
   }
 
+  private async markRead(entryId: string, userId: string) {
+    const existing = await this.entryViews.findOneBy({ entryId, userId });
+    if (!existing) await this.entryViews.save(this.entryViews.create({ entryId, userId }));
+  }
+
   async list(
     orgId: string | null,
     user: RequestUser,
@@ -144,20 +151,8 @@ export class LogbookService {
       .leftJoinAndSelect('entry.activity', 'activity')
       .leftJoinAndSelect('entry.project', 'project')
       .leftJoinAndSelect('entry.createdByUser', 'createdByUser')
-      // The list uses joins and pagination, so TypeORM wraps it in SELECT DISTINCT.
-      // Select the priority explicitly; ordering by a raw expression alone breaks the
-      // outer DISTINCT query on PostgreSQL (and results in a 500 response).
-      .addSelect(
-        `CASE entry.status
-          WHEN '${LogbookEntryStatus.OPEN}' THEN 0
-          WHEN '${LogbookEntryStatus.FOLLOW_UP}' THEN 1
-          WHEN '${LogbookEntryStatus.DISCUSSED}' THEN 2
-          ELSE 3
-        END`,
-        'logbook_status_priority',
-      )
-      .orderBy('logbook_status_priority', 'ASC')
-      .addOrderBy('entry.occurredAt', 'DESC')
+      // The logbook is a timeline: status must never move an older entry ahead of a newer one.
+      .orderBy('entry.occurredAt', 'DESC')
       .addOrderBy('entry.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
@@ -184,12 +179,22 @@ export class LogbookService {
     if (filters.projectId) qb.andWhere('entry.projectId = :projectId', { projectId: filters.projectId });
 
     const [data, total] = await qb.getManyAndCount();
-    return { data: data.map((entry) => this.withPublicAuthors(entry)), total, page, pageSize: limit };
+    const views = data.length
+      ? await this.entryViews.findBy({ userId: user.id, entryId: In(data.map((entry) => entry.id)) })
+      : [];
+    const readEntryIds = new Set(views.map((view) => view.entryId));
+    return {
+      data: data.map((entry) => Object.assign(this.withPublicAuthors(entry), { isUnread: !readEntryIds.has(entry.id) })),
+      total,
+      page,
+      pageSize: limit,
+    };
   }
 
   async findOne(id: string, orgId: string | null, user: RequestUser) {
     const entry = await this.getEntry(id, orgId, true);
     this.assertVisible(entry, user);
+    await this.markRead(entry.id, user.id);
     return this.withPublicAuthors(entry);
   }
 

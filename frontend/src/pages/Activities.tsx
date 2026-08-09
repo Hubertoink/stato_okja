@@ -4,16 +4,10 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { fetchAllLogbookEntries, type LogbookEntry } from '@/lib/logbook';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
+import ActivityTypeBadge from '@/components/ActivityTypeBadge';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Download,
-  Plus,
-} from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 // switched to xlsx-js-style inside the export handler to support cell styling
 // basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
@@ -54,6 +48,7 @@ import { Button, CreateButton, IconButton } from '@/components/ui/Button';
 import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ResponsiveFilterPanel } from '@/components/ui/ResponsiveFilterPanel';
+import { PaginationControls } from '@/components/ui/PaginationControls';
 import { useTranslation } from 'react-i18next';
 import { formatDate, formatNumber } from '@/i18n/formatters';
 import { autoT } from '@/i18n/auto';
@@ -87,77 +82,6 @@ function formatActivityDate(date?: string | null) {
 
 function toLocalIsoDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function ActivitiesPaginationControls({
-  page,
-  pageCount,
-  onFirst,
-  onPrevious,
-  onNext,
-  onLast,
-  compact = false,
-}: {
-  page: number;
-  pageCount: number;
-  onFirst: () => void;
-  onPrevious: () => void;
-  onNext: () => void;
-  onLast: () => void;
-  compact?: boolean;
-}) {
-  const { t } = useTranslation('activities');
-  return (
-    <div className={`flex items-center ${compact ? "gap-1.5" : "gap-2"}`}>
-      <IconButton
-        className="shrink-0"
-        onClick={onFirst}
-        disabled={page <= 1}
-        title={t('pagination.first')}
-        aria-label={t('pagination.first')}
-        size={compact ? "icon-compact" : "icon"}
-        variant="secondary"
-      >
-        <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        className="shrink-0"
-        onClick={onPrevious}
-        disabled={page <= 1}
-        title={t('pagination.previous')}
-        aria-label={t('pagination.previous')}
-        size={compact ? "icon-compact" : "icon"}
-        variant="secondary"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-      </IconButton>
-      <span className={`${compact ? "text-xs" : "text-sm"} text-gray-700`}>
-        {page} / {pageCount}
-      </span>
-      <IconButton
-        className="shrink-0"
-        onClick={onNext}
-        disabled={page >= pageCount}
-        title={t('pagination.next')}
-        aria-label={t('pagination.next')}
-        size={compact ? "icon-compact" : "icon"}
-        variant="secondary"
-      >
-        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        className="shrink-0"
-        onClick={onLast}
-        disabled={page >= pageCount}
-        title={t('pagination.last')}
-        aria-label={t('pagination.last')}
-        size={compact ? "icon-compact" : "icon"}
-        variant="secondary"
-      >
-        <ChevronsRight className="h-4 w-4" aria-hidden="true" />
-      </IconButton>
-    </div>
-  );
 }
 
 export default function Activities() {
@@ -929,13 +853,14 @@ export default function Activities() {
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <div className="hidden md:block">
-              <ActivitiesPaginationControls
+              <PaginationControls
                 page={page}
                 pageCount={pageCount}
                 onFirst={goToFirstPage}
                 onPrevious={goToPreviousPage}
                 onNext={goToNextPage}
                 onLast={goToLastPage}
+                labels={{ first: t('pagination.first'), previous: t('pagination.previous'), next: t('pagination.next'), last: t('pagination.last') }}
               />
             </div>
           </div>
@@ -1000,25 +925,7 @@ export default function Activities() {
                   })()}
                 </td>
                 <td className="activities-col-type px-3 lg:px-6 py-4 text-sm">
-                  {(() => {
-                    const label = activityTypeLabels[a.type] || a.type;
-                    const typeBgClass: Record<string, string> = {
-                      open_door: 'bg-emerald-700 text-white',
-                      project_open: 'bg-viridian text-white',
-                      project_closed: 'bg-slate-700 text-white',
-                      event: 'bg-amber-700 text-white',
-                      outreach: 'bg-red-700 text-white',
-                    };
-                    const cls = typeBgClass[a.type] || 'bg-gray-700 text-white';
-                    return (
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium tracking-tight border border-black/10 ${cls}`}
-                      >
-                        <span className="hidden lg:inline">{label}</span>
-                        <span className="lg:hidden" title={label}>{label.split(' ')[0]}</span>
-                      </span>
-                    );
-                  })()}
+                  <ActivityTypeBadge type={a.type} label={activityTypeLabels[a.type] || a.type} />
                 </td>
                 <td className="activities-col-title px-3 lg:px-6 py-4 text-sm max-w-[150px] lg:max-w-none">
                   <div className="font-medium text-gray-900 truncate">{a.title || '-'}</div>
@@ -1143,13 +1050,14 @@ export default function Activities() {
             {t('pagination.summary', { page, pageCount, total: formatNumber(total) })}
           </div>
         ) : null}
-        <ActivitiesPaginationControls
+        <PaginationControls
           page={page}
           pageCount={pageCount}
           onFirst={goToFirstPage}
           onPrevious={goToPreviousPage}
           onNext={goToNextPage}
           onLast={goToLastPage}
+          labels={{ first: t('pagination.first'), previous: t('pagination.previous'), next: t('pagination.next'), last: t('pagination.last') }}
           compact={isMobile}
         />
       </div>
@@ -1333,13 +1241,14 @@ export default function Activities() {
             {t('pagination.summary', { page, pageCount, total: formatNumber(total) })}
           </div>
         ) : null}
-        <ActivitiesPaginationControls
+        <PaginationControls
           page={page}
           pageCount={pageCount}
           onFirst={goToFirstPage}
           onPrevious={goToPreviousPage}
           onNext={goToNextPage}
           onLast={goToLastPage}
+          labels={{ first: t('pagination.first'), previous: t('pagination.previous'), next: t('pagination.next'), last: t('pagination.last') }}
           compact
         />
       </div>

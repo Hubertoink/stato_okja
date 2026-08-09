@@ -9,9 +9,10 @@ import { LogbookController } from './logbook.controller';
 import { LogbookService } from './logbook.service';
 import { LogbookComment } from './entities/logbook-comment.entity';
 import { LogbookEntry } from './entities/logbook-entry.entity';
+import { LogbookEntryView } from './entities/logbook-entry-view.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([LogbookEntry, LogbookComment, Activity, Project, User]), AuditModule, OrgsModule],
+  imports: [TypeOrmModule.forFeature([LogbookEntry, LogbookComment, LogbookEntryView, Activity, Project, User]), AuditModule, OrgsModule],
   controllers: [LogbookController],
   providers: [LogbookService],
   exports: [LogbookService],

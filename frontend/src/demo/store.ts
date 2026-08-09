@@ -670,6 +670,16 @@ function surveySeed(now: Date): { surveys: DemoSurvey[]; surveyResponses: Record
     ] },
     { id: 'survey-holiday-text', type: 'text', label: 'Welche Aktion wünschst du dir fürs nächste Mal?' },
   ];
+  const digitalClubQuestions: SurveyQuestion[] = [
+    { id: 'survey-digital-club-rating', type: 'scale', label: 'Wie hilfreich sind die Termine im Digital Club für dich?', required: true, scaleMin: 1, scaleMax: 5, scaleMinLabel: 'Gar nicht hilfreich', scaleMaxLabel: 'Sehr hilfreich' },
+    { id: 'survey-digital-club-topics', type: 'multiple_choice', label: 'Was möchtest du in den nächsten Wochen ausprobieren?', options: [
+      { id: 'digital-coding', label: 'Coding und Apps' }, { id: 'digital-games', label: 'Games entwickeln' }, { id: 'digital-video', label: 'Video und Social Media' }, { id: 'digital-robotics', label: 'Robotics und Technik' },
+    ] },
+    { id: 'survey-digital-club-time', type: 'single_choice', label: 'Wann passt dir der nächste Termin am besten?', options: [
+      { id: 'digital-tuesday', label: 'Dienstag' }, { id: 'digital-thursday', label: 'Donnerstag' }, { id: 'digital-friday', label: 'Freitag' },
+    ] },
+    { id: 'survey-digital-club-text', type: 'text', label: 'Welche Idee hast du für den Digital Club?' },
+  ];
   const iso = (daysAgo: number, hour = 15) => new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000 - (now.getHours() - hour) * 60 * 60 * 1000).toISOString();
   const feedbackRound1: DemoSurvey = {
     id: 'survey-feedback-round-1', seriesId: 'survey-feedback-round-1', roundNumber: 1, orgId: DEMO_ORG_ID, projectId: null,
@@ -683,6 +693,11 @@ function surveySeed(now: Date): { surveys: DemoSurvey[]; surveyResponses: Record
     id: 'survey-holiday-2026', seriesId: 'survey-holiday-2026', roundNumber: 1, orgId: DEMO_ORG_ID, projectId: null,
     title: 'Feedback zum Ferienprogramm', introduction: 'Danke, dass du beim Ferienprogramm dabei warst. Deine Rückmeldung hilft bei der Planung der nächsten Aktionen.', status: 'closed', publicToken: 'demo-holiday-feedback', questions: holidayQuestions,
     allowMultiplePerDevice: true, expectedParticipants: 18, startsAt: iso(18), startedAt: iso(18), endsAt: iso(14), closedAt: iso(14), rawResponsesPurgeAt: null, archived: false, responsesCount: 7, rawResponsesAvailable: true, createdAt: iso(20), updatedAt: iso(14),
+  };
+  const digitalClubSurvey: DemoSurvey = {
+    id: 'survey-digital-club-2026', seriesId: 'survey-digital-club-topics', roundNumber: 1, orgId: DEMO_ORG_ID, projectId: 'project-digital-club',
+    title: 'Digital Club: Themenwahl', introduction: 'Welche Themen interessieren dich im Digital Club? Deine Antworten helfen uns bei der Planung der nächsten Termine.', status: 'active', publicToken: 'demo-digital-club-topics', questions: digitalClubQuestions,
+    allowMultiplePerDevice: true, expectedParticipants: 20, startsAt: iso(4), startedAt: iso(4), endsAt: null, closedAt: null, rawResponsesPurgeAt: null, archived: false, responsesCount: 7, rawResponsesAvailable: true, createdAt: iso(5), updatedAt: iso(0),
   };
   const response = (id: string, surveyId: string, daysAgo: number, answers: SurveyResponse['answers']): SurveyResponse => ({ id, surveyId, submittedAt: iso(daysAgo), answers, number: 0 });
   const feedbackResponses1 = [
@@ -712,7 +727,24 @@ function surveySeed(now: Date): { surveys: DemoSurvey[]; surveyResponses: Record
     response('demo-holiday-6', holidaySurvey.id, 14, { 'survey-holiday-fun': 3, 'survey-holiday-again': 'again-maybe', 'survey-holiday-text': 'Etwas später anfangen.' }),
     response('demo-holiday-7', holidaySurvey.id, 14, { 'survey-holiday-fun': 4, 'survey-holiday-again': 'again-yes', 'survey-holiday-text': null }),
   ];
-  return { surveys: [feedbackRound1, feedbackRound2, holidaySurvey], surveyResponses: { [feedbackRound1.id]: feedbackResponses1, [feedbackRound2.id]: feedbackResponses2, [holidaySurvey.id]: holidayResponses } };
+  const digitalClubResponses = [
+    response('demo-digital-club-1', digitalClubSurvey.id, 4, { 'survey-digital-club-rating': 5, 'survey-digital-club-topics': ['digital-coding', 'digital-games'], 'survey-digital-club-time': 'digital-thursday', 'survey-digital-club-text': 'Ein kleines eigenes Spiel programmieren.' }),
+    response('demo-digital-club-2', digitalClubSurvey.id, 3, { 'survey-digital-club-rating': 4, 'survey-digital-club-topics': ['digital-video'], 'survey-digital-club-time': 'digital-friday', 'survey-digital-club-text': 'Videos schneiden und Effekte ausprobieren.' }),
+    response('demo-digital-club-3', digitalClubSurvey.id, 3, { 'survey-digital-club-rating': 5, 'survey-digital-club-topics': ['digital-robotics', 'digital-coding'], 'survey-digital-club-time': 'digital-thursday', 'survey-digital-club-text': 'Roboter mit Sensoren bauen.' }),
+    response('demo-digital-club-4', digitalClubSurvey.id, 2, { 'survey-digital-club-rating': 4, 'survey-digital-club-topics': ['digital-games'], 'survey-digital-club-time': 'digital-tuesday', 'survey-digital-club-text': null }),
+    response('demo-digital-club-5', digitalClubSurvey.id, 2, { 'survey-digital-club-rating': 5, 'survey-digital-club-topics': ['digital-coding', 'digital-video'], 'survey-digital-club-time': 'digital-thursday', 'survey-digital-club-text': 'Eine eigene Website machen.' }),
+    response('demo-digital-club-6', digitalClubSurvey.id, 1, { 'survey-digital-club-rating': 3, 'survey-digital-club-topics': ['digital-robotics'], 'survey-digital-club-time': 'digital-friday', 'survey-digital-club-text': 'Mehr Zeit für die Projekte wäre gut.' }),
+    response('demo-digital-club-7', digitalClubSurvey.id, 0, { 'survey-digital-club-rating': 5, 'survey-digital-club-topics': ['digital-games', 'digital-video'], 'survey-digital-club-time': 'digital-thursday', 'survey-digital-club-text': null }),
+  ];
+  return {
+    surveys: [feedbackRound1, feedbackRound2, holidaySurvey, digitalClubSurvey],
+    surveyResponses: {
+      [feedbackRound1.id]: feedbackResponses1,
+      [feedbackRound2.id]: feedbackResponses2,
+      [holidaySurvey.id]: holidayResponses,
+      [digitalClubSurvey.id]: digitalClubResponses,
+    },
+  };
 }
 
 function createDemoStore(now = new Date()): DemoStore {

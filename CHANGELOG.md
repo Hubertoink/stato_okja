@@ -18,6 +18,25 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Offline-PWA Funktionalität
 - Azure AD OIDC Integration
 
+## [1.5.5] - 2026-08-09
+
+### Added
+- Das Logbuch bietet eine persistente Tabellenansicht mit Seitennavigation,
+  fixiertem Tabellenkopf und einem Excel-Export für den aktuell gefilterten
+  Datenbestand.
+- Für Beobachtungen, Erfolge und die weiteren Logbucharten werden farblich
+  differenzierte Badges angezeigt; ungelesene Einträge erhalten ein dezentes
+  "Neu"-Badge.
+- Die Demo enthält eine aktive, dem Projekt "Digital Club" zugeordnete
+  Beispielumfrage mit sieben Antworten und allen Fragetypen.
+
+### Changed
+- Die Umfragesuche verwendet die einheitliche Suchaktion der Kopfzeile.
+
+### Fixed
+- Logbucheinträge werden durchgehend chronologisch angezeigt; das
+  Zurücksetzen aktiver Filter erfolgt über ein Schließen-Symbol.
+
 ## [1.5.4] - 2026-08-09
 
 ### Added

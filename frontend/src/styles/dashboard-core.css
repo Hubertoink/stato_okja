@@ -32,11 +32,81 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: 0.75rem;
+  align-items: start;
 }
 
 .dashboard-active-survey {
   background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  border: 1px solid var(--border-subtle);
   box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.dashboard-active-survey-summary {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  text-align: left;
+  border-radius: inherit;
+}
+
+.dashboard-active-survey-summary:focus-visible {
+  outline: 2px solid var(--interactive-soft-border);
+  outline-offset: -3px;
+}
+
+.dashboard-active-survey-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dashboard-active-survey-details {
+  padding: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+}
+
+.dashboard-active-survey-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.dashboard-active-survey-metrics > div {
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  border: 1px solid var(--border-subtle);
+}
+
+.dashboard-active-survey-metrics dt {
+  margin-bottom: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.dashboard-active-survey-metrics dd {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.dashboard-active-survey-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--status-warning-border);
+  border-radius: 0.75rem;
+  color: var(--status-warning-text);
+  background: var(--status-warning-bg);
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 /* Clickable content cards share one calm, theme-aware hover state. */
@@ -67,6 +137,14 @@
 @media (max-width: 767px) {
   .dashboard-active-surveys {
     padding-inline: 1rem;
+  }
+
+  .dashboard-active-survey-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-active-survey-metrics {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
-import { Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { Survey, type SurveyQuestion, type SurveyStatus } from './entities/survey.entity';
 import { SurveyResponse } from './entities/survey-response.entity';
 import { AuditService } from '../common/audit.service';
@@ -16,6 +16,7 @@ import { AuditAction } from '../common/enums';
 import { assertExactOrgScopedEntityAccess, type OrgScopedUser } from '../auth/org-scope-access';
 import type { CreateSurveyDto, UpdateSurveyDto } from './dto/survey.dto';
 import { Organization } from '../orgs/entities/organization.entity';
+import { Project } from '../projects/entities/project.entity';
 
 type SurveyActor = OrgScopedUser & { id?: string; name?: string | null };
 type AnswerValue = string | string[] | number | null;
@@ -43,6 +44,7 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @InjectRepository(Survey) private readonly surveys: Repository<Survey>,
     @InjectRepository(SurveyResponse) private readonly responses: Repository<SurveyResponse>,
+    @InjectRepository(Project) private readonly projects: Repository<Project>,
     @InjectRepository(Organization) private readonly organizations: Repository<Organization>,
     private readonly audit: AuditService,
   ) {}
@@ -205,6 +207,103 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     if (orgId === null) qb.andWhere('survey.orgId IS NULL');
     else qb.andWhere('survey.orgId = :orgId', { orgId });
     return (await qb.getCount()) > 0;
+  }
+
+  async activeDashboard(orgId: string | null) {
+    const surveyQuery = this.surveys
+      .createQueryBuilder('survey')
+      .where('survey.status = :status', { status: 'active' })
+      .andWhere('survey.archived = :archived', { archived: false });
+    if (orgId === null) surveyQuery.andWhere('survey.orgId IS NULL');
+    else surveyQuery.andWhere('survey.orgId = :orgId', { orgId });
+    const activeSurveys = await surveyQuery.getMany();
+    if (!activeSurveys.length) return [];
+
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const sevenDayStart = new Date(todayStart);
+    sevenDayStart.setDate(sevenDayStart.getDate() - 6);
+    const surveyIds = activeSurveys.map((survey) => survey.id);
+    const aggregateRows = await this.responses
+      .createQueryBuilder('response')
+      .select('response.surveyId', 'surveyId')
+      .addSelect('COUNT(response.id)', 'responsesCount')
+      .addSelect(
+        'SUM(CASE WHEN response.submittedAt >= :todayStart THEN 1 ELSE 0 END)',
+        'responsesToday',
+      )
+      .addSelect(
+        'SUM(CASE WHEN response.submittedAt >= :sevenDayStart THEN 1 ELSE 0 END)',
+        'responsesLast7Days',
+      )
+      .addSelect('MAX(response.submittedAt)', 'lastResponseAt')
+      .where('response.surveyId IN (:...surveyIds)', { surveyIds })
+      .setParameters({ todayStart, sevenDayStart })
+      .groupBy('response.surveyId')
+      .getRawMany<{
+        surveyId: string;
+        responsesCount: string | number | null;
+        responsesToday: string | number | null;
+        responsesLast7Days: string | number | null;
+        lastResponseAt: Date | string | null;
+      }>();
+    const aggregateBySurveyId = new Map(aggregateRows.map((row) => [row.surveyId, row]));
+
+    const projectIds = Array.from(
+      new Set(activeSurveys.map((survey) => survey.projectId).filter((id): id is string => !!id)),
+    );
+    const projects = projectIds.length
+      ? await this.projects.findBy({
+          id: In(projectIds),
+          orgId: orgId === null ? IsNull() : orgId,
+        })
+      : [];
+    const projectTitleById = new Map(projects.map((project) => [project.id, project.title]));
+
+    return activeSurveys
+      .map((survey) => {
+        const aggregate = aggregateBySurveyId.get(survey.id);
+        const responsesCount = Number(aggregate?.responsesCount || 0);
+        const expectedParticipants =
+          survey.expectedParticipants && survey.expectedParticipants > 0
+            ? survey.expectedParticipants
+            : null;
+        return {
+          id: survey.id,
+          title: survey.title,
+          projectId: survey.projectId,
+          projectTitle: survey.projectId ? projectTitleById.get(survey.projectId) || null : null,
+          roundNumber: survey.roundNumber || 1,
+          questionCount: survey.questions?.length || 0,
+          status: 'active' as const,
+          responsesCount,
+          expectedParticipants,
+          responseRate: expectedParticipants
+            ? Math.round((responsesCount / expectedParticipants) * 1000) / 10
+            : null,
+          responsesToday: Number(aggregate?.responsesToday || 0),
+          responsesLast7Days: Number(aggregate?.responsesLast7Days || 0),
+          lastResponseAt: aggregate?.lastResponseAt
+            ? new Date(aggregate.lastResponseAt).toISOString()
+            : null,
+          startedAt: survey.startedAt?.toISOString() || null,
+          endsAt: survey.endsAt?.toISOString() || null,
+        };
+      })
+      .sort((left, right) => {
+        const leftEnd = left.endsAt ? new Date(left.endsAt).getTime() : Number.POSITIVE_INFINITY;
+        const rightEnd = right.endsAt ? new Date(right.endsAt).getTime() : Number.POSITIVE_INFINITY;
+        if (leftEnd !== rightEnd) return leftEnd - rightEnd;
+        const leftResponse = left.lastResponseAt
+          ? new Date(left.lastResponseAt).getTime()
+          : Number.NEGATIVE_INFINITY;
+        const rightResponse = right.lastResponseAt
+          ? new Date(right.lastResponseAt).getTime()
+          : Number.NEGATIVE_INFINITY;
+        return leftResponse === rightResponse ? 0 : rightResponse - leftResponse;
+      })
+      .slice(0, 3);
   }
 
   async findOneScoped(id: string, user: SurveyActor) {

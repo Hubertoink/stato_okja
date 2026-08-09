@@ -18,6 +18,9 @@ export class SurveysController {
   @Get() findAll(@Req() req: SurveyRequest, @Query('search') search?: string, @Query('archived') archived?: string) {
     return this.service.findAll(resolveOrgScope(this.actor(req)), search, archived === 'true' ? true : archived === 'false' ? false : undefined);
   }
+  @Get('dashboard/active') activeDashboard(@Req() req: SurveyRequest) {
+    return this.service.activeDashboard(resolveOrgScope(this.actor(req)));
+  }
   @Get('meta/has-archived') hasArchived(@Req() req: SurveyRequest) { return this.service.hasArchived(resolveOrgScope(this.actor(req))); }
   @Post() create(@Body() body: CreateSurveyDto, @Req() req: SurveyRequest) { const actor = this.actor(req); return this.service.create(body, resolveOrgScope(actor), actor); }
   @Get(':id/rounds') rounds(@Param('id') id: string, @Req() req: SurveyRequest) { return this.service.listRounds(id, this.actor(req)); }

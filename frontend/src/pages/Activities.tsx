@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
@@ -30,7 +30,6 @@ import {
 } from 'lucide-react';
 import { useActivity } from '@/lib/activities';
 import ActivitiesFilterDrawer from '@/components/ActivitiesFilterDrawer';
-import Modal from '@/components/Modal';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import { colorForActivityType } from '@/lib/colors';
 import { getBadgeBackgroundColor } from '@/lib/colorPalette';
@@ -54,6 +53,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button, CreateButton, IconButton } from '@/components/ui/Button';
 import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { ResponsiveFilterPanel } from '@/components/ui/ResponsiveFilterPanel';
 import { useTranslation } from 'react-i18next';
 import { formatDate, formatNumber } from '@/i18n/formatters';
 import { autoT } from '@/i18n/auto';
@@ -186,6 +186,7 @@ export default function Activities() {
   const { data: publicConfig } = usePublicConfig();
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const exportTriggerRef = useRef<HTMLDivElement | null>(null);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const todayIso = toLocalIsoDate(new Date());
   useEffect(() => {
@@ -783,22 +784,36 @@ export default function Activities() {
           >
             <Download className="w-5 h-5" />
           </IconButton>
-          <Button
-            variant="secondary"
-            className="hidden md:inline-flex"
-            title={t('export.title')}
-            aria-label={t('export.title')}
-            disabled={exporting || exportCount === 0}
-            onClick={() => setExportModalOpen(true)}
-          >
-            <Download className="h-5 w-5" />
-          </Button>
-          <HeaderFilterButton
-            className="touch-manipulation"
-            onClick={() => setFilterDrawer(true)}
-            title={t('filters.advanced')}
-            aria-label={t('filters.advanced')}
-          />
+          <div ref={exportTriggerRef} className="hidden md:block">
+            <Button
+              variant="secondary"
+              title={t('export.title')}
+              aria-label={t('export.title')}
+              disabled={exporting || exportCount === 0}
+              onClick={() => setExportModalOpen(true)}
+            >
+              <Download className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="relative">
+            <HeaderFilterButton
+              aria-expanded={filterDrawer}
+              className="touch-manipulation"
+              onClick={() => setFilterDrawer((open) => !open)}
+              title={t('filters.advanced')}
+              aria-label={t('filters.advanced')}
+            />
+            <ActivitiesFilterDrawer
+              open={filterDrawer}
+              initial={advanced}
+              onClose={() => setFilterDrawer(false)}
+              onApply={(filters) => {
+                setAdvanced(filters);
+                setOrder('desc');
+                setFilterDrawer(false);
+              }}
+            />
+          </div>
           {/* Mobile icon-only: New activity */}
           <IconButton
             variant="primary"
@@ -1355,13 +1370,14 @@ export default function Activities() {
           activity={editing}
         />
       )}
-      <Modal
+      <ResponsiveFilterPanel
+        anchorRef={exportTriggerRef}
+        desktopClassName="filter-popover--export"
         open={exportModalOpen}
         onClose={() => {
           if (!exporting) setExportModalOpen(false);
         }}
         title={t('export.title')}
-        maxWidth="md"
       >
         <div className="space-y-4 text-sm text-gray-700">
           <p>
@@ -1373,7 +1389,7 @@ export default function Activities() {
           <div className="grid gap-3 md:grid-cols-2">
             <button
               type="button"
-              className="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-viridian/40 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="export-option-card rounded-xl border p-4 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={() => void handleExportConfirm('raw')}
               disabled={exporting || exportCount === 0}
             >
@@ -1384,7 +1400,7 @@ export default function Activities() {
             </button>
             <button
               type="button"
-              className="rounded-xl border border-viridian/20 bg-azure-web p-4 text-left hover:border-viridian/40 hover:bg-mint-green disabled:cursor-not-allowed disabled:opacity-60"
+              className="export-option-card export-option-card--stato rounded-xl border p-4 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={() => void handleExportConfirm('styled')}
               disabled={exporting || exportCount === 0}
             >
@@ -1405,18 +1421,8 @@ export default function Activities() {
             </button>
           </div>
         </div>
-      </Modal>
+      </ResponsiveFilterPanel>
       <ExportProgressModal message={exportProgress} />
-      <ActivitiesFilterDrawer
-        open={filterDrawer}
-        initial={advanced}
-        onClose={() => setFilterDrawer(false)}
-        onApply={(f) => {
-          setAdvanced(f);
-          setOrder('desc');
-          setFilterDrawer(false);
-        }}
-      />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DOMPurify from 'dompurify';
-import Toggle from '@/components/Toggle';
 import { FIXED_PALETTE, TAG_PALETTE } from '@/lib/colorPalette';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import {
@@ -79,6 +78,8 @@ import { ArchiveIconButton, Button, CreateButton, DeleteIconButton, IconButton }
 import { EditorActions } from '@/components/ui/EditorFrame';
 import { fieldControlClassName } from '@/components/ui/Field';
 import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
+import { ResponsiveFilterPanel } from '@/components/ui/ResponsiveFilterPanel';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ProjectStarButton } from '@/components/ui/ProjectStar';
 import { FilterChip } from '@/components/ui/FilterChip';
@@ -2717,6 +2718,7 @@ export default function Projects() {
   const [showArchived, setShowArchived] = useState(initialProjectFilters.showArchived);
   const [projectTypeFilterOpen, setProjectTypeFilterOpen] = useState(false);
   const [projectTypeFilters, setProjectTypeFilters] = useState<string[]>(initialProjectFilters.types);
+  const isMobile = useIsMobile(768);
   const projectTypeFilterRef = useRef<HTMLDivElement | null>(null);
   const [desktopView, setDesktopView] = useState<ProjectsDesktopView>(() => {
     try {
@@ -2736,7 +2738,7 @@ export default function Projects() {
     saveProjectsFilters({ showArchived, types: projectTypeFilters });
   }, [projectTypeFilters, showArchived]);
   useEffect(() => {
-    if (!projectTypeFilterOpen) return;
+    if (!projectTypeFilterOpen || isMobile) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       if (!projectTypeFilterRef.current?.contains(event.target as Node)) setProjectTypeFilterOpen(false);
     };
@@ -2749,7 +2751,7 @@ export default function Projects() {
       document.removeEventListener('pointerdown', closeOnOutsidePointer);
       document.removeEventListener('keydown', closeOnEscape);
     };
-  }, [projectTypeFilterOpen]);
+  }, [isMobile, projectTypeFilterOpen]);
   const [modal, setModal] = useState<{
     mode: 'create' | 'edit';
     project?: Project;
@@ -2897,11 +2899,14 @@ export default function Projects() {
                 onClick={() => setProjectTypeFilterOpen((open) => !open)}
                 title="Projekte filtern"
               />
-              {projectTypeFilterOpen ? (
-                <div aria-label="Projekte filtern" className="header-action-popover z-30 w-64" role="group">
-                  <div className="mb-2 flex items-center">
-                    <span className="text-sm font-semibold text-[var(--text-primary)]">Projektarten</span>
-                  </div>
+              <ResponsiveFilterPanel
+                desktopClassName="filter-popover--projects"
+                onClose={() => setProjectTypeFilterOpen(false)}
+                open={projectTypeFilterOpen}
+                title="Projekte filtern"
+              >
+                <section>
+                  <h4 className="mb-2 text-sm font-semibold text-viridian">Projektarten</h4>
                   <div className="grid gap-1">
                     {projectTypes.map((type) => {
                       const selected = projectTypeFilters.includes(type);
@@ -2921,22 +2926,19 @@ export default function Projects() {
                       );
                     })}
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3">
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">Archiv</p>
-                      <p className="text-xs text-[var(--text-secondary)]">
-                        Archivierte Projekte einblenden
-                        {archivedCount > 0 ? ` (${archivedCount})` : ''}
-                      </p>
-                    </div>
-                    <Toggle
-                      ariaLabel="Archivierte Projekte einblenden"
-                      checked={showArchived}
-                      onChange={setShowArchived}
-                    />
-                  </div>
-                </div>
-              ) : null}
+                </section>
+                <label className="filter-archive-option mt-3">
+                  <input
+                    type="checkbox"
+                    checked={showArchived}
+                    onChange={(event) => setShowArchived(event.target.checked)}
+                  />
+                  <span>
+                    Archivierte Projekte einblenden
+                    {archivedCount > 0 ? ` (${archivedCount})` : ''}
+                  </span>
+                </label>
+              </ResponsiveFilterPanel>
             </div>
             <IconButton
               aria-label={autoT('ui_4bc9d33f94ce')}

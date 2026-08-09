@@ -66,6 +66,7 @@ import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { Button, IconButton } from '@/components/ui/Button';
 import { FieldLabel, Input } from '@/components/ui/Field';
 import { FilterChip } from '@/components/ui/FilterChip';
+import { ResponsiveFilterPanel } from '@/components/ui/ResponsiveFilterPanel';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { loadStatisticsViewPreferences, saveStatisticsViewPreferences } from '@/lib/statisticsViewPreferences';
@@ -605,6 +606,7 @@ export default function Statistics() {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(storedViewPreferences.selectedMonth ?? null); // null = ganzes Jahr
   const [filterMode, setFilterMode] = useState<'year' | 'month'>(storedViewPreferences.filterMode ?? 'year');
   const [customFilterOpen, setCustomFilterOpen] = useState(false);
+  const customFilterTriggerRef = useRef<HTMLDivElement | null>(null);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [tempFrom, setTempFrom] = useState<string>(from);
@@ -642,6 +644,7 @@ export default function Statistics() {
   const [activeActivitiesExport, setActiveActivitiesExport] = useState<ActivitiesExportFormat | null>(null);
   const [isControllingExporting, setIsControllingExporting] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
+  const reportExportTriggerRef = useRef<HTMLDivElement | null>(null);
   const [includeActivitiesInPdf, setIncludeActivitiesInPdf] = useState(false);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isExportInProgress, setIsExportInProgress] = useState(false);
@@ -2624,18 +2627,20 @@ export default function Statistics() {
                       {formatAdvancedFilterDisplay()}
                     </FilterChip>
                   ) : null}
-                  <IconButton
-                    aria-label={autoT('ui_c78a00fa35d9')}
-                    className={hasAdvancedFilter ? "border-viridian bg-viridian/5 text-viridian hover:bg-viridian/10" : ''}
-                    onClick={openAdvancedFilters}
-                    title={autoT('ui_c78a00fa35d9')}
-                    variant="secondary"
-                  >
-                    <SlidersHorizontal aria-hidden="true" />
-                  </IconButton>
+                  <div ref={customFilterTriggerRef} className="relative">
+                    <IconButton
+                      aria-label={autoT('ui_c78a00fa35d9')}
+                      className={hasAdvancedFilter ? "border-viridian bg-viridian/5 text-viridian hover:bg-viridian/10" : ''}
+                      onClick={openAdvancedFilters}
+                      title={autoT('ui_c78a00fa35d9')}
+                      variant="secondary"
+                    >
+                      <SlidersHorizontal aria-hidden="true" />
+                    </IconButton>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:ml-0">
+                <div ref={reportExportTriggerRef} className="flex items-center gap-2 sm:ml-0">
                   <Button
                     disabled={isExportInProgress}
                     onClick={() => setReportExportOpen(true)}
@@ -3538,11 +3543,12 @@ export default function Statistics() {
         </div>
       </Modal>
 
-      <Modal
+      <ResponsiveFilterPanel
+        anchorRef={reportExportTriggerRef}
+        desktopClassName="filter-popover--export"
         open={reportExportOpen}
         onClose={() => setReportExportOpen(false)}
         title={autoT('ui_8dbb5c1c7f40')}
-        maxWidth="xl"
       >
         <div className="space-y-4 text-sm text-gray-700">
           <p>{autoT('ui_fabb2abae3a4')}</p>
@@ -3560,9 +3566,9 @@ export default function Statistics() {
               </span>
             </span>
           </label>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2">
             <Button
-              className="h-auto min-h-28 w-full items-start justify-start p-4 text-left"
+              className="export-option-card h-auto min-h-0 w-full p-3"
               disabled={isExportInProgress}
               onClick={() => { setReportExportOpen(false); void exportPdf(includeActivitiesInPdf); }}
               variant="secondary"
@@ -3573,7 +3579,7 @@ export default function Statistics() {
               </span>
             </Button>
             <Button
-              className="h-auto min-h-28 w-full items-start justify-start p-4 text-left"
+              className="export-option-card export-option-card--stato h-auto min-h-0 w-full p-3"
               disabled={isExportInProgress}
               onClick={() => { setReportExportOpen(false); void exportActivitiesTable('xlsx'); }}
               variant="secondary"
@@ -3584,7 +3590,7 @@ export default function Statistics() {
               </span>
             </Button>
             <Button
-              className="h-auto min-h-28 w-full items-start justify-start p-4 text-left"
+              className="export-option-card h-auto min-h-0 w-full p-3"
               disabled={isExportInProgress || isControllingExporting}
               onClick={() => { setReportExportOpen(false); void exportControllingData(); }}
               variant="secondary"
@@ -3596,14 +3602,15 @@ export default function Statistics() {
             </Button>
           </div>
         </div>
-      </Modal>
+      </ResponsiveFilterPanel>
 
-      {/* Custom Date Range Modal */}
-      <Modal
+      {/* Desktop popover, mobile bottom sheet. */}
+      <ResponsiveFilterPanel
+        anchorRef={customFilterTriggerRef}
+        desktopClassName="filter-popover--statistics"
         open={customFilterOpen}
         onClose={() => setCustomFilterOpen(false)}
         title={autoT('ui_c78a00fa35d9')}
-        maxWidth="md"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">{autoT('ui_d7aaf75d8532')}</p>
@@ -3809,7 +3816,7 @@ export default function Statistics() {
             >{autoT('ui_594308426372')}</Button>
           </div>
         </div>
-      </Modal>
+      </ResponsiveFilterPanel>
       <ExportProgressModal message={exportProgress} />
     </div>
   );

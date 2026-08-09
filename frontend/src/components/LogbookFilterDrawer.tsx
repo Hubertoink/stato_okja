@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import Modal from './Modal';
 import { useProjects } from '@/lib/projects';
 import type { LogbookAdvancedFilters } from '@/lib/logbookFilterStorage';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import { Button } from '@/components/ui/Button';
 import { FieldLabel, Input, Select } from '@/components/ui/Field';
 import { useTranslation } from 'react-i18next';
+import { ResponsiveFilterPanel } from './ui/ResponsiveFilterPanel';
 
 export default function LogbookFilterDrawer({
   open,
@@ -27,8 +27,13 @@ export default function LogbookFilterDrawer({
   }, [initial, open]);
 
   return (
-    <Modal open={open} onClose={onClose} title={t('filter.title')} maxWidth="lg">
-      <div className="space-y-5">
+    <ResponsiveFilterPanel
+      desktopClassName="filter-popover--logbook"
+      onClose={onClose}
+      open={open}
+      title={t('filter.title')}
+    >
+      <div className="space-y-4 md:space-y-3">
         <section>
           <h4 className="mb-2 font-semibold text-viridian">{t('filter.period')}</h4>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -118,7 +123,7 @@ export default function LogbookFilterDrawer({
           </FieldLabel>
         </section>
 
-        <label className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3 text-sm font-medium text-[var(--text-primary)]">
+        <label className="filter-archive-option">
           <input
             type="checkbox"
             checked={!!filters.includeArchived}
@@ -143,6 +148,6 @@ export default function LogbookFilterDrawer({
           </Button>
         </div>
       </div>
-    </Modal>
+    </ResponsiveFilterPanel>
   );
 }

@@ -18,6 +18,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Offline-PWA Funktionalität
 - Azure AD OIDC Integration
 
+## [1.5.1] - 2026-08-09
+
+### Changed
+- Die äußeren Rahmen der Dashboard-Bereiche wurden entfernt; innere Karten und
+  Bedienelemente behalten ihre visuelle Abgrenzung.
+- Statistik-Tooltips zeigen den Wochentag an und verwenden konsistente
+  Navigationsicons.
+
 ---
 
 ## [1.5.0] - 2026-08-08

@@ -12,6 +12,12 @@
   box-shadow: var(--card-shadow);
 }
 
+/* Dashboard sections use spacing and tonal contrast for separation; their
+ * outer border is intentionally omitted while inner cards keep their edges. */
+.dashboard-outer-surface {
+  border: 0;
+}
+
 .dashboard-activity-card {
   background: var(--surface-1);
   box-shadow: var(--card-shadow);

@@ -62,7 +62,7 @@
   position: absolute;
   right: 0;
   top: 100%;
-  z-index: 20;
+  z-index: 60;
   margin-top: 0.5rem;
   width: min(22rem, calc(100vw - 2rem));
   border: 1px solid var(--border-subtle);
@@ -71,6 +71,153 @@
   padding: 0.5rem;
   box-shadow: 0 1.25rem 2.75rem rgba(15, 23, 42, 0.18);
   backdrop-filter: blur(12px);
+}
+
+.header-filter-popover {
+  max-height: min(72vh, 46rem);
+  overflow-y: auto;
+}
+
+.filter-popover--logbook {
+  width: min(36rem, calc(100vw - 2rem));
+}
+
+.filter-popover--activities {
+  /* Keep a comfortable gutter when the trigger sits before the create action. */
+  width: min(48rem, calc(100vw - 3rem));
+}
+
+.activity-filter-section {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.75rem;
+}
+
+.activity-filter-section > summary {
+  cursor: pointer;
+  color: var(--viridian);
+  font-size: 0.875rem;
+  font-weight: 600;
+  list-style: none;
+}
+
+.activity-filter-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.activity-filter-section > summary::after {
+  content: '+';
+  float: right;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.activity-filter-section[open] > summary::after {
+  content: '–';
+}
+
+.filter-popover--projects {
+  width: min(24rem, calc(100vw - 2rem));
+}
+
+.filter-popover--statistics {
+  width: min(34rem, calc(100vw - 2rem));
+}
+
+.filter-popover--export {
+  width: min(34rem, calc(100vw - 2rem));
+}
+
+/* Shared export choices: always left-aligned and clearly distinguish the
+ * StatO-formatted workbook from a plain data export. */
+.export-option-card {
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  border-color: var(--border-subtle);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  text-align: left !important;
+}
+
+.export-option-card > span {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+.export-option-card:hover:not(:disabled) {
+  border-color: var(--interactive-soft-border);
+  background: var(--interactive-soft);
+}
+
+.export-option-card--stato {
+  border-color: color-mix(in srgb, var(--viridian) 32%, var(--border-subtle));
+  background: var(--interactive-soft);
+}
+
+.export-option-card--stato:hover:not(:disabled) {
+  border-color: var(--viridian);
+  background: color-mix(in srgb, var(--interactive-soft) 72%, var(--surface-1));
+}
+
+.filter-archive-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--surface-2);
+  padding: 0.625rem 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.filter-archive-option input {
+  block-size: 1rem;
+  inline-size: 1rem;
+  accent-color: var(--viridian);
+}
+
+@media (min-width: 768px) {
+  .header-filter-popover {
+    padding: 0.625rem;
+    font-size: 0.8125rem;
+  }
+
+  .header-filter-popover > header {
+    margin-bottom: 0.625rem;
+  }
+
+  .header-filter-popover > header h3 {
+    font-size: 0.875rem;
+  }
+
+  .header-filter-popover h4,
+  .header-filter-popover label {
+    font-size: 0.8125rem;
+  }
+
+  .header-filter-popover .ui-field-control {
+    min-height: 2rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .header-filter-popover .filter-archive-option {
+    padding: 0.5rem 0.625rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .header-filter-popover {
+    position: fixed;
+    inset: 0 0 auto;
+    width: 100%;
+    max-height: 85dvh;
+    margin: 0;
+    border-radius: 0 0 1.5rem 1.5rem;
+  }
 }
 
 .ui-field-control-invalid,

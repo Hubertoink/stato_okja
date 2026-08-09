@@ -18,6 +18,21 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Offline-PWA Funktionalität
 - Azure AD OIDC Integration
 
+## [1.5.3] - 2026-08-09
+
+### Changed
+- Filter für Aktivitäten, Logbuch, Projekte und Statistik folgen auf Desktop
+  einem gemeinsamen, platzsparenden Pop-up-Muster und verwenden mobil ein
+  angedocktes Bottom-Sheet.
+- Die Exportauswahl von Aktivitäten und Statistik nutzt ebenfalls dieses
+  Desktop-Pop-up-Muster mit einheitlich gestalteten Exportoptionen.
+
+### Fixed
+- Der Aktivitätenfilter reagiert auf mittlere Bildschirmbreiten mit passenden
+  Spalten und Eingabefeldern, ohne den sichtbaren Bereich zu überlaufen.
+- Statistik-Exportoptionen sind durchgehend linksbündig; die StatO-Excel-Datei
+  ist klar von den übrigen Exportvarianten abgesetzt.
+
 ## [1.5.2] - 2026-08-09
 
 ### Changed

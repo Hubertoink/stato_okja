@@ -132,11 +132,23 @@ export default function Logbook() {
             placeholder={t('search')}
             value={search}
           />
-          <HeaderFilterButton
-            onClick={() => setFilterDrawer(true)}
-            title={t('advancedFilter')}
-            aria-label={t('advancedFilter')}
-          />
+          <div className="relative">
+            <HeaderFilterButton
+              aria-expanded={filterDrawer}
+              onClick={() => setFilterDrawer((open) => !open)}
+              title={t('advancedFilter')}
+              aria-label={t('advancedFilter')}
+            />
+            <LogbookFilterDrawer
+              open={filterDrawer}
+              initial={advanced}
+              onClose={() => setFilterDrawer(false)}
+              onApply={(next) => {
+                setAdvanced(next);
+                setFilterDrawer(false);
+              }}
+            />
+          </div>
           <IconButton
             variant="primary"
             className="rounded-full md:hidden"
@@ -245,15 +257,6 @@ export default function Logbook() {
         </>
       )}
 
-      <LogbookFilterDrawer
-        open={filterDrawer}
-        initial={advanced}
-        onClose={() => setFilterDrawer(false)}
-        onApply={(next) => {
-          setAdvanced(next);
-          setFilterDrawer(false);
-        }}
-      />
       <LogbookEntryFlyout
         entryId={selectedEntryId}
         returnTo={returnTo}

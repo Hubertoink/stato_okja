@@ -124,6 +124,7 @@ export default function Modal({
   showCloseButton = true,
   variant = 'default',
   headerActions,
+  mobilePlacement = 'bottom',
 }: {
   open: boolean;
   title?: string;
@@ -135,6 +136,8 @@ export default function Modal({
   /** Information and form modals keep their title and controls visible while their content scrolls. */
   variant?: 'default' | 'information' | 'form';
   headerActions?: React.ReactNode;
+  /** Filter panels use a top sheet on phones; regular dialogs stay bottom-aligned. */
+  mobilePlacement?: 'bottom' | 'top';
 }) {
   const { t } = useTranslation('common');
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -204,7 +207,7 @@ export default function Modal({
   const isStructuredModal = variant === 'information' || variant === 'form';
   const content = (
     <div
-      className={`visual-viewport-fixed z-[70] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? "backdrop-blur-sm" : ''}`}
+      className={`visual-viewport-fixed z-[70] bg-black/40 flex ${mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center p-0 md:p-6 modal-overlay ${blur ? "backdrop-blur-sm" : ''}`}
       onWheel={(e) => e.stopPropagation()}
       onClick={(event) => {
         if (event.target === event.currentTarget) dismiss();
@@ -215,7 +218,7 @@ export default function Modal({
         aria-label={title ? undefined : t('dialog.ariaLabel')}
         aria-labelledby={title ? titleId : undefined}
         aria-modal="true"
-        className={`w-full ${maxW} max-h-[85vh] rounded-t-3xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl bottom-sheet-animate modal-panel-roomy ${variant === 'form' ? 'modal-editor-surface' : ''} md:rounded-2xl ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
+        className={`w-full ${maxW} max-h-[85vh] ${mobilePlacement === 'top' ? 'rounded-b-3xl top-sheet-animate' : 'rounded-t-3xl bottom-sheet-animate'} border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl modal-panel-roomy ${variant === 'form' ? 'modal-editor-surface' : ''} md:rounded-2xl ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
         role="dialog"
         tabIndex={-1}
         onKeyDown={handleDialogKeyDown}

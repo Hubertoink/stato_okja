@@ -1,4 +1,3 @@
-import Modal from './Modal';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -16,6 +15,8 @@ import {
 } from '@/lib/activityExecutionStatus';
 import { useTranslation } from 'react-i18next';
 import { compareLocalized } from '@/i18n/formatters';
+import { ResponsiveFilterPanel } from './ui/ResponsiveFilterPanel';
+import { Input } from './ui/Field';
 
 export default function ActivitiesFilterDrawer({
   open,
@@ -117,22 +118,25 @@ export default function ActivitiesFilterDrawer({
   );
 
   return (
-    <Modal open={open} onClose={onClose} title={t('filterDrawer.title')} maxWidth="4xl">
-      <div className="space-y-4">
+    <ResponsiveFilterPanel
+      desktopClassName="filter-popover--activities"
+      onClose={onClose}
+      open={open}
+      title={t('filterDrawer.title')}
+    >
+      <div className="space-y-3">
         {/* Zeitraum */}
         <section>
           <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.period')}</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <input
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Input
               type="date"
-              className="border rounded px-2 py-1"
               value={f.from || ''}
               aria-label={t('filterDrawer.fromDate')}
               onChange={(e) => setF({ ...f, from: e.target.value || undefined })}
             />
-            <input
+            <Input
               type="date"
-              className="border rounded px-2 py-1"
               value={f.to || ''}
               aria-label={t('filterDrawer.toDate')}
               onChange={(e) => setF({ ...f, to: e.target.value || undefined })}
@@ -182,7 +186,7 @@ export default function ActivitiesFilterDrawer({
         {/* Typen */}
         <section>
           <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.activityTypes')}</h4>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm lg:grid-cols-3">
             {['open_door', 'project_open', 'project_closed', 'event', 'outreach'].map((typeKey) => (
               <label key={typeKey} className="inline-flex items-center gap-2">
                 <input
@@ -199,9 +203,9 @@ export default function ActivitiesFilterDrawer({
         </section>
 
         {/* Einrichtungen & Projekte */}
-        <section>
-          <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.locationsProjects')}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <details className="activity-filter-section" open={Boolean(f.locationIds?.length || f.projectIds?.length)}>
+          <summary>{t('filterDrawer.locationsProjects')}</summary>
+          <div className="mt-3 grid grid-cols-1 gap-3 text-sm lg:grid-cols-2">
             <div>
               <div className="text-xs text-gray-600 mb-1">{t('filters.locations')}</div>
               <div className="max-h-48 md:max-h-64 overflow-auto border rounded p-2 space-y-1">
@@ -233,11 +237,11 @@ export default function ActivitiesFilterDrawer({
               </div>
             </div>
           </div>
-        </section>
+        </details>
 
-        <section>
-          <h4 className="font-semibold text-viridian mb-2">{t('filters.staff')}</h4>
-          <div className="max-h-48 md:max-h-64 overflow-auto border rounded p-2 space-y-1 text-sm">
+        <details className="activity-filter-section" open={Boolean(f.staffIds?.length)}>
+          <summary>{t('filters.staff')}</summary>
+          <div className="mt-3 max-h-48 overflow-auto rounded-lg border border-[var(--border-subtle)] p-2 text-sm space-y-1">
             {sortedStaff.length > 0 ? (
               sortedStaff.map((member) => (
                 <label key={member.id} className="flex items-center gap-2">
@@ -253,12 +257,12 @@ export default function ActivitiesFilterDrawer({
               <div className="text-sm text-gray-500 px-1 py-2">{t('filterDrawer.noStaff')}</div>
             )}
           </div>
-        </section>
+        </details>
 
         {/* Kategorien & Tags */}
-        <section>
-          <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.categoriesTags')}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <details className="activity-filter-section" open={Boolean(f.uncategorized || f.categoryIds?.length || f.tagIds?.length)}>
+          <summary>{t('filterDrawer.categoriesTags')}</summary>
+          <div className="mt-3 grid grid-cols-1 gap-3 text-sm lg:grid-cols-2">
             <div>
               <div className="text-xs text-gray-600 mb-1">{t('filters.categories')}</div>
               <div className="flex flex-wrap gap-2">
@@ -349,12 +353,12 @@ export default function ActivitiesFilterDrawer({
               </div>
             </div>
           </div>
-        </section>
+        </details>
 
         {/* Weitere Filter */}
-        <section>
-          <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.moreFilters')}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <details className="activity-filter-section" open={Boolean(f.hasNotes || f.executionStatuses?.length || f.cohortIds?.length || typeof f.participantsMin === 'number' || typeof f.participantsMax === 'number' || typeof f.durationMin === 'number' || typeof f.durationMax === 'number')}>
+          <summary>{t('filterDrawer.moreFilters')}</summary>
+          <div className="mt-3 grid grid-cols-1 gap-3 text-sm lg:grid-cols-2">
             <label className="inline-flex items-center gap-2">
               <input
                 type="checkbox"
@@ -412,10 +416,9 @@ export default function ActivitiesFilterDrawer({
               <div>
                 <div className="text-xs text-gray-600 mb-1">{t('filterDrawer.participantsTotal')}</div>
                 <div className="flex gap-2">
-                  <input
+                  <Input
                     type="number"
                     min={0}
-                    className="border rounded px-2 py-1 w-full"
                     placeholder={t('filterDrawer.min')}
                     value={f.participantsMin ?? ''}
                     onChange={(e) =>
@@ -425,10 +428,9 @@ export default function ActivitiesFilterDrawer({
                       })
                     }
                   />
-                  <input
+                  <Input
                     type="number"
                     min={0}
-                    className="border rounded px-2 py-1 w-full"
                     placeholder={t('filterDrawer.max')}
                     value={f.participantsMax ?? ''}
                     onChange={(e) =>
@@ -443,10 +445,9 @@ export default function ActivitiesFilterDrawer({
               <div>
                 <div className="text-xs text-gray-600 mb-1">{t('filterDrawer.durationMinutes')}</div>
                 <div className="flex gap-2">
-                  <input
+                  <Input
                     type="number"
                     min={0}
-                    className="border rounded px-2 py-1 w-full"
                     placeholder={t('filterDrawer.min')}
                     value={f.durationMin ?? ''}
                     onChange={(e) =>
@@ -456,10 +457,9 @@ export default function ActivitiesFilterDrawer({
                       })
                     }
                   />
-                  <input
+                  <Input
                     type="number"
                     min={0}
-                    className="border rounded px-2 py-1 w-full"
                     placeholder={t('filterDrawer.max')}
                     value={f.durationMax ?? ''}
                     onChange={(e) =>
@@ -473,9 +473,9 @@ export default function ActivitiesFilterDrawer({
               </div>
             </div>
           </div>
-        </section>
+        </details>
 
-        <div className="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-between">
+        <div className="sticky bottom-0 flex flex-col gap-3 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] py-3 sm:flex-row sm:items-center sm:justify-between">
           <div />
           <div className="flex items-center justify-end gap-3">
             <button
@@ -495,6 +495,6 @@ export default function ActivitiesFilterDrawer({
           </div>
         </div>
       </div>
-    </Modal>
+    </ResponsiveFilterPanel>
   );
 }

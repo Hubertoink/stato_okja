@@ -31,6 +31,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
+import LogbookTypeBadge from '@/components/LogbookTypeBadge';
 import { ArchiveIconButton, Button, CloseButton, IconButton } from '@/components/ui/Button';
 import { FieldLabel, Textarea } from '@/components/ui/Field';
 import { Menu, MenuItem } from '@/components/ui/Menu';
@@ -274,9 +275,7 @@ export default function LogbookEntryFlyout({
             <div className="space-y-6">
               <section>
                 <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full bg-gray-100 px-2.5 py-1 font-semibold text-gray-700">
-                    {logbookTypeLabels[entry.type]}
-                  </span>
+                  <LogbookTypeBadge label={logbookTypeLabels[entry.type]} type={entry.type} />
                   <LogbookStatusBadge status={entry.status} />
                   {entry.visibility === 'admins' && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-700">

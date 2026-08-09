@@ -52,11 +52,21 @@ export default function DashboardActiveSurveys({
 
   return (
     <section className="dashboard-active-surveys mb-6" aria-labelledby="dashboard-active-surveys-title">
-      <div className="mb-3 flex items-center gap-2">
-        <ClipboardList className="h-5 w-5 text-viridian" aria-hidden="true" />
-        <h2 id="dashboard-active-surveys-title" className="text-lg font-semibold text-[var(--text-primary)]">
-          {t('surveys.title')}
-        </h2>
+      <div className="dashboard-active-surveys-header mb-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="dashboard-active-surveys-icon">
+            <ClipboardList className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 id="dashboard-active-surveys-title" className="text-lg font-semibold text-[var(--text-primary)]">
+              {t('surveys.title')}
+            </h2>
+            <p className="dashboard-active-surveys-subtitle">{t('surveys.liveSummary')}</p>
+          </div>
+        </div>
+        <span className="dashboard-active-surveys-count">
+          {t('surveys.activeCount', { count: surveys.length })}
+        </span>
       </div>
       <div className="dashboard-active-survey-grid">
         {surveys.map((survey) => {
@@ -75,10 +85,15 @@ export default function DashboardActiveSurveys({
                 aria-controls={detailsId}
                 onClick={() => setExpandedId(expanded ? null : survey.id)}
               >
-                <span className="dashboard-active-survey-heading">
-                  <span className="min-w-0 flex-1">
-                    <span className="line-clamp-2 font-semibold text-[var(--text-primary)]">{survey.title}</span>
-                    <span className="mt-2 block text-sm text-[var(--text-secondary)]">
+                  <span className="dashboard-active-survey-heading">
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 font-semibold text-[var(--text-primary)]">{survey.title}</span>
+                      <span className="dashboard-active-survey-meta">
+                        {survey.projectTitle || t('surveys.generalSurvey')}
+                        <span aria-hidden="true">·</span>
+                        {t('surveys.roundShort', { round: survey.roundNumber })}
+                      </span>
+                      <span className="mt-2 block text-sm text-[var(--text-secondary)]">
                       {hasTarget
                         ? t('surveys.answersOfExpected', {
                             answers: formatNumber(survey.responsesCount),

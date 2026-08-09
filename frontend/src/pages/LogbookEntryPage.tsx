@@ -40,6 +40,7 @@ import { Menu, MenuItem } from '@/components/ui/Menu';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
+import LogbookTypeBadge from '@/components/LogbookTypeBadge';
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
 import { autoT } from '@/i18n/auto';
@@ -728,9 +729,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
       <article className="modern-card overflow-hidden">
         <div className="border-b border-gray-100 p-5 sm:p-7">
           <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-full bg-gray-100 px-2.5 py-1 font-semibold text-gray-700">
-              {logbookTypeLabels[entry.type]}
-            </span>
+            <LogbookTypeBadge label={logbookTypeLabels[entry.type]} type={entry.type} />
             <span
               className={`rounded-full px-2.5 py-1 font-semibold ${entry.status === 'discussed' ? "bg-green-100 text-green-700" : entry.status === 'follow_up' ? "bg-amber-100 text-amber-800" : entry.status === 'archived' ? "bg-gray-100 text-gray-600" : "bg-blue-100 text-blue-700"}`}
             >

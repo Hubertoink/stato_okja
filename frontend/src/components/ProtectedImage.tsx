@@ -110,8 +110,8 @@ export function useResolvedImageSrc(src?: string | null) {
 
 /**
  * Resolves upload images to a data URL when necessary for an SVG to be copied
- * into a canvas. Blob URLs work in the live chart but are lost when html2canvas
- * serializes the surrounding SVG for PNG/PDF export.
+ * into a canvas. Blob URLs work in the live chart but can be lost when an
+ * export renderer serializes the surrounding SVG for PNG/PDF export.
  */
 export function useEmbeddedImageSrc(src?: string | null) {
   const resolvedSrc = useResolvedImageSrc(src);

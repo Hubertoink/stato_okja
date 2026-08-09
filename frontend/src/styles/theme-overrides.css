@@ -311,3 +311,32 @@
 :root[data-color-mode='dark'] .public-survey .bg-white {
   background-color: #ffffff !important;
 }
+
+/* Legal dialogs are portaled outside the survey page. Give them the same
+   fixed public-survey palette instead of inheriting a signed-in user's theme. */
+.public-survey-modal {
+  color-scheme: light;
+  --viridian: #047857;
+  --cambridge-blue: #0f766e;
+  --surface-1: #ffffff;
+  --surface-2: #f0fdf4;
+  --surface-3: #dcfce7;
+  --surface-elevated: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --border-subtle: #cbd5e1;
+  --border-strong: #94a3b8;
+  --interactive-soft: #d1fae5;
+  --interactive-soft-strong: #a7f3d0;
+  --interactive-soft-border: #6ee7b7;
+  --overlay-backdrop: rgba(15, 23, 42, 0.52);
+}
+
+:root[data-color-mode='dark'] .public-survey-modal .bg-white { background-color: #ffffff !important; }
+:root[data-color-mode='dark'] .public-survey-modal .text-gray-900 { color: #0f172a !important; }
+:root[data-color-mode='dark'] .public-survey-modal .text-gray-700 { color: #334155 !important; }
+:root[data-color-mode='dark'] .public-survey-modal .text-gray-600 { color: #475569 !important; }
+:root[data-color-mode='dark'] .public-survey-modal .text-gray-500 { color: #64748b !important; }
+:root[data-color-mode='dark'] .public-survey-modal .text-red-700 { color: #b91c1c !important; }

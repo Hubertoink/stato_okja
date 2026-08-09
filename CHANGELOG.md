@@ -18,6 +18,22 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Offline-PWA Funktionalität
 - Azure AD OIDC Integration
 
+## [1.5.7] - 2026-08-09
+
+### Changed
+- Dashboard-Umfragekarten folgen der reduzierten Darstellung ohne Untertitel
+  und Icon; öffentliche Umfrage-Rechtsinformationen verwenden stets das
+  öffentliche Umfrage-Theme.
+- Die Exportaktion in Aktivitäten verwendet die einheitliche Icon-Gestaltung;
+  erklärende Texte im Statistikfilter wurden entfernt.
+
+### Fixed
+- PNG- und PDF-Exporte für Umfrageauswertungen und Statistiken werden in einem
+  isolierten, export-sicheren Layout gerendert. Moderne CSS-Farbfunktionen und
+  nicht exportierbare Bild- bzw. Canvas-Quellen verhindern den Export nicht
+  mehr.
+- Achsenbeschriftungen in Umfrage-Diagrammen bleiben im Dark Mode lesbar.
+
 ## [1.5.6] - 2026-08-09
 
 ### Fixed

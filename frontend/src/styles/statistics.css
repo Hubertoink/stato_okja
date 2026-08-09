@@ -103,7 +103,7 @@
   line-height: 1.25;
 }
 
-/* html2canvas cannot parse CSS Color 4 values produced by color-mix().
+/* Some export renderers cannot parse CSS Color 4 values produced by color-mix().
    The report uses these static equivalents only while it is rendered to PDF. */
 .statistics-pdf-report .statistics-kpi-card {
   border: 1px solid #dbe3f5;

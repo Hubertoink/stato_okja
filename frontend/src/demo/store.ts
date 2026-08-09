@@ -8,7 +8,7 @@ import type { ProjectTemplateDto } from '../lib/projectTemplatesApi';
 import type { Project } from '../lib/projects';
 import type { LogbookComment, LogbookEntry, LogbookEntryInput, LogbookEntryStatus, LogbookEntryType } from '../lib/logbook';
 import type { StaffMember, StaffRole } from '../lib/staff';
-import type { Survey, SurveyAnalytics, SurveyInput, SurveyQuestion, SurveyResponse, SurveyTrend } from '../lib/surveys';
+import type { ActiveSurveyDashboardSummary, Survey, SurveyAnalytics, SurveyInput, SurveyQuestion, SurveyResponse, SurveyTrend } from '../lib/surveys';
 import type { Category, Cohort, Tag } from '../lib/taxonomy';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 
@@ -695,7 +695,7 @@ function surveySeed(now: Date): { surveys: DemoSurvey[]; surveyResponses: Record
     allowMultiplePerDevice: true, expectedParticipants: 18, startsAt: iso(18), startedAt: iso(18), endsAt: iso(14), closedAt: iso(14), rawResponsesPurgeAt: null, archived: false, responsesCount: 7, rawResponsesAvailable: true, createdAt: iso(20), updatedAt: iso(14),
   };
   const digitalClubSurvey: DemoSurvey = {
-    id: 'survey-digital-club-2026', seriesId: 'survey-digital-club-topics', roundNumber: 1, orgId: DEMO_ORG_ID, projectId: 'project-digital-club',
+    id: 'survey-digital-club-2026', seriesId: 'survey-digital-club-2026', roundNumber: 1, orgId: DEMO_ORG_ID, projectId: 'project-digital-club',
     title: 'Digital Club: Themenwahl', introduction: 'Welche Themen interessieren dich im Digital Club? Deine Antworten helfen uns bei der Planung der nächsten Termine.', status: 'active', publicToken: 'demo-digital-club-topics', questions: digitalClubQuestions,
     allowMultiplePerDevice: true, expectedParticipants: 20, startsAt: iso(4), startedAt: iso(4), endsAt: null, closedAt: null, rawResponsesPurgeAt: null, archived: false, responsesCount: 7, rawResponsesAvailable: true, createdAt: iso(5), updatedAt: iso(0),
   };
@@ -848,6 +848,54 @@ export function listDemoSurveys(params: DemoQueryParams = {}) {
         roundsCount: rounds.length,
       });
     });
+}
+
+export function listDemoActiveSurveyDashboardSummaries(): ActiveSurveyDashboardSummary[] {
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const sevenDayStart = new Date(todayStart);
+  sevenDayStart.setDate(sevenDayStart.getDate() - 6);
+
+  return store.surveys
+    .filter((survey) => survey.status === 'active' && !survey.archived)
+    .map((survey) => {
+      const projectId = survey.projectId || null;
+      const responses = surveyResponses(survey.id);
+      const responseDates = responses.map((response) => new Date(response.submittedAt));
+      const lastResponseAt = responseDates.length
+        ? new Date(Math.max(...responseDates.map((date) => date.getTime()))).toISOString()
+        : null;
+      const expectedParticipants = survey.expectedParticipants && survey.expectedParticipants > 0
+        ? survey.expectedParticipants
+        : null;
+      return {
+        id: survey.id,
+        title: survey.title,
+        projectId,
+        projectTitle: projectId ? store.projects.find((project) => project.id === projectId)?.title || null : null,
+        roundNumber: survey.roundNumber || 1,
+        questionCount: survey.questions?.length || 0,
+        status: 'active',
+        responsesCount: responses.length,
+        expectedParticipants,
+        responseRate: expectedParticipants ? Math.round((responses.length / expectedParticipants) * 1000) / 10 : null,
+        responsesToday: responseDates.filter((date) => date >= todayStart).length,
+        responsesLast7Days: responseDates.filter((date) => date >= sevenDayStart).length,
+        lastResponseAt,
+        startedAt: survey.startedAt || null,
+        endsAt: survey.endsAt || null,
+      } satisfies ActiveSurveyDashboardSummary;
+    })
+    .sort((left, right) => {
+      const leftEnd = left.endsAt ? new Date(left.endsAt).getTime() : Number.POSITIVE_INFINITY;
+      const rightEnd = right.endsAt ? new Date(right.endsAt).getTime() : Number.POSITIVE_INFINITY;
+      if (leftEnd !== rightEnd) return leftEnd - rightEnd;
+      const leftResponse = left.lastResponseAt ? new Date(left.lastResponseAt).getTime() : Number.NEGATIVE_INFINITY;
+      const rightResponse = right.lastResponseAt ? new Date(right.lastResponseAt).getTime() : Number.NEGATIVE_INFINITY;
+      return rightResponse - leftResponse;
+    })
+    .slice(0, 3);
 }
 
 export function hasDemoArchivedSurveys() {

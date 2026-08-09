@@ -42,6 +42,23 @@ export type Survey = {
   rawResponsesAvailable: boolean;
   roundsCount?: number;
 };
+export type ActiveSurveyDashboardSummary = {
+  id: string;
+  title: string;
+  projectId: string | null;
+  projectTitle: string | null;
+  roundNumber: number;
+  questionCount: number;
+  status: 'active';
+  responsesCount: number;
+  expectedParticipants: number | null;
+  responseRate: number | null;
+  responsesToday: number;
+  responsesLast7Days: number;
+  lastResponseAt: string | null;
+  startedAt: string | null;
+  endsAt: string | null;
+};
 export type SurveyResponse = {
   id: string;
   surveyId: string;
@@ -168,6 +185,19 @@ export function useSurveys(params?: { search?: string; archived?: boolean }) {
     refetchInterval: 15_000,
   });
 }
+export function useActiveSurveyDashboardSummaries() {
+  const { scopeKey, ready } = useOrgScopedQueryState();
+  return useQuery({
+    queryKey: ['surveys-dashboard-active', scopeKey],
+    enabled: ready,
+    queryFn: async () =>
+      (await api.get('/surveys/dashboard/active')).data as ActiveSurveyDashboardSummary[],
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
+    refetchInterval: 15_000,
+  });
+}
 export function useSurvey(id?: string) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
@@ -223,6 +253,7 @@ function useSurveyMutation<T>(fn: (input: T) => Promise<unknown>) {
       qc.invalidateQueries({ queryKey: ['survey-rounds', scopeKey] });
       qc.invalidateQueries({ queryKey: ['survey-trend', scopeKey] });
       qc.invalidateQueries({ queryKey: ['surveys-has-archived', scopeKey] });
+      qc.invalidateQueries({ queryKey: ['surveys-dashboard-active', scopeKey] });
     },
   });
 }

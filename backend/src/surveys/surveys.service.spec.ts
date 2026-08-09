@@ -57,12 +57,15 @@ describe('SurveysService', () => {
     delete: jest.fn(),
     remove: jest.fn(),
     findOneBy: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
+  const projectRepository = { findBy: jest.fn() };
   const organizationRepository = { findOneBy: jest.fn() };
   const audit = { log: jest.fn() };
   const service = new SurveysService(
     surveyRepository as any,
     responseRepository as any,
+    projectRepository as any,
     organizationRepository as any,
     audit as any,
   );
@@ -262,5 +265,103 @@ describe('SurveysService', () => {
     expect(surveyRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'survey-4', roundNumber: 3 }),
     );
+  });
+
+  it('returns at most three active dashboard rounds ordered by urgency and latest response', async () => {
+    const surveyQuery = {
+      where: jest.fn(),
+      andWhere: jest.fn(),
+      getMany: jest.fn(),
+    };
+    surveyQuery.where.mockReturnValue(surveyQuery);
+    surveyQuery.andWhere.mockReturnValue(surveyQuery);
+    const base = activeSurvey();
+    surveyQuery.getMany.mockResolvedValue([
+      { ...base, id: 'round-no-end', seriesId: 'series-4', roundNumber: 2, endsAt: null },
+      { ...base, id: 'round-later', seriesId: 'series-2', endsAt: new Date('2026-08-20T10:00:00Z') },
+      { ...base, id: 'round-first', seriesId: 'series-1', roundNumber: 3, projectId: 'project-1', expectedParticipants: 20, endsAt: new Date('2026-08-10T10:00:00Z') },
+      { ...base, id: 'round-tied', seriesId: 'series-3', endsAt: new Date('2026-08-20T10:00:00Z') },
+    ]);
+    surveyRepository.createQueryBuilder.mockReturnValue(surveyQuery);
+
+    const responseQuery = {
+      select: jest.fn(),
+      addSelect: jest.fn(),
+      where: jest.fn(),
+      setParameters: jest.fn(),
+      groupBy: jest.fn(),
+      getRawMany: jest.fn(),
+    };
+    responseQuery.select.mockReturnValue(responseQuery);
+    responseQuery.addSelect.mockReturnValue(responseQuery);
+    responseQuery.where.mockReturnValue(responseQuery);
+    responseQuery.setParameters.mockReturnValue(responseQuery);
+    responseQuery.groupBy.mockReturnValue(responseQuery);
+    responseQuery.getRawMany.mockResolvedValue([
+      { surveyId: 'round-first', responsesCount: '25', responsesToday: '2', responsesLast7Days: '9', lastResponseAt: '2026-08-09T08:00:00Z' },
+      { surveyId: 'round-later', responsesCount: '4', responsesToday: '1', responsesLast7Days: '4', lastResponseAt: '2026-08-08T08:00:00Z' },
+      { surveyId: 'round-tied', responsesCount: '3', responsesToday: '0', responsesLast7Days: '2', lastResponseAt: '2026-08-09T09:00:00Z' },
+    ]);
+    responseRepository.createQueryBuilder.mockReturnValue(responseQuery);
+    projectRepository.findBy.mockResolvedValue([{ id: 'project-1', title: 'Offener Treff', orgId: 'org-1' }]);
+
+    const result = await service.activeDashboard('org-1');
+
+    expect(surveyQuery.where).toHaveBeenCalledWith('survey.status = :status', { status: 'active' });
+    expect(surveyQuery.andWhere).toHaveBeenCalledWith('survey.archived = :archived', { archived: false });
+    expect(surveyQuery.andWhere).toHaveBeenCalledWith('survey.orgId = :orgId', { orgId: 'org-1' });
+    expect(result.map((survey) => survey.id)).toEqual(['round-first', 'round-tied', 'round-later']);
+    expect(result[0]).toEqual(expect.objectContaining({
+      id: 'round-first',
+      roundNumber: 3,
+      projectTitle: 'Offener Treff',
+      responsesCount: 25,
+      responsesToday: 2,
+      responsesLast7Days: 9,
+      responseRate: 125,
+    }));
+  });
+
+  it('uses local calendar boundaries and preserves empty dashboard values', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-09T12:34:56+02:00'));
+    try {
+      const surveyQuery = { where: jest.fn(), andWhere: jest.fn(), getMany: jest.fn() };
+      surveyQuery.where.mockReturnValue(surveyQuery);
+      surveyQuery.andWhere.mockReturnValue(surveyQuery);
+      surveyQuery.getMany.mockResolvedValue([{ ...activeSurvey(), id: 'empty-round', orgId: null }]);
+      surveyRepository.createQueryBuilder.mockReturnValue(surveyQuery);
+
+      const responseQuery = {
+        select: jest.fn(), addSelect: jest.fn(), where: jest.fn(), setParameters: jest.fn(),
+        groupBy: jest.fn(), getRawMany: jest.fn(),
+      };
+      responseQuery.select.mockReturnValue(responseQuery);
+      responseQuery.addSelect.mockReturnValue(responseQuery);
+      responseQuery.where.mockReturnValue(responseQuery);
+      responseQuery.setParameters.mockReturnValue(responseQuery);
+      responseQuery.groupBy.mockReturnValue(responseQuery);
+      responseQuery.getRawMany.mockResolvedValue([]);
+      responseRepository.createQueryBuilder.mockReturnValue(responseQuery);
+
+      const result = await service.activeDashboard(null);
+
+      expect(surveyQuery.andWhere).toHaveBeenCalledWith('survey.orgId IS NULL');
+      const parameters = responseQuery.setParameters.mock.calls[0][0] as {
+        todayStart: Date;
+        sevenDayStart: Date;
+      };
+      expect(parameters.todayStart.getHours()).toBe(0);
+      expect(parameters.todayStart.getMinutes()).toBe(0);
+      expect(parameters.sevenDayStart.getDate()).toBe(parameters.todayStart.getDate() - 6);
+      expect(result[0]).toEqual(expect.objectContaining({
+        responsesCount: 0,
+        responseRate: null,
+        lastResponseAt: null,
+        projectTitle: null,
+        endsAt: null,
+      }));
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

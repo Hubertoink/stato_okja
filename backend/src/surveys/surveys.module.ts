@@ -8,9 +8,10 @@ import { AuditModule } from '../common/audit.module';
 import { OrgsModule } from '../orgs/orgs.module';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { Organization } from '../orgs/entities/organization.entity';
+import { Project } from '../projects/entities/project.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Survey, SurveyResponse, Organization]), AuditModule, OrgsModule],
+  imports: [TypeOrmModule.forFeature([Survey, SurveyResponse, Organization, Project]), AuditModule, OrgsModule],
   providers: [SurveysService, OrgScopeGuard],
   controllers: [SurveysController, PublicSurveysController],
 })

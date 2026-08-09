@@ -18,6 +18,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Offline-PWA Funktionalität
 - Azure AD OIDC Integration
 
+## [1.5.4] - 2026-08-09
+
+### Added
+- Das Dashboard zeigt laufende Umfragen mit gebündelten Live-Kennzahlen für
+  Antworten, Rücklauf, Tages- und Sieben-Tage-Aktivität sowie letzter Antwort.
+- Die Umfragekarten sind als zugängliches Accordion mit direktem Link zur
+  aktuell aktiven Runde umgesetzt und aktualisieren sich regelmäßig.
+
+### Fixed
+- Aktive Umfragen werden organisationsbezogen, nach Enddatum und Dringlichkeit
+  sortiert geladen; Zielwerte über 100 Prozent werden korrekt dargestellt.
+
 ## [1.5.3] - 2026-08-09
 
 ### Changed

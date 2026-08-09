@@ -29,7 +29,6 @@ import {
   CheckCircle2,
   Clock,
   MessageCircle,
-  ClipboardList,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -44,12 +43,12 @@ import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 import { usePublicConfig } from '@/lib/publicConfig';
 import CustomKpiCards from '@/components/CustomKpiCards';
 import { useLogbookEntries } from '@/lib/logbook';
-import { useSurveys } from '@/lib/surveys';
+import { useActiveSurveyDashboardSummaries } from '@/lib/surveys';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
 import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
 import { Button } from '@/components/ui/Button';
-import { SurveyStatusBadge } from '@/components/SurveyStatusBadge';
+import DashboardActiveSurveys from '@/components/DashboardActiveSurveys';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
@@ -534,11 +533,7 @@ export default function Dashboard() {
   );
   const { data: logbookData } = useLogbookEntries({}, 1, 4);
   const recentLogbookEntries = logbookData?.data || [];
-  const { data: surveys = [] } = useSurveys();
-  const activeSurveys = useMemo(
-    () => surveys.filter((survey) => survey.status === 'active' && !survey.archived).slice(0, 3),
-    [surveys],
-  );
+  const { data: activeSurveys = [] } = useActiveSurveyDashboardSummaries();
   const activityAuditRefreshKey = useMemo(
     () =>
       (audit || [])
@@ -878,52 +873,10 @@ export default function Dashboard() {
         </div>
       </SurfaceCard>
 
-      {activeSurveys.length > 0 && (
-        <section className="dashboard-active-surveys mb-6" aria-labelledby="dashboard-active-surveys-title">
-          <div className="mb-3 flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-viridian" aria-hidden="true" />
-            <h2 id="dashboard-active-surveys-title" className="text-lg font-semibold text-[var(--text-primary)]">
-              Laufende Umfragen
-            </h2>
-          </div>
-          <div className="dashboard-active-survey-grid">
-            {activeSurveys.map((survey) => {
-              const expected = survey.expectedParticipants && survey.expectedParticipants > 0
-                ? survey.expectedParticipants
-                : null;
-              const responseRate = expected
-                ? Math.min(100, Math.round((survey.responsesCount / expected) * 100))
-                : null;
-
-              return (
-                <button
-                  key={survey.id}
-                  type="button"
-                  className="dashboard-active-survey rounded-xl p-4 text-left transition-transform hover:-translate-y-0.5"
-                  onClick={() => navigate(`/surveys/${survey.id}`)}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="line-clamp-2 font-semibold text-[var(--text-primary)]">{survey.title}</span>
-                    <SurveyStatusBadge status={survey.status} />
-                  </div>
-                  <p className="mt-3 text-sm text-[var(--text-secondary)]">
-                    {formatNumber(survey.responsesCount)} Antwort{survey.responsesCount === 1 ? '' : 'en'}
-                    {expected ? ` von ${formatNumber(expected)}` : ''}
-                  </p>
-                  {responseRate !== null && (
-                    <div className="mt-3" aria-label={`${responseRate} Prozent Rücklauf`}>
-                      <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-3)]">
-                        <div className="h-full rounded-full bg-viridian" style={{ width: `${responseRate}%` }} />
-                      </div>
-                      <span className="mt-1 block text-xs font-medium text-[var(--text-muted)]">{responseRate} % Rücklauf</span>
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <DashboardActiveSurveys
+        surveys={activeSurveys}
+        onOpenSurvey={(surveyId) => navigate(`/surveys/${surveyId}`)}
+      />
 
       {recentLogbookEntries.length > 0 && (
         <SurfaceCard className="dashboard-outer-surface dashboard-illustrated-surface mb-6 px-6" padding="none">

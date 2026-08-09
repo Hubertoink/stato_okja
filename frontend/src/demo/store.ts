@@ -1797,6 +1797,19 @@ export function archiveDemoLogbookEntry(id: string) {
   return { id, archived: true };
 }
 
+export function restoreDemoLogbookEntry(id: string) {
+  const entry = store.logbookEntries.find((item) => item.id === id);
+  if (!entry) throw new Error('Logbucheintrag nicht gefunden');
+  if (entry.status !== 'archived') throw new Error('Nur archivierte Einträge können wiederhergestellt werden');
+  entry.status = 'open';
+  entry.archivedAt = null;
+  entry.updatedAt = new Date().toISOString();
+  entry.updatedByUserId = store.user.id;
+  entry.updatedByName = store.user.name;
+  addAudit('logbook_entry', entry.id, 'update', entry.title);
+  return hydrateLogbookEntry(entry);
+}
+
 export function createDemoLogbookComment(entryId: string, body: string): LogbookComment {
   const entry = store.logbookEntries.find((item) => item.id === entryId);
   if (!entry) throw new Error('Logbucheintrag nicht gefunden');

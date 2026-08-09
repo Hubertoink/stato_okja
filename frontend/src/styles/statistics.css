@@ -211,6 +211,10 @@
   margin-bottom: 2rem;
 }
 
+.custom-kpi-section--dashboard {
+  padding-inline: 1.5rem;
+}
+
 .statistics-page-summary-desktop {
   display: inline;
 }
@@ -290,6 +294,10 @@
 
   .statistics-page-summary-desktop {
     display: none;
+  }
+
+  .custom-kpi-section--dashboard {
+    padding-inline: 1rem;
   }
 }
 

@@ -21,6 +21,7 @@ import {
   useCreateLogbookComment,
   useLogbookEntry,
   useRemoveLogbookComment,
+  useRestoreLogbookEntry,
   useSetLogbookStatus,
 } from '@/lib/logbook';
 import { useToast } from '@/components/Toast';
@@ -30,11 +31,12 @@ import ProtectedImage from '@/components/ProtectedImage';
 import LogbookConnections from '@/components/LogbookConnections';
 import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
-import { Button, CloseButton, IconButton } from '@/components/ui/Button';
+import { ArchiveIconButton, Button, CloseButton, IconButton } from '@/components/ui/Button';
 import { FieldLabel, Textarea } from '@/components/ui/Field';
 import { Menu, MenuItem } from '@/components/ui/Menu';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { useTranslation } from 'react-i18next';
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
@@ -103,9 +105,11 @@ export default function LogbookEntryFlyout({
   const open = !!entryId;
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation('logbook');
   const { showToast } = useToast();
   const { data: entry, isLoading } = useLogbookEntry(entryId || undefined);
   const archive = useArchiveLogbookEntry();
+  const restore = useRestoreLogbookEntry();
   const setStatus = useSetLogbookStatus();
   const createComment = useCreateLogbookComment();
   const removeComment = useRemoveLogbookComment();
@@ -235,6 +239,24 @@ export default function LogbookEntryFlyout({
                 <Archive className="h-4 w-4" />
                 <span className="hidden sm:inline">{autoT('ui_b81f3298d960')}</span>
               </Button>
+            )}
+            {canManage && archived && entry && (
+              <span className="tooltip-wrapper">
+                <ArchiveIconButton
+                  restore
+                  size="icon"
+                  title={t('restore')}
+                  aria-label={t('restore')}
+                  disabled={restore.isPending}
+                  onClick={() => {
+                    restore.mutate(entry.id, {
+                      onSuccess: () => showToast(t('restored'), { type: 'success' }),
+                      onError: (error) => showToast(getErrorMessage(error, t('restore')), { type: 'error' }),
+                    });
+                  }}
+                />
+                <span className="tooltip-bubble">{t('restore')}</span>
+              </span>
             )}
             <CloseButton
               onClick={dismiss}

@@ -12,15 +12,62 @@
   box-shadow: var(--card-shadow);
 }
 
-/* Dashboard sections use spacing and tonal contrast for separation; their
- * outer border is intentionally omitted while inner cards keep their edges. */
+/* Dashboard sections use spacing instead of large framed containers. */
 .dashboard-outer-surface {
+  background: transparent;
   border: 0;
+  box-shadow: none;
 }
 
 .dashboard-activity-card {
   background: var(--surface-1);
   box-shadow: var(--card-shadow);
+}
+
+.dashboard-active-surveys {
+  padding-inline: 1.5rem;
+}
+
+.dashboard-active-survey-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.75rem;
+}
+
+.dashboard-active-survey {
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  box-shadow: var(--card-shadow);
+}
+
+/* Clickable content cards share one calm, theme-aware hover state. */
+.interactive-card {
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.interactive-card:hover {
+  background-color: color-mix(in srgb, var(--surface-1) 92%, var(--viridian));
+  border-color: var(--interactive-soft-border);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--viridian) 20%, transparent), var(--card-shadow);
+}
+
+.interactive-card:focus-visible,
+.project-card:focus-within {
+  outline: 2px solid var(--interactive-soft-border);
+  outline-offset: 2px;
+}
+
+.project-card {
+  transition: box-shadow 160ms ease, outline-color 160ms ease;
+}
+
+.project-card:hover {
+  box-shadow: 0 0 0 2px var(--interactive-soft-border), var(--card-shadow);
+}
+
+@media (max-width: 767px) {
+  .dashboard-active-surveys {
+    padding-inline: 1rem;
+  }
 }
 
 .recent-actions-group {

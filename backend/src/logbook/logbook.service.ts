@@ -346,6 +346,31 @@ export class LogbookService {
     return { id, archived: true };
   }
 
+  async restore(id: string, orgId: string | null, user: RequestUser) {
+    const entry = await this.getEntry(id, orgId);
+    this.assertVisible(entry, user);
+    if (!this.canManage(entry, user)) throw new ForbiddenException('Nur eigene Einträge können wiederhergestellt werden.');
+    if (entry.status !== LogbookEntryStatus.ARCHIVED) {
+      throw new BadRequestException('Nur archivierte Einträge können wiederhergestellt werden.');
+    }
+    entry.status = LogbookEntryStatus.OPEN;
+    entry.archivedAt = null;
+    entry.archivedByUserId = null;
+    entry.updatedByUserId = user.id;
+    entry.updatedByName = user.name?.trim() || 'Unbekannt';
+    const saved = await this.entries.save(entry);
+    await this.audit.log({
+      action: AuditAction.UPDATE,
+      entityType: 'logbook_entry',
+      entityId: id,
+      entityTitle: saved.title,
+      user,
+      orgId,
+      details: { restored: true, status: saved.status },
+    });
+    return this.findOne(id, orgId, user);
+  }
+
   async createComment(id: string, body: unknown, orgId: string | null, user: RequestUser) {
     const entry = await this.getEntry(id, orgId);
     this.assertVisible(entry, user);

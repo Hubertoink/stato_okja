@@ -161,6 +161,15 @@ export function useArchiveLogbookEntry() {
   });
 }
 
+export function useRestoreLogbookEntry() {
+  const invalidate = useInvalidateLogbook();
+  return useMutation({
+    mutationFn: async (id: string) =>
+      (await api.patch(`/logbook/${encodeURIComponent(id)}/restore`)).data as LogbookEntry,
+    onSuccess: invalidate,
+  });
+}
+
 export function useCreateLogbookComment() {
   const invalidate = useInvalidateLogbook();
   return useMutation({

@@ -373,8 +373,8 @@ export default function CustomKpiCards({
   const isSaving = createKpi.isPending || updateKpi.isPending;
 
   return (
-    <section className={className} data-pdf-section>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <section className={`custom-kpi-section custom-kpi-section--${surface} ${className}`} data-pdf-section>
+      <div className="mb-4 flex flex-wrap items-center justify-start gap-3">
         <h3 className="text-lg font-semibold text-gray-800">{resolvedTitle}</h3>
         {showManager && (
           <button

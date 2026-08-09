@@ -6,7 +6,7 @@
   --mint-green: #e8ebff; /* Soft blue tint */
   --azure-web: #f5f7ff; /* Very light blue-white */
   --mint-cream: #fafbff; /* Near-white with blue tint */
-  --app-bg: #fafbff;
+  --app-bg: #eef1ff;
   --app-bg-overlay:
     radial-gradient(circle at 14% 22%, rgba(91, 108, 255, 0.12) 0%, rgba(91, 108, 255, 0) 28%),
     radial-gradient(circle at 84% 78%, rgba(124, 143, 255, 0.1) 0%, rgba(124, 143, 255, 0) 24%),
@@ -44,7 +44,7 @@
   --mint-green: #e5989bff; /* salmon-pink */
   --azure-web: #ffb4a2ff; /* melon */
   --mint-cream: #f5f2f1; /* softened, desaturated warm light background */
-  --app-bg: #f5f2f1;
+  --app-bg: #eee9e7;
   --app-bg-overlay:
     radial-gradient(circle at 16% 20%, rgba(181, 131, 141, 0.14) 0%, rgba(181, 131, 141, 0) 28%),
     radial-gradient(circle at 80% 76%, rgba(255, 180, 162, 0.18) 0%, rgba(255, 180, 162, 0) 24%),
@@ -63,7 +63,7 @@
   --mint-green: #ffcad4ff; /* pink */
   --azure-web: #ffe5d9ff; /* champagne-pink */
   --mint-cream: #d8e2dcff; /* platinum */
-  --app-bg: #d8e2dcff;
+  --app-bg: #d0ddd5;
   --app-bg-overlay:
     radial-gradient(circle at 14% 18%, rgba(244, 172, 183, 0.16) 0%, rgba(244, 172, 183, 0) 28%),
     radial-gradient(circle at 82% 80%, rgba(255, 229, 217, 0.18) 0%, rgba(255, 229, 217, 0) 24%),
@@ -82,7 +82,7 @@
   --mint-green: #edf6f9ff; /* alice-blue */
   --azure-web: #ffddd2ff; /* pale-dogwood */
   --mint-cream: #f3f4f6; /* soft light gray instead of atomic-tangerine */
-  --app-bg: #f3f4f6;
+  --app-bg: #e8ecee;
   --app-bg-overlay:
     radial-gradient(circle at 15% 20%, rgba(131, 197, 190, 0.18) 0%, rgba(131, 197, 190, 0) 28%),
     radial-gradient(circle at 84% 78%, rgba(255, 221, 210, 0.18) 0%, rgba(255, 221, 210, 0) 24%),
@@ -101,7 +101,7 @@
   --mint-green: #142132;
   --azure-web: #1a2333;
   --mint-cream: #0c1220;
-  --app-bg: #08101d;
+  --app-bg: #101928;
   --app-bg-overlay:
     radial-gradient(circle at 12% 18%, rgba(110, 168, 255, 0.22) 0%, rgba(110, 168, 255, 0) 28%),
     radial-gradient(circle at 82% 78%, rgba(102, 217, 209, 0.16) 0%, rgba(102, 217, 209, 0) 24%),
@@ -167,7 +167,7 @@
   --mint-green: #35374f;
   --azure-web: #40445f;
   --mint-cream: #1f2132;
-  --app-bg: #171927;
+  --app-bg: #202338;
   --app-bg-overlay:
     radial-gradient(circle at 14% 18%, rgba(141, 153, 174, 0.22) 0%, rgba(141, 153, 174, 0) 28%),
     radial-gradient(circle at 82% 76%, rgba(217, 4, 41, 0.16) 0%, rgba(217, 4, 41, 0) 24%),

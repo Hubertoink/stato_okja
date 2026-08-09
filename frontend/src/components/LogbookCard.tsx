@@ -35,7 +35,7 @@ export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; on
           onOpen(entry.id);
         }
       }}
-      className="modern-card cursor-pointer p-4 transition-transform hover:-translate-y-0.5 sm:p-5"
+      className="modern-card interactive-card cursor-pointer p-4 sm:p-5"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">

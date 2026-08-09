@@ -70,6 +70,12 @@ export class LogbookController {
     return this.logbook.setStatus(id, body.status, this.scope(req), req.user);
   }
 
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Archivierten Logbucheintrag wiederherstellen' })
+  restore(@Param('id') id: string, @Req() req: RequestShape) {
+    return this.logbook.restore(id, this.scope(req), req.user);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Logbucheintrag archivieren' })
   archive(@Param('id') id: string, @Req() req: RequestShape) {

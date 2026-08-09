@@ -261,7 +261,7 @@
   width: min(22rem, 42%);
   height: 15rem;
   object-fit: contain;
-  opacity: 0.09;
+  opacity: 0.15;
   pointer-events: none;
   user-select: none;
 }

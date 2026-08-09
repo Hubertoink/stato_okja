@@ -29,12 +29,7 @@ body {
 
 body,
 .app-background {
-  background-color: var(--app-bg);
-  background-image: var(--app-bg-overlay), var(--app-bg-image);
-  background-size: cover, cover;
-  background-repeat: no-repeat, no-repeat;
-  background-attachment: fixed;
-  background-position: center;
+  background: var(--app-bg);
 }
 
 code {

@@ -29,10 +29,10 @@ import {
   CheckCircle2,
   Clock,
   MessageCircle,
+  ClipboardList,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { useQuickTallySession } from '@/components/QuickTally';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import Modal from '@/components/Modal';
@@ -44,11 +44,12 @@ import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 import { usePublicConfig } from '@/lib/publicConfig';
 import CustomKpiCards from '@/components/CustomKpiCards';
 import { useLogbookEntries } from '@/lib/logbook';
+import { useSurveys } from '@/lib/surveys';
 import ProtectedImage from '@/components/ProtectedImage';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
 import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
 import { Button } from '@/components/ui/Button';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { SurveyStatusBadge } from '@/components/SurveyStatusBadge';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
@@ -349,7 +350,6 @@ export default function Dashboard() {
     actions: ['delete'],
   });
   const [exportOpen, setExportOpen] = useState(false);
-  const { session: activeQuickTallySession } = useQuickTallySession();
   const [orgMap, setOrgMap] = useState<Record<string, string>>({});
   const [expandedRecentActionGroups, setExpandedRecentActionGroups] = useState<
     Record<AuditLogAction, boolean>
@@ -534,6 +534,11 @@ export default function Dashboard() {
   );
   const { data: logbookData } = useLogbookEntries({}, 1, 4);
   const recentLogbookEntries = logbookData?.data || [];
+  const { data: surveys = [] } = useSurveys();
+  const activeSurveys = useMemo(
+    () => surveys.filter((survey) => survey.status === 'active' && !survey.archived).slice(0, 3),
+    [surveys],
+  );
   const activityAuditRefreshKey = useMemo(
     () =>
       (audit || [])
@@ -829,37 +834,12 @@ export default function Dashboard() {
         surface="dashboard"
         from={currentMonthRange.from}
         to={currentMonthRange.to}
-        className="mb-8"
+        className="mb-6"
         refreshOptions={{
           refetchOnWindowFocus: 'always',
           refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
         }}
       />
-
-      {/* Quick Tally - Daily Attendance Counter */}
-      {/* Show start button only when no active session */}
-      {!activeQuickTallySession && (
-        <div className="dashboard-accent-panel rounded-2xl p-6 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/20 rounded-xl">
-                <Users className="w-8 h-8" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold">{t('tally.title')}</h3>
-                <p className="text-white/80 text-sm">{t('tally.subtitle')}</p>
-              </div>
-            </div>
-            <button
-              onClick={openQuickTally}
-              className="dashboard-accent-button px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
-            >
-              <Users className="w-5 h-5" />
-              {t('tally.start')}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Quick Actions */}
       <SurfaceCard className="dashboard-outer-surface mb-8">
@@ -881,9 +861,10 @@ export default function Dashboard() {
           <Button
             className="w-full"
             variant="secondary"
-            onClick={() => navigate('/statistics')}
+            onClick={openQuickTally}
           >
-            {t('quick.statistics')}
+            <Users className="h-4 w-4" />
+            {t('tally.start')}
           </Button>
           <Button
             className="w-full"
@@ -897,17 +878,58 @@ export default function Dashboard() {
         </div>
       </SurfaceCard>
 
-      <SurfaceCard
-        className={`dashboard-outer-surface mb-8 ${recentLogbookEntries.length > 0 ? 'dashboard-illustrated-surface' : ''}`}
-        padding="md"
-      >
-        {recentLogbookEntries.length > 0 ? (
-          <img className="dashboard-section-illustration" src={logbookEmptyIllustration} alt="" aria-hidden="true" />
-        ) : null}
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-semibold text-[var(--text-primary)]">{t('logbook.title')}</h3>
+      {activeSurveys.length > 0 && (
+        <section className="dashboard-active-surveys mb-6" aria-labelledby="dashboard-active-surveys-title">
+          <div className="mb-3 flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-viridian" aria-hidden="true" />
+            <h2 id="dashboard-active-surveys-title" className="text-lg font-semibold text-[var(--text-primary)]">
+              Laufende Umfragen
+            </h2>
           </div>
+          <div className="dashboard-active-survey-grid">
+            {activeSurveys.map((survey) => {
+              const expected = survey.expectedParticipants && survey.expectedParticipants > 0
+                ? survey.expectedParticipants
+                : null;
+              const responseRate = expected
+                ? Math.min(100, Math.round((survey.responsesCount / expected) * 100))
+                : null;
+
+              return (
+                <button
+                  key={survey.id}
+                  type="button"
+                  className="dashboard-active-survey rounded-xl p-4 text-left transition-transform hover:-translate-y-0.5"
+                  onClick={() => navigate(`/surveys/${survey.id}`)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="line-clamp-2 font-semibold text-[var(--text-primary)]">{survey.title}</span>
+                    <SurveyStatusBadge status={survey.status} />
+                  </div>
+                  <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                    {formatNumber(survey.responsesCount)} Antwort{survey.responsesCount === 1 ? '' : 'en'}
+                    {expected ? ` von ${formatNumber(expected)}` : ''}
+                  </p>
+                  {responseRate !== null && (
+                    <div className="mt-3" aria-label={`${responseRate} Prozent Rücklauf`}>
+                      <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-3)]">
+                        <div className="h-full rounded-full bg-viridian" style={{ width: `${responseRate}%` }} />
+                      </div>
+                      <span className="mt-1 block text-xs font-medium text-[var(--text-muted)]">{responseRate} % Rücklauf</span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {recentLogbookEntries.length > 0 && (
+        <SurfaceCard className="dashboard-outer-surface dashboard-illustrated-surface mb-6 px-6" padding="none">
+        <img className="dashboard-section-illustration" src={logbookEmptyIllustration} alt="" aria-hidden="true" />
+        <div className="mb-4 flex flex-wrap items-center justify-start gap-3">
+          <h3 className="text-lg font-semibold text-[var(--text-primary)]">{t('logbook.title')}</h3>
           <Button
             size="sm"
             onClick={() => navigate('/logbook/new', { state: { returnTo: '/dashboard' } })}
@@ -916,14 +938,6 @@ export default function Dashboard() {
             {t('logbook.entry')}
           </Button>
         </div>
-        {recentLogbookEntries.length === 0 ? (
-          <EmptyState
-            className="dashboard-section-empty-state py-6"
-            description={t('logbook.emptyDescription')}
-            illustration={logbookEmptyIllustration}
-            title={t('logbook.emptyTitle')}
-          />
-        ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {recentLogbookEntries.map((entry) => (
               <button
@@ -971,7 +985,6 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
-        )}
         <button
           type="button"
           onClick={() => navigate('/logbook')}
@@ -979,26 +992,18 @@ export default function Dashboard() {
         >
           {t('logbook.showAll')}
         </button>
-      </SurfaceCard>
+        </SurfaceCard>
+      )}
 
       {/* Daily Log */}
-      <div className={`modern-card dashboard-outer-surface mb-8 p-6 ${dailyLog.length > 0 ? 'dashboard-illustrated-surface' : ''}`}>
-        {dailyLog.length > 0 ? (
-          <img className="dashboard-section-illustration" src={dailyLogEmptyIllustration} alt="" aria-hidden="true" />
-        ) : null}
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+      {dailyLog.length > 0 && (
+        <div className="modern-card dashboard-outer-surface dashboard-illustrated-surface mb-6 px-6 py-0">
+        <img className="dashboard-section-illustration" src={dailyLogEmptyIllustration} alt="" aria-hidden="true" />
+        <h3 className="mb-3 text-lg font-semibold text-gray-800">
           {t('daily.title')}
           <span className="ml-2 text-xs text-gray-400 font-normal">{t('daily.period')}</span>
         </h3>
-        {dailyLog.length === 0 ? (
-          <EmptyState
-            className="dashboard-section-empty-state py-6"
-            description={t('daily.empty')}
-            illustration={dailyLogEmptyIllustration}
-            title={t('daily.emptyTitle')}
-          />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {dailyLog.map((item) => (
               <div key={item.id} className="dashboard-activity-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2 gap-2">
@@ -1103,8 +1108,8 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Recent Actions */}
       <div className="modern-card dashboard-outer-surface p-4 sm:p-6">

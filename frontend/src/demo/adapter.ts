@@ -227,6 +227,9 @@ function handleSurveys(method: string, segments: string[], params: Record<string
     if (method === 'post' && segments[3] === 'responses') return ok(demo.submitDemoPublicSurvey(token, body.answers as never), 201);
   }
   if (segments[0] !== 'surveys') return undefined;
+  if (method === 'get' && segments[1] === 'dashboard' && segments[2] === 'active') {
+    return ok(demo.listDemoActiveSurveyDashboardSummaries());
+  }
   if (method === 'get' && segments.length === 1) return ok(demo.listDemoSurveys(params));
   if (method === 'post' && segments.length === 1) return ok(demo.createDemoSurvey(body), 201);
   if (method === 'get' && segments[1] === 'meta' && segments[2] === 'has-archived') return ok(demo.hasDemoArchivedSurveys());

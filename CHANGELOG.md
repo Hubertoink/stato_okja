@@ -18,6 +18,13 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Offline-PWA Funktionalität
 - Azure AD OIDC Integration
 
+## [1.5.6] - 2026-08-09
+
+### Fixed
+- Die Demo liefert aktive Umfragen nun auch für die Dashboard-Zusammenfassung.
+  Die Beispielumfrage "Digital Club: Themenwahl" ist als eigenständige
+  Umfragereihe in der Umfragenliste sichtbar.
+
 ## [1.5.5] - 2026-08-09
 
 ### Added

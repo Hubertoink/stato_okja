@@ -862,7 +862,7 @@ export default function Dashboard() {
       )}
 
       {/* Quick Actions */}
-      <SurfaceCard className="mb-8">
+      <SurfaceCard className="dashboard-outer-surface mb-8">
         <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">{t('quick.title')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
@@ -898,7 +898,7 @@ export default function Dashboard() {
       </SurfaceCard>
 
       <SurfaceCard
-        className={`mb-8 ${recentLogbookEntries.length > 0 ? 'dashboard-illustrated-surface' : ''}`}
+        className={`dashboard-outer-surface mb-8 ${recentLogbookEntries.length > 0 ? 'dashboard-illustrated-surface' : ''}`}
         padding="md"
       >
         {recentLogbookEntries.length > 0 ? (
@@ -982,7 +982,7 @@ export default function Dashboard() {
       </SurfaceCard>
 
       {/* Daily Log */}
-      <div className={`modern-card mb-8 p-6 ${dailyLog.length > 0 ? 'dashboard-illustrated-surface' : ''}`}>
+      <div className={`modern-card dashboard-outer-surface mb-8 p-6 ${dailyLog.length > 0 ? 'dashboard-illustrated-surface' : ''}`}>
         {dailyLog.length > 0 ? (
           <img className="dashboard-section-illustration" src={dailyLogEmptyIllustration} alt="" aria-hidden="true" />
         ) : null}
@@ -1107,7 +1107,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Actions */}
-      <div className="modern-card p-4 sm:p-6">
+      <div className="modern-card dashboard-outer-surface p-4 sm:p-6">
         <h3 className="mb-3 text-lg font-bold text-gray-800 sm:mb-4 sm:text-xl">{t('recent.title')}</h3>
         <div className="space-y-3">
           {recentActionGroups.map((group) => {

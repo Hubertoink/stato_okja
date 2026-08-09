@@ -82,6 +82,13 @@ function formatStatisticsDateCompact(iso: string) {
   return `${shortYear} ${shortMonth} ${paddedDay}`;
 }
 
+function formatStatisticsWeekday(iso: string) {
+  const date = parseStatisticsCalendarDate(iso);
+  if (!date) return '';
+
+  return new Intl.DateTimeFormat(getCurrentIntlLocale(), { weekday: 'long' }).format(date);
+}
+
 export function formatStatisticsAggregationTickLabel(
   value: string,
   aggregation: StatisticsTimeAggregation,
@@ -130,7 +137,9 @@ export function formatStatisticsAggregationTooltipLabel(
     return `${monthLabel} ${match[1]}`;
   }
 
-  return autoT('ui_1ae0fe72e0f6', { value0: formatStatisticsDateCompact(safeValue) });
+  const weekday = formatStatisticsWeekday(safeValue);
+  const date = formatStatisticsDateCompact(safeValue);
+  return autoT('ui_1ae0fe72e0f6', { value0: weekday ? `${weekday}, ${date}` : date });
 }
 
 export function buildTopDayChartData(

@@ -21,7 +21,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { colorForActivityType, translucent } from '@/lib/colors';
 import { isDarkThemeName, resolveThemeName } from '../lib/theme';
 import type jsPDF from 'jspdf';
-import { FileDown, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileDown, Calendar, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -2981,13 +2981,36 @@ export default function Statistics() {
                     labelStyle={chartTooltipLabelStyle}
                     itemStyle={chartTooltipItemStyle}
                     cursor={lineChartCursor}
-                    formatter={(value: number) => [
-                      value.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 }),
-                      showAverage ? autoT('ui_c649f425302c') : autoT('ui_a8a4d6b019af')
-                    ]}
-                    labelFormatter={(value) =>
-                      formatStatisticsAggregationTooltipLabel(String(value), timeAggregation)
-                    }
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length || label == null) return null;
+
+                      const datePrefix = autoT('ui_1ae0fe72e0f6', { value0: '' }).trim();
+                      const formattedDate = formatStatisticsAggregationTooltipLabel(
+                        String(label),
+                        timeAggregation,
+                      );
+                      const dateValue = formattedDate.startsWith(datePrefix)
+                        ? formattedDate.slice(datePrefix.length).trimStart()
+                        : formattedDate;
+                      const item = payload[0];
+                      const itemLabel = String(
+                        item.name || (showAverage ? autoT('ui_c649f425302c') : autoT('ui_a8a4d6b019af')),
+                      );
+                      const value = Number(item.value ?? 0).toLocaleString(getCurrentIntlLocale(), {
+                        maximumFractionDigits: 1,
+                      });
+
+                      return (
+                        <div style={{ ...chartTooltipContentStyle, padding: '10px 12px' }}>
+                          <p style={{ ...chartTooltipLabelStyle, margin: 0, fontWeight: 400 }}>
+                            <strong>{datePrefix}</strong> {dateValue}
+                          </p>
+                          <p style={{ ...chartTooltipItemStyle, margin: '6px 0 0', fontWeight: 400 }}>
+                            <strong>{itemLabel}:</strong> {value}
+                          </p>
+                        </div>
+                      );
+                    }}
                   />
                   <Legend />
                   <Line
@@ -3234,7 +3257,7 @@ export default function Statistics() {
                   title={autoT('ui_f4b057452fde')}
                   variant="secondary"
                 >
-                  ««
+                  <ChevronsLeft className="h-3.5 w-3.5" aria-hidden="true" />
                 </IconButton>
                 <IconButton
                   aria-label={autoT('ui_f6bc60bc537b')}
@@ -3244,7 +3267,7 @@ export default function Statistics() {
                   title={autoT('ui_f6bc60bc537b')}
                   variant="secondary"
                 >
-                  «
+                  <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
                 </IconButton>
                 
                 {/* Page number buttons */}
@@ -3290,7 +3313,7 @@ export default function Statistics() {
                   title={autoT('ui_d3e6a4a47b5f')}
                   variant="secondary"
                 >
-                  »
+                  <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </IconButton>
                 <IconButton
                   aria-label={autoT('ui_58365134024f')}
@@ -3300,7 +3323,7 @@ export default function Statistics() {
                   title={autoT('ui_58365134024f')}
                   variant="secondary"
                 >
-                  »»
+                  <ChevronsRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </IconButton>
               </div>
             </div>

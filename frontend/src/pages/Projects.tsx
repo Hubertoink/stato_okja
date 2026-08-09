@@ -644,7 +644,7 @@ function ProjectGridCard({
 
   return (
     <div
-      className="relative rounded-2xl shadow group min-h-[160px]"
+      className="project-card relative rounded-2xl shadow group min-h-[160px]"
       style={{
         backgroundColor: project.imageUrl ? undefined : project.color || pickBg(project.title),
       }}
@@ -831,7 +831,7 @@ function ProjectListRow({
   const surfaceColor = project.color || pickBg(project.title);
 
   return (
-    <div className="hidden md:grid md:grid-cols-[176px,minmax(0,1fr)] overflow-visible rounded-2xl border border-gray-200 bg-white shadow-sm relative">
+    <div className="project-card hidden md:grid md:grid-cols-[176px,minmax(0,1fr)] overflow-visible rounded-2xl border border-gray-200 bg-white shadow-sm relative">
       <div
         className="relative min-h-[156px] overflow-hidden rounded-l-2xl"
         style={{ backgroundColor: project.imageUrl ? undefined : surfaceColor }}

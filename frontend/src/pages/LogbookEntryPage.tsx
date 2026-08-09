@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Archive,
+  ArchiveRestore,
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
@@ -27,6 +28,7 @@ import {
   useCreateLogbookEntry,
   useLogbookEntry,
   useRemoveLogbookComment,
+  useRestoreLogbookEntry,
   useSetLogbookStatus,
   useUpdateLogbookEntry,
 } from '@/lib/logbook';
@@ -46,6 +48,7 @@ import { EditorActions } from '@/components/ui/EditorFrame';
 import { Button, IconButton } from '@/components/ui/Button';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
+import { useTranslation } from 'react-i18next';
 
 type FormState = {
   occurredAt: string;
@@ -255,6 +258,7 @@ export type LogbookEntryPageProps = {
 };
 
 export default function LogbookEntryPage(props: unknown = {}) {
+  const { t } = useTranslation('logbook');
   const {
     entryId: embeddedEntryId,
     returnTo: embeddedReturnTo,
@@ -285,6 +289,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const create = useCreateLogbookEntry();
   const update = useUpdateLogbookEntry();
   const archive = useArchiveLogbookEntry();
+  const restore = useRestoreLogbookEntry();
   const setStatus = useSetLogbookStatus();
   const createComment = useCreateLogbookComment();
   const removeComment = useRemoveLogbookComment();
@@ -690,19 +695,33 @@ export default function LogbookEntryPage(props: unknown = {}) {
               <Edit3 className="h-4 w-4" />
               <span className="hidden sm:inline">{autoT('ui_104f3bfdc340')}</span>
             </button>
-            <Button
-              variant="warning"
-              disabled={archived || archive.isPending}
-              onClick={async () => {
-                if (!window.confirm(autoT('ui_14cdcb1a47ae'))) return;
-                await archive.mutateAsync(id!);
-                showToast(autoT('ui_e041a9132c74'), { type: 'success' });
-                navigate('/logbook');
-              }}
-            >
-              <Archive className="h-4 w-4" />
-              <span className="hidden sm:inline">{autoT('ui_b81f3298d960')}</span>
-            </Button>
+            {archived ? (
+              <Button
+                variant="secondary"
+                disabled={restore.isPending}
+                onClick={async () => {
+                  await restore.mutateAsync(id!);
+                  showToast(t('restored'), { type: 'success' });
+                }}
+              >
+                <ArchiveRestore className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('restore')}</span>
+              </Button>
+            ) : (
+              <Button
+                variant="warning"
+                disabled={archive.isPending}
+                onClick={async () => {
+                  if (!window.confirm(autoT('ui_14cdcb1a47ae'))) return;
+                  await archive.mutateAsync(id!);
+                  showToast(autoT('ui_e041a9132c74'), { type: 'success' });
+                  navigate('/logbook');
+                }}
+              >
+                <Archive className="h-4 w-4" />
+                <span className="hidden sm:inline">{autoT('ui_b81f3298d960')}</span>
+              </Button>
+            )}
           </div>
         )}
       </div>

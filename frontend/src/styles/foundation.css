@@ -13,14 +13,9 @@ input[type='search']::-webkit-search-decoration {
 }
 
 :root {
-  --app-bg-image: url('/Background_Stato.jpg');
-  --app-bg: #fafbff;
-  --app-bg-overlay: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(255, 255, 255, 0.08) 48%,
-    rgba(255, 255, 255, 0.18) 100%
-  );
+  --app-bg-image: none;
+  --app-bg: #eef1ff;
+  --app-bg-overlay: none;
   --surface-1: rgba(255, 255, 255, 0.98);
   --surface-2: #f8fafc;
   --surface-3: #e5e7eb;

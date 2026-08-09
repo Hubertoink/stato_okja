@@ -7,7 +7,7 @@
   --mint-green: #dde5c7;
   --azure-web: #f2ecd5;
   --mint-cream: #f9f5d7;
-  --app-bg: #f9f5d7;
+  --app-bg: #f2edcf;
   --app-bg-image: none;
   --app-bg-overlay: radial-gradient(circle at 14% 18%, rgba(111, 131, 82, 0.14) 0%, transparent 30%), radial-gradient(circle at 84% 78%, rgba(193, 143, 65, 0.13) 0%, transparent 26%), linear-gradient(145deg, #fbf8df 0%, #f9f5d7 58%, #f3ecd4 100%);
   --surface-1: #fffdf1;
@@ -50,7 +50,7 @@
   --mint-green: #dce1f4;
   --azure-web: #e6e9ef;
   --mint-cream: #eff1f5;
-  --app-bg: #eff1f5;
+  --app-bg: #e5e8ef;
   --app-bg-image: none;
   --app-bg-overlay: radial-gradient(circle at 12% 18%, rgba(136, 57, 239, 0.12) 0%, transparent 30%), radial-gradient(circle at 84% 78%, rgba(30, 102, 245, 0.1) 0%, transparent 26%), linear-gradient(145deg, #f7f8fb 0%, #eff1f5 60%, #e6e9ef 100%);
   --surface-1: #ffffff;
@@ -103,7 +103,7 @@
   --mint-green: var(--theme-surface-3);
   --azure-web: var(--theme-surface-2);
   --mint-cream: var(--theme-bg);
-  --app-bg: var(--theme-bg);
+  --app-bg: color-mix(in srgb, var(--theme-bg) 91%, white);
   --app-bg-image: none;
   --app-bg-overlay: radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--theme-primary) 18%, transparent) 0%, transparent 30%), radial-gradient(circle at 84% 78%, color-mix(in srgb, var(--theme-secondary) 13%, transparent) 0%, transparent 26%), linear-gradient(145deg, color-mix(in srgb, var(--theme-bg) 94%, black) 0%, var(--theme-bg) 55%, color-mix(in srgb, var(--theme-bg) 90%, black) 100%);
   --surface-1: var(--theme-surface-1);
@@ -295,3 +295,19 @@
   background: color-mix(in srgb, var(--interactive-soft-strong) 78%, var(--surface-3));
 }
 :root[data-color-mode='dark'] .gradient-border { background: var(--surface-1); }
+
+/* Public surveys are deliberately a fixed light experience. They may be opened
+ * from a browser that still has a dark Stato theme stored locally. */
+:root[data-color-mode='dark'] .public-survey {
+  color-scheme: light;
+  color: #0f172a;
+}
+
+:root[data-color-mode='dark'] .public-survey.bg-slate-50,
+:root[data-color-mode='dark'] .public-survey .bg-slate-50 {
+  background-color: #f8fafc !important;
+}
+
+:root[data-color-mode='dark'] .public-survey .bg-white {
+  background-color: #ffffff !important;
+}

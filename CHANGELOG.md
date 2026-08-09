@@ -18,6 +18,20 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Offline-PWA Funktionalität
 - Azure AD OIDC Integration
 
+## [1.5.2] - 2026-08-09
+
+### Changed
+- Dashboard und Statistik verwenden konsistentere Abstände, Oberflächen und
+  Kartenrahmen; laufende Umfragen sind direkt auf dem Dashboard sichtbar.
+- Logbuch-, Umfrage- und Projektkarten verwenden einen einheitlichen,
+  dezenten Hover-Akzent.
+
+### Fixed
+- Archivierte Logbucheinträge können von Ersteller:innen sowie Admins wieder
+  hergestellt werden.
+- Öffentliche Umfragen verwenden unabhängig vom eingeloggten Theme eine
+  kontraststabile helle Oberfläche.
+
 ## [1.5.1] - 2026-08-09
 
 ### Changed

@@ -201,6 +201,7 @@ function handleLogbook(method: string, segments: string[], params: Record<string
     return ok(entry);
   }
   if (method === 'patch' && entryId && segments[2] === 'status') return ok(demo.setDemoLogbookStatus(entryId, body.status as never));
+  if (method === 'patch' && entryId && segments[2] === 'restore') return ok(demo.restoreDemoLogbookEntry(entryId));
   if (method === 'patch' && entryId && segments.length === 2) return ok(demo.updateDemoLogbookEntry(entryId, body));
   if (method === 'delete' && entryId && segments.length === 2) return ok(demo.archiveDemoLogbookEntry(entryId));
   if (method === 'post' && entryId && segments[2] === 'comments') return ok(demo.createDemoLogbookComment(entryId, String(body.body || '')), 201);

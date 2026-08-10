@@ -36,7 +36,11 @@ export default function DeleteOrgModal({ orgId, orgName, open, onClose, onDelete
     <Modal open={open} onClose={() => { if (!busy) { onClose(); setError(null); } }} title={autoT('ui_3974dc710086')} maxWidth="sm">
       <div className="space-y-4">
         <p className="text-sm text-gray-700">{autoT('ui_2db74aafe6f1')}{orgName ? <strong className="mx-1">„{orgName}”</strong> : autoT('ui_b0ce53d37758')}{autoT('ui_29e0625deef2')}</p>
-        <div className="rounded border border-red-300 bg-red-50 p-3 text-xs text-red-800">{autoT('ui_987e0ccc5050')}<strong>{autoT('ui_7535160fba8a')}</strong>{autoT('ui_36156e721c4c')}</div>
+        <div className="rounded border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+          {autoT('ui_987e0ccc5050')}{' '}
+          <strong>{autoT('ui_7535160fba8a')}</strong>{' '}
+          {autoT('ui_36156e721c4c')}
+        </div>
         {error && <div className="text-xs text-red-600 bg-red-50 border border-red-300 rounded p-2">{error}</div>}
         <div className="flex items-center justify-end gap-2">
           <button className="px-3 py-1.5 rounded bg-gray-200 text-gray-700" disabled={busy} onClick={()=> onClose()}>{autoT('ui_07af7cb30fca')}</button>

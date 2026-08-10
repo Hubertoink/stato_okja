@@ -100,27 +100,6 @@
   margin-top: 0.625rem;
 }
 
-.dashboard-trend-summary-header {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
-  margin-top: 0.75rem;
-}
-
-.dashboard-trend-summary-header p {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 0.8125rem;
-  font-weight: 800;
-}
-
-.dashboard-trend-summary-header span {
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
 .dashboard-month-kpi-card {
   min-height: 7.25rem;
   padding: 1rem 1.125rem;

@@ -20,6 +20,7 @@ interface OrgChildTaxonomyDefaults {
 interface VisibleTaxonomyItem {
   id: string;
   name: string;
+  color?: string | null;
   orgId?: string | null;
   sourceOrgId?: string | null;
   sourceOrgName?: string | null;

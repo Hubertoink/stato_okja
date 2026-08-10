@@ -158,7 +158,6 @@ type DashboardTrendRange = {
   to: string;
   context: string;
   title: string;
-  summaryPeriodLabel: string;
 };
 
 function toLocalDateString(date: Date) {
@@ -275,7 +274,6 @@ export default function Dashboard() {
         to: toLocalDateString(weekEnd),
         context: t('trend.weekLabel', { period: periodLabel }),
         title: t('trend.dailyTitle'),
-        summaryPeriodLabel: periodLabel,
       };
     }
 
@@ -288,7 +286,6 @@ export default function Dashboard() {
         to: toLocalDateString(monthEnd),
         context: t('trend.monthLabel', { month: periodLabel }),
         title: t('trend.dailyTitle'),
-        summaryPeriodLabel: periodLabel,
       };
     }
 
@@ -297,7 +294,6 @@ export default function Dashboard() {
       to: `${year}-12-31`,
       context: t('trend.yearLabel', { year }),
       title: t('trend.title'),
-      summaryPeriodLabel: String(year),
     };
   }, [dashboardTrendPeriod, month, now, t, year]);
   const currentMonthRange = useMemo(
@@ -450,7 +446,7 @@ export default function Dashboard() {
   } as const;
   const dashboardTrend = useMemo(() => {
     const dataByDate = new Map(dashboardTimeseries.map((point) => [point.date, point]));
-    const createEntry = (key: string, label: string) => {
+    const createEntry = (key: string, label: string, tooltipLabel = label) => {
       const point = dataByDate.get(key);
       const activities = Number(point?.activityCount) || 0;
       const participants = Number(point?.totalParticipants) || 0;
@@ -458,6 +454,7 @@ export default function Dashboard() {
       return {
         key,
         label,
+        tooltipLabel,
         activities,
         participants,
         hours: Number(hours.toFixed(1)),
@@ -469,12 +466,17 @@ export default function Dashboard() {
       const dateFormatter = new Intl.DateTimeFormat(getCurrentIntlLocale(), dashboardTrendPeriod === 'week'
         ? { weekday: 'short', day: 'numeric' }
         : { day: 'numeric' });
+      const tooltipDateFormatter = new Intl.DateTimeFormat(getCurrentIntlLocale(), {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      });
       const entries = [];
       const cursor = dateFromLocalDateString(dashboardTrendRange.from);
       const end = dateFromLocalDateString(dashboardTrendRange.to);
       while (cursor <= end) {
         const key = toLocalDateString(cursor);
-        entries.push(createEntry(key, dateFormatter.format(cursor)));
+        entries.push(createEntry(key, dateFormatter.format(cursor), tooltipDateFormatter.format(cursor)));
         cursor.setDate(cursor.getDate() + 1);
       }
       return entries;
@@ -499,6 +501,7 @@ export default function Dashboard() {
 
     return months.map((entry) => ({
       ...entry,
+      tooltipLabel: `${entry.label} ${year}`,
       averageParticipants: entry.activities > 0 ? entry.participants / entry.activities : 0,
       hours: Number(entry.hours.toFixed(1)),
     }));
@@ -759,6 +762,7 @@ export default function Dashboard() {
                 contentStyle={dashboardChartTooltip}
                 labelStyle={{ color: 'var(--text-secondary)', fontWeight: 600 }}
                 cursor={{ stroke: 'var(--border-strong)', strokeDasharray: '4 4' }}
+                labelFormatter={(label, payload) => String(payload?.[0]?.payload?.tooltipLabel || label)}
                 formatter={(value: number, name: string) => [
                   formatNumber(value, { maximumFractionDigits: dashboardTrendMode === 'activity' ? 0 : 1 }),
                   name,
@@ -789,10 +793,6 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        <div className="dashboard-trend-summary-header">
-          <p>{t('trend.selectedPeriod')}</p>
-          <span>{t('trend.selectedPeriodHint', { period: dashboardTrendRange.summaryPeriodLabel })}</span>
-        </div>
         <div className="dashboard-trend-summary" aria-label={t('trend.selectedPeriod')}>
           <div className="statistics-kpi-card statistics-kpi-card--activities dashboard-month-kpi-card">
             <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.activities} alt="" aria-hidden="true" />

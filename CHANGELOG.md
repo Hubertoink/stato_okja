@@ -7,6 +7,17 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.5.8] - 2026-08-10
+
+### Changed
+- Die Organisations- und Vererbungsverwaltung wurde visuell überarbeitet und
+  zeigt die verfügbaren Regeln kompakter und verständlicher an.
+
+### Fixed
+- Org-Admins ohne Bearbeitungsrechte sehen keinen irrelevanten Button für die
+  Vererbungsverwaltung mehr.
+- Abstände in den Hinweisen zur Vererbung wurden korrigiert.
+
 ## [Unreleased]
 
 ### In Entwicklung

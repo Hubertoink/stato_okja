@@ -32,8 +32,6 @@ import {
   Users,
   Settings2,
   ArrowRightLeft,
-  CheckCircle2,
-  Ban,
   GitBranch,
   Save as SaveIcon,
   X as XIcon,
@@ -42,9 +40,13 @@ import {
   FileUp,
   FileText,
   Upload,
+  FolderOpen,
+  Tag,
+  UsersRound,
 } from 'lucide-react';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
 import DemoHoverHint from '@/demo/DemoHoverHint';
+import Toggle from '@/components/Toggle';
 import { DEFAULT_PUBLIC_CONFIG, fetchPublicConfig, type PublicConfig } from '@/lib/publicConfig';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
@@ -53,6 +55,8 @@ import { autoT } from '@/i18n/auto';
 import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
 import { Button, CreateButton, DeleteIconButton } from '@/components/ui/Button';
 import { EditorActions } from '@/components/ui/EditorFrame';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import {
   downloadBlob,
   downloadOrgMasterData,
@@ -103,27 +107,17 @@ function Tooltip({
   );
 }
 
-const taxonomySurfaceClass =
-  'rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-primary)]';
-const taxonomyMutedSurfaceClass =
-  'rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)]';
 const taxonomySecondaryTextClass = 'text-[var(--text-secondary)]';
 const taxonomyMutedTextClass = 'text-[var(--text-muted)]';
 const taxonomyNeutralButtonClass =
   'min-h-11 touch-manipulation rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-secondary)] transition-colors hover:bg-[var(--interactive-soft)]';
-const taxonomySegmentedClass =
-  'inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-1 shadow-sm';
-const taxonomySegmentedButtonInactiveClass =
-  'text-[var(--text-secondary)] hover:bg-[var(--interactive-soft)]';
-const taxonomySectionCardClass = 'rounded-xl border p-4 space-y-3';
+const taxonomySectionCardClass = 'rounded-xl bg-[var(--surface-1)] p-4 space-y-3';
 const taxonomyBannerInfoClass = 'taxonomy-config-info-banner rounded-lg px-4 py-3 text-sm';
 const taxonomyBannerWarningClass = 'taxonomy-config-warning-banner rounded-lg px-4 py-3 text-sm';
 const taxonomyOverrideSoftClass = 'taxonomy-config-warning-soft';
 const taxonomyOverrideSurfaceClass = 'taxonomy-config-override-surface';
 const taxonomyOverridePillClass =
   'taxonomy-config-override-pill rounded-full px-2 py-0.5 text-[11px] font-medium';
-const taxonomyContextPillClass =
-  'taxonomy-context-pill inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium';
 
 type TaxonomyDraftState =
   OrgTaxonomySettingsSnapshot['settings'] | OrgTaxonomySettingsSnapshot['childDefaults'];
@@ -649,6 +643,7 @@ function OrgTaxonomySettingsModal({
     options,
     baseline,
     showInheritedContentRules,
+    readOnly,
   }: {
     draft: TaxonomyDraftState;
     target: 'self' | 'children';
@@ -657,53 +652,122 @@ function OrgTaxonomySettingsModal({
       | OrgTaxonomySettingsSnapshot['childDefaultOptions'];
     baseline?: TaxonomyDraftState;
     showInheritedContentRules: boolean;
-  }) => (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-      {sections.map((section) => {
-        const entry = draft[section.key];
-        const selectedCount = entry.inheritAll
-          ? options[section.key].length
-          : entry.inheritedIds.length;
-        const baselineEntry = baseline?.[section.key];
-        const hasDiff =
-          !!baselineEntry &&
-          (entry.allowOwn !== baselineEntry.allowOwn ||
-            entry.inheritAll !== baselineEntry.inheritAll ||
-            options[section.key].some(
-              (item) =>
-                isSectionItemSelected(draft, section.key, item.id) !==
-                isSectionItemSelected(baseline, section.key, item.id),
-            ));
+    readOnly: boolean;
+  }) => {
+    const sectionIcons = {
+      categories: FolderOpen,
+      tags: Tag,
+      cohorts: UsersRound,
+    } as const;
 
-        return (
-          <div
-            key={`${target}-${section.key}-summary`}
-            className={`taxonomy-rule-summary-card ${hasDiff ? taxonomyOverrideSoftClass : ''}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">
-                  {section.title}
+    return (
+      <div className="grid gap-4 lg:grid-cols-3">
+        {sections.map((section) => {
+          const Icon = sectionIcons[section.key];
+          const entry = draft[section.key];
+          const sectionOptions = options[section.key];
+          const selectedCount = entry.inheritAll ? sectionOptions.length : entry.inheritedIds.length;
+          const baselineEntry = baseline?.[section.key];
+          const hasDiff =
+            !!baselineEntry &&
+            (entry.allowOwn !== baselineEntry.allowOwn ||
+              entry.inheritAll !== baselineEntry.inheritAll ||
+              sectionOptions.some(
+                (item) =>
+                  isSectionItemSelected(draft, section.key, item.id) !==
+                  isSectionItemSelected(baseline, section.key, item.id),
+              ));
+
+          return (
+            <section
+              key={`${target}-${section.key}-rules`}
+              className={`taxonomy-rule-card ${hasDiff ? taxonomyOverrideSoftClass : ''}`}
+            >
+              <div className="taxonomy-rule-card-header">
+                <span className="taxonomy-overview-rule-icon" aria-hidden="true">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span className={`block text-xs ${taxonomyMutedTextClass}`}>{section.title}</span>
+                  <span className="mt-1 block font-semibold text-[var(--text-primary)]">
+                    {allowOwnLabel(section.title, entry.allowOwn)}
+                  </span>
+                  <span className={`mt-1 block text-xs ${taxonomyMutedTextClass}`}>
+                    {inheritanceModeLabel(entry, selectedCount, showInheritedContentRules)}
+                  </span>
                 </div>
-                <div className="mt-1 font-semibold text-[var(--text-primary)]">
-                  {allowOwnLabel(section.title, entry.allowOwn)}
-                </div>
+                <Toggle
+                  className={readOnly ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}
+                  checked={entry.allowOwn}
+                  onChange={(checked) => updateAllowOwn(target, section.key, checked)}
+                  ariaLabel={allowOwnLabel(section.title, entry.allowOwn)}
+                  disabled={readOnly}
+                />
               </div>
-              {entry.allowOwn ? (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-green)]" />
-              ) : (
-                <Ban className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-pink)]" />
-              )}
-            </div>
-            <div className="mt-3 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-              <GitBranch className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-              <span>{inheritanceModeLabel(entry, selectedCount, showInheritedContentRules)}</span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+
+              {showInheritedContentRules ? (
+                <div className="taxonomy-rule-card-content">
+                  <div
+                    className={`taxonomy-rule-control ${readOnly ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
+                  >
+                    <Toggle
+                      checked={entry.inheritAll}
+                      onChange={(checked) => updateInheritAll(target, section.key, checked)}
+                      ariaLabel={section.inheritAllLabel}
+                      disabled={readOnly}
+                      className="shrink-0"
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-medium text-[var(--text-primary)]">
+                        {section.inheritAllLabel}
+                      </span>
+                      <span className={`block text-xs ${taxonomyMutedTextClass}`}>
+                        {target === 'self' ? autoT('ui_d66a910a42dd') : autoT('ui_0d8a51190a5d')}
+                      </span>
+                    </span>
+                  </div>
+
+                  {entry.inheritAll ? (
+                    <p className={`text-xs ${taxonomyMutedTextClass}`}>
+                      {target === 'self' ? autoT('ui_a48f2d872641') : autoT('ui_3a54690f5745')}
+                    </p>
+                  ) : sectionOptions.length > 0 ? (
+                    <div>
+                      <p className={`mb-2 text-xs font-medium ${taxonomyMutedTextClass}`}>
+                        Individuelle Auswahl
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {sectionOptions.map((item) => {
+                          const selected = entry.inheritedIds.includes(item.id);
+                          return (
+                            <button
+                              key={`${target}-${section.key}-${item.id}`}
+                              type="button"
+                              onClick={() => updateInherited(target, section.key, item.id)}
+                              disabled={readOnly}
+                              aria-pressed={selected}
+                              className="taxonomy-selection-chip px-2 py-1 rounded-full text-xs border"
+                              style={getSelectableTaxonomyChipStyle(selected, item.color)}
+                            >
+                              {section.renderItem(item as never)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className={`text-xs ${taxonomyMutedTextClass}`}>
+                      {target === 'self' ? autoT('ui_6c738d1a3631') : autoT('ui_aab49b639dd5')}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderDiffRows = ({
     sectionTitle,
@@ -794,11 +858,71 @@ function OrgTaxonomySettingsModal({
     return (
       <div className="space-y-5">
         {intro}
-        {renderRuleSummary({ draft, target, options, baseline, showInheritedContentRules })}
+        {renderRuleSummary({ draft, target, options, baseline, showInheritedContentRules, readOnly })}
         {reset}
-        {target === 'self' && baseline ? (
-          <div className={`${taxonomyBannerWarningClass} text-xs`}>{autoT('ui_69013566f7e7')}</div>
-        ) : null}
+      </div>
+    );
+
+    if (target === 'self' && !hasParentSource) {
+      const sectionIcons = {
+        categories: FolderOpen,
+        tags: Tag,
+        cohorts: UsersRound,
+      } as const;
+
+      return (
+        <div className="space-y-5">
+          {intro}
+          <div className="grid gap-4 lg:grid-cols-3">
+            {sections.map((section) => {
+              const Icon = sectionIcons[section.key];
+              const hasOverride = baseline
+                ? draft[section.key].allowOwn !== baseline[section.key].allowOwn
+                : false;
+              return (
+                <label
+                  key={`${target}-${section.key}`}
+                  className={`taxonomy-overview-rule-card ${hasOverride ? taxonomyOverrideSoftClass : ''} ${readOnly ? 'cursor-not-allowed opacity-75' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={draft[section.key].allowOwn}
+                    onChange={(event) => updateAllowOwn(target, section.key, event.target.checked)}
+                    disabled={readOnly}
+                    className="sr-only"
+                  />
+                  <span className="taxonomy-overview-rule-icon" aria-hidden="true">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`block text-xs ${taxonomyMutedTextClass}`}>{section.title}</span>
+                    <span className="mt-1 block font-semibold text-[var(--text-primary)]">
+                      {section.allowLabel}
+                    </span>
+                    <span className={`mt-1 block text-xs ${taxonomyMutedTextClass}`}>
+                      {autoT('ui_5d8b574b50b4')}
+                    </span>
+                  </span>
+                  <span
+                    className={`taxonomy-rule-switch ${draft[section.key].allowOwn ? 'taxonomy-rule-switch-on' : ''}`}
+                    aria-hidden="true"
+                  >
+                    <span />
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {reset}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-5">
+        {intro}
+        {renderRuleSummary({ draft, target, options, baseline, showInheritedContentRules, readOnly })}
+        {reset}
         {sections.map((section) => {
           const sectionOptions = options[section.key];
           const source = target === 'self' ? snapshot?.settingsSource[section.key] : null;
@@ -818,7 +942,7 @@ function OrgTaxonomySettingsModal({
           return (
             <div
               key={`${target}-${section.key}`}
-              className={`${taxonomySectionCardClass} ${hasSectionDiff ? taxonomyOverrideSurfaceClass : 'border-[var(--border-subtle)] bg-[var(--surface-1)]'}`}
+              className={`${taxonomySectionCardClass} ${hasSectionDiff ? taxonomyOverrideSurfaceClass : ''}`}
             >
               <div>
                 <div className="flex items-center justify-between gap-3">
@@ -853,7 +977,7 @@ function OrgTaxonomySettingsModal({
                 changedItemCount,
                 showInheritedContentRules,
               })}
-              <div className={`space-y-2 p-3 ${taxonomyMutedSurfaceClass}`}>
+              <div className="space-y-2 p-3">
                 {showInheritedContentRules ? (
                   <label
                     className={`taxonomy-rule-control ${hasInheritAllDiff ? taxonomyOverrideSoftClass : ''} ${readOnly ? 'cursor-not-allowed opacity-75' : ''}`}
@@ -988,8 +1112,8 @@ function OrgTaxonomySettingsModal({
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
               <div className="space-y-5">
-            <div className="taxonomy-modal-hero rounded-xl border border-[var(--border-subtle)] px-4 py-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="taxonomy-modal-hero pb-1">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="text-xs font-semibold uppercase text-[var(--text-muted)]">
                     {autoT('ui_90f3c2de38c3')}
@@ -997,87 +1121,60 @@ function OrgTaxonomySettingsModal({
                   <div className="mt-1 text-xl font-bold text-[var(--text-primary)]">
                     {snapshot.orgName}
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className={taxonomyContextPillClass}>
-                      <GitBranch className="h-3.5 w-3.5" />
-                      {snapshot.parentName
-                        ? `Erbt von ${snapshot.parentName}`
-                        : autoT('ui_056cf317078e')}
-                    </span>
-                    <span className={taxonomyContextPillClass}>
-                      <Settings2 className="h-3.5 w-3.5" />
-                      {snapshot.hasExplicitSettings
-                        ? autoT('ui_0383b6828c49')
-                        : autoT('ui_8467199dbd4e')}
-                    </span>
-                    <span className={taxonomyContextPillClass}>
-                      <Users className="h-3.5 w-3.5" />
-                      {snapshot.hasChildDefaults
-                        ? autoT('ui_319a962a610a')
-                        : autoT('ui_0a82238fcc70')}
-                    </span>
-                  </div>
                 </div>
-                <div className="flex flex-col gap-2 sm:min-w-[20rem]">
-                  {canTransferMasterData && (
-                    <button
-                      type="button"
-                      className={`${taxonomyNeutralButtonClass} ml-auto inline-flex items-center gap-2`}
-                      onClick={() => setMasterDataOpen(true)}
-                    >
-                      <Download className="h-4 w-4" /> {t('masterData.button')}
-                    </button>
-                  )}
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="taxonomy-context-stat rounded-lg px-3 py-2">
-                      <div className="text-lg font-bold text-[var(--text-primary)]">
-                        {snapshot.directChildCount}
-                      </div>
-                      <div className="text-[11px] text-[var(--text-muted)]">
-                        {autoT('ui_5be3b245eac6')}
-                      </div>
-                    </div>
-                    <div className="taxonomy-context-stat rounded-lg px-3 py-2">
-                      <div className="text-lg font-bold text-[var(--text-primary)]">
-                        {snapshot.descendantCount}
-                      </div>
-                      <div className="text-[11px] text-[var(--text-muted)]">
-                        {autoT('ui_d25cfca669ed')}
-                      </div>
-                    </div>
-                    <div className="taxonomy-context-stat rounded-lg px-3 py-2">
-                      <div className="text-lg font-bold text-[var(--text-primary)]">
-                        {snapshot.permissions.canEditSelf ||
-                        snapshot.permissions.canEditChildDefaults
-                          ? autoT('ui_283c735c8901')
-                          : autoT('ui_70bb813787b6')}
-                      </div>
-                      <div className="text-[11px] text-[var(--text-muted)]">
-                        {autoT('ui_bd2fe6d3ef5c')}
-                      </div>
-                    </div>
-                  </div>
+                {canTransferMasterData && (
+                  <button
+                    type="button"
+                    className={`${taxonomyNeutralButtonClass} inline-flex items-center gap-2 lg:shrink-0`}
+                    onClick={() => setMasterDataOpen(true)}
+                  >
+                    <Download className="h-4 w-4" /> {t('masterData.button')}
+                  </button>
+                )}
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <div className="taxonomy-context-status">
+                  {snapshot.parentId ? <GitBranch className="taxonomy-context-status-icon" /> : <Building2 className="taxonomy-context-status-icon" />}
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-semibold text-[var(--text-primary)]">
+                      {snapshot.parentId ? 'Unterorganisation' : autoT('ui_056cf317078e')}
+                    </span>
+                    <span className="block truncate text-[11px] text-[var(--text-muted)]">
+                      {snapshot.parentName || 'Keine übergeordnete Organisation'}
+                    </span>
+                  </span>
+                </div>
+                <div className="taxonomy-context-status">
+                  <Users className="taxonomy-context-status-icon" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-semibold text-[var(--text-primary)]">
+                      {snapshot.directChildCount > 0 ? `${snapshot.directChildCount} Unterorganisationen` : 'Keine Unterorganisationen'}
+                    </span>
+                    <span className="block truncate text-[11px] text-[var(--text-muted)]">
+                      {snapshot.hasChildDefaults ? autoT('ui_319a962a610a') : autoT('ui_0a82238fcc70')}
+                    </span>
+                  </span>
+                </div>
+                <div className="taxonomy-context-stat rounded-lg px-3 py-2 text-center">
+                  <div className="text-lg font-bold text-[var(--text-primary)]">{snapshot.directChildCount}</div>
+                  <div className="text-[11px] text-[var(--text-muted)]">{autoT('ui_5be3b245eac6')}</div>
+                </div>
+                <div className="taxonomy-context-stat rounded-lg px-3 py-2 text-center">
+                  <div className="text-lg font-bold text-[var(--text-primary)]">{snapshot.descendantCount}</div>
+                  <div className="text-[11px] text-[var(--text-muted)]">{autoT('ui_d25cfca669ed')}</div>
                 </div>
               </div>
             </div>
-            <div className={taxonomySegmentedClass}>
-              <button
-                type="button"
-                onClick={() => setActivePanel('self')}
-                aria-pressed={activePanel === 'self'}
-                className={`min-h-11 touch-manipulation rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'self' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
-              >
-                {autoT('ui_ca7f16d8ef7e')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setActivePanel('children')}
-                aria-pressed={activePanel === 'children'}
-                className={`min-h-11 touch-manipulation rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activePanel === 'children' ? 'bg-viridian text-white shadow-sm' : taxonomySegmentedButtonInactiveClass}`}
-              >
-                {autoT('ui_6d31c3c8355f')}
-              </button>
-            </div>
+            <SegmentedControl<'self' | 'children'>
+              ariaLabel={autoT('ui_90f3c2de38c3')}
+              className="w-fit max-w-full"
+              onChange={setActivePanel}
+              options={[
+                { value: 'self', label: 'Organisation' },
+                { value: 'children', label: 'Unterorganisationen' },
+              ]}
+              value={activePanel}
+            />
             {activePanel === 'self'
               ? renderSettingsEditor({
                   draft: settingsDraft,
@@ -1085,12 +1182,10 @@ function OrgTaxonomySettingsModal({
                   options: snapshot.parentOptions,
                   baseline: snapshot.fallbackSettings,
                   intro: (
-                    <div
-                      className={`${taxonomySurfaceClass} px-4 py-3 text-sm ${taxonomySecondaryTextClass}`}
-                    >
+                    <div className={`text-sm ${taxonomySecondaryTextClass}`}>
                       {snapshot.parentId ? (
                         <>
-                          {autoT('ui_8a4951c9ecf0')}
+                          {autoT('ui_8a4951c9ecf0')}{' '}
                           <strong>{snapshot.orgName}</strong>
                           {autoT('ui_eb47130d07a4')}
                         </>
@@ -1114,7 +1209,7 @@ function OrgTaxonomySettingsModal({
                       ) : null}
                       {!snapshot.ownAdminPolicy.allowChildAdminOverrides ? (
                         <div className={`${taxonomyBannerInfoClass} mt-3`}>
-                          {autoT('ui_c6546b04a3cb')}
+                          {autoT('ui_c6546b04a3cb')}{' '}
                           {snapshot.ownAdminPolicy.sourceOrgName || autoT('ui_4f4a56a66165')}.
                         </div>
                       ) : null}
@@ -1159,9 +1254,7 @@ function OrgTaxonomySettingsModal({
                   options: snapshot.childDefaultOptions,
                   intro: (
                     <div className="space-y-3">
-                      <div
-                        className={`${taxonomySurfaceClass} px-4 py-3 text-sm ${taxonomySecondaryTextClass}`}
-                      >
+                      <div className={`text-sm ${taxonomySecondaryTextClass}`}>
                         {autoT('ui_05fd6084bff8')}{' '}
                         <strong className="break-words">{snapshot.orgName}</strong>
                         {autoT('ui_0b390ca81ab3')}
@@ -1171,7 +1264,7 @@ function OrgTaxonomySettingsModal({
                           {snapshot.descendantCount}
                         </div>
                       </div>
-                      <div className={`space-y-2 p-3 ${taxonomyMutedSurfaceClass}`}>
+                      <div className="space-y-2 p-3">
                         <label
                           className={`taxonomy-rule-control ${childDefaultsDraft.allowChildAdminOverrides !== snapshot.childDefaults.allowChildAdminOverrides ? taxonomyOverrideSoftClass : ''} ${!snapshot.permissions.canEditChildDefaults ? 'cursor-not-allowed opacity-75' : ''}`}
                         >
@@ -1335,6 +1428,7 @@ export default function AdminOrgSetup() {
   const { showToast } = useToast();
   const qc = useQueryClient();
   const [orgs, setOrgs] = useState<OrgDto[]>([]);
+  const [taxonomyPermissions, setTaxonomyPermissions] = useState<Record<string, boolean> | null>(null);
   const [loading, setLoading] = useState(true);
   const isSuperadmin = user?.role === 'superadmin';
   const [settingsOrg, setSettingsOrg] = useState<OrgDto | null>(null);
@@ -1370,13 +1464,37 @@ export default function AdminOrgSetup() {
   async function reloadOrgs() {
     setLoading(true);
     try {
+      let nextOrgs: OrgDto[];
       if (user?.role === 'superadmin') {
-        setOrgs(await listOrgs());
+        nextOrgs = await listOrgs();
       } else if (user?.orgId) {
         const res = await api.get<OrgDto[]>('/orgs/subtree');
-        setOrgs(res.data);
+        nextOrgs = res.data;
       } else {
-        setOrgs([]);
+        nextOrgs = [];
+      }
+      setOrgs(nextOrgs);
+
+      if (user?.role === 'org_admin' && user.orgId) {
+        const configurableOrgs = nextOrgs.filter(
+          (org) => org.id === user.orgId || org.parentId === user.orgId,
+        );
+        const permissionEntries = await Promise.all(
+          configurableOrgs.map(async (org) => {
+            try {
+              const snapshot = await getOrgTaxonomySettings(org.id);
+              return [
+                org.id,
+                snapshot.permissions.canEditSelf || snapshot.permissions.canEditChildDefaults,
+              ] as const;
+            } catch {
+              return [org.id, false] as const;
+            }
+          }),
+        );
+        setTaxonomyPermissions(Object.fromEntries(permissionEntries));
+      } else {
+        setTaxonomyPermissions(null);
       }
     } finally {
       setLoading(false);
@@ -1655,6 +1773,7 @@ export default function AdminOrgSetup() {
                       node={n}
                       depth={0}
                       allOrgs={orgs}
+                      taxonomyPermissions={taxonomyPermissions}
                       selectedOrgId={highlightedOrgId}
                       onSelectOrg={(nextOrg) => setSelectedOrgId(nextOrg.id)}
                       onMoved={reloadOrgs}
@@ -1850,6 +1969,7 @@ function OrgTree({
   node,
   depth,
   allOrgs,
+  taxonomyPermissions,
   selectedOrgId,
   onSelectOrg,
   onMoved,
@@ -1858,6 +1978,7 @@ function OrgTree({
   node: OrgTreeNode;
   depth: number;
   allOrgs: OrgDto[];
+  taxonomyPermissions: Record<string, boolean> | null;
   selectedOrgId: string | null;
   onSelectOrg: (org: OrgDto) => void;
   onMoved: () => void;
@@ -1872,6 +1993,7 @@ function OrgTree({
         org={node.org}
         depth={depth}
         allOrgs={allOrgs}
+        taxonomyPermissions={taxonomyPermissions}
         onMoved={onMoved}
         onOpenSettings={onOpenSettings}
         hasChildren={hasChildren}
@@ -1888,6 +2010,7 @@ function OrgTree({
             node={c}
             depth={depth + 1}
             allOrgs={allOrgs}
+            taxonomyPermissions={taxonomyPermissions}
             selectedOrgId={selectedOrgId}
             onSelectOrg={onSelectOrg}
             onMoved={onMoved}
@@ -1902,6 +2025,7 @@ function OrgRow({
   org,
   depth,
   allOrgs,
+  taxonomyPermissions,
   onMoved,
   onOpenSettings,
   hasChildren,
@@ -1914,6 +2038,7 @@ function OrgRow({
   org: OrgDto;
   depth: number;
   allOrgs: OrgDto[];
+  taxonomyPermissions: Record<string, boolean> | null;
   onMoved: () => void;
   onOpenSettings: (org: OrgDto) => void;
   hasChildren: boolean;
@@ -1928,7 +2053,9 @@ function OrgRow({
   const canConfigureTaxonomy =
     !!user &&
     (user.role === 'superadmin' ||
-      (user.role === 'org_admin' && (org.id === user.orgId || org.parentId === user.orgId)));
+      (user.role === 'org_admin' &&
+        taxonomyPermissions?.[org.id] === true &&
+        (org.id === user.orgId || org.parentId === user.orgId)));
   const [orgUsers, setOrgUsers] = useState<{
     admins: { name: string }[];
     users: { name: string }[];

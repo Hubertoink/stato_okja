@@ -240,7 +240,6 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   width: calc((100% - 0.5rem) / var(--segmented-count));
   border-radius: 0.625rem;
   background: var(--viridian);
-  box-shadow: 0 5px 12px color-mix(in srgb, var(--viridian) 28%, transparent);
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 

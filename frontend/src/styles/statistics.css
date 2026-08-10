@@ -30,13 +30,6 @@
   );
   box-shadow: var(--card-shadow);
   text-align: left;
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-}
-
-.statistics-kpi-card:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--statistics-kpi-accent) 42%, var(--border-subtle));
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--statistics-kpi-accent) 14%, transparent);
 }
 
 .statistics-kpi-card--activities {
@@ -108,12 +101,6 @@
 .statistics-pdf-report .statistics-kpi-card {
   border: 1px solid #dbe3f5;
   background: #ffffff;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
-}
-
-.statistics-pdf-report .statistics-kpi-card:hover {
-  transform: none;
-  border-color: #dbe3f5;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
 }
 

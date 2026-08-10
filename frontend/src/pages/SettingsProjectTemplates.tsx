@@ -541,10 +541,6 @@ export default function SettingsProjectTemplates() {
                     );
                   })}
                 </div>
-                {(form.selectedTags || []).length > 0 && (
-                  <div className="text-xs text-gray-500 mt-1">{autoT('ui_bde366d01f86')}{(form.selectedTags || []).map((t) => t.name).join(', ')}
-                  </div>
-                )}
               </div>
 
               {/* Category Section */}

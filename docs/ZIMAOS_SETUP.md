@@ -23,13 +23,15 @@ veröffentlichte StatO-Version wie `1.6.0`, nie einen beweglichen Tag wie
    seinen Inhalt.
 2. Öffne in ZimaOS das **App Center** und wähle **Install a customized app**.
 3. Wähle **Import** und füge die Compose-Datei ein.
-4. Trage die sieben Werte aus
-   [stato.env.example](../deploy/zimaos/stato.env.example) ein:
-
-   Am bequemsten erzeugst du sie mit dem
+4. Am bequemsten erzeugst du mit dem
    [Konfigurationsgenerator](./env-generator/index.html) und dem Ausgabeformat
-   **ZimaOS-Quickstart**. Die beiden Secrets entstehen dabei ausschließlich
-   lokal im Browser.
+   **ZimaOS-Importdatei** eine vollständige `deploy.yaml`. Die beiden Secrets
+   entstehen dabei ausschließlich lokal im Browser. Importiere diese Datei
+   direkt in ZimaOS; zusätzliche Variablenfelder sind nicht nötig.
+
+   Alternativ kannst du [compose.yaml](../deploy/zimaos/compose.yaml) zusammen
+   mit den sieben Werten aus
+   [stato.env.example](../deploy/zimaos/stato.env.example) verwenden:
 
    | Variable | Beispiel | Zweck |
    | --- | --- | --- |

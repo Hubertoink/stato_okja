@@ -1,4 +1,4 @@
-import { DEFAULT_VALUES, ENV_GENERATOR_VERSION, createSecrets, renderEnvFile, renderZimaEnvFile, validateConfig } from './template.js';
+import { DEFAULT_VALUES, ENV_GENERATOR_VERSION, createSecrets, renderEnvFile, renderZimaDeployFile, validateConfig } from './template.js';
 
 const form = document.querySelector('#env-generator-form');
 const output = document.querySelector('#env-output');
@@ -74,7 +74,7 @@ function refreshOutput() {
   const config = getConfig();
   refreshVisibility(config);
   const usingZima = config.outputFormat === 'zimaos';
-  outputFilename.textContent = usingZima ? 'stato-zimaos.env' : 'stato.env';
+  outputFilename.textContent = usingZima ? 'deploy.yaml' : 'stato.env';
   const validationErrors = validateConfig(config);
   showErrors(validationErrors);
 
@@ -84,7 +84,7 @@ function refreshOutput() {
     return;
   }
 
-  output.textContent = usingZima ? renderZimaEnvFile(config) : renderEnvFile(config);
+  output.textContent = usingZima ? renderZimaDeployFile(config) : renderEnvFile(config);
   copyButton.disabled = false;
 }
 
@@ -92,7 +92,7 @@ function downloadOutput() {
   const blob = new Blob([output.textContent], { type: 'text/plain;charset=utf-8' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = getConfig().outputFormat === 'zimaos' ? 'stato-zimaos.env' : 'stato.env';
+  link.download = getConfig().outputFormat === 'zimaos' ? 'deploy.yaml' : 'stato.env';
   document.body.append(link);
   link.click();
   link.remove();

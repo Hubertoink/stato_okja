@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { DEFAULT_VALUES, createSecrets, getGeneratedEnvironmentKeys, renderEnvFile, renderZimaEnvFile, validateConfig } from './template.js';
+import { DEFAULT_VALUES, createSecrets, getGeneratedEnvironmentKeys, renderEnvFile, renderZimaDeployFile, validateConfig } from './template.js';
 
 const cryptoApi = {
   getRandomValues(bytes) {
@@ -48,7 +48,7 @@ test('includes SMTP settings only when email is enabled', () => {
   assert.doesNotMatch(renderEnvFile(validConfig()), /SMTP_HOST=/);
 });
 
-test('renders only the compact ZimaOS variables and derives HTTPS', () => {
+test('renders a self-contained ZimaOS deployment file and derives the HTTP port', () => {
   const config = {
     ...validConfig(),
     outputFormat: 'zimaos',
@@ -56,21 +56,23 @@ test('renders only the compact ZimaOS variables and derives HTTPS', () => {
     httpPort: '8088',
     imageTag: '',
   };
-  const output = renderZimaEnvFile(config);
-  const keys = output
-    .split('\n')
-    .filter((line) => /^[A-Z0-9_]+=/.test(line))
-    .map((line) => line.split('=', 1)[0]);
+  const output = renderZimaDeployFile(config);
 
-  assert.deepEqual(keys, [
-    'STATO_VERSION',
-    'WEBUI_PORT',
-    'STATO_URL',
-    'STATO_HTTPS',
-    'POSTGRES_PASSWORD',
-    'JWT_SECRET',
-    'SUPERADMIN_EMAIL',
-  ]);
-  assert.match(output, /STATO_VERSION=1\.6\.0/);
-  assert.match(output, /STATO_HTTPS=true/);
+  assert.match(output, /^name: stato-zimaos/m);
+  assert.match(output, /image: "ghcr\.io\/hubertoink\/stato-backend:1\.6\.0"/);
+  assert.match(output, /APP_ORIGIN: "https:\/\/stato\.example\.org"/);
+  assert.match(output, /AUTH_REFRESH_COOKIE_SECURE: "true"/);
+  assert.match(output, /POSTGRES_PASSWORD: "StatoDb_00010203/);
+  assert.doesNotMatch(output, /\$\{(?:STATO_VERSION|POSTGRES_PASSWORD|JWT_SECRET)/);
+});
+
+test('adds the selected port to a ZimaOS HTTP address without one', () => {
+  const output = renderZimaDeployFile({
+    ...validConfig(),
+    outputFormat: 'zimaos',
+    appOrigin: 'http://192.168.178.53',
+    httpPort: '8088',
+  });
+
+  assert.match(output, /APP_ORIGIN: "http:\/\/192\.168\.178\.53:8088"/);
 });

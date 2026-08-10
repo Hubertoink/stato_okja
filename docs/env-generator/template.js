@@ -1,4 +1,4 @@
-export const ENV_GENERATOR_VERSION = '1.1.0';
+export const ENV_GENERATOR_VERSION = '1.2.0';
 
 export const DEFAULT_VALUES = {
   outputFormat: 'onprem',
@@ -133,6 +133,20 @@ function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function zimaVersion(config) {
+  return String(config.imageTag || '').trim() || ZIMAOS_DEFAULT_VERSION;
+}
+
+function zimaOrigin(config) {
+  const origin = new URL(config.appOrigin);
+  if (origin.protocol === 'http:' && !origin.port) origin.port = config.httpPort;
+  return origin.toString().replace(/\/$/, '');
+}
+
+function yamlString(value) {
+  return JSON.stringify(String(value));
+}
+
 export function validateConfig(config) {
   const errors = [];
   Object.entries(config).forEach(([key, value]) => {
@@ -160,6 +174,10 @@ export function validateConfig(config) {
   if (!validPort(config.httpPort)) errors.push('Der HTTP-Port muss zwischen 1 und 65535 liegen.');
   if (!validPort(config.httpsPort)) errors.push('Der HTTPS-Port muss zwischen 1 und 65535 liegen.');
   if (config.jwtSecret.length < 64) errors.push('Das JWT-Secret muss mindestens 64 Zeichen lang sein.');
+
+  if (config.outputFormat === 'zimaos' && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(zimaVersion(config))) {
+    errors.push('Die Image-Version muss eine gültige Versionsnummer wie 1.6.0 sein.');
+  }
 
   if (config.installationMode === 'internal-tls') {
     if (!validHostname(config.publicHost)) errors.push('Für internes HTTPS ist ein gültiger DNS-Name ohne Protokoll oder Port erforderlich.');
@@ -214,23 +232,147 @@ export function renderEnvFile(config) {
   return `${lines.join('\n')}\n`;
 }
 
-export function renderZimaEnvFile(config) {
+export function renderZimaDeployFile(config) {
   const zimaConfig = { ...config, outputFormat: 'zimaos' };
   const errors = validateConfig(zimaConfig);
   if (errors.length) throw new Error(errors.join('\n'));
 
+  const version = zimaVersion(config);
+  const origin = zimaOrigin(config);
+  const cookieSecure = String(origin.startsWith('https://'));
+
   return [
-    '# StatO ZimaOS Quickstart',
-    '# Erstellt lokal im Browser – Secrets werden nicht übertragen.',
+    '# StatO for ZimaOS',
+    '# Diese Datei enthält Secrets. Sicher aufbewahren und direkt in ZimaOS importieren.',
     '',
-    `STATO_VERSION=${config.imageTag.trim() || ZIMAOS_DEFAULT_VERSION}`,
-    `WEBUI_PORT=${config.httpPort}`,
-    `STATO_URL=${config.appOrigin}`,
-    `STATO_HTTPS=${String(config.appOrigin.startsWith('https://'))}`,
+    'name: stato-zimaos',
     '',
-    `POSTGRES_PASSWORD=${config.databasePassword}`,
-    `JWT_SECRET=${config.jwtSecret}`,
-    `SUPERADMIN_EMAIL=${config.superadminEmail}`,
+    'x-hardened: &hardened',
+    '  restart: unless-stopped',
+    '  read_only: true',
+    '  security_opt: [no-new-privileges:true]',
+    '  cap_drop: [ALL]',
+    '',
+    'x-healthcheck: &healthcheck',
+    '  interval: 30s',
+    '  timeout: 5s',
+    '  retries: 5',
+    '',
+    'x-casaos:',
+    '  id: org.stato.zimaos',
+    '  main: frontend',
+    '  title:',
+    '    de_DE: StatO',
+    '    en_US: StatO',
+    '  author: StatO',
+    '  developer: StatO',
+    '  category: Others',
+    `  version: ${yamlString(version)}`,
+    '  architectures: [amd64, arm64]',
+    '  icon: https://raw.githubusercontent.com/Hubertoink/stato_okja/main/frontend/assets/Stato_Logo.png',
+    '  description:',
+    '    de_DE: Datenschutzfreundliche Statistik und Dokumentation für die Offene Kinder- und Jugendarbeit.',
+    '    en_US: Privacy-friendly statistics and documentation for open child and youth work.',
+    '  tagline:',
+    '    de_DE: Statistik und Dokumentation für die OKJA',
+    '    en_US: Statistics and documentation for open child and youth work',
+    '  scheme: http',
+    '  index: /',
+    `  port_map: ${yamlString(config.httpPort)}`,
+    '',
+    'services:',
+    '  postgres:',
+    '    image: postgres:16-alpine',
+    '    restart: unless-stopped',
+    '    security_opt: [no-new-privileges:true]',
+    '    environment:',
+    '      POSTGRES_DB: stato_prod',
+    '      POSTGRES_USER: stato_user',
+    `      POSTGRES_PASSWORD: ${yamlString(config.databasePassword)}`,
+    '      TZ: Europe/Berlin',
+    '    volumes:',
+    '      - postgres-data:/var/lib/postgresql/data',
+    '    networks: [backend-db]',
+    '    healthcheck:',
+    '      test: [CMD-SHELL, "pg_isready -U stato_user -d stato_prod"]',
+    '      interval: 10s',
+    '      timeout: 5s',
+    '      retries: 10',
+    '',
+    '  backend:',
+    '    <<: *hardened',
+    `    image: ${yamlString(`ghcr.io/hubertoink/stato-backend:${version}`)}`,
+    '    tmpfs: [/tmp]',
+    '    environment:',
+    '      NODE_ENV: production',
+    '      APP_ENV: production',
+    '      TZ: Europe/Berlin',
+    `      APP_ORIGIN: ${yamlString(origin)}`,
+    `      CORS_ORIGINS: ${yamlString(origin)}`,
+    `      AUTH_REFRESH_COOKIE_SECURE: ${yamlString(cookieSecure)}`,
+    '      DB_HOST: postgres',
+    '      DB_USERNAME: stato_user',
+    `      DB_PASSWORD: ${yamlString(config.databasePassword)}`,
+    '      DB_DATABASE: stato_prod',
+    `      JWT_SECRET: ${yamlString(config.jwtSecret)}`,
+    '      PASSWORD_RESET_MODE: admin_temp_password',
+    '      USER_PROVISIONING_MODE: local',
+    `      SUPERADMIN_EMAIL: ${yamlString(config.superadminEmail)}`,
+    '      INITIAL_SETUP_ENABLED: "true"',
+    '    depends_on:',
+    '      postgres:',
+    '        condition: service_healthy',
+    '    volumes:',
+    '      - backend-uploads:/app/uploads',
+    '    networks: [default, backend-db]',
+    '    healthcheck:',
+    '      <<: *healthcheck',
+    '      test: [CMD-SHELL, "node -e \\\"fetch(\'http://127.0.0.1:3000/api/health\').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\\\""]',
+    '      start_period: 20s',
+    '',
+    '  frontend:',
+    '    <<: *hardened',
+    `    image: ${yamlString(`ghcr.io/hubertoink/stato-frontend:onprem-${version}`)}`,
+    '    tmpfs: [/tmp, /var/cache/nginx, /var/run]',
+    '    depends_on:',
+    '      backend:',
+    '        condition: service_healthy',
+    '    ports:',
+    '      - target: 8080',
+    `        published: ${yamlString(config.httpPort)}`,
+    '        protocol: tcp',
+    '    healthcheck:',
+    '      <<: *healthcheck',
+    '      test: [CMD-SHELL, "wget -q --spider http://127.0.0.1:8080/healthz || exit 1"]',
+    '      start_period: 10s',
+    '',
+    '  backup:',
+    '    <<: *hardened',
+    `    image: ${yamlString(`ghcr.io/hubertoink/stato-backup:${version}`)}`,
+    '    tmpfs: [/tmp]',
+    '    environment:',
+    '      PGHOST: postgres',
+    '      PGUSER: stato_user',
+    `      PGPASSWORD: ${yamlString(config.databasePassword)}`,
+    '      PGDATABASE: stato_prod',
+    '      BACKUP_OUTPUT_DIR: /backups',
+    '      BACKUP_UPLOADS_DIR: /mnt/uploads',
+    '      BACKUP_RETENTION_DAYS: "14"',
+    '    depends_on:',
+    '      postgres:',
+    '        condition: service_healthy',
+    '    volumes:',
+    '      - backend-uploads:/mnt/uploads:ro',
+    '      - backup-data:/backups',
+    '    networks: [backend-db]',
+    '',
+    'volumes:',
+    '  postgres-data:',
+    '  backend-uploads:',
+    '  backup-data:',
+    '',
+    'networks:',
+    '  backend-db:',
     '',
   ].join('\n');
 }

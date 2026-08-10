@@ -2,9 +2,10 @@
 
 Der Generator liegt unter [`docs/env-generator/`](./env-generator/) und erzeugt eine vollständige `stato.env` für den StatO-On-Prem-Stack. Er ist eine statische Browser-Anwendung ohne Backend, Cookies, Tracking oder Netzwerkanfragen.
 
-Über **Ausgabeformat → ZimaOS-Quickstart** erzeugt er alternativ die kompakte
-ZimaOS-Konfiguration mit genau sieben Variablen. Nicht benötigte On-Prem- und
-SMTP-Felder werden in diesem Modus ausgeblendet.
+Über **Ausgabeformat → ZimaOS-Importdatei** erzeugt er alternativ eine
+vollständige `deploy.yaml` für ZimaOS. Port, URL und Secrets sind darin bereits
+eingetragen; die Datei kann direkt im ZimaOS App Center importiert werden.
+Nicht benötigte On-Prem- und SMTP-Felder werden in diesem Modus ausgeblendet.
 
 ## Sicherheitsmodell
 

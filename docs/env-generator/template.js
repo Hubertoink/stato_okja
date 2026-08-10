@@ -242,8 +242,8 @@ export function renderZimaDeployFile(config) {
   const cookieSecure = String(origin.startsWith('https://'));
 
   return [
-    '# StatO for ZimaOS',
-    '# Diese Datei enthält Secrets. Sicher aufbewahren und direkt in ZimaOS importieren.',
+    '# StatO Docker-Compose-Deployment',
+    '# Diese Datei enthält Secrets. Sicher aufbewahren und direkt in ZimaOS, Portainer oder Docker Compose verwenden.',
     '',
     'name: stato-zimaos',
     '',
@@ -332,7 +332,7 @@ export function renderZimaDeployFile(config) {
     '    <<: *hardened',
     `    image: ${yamlString(`ghcr.io/hubertoink/stato-frontend:onprem-${version}`)}`,
     '    tmpfs: [/tmp, /var/cache/nginx, /var/run]',
-    '    # Do not wait for backend health: ZimaOS starts services asynchronously.',
+    '    # Do not wait for backend health: Compose front ends start services asynchronously.',
     '    depends_on: [backend]',
     '    ports:',
     '      - target: 8080',

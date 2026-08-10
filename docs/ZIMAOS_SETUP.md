@@ -25,7 +25,7 @@ veröffentlichte StatO-Version wie `1.6.0`, nie einen beweglichen Tag wie
 3. Wähle **Import** und füge die Compose-Datei ein.
 4. Am bequemsten erzeugst du mit dem
    [Konfigurationsgenerator](./env-generator/index.html) und dem Ausgabeformat
-   **ZimaOS-Importdatei** eine vollständige `deploy.yaml`. Die beiden Secrets
+   **Docker-Compose-Importdatei** eine vollständige `deploy.yaml`. Die beiden Secrets
    entstehen dabei ausschließlich lokal im Browser. Importiere diese Datei
    direkt in ZimaOS; zusätzliche Variablenfelder sind nicht nötig.
 
@@ -63,6 +63,20 @@ zeigt, lade eine aktuelle Generator-Datei herunter und stelle die App damit
 erneut bereit. Die ZimaOS-Vorlage wartet beim Frontend bewusst nicht auf den
 Health-Status des Backends; dadurch wird der Web-Port auch während des
 Backend-Starts geöffnet.
+
+## Dieselbe Datei mit Docker Compose oder Portainer verwenden
+
+Die vom Generator erzeugte `deploy.yaml` ist eine normale Compose-Datei. Die
+zusätzlichen `x-casaos`-Metadaten werden von Docker Compose und Portainer
+ignoriert. Neben ZimaOS kann sie daher unverändert als Portainer-Stack
+importiert oder auf einem Docker-Host gestartet werden:
+
+```bash
+docker compose -f deploy.yaml up -d
+```
+
+Die drei persistenten Volumes werden dabei automatisch angelegt. Anschließend
+ist StatO unter `http://<SERVER-IP>:8088` erreichbar.
 
 ## HTTPS und Domain
 

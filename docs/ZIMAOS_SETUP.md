@@ -54,9 +54,15 @@ veröffentlichte StatO-Version wie `1.6.0`, nie einen beweglichen Tag wie
 7. Beim ersten Aufruf legst du das Passwort für `SUPERADMIN_EMAIL` fest. Es
    wird nur als Hash in PostgreSQL gespeichert.
 
-Das Frontend ist der einzige veröffentlichte Dienst. Backend und Datenbank
-bleiben innerhalb des Docker-Netzwerks; `/api` und `/uploads` werden intern
-über das Frontend weitergeleitet.
+Das Frontend ist der einzige veröffentlichte Dienst. Alle Container verwenden
+das von ZimaOS für die App angelegte, nicht veröffentlichte Docker-Netzwerk;
+`/api` und `/uploads` werden intern über das Frontend weitergeleitet.
+
+Falls ZimaOS nach einem Import beim Frontend nur **created** statt **running**
+zeigt, lade eine aktuelle Generator-Datei herunter und stelle die App damit
+erneut bereit. Die ZimaOS-Vorlage wartet beim Frontend bewusst nicht auf den
+Health-Status des Backends; dadurch wird der Web-Port auch während des
+Backend-Starts geöffnet.
 
 ## HTTPS und Domain
 

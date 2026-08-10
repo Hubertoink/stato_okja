@@ -49,7 +49,6 @@ services:
       TZ: Europe/Berlin
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    networks: [backend-db]
     healthcheck:
       test: [CMD-SHELL, "pg_isready -U stato_user -d stato_prod"]
       interval: 10s
@@ -81,7 +80,6 @@ services:
         condition: service_healthy
     volumes:
       - backend-uploads:/app/uploads
-    networks: [default, backend-db]
     healthcheck:
       <<: *healthcheck
       test: [CMD-SHELL, "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -91,9 +89,10 @@ services:
     <<: *hardened
     image: ghcr.io/hubertoink/stato-frontend:onprem-${STATO_VERSION:-1.6.0}
     tmpfs: [/tmp, /var/cache/nginx, /var/run]
-    depends_on:
-      backend:
-        condition: service_healthy
+    # ZimaOS starts services asynchronously.  Do not wait for a health state
+    # here: Nginx can serve the UI immediately and will proxy /api once the
+    # backend is ready.
+    depends_on: [backend]
     ports:
       - target: 8080
         published: ${WEBUI_PORT:-8088}
@@ -121,12 +120,8 @@ services:
     volumes:
       - backend-uploads:/mnt/uploads:ro
       - backup-data:/backups
-    networks: [backend-db]
 
 volumes:
   postgres-data:
   backend-uploads:
   backup-data:
-
-networks:
-  backend-db:

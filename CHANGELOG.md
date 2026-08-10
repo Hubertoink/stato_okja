@@ -7,6 +7,19 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.6.0] - 2026-08-10
+
+### Added
+- Die ZimaOS-Compose-Vorlage bietet einen kompakten Quickstart mit sicheren
+  Standardwerten, getrennten Diensten und persistenten Backups.
+- Der Konfigurationsgenerator erzeugt nun direkt eine kurze ZimaOS-`.env` mit
+  lokal generierten Secrets.
+
+### Changed
+- ZimaOS benötigt für die Standardinstallation nur noch sieben Variablen;
+  `APP_ORIGIN` und `CORS_ORIGINS` werden über `STATO_URL` gesetzt.
+- Die ZimaOS-Metadaten entsprechen dem aktuellen CasaOS-App-Format.
+
 ## [1.5.8] - 2026-08-10
 
 ### Changed

@@ -14,7 +14,7 @@ benötigt.
 - für Internetzugriff: ein Reverse Proxy mit HTTPS und eine Domain
 
 Die Release-Images unterstützen `amd64` und `arm64`. Verwende nur eine
-veröffentlichte StatO-Version wie `1.4.3`, nie einen beweglichen Tag wie
+veröffentlichte StatO-Version wie `1.6.0`, nie einen beweglichen Tag wie
 `latest`.
 
 ## Installation über die ZimaOS-Oberfläche
@@ -23,24 +23,27 @@ veröffentlichte StatO-Version wie `1.4.3`, nie einen beweglichen Tag wie
    seinen Inhalt.
 2. Öffne in ZimaOS das **App Center** und wähle **Install a customized app**.
 3. Wähle **Import** und füge die Compose-Datei ein.
-4. Trage die Variablen aus
-   [stato.env.example](../deploy/zimaos/stato.env.example) ein. Die wichtigen
-   Werte sind:
+4. Trage die sieben Werte aus
+   [stato.env.example](../deploy/zimaos/stato.env.example) ein:
+
+   Am bequemsten erzeugst du sie mit dem
+   [Konfigurationsgenerator](./env-generator/index.html) und dem Ausgabeformat
+   **ZimaOS-Quickstart**. Die beiden Secrets entstehen dabei ausschließlich
+   lokal im Browser.
 
    | Variable | Beispiel | Zweck |
    | --- | --- | --- |
-   | `STATO_VERSION` | `1.4.3` | unveränderliche StatO-Release-Version |
+   | `STATO_VERSION` | `1.6.0` | unveränderliche StatO-Release-Version |
    | `WEBUI_PORT` | `8088` | Port, über den die StatO-Oberfläche erreichbar ist |
-   | `APP_ORIGIN` | `http://192.168.1.50:8088` | exakte Adresse, die im Browser verwendet wird |
-   | `CORS_ORIGINS` | identisch zu `APP_ORIGIN` | erlaubte Browser-Origin |
+   | `STATO_URL` | `http://192.168.1.50:8088` | exakte Adresse, die im Browser verwendet wird |
+   | `STATO_HTTPS` | `false` | nur bei einer HTTPS-Adresse auf `true` setzen |
    | `POSTGRES_PASSWORD` | langes, einzigartiges Passwort | Datenbankzugang |
    | `JWT_SECRET` | mindestens 48 zufällige Zeichen | Signatur der Login-Sitzungen |
    | `SUPERADMIN_EMAIL` | `admin@organisation.de` | E-Mail für die einmalige Ersteinrichtung |
 
-   `APP_ORIGIN` und `CORS_ORIGINS` müssen den gleichen Host, Port und das
-   gleiche Protokoll enthalten wie die Adresse im Browser. Bei der
-   Beispieladresse `http://192.168.1.50:8088` dürfen sie also nicht auf
-   `localhost` stehen.
+   `STATO_URL` muss den gleichen Host, Port und das gleiche Protokoll enthalten
+   wie die Adresse im Browser. Die Compose-Vorlage verwendet diesen einen Wert
+   intern sowohl für `APP_ORIGIN` als auch für `CORS_ORIGINS`.
 
 5. Prüfe den Port und starte die Installation. ZimaOS legt die persistenten
    Docker-Volumes für PostgreSQL, Uploads und Backups an.
@@ -56,13 +59,12 @@ bleiben innerhalb des Docker-Netzwerks; `/api` und `/uploads` werden intern
 ## HTTPS und Domain
 
 Für eine produktive oder von außen erreichbare Instanz gehört StatO hinter
-einen Reverse Proxy mit HTTPS. Danach ändere die drei Werte und starte die App
-neu:
+einen Reverse Proxy mit HTTPS. Danach ändere diese zwei Werte und starte die
+App neu:
 
 ```env
-APP_ORIGIN=https://stato.example.org
-CORS_ORIGINS=https://stato.example.org
-AUTH_REFRESH_COOKIE_SECURE=true
+STATO_URL=https://stato.example.org
+STATO_HTTPS=true
 ```
 
 Die HTTPS-Adresse muss exakt sein; keine zusätzlichen Pfade und kein
@@ -72,7 +74,8 @@ veröffentliche auch PostgreSQL niemals nach außen.
 
 ## E-Mail und Benutzerverwaltung
 
-Die Vorlage funktioniert im lokalen Netzwerk ohne Mailserver:
+Die kompakte Vorlage funktioniert im lokalen Netzwerk ohne Mailserver. Sie
+setzt intern diese beiden sicheren Offline-Modi:
 
 ```env
 PASSWORD_RESET_MODE=admin_temp_password
@@ -80,8 +83,10 @@ USER_PROVISIONING_MODE=local
 ```
 
 Für Einladungen per E-Mail, Passwort-Reset per E-Mail oder E-Mail-2FA müssen
-die SMTP-Variablen gesetzt werden. Dann ist typischerweise
-`USER_PROVISIONING_MODE=email` sinnvoll.
+in der ZimaOS-App-Konfiguration beim Backend die benötigten `SMTP_*`-Variablen
+ergänzt und `USER_PROVISIONING_MODE=email` sowie `PASSWORD_RESET_MODE=email`
+gesetzt werden. Diese selten benötigten Optionen stehen absichtlich nicht im
+Quickstart-Formular.
 
 ## Backups
 

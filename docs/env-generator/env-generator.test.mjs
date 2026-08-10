@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { DEFAULT_VALUES, createSecrets, getGeneratedEnvironmentKeys, renderEnvFile, validateConfig } from './template.js';
+import { DEFAULT_VALUES, createSecrets, getGeneratedEnvironmentKeys, renderEnvFile, renderZimaEnvFile, validateConfig } from './template.js';
 
 const cryptoApi = {
   getRandomValues(bytes) {
@@ -46,4 +46,31 @@ test('includes SMTP settings only when email is enabled', () => {
   const config = { ...validConfig(), enableEmail: true, smtpHost: 'mail.example.org', smtpUser: 'mailer@example.org', smtpPass: 'secret', smtpFrom: 'no-reply@example.org' };
   assert.match(renderEnvFile(config), /SMTP_HOST=mail.example.org/);
   assert.doesNotMatch(renderEnvFile(validConfig()), /SMTP_HOST=/);
+});
+
+test('renders only the compact ZimaOS variables and derives HTTPS', () => {
+  const config = {
+    ...validConfig(),
+    outputFormat: 'zimaos',
+    appOrigin: 'https://stato.example.org',
+    httpPort: '8088',
+    imageTag: '',
+  };
+  const output = renderZimaEnvFile(config);
+  const keys = output
+    .split('\n')
+    .filter((line) => /^[A-Z0-9_]+=/.test(line))
+    .map((line) => line.split('=', 1)[0]);
+
+  assert.deepEqual(keys, [
+    'STATO_VERSION',
+    'WEBUI_PORT',
+    'STATO_URL',
+    'STATO_HTTPS',
+    'POSTGRES_PASSWORD',
+    'JWT_SECRET',
+    'SUPERADMIN_EMAIL',
+  ]);
+  assert.match(output, /STATO_VERSION=1\.6\.0/);
+  assert.match(output, /STATO_HTTPS=true/);
 });

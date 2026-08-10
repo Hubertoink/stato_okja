@@ -20,7 +20,13 @@
           <fieldset>
             <legend>Installation</legend>
             <div class="field-grid">
-              <label class="wide">Betriebsart
+              <label class="wide">Ausgabeformat
+                <select name="outputFormat">
+                  <option value="onprem">Allgemeine On-Prem-Konfiguration</option>
+                  <option value="zimaos">ZimaOS-Quickstart (kompakt)</option>
+                </select>
+              </label>
+              <label id="installation-mode-field" class="wide">Betriebsart
                 <select name="installationMode">
                   <option value="local">Lokales Netzwerk / HTTP</option>
                   <option value="internal-tls">Internes HTTPS mit Caddy</option>
@@ -39,16 +45,16 @@
           <fieldset>
             <legend>Organisation und Betrieb</legend>
             <div class="field-grid">
-              <label>Organisationsname <input name="organizationName" value="Meine Organisation" required /></label>
-              <label>Anwendungsname <input name="appName" value="StatO" required /></label>
+              <label data-onprem-only>Organisationsname <input name="organizationName" value="Meine Organisation" required /></label>
+              <label data-onprem-only>Anwendungsname <input name="appName" value="StatO" required /></label>
               <label>Superadmin-E-Mail <input name="superadminEmail" type="email" value="admin@stato.local" required /></label>
               <label>Image-Version (optional) <input name="imageTag" placeholder="z. B. 1.0.16" /></label>
-              <label>Zeitzone <input name="timezone" value="Europe/Berlin" required /></label>
-              <label>Backup-Aufbewahrung (Tage) <input name="backupRetentionDays" inputmode="numeric" value="14" required /></label>
+              <label data-onprem-only>Zeitzone <input name="timezone" value="Europe/Berlin" required /></label>
+              <label data-onprem-only>Backup-Aufbewahrung (Tage) <input name="backupRetentionDays" inputmode="numeric" value="14" required /></label>
             </div>
           </fieldset>
 
-          <fieldset>
+          <fieldset data-onprem-only>
             <legend>Anmeldung und E-Mail</legend>
             <label class="toggle"><input name="enableEmail" type="checkbox" /> E-Mail-Versand (Einladungen und Passwort-Reset) konfigurieren</label>
             <label class="toggle"><input name="enableTwoFactor" type="checkbox" disabled /> Zwei-Faktor-Authentifizierung aktivieren</label>
@@ -81,7 +87,7 @@
         </form>
 
         <section class="panel output-panel" aria-label="Generierte Konfiguration">
-          <h2>Deine <code>stato.env</code></h2>
+          <h2>Deine <code id="output-filename">stato.env</code></h2>
           <div id="validation-errors" class="errors" role="alert" hidden></div>
           <pre id="env-output" aria-live="polite"></pre>
           <div class="actions">

@@ -1,6 +1,7 @@
-export const ENV_GENERATOR_VERSION = '1.0.0';
+export const ENV_GENERATOR_VERSION = '1.1.0';
 
 export const DEFAULT_VALUES = {
+  outputFormat: 'onprem',
   installationMode: 'local',
   appOrigin: 'http://localhost',
   httpPort: '80',
@@ -23,6 +24,8 @@ export const DEFAULT_VALUES = {
   databasePassword: '',
   jwtSecret: '',
 };
+
+export const ZIMAOS_DEFAULT_VERSION = '1.6.0';
 
 const BASE_VARIABLES = [
   ['POSTGRES_DB', 'stato_prod'],
@@ -138,13 +141,15 @@ export function validateConfig(config) {
     }
   });
   const requiredTextFields = [
-    ['Organisation', config.organizationName],
-    ['Anwendungsname', config.appName],
     ['Superadmin-E-Mail', config.superadminEmail],
-    ['Zeitzone', config.timezone],
     ['Datenbankpasswort', config.databasePassword],
     ['JWT-Secret', config.jwtSecret],
   ];
+
+  if (config.outputFormat !== 'zimaos') {
+    requiredTextFields.unshift(['Organisation', config.organizationName], ['Anwendungsname', config.appName]);
+    requiredTextFields.push(['Zeitzone', config.timezone]);
+  }
 
   requiredTextFields.forEach(([label, value]) => {
     if (!value.trim()) errors.push(`${label} darf nicht leer sein.`);
@@ -207,6 +212,27 @@ export function renderEnvFile(config) {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+export function renderZimaEnvFile(config) {
+  const zimaConfig = { ...config, outputFormat: 'zimaos' };
+  const errors = validateConfig(zimaConfig);
+  if (errors.length) throw new Error(errors.join('\n'));
+
+  return [
+    '# StatO ZimaOS Quickstart',
+    '# Erstellt lokal im Browser – Secrets werden nicht übertragen.',
+    '',
+    `STATO_VERSION=${config.imageTag.trim() || ZIMAOS_DEFAULT_VERSION}`,
+    `WEBUI_PORT=${config.httpPort}`,
+    `STATO_URL=${config.appOrigin}`,
+    `STATO_HTTPS=${String(config.appOrigin.startsWith('https://'))}`,
+    '',
+    `POSTGRES_PASSWORD=${config.databasePassword}`,
+    `JWT_SECRET=${config.jwtSecret}`,
+    `SUPERADMIN_EMAIL=${config.superadminEmail}`,
+    '',
+  ].join('\n');
 }
 
 export function getGeneratedEnvironmentKeys(config) {

@@ -63,6 +63,10 @@ test('renders a self-contained ZimaOS deployment file and derives the HTTP port'
   assert.match(output, /APP_ORIGIN: "https:\/\/stato\.example\.org"/);
   assert.match(output, /AUTH_REFRESH_COOKIE_SECURE: "true"/);
   assert.match(output, /POSTGRES_PASSWORD: "StatoDb_00010203/);
+  assert.match(output, /frontend:[\s\S]*?depends_on: \[backend\]/);
+  assert.doesNotMatch(output, /frontend:[\s\S]*?condition: service_healthy[\s\S]*?ports:/);
+  assert.doesNotMatch(output, /backend-db/);
+  assert.doesNotMatch(output, /^networks:/m);
   assert.doesNotMatch(output, /\$\{(?:STATO_VERSION|POSTGRES_PASSWORD|JWT_SECRET)/);
 });
 

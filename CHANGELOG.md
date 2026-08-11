@@ -7,6 +7,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.6.1] - 2026-08-11
+
+### Changed
+- Die Tabellenansicht des Logbuchs zeigt vorhandene Profilbilder neben den
+  Erstellenden an.
+- Abhängigkeiten wurden aktualisiert, darunter DOMPurify, Nodemailer,
+  typescript-eslint und Testing Library user-event.
+
 ## [1.6.0] - 2026-08-10
 
 ### Added

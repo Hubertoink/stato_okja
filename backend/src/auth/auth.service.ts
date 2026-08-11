@@ -16,7 +16,7 @@ import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { isStrictSecurityMode } from '../config/security.config';
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from './password-policy';
-import { getTermsOfUseVersion } from '../legal/legal-content';
+import { LegalContentService } from '../legal/legal-content.service';
 import { getTwoFactorCodeTtlSeconds, isTwoFactorAuthenticationEnabled } from './two-factor.config';
 
 export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
@@ -115,6 +115,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly email: EmailService,
     private readonly audit: AuditService,
+    private readonly legalContent: LegalContentService,
   ) {}
 
   private getPasswordResetMode(): PasswordResetMode {
@@ -235,7 +236,7 @@ export class AuthService {
       themeMode,
       locale: resolveLocale(user.locale ?? org?.defaultLocale),
       mustChangePassword: user.mustChangePassword === true,
-      termsAcceptanceRequired: user.termsAcceptedVersion !== (await getTermsOfUseVersion()),
+      termsAcceptanceRequired: user.termsAcceptedVersion !== (await this.legalContent.getTermsOfUseVersion()),
     };
   }
 
@@ -852,7 +853,7 @@ export class AuthService {
       throw new Error('Invite token wurde ersetzt oder ist nicht mehr gültig');
     }
     await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
-    user.termsAcceptedVersion = await getTermsOfUseVersion();
+    user.termsAcceptedVersion = await this.legalContent.getTermsOfUseVersion();
     user.termsAcceptedAt = new Date();
     await this.users.save(user);
     return this.login(user, metadata);
@@ -861,7 +862,7 @@ export class AuthService {
   async acceptTerms(userId: string) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
-    user.termsAcceptedVersion = await getTermsOfUseVersion();
+    user.termsAcceptedVersion = await this.legalContent.getTermsOfUseVersion();
     user.termsAcceptedAt = new Date();
     await this.users.save(user);
     return this.getProfile(user.id);

@@ -183,7 +183,9 @@ export default function ActivityQuickAdd({
     return () => {
       window.cancelAnimationFrame(frame);
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+      // Keep the activity list at its previous position when focus returns to
+      // the edit trigger after closing the editor.
+      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus({ preventScroll: true });
     };
   }, []);
 
@@ -248,16 +250,17 @@ export default function ActivityQuickAdd({
   // If switching to an open-door project, clear categories
   useEffect(() => {
     const proj = selectedProject || initialProject;
-    if (proj && proj.type === 'open_door') {
+    if (!activity && proj && proj.type === 'open_door') {
       setForm((f: ActivityFormState) => ({ ...f, categoryIds: [] }));
     }
-  }, [selectedProject?.type, initialProject?.type]);
+  }, [activity, selectedProject?.type, initialProject?.type]);
   useEffect(() => {
     // If there is exactly one location, auto-select it to reduce friction
+    if (activity) return;
     if ((locations || []).length === 1 && !form.locationId) {
       setForm((f: ActivityFormState) => ({ ...f, locationId: locations![0]?.id }));
     }
-  }, [locations]);
+  }, [activity, locations, form.locationId]);
   useEffect(() => {
     // Prefill for edit mode
     if (activity) {

@@ -22,7 +22,7 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import type React from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight, Building2, ChevronLeft, ChevronRight, Pencil, Plus } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock3, Pencil, Plus, UsersRound } from 'lucide-react';
 import ProtectedImage from '@/components/ProtectedImage';
 import CalendarClosureModal from '@/components/CalendarClosureModal';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
@@ -34,6 +34,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { useCohorts } from '@/lib/taxonomy';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -298,14 +299,14 @@ function MoreActivitiesTooltip({ activities, position, typeLabel, fmtTimeRange }
 }
 // duplicate import removed
 
-type View = 'month' | 'week' | 'three-day';
+type View = 'month' | 'week' | 'three-day' | 'analysis';
 
 const CALENDAR_VIEW_STORAGE_KEY = 'calendar:view';
 
 function readStoredCalendarView(): View {
   try {
     const stored = localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY);
-    return stored === 'week' || stored === 'three-day' ? stored : 'month';
+    return stored === 'week' || stored === 'three-day' || stored === 'analysis' ? stored : 'month';
   } catch {
     return 'month';
   }
@@ -360,6 +361,92 @@ function formatLongDate(iso: string) {
   });
 }
 
+type TimedActivityLayout = {
+  activity: Activity;
+  start: number;
+  end: number;
+  column: number;
+  columns: number;
+};
+
+function timeToMinutes(value?: string | null) {
+  if (!value) return null;
+  const match = /^(\d{1,2}):(\d{2})/.exec(String(value).trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function formatHoursAndMinutesParts(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return [`${remainder} Min.`];
+  return remainder ? [`${hours} Std.`, `${remainder} Min.`] : [`${hours} Std.`];
+}
+
+function layoutTimedActivities(activities: Activity[]): TimedActivityLayout[] {
+  const entries = activities
+    .map((activity) => ({ activity, start: timeToMinutes(activity.startTime), end: timeToMinutes(activity.endTime) }))
+    .filter((entry): entry is { activity: Activity; start: number; end: number } => entry.start !== null && entry.end !== null && entry.end > entry.start)
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  const laidOut: TimedActivityLayout[] = [];
+  let active: TimedActivityLayout[] = [];
+  let group: TimedActivityLayout[] = [];
+  let groupEnd = -1;
+
+  const finishGroup = () => {
+    const columns = Math.max(1, ...group.map((entry) => entry.column + 1));
+    group.forEach((entry) => { entry.columns = columns; });
+    active = [];
+    group = [];
+    groupEnd = -1;
+  };
+
+  entries.forEach(({ activity, start, end }) => {
+    if (start >= groupEnd && group.length) finishGroup();
+    active = active.filter((entry) => entry.end > start);
+    const occupied = new Set(active.map((entry) => entry.column));
+    let column = 0;
+    while (occupied.has(column)) column += 1;
+    const entry: TimedActivityLayout = { activity, start, end, column, columns: 1 };
+    laidOut.push(entry);
+    active.push(entry);
+    group.push(entry);
+    groupEnd = Math.max(groupEnd, end);
+  });
+  if (group.length) finishGroup();
+
+  return laidOut;
+}
+
+function getTimedActivityMetrics(entries: TimedActivityLayout[]) {
+  const activeEntries = entries.filter((entry) => !isCancelledActivity(entry.activity.executionStatus));
+  const offeredMinutes = activeEntries.reduce((sum, entry) => sum + entry.end - entry.start, 0);
+  const merged: Array<{ start: number; end: number }> = [];
+  activeEntries
+    .slice()
+    .sort((a, b) => a.start - b.start)
+    .forEach((entry) => {
+      const last = merged[merged.length - 1];
+      if (last && entry.start <= last.end) last.end = Math.max(last.end, entry.end);
+      else merged.push({ start: entry.start, end: entry.end });
+    });
+  const coveredMinutes = merged.reduce((sum, entry) => sum + entry.end - entry.start, 0);
+  const changes = activeEntries
+    .flatMap((entry) => [{ minute: entry.start, delta: 1 }, { minute: entry.end, delta: -1 }])
+    .sort((a, b) => a.minute - b.minute || a.delta - b.delta);
+  let current = 0;
+  let maxParallel = 0;
+  changes.forEach((change) => {
+    current += change.delta;
+    maxParallel = Math.max(maxParallel, current);
+  });
+  return { offeredMinutes, coveredMinutes, maxParallel };
+}
+
 export default function Calendar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -368,6 +455,7 @@ export default function Calendar() {
   const { user } = useAuth();
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
+  const { data: cohorts = [] } = useCohorts();
   const [view, setView] = useState<View>(() => readStoredCalendarView());
   const [cursor, setCursor] = useState<Date>(new Date());
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
@@ -375,6 +463,7 @@ export default function Calendar() {
   const [edit, setEdit] = useState<Activity | null>(null);
   const [selectedDateISO, setSelectedDateISO] = useState<string | null>(null);
   const [closureDate, setClosureDate] = useState<string | null>(null);
+  const [expandedAnalysisActivityId, setExpandedAnalysisActivityId] = useState<string | null>(null);
   const calendarView: View = isMobile
     ? view === 'week'
       ? 'three-day'
@@ -382,8 +471,9 @@ export default function Calendar() {
     : view === 'three-day'
       ? 'week'
       : view;
+  const isMobileAnalysis = isMobile && calendarView === 'analysis';
   const isCalendarInteractionOpen = Boolean(modal || picker || edit || closureDate);
-  const showCalendarDayActions = (!isMobile || calendarView === 'three-day') && !isCalendarInteractionOpen;
+  const showCalendarDayActions = calendarView !== 'analysis' && (!isMobile || calendarView === 'three-day') && !isCalendarInteractionOpen;
   
   // Tooltip state for activity hover
   const [tooltipActivity, setTooltipActivity] = useState<Activity | null>(null);
@@ -427,19 +517,19 @@ export default function Calendar() {
   };
 
   const label = useMemo(() => {
-    if (calendarView === 'three-day') {
+    if (calendarView === 'three-day' || isMobileAnalysis) {
       const start = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
       const end = addDays(start, 2);
       return `${start.toLocaleDateString(getCurrentIntlLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })} – ${end.toLocaleDateString(getCurrentIntlLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
     }
 
     const base = cursor.toLocaleDateString(getCurrentIntlLocale(), { month: 'long', year: 'numeric' });
-    if (calendarView === 'week') {
+    if (calendarView === 'week' || calendarView === 'analysis') {
       const kw = getISOWeek(cursor);
       return `${base} (KW ${kw})`;
     }
     return base;
-  }, [calendarView, cursor]);
+  }, [calendarView, cursor, isMobileAnalysis]);
   const fmtLocalISO = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const fmtTime = (t?: string | null) => (t ? String(t).slice(0, 5) : '');
@@ -490,14 +580,14 @@ export default function Calendar() {
   const goToPrevious = () => {
     setCursor((c) => {
       if (calendarView === 'month') return addMonths(c, -1);
-      if (calendarView === 'three-day') return addDays(new Date(c.getFullYear(), c.getMonth(), c.getDate()), -3);
+      if (calendarView === 'three-day' || isMobileAnalysis) return addDays(new Date(c.getFullYear(), c.getMonth(), c.getDate()), -3);
       return addDays(startOfWeek(c), -7);
     });
   };
   const goToNext = () => {
     setCursor((c) => {
       if (calendarView === 'month') return addMonths(c, 1);
-      if (calendarView === 'three-day') return addDays(new Date(c.getFullYear(), c.getMonth(), c.getDate()), 3);
+      if (calendarView === 'three-day' || isMobileAnalysis) return addDays(new Date(c.getFullYear(), c.getMonth(), c.getDate()), 3);
       return addDays(startOfWeek(c), 7);
     });
   };
@@ -519,12 +609,12 @@ export default function Calendar() {
   const gotoToday = () => setCursor(new Date());
   const visibleDays = useMemo(() => {
     if (calendarView === 'month') return [] as Date[];
-    const start = calendarView === 'three-day'
+    const start = calendarView === 'three-day' || isMobileAnalysis
       ? new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())
       : startOfWeek(cursor);
-    const length = calendarView === 'three-day' ? 3 : 7;
+    const length = calendarView === 'three-day' || isMobileAnalysis ? 3 : 7;
     return Array.from({ length }, (_, i) => addDays(start, i));
-  }, [calendarView, cursor]);
+  }, [calendarView, cursor, isMobileAnalysis]);
   const isTodayInCurrentView = calendarView === 'month'
     ? cursor.getFullYear() === todayDate.getFullYear() && cursor.getMonth() === todayDate.getMonth()
     : visibleDays.some((d) => fmtLocalISO(d) === todayISO);
@@ -538,12 +628,12 @@ export default function Calendar() {
       const gridEnd = addDays(gridStart, 41);
       return { from: fmtLocalISO(gridStart), to: fmtLocalISO(gridEnd) };
     }
-    const start = calendarView === 'three-day'
+    const start = calendarView === 'three-day' || isMobileAnalysis
       ? new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())
       : startOfWeek(cursor);
-    const end = addDays(start, calendarView === 'three-day' ? 2 : 6);
+    const end = addDays(start, calendarView === 'three-day' || isMobileAnalysis ? 2 : 6);
     return { from: fmtLocalISO(start), to: fmtLocalISO(end) };
-  }, [calendarView, cursor]);
+  }, [calendarView, cursor, isMobileAnalysis]);
   const closureDaysQ = useQuery({
     queryKey: ['org-closure-days', effectiveOrgId, range.from, range.to],
     queryFn: () => getClosureDays(effectiveOrgId!, { from: range.from, to: range.to }),
@@ -601,6 +691,40 @@ export default function Calendar() {
     });
     return map;
   }, [activities]);
+
+  const analysisByDate = useMemo(() => {
+    const result = new Map<string, {
+      timed: TimedActivityLayout[];
+      withoutTime: Activity[];
+      metrics: ReturnType<typeof getTimedActivityMetrics>;
+    }>();
+    visibleDays.forEach((day) => {
+      const iso = fmtLocalISO(day);
+      const dayActivities = activitiesByDate.get(iso) || [];
+      const timed = layoutTimedActivities(dayActivities);
+      result.set(iso, {
+        timed,
+        withoutTime: dayActivities.filter((activity) => timeToMinutes(activity.startTime) === null || timeToMinutes(activity.endTime) === null),
+        metrics: getTimedActivityMetrics(timed),
+      });
+    });
+    return result;
+  }, [activitiesByDate, visibleDays]);
+
+  const analysisHours = useMemo(() => {
+    const timed = Array.from(analysisByDate.values()).flatMap((day) => day.timed);
+    if (!timed.length) return { start: 8 * 60, end: 22 * 60 };
+    const earliest = Math.min(...timed.map((entry) => entry.start));
+    const latest = Math.max(...timed.map((entry) => entry.end));
+    return {
+      start: Math.max(0, Math.min(8 * 60, Math.floor(earliest / 60) * 60)),
+      end: Math.min(24 * 60, Math.max(22 * 60, Math.ceil(latest / 60) * 60)),
+    };
+  }, [analysisByDate]);
+  const cohortNameById = useMemo(
+    () => new Map(cohorts.map((cohort) => [cohort.id, cohort.name])),
+    [cohorts],
+  );
 
   useEffect(() => {
     if (!selectedDateISO) return;
@@ -1217,27 +1341,29 @@ export default function Calendar() {
             >
               <ChevronRight aria-hidden="true" />
             </IconButton>
-            <SegmentedControl<'month' | 'week'>
+            <SegmentedControl<'month' | 'week' | 'analysis'>
               ariaLabel={autoT('ui_d256a4d045f0')}
               onChange={setView}
               options={[
                 { value: 'month', label: autoT('ui_da13625eeb37') },
                 { value: 'week', label: autoT('ui_7b2207dc85a6') },
+                { value: 'analysis', label: 'Analyse' },
               ]}
-              value={calendarView === 'week' ? 'week' : 'month'}
+              value={calendarView === 'analysis' ? 'analysis' : calendarView === 'week' ? 'week' : 'month'}
             />
           </div>
         </DemoHoverHint>
 
         <div className="flex flex-wrap items-center gap-2 md:hidden">
-          <SegmentedControl<'month' | 'three-day'>
+          <SegmentedControl<'month' | 'three-day' | 'analysis'>
             ariaLabel={autoT('ui_a950dd6ca6dd')}
             onChange={setView}
             options={[
               { value: 'month', label: autoT('ui_da13625eeb37') },
               { value: 'three-day', label: autoT('ui_6d3823976a67') },
+              { value: 'analysis', label: 'Analyse' },
             ]}
-            value={calendarView === 'three-day' ? 'three-day' : 'month'}
+            value={calendarView === 'analysis' ? 'analysis' : calendarView === 'three-day' ? 'three-day' : 'month'}
           />
         </div>
       </div>
@@ -1373,7 +1499,7 @@ export default function Calendar() {
       )}
 
       {/* Day-range view */}
-      {calendarView !== 'month' && (
+      {(calendarView === 'week' || calendarView === 'three-day') && (
         <DemoHoverHint
           title={autoT('ui_3039d2d9f789')}
           description={autoT('ui_c5b8bfc6b844')}
@@ -1488,7 +1614,152 @@ export default function Calendar() {
         </DemoHoverHint>
       )}
 
-      {selectedDateISO && !isMobile && (
+      {calendarView === 'analysis' && (
+        <section
+          className="calendar-surface calendar-analysis-surface overflow-hidden rounded-lg shadow"
+          aria-label="Kalenderanalyse der Woche"
+          onClick={() => { if (isMobile) setExpandedAnalysisActivityId(null); }}
+        >
+          <div className="calendar-analysis-intro border-b px-4 py-3 md:px-5">
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Wochenanalyse</h2>
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Reine Übersicht der geplanten Angebotszeiten. Überlappende Angebote werden nebeneinander dargestellt.
+            </p>
+          </div>
+          <div className="calendar-analysis-scroll overflow-x-auto overflow-y-hidden">
+            <div
+              className="calendar-analysis-grid min-w-[27.5rem] md:min-w-[61rem]"
+              style={{ gridTemplateColumns: `4.25rem repeat(${visibleDays.length}, minmax(8rem, 1fr))` }}
+            >
+              <div className="calendar-analysis-time-header" aria-hidden="true">Uhrzeit</div>
+              {visibleDays.map((day) => {
+                const iso = fmtLocalISO(day);
+                const analysis = analysisByDate.get(iso);
+                const metrics = analysis?.metrics ?? { offeredMinutes: 0, coveredMinutes: 0, maxParallel: 0 };
+                return (
+                  <div key={`${iso}-header`} className={`calendar-analysis-day-header ${iso === todayISO ? 'calendar-analysis-day-header-today' : ''}`}>
+                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {day.toLocaleDateString(getCurrentIntlLocale(), { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                    </div>
+                    <div className="calendar-analysis-metrics" aria-label={`Kennzahlen für ${day.toLocaleDateString(getCurrentIntlLocale())}`}>
+                      <div className="calendar-analysis-metric calendar-analysis-metric-primary" title="Summe aller Angebotsstunden">
+                        <strong className="calendar-analysis-metric-value">
+                          {formatHoursAndMinutesParts(metrics.offeredMinutes).map((part) => <span key={part}>{part}</span>)}
+                        </strong>
+                        <span aria-label="Angebote"><CalendarDays aria-hidden="true" /></span>
+                      </div>
+                      <div className="calendar-analysis-metric" title="Zeit mit mindestens einem Angebot">
+                        <strong className="calendar-analysis-metric-value">
+                          {formatHoursAndMinutesParts(metrics.coveredMinutes).map((part) => <span key={part}>{part}</span>)}
+                        </strong>
+                        <span aria-label="Belegt"><Clock3 aria-hidden="true" /></span>
+                      </div>
+                    </div>
+                    {!!analysis?.withoutTime.length && (
+                      <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {analysis.withoutTime.length} ohne Uhrzeit
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <div
+                className="calendar-analysis-time-axis"
+                style={{ height: `${((analysisHours.end - analysisHours.start) / 60) * 56}px` }}
+                aria-hidden="true"
+              >
+                {Array.from({ length: (analysisHours.end - analysisHours.start) / 60 + 1 }, (_, index) => {
+                  const minutes = analysisHours.start + index * 60;
+                  return (
+                    <span key={minutes} style={{ top: `${((minutes - analysisHours.start) / (analysisHours.end - analysisHours.start)) * 100}%` }}>
+                      {String(Math.floor(minutes / 60)).padStart(2, '0')}:00
+                    </span>
+                  );
+                })}
+              </div>
+              {visibleDays.map((day) => {
+                const iso = fmtLocalISO(day);
+                const analysis = analysisByDate.get(iso);
+                return (
+                  <div
+                    key={`${iso}-timeline`}
+                    className={`calendar-analysis-day ${iso === todayISO ? 'calendar-analysis-day-today' : ''}`}
+                    style={{ height: `${((analysisHours.end - analysisHours.start) / 60) * 56}px` }}
+                  >
+                    {analysis?.timed.map((entry) => {
+                      const activityLabel = entry.activity.project?.title || typeLabel[entry.activity.type] || entry.activity.type;
+                      const subtitle = entry.activity.title ? ` · ${entry.activity.title}` : '';
+                      const time = fmtTimeRange(entry.activity.startTime, entry.activity.endTime);
+                      const cancelled = isCancelledActivity(entry.activity.executionStatus);
+                      const isShort = entry.end - entry.start < 45;
+                      const eventTimeLabel = isShort ? fmtTime(entry.activity.startTime) : time;
+                      const isExpanded = expandedAnalysisActivityId === entry.activity.id;
+                      const cohortSummary = (entry.activity.cohorts || [])
+                        .map((cohort) => ({
+                          name: cohortNameById.get(cohort.cohortId),
+                          total: (cohort.m || 0) + (cohort.w || 0) + (cohort.d || 0),
+                        }))
+                        .filter((cohort): cohort is { name: string; total: number } => Boolean(cohort.name) && cohort.total > 0);
+                      const genderSummary = [
+                        ['w', entry.activity.countFemale],
+                        ['m', entry.activity.countMale],
+                        ['d', entry.activity.countDiverse],
+                      ].filter((entry): entry is [string, number] => typeof entry[1] === 'number' && entry[1] > 0);
+                      return (
+                        <div
+                          key={entry.activity.id}
+                          className={`calendar-analysis-event ${isExpanded ? 'is-expanded' : ''} ${isShort ? 'calendar-analysis-event-short' : ''} ${entry.columns > 1 && entry.end - entry.start >= 90 ? 'calendar-analysis-event-vertical' : ''} ${cancelled ? 'calendar-analysis-event-cancelled' : pickBgClass(activityLabel, entry.activity.type)}`}
+                          style={{
+                            top: `${((entry.start - analysisHours.start) / (analysisHours.end - analysisHours.start)) * 100}%`,
+                            height: `${Math.max(3, ((entry.end - entry.start) / (analysisHours.end - analysisHours.start)) * 100)}%`,
+                            left: `calc(${(entry.column / entry.columns) * 100}% + 3px)`,
+                            width: `calc(${100 / entry.columns}% - 6px)`,
+                          }}
+                          title={`${time} · ${activityLabel}${subtitle}${cancelled ? ' · Ausgefallen' : ''}`}
+                          aria-label={`${time}, ${activityLabel}${subtitle}${cancelled ? ', ausgefallen' : ''}`}
+                          tabIndex={0}
+                          onClick={(event) => {
+                            if (!isMobile) return;
+                            event.stopPropagation();
+                            setExpandedAnalysisActivityId((current) => current === entry.activity.id ? null : entry.activity.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (!isMobile || (event.key !== 'Enter' && event.key !== ' ')) return;
+                            event.preventDefault();
+                            setExpandedAnalysisActivityId((current) => current === entry.activity.id ? null : entry.activity.id);
+                          }}
+                        >
+                          <div className="calendar-analysis-event-time calendar-analysis-event-time-compact">{eventTimeLabel}</div>
+                          {isShort && <div className="calendar-analysis-event-time calendar-analysis-event-time-full">{time}</div>}
+                          <div className="calendar-analysis-event-title">{cancelled ? 'Ausgefallen · ' : ''}{activityLabel}</div>
+                          {entry.activity.title && <div className="calendar-analysis-event-subtitle">{entry.activity.title}</div>}
+                          <div className="calendar-analysis-event-details">
+                            {typeof entry.activity.countTotal === 'number' && (
+                              <div className="calendar-analysis-event-visitors">
+                                <UsersRound aria-hidden="true" />
+                                <span>{entry.activity.countTotal} Besucher:innen</span>
+                                {!!genderSummary.length && <span className="calendar-analysis-event-genders">{genderSummary.map(([label, count]) => `${label} ${count}`).join(' · ')}</span>}
+                              </div>
+                            )}
+                            {!!cohortSummary.length && (
+                              <div className="calendar-analysis-event-cohorts">
+                                {cohortSummary.map((cohort) => <span key={cohort.name}>{cohort.name}: {cohort.total}</span>)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {selectedDateISO && !isMobile && calendarView !== 'analysis' && (
         <DemoHoverHint
           title={autoT('ui_9782bba5a775')}
           description={autoT('ui_7dcbe2d48e03')}

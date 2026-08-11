@@ -33,6 +33,7 @@ describe('AuthService invitations', () => {
       jwt as never,
       email as never,
       {} as never,
+      { getTermsOfUseVersion: jest.fn().mockResolvedValue('test-terms-version') } as never,
     );
     return { service, users, jwt, email, refreshSessions };
   }

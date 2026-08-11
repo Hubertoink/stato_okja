@@ -13,6 +13,8 @@ import { EmailService } from '../email/email.service';
 import { AuditModule } from '../common/audit.module';
 import { getJwtSecret } from '../config/security.config';
 import { OrgsModule } from '../orgs/orgs.module';
+import { LegalContentOverride } from '../legal/entities/legal-content-override.entity';
+import { LegalContentService } from '../legal/legal-content.service';
 
 function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: number) {
 	const value = String(raw || '').trim().toLowerCase();
@@ -30,7 +32,7 @@ function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: num
 
 @Module({
 	imports: [
-	TypeOrmModule.forFeature([User, Organization, Location, RefreshSession]),
+	TypeOrmModule.forFeature([User, Organization, Location, RefreshSession, LegalContentOverride]),
 		PassportModule,
 		AuditModule,
 		OrgsModule,
@@ -40,7 +42,7 @@ function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: num
 		}),
 	],
 	controllers: [AuthController],
-	providers: [AuthService, JwtStrategy, EmailService],
+	providers: [AuthService, JwtStrategy, EmailService, LegalContentService],
 	exports: [JwtModule, AuthService, EmailService],
 })
 export class AuthModule implements OnModuleInit {

@@ -10,7 +10,8 @@ import type { AdminResetActionMode } from './auth.service';
 import { getAuthRateLimitOverride } from '../config/rate-limit.config';
 import { isStrictSecurityMode } from '../config/security.config';
 import type { RefreshSessionMetadata } from './auth.service';
-import { getPublicLegalContent } from '../legal/legal-content';
+import { LegalContentService } from '../legal/legal-content.service';
+import { LEGAL_DOCUMENT_KEYS, type LegalDocumentKey } from '../legal/legal-content';
 import {
   AcceptInviteDto,
   AdminResetPasswordDto,
@@ -103,6 +104,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly orgs: OrgsService,
+    private readonly legalContentService: LegalContentService,
   ) {}
 
   private parseInviteRole(role: unknown): InviteRole {
@@ -174,7 +176,42 @@ export class AuthController {
 
   @Get('legal')
   legalContent(@Query('locale') locale?: string) {
-    return getPublicLegalContent(locale);
+    return this.legalContentService.getPublicContent(locale);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('superadmin')
+  @Get('legal/import')
+  legalContentForImport() {
+    return this.legalContentService.getPublicContent();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('superadmin')
+  @Post('legal/import')
+  importLegalContent(
+    @Body() body: { documents?: Record<'imprint' | 'privacy' | 'terms', string> },
+    @Req() req: { user: { id: string } },
+  ) {
+    return this.legalContentService.importDocuments(body?.documents || {}, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('superadmin')
+  @Get('legal/download/:key')
+  async downloadLegalContent(
+    @Param('key') key: string,
+    @Res() res: Response,
+  ) {
+    if (!LEGAL_DOCUMENT_KEYS.includes(key as LegalDocumentKey)) {
+      throw new BadRequestException('Unbekanntes Rechtsdokument.');
+    }
+    const document = await this.legalContentService.getDocumentForDownload(key as LegalDocumentKey);
+    res
+      .status(200)
+      .type('text/markdown; charset=utf-8')
+      .attachment(`stato-${key}.md`)
+      .send(document.content);
   }
 
   @Throttle(AUTH_RATE_LIMIT)

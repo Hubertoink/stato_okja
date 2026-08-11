@@ -36,6 +36,38 @@ type StatsProjectRow = {
   count: string;
 };
 
+type WeeklyProfileDay = {
+  weekday: number;
+  occurrences: number;
+  activityCount: number;
+  activityMinutes: number;
+  coveredMinutes: number;
+  participantTotal: number;
+  averageParticipants: number;
+};
+
+type WeeklyProfileSlot = {
+  weekday: number;
+  startMinute: number;
+  endMinute: number;
+  activityMinutes: number;
+  coveredMinutes: number;
+  activityCount: number;
+  participantTotal: number;
+  averageOffers: number;
+  coverageFrequency: number;
+  averageParticipants: number;
+};
+
+type WeeklyProfile = {
+  slotMinutes: number;
+  rangeStart: number;
+  rangeEnd: number;
+  excludedWithoutTime: number;
+  days: WeeklyProfileDay[];
+  slots: WeeklyProfileSlot[];
+};
+
 type StatsOverviewResult = {
   summary: {
     totalActivities: number;
@@ -61,6 +93,7 @@ type StatsOverviewResult = {
   topTags: Array<{ id: string; name: string; count: number }>;
   topProjects: Array<{ id: string; name: string; count: number }>;
   availableYears: string[];
+  weeklyProfile: WeeklyProfile;
 };
 
 export type CustomKpiCalculationScope = StatsScope & {
@@ -267,6 +300,160 @@ export class StatsService {
     return [] as Array<{ cohortId: string; m: number; w: number; d: number }>;
   }
 
+  private parseTimeMinutes(value: unknown): number | null {
+    if (typeof value !== 'string') return null;
+    const match = value.match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  }
+
+  private mergeIntervals(intervals: Array<[number, number]>) {
+    if (!intervals.length) return 0;
+    const sorted = [...intervals].sort((a, b) => a[0] - b[0]);
+    let total = 0;
+    let [start, end] = sorted[0];
+    for (const [nextStart, nextEnd] of sorted.slice(1)) {
+      if (nextStart <= end) {
+        end = Math.max(end, nextEnd);
+      } else {
+        total += end - start;
+        start = nextStart;
+        end = nextEnd;
+      }
+    }
+    return total + end - start;
+  }
+
+  private async getWeeklyProfile(scope: StatsScope): Promise<WeeklyProfile> {
+    const { from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState } = scope;
+    const rows = await (await this.createFilteredActivityQuery(
+      from,
+      to,
+      orgId,
+      orgIds,
+      projectId,
+      type,
+      executionStatuses,
+      weekdays,
+      closureState,
+    ))
+      .select('activity.id', 'id')
+      .addSelect('activity.date', 'date')
+      .addSelect('activity.startTime', 'startTime')
+      .addSelect('activity.endTime', 'endTime')
+      .addSelect('COALESCE(activity.countTotal, 0)', 'countTotal')
+      .getRawMany<{ id: string; date: string | Date; startTime: string | null; endTime: string | null; countTotal: string | number }>();
+
+    const slotMinutes = 30;
+    const dayDates = Array.from({ length: 7 }, () => new Set<string>());
+    const dayActivityMinutes = Array(7).fill(0) as number[];
+    const dayParticipantTotals = Array(7).fill(0) as number[];
+    const dayActivityCounts = Array(7).fill(0) as number[];
+    const dayIntervals = new Map<string, Array<[number, number]>>();
+    const slotStats = new Map<string, WeeklyProfileSlot>();
+    const slotIntervals = new Map<string, Array<[number, number]>>();
+    let excludedWithoutTime = 0;
+    let earliest = 24 * 60;
+    let latest = 0;
+
+    for (const row of rows) {
+      const date = this.toCalendarDateString(row.date);
+      if (!date) {
+        excludedWithoutTime += 1;
+        continue;
+      }
+      const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+      dayDates[weekday].add(date);
+      const start = this.parseTimeMinutes(row.startTime);
+      const end = this.parseTimeMinutes(row.endTime);
+      if (start === null || end === null || end <= start) {
+        excludedWithoutTime += 1;
+        continue;
+      }
+
+      const participants = this.toNumber(row.countTotal);
+      earliest = Math.min(earliest, start);
+      latest = Math.max(latest, end);
+      dayActivityMinutes[weekday] += end - start;
+      dayParticipantTotals[weekday] += participants;
+      dayActivityCounts[weekday] += 1;
+      const intervals = dayIntervals.get(`${weekday}:${date}`) || [];
+      intervals.push([start, end]);
+      dayIntervals.set(`${weekday}:${date}`, intervals);
+
+      const firstSlot = Math.floor(start / slotMinutes) * slotMinutes;
+      const lastSlot = Math.ceil(end / slotMinutes) * slotMinutes - slotMinutes;
+      for (let slotStart = firstSlot; slotStart <= lastSlot; slotStart += slotMinutes) {
+        const slotEnd = slotStart + slotMinutes;
+        const overlap = Math.max(0, Math.min(end, slotEnd) - Math.max(start, slotStart));
+        if (!overlap) continue;
+        const key = `${weekday}:${slotStart}`;
+        const stat = slotStats.get(key) || {
+          weekday,
+          startMinute: slotStart,
+          endMinute: slotEnd,
+          activityMinutes: 0,
+          coveredMinutes: 0,
+          activityCount: 0,
+          participantTotal: 0,
+          averageOffers: 0,
+          coverageFrequency: 0,
+          averageParticipants: 0,
+        };
+        stat.activityMinutes += overlap;
+        stat.activityCount += 1;
+        stat.participantTotal += participants;
+        slotStats.set(key, stat);
+        const intervalKey = `${key}:${date}`;
+        const slotIntervalList = slotIntervals.get(intervalKey) || [];
+        slotIntervalList.push([Math.max(start, slotStart), Math.min(end, slotEnd)]);
+        slotIntervals.set(intervalKey, slotIntervalList);
+      }
+    }
+
+    for (const [key, intervals] of slotIntervals) {
+      const slotKey = key.split(':').slice(0, 2).join(':');
+      const stat = slotStats.get(slotKey);
+      if (stat) stat.coveredMinutes += this.mergeIntervals(intervals);
+    }
+    const days: WeeklyProfileDay[] = Array.from({ length: 7 }, (_, weekday) => {
+      const coveredMinutes = Array.from(dayDates[weekday]).reduce(
+        (total, date) => total + this.mergeIntervals(dayIntervals.get(`${weekday}:${date}`) || []),
+        0,
+      );
+      const occurrences = dayDates[weekday].size;
+      return {
+        weekday,
+        occurrences,
+        activityCount: dayActivityCounts[weekday],
+        activityMinutes: dayActivityMinutes[weekday],
+        coveredMinutes,
+        participantTotal: dayParticipantTotals[weekday],
+        averageParticipants: dayActivityCounts[weekday] > 0 ? +(dayParticipantTotals[weekday] / dayActivityCounts[weekday]).toFixed(1) : 0,
+      };
+    });
+
+    const rangeStart = earliest < 24 * 60 ? Math.max(0, Math.floor(earliest / slotMinutes) * slotMinutes) : 8 * 60;
+    const rangeEnd = latest > 0 ? Math.min(24 * 60, Math.ceil(latest / slotMinutes) * slotMinutes) : 22 * 60;
+    const slots = Array.from(slotStats.values())
+      .filter((slot) => slot.startMinute >= rangeStart && slot.startMinute < rangeEnd)
+      .map((slot) => {
+        const occurrences = dayDates[slot.weekday].size;
+        return {
+          ...slot,
+          averageOffers: slot.activityMinutes / (slotMinutes * Math.max(1, occurrences)),
+          coverageFrequency: slot.coveredMinutes / (slotMinutes * Math.max(1, occurrences)),
+          averageParticipants: slot.activityCount > 0 ? +(slot.participantTotal / slot.activityCount).toFixed(1) : 0,
+        };
+      })
+      .sort((a, b) => a.weekday - b.weekday || a.startMinute - b.startMinute);
+
+    return { slotMinutes, rangeStart, rangeEnd, excludedWithoutTime, days, slots };
+  }
+
   async getAvailableYears(orgId?: string | null, orgIds?: string[]) {
     const rows = await (await this.createFilteredActivityQuery(undefined, undefined, orgId, orgIds, undefined))
       .select('activity.date', 'date')
@@ -286,7 +473,7 @@ export class StatsService {
 
   private async buildOverview(scope: StatsScope): Promise<StatsOverviewResult> {
     const { from, to, orgId, orgIds, projectId, type, executionStatuses, closureState, weekdays } = scope;
-    const [summary, byType, participantsTimeseries, byCategory, byCohort, topTags, topProjects, availableYears] = await Promise.all([
+    const [summary, byType, participantsTimeseries, byCategory, byCohort, topTags, topProjects, availableYears, weeklyProfile] = await Promise.all([
       this.getSummary(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
       this.getByType(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
       this.getParticipantsTimeseries(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
@@ -295,6 +482,7 @@ export class StatsService {
       this.getTopTags(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
       projectId ? Promise.resolve([]) : this.getTopProjects(from, to, orgId, orgIds, type, weekdays, executionStatuses, closureState),
       this.getAvailableYears(orgId, orgIds),
+      this.getWeeklyProfile(scope),
     ]);
 
     return {
@@ -311,6 +499,7 @@ export class StatsService {
       topTags,
       topProjects,
       availableYears,
+      weeklyProfile,
     };
   }
 

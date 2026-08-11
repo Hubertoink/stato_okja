@@ -58,6 +58,17 @@ Das Frontend ist der einzige veröffentlichte Dienst. Alle Container verwenden
 das von ZimaOS für die App angelegte, nicht veröffentlichte Docker-Netzwerk;
 `/api` und `/uploads` werden intern über das Frontend weitergeleitet.
 
+## Rechtstexte anpassen
+
+Nach der Ersteinrichtung als Superadmin anmelden und im Benutzermenü
+**Rechtstexte** öffnen. Dort eine oder mehrere organisationsspezifische
+Markdown-Dateien für Impressum, Datenschutz und Nutzungsbedingungen auswählen
+und importieren. Die Texte werden in der Datenbank der Instanz gespeichert und
+bleiben daher bei einem Update von `STATO_VERSION` unverändert erhalten.
+
+Nur beim Import der Nutzungsbedingungen entsteht eine neue Version. Beim
+nächsten Aufruf müssen bestehende Nutzer:innen diese Version erneut akzeptieren.
+
 Falls ZimaOS nach einem Import beim Frontend nur **created** statt **running**
 zeigt, lade eine aktuelle Generator-Datei herunter und stelle die App damit
 erneut bereit. Die ZimaOS-Vorlage wartet beim Frontend bewusst nicht auf den

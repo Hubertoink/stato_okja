@@ -7,6 +7,24 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.6.2] - 2026-08-11
+
+### Added
+- Superadmins können organisationsspezifische Rechtstexte direkt in StatO
+  importieren, exportieren und dauerhaft über App-Updates hinweg verwalten.
+- Kalender und Statistik bieten eine analytische Wochenansicht mit
+  Stundenraster, parallelen Angeboten, Besucher:innen und responsiver
+  Detailansicht.
+- Die Aktivitätenfilter unterstützen nun zusätzlich Wochentage.
+
+### Changed
+- Das Wochenprofil der Statistik nutzt standardmäßig ein kompaktes
+  Stundenraster und kann per Toggle auf 30-Minuten-Details erweitert werden.
+- Wochenprofil, Tooltips, Umschalter und Exporte folgen den gemeinsamen
+  Statistik- und Theme-Komponenten.
+- Beim Bearbeiten von Aktivitäten bleiben Scrollposition und Fokus erhalten;
+  unveränderte Formulare lösen keine unnötige Verwerfen-Abfrage mehr aus.
+
 ## [1.6.1] - 2026-08-11
 
 ### Changed

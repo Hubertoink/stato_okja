@@ -45,7 +45,7 @@ function resolveLegalDocumentFile(directory: string, defaultFilename: string, lo
 export type PublicLegalContent = {
   termsVersion: string;
   updatedAt: string;
-  documents: Record<LegalDocumentKey, { title: string; content: string }>;
+  documents: Record<LegalDocumentKey, { title: string; content: string; updatedAt: string }>;
 };
 
 function getLegalContentDirectory() {
@@ -95,14 +95,14 @@ function parseManifest(raw: string): LegalManifest {
 }
 
 /** Reads the deployment-specific legal text files without rendering HTML. */
-export async function getPublicLegalContent(locale?: string): Promise<PublicLegalContent> {
+export async function getFileLegalContent(locale?: string): Promise<PublicLegalContent> {
   const directory = getLegalContentDirectory();
   const manifest = parseManifest(await readFile(resolve(directory, 'manifest.json'), 'utf8'));
   const documentEntries = await Promise.all(
     LEGAL_DOCUMENT_KEYS.map(async (key) => {
       const document = manifest.documents[key];
       const content = await readFile(resolveLegalDocumentFile(directory, document.file, locale), 'utf8');
-      return [key, { title: document.title, content }] as const;
+      return [key, { title: document.title, content, updatedAt: manifest.updatedAt }] as const;
     }),
   );
 
@@ -113,6 +113,11 @@ export async function getPublicLegalContent(locale?: string): Promise<PublicLega
   };
 }
 
+/** @deprecated Use LegalContentService so imported texts take precedence. */
+export async function getPublicLegalContent(locale?: string): Promise<PublicLegalContent> {
+  return getFileLegalContent(locale);
+}
+
 export async function getTermsOfUseVersion(): Promise<string> {
-  return (await getPublicLegalContent()).termsVersion;
+  return (await getFileLegalContent()).termsVersion;
 }

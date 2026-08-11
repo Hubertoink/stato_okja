@@ -71,6 +71,8 @@ import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { captureExportNode } from '@/lib/htmlCanvasExport';
 import { loadStatisticsViewPreferences, saveStatisticsViewPreferences } from '@/lib/statisticsViewPreferences';
+import WeeklyProfileHeatmap from '@/components/WeeklyProfileHeatmap';
+import { formatWeeklyProfileTime, type WeeklyProfile } from '@/lib/weeklyProfile';
 import activitiesKpiIcon from '../../assets/Illust_Amigos/Aktivitäten.svg';
 import participantsKpiIcon from '../../assets/Illust_Amigos/Teilnehmende.svg';
 import hoursKpiIcon from '../../assets/Illust_Amigos/Stunden.svg';
@@ -164,6 +166,7 @@ type StatsOverviewResponse = {
   topTags: Array<{ id: string; name: string; count: number }>;
   topProjects: Array<{ id: string; name: string; count: number }>;
   availableYears: string[];
+  weeklyProfile: WeeklyProfile;
 };
 
 type StatisticsRealtimeOptions = {
@@ -712,6 +715,7 @@ export default function Statistics() {
   const timeseries = overview?.participantsTimeseries;
   const byCohort = overview?.byCohort;
   const byCategory = overview?.byCategory;
+  const weeklyProfile = overview?.weeklyProfile;
   const topTags = overview?.topTags ?? [];
   const topProjects = overview?.topProjects ?? [];
   const activityYears = overview?.availableYears ?? [];
@@ -1746,6 +1750,27 @@ export default function Statistics() {
     };
     logbookSheet['!cols'] = [{ wch: 14 }, { wch: 15 }, { wch: 30 }, { wch: 16 }, { wch: 26 }, { wch: 50 }, { wch: 32 }, { wch: 32 }, { wch: 32 }];
     utils.book_append_sheet(workbook, logbookSheet, uniqueSheetName('Logbuch'));
+
+    if (weeklyProfile) {
+      const dayLabels: Record<number, string> = { 0: 'So', 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 5: 'Fr', 6: 'Sa' };
+      const weeklyRows: Array<Array<string | number>> = [
+        ['Wochentag', 'Zeitfenster', 'Angebotsminuten', 'Abgedeckte Minuten', 'Ø Angebote parallel', 'Abdeckungsquote', 'Angebote', 'Ø Besucher:innen je Angebot'],
+        ...weeklyProfile.slots.map((slot) => [
+          dayLabels[slot.weekday],
+          `${formatWeeklyProfileTime(slot.startMinute)}–${formatWeeklyProfileTime(slot.endMinute)}`,
+          slot.activityMinutes,
+          slot.coveredMinutes,
+          Number(slot.averageOffers.toFixed(2)),
+          `${Math.round(slot.coverageFrequency * 100)} %`,
+          slot.activityCount,
+          slot.averageParticipants,
+        ]),
+      ];
+      const weeklySheet = utils.aoa_to_sheet(weeklyRows);
+      styleHeader(weeklySheet, weeklyRows[0].length);
+      weeklySheet['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 20 }, { wch: 16 }, { wch: 12 }, { wch: 24 }];
+      utils.book_append_sheet(workbook, weeklySheet, uniqueSheetName('Wochenprofil'));
+    }
 
     setExportProgress(autoT('ui_69d8049e6f66'));
     await new Promise(requestAnimationFrame);
@@ -2879,9 +2904,21 @@ export default function Statistics() {
           )}
         </div>
 
-        <CustomKpiCards
-          surface="statistics"
-          from={from || undefined}
+        <div className="mt-6" data-pdf-section>
+          <WeeklyProfileHeatmap
+            profile={weeklyProfile}
+            selectedWeekdays={selectedWeekdays}
+            isMobile={isMobile}
+            pdfMode={pdfMode}
+            chartRef={setChartCardRef('weekly-profile')}
+            exportActions={renderChartExportActions('weekly-profile', 'Wochenprofil')}
+          />
+        </div>
+
+          <CustomKpiCards
+            surface="statistics"
+            className="mt-6"
+            from={from || undefined}
           to={to || undefined}
           showManager={!pdfMode}
           refreshOptions={{

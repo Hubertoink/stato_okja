@@ -43,6 +43,12 @@ function copyExportLayout(source: Element, target: HTMLElement | SVGElement) {
 
   target.style.setProperty('color', '#334155', 'important');
   target.style.setProperty('background-color', target === target.ownerDocument?.querySelector('[data-export-capture-root]') ? '#ffffff' : 'transparent', 'important');
+  if (source instanceof HTMLElement && source.dataset.exportPreserveBackground === 'true') {
+    const inlineBackground = source.style.getPropertyValue('background-color');
+    if (inlineBackground && !inlineBackground.includes('var(') && !inlineBackground.includes('color(')) {
+      target.style.setProperty('background-color', inlineBackground, 'important');
+    }
+  }
   target.style.setProperty('background-image', 'none', 'important');
   target.style.setProperty('border-color', '#cbd5e1', 'important');
   target.style.setProperty('box-shadow', 'none', 'important');

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
@@ -80,6 +80,10 @@ function formatActivityDate(date?: string | null) {
   return date ? formatDate(date, { dateStyle: 'short' }) : '';
 }
 
+function formatActivityWeekday(date?: string | null) {
+  return date ? formatDate(date, { weekday: 'short' }) : '';
+}
+
 function toLocalIsoDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -101,6 +105,7 @@ export default function Activities() {
   const [order, setOrder] = useState<'asc' | 'desc'>(() => initialActivitiesFilters.order);
   const pageSize = 50;
   const [quickAdd, setQuickAdd] = useState<{ project: Project } | null>(null);
+  const editScrollYRef = useRef<{ y: number; element: HTMLElement | null } | null>(null);
   const { data: cohorts = [] } = useCohorts({ active: true });
   const { data: categories = [] } = useCategories({ active: true });
   const { data: tags = [] } = useTags({ active: true });
@@ -120,6 +125,7 @@ export default function Activities() {
     search: searchTerm.trim() || undefined,
     from: advanced.from,
     to: advanced.to,
+    weekdays: advanced.weekdays,
     types: advanced.types,
     locationIds: advanced.locationIds,
     projectIds: advanced.projectIds,
@@ -212,6 +218,37 @@ export default function Activities() {
   const pageCount = Math.max(Math.ceil(total / pageSize), 1);
   const [editId, setEditId] = useState<string | null>(null);
   const { data: editing } = useActivity(editId || undefined);
+  const openEditActivity = (activityId: string) => {
+    const element = document.scrollingElement as HTMLElement | null;
+    editScrollYRef.current = {
+      y: Math.max(window.scrollY || window.pageYOffset || 0, element?.scrollTop || 0),
+      element,
+    };
+    setEditId(activityId);
+  };
+  const closeEditActivity = () => {
+    setEditId(null);
+  };
+
+  // Restore after the editor has actually been removed from the tree. The
+  // history-backed modal and the body-scroll lock both finish their cleanup
+  // asynchronously, so restoring directly inside onClose can be overwritten.
+  useLayoutEffect(() => {
+    if (editId !== null || !editScrollYRef.current) return;
+    const { y, element } = editScrollYRef.current;
+    editScrollYRef.current = null;
+    const restore = () => {
+      window.scrollTo({ top: y, left: 0, behavior: 'auto' });
+      if (element) element.scrollTop = y;
+    };
+    restore();
+    const frame = window.requestAnimationFrame(() => {
+      restore();
+      window.setTimeout(restore, 0);
+      window.setTimeout(restore, 80);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [editId]);
   const firstWords = (s?: string | null, n: number = 20) => {
     if (!s) return '';
     const words = s.trim().split(/\s+/).filter(Boolean);
@@ -290,6 +327,14 @@ export default function Activities() {
     () => formatSelectedFilterBadge(t('filters.cohorts'), advanced.cohortIds, cohortNameById),
     [advanced.cohortIds, cohortNameById, t],
   );
+  const weekdaysBadgeLabel = useMemo(() => {
+    if (!advanced.weekdays?.length) return null;
+    const weekdayNames = advanced.weekdays
+      .slice()
+      .sort((left, right) => left - right)
+      .map((weekday) => formatDate(new Date(2024, 0, 7 + weekday), { weekday: 'short' }));
+    return `${t('filters.weekdays')}: ${weekdayNames.join(', ')}`;
+  }, [advanced.weekdays, t]);
   const executionStatusBadgeLabel = useMemo(() => {
     if (!advanced.executionStatuses?.length) return null;
     return `Status: ${formatActivityExecutionStatusList(advanced.executionStatuses)}`;
@@ -792,6 +837,7 @@ export default function Activities() {
           {advanced.from || advanced.to ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{rangeBadgeLabel}</span>
           ) : null}
+          {weekdaysBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{weekdaysBadgeLabel}</span> : null}
           {typesBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{typesBadgeLabel}</span> : null}
           {locationsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{locationsBadgeLabel}</span> : null}
           {projectsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{projectsBadgeLabel}</span> : null}
@@ -919,7 +965,8 @@ export default function Activities() {
                     const isToday = (a.date || '').slice(0, 10) === todayIso;
                     return (
                       <span className={isToday ? "font-semibold text-viridian" : "text-gray-700"}>
-                        {formatActivityDate(a.date)}
+                        <span className="block text-xs font-medium text-gray-500">{formatActivityWeekday(a.date)}</span>
+                        <span className="block">{formatActivityDate(a.date)}</span>
                       </span>
                     );
                   })()}
@@ -1022,7 +1069,7 @@ export default function Activities() {
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => setEditId(a.id)}
+                    onClick={() => openEditActivity(a.id)}
                     className="activity-edit-button relative z-10 p-2"
                     title={t('actions.edit')}
                     aria-label={t('actions.edit')}
@@ -1098,7 +1145,7 @@ export default function Activities() {
                   navigate(`/activities/${a.id}`, {
                     state: { from: `${location.pathname}${location.search}` },
                   });
-                else setEditId(a.id);
+                else openEditActivity(a.id);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -1107,7 +1154,7 @@ export default function Activities() {
                     navigate(`/activities/${a.id}`, {
                       state: { from: `${location.pathname}${location.search}` },
                     });
-                  else setEditId(a.id);
+                  else openEditActivity(a.id);
                 }
               }}
             >
@@ -1145,7 +1192,8 @@ export default function Activities() {
                     const isToday = (a.date || '').slice(0, 10) === todayIso;
                     return (
                       <div className={`text-sm ${isToday ? "font-semibold text-viridian" : "text-gray-500"}`}>
-                        {formatActivityDate(a.date)}
+                        <span className="block text-xs font-medium">{formatActivityWeekday(a.date)}</span>
+                        <span className="block">{formatActivityDate(a.date)}</span>
                       </div>
                     );
                   })()}
@@ -1274,7 +1322,7 @@ export default function Activities() {
       {editId && editing && (
         <ActivityQuickAdd
           dateISO={editing.date}
-          onClose={() => setEditId(null)}
+          onClose={closeEditActivity}
           project={editing.project ?? undefined}
           activity={editing}
         />

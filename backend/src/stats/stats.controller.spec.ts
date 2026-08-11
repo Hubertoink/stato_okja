@@ -26,6 +26,7 @@ describe('StatsController org scoping', () => {
       topTags: [],
       topProjects: [],
       availableYears: [],
+      weeklyProfile: { slotMinutes: 30, rangeStart: 480, rangeEnd: 1320, excludedWithoutTime: 0, days: [], slots: [] },
     })),
     getSummary: jest.fn(async () => ({
       totalActivities: 0,

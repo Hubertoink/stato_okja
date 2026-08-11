@@ -288,6 +288,14 @@ describe('StatsService overview cache', () => {
     jest.spyOn(service, 'getTopTags').mockResolvedValue([]);
     jest.spyOn(service, 'getTopProjects').mockResolvedValue([]);
     jest.spyOn(service, 'getAvailableYears').mockResolvedValue([]);
+    jest.spyOn(service as any, 'getWeeklyProfile').mockResolvedValue({
+      slotMinutes: 30,
+      rangeStart: 480,
+      rangeEnd: 1320,
+      excludedWithoutTime: 0,
+      days: [],
+      slots: [],
+    } as never);
 
     const [first, second] = await Promise.all([
       service.getOverview({ orgIds: ['org-b', 'org-a'] }),

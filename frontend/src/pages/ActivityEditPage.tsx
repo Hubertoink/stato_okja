@@ -88,11 +88,13 @@ export default function ActivityEditPage() {
 
   const [form, setForm] = useState<ActivityFormState>({ cohortCounts: {} });
   const initialCohortCountsRef = useRef<NonNullable<ActivityFormState['cohortCounts']>>({});
+  const initialFormBaselineSetRef = useRef(false);
   const [validationErrors, setValidationErrors] = useState<{ date?: string; project?: string }>({});
   const dateFieldRef = useRef<HTMLInputElement | null>(null);
   const projectFieldRef = useRef<HTMLButtonElement | null>(null);
+  const initialFormReady = Boolean(activity && projects && locations && tags && categories && staff);
   const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
-    enabled: Boolean(activity),
+    enabled: initialFormBaselineSetRef.current,
   });
 
   useEffect(() => {
@@ -103,7 +105,6 @@ export default function ActivityEditPage() {
     };
     initialCohortCountsRef.current = nextForm.cohortCounts || {};
     setForm(nextForm);
-    reset(nextForm);
   }, [activity, reset]);
 
   const selectedProject: Project | undefined = useMemo(
@@ -159,6 +160,18 @@ export default function ActivityEditPage() {
     const categoryIds = getProjectCategoryIds(selectedProject);
     if (categoryIds.length > 0) setForm((f) => ({ ...f, categoryIds }));
   }, [selectedProject]);
+
+  // Project/taxonomy defaults are part of the initial edit state. Establish the
+  // discard baseline only after all asynchronous defaults have settled.
+  useEffect(() => {
+    if (!initialFormReady || initialFormBaselineSetRef.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (initialFormBaselineSetRef.current) return;
+      reset(form);
+      initialFormBaselineSetRef.current = true;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [categories, form, initialFormReady, locations, projects, reset, staff, tags]);
 
   if (!activity) return null;
 

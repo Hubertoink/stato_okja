@@ -67,6 +67,7 @@ const AdminOrgSetup = lazyWithReload(() => import('./pages/AdminOrgSetup'));
 const OrgUserManagement = lazyWithReload(() => import('./pages/OrgUserManagement'));
 const SuperAdminAudit = lazyWithReload(() => import('./pages/SuperAdminAudit'));
 const SuperAdminSystemData = lazyWithReload(() => import('./pages/SuperAdminSystemData'));
+const LegalAdministration = lazyWithReload(() => import('./pages/LegalAdministration'));
 const SettingsTestData = lazyWithReload(() => import('./pages/SettingsTestData'));
 const AcceptInvite = lazyWithReload(() => import('./pages/AcceptInvite'));
 const ResetRequest = lazyWithReload(() => import('./pages/ResetRequest'));
@@ -399,6 +400,16 @@ function AuthedRoutes() {
               element={
                 <RouteBoundary label={t('routes.audit')}>
                   <SuperAdminAudit />
+                </RouteBoundary>
+              }
+            />
+          )}
+          {user.role === 'superadmin' && (
+            <Route
+              path="admin/legal"
+              element={
+                <RouteBoundary label="Rechtstexte">
+                  <LegalAdministration />
                 </RouteBoundary>
               }
             />

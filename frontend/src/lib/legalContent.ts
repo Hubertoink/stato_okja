@@ -9,7 +9,7 @@ export type LegalDocumentKey = (typeof LEGAL_DOCUMENT_KEYS)[number];
 export type LegalContent = {
   termsVersion: string;
   updatedAt: string;
-  documents: Record<LegalDocumentKey, { title: string; content: string }>;
+  documents: Record<LegalDocumentKey, { title: string; content: string; updatedAt: string }>;
 };
 
 export async function fetchLegalContent(locale?: string): Promise<LegalContent> {

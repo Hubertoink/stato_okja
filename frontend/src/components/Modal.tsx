@@ -160,7 +160,9 @@ export default function Modal({
     return () => {
       window.cancelAnimationFrame(frame);
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+      // Returning focus must not move the page after a long list modal closes.
+      // The scroll position is restored independently by the body-lock helper.
+      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus({ preventScroll: true });
     };
   }, [open]);
 

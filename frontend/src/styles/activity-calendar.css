@@ -746,6 +746,318 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   border-color: rgba(110, 168, 255, 0.24);
 }
 
+/* Read-only weekly offer analysis. It extends the shared calendar surface,
+ * header and grid tokens rather than introducing a parallel card system. */
+.calendar-analysis-intro,
+.calendar-analysis-time-header,
+.calendar-analysis-day-header {
+  background: var(--calendar-header-bg, var(--surface-2));
+}
+
+.calendar-analysis-grid {
+  display: grid;
+}
+
+.calendar-analysis-time-header,
+.calendar-analysis-day-header {
+  min-height: 6.25rem;
+  border-bottom: 1px solid var(--calendar-grid-border, var(--border-subtle));
+  border-right: 1px solid var(--calendar-grid-border, var(--border-subtle));
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.calendar-analysis-time-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.calendar-analysis-day-header-today,
+.calendar-analysis-day-today {
+  background-color: color-mix(in srgb, var(--accent-primary) 7%, var(--calendar-cell-bg, var(--surface-1)));
+}
+
+.calendar-analysis-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.calendar-analysis-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.calendar-analysis-metric strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-analysis-metric > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  margin-top: 0.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-analysis-metric > span svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+}
+
+.calendar-analysis-metric strong {
+  color: var(--text-primary);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-analysis-metric-primary strong {
+  color: var(--accent-primary);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+/* Keep hours and minutes as complete units. They stay on one line when a
+ * day column allows it and wrap below one another before they can overlap the
+ * neighbouring metric on narrower calendar layouts. */
+.calendar-analysis-metric strong.calendar-analysis-metric-value {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0 0.25rem;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.calendar-analysis-metric-value > span {
+  white-space: nowrap;
+}
+
+.calendar-analysis-time-axis {
+  position: relative;
+  border-right: 1px solid var(--calendar-grid-border, var(--border-subtle));
+  background: var(--calendar-cell-bg, var(--surface-1));
+}
+
+.calendar-analysis-time-axis span {
+  position: absolute;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  line-height: 1;
+}
+
+.calendar-analysis-time-axis span:first-child {
+  transform: translateY(0);
+}
+
+.calendar-analysis-time-axis span:last-child {
+  transform: translateY(-100%);
+}
+
+.calendar-analysis-day {
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid var(--calendar-grid-border, var(--border-subtle));
+  background-color: var(--calendar-cell-bg, var(--surface-1));
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(56px - 1px),
+    var(--calendar-grid-border, var(--border-subtle)) calc(56px - 1px),
+    var(--calendar-grid-border, var(--border-subtle)) 56px
+  );
+}
+
+.calendar-analysis-event {
+  position: absolute;
+  z-index: 1;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+  color: #172033;
+  padding: 0.3125rem 0.375rem;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  transition: left 140ms ease, width 140ms ease, opacity 140ms ease, box-shadow 140ms ease;
+}
+
+.calendar-analysis-event:hover,
+.calendar-analysis-event:focus-visible,
+.calendar-analysis-event.is-expanded {
+  left: 3px !important;
+  z-index: 10;
+  width: calc(100% - 6px) !important;
+  min-height: 6.25rem;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+  outline: none;
+}
+
+.calendar-analysis-day:has(.calendar-analysis-event:hover) .calendar-analysis-event:not(:hover),
+.calendar-analysis-day:has(.calendar-analysis-event:focus-visible) .calendar-analysis-event:not(:focus-visible),
+.calendar-analysis-day:has(.calendar-analysis-event.is-expanded) .calendar-analysis-event:not(.is-expanded) {
+  opacity: 0.28;
+}
+
+.calendar-analysis-event-cancelled {
+  background: rgba(251, 113, 133, 0.26);
+  color: #9f1239;
+}
+
+.calendar-analysis-event-time {
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.calendar-analysis-event-title,
+.calendar-analysis-event-subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-analysis-event-title {
+  margin-top: 0.125rem;
+  font-weight: 700;
+}
+
+.calendar-analysis-event:hover .calendar-analysis-event-title,
+.calendar-analysis-event:hover .calendar-analysis-event-subtitle,
+.calendar-analysis-event:focus-visible .calendar-analysis-event-title,
+.calendar-analysis-event:focus-visible .calendar-analysis-event-subtitle,
+.calendar-analysis-event.is-expanded .calendar-analysis-event-title,
+.calendar-analysis-event.is-expanded .calendar-analysis-event-subtitle {
+  overflow: visible;
+  white-space: normal;
+}
+
+.calendar-analysis-event-subtitle {
+  margin-top: 0.0625rem;
+  opacity: 0.82;
+}
+
+.calendar-analysis-event-details {
+  display: none;
+  margin-top: 0.5rem;
+  padding-top: 0.4375rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.14);
+  font-size: 0.6875rem;
+}
+
+.calendar-analysis-event:hover .calendar-analysis-event-details,
+.calendar-analysis-event:focus-visible .calendar-analysis-event-details,
+.calendar-analysis-event.is-expanded .calendar-analysis-event-details {
+  display: block;
+}
+
+.calendar-analysis-event-visitors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 700;
+}
+
+.calendar-analysis-event-visitors svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.calendar-analysis-event-genders {
+  font-weight: 500;
+  opacity: 0.82;
+}
+
+.calendar-analysis-event-cohorts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.375rem;
+}
+
+.calendar-analysis-event-cohorts span {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.38);
+  padding: 0.125rem 0.3125rem;
+  font-size: 0.625rem;
+  line-height: 1.2;
+}
+
+.calendar-analysis-event-short:not(:hover):not(:focus-visible):not(.is-expanded) .calendar-analysis-event-title,
+.calendar-analysis-event-short:not(:hover):not(:focus-visible):not(.is-expanded) .calendar-analysis-event-subtitle {
+  display: none;
+}
+
+.calendar-analysis-event-time-full {
+  display: none;
+}
+
+.calendar-analysis-event-short:hover .calendar-analysis-event-time-compact,
+.calendar-analysis-event-short:focus-visible .calendar-analysis-event-time-compact,
+.calendar-analysis-event-short.is-expanded .calendar-analysis-event-time-compact {
+  display: none;
+}
+
+.calendar-analysis-event-short:hover .calendar-analysis-event-time-full,
+.calendar-analysis-event-short:focus-visible .calendar-analysis-event-time-full,
+.calendar-analysis-event-short.is-expanded .calendar-analysis-event-time-full {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .calendar-analysis-intro {
+    padding-inline: 0.875rem;
+  }
+
+  .calendar-analysis-time-header,
+  .calendar-analysis-day-header {
+    min-height: 6rem;
+    padding: 0.625rem;
+  }
+
+  .calendar-analysis-event-vertical .calendar-analysis-event-title,
+  .calendar-analysis-event-vertical .calendar-analysis-event-subtitle {
+    white-space: normal;
+    writing-mode: vertical-rl;
+  }
+
+  .calendar-analysis-event-vertical:hover .calendar-analysis-event-title,
+  .calendar-analysis-event-vertical:hover .calendar-analysis-event-subtitle,
+  .calendar-analysis-event-vertical:focus-visible .calendar-analysis-event-title,
+  .calendar-analysis-event-vertical:focus-visible .calendar-analysis-event-subtitle,
+  .calendar-analysis-event-vertical.is-expanded .calendar-analysis-event-title,
+  .calendar-analysis-event-vertical.is-expanded .calendar-analysis-event-subtitle {
+    writing-mode: horizontal-tb;
+  }
+}
+
 .note-card {
   background-color: #fff;
   border-radius: 0.5rem; /* matches rounded-lg */

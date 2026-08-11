@@ -111,6 +111,15 @@ export default function ActivitiesFilterDrawer({
     });
   };
 
+  const toggleWeekday = (weekday: number) => {
+    setF((prev) => {
+      const current = new Set(prev.weekdays || []);
+      if (current.has(weekday)) current.delete(weekday);
+      else current.add(weekday);
+      return { ...prev, weekdays: Array.from(current).sort((left, right) => left - right) };
+    });
+  };
+
   const apply = () => onApply(f);
   const sortedStaff = useMemo(
     () => [...staff].sort((left, right) => compareLocalized(left.name, right.name)),
@@ -179,6 +188,27 @@ export default function ActivitiesFilterDrawer({
               >
                 {p.label}
               </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Wochentage */}
+        <section>
+          <h4 className="font-semibold text-viridian mb-2">{t('filterDrawer.weekdays')}</h4>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-4 lg:grid-cols-7">
+            {[
+              [1, 'monday'], [2, 'tuesday'], [3, 'wednesday'], [4, 'thursday'],
+              [5, 'friday'], [6, 'saturday'], [0, 'sunday'],
+            ].map(([weekday, key]) => (
+              <label key={weekday} className="inline-flex items-center gap-2">
+                <Input
+                  type="checkbox"
+                  className="h-4 !min-h-0 !w-4 p-0"
+                  checked={!!f.weekdays?.includes(weekday as number)}
+                  onChange={() => toggleWeekday(weekday as number)}
+                />
+                <span>{t(`filterDrawer.weekdayNames.${key}`)}</span>
+              </label>
             ))}
           </div>
         </section>

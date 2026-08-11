@@ -12,6 +12,7 @@ import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
 import LogbookCardView from '@/components/LogbookCard';
 import LogbookStatusBadge from '@/components/LogbookStatusBadge';
 import LogbookTypeBadge from '@/components/LogbookTypeBadge';
+import ProtectedImage from '@/components/ProtectedImage';
 import Toggle from '@/components/Toggle';
 import { Badge } from '@/components/ui/Badge';
 import { Button, CreateButton, IconButton } from '@/components/ui/Button';
@@ -22,6 +23,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { PaginationControls } from '@/components/ui/PaginationControls';
 import { ErrorState, LoadingState } from '@/components/ui/StatePanel';
 import { useToast } from '@/components/Toast';
+import { useAuth } from '@/lib/auth';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate, formatNumber } from '@/i18n/formatters';
@@ -42,6 +44,7 @@ function dateBadge(t: TFunction, from?: string, to?: string) {
 export default function Logbook() {
   const { t } = useTranslation(['logbook', 'common']);
   const { showToast } = useToast();
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -325,7 +328,19 @@ export default function Logbook() {
                       <td className="activities-col-title max-w-xs px-3 py-4 lg:px-6"><span className="font-medium text-gray-900">{entry.title}</span>{entry.isUnread ? <Badge className="ml-2" variant="accent">{t('newBadge')}</Badge> : null}</td>
                       <td className="activities-col-meta max-w-[12rem] truncate px-3 py-4 text-sm text-gray-600 lg:px-6">{entry.project?.title || '–'}</td>
                       <td className="px-3 py-4 lg:px-6"><LogbookStatusBadge status={entry.status} /></td>
-                      <td className="px-3 py-4 text-sm text-gray-600 lg:px-6">{entry.createdByName}</td>
+                      <td className="px-3 py-4 text-sm text-gray-600 lg:px-6">
+                        <span className="flex min-w-0 items-center gap-2">
+                          {(() => {
+                            const avatarUrl = entry.createdByUser?.avatarUrl ?? (entry.createdByUserId === user?.id ? user?.avatarUrl : null);
+                            return avatarUrl ? (
+                              <span className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-viridian/10">
+                                <ProtectedImage src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                              </span>
+                            ) : null;
+                          })()}
+                          <span className="min-w-0 truncate">{entry.createdByName}</span>
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

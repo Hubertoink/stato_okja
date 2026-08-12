@@ -2,6 +2,7 @@ import { act, fireEvent, render, renderHook, screen } from '@testing-library/rea
 import { describe, expect, it, vi } from 'vitest';
 import i18n from '@/i18n';
 import { resources } from '@/i18n/resources';
+import { getActivityFormSnapshot, type ActivityFormState } from '@/pages/activityEditorShared';
 import { useUnsavedChangesGuard } from './useUnsavedChangesGuard';
 
 describe('useUnsavedChangesGuard', () => {
@@ -16,6 +17,26 @@ describe('useUnsavedChangesGuard', () => {
     expect(onDiscard).toHaveBeenCalledOnce();
 
     rerender({ value: 'changed' });
+    expect(result.current.isDirty).toBe(true);
+  });
+
+  it('keeps activity forms clean when only their presentation changes', () => {
+    const { result, rerender } = renderHook(
+      ({ value }) => useUnsavedChangesGuard(value, { getSnapshot: getActivityFormSnapshot }),
+      {
+        initialProps: {
+          value: {
+            tagIds: ['tag-b', 'tag-a'],
+            cohortCounts: { cohort: { m: 0, w: 0, d: 0 } },
+          } as ActivityFormState,
+        },
+      },
+    );
+
+    rerender({ value: { title: '', tagIds: ['tag-a', 'tag-b'], categoryIds: [], cohortCounts: {} } });
+    expect(result.current.isDirty).toBe(false);
+
+    rerender({ value: { title: 'changed', tagIds: ['tag-a', 'tag-b'], cohortCounts: {} } });
     expect(result.current.isDirty).toBe(true);
   });
 

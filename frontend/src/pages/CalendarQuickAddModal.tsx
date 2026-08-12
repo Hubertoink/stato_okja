@@ -48,6 +48,7 @@ import {
   buildActivitySavePayload,
   getActivityCohortCounts,
   getActivityFormStateFromActivity,
+  getActivityFormSnapshot,
   getCohortSums,
   type GenderKey,
   getProjectCategoryIds,
@@ -131,6 +132,7 @@ export default function ActivityQuickAdd({
   );
   const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
     enabled: initialFormBaselineSetRef.current,
+    getSnapshot: getActivityFormSnapshot,
   });
   const selectedProject: Project | undefined = useMemo(
     () => (projects || []).find((p: Project) => p.id === form.projectId) || initialProject,

@@ -7,6 +7,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.6.5] - 2026-08-12
+
+### Changed
+- Der Kalender merkt sich den gewählten Zeitraum pro Browser-Session, sodass
+  beim Wechsel zwischen Seiten dieselbe Woche, Monatsansicht oder Analyse
+  erhalten bleibt.
+- Das Wochenprofil der Statistik verwendet gemeinsame Theme-Tokens und
+  Komponentenklassen für eine durchgängig lesbare Darstellung in allen Dark
+  Themes.
+
 ## [1.6.4] - 2026-08-12
 
 ### Fixed

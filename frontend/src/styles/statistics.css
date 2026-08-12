@@ -150,6 +150,8 @@
   --interactive-soft: #eef2ff;
   --interactive-soft-strong: #e0e7ff;
   --interactive-soft-border: #c7d2fe;
+  --accent-purple: #7c3aed;
+  --accent-teal: #059669;
   --card-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
   border: 1px solid #dbe3f5 !important;
   background: #ffffff !important;
@@ -159,6 +161,89 @@
 
 .statistics-pdf-export-card .recharts-tooltip-wrapper {
   visibility: hidden !important;
+}
+
+/* Weekly profile is a custom grid rather than a chart library component. Keep
+   its theme treatment here, based solely on the shared surface/text tokens. */
+.statistics-weekly-profile {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--card-shadow);
+}
+
+.statistics-weekly-profile__title {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.statistics-weekly-profile__density,
+.statistics-weekly-profile__empty-icon {
+  color: color-mix(in srgb, var(--viridian) 72%, var(--text-primary));
+}
+
+.statistics-weekly-profile__density {
+  font-weight: 500;
+}
+
+.statistics-weekly-profile__empty-copy,
+.statistics-weekly-profile__day-meta,
+.statistics-weekly-profile__exclusion-note {
+  color: var(--text-muted);
+}
+
+.statistics-weekly-profile__mobile-day-pager {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.statistics-weekly-profile__mobile-day-button,
+.statistics-weekly-profile__mobile-day-label {
+  color: var(--text-secondary);
+}
+
+.statistics-weekly-profile__mobile-day-label,
+.statistics-weekly-profile__day-name {
+  font-weight: 600;
+}
+
+.statistics-weekly-profile__grid-header {
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.statistics-weekly-profile__time-header,
+.statistics-weekly-profile__time-label {
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.statistics-weekly-profile__day-header {
+  border-left: 1px solid var(--border-subtle);
+}
+
+.statistics-weekly-profile__day-name {
+  color: var(--text-primary);
+}
+
+.statistics-weekly-profile__time-label {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.statistics-weekly-profile__slot {
+  --weekly-profile-slot-accent: var(--accent-purple);
+  background: color-mix(
+    in srgb,
+    var(--weekly-profile-slot-accent) var(--weekly-profile-slot-intensity, 0%),
+    transparent
+  ) !important;
+}
+
+.statistics-weekly-profile__slot--participants {
+  --weekly-profile-slot-accent: var(--accent-teal);
+}
+
+.statistics-weekly-profile__slot--muted {
+  opacity: 0.3;
 }
 
 .survey-chart-tooltip {

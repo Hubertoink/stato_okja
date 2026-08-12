@@ -1709,7 +1709,7 @@ export default function Calendar() {
                       return (
                         <div
                           key={entry.activity.id}
-                          className={`calendar-analysis-event ${isExpanded ? 'is-expanded' : ''} ${isShort ? 'calendar-analysis-event-short' : ''} ${entry.columns > 1 && entry.end - entry.start >= 90 ? 'calendar-analysis-event-vertical' : ''} ${cancelled ? 'calendar-analysis-event-cancelled' : pickBgClass(activityLabel, entry.activity.type)}`}
+                          className={`calendar-analysis-event calendar-analysis-event--${entry.activity.type} ${isExpanded ? 'is-expanded' : ''} ${isShort ? 'calendar-analysis-event-short' : ''} ${entry.columns > 1 && entry.end - entry.start >= 90 ? 'calendar-analysis-event-vertical' : ''} ${cancelled ? 'calendar-analysis-event-cancelled' : pickBgClass(activityLabel, entry.activity.type)}`}
                           style={{
                             top: `${((entry.start - analysisHours.start) / (analysisHours.end - analysisHours.start)) * 100}%`,
                             height: `${Math.max(3, ((entry.end - entry.start) / (analysisHours.end - analysisHours.start)) * 100)}%`,

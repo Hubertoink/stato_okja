@@ -35,6 +35,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { useCohorts } from '@/lib/taxonomy';
+import { loadCalendarCursor, saveCalendarCursor } from '@/lib/calendarSessionState';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -457,7 +458,7 @@ export default function Calendar() {
   const scopeKey = useOrgScopeKey();
   const { data: cohorts = [] } = useCohorts();
   const [view, setView] = useState<View>(() => readStoredCalendarView());
-  const [cursor, setCursor] = useState<Date>(new Date());
+  const [cursor, setCursor] = useState<Date>(() => loadCalendarCursor());
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
   const [picker, setPicker] = useState<{ date: string } | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
@@ -493,6 +494,10 @@ export default function Calendar() {
       /* ignore */
     }
   }, [view]);
+
+  useEffect(() => {
+    saveCalendarCursor(cursor);
+  }, [cursor]);
 
   // Determine effective orgId for opening hours
   const effectiveOrgId = user?.role === 'superadmin'

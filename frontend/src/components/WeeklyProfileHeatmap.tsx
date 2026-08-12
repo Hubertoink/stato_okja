@@ -158,12 +158,12 @@ export default function WeeklyProfileHeatmap({ profile, selectedWeekdays, isMobi
 
   if (!profile || profile.slots.length === 0) {
     return (
-      <div ref={chartRef} className="statistics-weekly-profile group/chart-card rounded-lg bg-white p-3 shadow md:p-6" data-pdf-section>
+      <div ref={chartRef} className="statistics-weekly-profile group/chart-card rounded-lg p-3 md:p-6" data-pdf-section>
         <div className="flex items-center gap-3">
-          <CalendarDays className="h-5 w-5 text-violet-600" aria-hidden="true" />
+          <CalendarDays className="statistics-weekly-profile__empty-icon h-5 w-5" aria-hidden="true" />
           <div>
-            <h2 className="text-base font-semibold text-slate-800">Wochenprofil</h2>
-            <p className="text-sm text-slate-500">Für den gewählten Filter liegen keine Aktivitäten mit Uhrzeit vor.</p>
+            <h2 className="statistics-weekly-profile__title text-base">Wochenprofil</h2>
+            <p className="statistics-weekly-profile__empty-copy text-sm">Für den gewählten Filter liegen keine Aktivitäten mit Uhrzeit vor.</p>
           </div>
         </div>
       </div>
@@ -176,20 +176,20 @@ export default function WeeklyProfileHeatmap({ profile, selectedWeekdays, isMobi
   };
 
   return (
-    <div ref={chartRef} className="statistics-weekly-profile group/chart-card rounded-lg bg-white p-3 shadow md:p-6" data-pdf-section onClick={onCardClick}>
+    <div ref={chartRef} className="statistics-weekly-profile group/chart-card rounded-lg p-3 md:p-6" data-pdf-section onClick={onCardClick}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-viridian">Wochenprofil</h2>
-          {bestSlot && <p className="mt-2 text-xs font-medium text-violet-700">Höchste Dichte: {DAY_LABELS[bestSlot.weekday]} {slotLabel(bestSlot)} · Ø {bestSlot.averageOffers.toFixed(1)} Angebote parallel</p>}
+          <h2 className="statistics-weekly-profile__title text-lg">Wochenprofil</h2>
+          {bestSlot && <p className="statistics-weekly-profile__density mt-2 text-xs">Höchste Dichte: {DAY_LABELS[bestSlot.weekday]} {slotLabel(bestSlot)} · Ø {bestSlot.averageOffers.toFixed(1)} Angebote parallel</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {isMobile && (
-            <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-1" role="group" aria-label="Tage auswählen">
-              <IconButton size="icon-compact" variant="ghost" className="rounded-md text-slate-600 disabled:cursor-not-allowed disabled:opacity-35" onClick={() => setMobileDayStart((current) => Math.max(0, current - 1))} disabled={mobileDayStart === 0} aria-label="Vorherige drei Tage">
+            <div className="statistics-weekly-profile__mobile-day-pager inline-flex items-center rounded-lg p-1" role="group" aria-label="Tage auswählen">
+              <IconButton size="icon-compact" variant="ghost" className="statistics-weekly-profile__mobile-day-button rounded-md disabled:cursor-not-allowed disabled:opacity-35" onClick={() => setMobileDayStart((current) => Math.max(0, current - 1))} disabled={mobileDayStart === 0} aria-label="Vorherige drei Tage">
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               </IconButton>
-              <span className="min-w-[4.5rem] px-1 text-center text-[11px] font-semibold text-slate-600">{DAY_LABELS[visibleDays[0]]}–{DAY_LABELS[visibleDays[visibleDays.length - 1]]}</span>
-              <IconButton size="icon-compact" variant="ghost" className="rounded-md text-slate-600 disabled:cursor-not-allowed disabled:opacity-35" onClick={() => setMobileDayStart((current) => Math.min(DAY_ORDER.length - 3, current + 1))} disabled={mobileDayStart >= DAY_ORDER.length - 3} aria-label="Nächste drei Tage">
+              <span className="statistics-weekly-profile__mobile-day-label min-w-[4.5rem] px-1 text-center text-[11px]">{DAY_LABELS[visibleDays[0]]}–{DAY_LABELS[visibleDays[visibleDays.length - 1]]}</span>
+              <IconButton size="icon-compact" variant="ghost" className="statistics-weekly-profile__mobile-day-button rounded-md disabled:cursor-not-allowed disabled:opacity-35" onClick={() => setMobileDayStart((current) => Math.min(DAY_ORDER.length - 3, current + 1))} disabled={mobileDayStart >= DAY_ORDER.length - 3} aria-label="Nächste drei Tage">
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </IconButton>
             </div>
@@ -220,24 +220,23 @@ export default function WeeklyProfileHeatmap({ profile, selectedWeekdays, isMobi
       </div>
       <div className="mt-5 overflow-x-auto" role="grid" aria-label="Wochenprofil Heatmap">
         <div className={isMobile ? 'min-w-0' : 'min-w-[720px]'} style={{ ['--weekly-profile-row-height' as string]: isMobile ? '28px' : '24px' }}>
-          <div className="grid border-b border-slate-200 bg-slate-50" style={{ gridTemplateColumns: `52px repeat(${visibleDays.length}, minmax(0, 1fr))` }}>
-            <div className="px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Zeit</div>
+          <div className="statistics-weekly-profile__grid-header grid" style={{ gridTemplateColumns: `52px repeat(${visibleDays.length}, minmax(0, 1fr))` }}>
+            <div className="statistics-weekly-profile__time-header px-2 py-2 text-[10px] uppercase tracking-wide">Zeit</div>
             {visibleDays.map((weekday) => {
               const day = days.find((entry) => entry.weekday === weekday);
               const selected = selectedWeekdays.length === 0 || selectedWeekdays.includes(weekday);
-              return <div key={weekday} className={`border-l border-slate-200 px-2 py-2 ${selected ? '' : 'opacity-40'}`}><div className="text-xs font-semibold text-slate-700">{DAY_LABELS[weekday]}</div><div className="mt-1 text-[10px] text-slate-500">{formatHours(day?.activityMinutes || 0)} · {day?.activityCount || 0} Angebote</div></div>;
+              return <div key={weekday} className={`statistics-weekly-profile__day-header px-2 py-2 ${selected ? '' : 'opacity-40'}`}><div className="statistics-weekly-profile__day-name text-xs">{DAY_LABELS[weekday]}</div><div className="statistics-weekly-profile__day-meta mt-1 text-[10px]">{formatHours(day?.activityMinutes || 0)} · {day?.activityCount || 0} Angebote</div></div>;
             })}
           </div>
           {rowStarts.map((minute) => (
             <div key={minute} className="grid" style={{ gridTemplateColumns: `52px repeat(${visibleDays.length}, minmax(0, 1fr))`, minHeight: 'var(--weekly-profile-row-height)' }}>
-              <div className="border-b border-slate-100 pr-2 pt-1 text-right text-[10px] tabular-nums text-slate-400">{formatWeeklyProfileTime(minute)}</div>
+              <div className="statistics-weekly-profile__time-label pr-2 pt-1 text-right text-[10px] tabular-nums">{formatWeeklyProfileTime(minute)}</div>
               {visibleDays.map((weekday) => {
                 const key = `${weekday}:${minute}`;
                 const slot = slotsByKey.get(key);
                 const selected = selectedWeekdays.length === 0 || selectedWeekdays.includes(weekday);
                 const value = slot ? (mode === 'offers' ? slot.averageOffers : slot.averageParticipants) : 0;
-                const alpha = slot && selected ? 0.1 + Math.min(0.78, value / maxValue * 0.78) : 0;
-                const color = mode === 'offers' ? `rgba(124, 58, 237, ${alpha})` : `rgba(5, 150, 105, ${alpha})`;
+                const intensity = slot && selected ? `${Math.round((0.1 + Math.min(0.78, value / maxValue * 0.78)) * 100)}%` : '0%';
                 const isActive = activeKey === key;
                 return (
                   <Button
@@ -263,8 +262,8 @@ export default function WeeklyProfileHeatmap({ profile, selectedWeekdays, isMobi
                       if (isActive) clearTooltip();
                       else showTooltip(key, event.currentTarget);
                     }}
-                    className={`relative !inline-block !h-full !min-h-0 !w-full !rounded-none !p-0 text-left transition-colors ${selected ? '' : 'opacity-30'}`}
-                    style={{ backgroundColor: color }}
+                    className={`statistics-weekly-profile__slot statistics-weekly-profile__slot--${mode} relative !inline-block !h-full !min-h-0 !w-full !rounded-none !p-0 text-left transition-colors ${selected ? '' : 'statistics-weekly-profile__slot--muted'}`}
+                    style={{ ['--weekly-profile-slot-intensity' as string]: intensity }}
                   >
                     <span aria-hidden="true" />
                   </Button>
@@ -293,7 +292,7 @@ export default function WeeklyProfileHeatmap({ profile, selectedWeekdays, isMobi
         </div>,
         document.body,
       )}
-      {profile.excludedWithoutTime > 0 && <p className="mt-2 text-[11px] text-slate-400">{profile.excludedWithoutTime} Aktivität(en) ohne vollständige Uhrzeit wurden nicht in die Heatmap aufgenommen.</p>}
+      {profile.excludedWithoutTime > 0 && <p className="statistics-weekly-profile__exclusion-note mt-2 text-[11px]">{profile.excludedWithoutTime} Aktivität(en) ohne vollständige Uhrzeit wurden nicht in die Heatmap aufgenommen.</p>}
     </div>
   );
 }

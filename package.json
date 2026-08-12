@@ -1,6 +1,6 @@
 {
   "name": "stato",
-  "version": "1.6.4",
+  "version": "1.6.5",
   "description": "OKJA Statistik- und Dokumentationssystem",
   "private": true,
   "workspaces": [

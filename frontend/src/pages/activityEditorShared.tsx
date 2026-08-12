@@ -1,5 +1,8 @@
 import type { Activity } from '@/lib/activities';
-import type { ActivityExecutionStatus } from '@/lib/activityExecutionStatus';
+import {
+  DEFAULT_ACTIVITY_EXECUTION_STATUS,
+  type ActivityExecutionStatus,
+} from '@/lib/activityExecutionStatus';
 import type { Project } from '@/lib/projects';
 import type { StaffMember, StaffRole } from '@/lib/staff';
 import type { Tag } from '@/lib/taxonomy';
@@ -27,6 +30,39 @@ export type ActivityFormState = {
   staffIds?: string[];
   cohortCounts?: Record<string, { m: number; w: number; d: number }>;
 };
+
+/**
+ * Returns the activity data in the form in which it is saved. This prevents
+ * presentation-only differences (undefined vs. empty fields, selection order,
+ * or zero-only cohort rows) from being treated as an unsaved edit.
+ */
+export function getActivityFormSnapshot(form: ActivityFormState): string {
+  const normalizedIds = (ids: string[] | undefined) => Array.from(new Set(ids || [])).sort();
+  const cohortCounts = Object.entries(form.cohortCounts || {})
+    .map(([cohortId, counts]) => ({
+      cohortId,
+      m: counts.m || 0,
+      w: counts.w || 0,
+      d: counts.d || 0,
+    }))
+    .filter((counts) => counts.m !== 0 || counts.w !== 0 || counts.d !== 0)
+    .sort((left, right) => left.cohortId.localeCompare(right.cohortId));
+
+  return JSON.stringify({
+    date: form.date || '',
+    projectId: form.projectId || '',
+    locationId: form.locationId || '',
+    start: form.start || '',
+    end: form.end || '',
+    executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+    title: form.title || '',
+    categoryIds: normalizedIds(form.categoryIds),
+    tagIds: normalizedIds(form.tagIds),
+    notes: form.notes || '',
+    staffIds: normalizedIds(form.staffIds),
+    cohortCounts,
+  });
+}
 
 export function findNamedEntity<T extends NamedEntity>(items: T[] | undefined, name: string): T | undefined {
   const needle = name.trim().toLowerCase();

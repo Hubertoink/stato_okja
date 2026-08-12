@@ -84,6 +84,13 @@ function formatActivityWeekday(date?: string | null) {
   return date ? formatDate(date, { weekday: 'short' }) : '';
 }
 
+function formatActivityMobileDate(date?: string | null) {
+  if (!date) return '';
+  const weekday = formatActivityWeekday(date);
+  const formattedDate = formatDate(date, { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return weekday ? `${weekday}, ${formattedDate}` : formattedDate;
+}
+
 function toLocalIsoDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -1192,8 +1199,7 @@ export default function Activities() {
                     const isToday = (a.date || '').slice(0, 10) === todayIso;
                     return (
                       <div className={`text-sm ${isToday ? "font-semibold text-viridian" : "text-gray-500"}`}>
-                        <span className="block text-xs font-medium">{formatActivityWeekday(a.date)}</span>
-                        <span className="block">{formatActivityDate(a.date)}</span>
+                        <span className="text-xs font-medium whitespace-nowrap">{formatActivityMobileDate(a.date)}</span>
                       </div>
                     );
                   })()}

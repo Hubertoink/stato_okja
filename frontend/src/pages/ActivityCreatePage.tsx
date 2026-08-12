@@ -37,6 +37,7 @@ import {
   buildActivitySavePayload,
   type GenderKey,
   getCohortSums,
+  getActivityFormSnapshot,
   getProjectCategoryIds,
   getProjectTagIds,
   getStaffGroupMembers,
@@ -92,7 +93,9 @@ export default function ActivityCreatePage() {
     executionStatus: DEFAULT_ACTIVITY_EXECUTION_STATUS,
     projectId: qpProjectId,
   }));
-  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form);
+  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
+    getSnapshot: getActivityFormSnapshot,
+  });
   const initialFormBaselineSetRef = useRef(false);
 
   const selectedProject: Project | undefined = useMemo(() => {

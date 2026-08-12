@@ -7,6 +7,17 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.6.3] - 2026-08-12
+
+### Fixed
+- Unveränderte Aktivitätsformulare lösen beim Schließen keine fälschliche
+  Meldung über ungespeicherte Änderungen mehr aus.
+- Die Änderungsprüfung normalisiert leere Werte, Auswahlreihenfolgen und
+  Teilnehmerzählungen zuverlässig.
+
+### Changed
+- Die mobile Aktivitätenliste zeigt Wochentag und Datum kompakt in einer Zeile.
+
 ## [1.6.2] - 2026-08-11
 
 ### Added

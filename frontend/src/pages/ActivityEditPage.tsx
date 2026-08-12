@@ -38,9 +38,8 @@ import {
   buildActivitySavePayload,
   getActivityFormStateFromActivity,
   getCohortSums,
+  getActivityFormSnapshot,
   type GenderKey,
-  getProjectCategoryIds,
-  getProjectTagIds,
   getStaffGroupMembers,
   getWeekdayLabel,
 } from './activityEditorShared';
@@ -88,24 +87,28 @@ export default function ActivityEditPage() {
 
   const [form, setForm] = useState<ActivityFormState>({ cohortCounts: {} });
   const initialCohortCountsRef = useRef<NonNullable<ActivityFormState['cohortCounts']>>({});
-  const initialFormBaselineSetRef = useRef(false);
+  const [formInitialized, setFormInitialized] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{ date?: string; project?: string }>({});
   const dateFieldRef = useRef<HTMLInputElement | null>(null);
   const projectFieldRef = useRef<HTMLButtonElement | null>(null);
-  const initialFormReady = Boolean(activity && projects && locations && tags && categories && staff);
-  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
-    enabled: initialFormBaselineSetRef.current,
+  const { discardDialog, isDirty, requestDiscard, reset } = useUnsavedChangesGuard(form, {
+    enabled: formInitialized,
+    getSnapshot: getActivityFormSnapshot,
   });
 
   useEffect(() => {
-    if (!activity) return;
+    // A refreshed activity record is safe to apply only while the user has not
+    // edited the form. This also makes the refreshed record the clean baseline.
+    if (!activity || isDirty) return;
     const nextForm = {
       ...getActivityFormStateFromActivity(activity),
       executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
     };
     initialCohortCountsRef.current = nextForm.cohortCounts || {};
     setForm(nextForm);
-  }, [activity, reset]);
+    reset(nextForm);
+    setFormInitialized(true);
+  }, [activity, isDirty, reset]);
 
   const selectedProject: Project | undefined = useMemo(
     () => (projects || []).find((p) => p.id === form.projectId),
@@ -139,39 +142,8 @@ export default function ActivityEditPage() {
     openStaffCreate,
   } = activityInlineCreation;
 
-  // Prefill tags from project's default tag names if none chosen yet
-  useEffect(() => {
-    if (!selectedProject) return;
-    const cur = form.tagIds || [];
-    if (cur.length > 0) return;
-    const ids = getProjectTagIds(selectedProject, tags);
-    if (ids.length > 0) setForm((f) => ({ ...f, tagIds: ids }));
-  }, [selectedProject, tags]);
-
-  // Prefill categories from project unless open_door
-  useEffect(() => {
-    if (!selectedProject) return;
-    if (selectedProject.type === 'open_door') {
-      setForm((f) => ({ ...f, categoryIds: [] }));
-      return;
-    }
-    const cur = form.categoryIds || [];
-    if (cur.length > 0) return;
-    const categoryIds = getProjectCategoryIds(selectedProject);
-    if (categoryIds.length > 0) setForm((f) => ({ ...f, categoryIds }));
-  }, [selectedProject]);
-
-  // Project/taxonomy defaults are part of the initial edit state. Establish the
-  // discard baseline only after all asynchronous defaults have settled.
-  useEffect(() => {
-    if (!initialFormReady || initialFormBaselineSetRef.current) return;
-    const frame = window.requestAnimationFrame(() => {
-      if (initialFormBaselineSetRef.current) return;
-      reset(form);
-      initialFormBaselineSetRef.current = true;
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [categories, form, initialFormReady, locations, projects, reset, staff, tags]);
+  // Existing activities must keep their recorded tags and categories. Project
+  // defaults are applied only when creating a new activity, never while editing.
 
   if (!activity) return null;
 

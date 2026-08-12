@@ -10,6 +10,7 @@ import type { LogbookComment, LogbookEntry, LogbookEntryInput, LogbookEntryStatu
 import type { StaffMember, StaffRole } from '../lib/staff';
 import type { ActiveSurveyDashboardSummary, Survey, SurveyAnalytics, SurveyInput, SurveyQuestion, SurveyResponse, SurveyTrend } from '../lib/surveys';
 import type { Category, Cohort, Tag } from '../lib/taxonomy';
+import type { WeeklyProfile, WeeklyProfileDay, WeeklyProfileSlot } from '../lib/weeklyProfile';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 
 type DemoActivityRecord = Omit<Activity, 'project' | 'location' | 'categories' | 'tags' | 'staff'> & {
@@ -73,6 +74,7 @@ type StatsOverviewResponse = {
   topTags: Array<{ id: string; name: string; count: number }>;
   topProjects: Array<{ id: string; name: string; count: number }>;
   availableYears: string[];
+  weeklyProfile: WeeklyProfile;
 };
 
 type DemoQueryParams = Record<string, unknown>;
@@ -146,15 +148,16 @@ function pickOne<T>(items: T[], seed: string): T {
 }
 
 function durationMinutes(startTime?: string | null, endTime?: string | null): number | null {
-  const toMinutes = (time?: string | null) => {
-    if (!time) return undefined;
-    const [hours, minutes] = time.split(':').map((part) => Number(part));
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return undefined;
-    return hours * 60 + minutes;
-  };
-  const start = toMinutes(startTime);
-  const end = toMinutes(endTime);
+  const start = timeToMinutes(startTime);
+  const end = timeToMinutes(endTime);
   return start !== undefined && end !== undefined && end >= start ? end - start : null;
+}
+
+function timeToMinutes(time?: string | null): number | undefined {
+  if (!time) return undefined;
+  const [hours, minutes] = time.split(':').map((part) => Number(part));
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return undefined;
+  return hours * 60 + minutes;
 }
 
 function activityType(value: unknown): Activity['type'] {
@@ -1582,6 +1585,134 @@ function incrementMap(map: Map<string, number>, key: string, value = 1) {
   map.set(key, (map.get(key) || 0) + value);
 }
 
+function mergeIntervals(intervals: Array<[number, number]>) {
+  if (!intervals.length) return 0;
+  const sorted = [...intervals].sort((left, right) => left[0] - right[0]);
+  let total = 0;
+  let [start, end] = sorted[0];
+  for (const [nextStart, nextEnd] of sorted.slice(1)) {
+    if (nextStart <= end) end = Math.max(end, nextEnd);
+    else {
+      total += end - start;
+      start = nextStart;
+      end = nextEnd;
+    }
+  }
+  return total + end - start;
+}
+
+function getDemoWeeklyProfile(activities: Activity[]): WeeklyProfile {
+  const slotMinutes = 30;
+  const dayDates = Array.from({ length: 7 }, () => new Set<string>());
+  const dayActivityMinutes = Array<number>(7).fill(0);
+  const dayParticipantTotals = Array<number>(7).fill(0);
+  const dayActivityCounts = Array<number>(7).fill(0);
+  const dayIntervals = new Map<string, Array<[number, number]>>();
+  const slotStats = new Map<string, WeeklyProfileSlot>();
+  const slotIntervals = new Map<string, Array<[number, number]>>();
+  let excludedWithoutTime = 0;
+  let earliest = 24 * 60;
+  let latest = 0;
+
+  for (const activity of activities) {
+    const date = activity.date?.slice(0, 10);
+    if (!date) {
+      excludedWithoutTime += 1;
+      continue;
+    }
+    const weekday = parseDate(date).getDay();
+    dayDates[weekday].add(date);
+    const start = timeToMinutes(activity.startTime);
+    const end = timeToMinutes(activity.endTime);
+    if (start === undefined || end === undefined || end <= start) {
+      excludedWithoutTime += 1;
+      continue;
+    }
+
+    const participants = Number(activity.countTotal || 0);
+    earliest = Math.min(earliest, start);
+    latest = Math.max(latest, end);
+    dayActivityMinutes[weekday] += end - start;
+    dayParticipantTotals[weekday] += participants;
+    dayActivityCounts[weekday] += 1;
+    const intervals = dayIntervals.get(`${weekday}:${date}`) || [];
+    intervals.push([start, end]);
+    dayIntervals.set(`${weekday}:${date}`, intervals);
+
+    const firstSlot = Math.floor(start / slotMinutes) * slotMinutes;
+    const lastSlot = Math.ceil(end / slotMinutes) * slotMinutes - slotMinutes;
+    for (let slotStart = firstSlot; slotStart <= lastSlot; slotStart += slotMinutes) {
+      const slotEnd = slotStart + slotMinutes;
+      const overlap = Math.max(0, Math.min(end, slotEnd) - Math.max(start, slotStart));
+      if (!overlap) continue;
+      const key = `${weekday}:${slotStart}`;
+      const stat = slotStats.get(key) || {
+        weekday,
+        startMinute: slotStart,
+        endMinute: slotEnd,
+        activityMinutes: 0,
+        coveredMinutes: 0,
+        activityCount: 0,
+        participantTotal: 0,
+        averageOffers: 0,
+        coverageFrequency: 0,
+        averageParticipants: 0,
+      };
+      stat.activityMinutes += overlap;
+      stat.activityCount += 1;
+      stat.participantTotal += participants;
+      slotStats.set(key, stat);
+      const intervalKey = `${key}:${date}`;
+      const slotIntervalList = slotIntervals.get(intervalKey) || [];
+      slotIntervalList.push([Math.max(start, slotStart), Math.min(end, slotEnd)]);
+      slotIntervals.set(intervalKey, slotIntervalList);
+    }
+  }
+
+  for (const [key, intervals] of slotIntervals) {
+    const [weekday, startMinute] = key.split(':');
+    const stat = slotStats.get(`${weekday}:${startMinute}`);
+    if (stat) stat.coveredMinutes += mergeIntervals(intervals);
+  }
+
+  const days: WeeklyProfileDay[] = Array.from({ length: 7 }, (_, weekday) => {
+    const coveredMinutes = Array.from(dayDates[weekday]).reduce(
+      (total, date) => total + mergeIntervals(dayIntervals.get(`${weekday}:${date}`) || []),
+      0,
+    );
+    const occurrences = dayDates[weekday].size;
+    return {
+      weekday,
+      occurrences,
+      activityCount: dayActivityCounts[weekday],
+      activityMinutes: dayActivityMinutes[weekday],
+      coveredMinutes,
+      participantTotal: dayParticipantTotals[weekday],
+      averageParticipants:
+        dayActivityCounts[weekday] > 0
+          ? +(dayParticipantTotals[weekday] / dayActivityCounts[weekday]).toFixed(1)
+          : 0,
+    };
+  });
+  const rangeStart = earliest < 24 * 60 ? Math.max(0, Math.floor(earliest / slotMinutes) * slotMinutes) : 8 * 60;
+  const rangeEnd = latest > 0 ? Math.min(24 * 60, Math.ceil(latest / slotMinutes) * slotMinutes) : 22 * 60;
+  const slots = Array.from(slotStats.values())
+    .filter((slot) => slot.startMinute >= rangeStart && slot.startMinute < rangeEnd)
+    .map((slot) => {
+      const occurrences = dayDates[slot.weekday].size;
+      return {
+        ...slot,
+        averageOffers: slot.activityMinutes / (slotMinutes * Math.max(1, occurrences)),
+        coverageFrequency: slot.coveredMinutes / (slotMinutes * Math.max(1, occurrences)),
+        averageParticipants:
+          slot.activityCount > 0 ? +(slot.participantTotal / slot.activityCount).toFixed(1) : 0,
+      };
+    })
+    .sort((left, right) => left.weekday - right.weekday || left.startMinute - right.startMinute);
+
+  return { slotMinutes, rangeStart, rangeEnd, excludedWithoutTime, days, slots };
+}
+
 export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOverviewResponse {
   const activities = filterActivityRecords(params).map(hydrateActivity);
   const summaryBase = getDemoStatsSummary(params);
@@ -1652,6 +1783,7 @@ export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOvervie
     topTags: Array.from(byTag.entries()).map(([id, count]) => ({ id, name: store.tags.find((tag) => tag.id === id)?.name || id, count })).sort((left, right) => right.count - left.count),
     topProjects: Array.from(byProject.entries()).map(([id, count]) => ({ id, name: store.projects.find((project) => project.id === id)?.title || id, count })).sort((left, right) => right.count - left.count),
     availableYears,
+    weeklyProfile: getDemoWeeklyProfile(activities),
   };
 }
 

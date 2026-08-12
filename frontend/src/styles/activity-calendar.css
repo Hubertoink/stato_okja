@@ -1031,6 +1031,49 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   display: block;
 }
 
+/* Analysis blocks need their own opaque color treatment in dark themes. The
+ * standard calendar chips intentionally use translucent colors, but that makes
+ * dense time blocks blend into the dark schedule grid. */
+:root[data-color-mode='dark'] .calendar-analysis-event {
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.34);
+}
+
+:root[data-color-mode='dark'] .calendar-analysis-event--open_door {
+  background-color: rgba(5, 150, 105, 0.84) !important;
+}
+
+:root[data-color-mode='dark'] .calendar-analysis-event--project_open {
+  background-color: rgba(13, 148, 136, 0.84) !important;
+}
+
+:root[data-color-mode='dark'] .calendar-analysis-event--project_closed {
+  background-color: rgba(71, 85, 105, 0.9) !important;
+}
+
+:root[data-color-mode='dark'] .calendar-analysis-event--event {
+  background-color: rgba(217, 119, 6, 0.88) !important;
+}
+
+:root[data-color-mode='dark'] .calendar-analysis-event--outreach {
+  background-color: rgba(37, 99, 235, 0.84) !important;
+}
+
+:root[data-color-mode='dark'] .calendar-analysis-event-cancelled {
+  background-color: rgba(225, 29, 72, 0.76);
+  color: #fff1f2;
+}
+
+:root[data-color-mode='dark'] .calendar-analysis-event-details {
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+:root[data-color-mode='dark'] .calendar-analysis-event-cohorts span {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.16);
+}
+
 @media (max-width: 767px) {
   .calendar-analysis-intro {
     padding-inline: 0.875rem;

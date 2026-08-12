@@ -7,6 +7,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.6.4] - 2026-08-12
+
+### Fixed
+- Das Wochenprofil in der Demo berechnet seine Heatmap wieder aus den
+  vorhandenen Demo-Aktivitäten.
+- Aktivitäten in der Kalenderanalyse bleiben in Dark Themes deutlich sichtbar
+  und lesbar.
+
 ## [1.6.3] - 2026-08-12
 
 ### Fixed

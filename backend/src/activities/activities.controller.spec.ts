@@ -3,6 +3,7 @@ import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './activities.service';
 import { OrgsService } from '../orgs/orgs.service';
 import { Activity } from './entities/activity.entity';
+import { CreateActivityDto, UpdateActivityDto } from './dto/activity.dto';
 
 describe('ActivitiesController org scoping', () => {
   let controller: ActivitiesController;
@@ -88,7 +89,7 @@ describe('ActivitiesController org scoping', () => {
 
   it('create sets orgId from scope and ignores body orgId', async () => {
     await controller.create(
-      { title: 'x', orgId: 'malicious' } as Partial<Activity>,
+      { title: 'x', orgId: 'malicious' } as unknown as CreateActivityDto,
       { user: { id: 'u', role: 'superadmin', orgId: null, name: 'S' }, effectiveOrgId: undefined }
     );
     expect(service.create).toHaveBeenCalledWith(expect.objectContaining({ orgId: null }), expect.any(Object));
@@ -97,7 +98,7 @@ describe('ActivitiesController org scoping', () => {
   it('update strips orgId from payload', async () => {
     await controller.update(
       'id-1',
-      { title: 'y', orgId: 'malicious' } as Partial<Activity>,
+      { title: 'y', orgId: 'malicious' } as unknown as UpdateActivityDto,
       { user: { id: 'u', role: 'admin', orgId: 'own', name: 'A' }, effectiveOrgId: 'own' }
     );
     expect(service.updateScoped).toHaveBeenCalled();

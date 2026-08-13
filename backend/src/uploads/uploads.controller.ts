@@ -5,13 +5,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { basename, extname, join } from 'path';
 import { createReadStream, existsSync, mkdirSync, writeFileSync } from 'fs';
+import type sharpFactory from 'sharp';
 // sharp is a native dependency; on some dev platforms it may be missing.
 // We load it dynamically so the backend can still compile/run (uploads will error gracefully).
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const sharp: any = (() => {
+type SharpFactory = typeof sharpFactory;
+
+const sharp: SharpFactory | null = (() => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('sharp');
+    return require('sharp') as SharpFactory;
   } catch {
     return null;
   }

@@ -13,8 +13,8 @@ import { LogbookEntryView } from './entities/logbook-entry-view.entity';
 type RequestUser = { id: string; name?: string | null; role: string; orgId?: string | null };
 type EntryInput = Partial<Pick<
   LogbookEntry,
-  'occurredAt' | 'type' | 'title' | 'body' | 'highlights' | 'challenges' | 'nextSteps' | 'status' | 'visibility' | 'activityId' | 'projectId'
->>;
+  'type' | 'title' | 'body' | 'highlights' | 'challenges' | 'nextSteps' | 'status' | 'visibility' | 'activityId' | 'projectId'
+>> & { occurredAt?: unknown };
 
 const allowedTypes = new Set<string>(Object.values(LogbookEntryType));
 const allowedStatuses = new Set<string>(Object.values(LogbookEntryStatus));

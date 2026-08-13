@@ -3,12 +3,19 @@ import { ProjectsService } from './projects.service';
 import { ActivityType, AuditAction } from '../common/enums';
 
 describe('ProjectsService idempotent create', () => {
-  function createService(projectRepository: Record<string, unknown>) {
+  function createService(
+    projectRepository: Record<string, unknown>,
+    scopeOrgIds: Record<string, string[]> = {},
+  ) {
     return new ProjectsService(
       projectRepository as never,
       {} as never,
       {} as never,
-      {} as never,
+      {
+        getResolvedOrgScope: jest.fn(async (orgId: string | null) =>
+          orgId === null ? { orgId: null } : { orgId, orgIds: scopeOrgIds[orgId] || [orgId] },
+        ),
+      } as never,
       { log: jest.fn().mockResolvedValue(undefined) } as never,
       {} as never,
     );
@@ -116,25 +123,25 @@ describe('ProjectsService idempotent create', () => {
       service.updateScoped(
         'project-1',
         { title: 'Parent edit' },
-        { role: 'superadmin', orgId: null, effectiveOrgId: 'parent-1' },
+        { role: 'superadmin', orgId: null, effectiveOrgId: 'outside-1' },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(projectRepository.update).not.toHaveBeenCalled();
   });
 
-  it('allows direct updates inside the effective project org scope', async () => {
+  it('allows direct updates in a descendant of the effective project scope', async () => {
     const projectRepository = {
       findOne: jest.fn()
         .mockResolvedValueOnce({ id: 'project-1', orgId: 'child-1' })
         .mockResolvedValueOnce({ id: 'project-1', title: 'Child edit', orgId: 'child-1', imageUrl: null }),
       update: jest.fn().mockResolvedValue(undefined),
     };
-    const service = createService(projectRepository);
+    const service = createService(projectRepository, { 'parent-1': ['parent-1', 'child-1'] });
 
     const result = await service.updateScoped(
       'project-1',
       { title: 'Child edit' },
-      { role: 'superadmin', orgId: null, effectiveOrgId: 'child-1' },
+      { role: 'superadmin', orgId: null, effectiveOrgId: 'parent-1' },
     );
 
     expect(projectRepository.update).toHaveBeenCalledWith('project-1', expect.objectContaining({ title: 'Child edit' }));

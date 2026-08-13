@@ -4,6 +4,12 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { resolveOrgScope } from '../auth/org-scope-access';
 import { LogbookService } from './logbook.service';
+import {
+  CreateLogbookCommentDto,
+  CreateLogbookEntryDto,
+  UpdateLogbookEntryDto,
+  UpdateLogbookStatusDto,
+} from './dto/logbook.dto';
 
 type RequestShape = { user: { id: string; name?: string | null; role: string; orgId?: string | null }; effectiveOrgId?: string | null | undefined };
 
@@ -48,7 +54,7 @@ export class LogbookController {
 
   @Post()
   @ApiOperation({ summary: 'Logbucheintrag erstellen' })
-  create(@Req() req: RequestShape, @Body() body: Record<string, unknown>) {
+  create(@Req() req: RequestShape, @Body() body: CreateLogbookEntryDto) {
     return this.logbook.create(body, this.scope(req), req.user);
   }
 
@@ -60,13 +66,13 @@ export class LogbookController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Logbucheintrag bearbeiten' })
-  update(@Param('id') id: string, @Req() req: RequestShape, @Body() body: Record<string, unknown>) {
+  update(@Param('id') id: string, @Req() req: RequestShape, @Body() body: UpdateLogbookEntryDto) {
     return this.logbook.update(id, body, this.scope(req), req.user);
   }
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Status eines Logbucheintrags setzen' })
-  setStatus(@Param('id') id: string, @Req() req: RequestShape, @Body() body: { status?: unknown }) {
+  setStatus(@Param('id') id: string, @Req() req: RequestShape, @Body() body: UpdateLogbookStatusDto) {
     return this.logbook.setStatus(id, body.status, this.scope(req), req.user);
   }
 
@@ -84,7 +90,7 @@ export class LogbookController {
 
   @Post(':id/comments')
   @ApiOperation({ summary: 'Kommentar zu einem Logbucheintrag erstellen' })
-  createComment(@Param('id') id: string, @Req() req: RequestShape, @Body() body: { body?: unknown }) {
+  createComment(@Param('id') id: string, @Req() req: RequestShape, @Body() body: CreateLogbookCommentDto) {
     return this.logbook.createComment(id, body.body, this.scope(req), req.user);
   }
 

@@ -13,6 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ActivitiesService } from './activities.service';
 import { OrgsService } from '../orgs/orgs.service';
+import { CreateActivityDto, UpdateActivityAckDto, UpdateActivityDto } from './dto/activity.dto';
 import { Activity } from './entities/activity.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
@@ -283,17 +284,28 @@ export class ActivitiesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Aktivität nach ID abrufen' })
-  async findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string | null } }) {
-    return toPublicActivity(await this.activitiesService.findOneScoped(id, req.user));
+  async findOne(
+    @Param('id') id: string,
+    @Req() req: { user: { role: string; orgId?: string | null }; effectiveOrgId?: string | null | undefined },
+  ) {
+    return toPublicActivity(
+      await this.activitiesService.findOneScoped(id, {
+        ...req.user,
+        effectiveOrgId: req.effectiveOrgId,
+      }),
+    );
   }
 
   @Patch(':id/ack')
   @ApiOperation({ summary: 'Ack-Status (done) für eine Aktivität setzen' })
   async setAck(
     @Param('id') id: string,
-    @Body() body: { done?: boolean },
+    @Body() body: UpdateActivityAckDto,
     @Req()
-    req: { user: { id?: string; role: string; orgId?: string | null; name?: string | null } },
+    req: {
+      user: { id?: string; role: string; orgId?: string | null; name?: string | null };
+      effectiveOrgId?: string | null | undefined;
+    },
   ) {
     const done = !!body?.done;
     const updated = await this.activitiesService.setAckScoped(id, done, {
@@ -301,6 +313,7 @@ export class ActivitiesController {
       name: req.user.name || undefined,
       role: req.user.role,
       orgId: req.user.orgId ?? null,
+      effectiveOrgId: req.effectiveOrgId,
     });
     return { activityId: id, done: !!updated?.ackDone };
   }
@@ -308,7 +321,7 @@ export class ActivitiesController {
   @Post()
   @ApiOperation({ summary: 'Neue Aktivität anlegen' })
   async create(
-    @Body() data: Partial<Activity>,
+    @Body() data: CreateActivityDto,
     @Req()
     req: {
       user: { id: string; role: string; orgId?: string | null; name?: string | null };
@@ -326,7 +339,7 @@ export class ActivitiesController {
           : req.effectiveOrgId;
     const orgId = scopeOrgId ?? null;
     return toPublicActivity(await this.activitiesService.create(
-      { ...data, orgId },
+      { ...(data as unknown as Partial<Activity>), orgId },
       { id: req.user.id, name: req.user.name || undefined, orgId },
     ));
   }
@@ -335,7 +348,7 @@ export class ActivitiesController {
   @ApiOperation({ summary: 'Aktivität bearbeiten' })
   async update(
     @Param('id') id: string,
-    @Body() data: Partial<Activity>,
+    @Body() data: UpdateActivityDto,
     @Req()
     req: {
       user: { id: string; role: string; orgId?: string | null; name?: string | null };
@@ -349,6 +362,7 @@ export class ActivitiesController {
     return toPublicActivity(await this.activitiesService.updateScoped(id, rest, {
       ...req.user,
       name: req.user.name || undefined,
+      effectiveOrgId: req.effectiveOrgId,
     }));
   }
 
@@ -356,11 +370,16 @@ export class ActivitiesController {
   @ApiOperation({ summary: 'Aktivität löschen' })
   remove(
     @Param('id') id: string,
-    @Req() req: { user: { id: string; role: string; orgId?: string | null; name?: string | null } },
+    @Req()
+    req: {
+      user: { id: string; role: string; orgId?: string | null; name?: string | null };
+      effectiveOrgId?: string | null | undefined;
+    },
   ) {
     return this.activitiesService.removeScoped(id, {
       ...req.user,
       name: req.user.name || undefined,
+      effectiveOrgId: req.effectiveOrgId,
     });
   }
 }

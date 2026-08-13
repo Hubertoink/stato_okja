@@ -97,14 +97,18 @@ describe('ActivitiesService audit diff', () => {
       findBy: jest.fn().mockResolvedValue([{ id: 'cohort-a', name: 'Teenies 12-14' }]),
     };
     const staffRepository = {
-      findBy: jest.fn().mockResolvedValue([{ id: 'staff-1', name: 'Alex' }]),
+      findBy: jest.fn().mockResolvedValue([{ id: 'staff-1', name: 'Alex', orgId: 'org-1' }]),
     };
     const projectRepository = {
       findOne: jest.fn().mockResolvedValue({
         id: 'project-2',
+        orgId: 'org-1',
         title: 'Neues Projekt',
         type: ActivityType.PROJECT_OPEN,
       }),
+    };
+    const locationRepository = {
+      findOne: jest.fn(),
     };
     const orgs = {
       assertTaxonomyIdsVisibleForOrg: jest.fn().mockResolvedValue(undefined),
@@ -120,6 +124,7 @@ describe('ActivitiesService audit diff', () => {
       cohortRepository as never,
       staffRepository as never,
       projectRepository as never,
+      locationRepository as never,
       orgs as never,
       audit as never,
     );

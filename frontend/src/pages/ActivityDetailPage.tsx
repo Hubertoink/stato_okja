@@ -114,7 +114,7 @@ export default function ActivityDetailPage() {
           )}
           {!!activity.id && (
             <button
-              onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from } })}
+              onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from }, replace: true })}
               aria-label={t('common:actions.edit')}
               title={t('common:actions.edit')}
               className="inline-flex items-center justify-center rounded-full border-0 bg-transparent p-2 text-viridian transition-colors hover:bg-[var(--surface-2)]"
@@ -123,7 +123,7 @@ export default function ActivityDetailPage() {
             </button>
           )}
           <IconButton
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(from, { replace: true })}
             aria-label={t('common:actions.back')}
             title={t('common:actions.back')}
             variant="secondary"

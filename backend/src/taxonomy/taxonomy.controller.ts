@@ -22,6 +22,14 @@ import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { resolveOrgScope } from '../auth/org-scope-access';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import {
+  CreateCategoryDto,
+  CreateCohortDto,
+  CreateTagDto,
+  UpdateCategoryDto,
+  UpdateCohortDto,
+  UpdateTagDto,
+} from './dto/taxonomy.dto';
 
 function pickDefined<T extends object>(data: Partial<T>, keys: Array<keyof T>): Partial<T> {
   const result: Partial<T> = {};
@@ -112,14 +120,14 @@ export class TaxonomyController {
 
   @Post('categories')
   @ApiOperation({ summary: 'Neue Kategorie anlegen' })
-  async createCategory(@Body() data: Partial<Category>, @Req() req: TaxonomyRequest) {
+  async createCategory(@Body() data: CreateCategoryDto, @Req() req: TaxonomyRequest) {
     const { orgId, user } = await this.getCreateContext('categories', req);
-    return this.taxonomyService.createCategory({ ...sanitizeCategoryPayload(data), orgId }, user);
+    return this.taxonomyService.createCategory({ ...sanitizeCategoryPayload(data as Partial<Category>), orgId }, user);
   }
 
   @Patch('categories/:id')
-  updateCategory(@Param('id') id: string, @Body() data: Partial<Category>, @Req() req: TaxonomyRequest) {
-    const payload = sanitizeCategoryPayload(data);
+  updateCategory(@Param('id') id: string, @Body() data: UpdateCategoryDto, @Req() req: TaxonomyRequest) {
+    const payload = sanitizeCategoryPayload(data as Partial<Category>);
     if (payload.active === false) this.assertCanManageDestructiveAction(req);
     return this.taxonomyService.updateCategoryScoped(id, payload, this.getScopedUser(req));
   }
@@ -145,14 +153,14 @@ export class TaxonomyController {
 
   @Post('tags')
   @ApiOperation({ summary: 'Neues Tag anlegen' })
-  async createTag(@Body() data: Partial<Tag>, @Req() req: TaxonomyRequest) {
+  async createTag(@Body() data: CreateTagDto, @Req() req: TaxonomyRequest) {
     const { orgId, user } = await this.getCreateContext('tags', req);
-    return this.taxonomyService.createTag({ ...sanitizeTagPayload(data), orgId }, user);
+    return this.taxonomyService.createTag({ ...sanitizeTagPayload(data as Partial<Tag>), orgId }, user);
   }
 
   @Patch('tags/:id')
-  updateTag(@Param('id') id: string, @Body() data: Partial<Tag>, @Req() req: TaxonomyRequest) {
-    const payload = sanitizeTagPayload(data);
+  updateTag(@Param('id') id: string, @Body() data: UpdateTagDto, @Req() req: TaxonomyRequest) {
+    const payload = sanitizeTagPayload(data as Partial<Tag>);
     if (payload.active === false) this.assertCanManageDestructiveAction(req);
     return this.taxonomyService.updateTagScoped(id, payload, this.getScopedUser(req));
   }
@@ -178,14 +186,14 @@ export class TaxonomyController {
 
   @Post('cohorts')
   @ApiOperation({ summary: 'Neue Kohorte anlegen' })
-  async createCohort(@Body() data: Partial<Cohort>, @Req() req: TaxonomyRequest) {
+  async createCohort(@Body() data: CreateCohortDto, @Req() req: TaxonomyRequest) {
     const { orgId, user } = await this.getCreateContext('cohorts', req);
-    return this.taxonomyService.createCohort({ ...sanitizeCohortPayload(data), orgId }, user);
+    return this.taxonomyService.createCohort({ ...sanitizeCohortPayload(data as Partial<Cohort>), orgId }, user);
   }
 
   @Patch('cohorts/:id')
-  updateCohort(@Param('id') id: string, @Body() data: Partial<Cohort>, @Req() req: TaxonomyRequest) {
-    const payload = sanitizeCohortPayload(data);
+  updateCohort(@Param('id') id: string, @Body() data: UpdateCohortDto, @Req() req: TaxonomyRequest) {
+    const payload = sanitizeCohortPayload(data as Partial<Cohort>);
     if (payload.active === false) this.assertCanManageDestructiveAction(req);
     return this.taxonomyService.updateCohortScoped(id, payload, this.getScopedUser(req));
   }

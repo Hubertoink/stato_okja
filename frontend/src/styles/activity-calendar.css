@@ -538,11 +538,11 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   background: var(--interactive-soft-strong);
 }
 
-/* Keep the school-holiday strip behind the cell content while the day-focus
- * ring stays above it. The ring is painted separately so the strip remains
- * continuous across the focused day instead of covering its outline. */
+/* Keep the school-holiday strip visible above activity content while the
+ * day-focus ring stays above it. The ring is painted separately so the strip
+ * remains continuous across the focused day instead of covering its outline. */
 .calendar-school-band {
-  z-index: 1;
+  z-index: 2;
 }
 
 .calendar-day-cell-today::after,
@@ -588,6 +588,31 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 .calendar-more-badge:hover {
   background: rgba(91, 108, 255, 0.24);
   color: #1d35a0;
+}
+
+/* The mobile version is a touch target; in the desktop grid it stays as
+ * compact as the activity rows. */
+@media (min-width: 768px) {
+  .calendar-more-badge {
+    width: auto !important;
+    min-height: 1.25rem !important;
+    height: 1.25rem !important;
+    padding: 0 0.25rem !important;
+    border-radius: 0.25rem !important;
+    font-size: 0.625rem !important;
+    line-height: 1.25rem !important;
+  }
+}
+
+:root[data-color-mode='dark'] .calendar-more-badge {
+  background: rgba(110, 120, 255, 0.32);
+  color: #e1e7ff;
+  border-color: rgba(145, 153, 255, 0.52);
+}
+
+:root[data-color-mode='dark'] .calendar-more-badge:hover {
+  background: rgba(110, 120, 255, 0.44);
+  color: #f7f8ff;
 }
 
 .calendar-tooltip-panel {

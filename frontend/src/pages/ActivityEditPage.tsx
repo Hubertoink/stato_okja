@@ -173,7 +173,7 @@ export default function ActivityEditPage() {
       setDeleteOpen(false);
       return;
     }
-    requestDiscard(() => navigate(-1));
+    requestDiscard(() => navigate(returnTo, { replace: true }));
   };
 
   const handleSave = () => {
@@ -213,7 +213,7 @@ export default function ActivityEditPage() {
       {
         onSuccess: () => {
           showToast(t('quickAdd.updated'));
-          navigate(-1);
+          navigate(returnTo, { replace: true });
         },
       },
     );

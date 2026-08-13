@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ActivitiesController } from '../src/activities/activities.controller';
 import { ActivitiesService } from '../src/activities/activities.service';
+import { Activity } from '../src/activities/entities/activity.entity';
+import { CreateActivityDto, UpdateActivityDto } from '../src/activities/dto/activity.dto';
 import { OrgsService } from '../src/orgs/orgs.service';
 
 describe('ActivitiesController org scoping', () => {
   let controller: ActivitiesController;
-  const service: Pick<ActivitiesService, 'findAll'|'findAllPaged'|'create'|'updateScoped'> = {
-    findAll: jest.fn(async () => []),
+  const service: Pick<ActivitiesService, 'findAllPaged'|'create'|'updateScoped'> = {
     findAllPaged: jest.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 50 })),
     create: jest.fn(),
     updateScoped: jest.fn(),
@@ -35,7 +36,7 @@ describe('ActivitiesController org scoping', () => {
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
-    expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ orgId: null }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgId: null }));
   });
 
   it('superadmin scoped to org expands to subtree', async () => {
@@ -46,33 +47,41 @@ describe('ActivitiesController org scoping', () => {
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
     expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['org-1', 'child-1'], orgId: undefined }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['org-1', 'child-1'], orgId: undefined }));
   });
 
-  it('non-superadmin without explicit scope uses own org', async () => {
+  it('non-superadmin without explicit scope uses own org subtree', async () => {
     await controller.findAll(
       { user: { role: 'admin', orgId: 'own-org' }, effectiveOrgId: undefined },
       undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
-    expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ orgId: 'own-org' }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['own-org', 'child-1'] }));
   });
 
   it('create sets orgId from scope and ignores body orgId', async () => {
-  (service.create as jest.MockedFunction<ActivitiesService['create']>) = jest.fn(async (data) => data as any);
+    (service.create as jest.MockedFunction<ActivitiesService['create']>) = jest.fn(
+      async (data: Partial<Activity>) => data as Activity,
+    );
     const result = await controller.create(
-  { title: 'x', orgId: 'malicious' } as unknown as any,
+      { title: 'x', orgId: 'malicious' } as unknown as CreateActivityDto,
       { user: { id: 'u', role: 'superadmin', orgId: null, name: 'S' }, effectiveOrgId: undefined }
     );
     expect(result).toEqual(expect.objectContaining({ orgId: null }));
   });
 
   it('update strips orgId from payload', async () => {
-  (service.updateScoped as jest.MockedFunction<ActivitiesService['updateScoped']>) = jest.fn(async (_id, data) => data as any);
+    (service.updateScoped as jest.MockedFunction<ActivitiesService['updateScoped']>) = jest.fn(
+      async (
+        _id: string,
+        data: Partial<Activity>,
+        _user: Parameters<ActivitiesService['updateScoped']>[2],
+      ) => data as Activity,
+    );
     const result = await controller.update(
       'id-1',
-  { title: 'y', orgId: 'malicious' } as unknown as any,
+      { title: 'y', orgId: 'malicious' } as unknown as UpdateActivityDto,
       { user: { id: 'u', role: 'admin', orgId: 'own', name: 'A' }, effectiveOrgId: 'own' }
     );
     expect(result).toEqual(expect.not.objectContaining({ orgId: expect.anything() }));

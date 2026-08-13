@@ -7,6 +7,12 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.7.1] - 2026-08-13
+
+### Added
+- Feiertage können im Kalender jetzt unabhängig von den Schulferien ein- und
+  ausgeblendet werden.
+
 ## [1.7.0] - 2026-08-13
 
 ### Fixed

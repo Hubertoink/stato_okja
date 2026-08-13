@@ -772,10 +772,10 @@ export default function Calendar() {
   };
 
   // Holidays overlay
-  const { state: holidayState, school: showSchool } = readHolidayPrefs();
+  const { state: holidayState, publicHolidays: showPublicHolidays, school: showSchool } = readHolidayPrefs();
   const holidays = useMemo(
-    () => getHolidaysInRange(range.from, range.to, holidayState),
-    [range.from, range.to, holidayState],
+    () => showPublicHolidays ? getHolidaysInRange(range.from, range.to, holidayState) : [],
+    [range.from, range.to, holidayState, showPublicHolidays],
   );
   const holidaysByDate = useMemo(() => {
     const map = new Map<string, Holiday[]>();
@@ -816,7 +816,7 @@ export default function Calendar() {
       alive = false;
     };
   }, [showSchool, holidayState, range.from, range.to]);
-  const calendarRunKey = `${scopeKey}|${view}|${range.from}|${range.to}|${showSchool ? 'school' : 'no-school'}|${holidayState ?? 'none'}|${effectiveOrgId ?? 'none'}`;
+  const calendarRunKey = `${scopeKey}|${view}|${range.from}|${range.to}|${showPublicHolidays ? 'public-holidays' : 'no-public-holidays'}|${showSchool ? 'school' : 'no-school'}|${holidayState ?? 'none'}|${effectiveOrgId ?? 'none'}`;
 
   useEffect(() => {
     if (calendarFlowIdRef.current && !calendarFlowCompletedRef.current) {

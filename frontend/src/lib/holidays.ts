@@ -162,13 +162,17 @@ export function getHolidaysInRange(fromISO: string, toISO: string, state?: State
   });
 }
 
-export function readHolidayPrefs(): { state: StateCode | ''; school: boolean } {
+export function readHolidayPrefs(): { state: StateCode | ''; school: boolean; publicHolidays: boolean } {
   try {
     const raw = localStorage.getItem('holidayPrefs');
-    if (!raw) return { state: '', school: false };
+    if (!raw) return { state: '', school: false, publicHolidays: true };
     const obj = JSON.parse(raw);
-    return { state: (obj?.state || '') as StateCode | '', school: Boolean(obj?.school) };
+    return {
+      state: (obj?.state || '') as StateCode | '',
+      school: Boolean(obj?.school),
+      publicHolidays: typeof obj?.publicHolidays === 'boolean' ? obj.publicHolidays : true,
+    };
   } catch {
-    return { state: '', school: false };
+    return { state: '', school: false, publicHolidays: true };
   }
 }

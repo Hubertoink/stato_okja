@@ -27,7 +27,7 @@ import ProtectedImage from '@/components/ProtectedImage';
 import CalendarClosureModal from '@/components/CalendarClosureModal';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity } from '@/lib/activityExecutionStatus';
-import DemoHoverHint from '@/demo/DemoHoverHint';
+import DemoHoverHint, { dismissActiveDemoHoverHint } from '@/demo/DemoHoverHint';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button, IconButton } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -1119,6 +1119,9 @@ export default function Calendar() {
   };
 
   const handleMoreMouseEnter = (event: React.MouseEvent, hiddenActivities: Activity[]) => {
+    // The calendar-level demo hint also contains this badge. Explicitly close
+    // it so it cannot remain visible while the more-activities tooltip opens.
+    dismissActiveDemoHoverHint();
     clearMoreTooltipClose();
     clearMoreTooltipOpen();
     const rect = event.currentTarget.getBoundingClientRect();
@@ -1129,6 +1132,7 @@ export default function Calendar() {
   };
 
   const showMoreTooltip = (target: HTMLElement, hiddenActivities: Activity[]) => {
+    dismissActiveDemoHoverHint();
     clearMoreTooltipOpen();
     clearMoreTooltipClose();
     const rect = target.getBoundingClientRect();
@@ -1458,7 +1462,7 @@ export default function Calendar() {
                         e.stopPropagation();
                         openActivitiesForDate(iso);
                       }}
-                      className={`calendar-day-number relative z-[3] text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? "calendar-day-number-other" : ''}`}
+                      className={`calendar-day-number relative z-[3] text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? "calendar-day-number-other" : ''} ${hasSchoolHoliday ? "calendar-day-number-school" : ''}`}
                       title={autoT('ui_79478f44f6bc', { value0: day.toLocaleDateString(getCurrentIntlLocale()) })}
                       aria-label={autoT('ui_79478f44f6bc', { value0: day.toLocaleDateString(getCurrentIntlLocale()) })}
                     >

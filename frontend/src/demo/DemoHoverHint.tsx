@@ -16,6 +16,11 @@ function setActiveDemoHoverHint(nextHintId: string | null) {
   activeHintListeners.forEach((listener) => listener(activeDemoHoverHintId));
 }
 
+/** Close the currently active demo hint when a nested interactive overlay takes focus. */
+export function dismissActiveDemoHoverHint() {
+  setActiveDemoHoverHint(null);
+}
+
 function clearActiveDemoHoverHint(hintId: string) {
   if (activeDemoHoverHintId === hintId) setActiveDemoHoverHint(null);
 }

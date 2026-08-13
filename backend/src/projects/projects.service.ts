@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, FindOptionsWhere, Equal, IsNull } from 'typeorm';
+import { Repository, ILike, FindOptionsWhere, Equal, IsNull, In } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectDocument } from './entities/project-document.entity';
 import { Activity } from '../activities/entities/activity.entity';
@@ -9,7 +9,12 @@ import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { OrgsService } from '../orgs/orgs.service';
-import { assertExactOrgScopedEntityAccess, removeOrgIdForNonSuperadmin, type OrgScopedUser } from '../auth/org-scope-access';
+import {
+  assertOrgScopedEntityAccessForUser,
+  removeOrgIdForNonSuperadmin,
+  resolveOrgScopeForUser,
+  type OrgScopedUser,
+} from '../auth/org-scope-access';
 
 type ProjectWriteData = Partial<Project> & { categoryIds?: string[]; categoryId?: string | null };
 type ProjectAuditUser = { id?: string; name?: string | null; orgId?: string | null };
@@ -151,17 +156,24 @@ export class ProjectsService {
     }
   }
 
-  findAll(search?: string, archived?: boolean, orgId?: string|null): Promise<Project[]> {
+  findAll(search?: string, archived?: boolean, orgId?: string | null, orgIds?: string[]): Promise<Project[]> {
     const where: FindOptionsWhere<Project> = {};
     if (typeof archived === 'boolean') where.archived = archived;
     // Use ILike for case-insensitive search (PostgreSQL)
     if (search) (where as unknown as Record<string, unknown>).title = ILike(`%${search}%`);
-    if (typeof orgId !== 'undefined') {
+    if (Array.isArray(orgIds) && orgIds.length) {
+      Object.assign(where, { orgId: In(orgIds) });
+    } else if (typeof orgId !== 'undefined') {
       Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
     }
     return this.projectRepository
       .find({ where, order: { title: 'ASC' }, relations: { documents: true } })
       .then((projects) => projects.map((project) => this.hydrateProject(project)));
+  }
+
+  async findAllScoped(search: string | undefined, archived: boolean | undefined, user: OrgScopedUser): Promise<Project[]> {
+    const scope = await resolveOrgScopeForUser(this.orgs, user);
+    return this.findAll(search, archived, scope.orgId, scope.orgIds ? [...scope.orgIds] : undefined);
   }
 
   findOne(id: string): Promise<Project | null> {
@@ -269,7 +281,7 @@ export class ProjectsService {
   async findOneScoped(id: string, user: OrgScopedUser) {
     const p = await this.findOne(id);
     if (!p) return null;
-    assertExactOrgScopedEntityAccess(p, user);
+    await assertOrgScopedEntityAccessForUser(p, user, this.orgs);
     return p;
   }
 
@@ -375,7 +387,7 @@ export class ProjectsService {
   async updateScoped(id: string, data: Partial<Project>, user: OrgScopedUser & { id?: string }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return null;
-    assertExactOrgScopedEntityAccess(existing, user);
+    await assertOrgScopedEntityAccessForUser(existing, user, this.orgs);
     const sanitized = removeOrgIdForNonSuperadmin(data, user);
     const updated = await this.update(id, sanitized);
     if (updated) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: updated.id, entityTitle: updated.title || null, orgId: updated.orgId ?? null, details: { scoped: true }, user });
@@ -385,14 +397,14 @@ export class ProjectsService {
   async removeScoped(id: string, user: OrgScopedUser & { id?: string }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return;
-    assertExactOrgScopedEntityAccess(existing, user);
+    await assertOrgScopedEntityAccessForUser(existing, user, this.orgs);
     await this.remove(id, user);
   }
 
   async archiveScoped(id: string, archived: boolean, user: OrgScopedUser & { id?: string }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return null;
-    assertExactOrgScopedEntityAccess(existing, user);
+    await assertOrgScopedEntityAccessForUser(existing, user, this.orgs);
     const p = await this.archive(id, archived);
     if (p) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: p.id, entityTitle: p.title || null, orgId: p.orgId ?? null, details: { archived }, user });
     return p;

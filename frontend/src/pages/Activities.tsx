@@ -52,6 +52,7 @@ import { PaginationControls } from '@/components/ui/PaginationControls';
 import { useTranslation } from 'react-i18next';
 import { formatDate, formatNumber } from '@/i18n/formatters';
 import { autoT } from '@/i18n/auto';
+import { getTemporaryActivityDateFilter } from '@/lib/activityUrlFilters';
 
 function formatSelectedFilterBadge(
   label: string,
@@ -125,28 +126,38 @@ export default function Activities() {
   const exportTriggerRef = useRef<HTMLDivElement | null>(null);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const todayIso = toLocalIsoDate(new Date());
+  const temporaryDateFilter = useMemo(
+    () => getTemporaryActivityDateFilter(location.search),
+    [location.search],
+  );
+  // Calendar links define a one-off period and must not overwrite filters the
+  // user deliberately stored in the activities view.
+  const effectiveAdvanced = useMemo(
+    () => temporaryDateFilter ? { ...advanced, ...temporaryDateFilter } : advanced,
+    [advanced, temporaryDateFilter],
+  );
   useEffect(() => {
     saveActivitiesFilters({ advanced, order, search: searchTerm });
   }, [advanced, order, searchTerm]);
   const filters = {
     search: searchTerm.trim() || undefined,
-    from: advanced.from,
-    to: advanced.to,
-    weekdays: advanced.weekdays,
-    types: advanced.types,
-    locationIds: advanced.locationIds,
-    projectIds: advanced.projectIds,
-    categoryIds: advanced.categoryIds,
-    uncategorized: advanced.uncategorized,
-    tagIds: advanced.tagIds,
-    staffIds: advanced.staffIds,
-    cohortIds: advanced.cohortIds,
-    executionStatuses: advanced.executionStatuses,
-    hasNotes: advanced.hasNotes,
-    participantsMin: advanced.participantsMin,
-    participantsMax: advanced.participantsMax,
-    durationMin: advanced.durationMin,
-    durationMax: advanced.durationMax,
+    from: effectiveAdvanced.from,
+    to: effectiveAdvanced.to,
+    weekdays: effectiveAdvanced.weekdays,
+    types: effectiveAdvanced.types,
+    locationIds: effectiveAdvanced.locationIds,
+    projectIds: effectiveAdvanced.projectIds,
+    categoryIds: effectiveAdvanced.categoryIds,
+    uncategorized: effectiveAdvanced.uncategorized,
+    tagIds: effectiveAdvanced.tagIds,
+    staffIds: effectiveAdvanced.staffIds,
+    cohortIds: effectiveAdvanced.cohortIds,
+    executionStatuses: effectiveAdvanced.executionStatuses,
+    hasNotes: effectiveAdvanced.hasNotes,
+    participantsMin: effectiveAdvanced.participantsMin,
+    participantsMax: effectiveAdvanced.participantsMax,
+    durationMin: effectiveAdvanced.durationMin,
+    durationMax: effectiveAdvanced.durationMax,
     order,
   } as ActivitiesFilter;
 
@@ -155,25 +166,8 @@ export default function Activities() {
   }, [searchTerm]);
 
   useEffect(() => {
-    const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
-    const dateParam = (params.get('date') || '').trim();
-    const fromParam = (params.get('from') || '').trim();
-    const toParam = (params.get('to') || '').trim();
-    const nextFrom = isIsoDate(fromParam) ? fromParam : isIsoDate(dateParam) ? dateParam : '';
-    const nextTo = isIsoDate(toParam) ? toParam : isIsoDate(dateParam) ? dateParam : '';
-    if (!nextFrom && !nextTo) return;
-
-    setAdvanced((current) => {
-      const updated = {
-        ...current,
-        from: nextFrom || current.from,
-        to: nextTo || current.to,
-      };
-      if (updated.from === current.from && updated.to === current.to) return current;
-      return updated;
-    });
     setPage(1);
-  }, [params]);
+  }, [temporaryDateFilter]);
 
   useEffect(() => {
     const projectParam = (params.get('projectId') || '').trim();
@@ -267,8 +261,8 @@ export default function Activities() {
     return formatActivityDate(iso) || iso;
   };
   const rangeBadgeLabel = (() => {
-    const from = formatFilterDate(advanced.from);
-    const to = formatFilterDate(advanced.to);
+    const from = formatFilterDate(effectiveAdvanced.from);
+    const to = formatFilterDate(effectiveAdvanced.to);
     if (from && to) return from === to ? t('filters.rangeExact', { date: from }) : t('filters.rangeBetween', { from, to });
     if (from) return t('filters.rangeFrom', { date: from });
     if (to) return t('filters.rangeTo', { date: to });
@@ -307,48 +301,48 @@ export default function Activities() {
     [cohorts],
   );
   const typesBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge(t('filters.types'), advanced.types, typeNameById),
-    [advanced.types, t, typeNameById],
+    () => formatSelectedFilterBadge(t('filters.types'), effectiveAdvanced.types, typeNameById),
+    [effectiveAdvanced.types, t, typeNameById],
   );
   const locationsBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge(t('filters.locations'), advanced.locationIds, locationNameById),
-    [advanced.locationIds, locationNameById, t],
+    () => formatSelectedFilterBadge(t('filters.locations'), effectiveAdvanced.locationIds, locationNameById),
+    [effectiveAdvanced.locationIds, locationNameById, t],
   );
   const projectsBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge(t('filters.projects'), advanced.projectIds, projectNameById),
-    [advanced.projectIds, projectNameById, t],
+    () => formatSelectedFilterBadge(t('filters.projects'), effectiveAdvanced.projectIds, projectNameById),
+    [effectiveAdvanced.projectIds, projectNameById, t],
   );
   const categoriesBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge(t('filters.categories'), advanced.categoryIds, categoryNameById),
-    [advanced.categoryIds, categoryNameById, t],
+    () => formatSelectedFilterBadge(t('filters.categories'), effectiveAdvanced.categoryIds, categoryNameById),
+    [effectiveAdvanced.categoryIds, categoryNameById, t],
   );
   const tagsBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge(t('filters.tags'), advanced.tagIds, tagNameById),
-    [advanced.tagIds, tagNameById, t],
+    () => formatSelectedFilterBadge(t('filters.tags'), effectiveAdvanced.tagIds, tagNameById),
+    [effectiveAdvanced.tagIds, tagNameById, t],
   );
   const staffBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge(t('filters.staff'), advanced.staffIds, staffNameById),
-    [advanced.staffIds, staffNameById, t],
+    () => formatSelectedFilterBadge(t('filters.staff'), effectiveAdvanced.staffIds, staffNameById),
+    [effectiveAdvanced.staffIds, staffNameById, t],
   );
   const cohortsBadgeLabel = useMemo(
-    () => formatSelectedFilterBadge(t('filters.cohorts'), advanced.cohortIds, cohortNameById),
-    [advanced.cohortIds, cohortNameById, t],
+    () => formatSelectedFilterBadge(t('filters.cohorts'), effectiveAdvanced.cohortIds, cohortNameById),
+    [effectiveAdvanced.cohortIds, cohortNameById, t],
   );
   const weekdaysBadgeLabel = useMemo(() => {
-    if (!advanced.weekdays?.length) return null;
-    const weekdayNames = advanced.weekdays
+    if (!effectiveAdvanced.weekdays?.length) return null;
+    const weekdayNames = effectiveAdvanced.weekdays
       .slice()
       .sort((left, right) => left - right)
       .map((weekday) => formatDate(new Date(2024, 0, 7 + weekday), { weekday: 'short' }));
     return `${t('filters.weekdays')}: ${weekdayNames.join(', ')}`;
-  }, [advanced.weekdays, t]);
+  }, [effectiveAdvanced.weekdays, t]);
   const executionStatusBadgeLabel = useMemo(() => {
-    if (!advanced.executionStatuses?.length) return null;
-    return `Status: ${formatActivityExecutionStatusList(advanced.executionStatuses)}`;
-  }, [advanced.executionStatuses]);
+    if (!effectiveAdvanced.executionStatuses?.length) return null;
+    return `Status: ${formatActivityExecutionStatusList(effectiveAdvanced.executionStatuses)}`;
+  }, [effectiveAdvanced.executionStatuses]);
   const hasAdvancedFilters = useMemo(
-    () => Object.values(advanced).some((value) => (Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '')),
-    [advanced],
+    () => Object.values(effectiveAdvanced).some((value) => (Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '')),
+    [effectiveAdvanced],
   );
   const goToFirstPage = () => setPage(1);
   const goToPreviousPage = () => setPage((currentPage) => Math.max(currentPage - 1, 1));
@@ -689,9 +683,9 @@ export default function Activities() {
         }
 
         setExportProgress(autoT('ui_eb5ec187a1c8'));
-        const projectFilter = advanced.projectIds?.length === 1 ? advanced.projectIds[0] : undefined;
-        const allLogbookEntries = await fetchAllLogbookEntries({ from: advanced.from, to: advanced.to, projectId: projectFilter });
-        const selectedProjectIds = advanced.projectIds || [];
+        const projectFilter = effectiveAdvanced.projectIds?.length === 1 ? effectiveAdvanced.projectIds[0] : undefined;
+        const allLogbookEntries = await fetchAllLogbookEntries({ from: effectiveAdvanced.from, to: effectiveAdvanced.to, projectId: projectFilter });
+        const selectedProjectIds = effectiveAdvanced.projectIds || [];
         const logbookEntries = selectedProjectIds.length > 1
           ? allLogbookEntries.filter((entry) => entry.projectId && selectedProjectIds.includes(entry.projectId))
           : allLogbookEntries;
@@ -841,7 +835,7 @@ export default function Activities() {
               </button>
             </span>
           ) : null}
-          {advanced.from || advanced.to ? (
+          {effectiveAdvanced.from || effectiveAdvanced.to ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{rangeBadgeLabel}</span>
           ) : null}
           {weekdaysBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{weekdaysBadgeLabel}</span> : null}
@@ -849,7 +843,7 @@ export default function Activities() {
           {locationsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{locationsBadgeLabel}</span> : null}
           {projectsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{projectsBadgeLabel}</span> : null}
           {categoriesBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{categoriesBadgeLabel}</span> : null}
-          {advanced.uncategorized ? (
+          {effectiveAdvanced.uncategorized ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
               {t('filters.uncategorized')}
             </span>
@@ -860,30 +854,30 @@ export default function Activities() {
           {executionStatusBadgeLabel ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{executionStatusBadgeLabel}</span>
           ) : null}
-          {advanced.hasNotes ? (
+          {effectiveAdvanced.hasNotes ? (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
               {t('filters.onlyNotes')}
             </span>
           ) : null}
-          {(typeof advanced.participantsMin === 'number' ||
-            typeof advanced.participantsMax === 'number') && (
+          {(typeof effectiveAdvanced.participantsMin === 'number' ||
+            typeof effectiveAdvanced.participantsMax === 'number') && (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              {t('filters.participants', { value: typeof advanced.participantsMin === 'number' &&
-              typeof advanced.participantsMax === 'number'
-                ? `${advanced.participantsMin}–${advanced.participantsMax}`
-                : typeof advanced.participantsMin === 'number'
-                  ? `≥ ${advanced.participantsMin}`
-                  : `≤ ${advanced.participantsMax}` })}
+              {t('filters.participants', { value: typeof effectiveAdvanced.participantsMin === 'number' &&
+              typeof effectiveAdvanced.participantsMax === 'number'
+                ? `${effectiveAdvanced.participantsMin}–${effectiveAdvanced.participantsMax}`
+                : typeof effectiveAdvanced.participantsMin === 'number'
+                  ? `≥ ${effectiveAdvanced.participantsMin}`
+                  : `≤ ${effectiveAdvanced.participantsMax}` })}
             </span>
           )}
-          {(typeof advanced.durationMin === 'number' ||
-            typeof advanced.durationMax === 'number') && (
+          {(typeof effectiveAdvanced.durationMin === 'number' ||
+            typeof effectiveAdvanced.durationMax === 'number') && (
             <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              {t('filters.duration', { value: typeof advanced.durationMin === 'number' && typeof advanced.durationMax === 'number'
-                ? `${advanced.durationMin}–${advanced.durationMax}`
-                : typeof advanced.durationMin === 'number'
-                  ? `≥ ${advanced.durationMin}`
-                  : `≤ ${advanced.durationMax}` })}
+              {t('filters.duration', { value: typeof effectiveAdvanced.durationMin === 'number' && typeof effectiveAdvanced.durationMax === 'number'
+                ? `${effectiveAdvanced.durationMin}–${effectiveAdvanced.durationMax}`
+                : typeof effectiveAdvanced.durationMin === 'number'
+                  ? `≥ ${effectiveAdvanced.durationMin}`
+                  : `≤ ${effectiveAdvanced.durationMax}` })}
             </span>
           )}
           {hasAdvancedFilters && (
@@ -898,6 +892,7 @@ export default function Activities() {
                 clearSearch();
                 setPage(1);
                 clearActivitiesFilters();
+                navigate('/activities', { replace: true });
               }}
             >
               <X className="h-3.5 w-3.5" />

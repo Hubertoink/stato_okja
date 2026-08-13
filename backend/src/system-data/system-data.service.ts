@@ -26,10 +26,8 @@ import {
 } from './system-data-upload-store';
 import {
   SystemDataImportArchiveReader,
-  type ImportedTableData,
   type ParsedImportArchive,
   type SystemDataManagedTable,
-  type SystemDataManifest,
 } from './system-data-import-archive-reader';
 
 type ExportArchive = import('archiver').Archiver;

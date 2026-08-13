@@ -26,5 +26,21 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
+  {
+    // Seed scripts are command-line tools. Their progress output is part of
+    // the operator-facing interface, not accidental application logging.
+    files: ['backend/src/database/seeds/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
+    // Tests deliberately use untyped partial doubles at integration seams.
+    // Runtime code keeps the stricter default from the block above.
+    files: ['backend/**/*.spec.ts', 'backend/test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
   eslintConfigPrettier,
 );

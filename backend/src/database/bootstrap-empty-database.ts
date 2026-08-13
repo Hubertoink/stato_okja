@@ -1,8 +1,10 @@
+import { Logger } from '@nestjs/common';
 import { DataSource, type DataSourceOptions } from 'typeorm';
 import { typeormConfig } from '../config/typeorm.config';
 
 const BOOTSTRAP_LOCK_ID = 481516234;
 const SYSTEM_TABLES = new Set(['migrations', 'typeorm_metadata']);
+const logger = new Logger('DatabaseBootstrap');
 
 type SchemaState = {
   hasUsersTable: boolean;
@@ -112,10 +114,10 @@ export async function bootstrapEmptyDatabase() {
       );
     }
 
-    console.log('Leere PostgreSQL-Datenbank erkannt: StatO-Basisschema wird einmalig erstellt.');
+    logger.log('Leere PostgreSQL-Datenbank erkannt: StatO-Basisschema wird einmalig erstellt.');
     await initializeCurrentSchema();
     await runMigrations();
-    console.log('StatO-Basisschema und Datenbankmigrationen wurden erfolgreich initialisiert.');
+    logger.log('StatO-Basisschema und Datenbankmigrationen wurden erfolgreich initialisiert.');
   } finally {
     if (probeDataSource.isInitialized) {
       try {

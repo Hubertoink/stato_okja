@@ -84,6 +84,8 @@ jobs:
 
       - name: Test and build backend
         run: |
+          npm run lint:check --workspace=backend
+          npm run type-check:strict --workspace=backend
           npm run test --workspace=backend -- --runInBand
           npm run build --workspace=backend
 

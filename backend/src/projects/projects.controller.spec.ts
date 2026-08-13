@@ -5,8 +5,8 @@ import { OrgsService } from '../orgs/orgs.service';
 
 describe('ProjectsController org scoping', () => {
   let controller: ProjectsController;
-  const service: Pick<ProjectsService, 'findAll'|'create'|'updateScoped'> = {
-    findAll: jest.fn(async () => []),
+  const service: Pick<ProjectsService, 'findAllScoped'|'create'|'updateScoped'> = {
+    findAllScoped: jest.fn(async () => []),
     create: jest.fn(async () => ({} as unknown as import('./entities/project.entity').Project)),
     updateScoped: jest.fn(async () => ({} as unknown as import('./entities/project.entity').Project)),
   };
@@ -24,19 +24,19 @@ describe('ProjectsController org scoping', () => {
     jest.clearAllMocks();
   });
 
-  it('superadmin without scope lists only null org', async () => {
+  it('superadmin without scope lists only null-org records', async () => {
     await controller.findAll({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: undefined }, undefined, undefined);
-    expect(service.findAll).toHaveBeenCalledWith(undefined, undefined, null);
+    expect(service.findAllScoped).toHaveBeenCalledWith(undefined, undefined, expect.objectContaining({ role: 'superadmin', effectiveOrgId: undefined }));
   });
 
-  it('superadmin scoped to org lists only that org level', async () => {
+  it('superadmin scoped to an org resolves the selected subtree in the service', async () => {
     await controller.findAll({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined);
-    expect(service.findAll).toHaveBeenCalledWith(undefined, undefined, 'org-1');
+    expect(service.findAllScoped).toHaveBeenCalledWith(undefined, undefined, expect.objectContaining({ role: 'superadmin', effectiveOrgId: 'org-1' }));
   });
 
-  it('org user lists only their own org level', async () => {
+  it('org users resolve their own subtree in the service', async () => {
     await controller.findAll({ user: { role: 'admin', orgId: 'own-org' }, effectiveOrgId: undefined }, undefined, undefined);
-    expect(service.findAll).toHaveBeenCalledWith(undefined, undefined, 'own-org');
+    expect(service.findAllScoped).toHaveBeenCalledWith(undefined, undefined, expect.objectContaining({ role: 'admin', orgId: 'own-org' }));
   });
 
   it('create sets orgId from scope and ignores body orgId', async () => {

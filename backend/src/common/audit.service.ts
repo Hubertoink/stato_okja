@@ -210,7 +210,7 @@ export class AuditService {
 
     const toNumMap = <T extends { orgId: string; cnt?: string; bytes?: string }>(rows: T[], field: 'cnt' | 'bytes') => {
       const m = new Map<string, number>();
-      for (const r of rows) m.set(r.orgId, parseInt((r as any)[field] || '0', 10) || 0);
+      for (const r of rows) m.set(r.orgId, parseInt(r[field] || '0', 10) || 0);
       return m;
     };
 

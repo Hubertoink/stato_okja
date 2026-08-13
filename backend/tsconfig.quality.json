@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "files": [
+    "src/auth/org-scope-access.ts",
+    "src/activities/dto/activity.dto.ts",
+    "src/locations/dto/location.dto.ts",
+    "src/staff/dto/staff.dto.ts",
+    "src/taxonomy/dto/taxonomy.dto.ts",
+    "src/logbook/dto/logbook.dto.ts",
+    "src/orgs/dto/organization.dto.ts"
+  ]
+}

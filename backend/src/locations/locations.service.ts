@@ -2,14 +2,24 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Equal, IsNull, FindOptionsWhere, In } from 'typeorm';
 import { Location } from './entities/location.entity';
-import { assertOrgScopedEntityAccess, removeOrgIdForNonSuperadmin } from '../auth/org-scope-access';
+import {
+  assertOrgScopedEntityAccessForUser,
+  removeOrgIdForNonSuperadmin,
+  type OrgScopedUser,
+} from '../auth/org-scope-access';
+import { OrgsService } from '../orgs/orgs.service';
 
 @Injectable()
 export class LocationsService {
   constructor(
     @InjectRepository(Location)
     private locationRepository: Repository<Location>,
+    private readonly orgs: OrgsService,
   ) {}
+
+  private async assertUserCanAccessLocation(location: Pick<Location, 'orgId'>, user: OrgScopedUser) {
+    await assertOrgScopedEntityAccessForUser(location, user, this.orgs);
+  }
 
   findAll(active?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Location[]> {
     const where: FindOptionsWhere<Location> = {};
@@ -40,17 +50,17 @@ export class LocationsService {
     await this.locationRepository.delete(id);
   }
 
-  async findOneScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async findOneScoped(id: string, user: OrgScopedUser) {
     const loc = await this.findOne(id);
     if (!loc) return null;
-    assertOrgScopedEntityAccess(loc, user);
+    await this.assertUserCanAccessLocation(loc, user);
     return loc;
   }
 
-  async updateScoped(id: string, data: Partial<Location>, user: { role: string; orgId?: string|null }) {
+  async updateScoped(id: string, data: Partial<Location>, user: OrgScopedUser) {
     const existing = await this.locationRepository.findOne({ where: { id } });
     if (!existing) return null;
-    assertOrgScopedEntityAccess(existing, user);
+    await this.assertUserCanAccessLocation(existing, user);
     let sanitized = removeOrgIdForNonSuperadmin(data, user);
     if (user.role !== 'superadmin') {
       const d = sanitized as Partial<Location> & { active?: boolean };
@@ -60,10 +70,10 @@ export class LocationsService {
     return this.update(id, sanitized);
   }
 
-  async removeScoped(id: string, user: { role: string; orgId?: string|null }) {
+  async removeScoped(id: string, user: OrgScopedUser) {
     const existing = await this.locationRepository.findOne({ where: { id } });
     if (!existing) return;
-    assertOrgScopedEntityAccess(existing, user);
+    await this.assertUserCanAccessLocation(existing, user);
     await this.remove(id);
   }
 }

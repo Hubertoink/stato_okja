@@ -41,6 +41,17 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
 
+function cursorFromSearch(search: string): Date | null {
+  const value = new URLSearchParams(search).get('cursor');
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+
+  const [year, month, day] = value.split('-').map(Number);
+  const cursor = new Date(year, month - 1, day);
+  return cursor.getFullYear() === year && cursor.getMonth() === month - 1 && cursor.getDate() === day
+    ? cursor
+    : null;
+}
+
 function filterClosureDaysForRange(
   closureDays: OrganizationClosureDay[],
   from?: string,
@@ -458,7 +469,7 @@ export default function Calendar() {
   const scopeKey = useOrgScopeKey();
   const { data: cohorts = [] } = useCohorts();
   const [view, setView] = useState<View>(() => readStoredCalendarView());
-  const [cursor, setCursor] = useState<Date>(() => loadCalendarCursor());
+  const [cursor, setCursor] = useState<Date>(() => cursorFromSearch(location.search) ?? loadCalendarCursor());
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
   const [picker, setPicker] = useState<{ date: string } | null>(null);
   const [edit, setEdit] = useState<Activity | null>(null);
@@ -571,8 +582,9 @@ export default function Calendar() {
   };
   const openActivity = (activity: Activity) => {
     if (isMobile && activity.id) {
+      const calendarCursor = fmtLocalISO(cursor);
       navigate(`/activities/${activity.id}`, {
-        state: { from: `${location.pathname}${location.search}` },
+        state: { from: `${location.pathname}?cursor=${calendarCursor}` },
       });
       return;
     }
@@ -751,7 +763,7 @@ export default function Calendar() {
 
     return (
       <div
-        className={`calendar-closure-badge rounded border font-semibold truncate max-w-full ${compact ? "mb-0.5 px-1 py-[1px] text-[9px] md:text-[10px]" : "mb-1 px-1.5 py-0.5 text-[10px]"}`}
+        className={`calendar-closure-badge relative z-[4] rounded border font-semibold truncate max-w-full ${compact ? "mb-0.5 px-1 py-[1px] text-[9px] md:text-[10px]" : "mb-1 px-1.5 py-0.5 text-[10px]"}`}
         title={label}
       >
         {label}
@@ -1116,6 +1128,16 @@ export default function Calendar() {
     }, 600);
   };
 
+  const showMoreTooltip = (target: HTMLElement, hiddenActivities: Activity[]) => {
+    clearMoreTooltipOpen();
+    clearMoreTooltipClose();
+    const rect = target.getBoundingClientRect();
+    setMoreTooltip({
+      activities: hiddenActivities,
+      position: { x: rect.left + rect.width / 2, y: rect.bottom },
+    });
+  };
+
   const handleMoreMouseLeave = () => {
     clearMoreTooltipOpen();
     clearMoreTooltipClose();
@@ -1196,13 +1218,26 @@ export default function Calendar() {
           );
         })}
         {hidden > 0 && (
-          <div
-            className="calendar-more-badge h-4 cursor-pointer rounded border px-1 text-[9px] font-semibold leading-4 transition-colors md:h-5 md:text-[10px] md:leading-5"
-            onMouseEnter={(event) => handleMoreMouseEnter(event, hiddenItems)}
-            onMouseLeave={handleMoreMouseLeave}
+          <Button
+            className="calendar-more-badge w-full cursor-pointer px-1 text-left text-[9px] font-semibold leading-4 transition-colors"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (isMobile) {
+                openFilteredActivitiesForDate(iso);
+                return;
+              }
+              showMoreTooltip(event.currentTarget, hiddenItems);
+            }}
+            onMouseEnter={isMobile ? undefined : (event) => handleMoreMouseEnter(event, hiddenItems)}
+            onMouseLeave={isMobile ? undefined : handleMoreMouseLeave}
+            onFocus={isMobile ? undefined : (event) => showMoreTooltip(event.currentTarget, hiddenItems)}
+            onBlur={isMobile ? undefined : handleMoreMouseLeave}
+            aria-label={`+${hidden} ${autoT('ui_d055c3b1006a')}`}
+            size="sm"
+            variant="ghost"
           >
             +{hidden}
-          </div>
+          </Button>
         )}
       </div>
     );
@@ -1462,7 +1497,7 @@ export default function Calendar() {
                   </div>
                   {hasHoliday && (
                     <div
-                      className="calendar-holiday-badge mb-0.5 block w-full rounded px-1 py-[1px] text-[9px] md:text-[10px] font-semibold border truncate"
+                      className="calendar-holiday-badge relative z-[3] mb-0.5 block w-full rounded px-1 py-[1px] text-[9px] md:text-[10px] font-semibold border truncate"
                       title={holidaysByDate
                         .get(iso)!
                         .map((h) => h.name)
@@ -1486,7 +1521,7 @@ export default function Calendar() {
               {schoolHolidaySegmentsForWeek(week).map((segment) => (
                 <div
                   key={`${segment.name}-${segment.start}-${segment.end}`}
-                  className="calendar-school-badge calendar-school-band pointer-events-none absolute top-8 z-[1] h-3.5 overflow-hidden rounded-sm border px-1 text-[9px] leading-[14px] md:text-[10px]"
+                  className="calendar-school-badge calendar-school-band pointer-events-none absolute top-8 z-[2] h-3.5 overflow-hidden rounded-sm border px-1 text-[9px] leading-[14px] md:text-[10px]"
                   style={{
                     left: `${(segment.start / 7) * 100}%`,
                     width: `${((segment.end - segment.start + 1) / 7) * 100}%`,
@@ -1592,7 +1627,7 @@ export default function Calendar() {
                   </div>
                   {!!holidaysByDate.get(iso)?.length && (
                     <div
-                      className="calendar-holiday-badge inline-block mb-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border truncate max-w-full"
+                      className="calendar-holiday-badge relative z-[3] inline-block mb-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border truncate max-w-full"
                       title={holidaysByDate
                         .get(iso)!
                         .map((h) => h.name)
@@ -1946,12 +1981,14 @@ export default function Calendar() {
         typeLabel={typeLabel}
         fmtTimeRange={fmtTimeRange}
       />
-      <MoreActivitiesTooltip
-        activities={moreTooltip?.activities ?? null}
-        position={moreTooltip?.position ?? null}
-        typeLabel={typeLabel}
-        fmtTimeRange={fmtTimeRange}
-      />
+      {!isMobile && (
+        <MoreActivitiesTooltip
+          activities={moreTooltip?.activities ?? null}
+          position={moreTooltip?.position ?? null}
+          typeLabel={typeLabel}
+          fmtTimeRange={fmtTimeRange}
+        />
+      )}
       
     </div>
   );

@@ -7,12 +7,35 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.6.6] - 2026-08-13
+
+### Fixed
+- Der Wechsel in nicht zur gewählten Organisation gehörende Bereiche wird in
+  Aktivitäten, Logbuch, Umfragen und Stammdaten zuverlässig verhindert.
+- Ungültige Datumsangaben in Logbucheinträgen werden abgefangen, ohne die
+  Ansicht abstürzen zu lassen.
+
+### Changed
+- API-Eingaben verwenden für die zentralen Ressourcen validierte DTOs.
+- Das Backend prüft in der CI zusätzlich Linting ohne automatische Änderungen
+  sowie eine schrittweise aktivierte strikte Typprüfung.
+
 ## [1.6.5] - 2026-08-12
 
 ### Changed
 - Der Kalender merkt sich den gewählten Zeitraum pro Browser-Session, sodass
   beim Wechsel zwischen Seiten dieselbe Woche, Monatsansicht oder Analyse
   erhalten bleibt.
+- In der mobilen Monatsansicht öffnet „+ weitere Aktivitäten“ jetzt die
+  Aktivitätenliste mit dem ausgewählten Tagesfilter statt eines Hover-Tooltips.
+- Die Rücknavigation aus einer mobilen Aktivität führt wieder zum zuvor im
+  Kalender betrachteten Zeitraum.
+- Der kompakte „+ weitere Aktivitäten“-Eintrag im Kalender ist auf Desktop und
+  mit Tastatur vollständig bedienbar.
+- Temporäre Tagesfilter aus dem Kalender überschreiben gespeicherte
+  Aktivitätenfilter nicht mehr.
+- Detail- und Bearbeitungsansichten ersetzen ihren Rückweg im Verlauf, damit
+  Browser-Zurück nicht erneut in die gerade geschlossene Aktivität führt.
 - Das Wochenprofil der Statistik verwendet gemeinsame Theme-Tokens und
   Komponentenklassen für eine durchgängig lesbare Darstellung in allen Dark
   Themes.

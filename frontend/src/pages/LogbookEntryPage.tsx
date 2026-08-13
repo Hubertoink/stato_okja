@@ -50,6 +50,11 @@ import { Button, IconButton } from '@/components/ui/Button';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useTranslation } from 'react-i18next';
+import {
+  isValidLogbookDateTime,
+  logbookActivityPickerRange,
+  toLogbookDateTimeInput,
+} from '@/lib/logbookDate';
 
 type FormState = {
   occurredAt: string;
@@ -66,9 +71,7 @@ type FormState = {
 };
 
 function toInputDate(value?: string | null) {
-  const date = value ? new Date(value) : new Date();
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  return toLogbookDateTimeInput(value);
 }
 
 function emptyForm(search: URLSearchParams): FormState {
@@ -101,7 +104,9 @@ function initials(name: string) {
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
-  return new Date(value).toLocaleString(getCurrentIntlLocale(), {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString(getCurrentIntlLocale(), {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
@@ -159,12 +164,7 @@ function ActivityPickerModal({
 }) {
   const [search, setSearch] = useState('');
   const range = useMemo(() => {
-    const base = occurredAt ? new Date(occurredAt) : new Date();
-    const before = new Date(base);
-    before.setDate(before.getDate() - 14);
-    const after = new Date(base);
-    after.setDate(after.getDate() + 14);
-    return { from: before.toISOString().slice(0, 10), to: after.toISOString().slice(0, 10) };
+    return logbookActivityPickerRange(occurredAt);
   }, [occurredAt]);
   const { data: activityPage, isLoading } = useActivitiesPaged(
     { ...range, search: search.trim() || undefined, order: 'desc' },
@@ -300,6 +300,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
   const selectedActivity = selectedActivityFromApi ||
     (entry?.activityId === form.activityId ? entry.activity : undefined);
   const occurredAtWeekday = useMemo(() => getWeekdayLabel(form.occurredAt), [form.occurredAt]);
+  const occurredAtIsValid = isValidLogbookDateTime(form.occurredAt);
 
   useEffect(() => {
     if (!entry) return;
@@ -374,6 +375,10 @@ export default function LogbookEntryPage(props: unknown = {}) {
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
+    if (!occurredAtIsValid) {
+      showToast(t('invalidDate'), { type: 'error' });
+      return;
+    }
     try {
       if (isNew) {
         const created = await create.mutateAsync(formPayload);
@@ -485,10 +490,19 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   <input
                     required
                     type="datetime-local"
+                    min="1000-01-01T00:00"
+                    max="9999-12-31T23:59"
                     value={form.occurredAt}
                     onChange={(event) => setForm({ ...form, occurredAt: event.target.value })}
+                    aria-invalid={!occurredAtIsValid}
+                    aria-describedby={!occurredAtIsValid ? 'logbook-occurred-at-error' : undefined}
                     className="editor-field mt-1 w-full border border-gray-200 bg-white px-3 py-2.5"
                   />
+                  {!occurredAtIsValid ? (
+                    <span id="logbook-occurred-at-error" className="mt-1 block text-xs text-red-700">
+                      {t('invalidDate')}
+                    </span>
+                  ) : null}
                 </label>
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_f4b0e988965d')}<select
                     value={form.type}

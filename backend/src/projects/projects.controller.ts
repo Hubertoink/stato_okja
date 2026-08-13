@@ -75,8 +75,10 @@ export class ProjectsController {
   @ApiQuery({ name: 'archived', required: false })
   async findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('search') search?: string, @Query('archived') archived?: string) {
     const archivedBool = archived === 'true' ? true : archived === 'false' ? false : undefined;
-    const orgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
-    return this.projectsService.findAll(search, archivedBool, orgId);
+    return this.projectsService.findAllScoped(search, archivedBool, {
+      ...req.user,
+      effectiveOrgId: req.effectiveOrgId,
+    });
   }
 
   @Get(':id')

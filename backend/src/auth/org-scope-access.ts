@@ -10,6 +10,27 @@ export type OrgScopedEntity = {
   orgId?: string | null;
 };
 
+export type ResolvedOrgScope = {
+  /**
+   * The selected organization. `null` represents the deliberately isolated
+   * global/no-organization scope.
+   */
+  orgId: string | null;
+  /**
+   * The selected organization plus its descendants. This is only set for an
+   * organization scope; global records never belong to an organization tree.
+   */
+  orgIds?: readonly string[];
+};
+
+/**
+ * Minimal interface so domain services can share scope enforcement without
+ * depending on the concrete OrgsService implementation.
+ */
+export type OrgScopeResolver = {
+  getResolvedOrgScope(orgId: string | null): Promise<ResolvedOrgScope>;
+};
+
 export function resolveOrgScope(user: OrgScopedUser): string | null {
   if (user.role === 'superadmin') {
     return typeof user.effectiveOrgId === 'undefined' ? null : user.effectiveOrgId;
@@ -25,6 +46,42 @@ export function assertOrgScopedEntityAccess(entity: OrgScopedEntity, user: OrgSc
   if (!canAccessOrgScopedEntity(entity, user)) {
     throw new ForbiddenException('Not allowed');
   }
+}
+
+/**
+ * Enforces the request's effective organization scope. List endpoints use a
+ * selected organization as the root of a subtree, so detail and mutation
+ * endpoints must use the same rule instead of falling back to `user.orgId`.
+ */
+export function assertOrgScopedEntityAccessInScope(
+  entity: OrgScopedEntity,
+  scope: ResolvedOrgScope,
+): void {
+  const entityOrgId = entity.orgId ?? null;
+  const allowed =
+    scope.orgId === null
+      ? entityOrgId === null
+      : entityOrgId !== null && Array.isArray(scope.orgIds) && scope.orgIds.includes(entityOrgId);
+
+  if (!allowed) {
+    throw new ForbiddenException('Not allowed');
+  }
+}
+
+/** Resolve and enforce the request scope in one place for detail/mutation APIs. */
+export async function resolveOrgScopeForUser(
+  resolver: OrgScopeResolver,
+  user: OrgScopedUser,
+): Promise<ResolvedOrgScope> {
+  return resolver.getResolvedOrgScope(resolveOrgScope(user));
+}
+
+export async function assertOrgScopedEntityAccessForUser(
+  entity: OrgScopedEntity,
+  user: OrgScopedUser,
+  resolver: OrgScopeResolver,
+): Promise<void> {
+  assertOrgScopedEntityAccessInScope(entity, await resolveOrgScopeForUser(resolver, user));
 }
 
 export function canAccessExactOrgScopedEntity(entity: OrgScopedEntity, user: OrgScopedUser): boolean {

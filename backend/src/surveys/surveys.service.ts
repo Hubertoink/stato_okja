@@ -9,7 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
 import { In, IsNull, Repository } from 'typeorm';
-import { Survey, type SurveyQuestion, type SurveyStatus } from './entities/survey.entity';
+import { Survey, type SurveyQuestion } from './entities/survey.entity';
 import { SurveyResponse } from './entities/survey-response.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';

@@ -1,24 +1,37 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, Equal, IsNull } from 'typeorm';
+import { Repository, FindOptionsWhere, Equal, IsNull, In } from 'typeorm';
 import { Staff } from './entities/staff.entity';
 import * as bcrypt from 'bcryptjs';
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../auth/password-policy';
-import { assertOrgScopedEntityAccess, removeOrgIdForNonSuperadmin } from '../auth/org-scope-access';
+import {
+  assertOrgScopedEntityAccessForUser,
+  removeOrgIdForNonSuperadmin,
+  type OrgScopedUser,
+} from '../auth/org-scope-access';
+import { OrgsService } from '../orgs/orgs.service';
 
 @Injectable()
 export class StaffService {
   constructor(
     @InjectRepository(Staff)
     private staffRepository: Repository<Staff>,
+    private readonly orgs: OrgsService,
   ) {}
 
-  async findAll(active?: boolean, orgId?: string | null): Promise<Staff[]> {
+  async findAll(active?: boolean, orgId?: string | null, orgIds?: string[]): Promise<Staff[]> {
     const where: FindOptionsWhere<Staff> = {};
     if (active !== undefined) Object.assign(where, { active });
-    if (typeof orgId !== 'undefined')
+    if (Array.isArray(orgIds) && orgIds.length) {
+      Object.assign(where, { orgId: In(orgIds) });
+    } else if (typeof orgId !== 'undefined') {
       Object.assign(where, { orgId: orgId === null ? IsNull() : Equal(orgId) });
+    }
     return this.staffRepository.find({ where });
+  }
+
+  private async assertUserCanAccessStaff(staff: Pick<Staff, 'orgId'>, user: OrgScopedUser) {
+    await assertOrgScopedEntityAccessForUser(staff, user, this.orgs);
   }
 
   async findOne(id: string): Promise<Staff | null> {
@@ -57,28 +70,28 @@ export class StaffService {
     await this.staffRepository.delete(id);
   }
 
-  async findOneScoped(id: string, user: { role: string; orgId?: string | null }) {
+  async findOneScoped(id: string, user: OrgScopedUser) {
     const s = await this.findOne(id);
     if (!s) return null;
-    assertOrgScopedEntityAccess(s, user);
+    await this.assertUserCanAccessStaff(s, user);
     return s;
   }
 
   async updateScoped(
     id: string,
     data: Partial<Staff>,
-    user: { role: string; orgId?: string | null },
+    user: OrgScopedUser,
   ) {
     const existing = await this.staffRepository.findOne({ where: { id } });
     if (!existing) return null;
-    assertOrgScopedEntityAccess(existing, user);
+    await this.assertUserCanAccessStaff(existing, user);
     return this.update(id, removeOrgIdForNonSuperadmin(data, user));
   }
 
-  async removeScoped(id: string, user: { role: string; orgId?: string | null }) {
+  async removeScoped(id: string, user: OrgScopedUser) {
     const existing = await this.staffRepository.findOne({ where: { id } });
     if (!existing) return;
-    assertOrgScopedEntityAccess(existing, user);
+    await this.assertUserCanAccessStaff(existing, user);
     await this.remove(id);
   }
 }

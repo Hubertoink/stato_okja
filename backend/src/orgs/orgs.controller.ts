@@ -19,13 +19,17 @@ import { OrgMasterDataService } from './org-master-data.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import type {
-  OpeningHours,
-  OrganizationClosureDay,
-  OrganizationTaxonomySettingsUpdatePayload,
-} from './entities/organization.entity';
 import { toPublicUser } from '../common/public-response';
-import { SUPPORTED_LOCALES, type SupportedLocale } from '../users/entities/user.entity';
+import { SUPPORTED_LOCALES } from '../users/entities/user.entity';
+import {
+  CreateOrganizationDto,
+  MasterDataContentDto,
+  MoveOrganizationDto,
+  UpdateDefaultLocaleDto,
+  UpdateOpeningHoursDto,
+  UpdateOrganizationTaxonomySettingsDto,
+  UpsertClosureDayDto,
+} from './dto/organization.dto';
 
 function orgMoveFeatureEnabled() {
   return ['1', 'true', 'yes', 'on'].includes(
@@ -70,7 +74,7 @@ export class OrgsController {
   @Roles('superadmin', 'org_admin')
   @Post()
   async create(
-    @Body() body: { name: string; parentId?: string | null },
+    @Body() body: CreateOrganizationDto,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
     if (req.user.role === 'superadmin') {
@@ -92,7 +96,7 @@ export class OrgsController {
 
   @Roles('superadmin')
   @Post(':id/move-preview')
-  previewMove(@Param('id') id: string, @Body() body: { parentId?: string | null }) {
+  previewMove(@Param('id') id: string, @Body() body: MoveOrganizationDto) {
     if (!orgMoveFeatureEnabled())
       throw new ForbiddenException('Organisationsverschiebung ist deaktiviert');
     return this.service.previewMoveOrg(id, body?.parentId ?? null);
@@ -100,7 +104,7 @@ export class OrgsController {
 
   @Roles('superadmin')
   @Patch(':id/move')
-  move(@Param('id') id: string, @Body() body: { parentId?: string | null; force?: boolean }) {
+  move(@Param('id') id: string, @Body() body: MoveOrganizationDto) {
     if (!orgMoveFeatureEnabled())
       throw new ForbiddenException('Organisationsverschiebung ist deaktiviert');
     return this.service.moveOrg(id, body?.parentId ?? null, !!body?.force);
@@ -119,7 +123,7 @@ export class OrgsController {
   @Patch(':id/taxonomy-settings')
   updateTaxonomySettings(
     @Param('id') id: string,
-    @Body() body: OrganizationTaxonomySettingsUpdatePayload,
+    @Body() body: UpdateOrganizationTaxonomySettingsDto,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
     return this.service.updateOrgTaxonomySettingsScoped(id, body || {}, req.user);
@@ -146,7 +150,7 @@ export class OrgsController {
   @Post(':id/master-data/import/preview')
   async previewMasterDataImport(
     @Param('id') id: string,
-    @Body() body: { content?: unknown },
+    @Body() body: MasterDataContentDto,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
     await this.assertCanAccessOrg(id, req.user);
@@ -159,7 +163,7 @@ export class OrgsController {
   @Post(':id/master-data/import')
   async importMasterData(
     @Param('id') id: string,
-    @Body() body: { content?: unknown },
+    @Body() body: MasterDataContentDto,
     @Req()
     req: { user: { id?: string; name?: string | null; role: string; orgId?: string | null } },
   ) {
@@ -184,14 +188,14 @@ export class OrgsController {
   @Patch(':id/default-locale')
   async updateDefaultLocale(
     @Param('id') id: string,
-    @Body() body: { locale?: string },
+    @Body() body: UpdateDefaultLocaleDto,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
     await this.assertCanAccessOrg(id, req.user);
-    if (!SUPPORTED_LOCALES.includes(body?.locale as SupportedLocale)) {
+    if (!SUPPORTED_LOCALES.includes(body?.locale)) {
       throw new BadRequestException('Unsupported locale');
     }
-    return this.service.updateDefaultLocale(id, body.locale as SupportedLocale);
+    return this.service.updateDefaultLocale(id, body.locale);
   }
 
   // List users for an org (optionally include subtree)
@@ -257,7 +261,7 @@ export class OrgsController {
   @Patch(':id/opening-hours')
   async updateOpeningHours(
     @Param('id') id: string,
-    @Body() body: OpeningHours,
+    @Body() body: UpdateOpeningHoursDto,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
     await this.assertCanAccessOrg(id, req.user);
@@ -279,7 +283,7 @@ export class OrgsController {
   async upsertClosureDay(
     @Param('id') id: string,
     @Param('date') date: string,
-    @Body() body: Pick<OrganizationClosureDay, 'from' | 'to'>,
+    @Body() body: UpsertClosureDayDto,
     @Req() req: { user: { role: string; orgId?: string | null } },
   ) {
     await this.assertCanAccessOrg(id, req.user);

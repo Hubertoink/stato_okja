@@ -18,6 +18,7 @@ import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
 import { type SupportedLocale, User } from '../users/entities/user.entity';
+import type { ResolvedOrgScope } from '../auth/org-scope-access';
 
 const SUBTREE_CACHE_TTL_MS = 10_000;
 type SubtreeCacheEntry = { expiresAt: number; ids: string[] };
@@ -668,6 +669,16 @@ export class OrgsService {
     const ids = rows.map((row) => row.id);
     this.subtreeCache.set(rootId, { ids, expiresAt: Date.now() + SUBTREE_CACHE_TTL_MS });
     return ids;
+  }
+
+  /**
+   * Returns the same organization boundary that list endpoints use. Keeping
+   * this here prevents detail and mutation paths from accidentally treating a
+   * selected subtree as the user's root organization.
+   */
+  async getResolvedOrgScope(orgId: string | null): Promise<ResolvedOrgScope> {
+    if (orgId === null) return { orgId: null };
+    return { orgId, orgIds: await this.getSubtreeOrgIds(orgId) };
   }
 
   async getAncestorOrgIds(id: string) {

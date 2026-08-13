@@ -32,7 +32,6 @@ function assertNotProduction() {
   const isProd = nodeEnv === 'production' || appEnv === 'production';
   const allowProd = (process.env.SEED_ALLOW_PROD || '').toLowerCase() === 'true';
   if (isProd && !allowProd) {
-    // eslint-disable-next-line no-console
     console.error(
       '❌ Refusing to run seed script in production. Set SEED_ALLOW_PROD=true to override (DANGEROUS).',
     );

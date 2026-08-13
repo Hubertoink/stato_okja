@@ -10,8 +10,13 @@ import { Category } from '../taxonomy/entities/category.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Staff } from '../staff/entities/staff.entity';
 import { Project } from '../projects/entities/project.entity';
+import { Location } from '../locations/entities/location.entity';
 import { OrgsService } from '../orgs/orgs.service';
-import { assertOrgScopedEntityAccess, preserveOrgIdForNonSuperadmin } from '../auth/org-scope-access';
+import {
+  assertOrgScopedEntityAccessForUser,
+  preserveOrgIdForNonSuperadmin,
+  type OrgScopedUser,
+} from '../auth/org-scope-access';
 import { ActivityListQuery, type ActivityListFilters } from './activity-list-query';
 import { normalizeActivityMetrics } from './activity-metrics';
 
@@ -68,6 +73,8 @@ export class ActivitiesService {
     private readonly staffRepository: Repository<Staff>,
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
+    @InjectRepository(Location)
+    private readonly locationRepository: Repository<Location>,
     private readonly orgs: OrgsService,
     private readonly audit: AuditService,
   ) {}
@@ -90,11 +97,26 @@ export class ActivitiesService {
       : ActivityExecutionStatus.COMPLETED;
   }
 
-  private assertUserCanAccessActivity(
+  private async assertUserCanAccessActivity(
     activity: Pick<Activity, 'orgId'>,
-    user: { role: string; orgId?: string | null },
+    user: OrgScopedUser,
   ) {
-    assertOrgScopedEntityAccess(activity, user);
+    await assertOrgScopedEntityAccessForUser(activity, user, this.orgs);
+  }
+
+  private assertRelationsBelongToActivityOrg<T extends { id: string; orgId?: string | null }>(
+    relations: T[],
+    requestedIds: string[],
+    activityOrgId: string | null,
+    relationName: string,
+  ) {
+    const uniqueIds = Array.from(new Set(requestedIds));
+    if (relations.length !== uniqueIds.length) {
+      throw new BadRequestException(`Invalid ${relationName} id`);
+    }
+    if (relations.some((relation) => (relation.orgId ?? null) !== activityOrgId)) {
+      throw new BadRequestException(`Invalid ${relationName} id`);
+    }
   }
 
   private getCohortIds(cohorts: Array<ActivityCohortInput | null | undefined>): string[] {
@@ -385,10 +407,10 @@ export class ActivitiesService {
     });
   }
 
-  async findOneScoped(id: string, user: { role: string; orgId?: string | null }) {
+  async findOneScoped(id: string, user: OrgScopedUser) {
     const a = await this.findOne(id);
     if (!a) return null;
-    this.assertUserCanAccessActivity(a, user);
+    await this.assertUserCanAccessActivity(a, user);
     return a;
   }
 
@@ -421,8 +443,15 @@ export class ActivitiesService {
         where: { id: restWithProject.projectId },
       });
       if (!project) throw new BadRequestException('Invalid projectId');
+      this.assertRelationsBelongToActivityOrg([project], [restWithProject.projectId], activityOrgId, 'project');
       activity.project = project;
       activity.type = project.type as ActivityType;
+    }
+
+    if (rest.locationId) {
+      const location = await this.locationRepository.findOne({ where: { id: rest.locationId } });
+      if (!location) throw new BadRequestException('Invalid locationId');
+      this.assertRelationsBelongToActivityOrg([location], [rest.locationId], activityOrgId, 'location');
     }
 
     // Relations
@@ -433,6 +462,7 @@ export class ActivitiesService {
     }
     if (Array.isArray(staffIds) && staffIds.length) {
       const staff = await this.staffRepository.findBy({ id: In(staffIds) });
+      this.assertRelationsBelongToActivityOrg(staff, staffIds, activityOrgId, 'staff');
       activity.staff = staff;
     }
     if (Array.isArray(categoryIds) && categoryIds.length) {
@@ -509,10 +539,16 @@ export class ActivitiesService {
     const projectId = restWithProject.projectId ?? existing.projectId;
     if (projectId) {
       const project = await this.projectRepository.findOne({ where: { id: projectId as string } });
-      if (project) {
-        existing.project = project;
-        existing.type = project.type as ActivityType;
-      }
+      if (!project) throw new BadRequestException('Invalid projectId');
+      this.assertRelationsBelongToActivityOrg([project], [projectId as string], activityOrgId, 'project');
+      existing.project = project;
+      existing.type = project.type as ActivityType;
+    }
+
+    if (rest.locationId) {
+      const location = await this.locationRepository.findOne({ where: { id: rest.locationId } });
+      if (!location) throw new BadRequestException('Invalid locationId');
+      this.assertRelationsBelongToActivityOrg([location], [rest.locationId], activityOrgId, 'location');
     }
 
     // Relations: set arrays (also allow clearing when empty array provided)
@@ -521,9 +557,9 @@ export class ActivitiesService {
       existing.tags = tagIds.length ? await this.tagRepository.findBy({ id: In(tagIds) }) : [];
     }
     if (Array.isArray(staffIds)) {
-      existing.staff = staffIds.length
-        ? await this.staffRepository.findBy({ id: In(staffIds) })
-        : [];
+      const staff = staffIds.length ? await this.staffRepository.findBy({ id: In(staffIds) }) : [];
+      if (staffIds.length) this.assertRelationsBelongToActivityOrg(staff, staffIds, activityOrgId, 'staff');
+      existing.staff = staff;
     }
     if (Array.isArray(categoryIds)) {
       await this.orgs.assertTaxonomyIdsVisibleForOrg(activityOrgId, 'categories', categoryIds);
@@ -566,11 +602,11 @@ export class ActivitiesService {
   async updateScoped(
     id: string,
     data: Partial<Activity>,
-    user: { id?: string; role: string; orgId?: string | null; name?: string | null },
+    user: OrgScopedUser & { id?: string; name?: string | null },
   ) {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return null;
-    this.assertUserCanAccessActivity(existing, user);
+    await this.assertUserCanAccessActivity(existing, user);
     // enforce orgId remains same for non-superadmin
     const patch = preserveOrgIdForNonSuperadmin<Partial<Activity>>(data, user, existing.orgId ?? null);
     return this.update(id, patch, {
@@ -582,11 +618,11 @@ export class ActivitiesService {
 
   async removeScoped(
     id: string,
-    user: { id?: string; role: string; orgId?: string | null; name?: string | null },
+    user: OrgScopedUser & { id?: string; name?: string | null },
   ): Promise<void> {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return;
-    this.assertUserCanAccessActivity(existing, user);
+    await this.assertUserCanAccessActivity(existing, user);
     await this.activityRepository.delete(id);
     await this.audit.log({
       action: AuditAction.DELETE,
@@ -627,11 +663,11 @@ export class ActivitiesService {
   async setAckScoped(
     id: string,
     done: boolean,
-    user: { id?: string; name?: string | null; role: string; orgId?: string | null },
+    user: OrgScopedUser & { id?: string; name?: string | null },
   ): Promise<Activity | null> {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return null;
-    this.assertUserCanAccessActivity(existing, user);
+    await this.assertUserCanAccessActivity(existing, user);
     existing.ackDone = !!done;
     await this.activityRepository.save(existing);
     const updated = await this.findOne(id);

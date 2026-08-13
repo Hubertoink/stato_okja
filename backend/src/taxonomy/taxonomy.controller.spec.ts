@@ -54,7 +54,7 @@ describe('TaxonomyController org scoping', () => {
   });
 
   it('cohorts: create sets orgId from scope and ignores body orgId', async () => {
-    await controller.createCohort({ name: 'x', orgId: 'malicious' }, { user: { id: 'u', role: 'superadmin', orgId: null, name: 'S' }, effectiveOrgId: undefined });
+    await controller.createCohort({ name: 'x', minAge: 0, maxAge: 99 }, { user: { id: 'u', role: 'superadmin', orgId: null, name: 'S' }, effectiveOrgId: undefined });
     expect(service.createCohort).toHaveBeenCalledWith(expect.objectContaining({ orgId: null }), expect.any(Object));
   });
 
@@ -63,7 +63,7 @@ describe('TaxonomyController org scoping', () => {
 
     await expect(
       controller.createCohort(
-        { name: 'x' },
+        { name: 'x', minAge: 0, maxAge: 99 },
         { user: { id: 'u', role: 'superadmin', orgId: null, name: 'S' }, effectiveOrgId: 'org-1' },
       ),
     ).rejects.toThrow('Für diese Organisation sind lokale Kohorten gesperrt');

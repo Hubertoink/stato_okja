@@ -15,6 +15,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { LocationsService } from './locations.service';
 import { OrgsService } from '../orgs/orgs.service';
 import { Location } from './entities/location.entity';
+import { CreateLocationDto, UpdateLocationDto } from './dto/location.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { resolveOrgScope } from '../auth/org-scope-access';
@@ -49,31 +50,41 @@ export class LocationsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Standort nach ID abrufen' })
-  findOne(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null } }) {
-    return this.locationsService.findOneScoped(id, req.user);
+  findOne(
+    @Param('id') id: string,
+    @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string | null | undefined },
+  ) {
+    return this.locationsService.findOneScoped(id, { ...req.user, effectiveOrgId: req.effectiveOrgId });
   }
 
   @Post()
   @ApiOperation({ summary: 'Neuen Standort anlegen' })
-  create(@Body() data: Partial<Location>, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
+  create(@Body() data: CreateLocationDto, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
     const orgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
-    return this.locationsService.create({ ...data, orgId });
+    return this.locationsService.create({ ...(data as Partial<Location>), orgId });
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Standort bearbeiten' })
-  update(@Param('id') id: string, @Body() data: Partial<Location>, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  update(
+    @Param('id') id: string,
+    @Body() data: UpdateLocationDto,
+    @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string | null | undefined },
+  ) {
     const rest: Partial<Location> = { ...(data as Partial<Location>) };
     delete (rest as Partial<Location> & { orgId?: string | null }).orgId;
     if (rest.active === false) this.assertCanManageDestructiveAction(req.user.role);
-    return this.locationsService.updateScoped(id, rest, req.user);
+    return this.locationsService.updateScoped(id, rest, { ...req.user, effectiveOrgId: req.effectiveOrgId });
   }
 
   @Delete(':id')
   @Roles('superadmin', 'org_admin', 'editor')
   @ApiOperation({ summary: 'Standort löschen' })
-  remove(@Param('id') id: string, @Req() req: { user: { role: string; orgId?: string|null } }) {
+  remove(
+    @Param('id') id: string,
+    @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string | null | undefined },
+  ) {
     this.assertCanManageDestructiveAction(req.user.role);
-    return this.locationsService.removeScoped(id, req.user);
+    return this.locationsService.removeScoped(id, { ...req.user, effectiveOrgId: req.effectiveOrgId });
   }
 }

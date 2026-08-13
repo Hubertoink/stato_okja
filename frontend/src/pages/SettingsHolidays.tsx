@@ -6,7 +6,9 @@ import { useTranslation } from 'react-i18next';
 export default function SettingsHolidays() {
   const { t } = useTranslation('settings');
   const [selected, setSelected] = useState<StateCode | ''>('');
+  const [showPublicHolidays, setShowPublicHolidays] = useState(true);
   const [showSchool, setShowSchool] = useState(false);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   // load from localStorage
   useEffect(() => {
@@ -15,18 +17,26 @@ export default function SettingsHolidays() {
       if (raw) {
         const obj = JSON.parse(raw);
         if (obj?.state) setSelected(obj.state as StateCode);
+        if (typeof obj?.publicHolidays === 'boolean') setShowPublicHolidays(obj.publicHolidays);
         if (typeof obj?.school === 'boolean') setShowSchool(obj.school);
       }
     } catch {
       // Local storage may be unavailable or contain malformed legacy data.
+    } finally {
+      setPreferencesLoaded(true);
     }
   }, []);
 
   // save to localStorage
   useEffect(() => {
-    const payload = JSON.stringify({ state: selected || null, school: showSchool });
+    if (!preferencesLoaded) return;
+    const payload = JSON.stringify({
+      state: selected || null,
+      publicHolidays: showPublicHolidays,
+      school: showSchool,
+    });
     localStorage.setItem('holidayPrefs', payload);
-  }, [selected, showSchool]);
+  }, [preferencesLoaded, selected, showPublicHolidays, showSchool]);
 
   const label = useMemo(() => {
     const s = states.find((x) => x.code === selected);
@@ -59,6 +69,14 @@ export default function SettingsHolidays() {
         <label className="inline-flex items-center gap-2 text-gray-700">
           <input
             type="checkbox"
+            checked={showPublicHolidays}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowPublicHolidays(e.target.checked)}
+          />
+          {t('holidays.public')}
+        </label>
+        <label className="inline-flex items-center gap-2 text-gray-700">
+          <input
+            type="checkbox"
             checked={showSchool}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowSchool(e.target.checked)}
           />
@@ -71,6 +89,7 @@ export default function SettingsHolidays() {
           <>
             <div>
               {t('holidays.current', { value: `${label} (${selected})` })}
+              {showPublicHolidays ? t('holidays.publicOn') : t('holidays.publicOff')}
               {showSchool ? t('holidays.schoolOn') : ''}
             </div>
             <div className="text-gray-500 mt-1">

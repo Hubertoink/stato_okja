@@ -149,9 +149,8 @@
   --calendar-holiday-bg: rgba(69, 10, 10, 0.55);
   --calendar-holiday-border: rgba(248, 113, 113, 0.36);
   --calendar-holiday-text: #fecaca;
-  --calendar-school-bg: rgba(120, 53, 15, 0.42);
-  --calendar-school-border: rgba(251, 191, 36, 0.34);
-  --calendar-school-text: #fde68a;
+  --calendar-school-bg: #b45309;
+  --calendar-school-text: #fffbeb;
   --accent-orange: #f6ad55;
   --accent-green: #48bb78;
   --accent-pink: #f87171;
@@ -215,9 +214,8 @@
   --calendar-holiday-bg: rgba(96, 10, 24, 0.46);
   --calendar-holiday-border: rgba(239, 35, 60, 0.38);
   --calendar-holiday-text: #ffd6dc;
-  --calendar-school-bg: rgba(74, 82, 101, 0.42);
-  --calendar-school-border: rgba(141, 153, 174, 0.34);
-  --calendar-school-text: #edf2f4;
+  --calendar-school-bg: #475569;
+  --calendar-school-text: #f8fafc;
   --accent-orange: #ef233c;
   --accent-green: #8d99ae;
   --accent-pink: #d90429;

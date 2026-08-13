@@ -141,9 +141,8 @@
   --calendar-holiday-bg: color-mix(in srgb, #ea6962 28%, var(--theme-bg));
   --calendar-holiday-border: color-mix(in srgb, #ea6962 55%, transparent);
   --calendar-holiday-text: #ffd5d1;
-  --calendar-school-bg: color-mix(in srgb, var(--theme-warning) 23%, var(--theme-bg));
-  --calendar-school-border: color-mix(in srgb, var(--theme-warning) 50%, transparent);
-  --calendar-school-text: #ffe3ad;
+  --calendar-school-bg: color-mix(in srgb, var(--theme-warning) 82%, var(--theme-surface-2));
+  --calendar-school-text: #fff7e6;
   --accent-orange: var(--theme-warning);
   --accent-green: var(--theme-success);
   --accent-pink: #ea6962;

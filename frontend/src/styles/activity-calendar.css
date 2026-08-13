@@ -538,11 +538,19 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   background: var(--interactive-soft-strong);
 }
 
-/* Keep the school-holiday strip visible above activity content while the
- * day-focus ring stays above it. The ring is painted separately so the strip
- * remains continuous across the focused day instead of covering its outline. */
+/* School holidays form a single header band above each week. The day number
+ * remains interactive above the band, while the label begins beside it. */
 .calendar-school-band {
+  top: 0;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 0.5rem 0 2.25rem;
+  border: 0;
+  border-radius: 0;
+  font-weight: 600;
+  line-height: 1.75rem;
 }
 
 .calendar-day-cell-today::after,
@@ -575,7 +583,6 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 
 .calendar-school-badge {
   background: var(--calendar-school-bg);
-  border-color: var(--calendar-school-border);
   color: var(--calendar-school-text);
 }
 

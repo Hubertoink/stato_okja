@@ -67,9 +67,8 @@ input[type='search']::-webkit-search-decoration {
   --calendar-holiday-bg: rgba(254, 242, 242, 0.98);
   --calendar-holiday-border: rgba(252, 165, 165, 0.76);
   --calendar-holiday-text: #b91c1c;
-  --calendar-school-bg: rgba(255, 247, 237, 0.98);
-  --calendar-school-border: rgba(253, 186, 116, 0.82);
-  --calendar-school-text: #9a3412;
+  --calendar-school-bg: #f59e0b;
+  --calendar-school-text: #422006;
   --accent-orange: #f59e0b;
   --accent-green: #16a34a;
   --accent-pink: #ef4444;

@@ -1363,7 +1363,7 @@ export default function Calendar() {
         >
           <div className="hidden md:flex gap-2">
             {showTodayButton && (
-              <Button onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
+              <Button size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
             )}
             <IconButton
               aria-label="Vorheriger Zeitraum"
@@ -1458,7 +1458,7 @@ export default function Calendar() {
                         e.stopPropagation();
                         openActivitiesForDate(iso);
                       }}
-                      className={`calendar-day-number text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? "calendar-day-number-other" : ''}`}
+                      className={`calendar-day-number relative z-[3] text-xs md:text-sm font-medium shrink-0 rounded px-1 -mx-1 hover:bg-black/5 underline-offset-2 hover:underline ${isOtherMonth ? "calendar-day-number-other" : ''}`}
                       title={autoT('ui_79478f44f6bc', { value0: day.toLocaleDateString(getCurrentIntlLocale()) })}
                       aria-label={autoT('ui_79478f44f6bc', { value0: day.toLocaleDateString(getCurrentIntlLocale()) })}
                     >
@@ -1521,7 +1521,7 @@ export default function Calendar() {
               {schoolHolidaySegmentsForWeek(week).map((segment) => (
                 <div
                   key={`${segment.name}-${segment.start}-${segment.end}`}
-                  className="calendar-school-badge calendar-school-band pointer-events-none absolute top-8 z-[2] h-3.5 overflow-hidden rounded-sm border px-1 text-[9px] leading-[14px] md:text-[10px]"
+                  className="calendar-school-badge calendar-school-band pointer-events-none absolute z-[2] overflow-hidden text-[9px] md:text-[10px]"
                   style={{
                     left: `${(segment.start / 7) * 100}%`,
                     width: `${((segment.end - segment.start + 1) / 7) * 100}%`,

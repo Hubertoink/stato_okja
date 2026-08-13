@@ -7,6 +7,13 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.6.7] - 2026-08-13
+
+### Changed
+- Der „Heute“-Button im Kalender verwendet die kompakte Standardgröße.
+- Schulferien erscheinen in der Monatsansicht als durchgehender, randloser
+  Kopfstreifen mit eingerückter Beschriftung neben dem Datum.
+
 ## [1.6.6] - 2026-08-13
 
 ### Fixed

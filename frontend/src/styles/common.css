@@ -501,9 +501,7 @@
     visibility 140ms ease;
 }
 
-.demo-hover-hint[data-demo-hint-open='true'] .demo-hover-hint-panel,
-.demo-hover-hint:hover .demo-hover-hint-panel,
-.demo-hover-hint:focus-within .demo-hover-hint-panel {
+.demo-hover-hint[data-demo-hint-open='true'] .demo-hover-hint-panel {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);

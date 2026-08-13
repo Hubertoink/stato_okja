@@ -7,6 +7,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.7.0] - 2026-08-13
+
+### Fixed
+- Tageszahlen auf dem Schulferienband sind auch in dunklen Themes gut lesbar.
+- Das obere Kalender-Hover-Tooltip bleibt beim Wechsel auf ein `+n`-Badge
+  nicht mehr sichtbar.
+
+### Changed
+- Schulferien verwenden in dunklen Themes eine kontrastreiche Beschriftung.
+
 ## [1.6.7] - 2026-08-13
 
 ### Changed

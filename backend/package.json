@@ -1,6 +1,6 @@
 {
   "name": "stato-backend",
-  "version": "1.6.7",
+  "version": "1.7.0",
   "description": "StatO Backend API",
   "author": "OKJA Team",
   "private": true,

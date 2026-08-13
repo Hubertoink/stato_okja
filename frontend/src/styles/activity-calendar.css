@@ -575,6 +575,13 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   color: var(--calendar-cell-other-text);
 }
 
+/* Day numbers sit above the school-holiday band. In dark themes the band can
+ * be intentionally light, so use its high-contrast foreground instead of the
+ * regular light calendar text. */
+.calendar-day-number-school {
+  color: var(--calendar-school-text);
+}
+
 .calendar-holiday-badge {
   background: var(--calendar-holiday-bg);
   border-color: var(--calendar-holiday-border);

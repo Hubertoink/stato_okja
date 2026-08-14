@@ -6,7 +6,14 @@ import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useAuth } from '@/lib/auth';
-import { useCategories, useTags, useCreateCategory, useCreateTag, type Category, type Tag } from '@/lib/taxonomy';
+import {
+  useCategories,
+  useTags,
+  useCreateCategory,
+  useCreateTag,
+  type Category,
+  type Tag,
+} from '@/lib/taxonomy';
 import { CategoryFormModal, TagFormModal } from '@/components/settings/EntityFormModals';
 import ProtectedImage from '@/components/ProtectedImage';
 import { ColorPicker } from '@/components/ui/ColorPicker';
@@ -26,10 +33,13 @@ type TagWithColor = { name: string; color: string };
 
 function parseTagsString(s: string | null | undefined): TagWithColor[] {
   if (!s) return [];
-  return s.split(',').map((part) => {
-    const [name, color] = part.split(':');
-    return { name: (name || '').trim(), color: (color || '#7aa39a').trim() };
-  }).filter((t) => t.name);
+  return s
+    .split(',')
+    .map((part) => {
+      const [name, color] = part.split(':');
+      return { name: (name || '').trim(), color: (color || '#7aa39a').trim() };
+    })
+    .filter((t) => t.name);
 }
 
 function serializeTagsString(tags: TagWithColor[]): string {
@@ -60,7 +70,9 @@ export default function SettingsProjectTemplates() {
   const [modalOpen, setModalOpen] = useState(false);
   const { dismiss: dismissTemplateModal } = useModalHistory(() => setModalOpen(false), modalOpen);
   const [editing, setEditing] = useState<ProjectTemplateDto | null>(null);
-  const [confirm, setConfirm] = useState<{ open: boolean; id?: string; title?: string }>({ open: false });
+  const [confirm, setConfirm] = useState<{ open: boolean; id?: string; title?: string }>({
+    open: false,
+  });
 
   // Inline create modals
   const [newCatModal, setNewCatModal] = useState(false);
@@ -72,7 +84,8 @@ export default function SettingsProjectTemplates() {
   const initialForm = useMemo<FormState>(() => {
     if (editing) {
       const cat = (categories || []).find(
-        (c) => (editing.categoryName || '').trim().toLowerCase() === (c.name || '').trim().toLowerCase(),
+        (c) =>
+          (editing.categoryName || '').trim().toLowerCase() === (c.name || '').trim().toLowerCase(),
       );
       return {
         ...editing,
@@ -96,9 +109,11 @@ export default function SettingsProjectTemplates() {
   }, [editing, categories]);
 
   const [form, setForm] = useState<FormState>(initialForm);
-  const [imageIssue, setImageIssue] = useState<{ open: boolean; title: string; message: string }>(
-    { open: false, title: '', message: '' },
-  );
+  const [imageIssue, setImageIssue] = useState<{ open: boolean; title: string; message: string }>({
+    open: false,
+    title: '',
+    message: '',
+  });
 
   useEffect(() => {
     setForm(initialForm);
@@ -116,7 +131,8 @@ export default function SettingsProjectTemplates() {
         targetGroup: String(form.targetGroup || ''),
         description: String(form.description || ''),
         categoryName: (form.type as string) === 'open_door' ? '' : String(form.categoryName || ''),
-        categoryColor: (form.type as string) === 'open_door' ? '' : String(form.categoryColor || ''),
+        categoryColor:
+          (form.type as string) === 'open_door' ? '' : String(form.categoryColor || ''),
         tags: serializeTagsString(form.selectedTags || []),
         imageUrl: normalizeUploadPath(String(form.imageUrl || '')) || '',
         color: String(form.color || ''),
@@ -138,48 +154,54 @@ export default function SettingsProjectTemplates() {
     }
   }, [create, editing, form, showToast, update]);
 
-  const handleNewCategorySave = useCallback(async (data: Partial<Category>) => {
-    if (!String(data.name || '').trim() || createCategory.isPending) return;
-    try {
-      const created = await createCategory.mutateAsync({
-        name: String(data.name).trim(),
-        color: String(data.color || '#7aa39a'),
-        active: true,
-      });
-      setForm((f) => ({
-        ...f,
-        categoryId: created.id,
-        categoryName: created.name,
-        categoryColor: created.color || String(data.color || '#7aa39a'),
-      }));
-      setNewCatModal(false);
-      showToast(autoT('ui_eced6187d679'), { type: 'success' });
-    } catch {
-      showToast(autoT('ui_fe851ffd3df5'), { type: 'error' });
-    }
-  }, [createCategory, showToast]);
+  const handleNewCategorySave = useCallback(
+    async (data: Partial<Category>) => {
+      if (!String(data.name || '').trim() || createCategory.isPending) return;
+      try {
+        const created = await createCategory.mutateAsync({
+          name: String(data.name).trim(),
+          color: String(data.color || '#7aa39a'),
+          active: true,
+        });
+        setForm((f) => ({
+          ...f,
+          categoryId: created.id,
+          categoryName: created.name,
+          categoryColor: created.color || String(data.color || '#7aa39a'),
+        }));
+        setNewCatModal(false);
+        showToast(autoT('ui_eced6187d679'), { type: 'success' });
+      } catch {
+        showToast(autoT('ui_fe851ffd3df5'), { type: 'error' });
+      }
+    },
+    [createCategory, showToast],
+  );
 
-  const handleNewTagSave = useCallback(async (data: Partial<Tag>) => {
-    if (!String(data.name || '').trim() || createTag.isPending) return;
-    try {
-      const created = await createTag.mutateAsync({
-        name: String(data.name).trim(),
-        color: String(data.color || '#7aa39a'),
-        active: true,
-      });
-      setForm((f) => ({
-        ...f,
-        selectedTags: [
-          ...(f.selectedTags || []),
-          { name: created.name, color: created.color || String(data.color || '#7aa39a') },
-        ],
-      }));
-      setNewTagModal(false);
-      showToast(autoT('ui_3869634d238b'), { type: 'success' });
-    } catch {
-      showToast(autoT('ui_fe851ffd3df5'), { type: 'error' });
-    }
-  }, [createTag, showToast]);
+  const handleNewTagSave = useCallback(
+    async (data: Partial<Tag>) => {
+      if (!String(data.name || '').trim() || createTag.isPending) return;
+      try {
+        const created = await createTag.mutateAsync({
+          name: String(data.name).trim(),
+          color: String(data.color || '#7aa39a'),
+          active: true,
+        });
+        setForm((f) => ({
+          ...f,
+          selectedTags: [
+            ...(f.selectedTags || []),
+            { name: created.name, color: created.color || String(data.color || '#7aa39a') },
+          ],
+        }));
+        setNewTagModal(false);
+        showToast(autoT('ui_3869634d238b'), { type: 'success' });
+      } catch {
+        showToast(autoT('ui_fe851ffd3df5'), { type: 'error' });
+      }
+    },
+    [createTag, showToast],
+  );
 
   useEditorShortcuts({
     enabled: modalOpen && !newCatModal && !newTagModal && !imageIssue.open,
@@ -217,15 +239,12 @@ export default function SettingsProjectTemplates() {
     }
   };
 
-  const onDrop = useCallback(
-    async (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        await uploadImage(e.dataTransfer.files[0]);
-      }
-    },
-    [],
-  );
+  const onDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      await uploadImage(e.dataTransfer.files[0]);
+    }
+  }, []);
 
   // Global paste handler
   useEffect(() => {
@@ -264,7 +283,9 @@ export default function SettingsProjectTemplates() {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="mb-4">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="min-w-0 text-xl font-semibold text-viridian">{autoT('ui_5bc191008e77')}</h3>
+          <h3 className="min-w-0 text-xl font-semibold text-viridian">
+            {autoT('ui_5bc191008e77')}
+          </h3>
           <span className="tooltip-wrapper shrink-0">
             <button
               type="button"
@@ -303,9 +324,15 @@ export default function SettingsProjectTemplates() {
             <div key={t.id} className="border rounded p-3 flex gap-3">
               <div className="w-20 h-14 rounded overflow-hidden border bg-gray-50 shrink-0">
                 {t.imageUrl ? (
-                  <ProtectedImage src={t.imageUrl} alt={t.title} className="w-full h-full object-cover" />
+                  <ProtectedImage
+                    src={t.imageUrl}
+                    alt={t.title}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">{autoT('ui_418c831061d0')}</div>
+                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                    {autoT('ui_418c831061d0')}
+                  </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -320,17 +347,18 @@ export default function SettingsProjectTemplates() {
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
-                      className="p-2 rounded border hover:bg-gray-50"
+                      className="inline-flex items-center justify-center rounded-full bg-viridian/10 p-1.5 opacity-90 hover:bg-viridian/20 hover:opacity-100"
                       title={autoT('ui_104f3bfdc340')}
+                      aria-label={autoT('ui_8b7bf2fb497b', { value0: t.title })}
                       onClick={() => {
                         setEditing(t);
                         setModalOpen(true);
                       }}
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="h-4 w-4 text-viridian" aria-hidden="true" />
                     </button>
                     <DeleteIconButton
-                      size="icon"
+                      size="icon-compact"
                       aria-label={autoT('ui_ffa5a8a7e21d')}
                       title={autoT('ui_ffa5a8a7e21d')}
                       onClick={() => setConfirm({ open: true, id: t.id, title: t.title })}
@@ -339,17 +367,21 @@ export default function SettingsProjectTemplates() {
                 </div>
                 {t.tags && (
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {parseTagsString(t.tags).slice(0, 3).map((tag, i) => (
-                      <span
-                        key={i}
-                        className="px-1.5 py-0.5 rounded text-[10px] text-white"
-                        style={{ backgroundColor: tag.color }}
-                      >
-                        {tag.name}
-                      </span>
-                    ))}
+                    {parseTagsString(t.tags)
+                      .slice(0, 3)
+                      .map((tag, i) => (
+                        <span
+                          key={i}
+                          className="px-1.5 py-0.5 rounded text-[10px] text-white"
+                          style={{ backgroundColor: tag.color }}
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
                     {parseTagsString(t.tags).length > 3 && (
-                      <span className="text-[10px] text-gray-500">+{parseTagsString(t.tags).length - 3}</span>
+                      <span className="text-[10px] text-gray-500">
+                        +{parseTagsString(t.tags).length - 3}
+                      </span>
                     )}
                   </div>
                 )}
@@ -363,7 +395,9 @@ export default function SettingsProjectTemplates() {
       {modalOpen && (
         <div
           className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center p-0 md:items-center md:p-6"
-          onClick={(event) => { if (event.target === event.currentTarget) dismissTemplateModal(); }}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) dismissTemplateModal();
+          }}
         >
           <div
             className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate"
@@ -394,7 +428,9 @@ export default function SettingsProjectTemplates() {
                 <label className="block text-sm font-medium mb-1">{autoT('ui_79a5c2576972')}</label>
                 <select
                   value={(form.type as string) || 'project_open'}
-                  onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as ProjectTemplateDto['type'] }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, type: e.target.value as ProjectTemplateDto['type'] }))
+                  }
                   className="w-full border rounded px-3 py-2"
                 >
                   <option value="open_door">{autoT('ui_a80778b6b148')}</option>
@@ -427,12 +463,16 @@ export default function SettingsProjectTemplates() {
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, imageUrl: '' }))}
                         className="px-3 py-1 rounded bg-gray-200 text-gray-700"
-                      >{autoT('ui_f78b6376e028')}</button>
+                      >
+                        {autoT('ui_f78b6376e028')}
+                      </button>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         className="px-3 py-1 rounded bg-viridian text-white"
-                      >{autoT('ui_2eed64bc2cdc')}</button>
+                      >
+                        {autoT('ui_2eed64bc2cdc')}
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -443,7 +483,9 @@ export default function SettingsProjectTemplates() {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         className="px-3 py-1 rounded bg-white border"
-                      >{autoT('ui_95a5c1d24bec')}</button>
+                      >
+                        {autoT('ui_95a5c1d24bec')}
+                      </button>
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -472,12 +514,19 @@ export default function SettingsProjectTemplates() {
                         type="button"
                         className="px-3 py-2 rounded bg-viridian text-white"
                         onClick={closeImageIssue}
-                      >{autoT('ui_b0a98216a324')}</button>
+                      >
+                        {autoT('ui_b0a98216a324')}
+                      </button>
                     </div>
                   </div>
                 </Modal>
                 <div className="mt-3">
-                  <label className="block text-sm font-medium mb-1" htmlFor="project-template-color">{autoT('ui_89b7957dae43')}</label>
+                  <label
+                    className="block text-sm font-medium mb-1"
+                    htmlFor="project-template-color"
+                  >
+                    {autoT('ui_89b7957dae43')}
+                  </label>
                   <ColorPicker
                     id="project-template-color"
                     value={(form.color as string) || '#7aa39a'}
@@ -496,7 +545,9 @@ export default function SettingsProjectTemplates() {
                       setNewTagModal(true);
                     }}
                     className="text-xs text-viridian hover:underline"
-                  >{autoT('ui_05cfcf480f8a')}</button>
+                  >
+                    {autoT('ui_05cfcf480f8a')}
+                  </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {(tags || []).map((t) => {
@@ -528,7 +579,11 @@ export default function SettingsProjectTemplates() {
                         className="px-2 py-1 rounded-full text-xs border"
                         style={
                           selected
-                            ? { backgroundColor: t.color || '#7aa39a', color: '#fff', borderColor: t.color || '#7aa39a' }
+                            ? {
+                                backgroundColor: t.color || '#7aa39a',
+                                color: '#fff',
+                                borderColor: t.color || '#7aa39a',
+                              }
                             : {
                                 backgroundColor: 'var(--surface-1)',
                                 color: 'var(--text-primary)',
@@ -554,7 +609,9 @@ export default function SettingsProjectTemplates() {
                         setNewCatModal(true);
                       }}
                       className="text-xs text-viridian hover:underline"
-                    >{autoT('ui_c9b868afb94c')}</button>
+                    >
+                      {autoT('ui_c9b868afb94c')}
+                    </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {(categories || []).map((c) => {
@@ -566,9 +623,19 @@ export default function SettingsProjectTemplates() {
                           type="button"
                           onClick={() => {
                             if (active) {
-                              setForm((f) => ({ ...f, categoryId: '', categoryName: '', categoryColor: '' }));
+                              setForm((f) => ({
+                                ...f,
+                                categoryId: '',
+                                categoryName: '',
+                                categoryColor: '',
+                              }));
                             } else {
-                              setForm((f) => ({ ...f, categoryId: c.id, categoryName: c.name, categoryColor: c.color || '#7aa39a' }));
+                              setForm((f) => ({
+                                ...f,
+                                categoryId: c.id,
+                                categoryName: c.name,
+                                categoryColor: c.color || '#7aa39a',
+                              }));
                             }
                           }}
                           className="px-2 py-1 rounded-full text-xs border"
@@ -618,14 +685,18 @@ export default function SettingsProjectTemplates() {
               <button
                 className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
                 onClick={dismissTemplateModal}
-              >{autoT('ui_07af7cb30fca')}</button>
+              >
+                {autoT('ui_07af7cb30fca')}
+              </button>
               <button
                 className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
                 disabled={!String(form.title || '').trim() || create.isPending || update.isPending}
                 onClick={() => {
                   void handleTemplateSave();
                 }}
-              >{autoT('ui_70b73bbc118d')}</button>
+              >
+                {autoT('ui_70b73bbc118d')}
+              </button>
             </div>
           </div>
         </div>
@@ -652,7 +723,11 @@ export default function SettingsProjectTemplates() {
         title={autoT('ui_23de9c87e566')}
         message={
           <div>
-            <p>{autoT('ui_70416fb04f8f')}{confirm.title}{autoT('ui_b7a74edc9c13')}</p>
+            <p>
+              {autoT('ui_70416fb04f8f')}
+              {confirm.title}
+              {autoT('ui_b7a74edc9c13')}
+            </p>
             <p className="text-sm text-gray-600">{autoT('ui_36b62c9b5db8')}</p>
           </div>
         }

@@ -7,6 +7,22 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.7.3] - 2026-08-14
+
+### Fixed
+- Projektbeschreibungen mit Rich Text escapen bereits kodierte Zeichen wie
+  `&amp;` nicht mehr bei jedem weiteren Tastendruck.
+- Projekte aus Unterorganisationen werden nicht mehr in der Projektliste einer
+  übergeordneten Organisation angezeigt.
+- Die Aktionen zum Bearbeiten und Löschen von Projektvorlagen verwenden die
+  konsistenten Einstellungs-Icon-Buttons.
+
+### Changed
+- Die Statistikseite ist in Filter-, Daten-, Export- und Darstellungsbausteine
+  aufgeteilt; Exporte und Aktivitätstabelle sind separat getestet.
+
+---
+
 ## [1.7.2] - 2026-08-14
 
 ### Fixed

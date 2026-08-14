@@ -79,10 +79,7 @@ describe('ProjectsService idempotent create', () => {
     };
     const uniqueViolation = { code: '23505' };
     const projectRepository = {
-      findOne: jest
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(savedProject),
+      findOne: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(savedProject),
       create: jest.fn((data) => data),
       save: jest.fn().mockRejectedValue(uniqueViolation),
     };
@@ -131,9 +128,15 @@ describe('ProjectsService idempotent create', () => {
 
   it('allows direct updates in a descendant of the effective project scope', async () => {
     const projectRepository = {
-      findOne: jest.fn()
+      findOne: jest
+        .fn()
         .mockResolvedValueOnce({ id: 'project-1', orgId: 'child-1' })
-        .mockResolvedValueOnce({ id: 'project-1', title: 'Child edit', orgId: 'child-1', imageUrl: null }),
+        .mockResolvedValueOnce({
+          id: 'project-1',
+          title: 'Child edit',
+          orgId: 'child-1',
+          imageUrl: null,
+        }),
       update: jest.fn().mockResolvedValue(undefined),
     };
     const service = createService(projectRepository, { 'parent-1': ['parent-1', 'child-1'] });
@@ -144,8 +147,30 @@ describe('ProjectsService idempotent create', () => {
       { role: 'superadmin', orgId: null, effectiveOrgId: 'parent-1' },
     );
 
-    expect(projectRepository.update).toHaveBeenCalledWith('project-1', expect.objectContaining({ title: 'Child edit' }));
+    expect(projectRepository.update).toHaveBeenCalledWith(
+      'project-1',
+      expect.objectContaining({ title: 'Child edit' }),
+    );
     expect(result).toMatchObject({ id: 'project-1', orgId: 'child-1' });
+  });
+
+  it('lists only projects from the selected organization, not its children', async () => {
+    const projectRepository = { find: jest.fn().mockResolvedValue([]) };
+    const service = createService(projectRepository, { 'parent-1': ['parent-1', 'child-1'] });
+
+    await service.findAllScoped(undefined, undefined, {
+      role: 'superadmin',
+      orgId: null,
+      effectiveOrgId: 'parent-1',
+    });
+
+    expect(projectRepository.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ orgId: expect.anything() }) }),
+    );
+    const where = (
+      projectRepository.find.mock.calls[0][0] as { where: { orgId: { value?: unknown } } }
+    ).where;
+    expect(where.orgId.value).toBe('parent-1');
   });
 
   it('requires archived projects without activities before permanent deletion', async () => {
@@ -169,7 +194,9 @@ describe('ProjectsService idempotent create', () => {
 
   it('deletes an archived project only after confirming no activities reference it', async () => {
     const projectRepository = {
-      findOne: jest.fn().mockResolvedValue({ id: 'project-1', title: 'Werkraum', archived: true, documents: [] }),
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: 'project-1', title: 'Werkraum', archived: true, documents: [] }),
       delete: jest.fn().mockResolvedValue(undefined),
     };
     const activityRepository = { count: jest.fn().mockResolvedValue(0) };

@@ -74,7 +74,13 @@ import RichTextEditor, {
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { ArchiveIconButton, Button, CreateButton, DeleteIconButton, IconButton } from '@/components/ui/Button';
+import {
+  ArchiveIconButton,
+  Button,
+  CreateButton,
+  DeleteIconButton,
+  IconButton,
+} from '@/components/ui/Button';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import { fieldControlClassName } from '@/components/ui/Field';
 import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
@@ -254,7 +260,7 @@ const PROJECT_DESCRIPTION_ALLOWED_TAGS = [
 ];
 
 const PROJECT_DESCRIPTION_ALLOWED_ATTR = ['href', 'target', 'rel'];
-const PROJECT_DESCRIPTION_HTML_PATTERN = /<\/?[a-z][\s\S]*>/i;
+const PROJECT_DESCRIPTION_HTML_PATTERN = /<\/?[a-z][\s\S]*>|&(?:#\d+|#x[\da-f]+|[a-z]+);/i;
 
 const escapeProjectDescriptionText = (text: string) =>
   text
@@ -2717,7 +2723,9 @@ export default function Projects() {
   const [initialProjectFilters] = useState(loadProjectsFilters);
   const [showArchived, setShowArchived] = useState(initialProjectFilters.showArchived);
   const [projectTypeFilterOpen, setProjectTypeFilterOpen] = useState(false);
-  const [projectTypeFilters, setProjectTypeFilters] = useState<string[]>(initialProjectFilters.types);
+  const [projectTypeFilters, setProjectTypeFilters] = useState<string[]>(
+    initialProjectFilters.types,
+  );
   const isMobile = useIsMobile(768);
   const projectTypeFilterRef = useRef<HTMLDivElement | null>(null);
   const [desktopView, setDesktopView] = useState<ProjectsDesktopView>(() => {
@@ -2740,7 +2748,8 @@ export default function Projects() {
   useEffect(() => {
     if (!projectTypeFilterOpen || isMobile) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (!projectTypeFilterRef.current?.contains(event.target as Node)) setProjectTypeFilterOpen(false);
+      if (!projectTypeFilterRef.current?.contains(event.target as Node))
+        setProjectTypeFilterOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setProjectTypeFilterOpen(false);
@@ -2780,15 +2789,20 @@ export default function Projects() {
 
   const projects = data || [];
   const projectTypes = useMemo(
-    () => Array.from(new Set(projects.map((project) => project.type))).sort((left, right) =>
-      (PROJECT_TYPE_LABELS[left] || left).localeCompare(PROJECT_TYPE_LABELS[right] || right, 'de'),
-    ),
+    () =>
+      Array.from(new Set(projects.map((project) => project.type))).sort((left, right) =>
+        (PROJECT_TYPE_LABELS[left] || left).localeCompare(
+          PROJECT_TYPE_LABELS[right] || right,
+          'de',
+        ),
+      ),
     [projects],
   );
   const filteredProjects = useMemo(
-    () => projectTypeFilters.length === 0
-      ? projects
-      : projects.filter((project) => projectTypeFilters.includes(project.type)),
+    () =>
+      projectTypeFilters.length === 0
+        ? projects
+        : projects.filter((project) => projectTypeFilters.includes(project.type)),
     [projects, projectTypeFilters],
   );
   const projectTypeFilterLabel = useMemo(() => {
@@ -2819,7 +2833,8 @@ export default function Projects() {
     return m;
   }, [tagsList]);
   const sortedProjects = useMemo(() => {
-    if (!starredFirst || filteredProjects.length < 2 || starred.length === 0) return filteredProjects;
+    if (!starredFirst || filteredProjects.length < 2 || starred.length === 0)
+      return filteredProjects;
     const starredIds = new Set(starred);
     return [...filteredProjects].sort((left, right) => {
       const leftStarred = starredIds.has(left.id);
@@ -2871,12 +2886,15 @@ export default function Projects() {
       <PageHeader
         className="mb-4"
         title={autoT('ui_44772dcbbde7')}
-        actions={(
+        actions={
           <div className="flex flex-wrap justify-end gap-2">
             <HeaderSearchAction
               clearLabel={autoT('ui_1d33e9091bc9')}
               closeLabel="Suche schließen"
-              onClear={() => { setSearch(''); setSearchOpen(false); }}
+              onClear={() => {
+                setSearch('');
+                setSearchOpen(false);
+              }}
               onOpenChange={setSearchOpen}
               onValueChange={setSearch}
               open={searchOpen}
@@ -2915,9 +2933,13 @@ export default function Projects() {
                           key={type}
                           aria-pressed={selected}
                           className="justify-start"
-                          onClick={() => setProjectTypeFilters((current) =>
-                            selected ? current.filter((entry) => entry !== type) : [...current, type],
-                          )}
+                          onClick={() =>
+                            setProjectTypeFilters((current) =>
+                              selected
+                                ? current.filter((entry) => entry !== type)
+                                : [...current, type],
+                            )
+                          }
                           size="sm"
                           variant={selected ? 'primary' : 'secondary'}
                         >
@@ -2956,7 +2978,7 @@ export default function Projects() {
               {autoT('ui_4bc9d33f94ce')}
             </CreateButton>
           </div>
-        )}
+        }
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

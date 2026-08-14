@@ -100,7 +100,11 @@ export class ProjectsService {
     options: { clearWhenEmpty?: boolean; clearWhenMissing?: boolean } = {},
   ) {
     if (typeof categoryId === 'string' && categoryId) {
-      await this.orgs.assertTaxonomyIdsVisibleForOrg((project.orgId ?? null) as string | null, 'categories', [categoryId]);
+      await this.orgs.assertTaxonomyIdsVisibleForOrg(
+        (project.orgId ?? null) as string | null,
+        'categories',
+        [categoryId],
+      );
       const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
       if (category) {
         project.categories = [category];
@@ -119,14 +123,17 @@ export class ProjectsService {
   private isDuplicateClientRequestError(error: unknown, clientRequestId: string | null): boolean {
     return Boolean(
       clientRequestId &&
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code?: string }).code === '23505',
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: string }).code === '23505',
     );
   }
 
-  private async findByClientRequestId(clientRequestId: string, orgId: string | null): Promise<Project | null> {
+  private async findByClientRequestId(
+    clientRequestId: string,
+    orgId: string | null,
+  ): Promise<Project | null> {
     const existing = await this.projectRepository.findOne({
       where: {
         clientRequestId,
@@ -156,7 +163,12 @@ export class ProjectsService {
     }
   }
 
-  findAll(search?: string, archived?: boolean, orgId?: string | null, orgIds?: string[]): Promise<Project[]> {
+  findAll(
+    search?: string,
+    archived?: boolean,
+    orgId?: string | null,
+    orgIds?: string[],
+  ): Promise<Project[]> {
     const where: FindOptionsWhere<Project> = {};
     if (typeof archived === 'boolean') where.archived = archived;
     // Use ILike for case-insensitive search (PostgreSQL)
@@ -171,9 +183,15 @@ export class ProjectsService {
       .then((projects) => projects.map((project) => this.hydrateProject(project)));
   }
 
-  async findAllScoped(search: string | undefined, archived: boolean | undefined, user: OrgScopedUser): Promise<Project[]> {
+  async findAllScoped(
+    search: string | undefined,
+    archived: boolean | undefined,
+    user: OrgScopedUser,
+  ): Promise<Project[]> {
     const scope = await resolveOrgScopeForUser(this.orgs, user);
-    return this.findAll(search, archived, scope.orgId, scope.orgIds ? [...scope.orgIds] : undefined);
+    // Projects are owned by their exact organization. Unlike shared taxonomy,
+    // a parent organization must not receive projects created in a child scope.
+    return this.findAll(search, archived, scope.orgId);
   }
 
   findOne(id: string): Promise<Project | null> {
@@ -210,12 +228,22 @@ export class ProjectsService {
 
     saved = this.hydrateProject(saved);
     if (!saveResult.reusedExisting) {
-      await this.audit.log({ action: AuditAction.CREATE, entityType: 'project', entityId: saved.id, entityTitle: saved.title || null, orgId: saved.orgId ?? null, user });
+      await this.audit.log({
+        action: AuditAction.CREATE,
+        entityType: 'project',
+        entityId: saved.id,
+        entityTitle: saved.title || null,
+        orgId: saved.orgId ?? null,
+        user,
+      });
     }
     return saved;
   }
 
-  async update(id: string, data: Partial<Project> & { categoryIds?: string[] }): Promise<Project | null> {
+  async update(
+    id: string,
+    data: Partial<Project> & { categoryIds?: string[] },
+  ): Promise<Project | null> {
     const { categoryIds, ...rest } = data as ProjectWriteData;
     const normalizedRest = this.normalizeProjectWriteData(rest);
     await this.projectRepository.update(id, normalizedRest);
@@ -232,7 +260,14 @@ export class ProjectsService {
       }
     }
     const updated = await this.findOne(id);
-    if (updated) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: updated.id, entityTitle: updated.title || null, orgId: updated.orgId ?? null });
+    if (updated)
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entityType: 'project',
+        entityId: updated.id,
+        entityTitle: updated.title || null,
+        orgId: updated.orgId ?? null,
+      });
     return updated ? this.hydrateProject(updated) : null;
   }
 
@@ -274,7 +309,15 @@ export class ProjectsService {
   async archive(id: string, archived: boolean = true): Promise<Project | null> {
     await this.projectRepository.update(id, { archived });
     const p = await this.findOne(id);
-    if (p) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: p.id, entityTitle: p.title || null, orgId: p.orgId ?? null, details: { archived } });
+    if (p)
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entityType: 'project',
+        entityId: p.id,
+        entityTitle: p.title || null,
+        orgId: p.orgId ?? null,
+        details: { archived },
+      });
     return p ? this.hydrateProject(p) : null;
   }
 
@@ -390,7 +433,16 @@ export class ProjectsService {
     await assertOrgScopedEntityAccessForUser(existing, user, this.orgs);
     const sanitized = removeOrgIdForNonSuperadmin(data, user);
     const updated = await this.update(id, sanitized);
-    if (updated) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: updated.id, entityTitle: updated.title || null, orgId: updated.orgId ?? null, details: { scoped: true }, user });
+    if (updated)
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entityType: 'project',
+        entityId: updated.id,
+        entityTitle: updated.title || null,
+        orgId: updated.orgId ?? null,
+        details: { scoped: true },
+        user,
+      });
     return updated;
   }
 
@@ -406,7 +458,16 @@ export class ProjectsService {
     if (!existing) return null;
     await assertOrgScopedEntityAccessForUser(existing, user, this.orgs);
     const p = await this.archive(id, archived);
-    if (p) await this.audit.log({ action: AuditAction.UPDATE, entityType: 'project', entityId: p.id, entityTitle: p.title || null, orgId: p.orgId ?? null, details: { archived }, user });
+    if (p)
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entityType: 'project',
+        entityId: p.id,
+        entityTitle: p.title || null,
+        orgId: p.orgId ?? null,
+        details: { archived },
+        user,
+      });
     return p;
   }
 }

@@ -7,6 +7,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.7.4] - 2026-08-14
+
+### Fixed
+- Statistikdaten werden nach Änderungen an Aktivitäten sofort neu geladen;
+  der aggregierte Server-Cache ist standardmäßig deaktiviert.
+- Alterskohorten aus übergeordneten Organisationen werden bei Aktivitäten in
+  Unterorganisationen korrekt aufgelöst und bereits ab einer Aktivität gezeigt.
+- Aktivitäten, Statistik und eigene KPIs bleiben im ausgewählten
+  Organisations-Scope und zeigen keine Daten von Unterorganisationen an.
+
+---
+
 ## [1.7.3] - 2026-08-14
 
 ### Fixed

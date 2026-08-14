@@ -12,11 +12,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ActivitiesService } from './activities.service';
-import { OrgsService } from '../orgs/orgs.service';
 import { CreateActivityDto, UpdateActivityAckDto, UpdateActivityDto } from './dto/activity.dto';
 import { Activity } from './entities/activity.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { resolveOrgScope } from '../auth/org-scope-access';
 import { toPublicActivity } from '../common/public-response';
 
 function csvToWeekdays(value?: string): number[] | undefined {
@@ -54,10 +54,17 @@ function parseClosureState(value?: string): 'closed' | 'open' | undefined {
 @Controller('activities')
 @UseGuards(JwtAuthGuard, OrgScopeGuard)
 export class ActivitiesController {
-  constructor(
-    private readonly activitiesService: ActivitiesService,
-    private readonly orgs: OrgsService,
-  ) {}
+  constructor(private readonly activitiesService: ActivitiesService) {}
+
+  private resolveExactOrgScope(
+    req: { user: { role: string; orgId?: string | null }; effectiveOrgId?: string | null | undefined },
+    orgIdQuery?: string,
+  ) {
+    if (req.user.role === 'superadmin' && typeof orgIdQuery !== 'undefined') {
+      return orgIdQuery || null;
+    }
+    return resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
+  }
 
   @Get()
   @ApiOperation({ summary: 'Alle Aktivitäten abrufen (mit Filtern)' })
@@ -125,40 +132,9 @@ export class ActivitiesController {
     @Query('page') pageStr?: string,
     @Query('limit') limitStr?: string,
   ) {
-    // Determine organization filter from scope
-    // Superadmin:
-    //   - effectiveOrgId === undefined -> treat as null (global intentionally disabled)
-    //   - effectiveOrgId === null (root/no-org) -> filter by orgId IS NULL
-    //   - effectiveOrgId === string -> filter by that org's subtree
-    // Others: always filter by effectiveOrgId (or user.orgId as fallback)
-    let orgId: string | null | undefined = undefined;
-    let orgIds: string[] | undefined = undefined;
-    
-    if (req.user.role === 'superadmin') {
-      // Check if orgIdQuery param overrides header
-      if (typeof orgIdQuery !== 'undefined') {
-        const oid = orgIdQuery || null;
-        if (typeof oid === 'string') {
-          orgIds = await this.orgs.getSubtreeOrgIds(oid);
-        } else {
-          orgId = null; // Filter by null org
-        }
-      } else if (typeof req.effectiveOrgId === 'undefined' || req.effectiveOrgId === null) {
-        // Root/no-org selected
-        orgId = null;
-      } else {
-        // Specific org selected
-        orgIds = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
-      }
-    } else {
-      // Non-superadmin: use effectiveOrgId or fallback to user.orgId
-      const oid = typeof req.effectiveOrgId === 'undefined' ? (req.user.orgId || null) : req.effectiveOrgId;
-      if (typeof oid === 'string') {
-        orgIds = await this.orgs.getSubtreeOrgIds(oid);
-      } else {
-        orgId = null;
-      }
-    }
+    // Activities belong to exactly one organization. A selected parent must
+    // not implicitly include activities of its child organizations.
+    const orgId = this.resolveExactOrgScope(req, orgIdQuery);
     const csvToArray = (s?: string) =>
       s
         ? s
@@ -194,7 +170,6 @@ export class ActivitiesController {
       durationMin: durationMin ? parseInt(durationMin, 10) : undefined,
       durationMax: durationMax ? parseInt(durationMax, 10) : undefined,
       orgId,
-      orgIds,
       order:
         order && (order.toLowerCase() === 'asc' || order.toLowerCase() === 'desc')
           ? (order.toLowerCase() as 'asc' | 'desc')
@@ -221,26 +196,9 @@ export class ActivitiesController {
     },
     @Query('orgId') orgIdQuery?: string,
   ) {
-    let orgId: string | null | undefined = undefined;
-    let orgIds: string[] | undefined = undefined;
-
-    if (req.user.role === 'superadmin') {
-      if (typeof orgIdQuery !== 'undefined') {
-        if (orgIdQuery) orgIds = await this.orgs.getSubtreeOrgIds(orgIdQuery);
-        else orgId = null;
-      } else if (typeof req.effectiveOrgId === 'undefined' || req.effectiveOrgId === null) {
-        orgId = null;
-      } else {
-        orgIds = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
-      }
-    } else {
-      const scopeOrgId =
-        typeof req.effectiveOrgId === 'undefined' ? req.user.orgId || null : req.effectiveOrgId;
-      if (typeof scopeOrgId === 'string') orgIds = await this.orgs.getSubtreeOrgIds(scopeOrgId);
-      else orgId = null;
-    }
-
-    return this.activitiesService.getFilterAvailability({ orgId, orgIds });
+    return this.activitiesService.getFilterAvailability({
+      orgId: this.resolveExactOrgScope(req, orgIdQuery),
+    });
   }
 
   // Acknowledgments (Daily Log "done" flag)
@@ -261,25 +219,7 @@ export class ActivitiesController {
       .filter((v) => v.length > 0);
     if (ids.length === 0) return {};
 
-    // Determine org filter similar to findAll
-    // Note: global scope is disabled; undefined behaves like null.
-    const superAdminScoped = typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId;
-    const orgIdRaw =
-      req.user.role === 'superadmin'
-        ? typeof superAdminScoped === 'undefined'
-          ? null
-          : superAdminScoped
-        : typeof req.effectiveOrgId === 'undefined'
-          ? req.user.orgId || null
-          : req.effectiveOrgId;
-
-    let orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined = undefined;
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-      orgId = undefined;
-    }
-    return this.activitiesService.getAcks(ids, { orgId, orgIds });
+    return this.activitiesService.getAcks(ids, { orgId: this.resolveExactOrgScope(req) });
   }
 
   @Get(':id')

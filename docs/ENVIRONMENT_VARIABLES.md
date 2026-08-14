@@ -100,7 +100,7 @@ Wichtig:
 | `PUBLIC_ORG_NAME` | Freitext | Optionaler Organisationsname, z. B. fuer die Login-Seite. |
 | `PUBLIC_LOGIN_SUBTITLE` | Freitext | Untertitel auf der Login-Seite. |
 | `PUBLIC_LIVE_REFRESH_INTERVAL_MS` | Millisekunden, z. B. `30000`, `0` | Polling-Intervall fuer Dashboard, Aktivitaeten und Statistik. `0` deaktiviert Polling. |
-| `STATS_OVERVIEW_CACHE_TTL_MS` | Millisekunden, z. B. `30000`, `0` | Cache-Dauer fuer zusammengefasste Statistikabfragen. `0` deaktiviert den Cache. |
+| `STATS_OVERVIEW_CACHE_TTL_MS` | Millisekunden, z. B. `30000`, `0` | Cache-Dauer fuer zusammengefasste Statistikabfragen. Standard ist `0`, damit Aktivitaetsaenderungen sofort sichtbar sind. |
 
 ## SMTP und E-Mail
 

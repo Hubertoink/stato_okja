@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
+import { DataSource, In, Repository, SelectQueryBuilder } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { ActivityExecutionStatus, ActivityType } from '../common/enums';
@@ -219,8 +219,11 @@ export class StatsService {
   }
 
   private getOverviewCacheTtlMs() {
-    const configured = Number.parseInt(process.env.STATS_OVERVIEW_CACHE_TTL_MS || '30000', 10);
-    if (!Number.isFinite(configured) || configured < 0) return 30000;
+    // Activity mutations already invalidate the client query. Caching the
+    // server response by default still returned stale KPIs after an edit, so
+    // deployments may opt in explicitly through the environment instead.
+    const configured = Number.parseInt(process.env.STATS_OVERVIEW_CACHE_TTL_MS || '0', 10);
+    if (!Number.isFinite(configured) || configured < 0) return 0;
     return Math.min(configured, 300000);
   }
 
@@ -760,14 +763,16 @@ export class StatsService {
         usage.get(ch.cohortId)!.add(a.id);
       }
     }
-    const cohQB = this.cohortRepository.createQueryBuilder('h');
-    if (Array.isArray(orgIds) && orgIds.length) {
-      cohQB.where('h.orgId IN (:...orgIds)', { orgIds });
-    } else if (typeof orgId !== 'undefined') {
-      if (orgId === null) cohQB.where('h.orgId IS NULL');
-      else cohQB.where('h.orgId = :orgId', { orgId });
-    }
-    const cohorts = await cohQB.select('h.id', 'id').addSelect('h.name', 'name').getRawMany<{ id: string; name: string }>();
+    // Activities can reference inherited cohorts. Resolve exactly the cohort
+    // IDs present in the filtered activity set, rather than filtering cohort
+    // metadata to the selected organisation and silently dropping them.
+    const cohortIds = Array.from(map.keys());
+    const cohorts = cohortIds.length
+      ? await this.cohortRepository.find({
+          where: { id: In(cohortIds) },
+          select: { id: true, name: true },
+        })
+      : [];
     const nameMap = new Map(cohorts.map((c) => [c.id, c.name] as const));
 
     // Ignore cohortIds that don't exist anymore, so the UI doesn't show raw IDs or a generic bucket.

@@ -7,18 +7,18 @@ import { CreateActivityDto, UpdateActivityDto } from './dto/activity.dto';
 
 describe('ActivitiesController org scoping', () => {
   let controller: ActivitiesController;
-  const service: Pick<ActivitiesService, 'findAllPaged'|'getFilterAvailability'|'create'|'updateScoped'> = {
+  const service: Pick<ActivitiesService, 'findAllPaged'|'getFilterAvailability'|'getAcks'|'create'|'updateScoped'> = {
     findAllPaged: jest.fn(async () => ({ data: [] as Activity[], total: 0, page: 1, pageSize: 50 })),
     getFilterAvailability: jest.fn(async () => ({
       categoryIds: [], tagIds: [], executionStatuses: [], hasUncategorized: false, availableYears: [],
     })),
+    getAcks: jest.fn(async () => ({})),
     create: jest.fn(async () => ({} as unknown as Activity)),
     updateScoped: jest.fn(async () => ({} as unknown as Activity | null)),
   };
   const orgs: Pick<OrgsService, 'getSubtreeOrgIds'> = {
-    getSubtreeOrgIds: jest.fn(async (id: string) => [id, 'child-1']),
+    getSubtreeOrgIds: jest.fn(),
   };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ActivitiesController],
@@ -42,25 +42,24 @@ describe('ActivitiesController org scoping', () => {
     expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgId: null, page: 1, limit: 50 }));
   });
 
-  it('superadmin scoped to org expands to subtree', async () => {
+  it('superadmin scoped to an organization lists only that organization', async () => {
     await controller.findAll(
       { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
       undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
-    expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['org-1', 'child-1'], orgId: undefined, page: 1, limit: 50 }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgId: 'org-1', page: 1, limit: 50 }));
   });
 
-  it('non-superadmin without explicit scope uses own org subtree', async () => {
+  it('non-superadmin without explicit scope uses only their organization', async () => {
     await controller.findAll(
       { user: { role: 'admin', orgId: 'own-org' }, effectiveOrgId: undefined },
       undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
-    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['own-org', 'child-1'], orgId: undefined, page: 1, limit: 50 }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgId: 'own-org', page: 1, limit: 50 }));
   });
 
   it('uses the requested bounded page', async () => {
@@ -75,16 +74,23 @@ describe('ActivitiesController org scoping', () => {
     expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ page: 3, limit: 50 }));
   });
 
-  it('scopes filter availability to the selected organization subtree', async () => {
+  it('scopes filter availability to the selected organization only', async () => {
     await controller.getFilterAvailability(
       { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
     );
 
-    expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
     expect(service.getFilterAvailability).toHaveBeenCalledWith({
-      orgId: undefined,
-      orgIds: ['org-1', 'child-1'],
+      orgId: 'org-1',
     });
+  });
+
+  it('scopes activity acknowledgements to the selected organization only', async () => {
+    await controller.getAcks(
+      { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
+      'activity-1',
+    );
+
+    expect(service.getAcks).toHaveBeenCalledWith(['activity-1'], { orgId: 'org-1' });
   });
 
   it('create sets orgId from scope and ignores body orgId', async () => {

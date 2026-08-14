@@ -13,7 +13,7 @@ import {
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
-import { OrgsService } from '../orgs/orgs.service';
+import { resolveOrgScope } from '../auth/org-scope-access';
 import { CreateCustomKpiDto, UpdateCustomKpiDto } from './dto/custom-kpi.dto';
 import { CustomKpisService } from './custom-kpis.service';
 import type { CustomKpiSurface } from './entities/custom-kpi.entity';
@@ -27,39 +27,16 @@ type ReqWithScope = {
 @UseGuards(JwtAuthGuard, OrgScopeGuard)
 @Controller('stats/custom-kpis')
 export class CustomKpisController {
-  constructor(
-    private readonly customKpis: CustomKpisService,
-    private readonly orgs: OrgsService,
-  ) {}
+  constructor(private readonly customKpis: CustomKpisService) {}
 
   private async resolveOrgFilter(req: ReqWithScope, orgIdQuery?: string) {
-    let orgId: string | null | undefined = undefined;
-    let orgIds: string[] | undefined = undefined;
-
-    if (req.user.role === 'superadmin') {
-      if (typeof orgIdQuery !== 'undefined') {
-        const requestedOrgId = orgIdQuery || null;
-        if (typeof requestedOrgId === 'string' && requestedOrgId !== 'null') {
-          orgIds = await this.orgs.getSubtreeOrgIds(requestedOrgId);
-        } else {
-          orgId = null;
-        }
-      } else if (typeof req.effectiveOrgId === 'undefined' || req.effectiveOrgId === null) {
-        orgId = null;
-      } else {
-        orgIds = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
-      }
-    } else {
-      const effectiveOrgId =
-        typeof req.effectiveOrgId === 'undefined' ? req.user.orgId || null : req.effectiveOrgId;
-      if (typeof effectiveOrgId === 'string') {
-        orgIds = await this.orgs.getSubtreeOrgIds(effectiveOrgId);
-      } else {
-        orgId = null;
-      }
-    }
-
-    return { orgId, orgIds };
+    const orgId =
+      req.user.role === 'superadmin' && typeof orgIdQuery !== 'undefined'
+        ? orgIdQuery && orgIdQuery !== 'null'
+          ? orgIdQuery
+          : null
+        : resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
+    return { orgId, orgIds: undefined };
   }
 
   @Get()

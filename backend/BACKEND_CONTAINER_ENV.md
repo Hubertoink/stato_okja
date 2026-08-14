@@ -171,7 +171,7 @@ Diese Werte liefert das Backend ueber `GET /auth/public-config` an das Frontend.
 | `PUBLIC_ORG_NAME` | leer | Optionaler Organisationsname auf der Login-Seite. |
 | `PUBLIC_LOGIN_SUBTITLE` | `OKJA Statistik & Dokumentation` | Untertitel auf der Login-Seite. |
 | `PUBLIC_LIVE_REFRESH_INTERVAL_MS` | `30000` | Polling fuer Dashboard, Aktivitaeten und Statistik. `0` deaktiviert Polling, Fokus-Refetch bleibt aktiv. |
-| `STATS_OVERVIEW_CACHE_TTL_MS` | `30000` | Cache-Dauer fuer zusammengefasste Statistikabfragen; `0` deaktiviert den Cache. |
+| `STATS_OVERVIEW_CACHE_TTL_MS` | `0` | Cache-Dauer fuer zusammengefasste Statistikabfragen; standardmaessig deaktiviert, damit Aktivitaetsaenderungen sofort sichtbar sind. |
 
 ## Rate Limiting
 

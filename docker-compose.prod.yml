@@ -75,7 +75,7 @@ services:
       PUBLIC_ORG_NAME: "${PUBLIC_ORG_NAME:-}"
       PUBLIC_LOGIN_SUBTITLE: ${PUBLIC_LOGIN_SUBTITLE:-OKJA Statistik & Dokumentation}
       PUBLIC_LIVE_REFRESH_INTERVAL_MS: ${PUBLIC_LIVE_REFRESH_INTERVAL_MS:-30000}
-      STATS_OVERVIEW_CACHE_TTL_MS: ${STATS_OVERVIEW_CACHE_TTL_MS:-30000}
+      STATS_OVERVIEW_CACHE_TTL_MS: ${STATS_OVERVIEW_CACHE_TTL_MS:-0}
       # Editable, organisation-specific legal documents (mounted read-only below)
       LEGAL_CONTENT_DIR: ${LEGAL_CONTENT_DIR:-/app/legal}
       # Superadmin credentials (set on startup)

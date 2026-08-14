@@ -46,9 +46,8 @@ describe('StatsController org scoping', () => {
     getByCohort: jest.fn(async () => []),
   };
   const orgs: Pick<OrgsService, 'getSubtreeOrgIds'> = {
-    getSubtreeOrgIds: jest.fn(async (id: string) => [id, 'child-1']),
+    getSubtreeOrgIds: jest.fn(),
   };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [StatsController],
@@ -67,16 +66,14 @@ describe('StatsController org scoping', () => {
     expect(service.getSummary).toHaveBeenCalledWith(undefined, undefined, null, undefined, undefined, undefined, undefined);
   });
 
-  it('by-type: superadmin scoped string expands to subtree', async () => {
+  it('by-type: superadmin scoped string stays within the selected organization', async () => {
     await controller.getByType({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined, undefined);
-    expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.getByType).toHaveBeenCalledWith(undefined, undefined, undefined, ['org-1', 'child-1'], undefined, undefined, undefined);
+    expect(service.getByType).toHaveBeenCalledWith(undefined, undefined, 'org-1', undefined, undefined, undefined, undefined);
   });
 
-  it('overview: superadmin scoped string expands to subtree', async () => {
+  it('overview: superadmin scoped string stays within the selected organization', async () => {
     await controller.getOverview({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined, undefined, undefined);
-    expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: undefined, orgIds: ['org-1', 'child-1'], projectId: undefined, type: undefined, executionStatuses: undefined, closureState: undefined, weekdays: undefined });
+    expect(service.getOverview).toHaveBeenCalledWith({ from: undefined, to: undefined, orgId: 'org-1', orgIds: undefined, projectId: undefined, type: undefined, executionStatuses: undefined, closureState: undefined, weekdays: undefined });
   });
 
   it('overview: forwards explicit type filter', async () => {
@@ -91,8 +88,8 @@ describe('StatsController org scoping', () => {
     expect(service.getOverview).toHaveBeenCalledWith({
       from: '2026-01-01',
       to: '2026-12-31',
-      orgId: undefined,
-      orgIds: ['org-1', 'child-1'],
+      orgId: 'org-1',
+      orgIds: undefined,
       projectId: undefined,
       type: 'project_open',
       executionStatuses: undefined,
@@ -115,8 +112,8 @@ describe('StatsController org scoping', () => {
     expect(service.getOverview).toHaveBeenCalledWith({
       from: '2026-01-01',
       to: '2026-12-31',
-      orgId: undefined,
-      orgIds: ['org-1', 'child-1'],
+      orgId: 'org-1',
+      orgIds: undefined,
       projectId: undefined,
       type: undefined,
       executionStatuses: undefined,
@@ -139,8 +136,8 @@ describe('StatsController org scoping', () => {
     expect(service.getOverview).toHaveBeenCalledWith({
       from: '2026-01-01',
       to: '2026-12-31',
-      orgId: undefined,
-      orgIds: ['org-1', 'child-1'],
+      orgId: 'org-1',
+      orgIds: undefined,
       projectId: undefined,
       type: undefined,
       executionStatuses: ['completed', 'cancelled'],
@@ -164,8 +161,8 @@ describe('StatsController org scoping', () => {
     expect(service.getOverview).toHaveBeenCalledWith({
       from: '2026-01-01',
       to: '2026-12-31',
-      orgId: undefined,
-      orgIds: ['org-1', 'child-1'],
+      orgId: 'org-1',
+      orgIds: undefined,
       projectId: undefined,
       type: undefined,
       executionStatuses: undefined,

@@ -39,25 +39,24 @@ describe('ActivitiesController org scoping', () => {
     expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgId: null }));
   });
 
-  it('superadmin scoped to org expands to subtree', async () => {
+  it('superadmin scoped to an organization lists only that organization', async () => {
     await controller.findAll(
       { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
       undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
-    expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['org-1', 'child-1'], orgId: undefined }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgId: 'org-1' }));
   });
 
-  it('non-superadmin without explicit scope uses own org subtree', async () => {
+  it('non-superadmin without explicit scope uses only their organization', async () => {
     await controller.findAll(
       { user: { role: 'admin', orgId: 'own-org' }, effectiveOrgId: undefined },
       undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, 'desc', undefined, undefined, undefined
     );
-    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgIds: ['own-org', 'child-1'] }));
+    expect(service.findAllPaged).toHaveBeenCalledWith(expect.objectContaining({ orgId: 'own-org' }));
   });
 
   it('create sets orgId from scope and ignores body orgId', async () => {

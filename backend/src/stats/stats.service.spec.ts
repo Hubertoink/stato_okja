@@ -307,6 +307,82 @@ describe('StatsService overview cache', () => {
     expect(first.gender).toEqual({ male: 4, female: 5, diverse: 1 });
     expect(second).toEqual(first);
   });
+
+  it('recomputes a completed overview request by default', async () => {
+    const previousTtl = process.env.STATS_OVERVIEW_CACHE_TTL_MS;
+    delete process.env.STATS_OVERVIEW_CACHE_TTL_MS;
+
+    try {
+      const service = new StatsService(
+        { options: { type: 'postgres' } } as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      );
+      const overview = {
+        summary: {} as never,
+        gender: { male: 0, female: 0, diverse: 0 },
+        byType: [],
+        timeseries: [],
+        byCategory: [],
+        byCohort: [],
+        topTags: [],
+        topProjects: [],
+        availableYears: [],
+        weeklyProfile: {} as never,
+      };
+      const buildOverview = jest.spyOn(service as any, 'buildOverview').mockResolvedValue(overview);
+
+      await service.getOverview({ orgId: 'org-1' });
+      await service.getOverview({ orgId: 'org-1' });
+
+      expect(buildOverview).toHaveBeenCalledTimes(2);
+    } finally {
+      if (typeof previousTtl === 'undefined') delete process.env.STATS_OVERVIEW_CACHE_TTL_MS;
+      else process.env.STATS_OVERVIEW_CACHE_TTL_MS = previousTtl;
+    }
+  });
+});
+
+describe('StatsService age cohorts', () => {
+  it('includes a cohort inherited from a parent organization for a single activity', async () => {
+    const qb = {
+      andWhere: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        {
+          id: 'activity-1',
+          cohorts: [{ cohortId: 'parent-cohort', m: 1, w: 2, d: 0 }],
+        },
+      ]),
+    };
+    const cohortRepository = {
+      find: jest.fn().mockResolvedValue([{ id: 'parent-cohort', name: '12–14 Jahre' }]),
+    };
+    const service = new StatsService(
+      { options: { type: 'postgres' } } as never,
+      { createQueryBuilder: jest.fn(() => qb) } as never,
+      cohortRepository as never,
+      { getClosedDatesForOrganizations: jest.fn(async () => []) } as never,
+    );
+
+    await expect(service.getByCohort(undefined, undefined, 'child-org')).resolves.toEqual([
+      {
+        cohortId: 'parent-cohort',
+        name: '12–14 Jahre',
+        male: 1,
+        female: 2,
+        diverse: 0,
+        total: 3,
+        activities: 1,
+      },
+    ]);
+    expect(cohortRepository.find).toHaveBeenCalledWith({
+      where: { id: expect.anything() },
+      select: { id: true, name: true },
+    });
+  });
 });
 
 describe('StatsService custom KPIs', () => {

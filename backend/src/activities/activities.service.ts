@@ -13,7 +13,7 @@ import { Project } from '../projects/entities/project.entity';
 import { Location } from '../locations/entities/location.entity';
 import { OrgsService } from '../orgs/orgs.service';
 import {
-  assertOrgScopedEntityAccessForUser,
+  assertExactOrgScopedEntityAccess,
   preserveOrgIdForNonSuperadmin,
   type OrgScopedUser,
 } from '../auth/org-scope-access';
@@ -97,11 +97,13 @@ export class ActivitiesService {
       : ActivityExecutionStatus.COMPLETED;
   }
 
-  private async assertUserCanAccessActivity(
+  private assertUserCanAccessActivity(
     activity: Pick<Activity, 'orgId'>,
     user: OrgScopedUser,
   ) {
-    await assertOrgScopedEntityAccessForUser(activity, user, this.orgs);
+    // Detail, update, deletion and acknowledgement actions must use the
+    // exact same organization boundary as the activity list.
+    assertExactOrgScopedEntityAccess(activity, user);
   }
 
   private assertRelationsBelongToActivityOrg<T extends { id: string; orgId?: string | null }>(

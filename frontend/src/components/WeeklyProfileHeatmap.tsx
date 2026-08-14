@@ -158,11 +158,11 @@ export default function WeeklyProfileHeatmap({ profile, selectedWeekdays, isMobi
 
   if (!profile || profile.slots.length === 0) {
     return (
-      <div ref={chartRef} className="statistics-weekly-profile group/chart-card rounded-lg p-3 md:p-6" data-pdf-section>
+      <div ref={chartRef} className="statistics-chart-card statistics-weekly-profile group/chart-card rounded-lg p-3 md:p-6" data-pdf-section>
         <div className="flex items-center gap-3">
           <CalendarDays className="statistics-weekly-profile__empty-icon h-5 w-5" aria-hidden="true" />
           <div>
-            <h2 className="statistics-weekly-profile__title text-base">Wochenprofil</h2>
+            <h2 className="statistics-chart-title text-base font-semibold text-viridian">Wochenprofil</h2>
             <p className="statistics-weekly-profile__empty-copy text-sm">Für den gewählten Filter liegen keine Aktivitäten mit Uhrzeit vor.</p>
           </div>
         </div>
@@ -176,10 +176,10 @@ export default function WeeklyProfileHeatmap({ profile, selectedWeekdays, isMobi
   };
 
   return (
-    <div ref={chartRef} className="statistics-weekly-profile group/chart-card rounded-lg p-3 md:p-6" data-pdf-section onClick={onCardClick}>
+    <div ref={chartRef} className="statistics-chart-card statistics-weekly-profile group/chart-card rounded-lg p-3 md:p-6" data-pdf-section onClick={onCardClick}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="statistics-weekly-profile__title text-lg">Wochenprofil</h2>
+          <h2 className="statistics-chart-title text-lg font-semibold text-viridian">Wochenprofil</h2>
           {bestSlot && <p className="statistics-weekly-profile__density mt-2 text-xs">Höchste Dichte: {DAY_LABELS[bestSlot.weekday]} {slotLabel(bestSlot)} · Ø {bestSlot.averageOffers.toFixed(1)} Angebote parallel</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">

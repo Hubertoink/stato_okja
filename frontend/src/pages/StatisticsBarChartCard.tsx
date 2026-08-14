@@ -120,9 +120,9 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
   getCellImageUrl?: (item: T, index: number) => string | null | undefined;
 }) {
   return (
-    <div className={cardClassName} data-pdf-section ref={chartRef}>
+    <div className={`statistics-chart-card ${cardClassName}`} data-pdf-section ref={chartRef}>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold text-viridian">{title}</h3>
+        <h3 className="statistics-chart-title text-lg font-semibold text-viridian">{title}</h3>
         {exportActions}
       </div>
       <div className={bodyClassName}>

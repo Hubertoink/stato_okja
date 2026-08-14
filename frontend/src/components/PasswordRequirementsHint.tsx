@@ -11,25 +11,33 @@ export default function PasswordRequirementsHint({
   const requirements = getPasswordRequirementStates(password);
 
   return (
-    <div className={`rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 ${className}`.trim()}>
-      <div className="text-xs font-medium text-gray-700">{PASSWORD_REQUIREMENTS_TEXT}</div>
+    <div
+      className={`rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] px-3 py-3 ${className}`.trim()}
+    >
+      <div className="text-xs font-medium text-[var(--text-secondary)]">
+        {PASSWORD_REQUIREMENTS_TEXT}
+      </div>
       <div className="mt-2 space-y-1.5">
         {requirements.map((requirement) => {
           const toneClass = requirement.met
-            ? "text-emerald-700"
+            ? 'text-[var(--status-success-text)]'
             : hasInput
-              ? "text-amber-800"
-              : "text-gray-500";
+              ? 'text-[var(--status-warning-text)]'
+              : 'text-[var(--text-muted)]';
           const markerClass = requirement.met
-            ? "border-emerald-600 bg-emerald-600"
+            ? 'border-[var(--status-success-text)] bg-[var(--status-success-text)]'
             : hasInput
-              ? "border-amber-500 bg-amber-100"
-              : "border-gray-300 bg-white";
+              ? 'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)]'
+              : 'border-[var(--border-strong)] bg-[var(--surface-1)]';
 
           return (
             <div key={requirement.id} className={`flex items-center gap-2 text-xs ${toneClass}`}>
-              <span className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${markerClass}`}>
-                {requirement.met ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : null}
+              <span
+                className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${markerClass}`}
+              >
+                {requirement.met ? (
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--surface-elevated)]" />
+                ) : null}
               </span>
               <span>{requirement.label}</span>
             </div>

@@ -40,7 +40,7 @@ import { getEmailValidationMessage } from '@/lib/emailValidation';
 import { autoT } from '@/i18n/auto';
 import { useTranslation } from 'react-i18next';
 import { Button, CreateButton } from '@/components/ui/Button';
-import { FieldError, Input, Select } from '@/components/ui/Field';
+import { FieldError, FieldLabel, Input, Select } from '@/components/ui/Field';
 
 type UserGroup = { key: string; name: string; users: UserDto[] };
 
@@ -446,21 +446,17 @@ export default function OrgUserManagement() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {autoT('ui_709a23220f2c')}
-              </label>
+              <FieldLabel className="mb-1">{autoT('ui_709a23220f2c')}</FieldLabel>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full"
                 placeholder={autoT('ui_57d950a48336')}
               />
-              <p className="text-xs text-gray-500 mt-1">{autoT('ui_14c8987e027b')}</p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">{autoT('ui_14c8987e027b')}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {autoT('ui_9811c39359c5')}
-              </label>
+              <FieldLabel className="mb-1">{autoT('ui_9811c39359c5')}</FieldLabel>
               <Input
                 type="email"
                 value={email}
@@ -470,17 +466,15 @@ export default function OrgUserManagement() {
                 autoFocus
                 invalid={Boolean(emailValidationMessage)}
               />
-              {emailValidationMessage && (
-                <FieldError>{emailValidationMessage}</FieldError>
-              )}
+              {emailValidationMessage && <FieldError>{emailValidationMessage}</FieldError>}
             </div>
           </div>
 
           {publicConfig.userProvisioningMode === 'local' && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-3">
+              <FieldLabel className="mb-1 text-[var(--status-warning-text)]">
                 {autoT('ui_c07dc032f12a')}
-              </label>
+              </FieldLabel>
               <Input
                 type="password"
                 value={temporaryPassword}
@@ -489,15 +483,15 @@ export default function OrgUserManagement() {
                 autoComplete="new-password"
               />
               <PasswordRequirementsHint password={temporaryPassword} className="mt-2" />
-              <p className="text-xs text-gray-600 mt-2">{autoT('ui_3402fb901043')}</p>
+              <p className="mt-2 text-xs text-[var(--status-warning-text)]">
+                {autoT('ui_3402fb901043')}
+              </p>
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {autoT('ui_695feaaed412')}
-              </label>
+              <FieldLabel className="mb-1">{autoT('ui_695feaaed412')}</FieldLabel>
               <Select
                 className="w-full"
                 value={targetOrgId}
@@ -512,9 +506,7 @@ export default function OrgUserManagement() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {autoT('ui_6237f0afe77f')}
-              </label>
+              <FieldLabel className="mb-1">{autoT('ui_6237f0afe77f')}</FieldLabel>
               <Select
                 value={role}
                 onChange={(e) => setRole(e.target.value as Exclude<Role, 'superadmin'>)}
@@ -528,9 +520,9 @@ export default function OrgUserManagement() {
           </div>
 
           {/* Role explanation */}
-          <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+          <div className="rounded-lg bg-[var(--surface-2)] p-3 text-sm text-[var(--text-secondary)]">
             <div className="flex items-start gap-2 mb-2">
-              <UserIcon className="w-4 h-4 mt-0.5 text-gray-500" />
+              <UserIcon className="mt-0.5 h-4 w-4 text-[var(--text-muted)]" />
               <div>
                 <strong>{autoT('ui_e8321efba4c2')}</strong> {autoT('ui_c9319abe9cdf')}
               </div>
@@ -544,11 +536,8 @@ export default function OrgUserManagement() {
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-2 border-t">
-            <Button
-              variant="secondary"
-              onClick={() => setCreateModalOpen(false)}
-            >
+          <div className="flex items-center justify-end gap-3 border-t border-[var(--border-subtle)] pt-2">
+            <Button variant="secondary" onClick={() => setCreateModalOpen(false)}>
               {autoT('ui_07af7cb30fca')}
             </Button>
             <Button

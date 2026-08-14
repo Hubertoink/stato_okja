@@ -1666,9 +1666,6 @@ export default function Calendar() {
         >
           <div className="calendar-analysis-intro border-b px-4 py-3 md:px-5">
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Wochenanalyse</h2>
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Reine Übersicht der geplanten Angebotszeiten. Überlappende Angebote werden nebeneinander dargestellt.
-            </p>
           </div>
           <div className="calendar-analysis-scroll overflow-x-auto overflow-y-hidden">
             <div
@@ -1682,9 +1679,6 @@ export default function Calendar() {
                 const metrics = analysis?.metrics ?? { offeredMinutes: 0, coveredMinutes: 0, maxParallel: 0 };
                 return (
                   <div key={`${iso}-header`} className={`calendar-analysis-day-header ${iso === todayISO ? 'calendar-analysis-day-header-today' : ''}`}>
-                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      {day.toLocaleDateString(getCurrentIntlLocale(), { weekday: 'short', day: '2-digit', month: '2-digit' })}
-                    </div>
                     <div className="calendar-analysis-metrics" aria-label={`Kennzahlen für ${day.toLocaleDateString(getCurrentIntlLocale())}`}>
                       <div className="calendar-analysis-metric calendar-analysis-metric-primary" title="Summe aller Angebotsstunden">
                         <strong className="calendar-analysis-metric-value">
@@ -1698,6 +1692,9 @@ export default function Calendar() {
                         </strong>
                         <span aria-label="Belegt"><Clock3 aria-hidden="true" /></span>
                       </div>
+                    </div>
+                    <div className="calendar-analysis-day-label font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {day.toLocaleDateString(getCurrentIntlLocale(), { weekday: 'short', day: '2-digit', month: '2-digit' })}
                     </div>
                     {!!analysis?.withoutTime.length && (
                       <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>

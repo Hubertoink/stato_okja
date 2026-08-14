@@ -7,6 +7,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.7.2] - 2026-08-14
+
+### Fixed
+- Dialoge zur lokalen Benutzeranlage und Organisationszuweisung verwenden in
+  allen Dark Themes thematische Flächen, Eingabefelder und Rahmen.
+- Die Mitgliederanzeige im Organisationsbaum berücksichtigt neben Benutzer:innen
+  auch Editor:innen.
+
+### Changed
+- Statistik-Karten, die Kalenderanalyse und die Auswahl von Rechtstexten haben
+  eine einheitlichere Theme-Darstellung und klarere Rückmeldungen.
+
 ## [1.7.1] - 2026-08-13
 
 ### Added

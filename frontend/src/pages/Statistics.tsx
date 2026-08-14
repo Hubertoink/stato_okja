@@ -2970,12 +2970,12 @@ export default function Statistics() {
 
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
           <div
-            className="group/chart-card bg-white rounded-lg shadow p-3 md:p-6 lg:col-span-2"
+            className="statistics-chart-card group/chart-card bg-white rounded-lg shadow p-3 md:p-6 lg:col-span-2"
             data-pdf-section
             ref={setChartCardRef('participants-trend')}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-viridian">
+              <h3 className="statistics-chart-title text-lg font-semibold text-viridian">
                 {showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5')}
               </h3>
               {!pdfMode && (

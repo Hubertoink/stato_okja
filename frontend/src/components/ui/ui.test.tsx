@@ -40,6 +40,16 @@ describe('shared UI components', () => {
     expect(screen.getByRole('button', { name: 'Bearbeiten' })).toHaveClass('h-11', 'w-11');
   });
 
+  it('uses the shared secondary highlight for neutral icon actions', () => {
+    render(<IconButton aria-label="Herunterladen" size="icon-compact" variant="secondary">↓</IconButton>);
+
+    expect(screen.getByRole('button', { name: 'Herunterladen' })).toHaveClass(
+      'bg-[var(--surface-1)]',
+      'hover:bg-[var(--interactive-soft)]',
+      'hover:border-[var(--interactive-soft-border)]',
+    );
+  });
+
   it('provides one neutral close button with danger feedback', () => {
     render(<CloseButton aria-label="Dialog schließen" size="icon-touch" />);
 

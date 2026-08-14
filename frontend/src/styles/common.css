@@ -291,7 +291,6 @@
   background: color-mix(in srgb, var(--viridian) 10%, transparent);
 }
 
-
 /* Emphasis text utility */
 .gradient-text {
   color: var(--viridian);
@@ -346,6 +345,30 @@
 .system-data-panel-copy,
 .system-data-summary-label {
   color: var(--text-secondary);
+}
+
+/* A pending legal-text import must remain clearly visible in every theme.
+ * Tailwind's violet utilities look right in light mode, but would otherwise
+ * introduce a light surface into all dark theme families. */
+:root[data-color-mode='dark'] .legal-import-document-selected {
+  background: color-mix(in srgb, var(--viridian) 15%, var(--surface-1)) !important;
+  border-color: color-mix(in srgb, var(--viridian) 56%, var(--border-subtle)) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--viridian) 32%, transparent) !important;
+}
+
+:root[data-color-mode='dark'] .legal-import-document-selected-filename,
+:root[data-color-mode='dark'] .legal-import-document-selected-status {
+  color: var(--viridian) !important;
+}
+
+:root[data-color-mode='dark'] .legal-import-file-select-selected {
+  background: color-mix(in srgb, var(--viridian) 12%, var(--surface-1)) !important;
+  border-color: color-mix(in srgb, var(--viridian) 48%, var(--border-subtle)) !important;
+  color: var(--viridian) !important;
+}
+
+:root[data-color-mode='dark'] .legal-import-file-select-selected:hover {
+  background: color-mix(in srgb, var(--viridian) 20%, var(--surface-1)) !important;
 }
 
 .audit-metrics-panel {

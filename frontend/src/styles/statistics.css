@@ -163,18 +163,17 @@
   visibility: hidden !important;
 }
 
-/* Weekly profile is a custom grid rather than a chart library component. Keep
-   its theme treatment here, based solely on the shared surface/text tokens. */
-.statistics-weekly-profile {
-  background: var(--surface-elevated);
+/* All statistics charts share the same card surface and heading treatment,
+   including the custom weekly profile grid. */
+.statistics-chart-card {
+  background: var(--surface-1);
   color: var(--text-primary);
   box-shadow: var(--card-shadow);
 }
 
-.statistics-weekly-profile__title {
-  color: var(--text-primary);
-  font-weight: 600;
-}
+.statistics-chart-title { color: var(--viridian); }
+
+.statistics-weekly-profile { color: var(--text-primary); }
 
 .statistics-weekly-profile__density,
 .statistics-weekly-profile__empty-icon {

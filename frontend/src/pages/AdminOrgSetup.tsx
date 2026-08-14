@@ -2131,7 +2131,13 @@ function OrgRow({
           .filter((u: { role: string; name?: string; email?: string }) => u.role === 'org_admin')
           .map((u: { name?: string; email?: string }) => ({ name: u.name || u.email || '' }));
         const users = list
-          .filter((u: { role: string; name?: string; email?: string }) => u.role === 'user')
+          // The tree's person badge represents all regular organisation members.
+          // Editors are displayed as "Benutzer" in the members dialog as well,
+          // so excluding them here made the badge disagree with that dialog.
+          .filter(
+            (u: { role: string; name?: string; email?: string }) =>
+              u.role !== 'org_admin' && u.role !== 'superadmin',
+          )
           .map((u: { name?: string; email?: string }) => ({ name: u.name || u.email || '' }));
         if (mounted) setOrgUsers({ admins, users });
       } catch {

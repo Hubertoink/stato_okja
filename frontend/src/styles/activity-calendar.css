@@ -826,6 +826,9 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+.calendar-analysis-day-label {
   margin-top: 0.5rem;
 }
 

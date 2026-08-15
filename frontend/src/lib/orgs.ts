@@ -2,7 +2,22 @@ import { api } from './api';
 
 import type { AppLocale } from '@/i18n/locales';
 
-export interface OrgDto { id: string; name: string; parentId?: string | null; path?: string | null; defaultLocale?: AppLocale }
+export interface OrgDto {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  path?: string | null;
+  defaultLocale?: AppLocale;
+  bannerUrl?: string | null;
+  brandColor?: string | null;
+  bannerPosition?: number | null;
+}
+
+export interface OrganizationBrandingUpdate {
+  bannerUrl?: string | null;
+  brandColor?: string | null;
+  bannerPosition?: number | null;
+}
 
 interface OrgTaxonomyTypeSetting {
   allowOwn: boolean;
@@ -128,6 +143,12 @@ export async function listOrgs(): Promise<OrgDto[]> {
   return res.data;
 }
 
+/** Explicitly assigned organisations for the current non-superadmin user. */
+export async function listAccessibleOrgs(): Promise<OrgDto[]> {
+  const res = await api.get<OrgDto[]>('/orgs/subtree');
+  return res.data;
+}
+
 export async function createOrgApi(name: string, parentId?: string | null): Promise<OrgDto> {
   const res = await api.post<OrgDto>('/orgs', { name, parentId: typeof parentId === 'undefined' ? undefined : parentId });
   return res.data;
@@ -136,6 +157,24 @@ export async function createOrgApi(name: string, parentId?: string | null): Prom
 export async function updateOrgDefaultLocale(orgId: string, locale: AppLocale): Promise<OrgDto> {
   const res = await api.patch<OrgDto>(`/orgs/${orgId}/default-locale`, { locale });
   return res.data;
+}
+
+export async function updateOrgBranding(
+  orgId: string,
+  branding: OrganizationBrandingUpdate,
+): Promise<OrgDto> {
+  const res = await api.patch<OrgDto>(`/orgs/${orgId}/branding`, branding);
+  return res.data;
+}
+
+export async function uploadOrganizationBanner(file: File): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('variant', 'organization-banner');
+  const res = await api.post<{ url: string }>('/uploads/images', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data.url;
 }
 
 export type InviteUserResult = {

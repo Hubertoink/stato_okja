@@ -10,6 +10,7 @@ import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
 import { User } from '../users/entities/user.entity';
+import { OrganizationMembership } from '../users/entities/organization-membership.entity';
 
 type RepoMock<T extends object> = Partial<Record<keyof Repository<T>, jest.Mock>>;
 
@@ -43,6 +44,7 @@ describe('OrgsService taxonomy access', () => {
         { provide: getRepositoryToken(Activity), useValue: {} },
         { provide: getRepositoryToken(Project), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
+        { provide: getRepositoryToken(OrganizationMembership), useValue: {} },
       ],
     }).compile();
 
@@ -167,7 +169,7 @@ describe('OrgsService taxonomy access', () => {
     ).rejects.toThrow('gesperrt');
   });
 
-  it('still allows parent org admins to update a direct child lock state', async () => {
+  it('requires an explicit membership to update a child organization configuration', async () => {
     const parentOrg = {
       id: 'parent-org',
       name: 'Jugendhaus Bobibo',
@@ -185,7 +187,7 @@ describe('OrgsService taxonomy access', () => {
     (orgRepo.find as jest.Mock).mockResolvedValue([parentOrg, childOrg]);
     (orgRepo.save as jest.Mock).mockImplementation(async (value: unknown) => value);
 
-    const snapshot = await service.updateOrgTaxonomySettingsScoped(
+    await expect(service.updateOrgTaxonomySettingsScoped(
       'child-org',
       {
         settings: {
@@ -193,10 +195,7 @@ describe('OrgsService taxonomy access', () => {
         },
       },
       { role: 'org_admin', orgId: 'parent-org' },
-    );
-
-    expect(snapshot.permissions.canEditSelf).toBe(true);
-    expect(snapshot.settings.categories.allowOwn).toBe(false);
+    )).rejects.toThrow('Mitgliedschaft');
   });
 
   it('reports both direct children and full descendant cascade in the snapshot', async () => {

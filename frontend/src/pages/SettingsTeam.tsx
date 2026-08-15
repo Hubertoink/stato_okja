@@ -36,7 +36,7 @@ export default function SettingsTeam() {
   }>({ open: false });
 
   const members = data || [];
-  const canManageDestructiveActions = canManageSettingsDestructiveActions(user?.role);
+  const canManageTeam = canManageSettingsDestructiveActions(user?.role);
 
   const roleBadgeClass = (role?: StaffRole | null) => {
     const r = (role || 'employee') as StaffRole;
@@ -72,10 +72,11 @@ export default function SettingsTeam() {
           )}
           <span className="tooltip-wrapper">
             <button
-              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow"
-              onClick={() => setModal({ mode: 'create' })}
+              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => canManageTeam && setModal({ mode: 'create' })}
               aria-label={autoT('ui_bb42e5a2eb95')}
-              title={autoT('ui_bb42e5a2eb95')}
+              title={canManageTeam ? autoT('ui_bb42e5a2eb95') : 'Nur Editor oder Organisationsadmin dürfen Teammitglieder verwalten'}
+              disabled={!canManageTeam}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -116,15 +117,15 @@ export default function SettingsTeam() {
               </div>
             </div>
             <div className="flex gap-2 shrink-0 self-start md:self-center">
-              <button
+              {canManageTeam && <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
                 title={autoT('ui_104f3bfdc340')}
                 aria-label={autoT('ui_3829918a22c4', { value0: m.name })}
                 onClick={() => setModal({ mode: 'edit', member: m })}
               >
                 <Pencil className="w-4 h-4 text-viridian" />
-              </button>
-              {showArchived && m.active === false && canManageDestructiveActions && (
+              </button>}
+              {showArchived && m.active === false && canManageTeam && (
                 <button
                   className="text-viridian hover:underline text-sm"
                   onClick={() =>
@@ -139,7 +140,7 @@ export default function SettingsTeam() {
                   }
                 >{autoT('ui_98f492b5e015')}</button>
               )}
-              {canManageDestructiveActions && <DeleteIconButton
+              {canManageTeam && <DeleteIconButton
                 size="icon-compact"
                 title={autoT('ui_ffa5a8a7e21d')}
                 aria-label={autoT('ui_b607bbd2d882', { value0: m.name })}

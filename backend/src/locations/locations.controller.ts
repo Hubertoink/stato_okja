@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { LocationsService } from './locations.service';
-import { OrgsService } from '../orgs/orgs.service';
 import { Location } from './entities/location.entity';
 import { CreateLocationDto, UpdateLocationDto } from './dto/location.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
@@ -24,9 +23,9 @@ import { RolesGuard } from '../auth/roles.guard';
 
 @ApiTags('locations')
 @Controller('locations')
-@UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
+@UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
 export class LocationsController {
-  constructor(private readonly locationsService: LocationsService, private readonly orgs: OrgsService) {}
+  constructor(private readonly locationsService: LocationsService) {}
 
   private assertCanManageDestructiveAction(role: string) {
     if (role !== 'superadmin' && role !== 'org_admin' && role !== 'editor') {
@@ -38,14 +37,8 @@ export class LocationsController {
   @ApiOperation({ summary: 'Alle Standorte/Räume abrufen' })
   async findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string) {
     const isActive = active === 'true' ? true : active === 'false' ? false : undefined;
-    const orgIdRaw = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
-    let orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined;
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-      orgId = undefined;
-    }
-  return this.locationsService.findAll(isActive, orgId, orgIds);
+    const orgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
+    return this.locationsService.findAll(isActive, orgId);
   }
 
   @Get(':id')
@@ -57,6 +50,7 @@ export class LocationsController {
     return this.locationsService.findOneScoped(id, { ...req.user, effectiveOrgId: req.effectiveOrgId });
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Post()
   @ApiOperation({ summary: 'Neuen Standort anlegen' })
   create(@Body() data: CreateLocationDto, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
@@ -64,6 +58,7 @@ export class LocationsController {
     return this.locationsService.create({ ...(data as Partial<Location>), orgId });
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Patch(':id')
   @ApiOperation({ summary: 'Standort bearbeiten' })
   update(

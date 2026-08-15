@@ -7,6 +7,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.8.0] - 2026-08-15
+
+### Fixed
+- Die Akzentfarbe von Organisationsbannern verwendet nun denselben Colorpicker
+  wie Tags und andere farbcodierte Elemente.
+- Die temporäre Passwort-Eingabe beim Anlegen einer Organisation verwendet in
+  Dark Themes die thematischen Warnfarben statt einer festen hellen Fläche.
+
+---
+
 ## [1.7.4] - 2026-08-14
 
 ### Fixed

@@ -15,7 +15,6 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { StaffService } from './staff.service';
 import { Staff } from './entities/staff.entity';
 import { CreateStaffDto, UpdateStaffDto } from './dto/staff.dto';
-import { OrgsService } from '../orgs/orgs.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { resolveOrgScope } from '../auth/org-scope-access';
@@ -25,12 +24,9 @@ import { RolesGuard } from '../auth/roles.guard';
 
 @ApiTags('staff')
 @Controller('staff')
-@UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
+@UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
 export class StaffController {
-  constructor(
-    private readonly staffService: StaffService,
-    private readonly orgs: OrgsService,
-  ) {}
+  constructor(private readonly staffService: StaffService) {}
 
   private assertCanManageDestructiveAction(role: string) {
     if (role !== 'superadmin' && role !== 'org_admin' && role !== 'editor') {
@@ -42,9 +38,8 @@ export class StaffController {
   @ApiOperation({ summary: 'Alle Mitarbeitende abrufen' })
   async findAll(@Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }, @Query('active') active?: string) {
     const isActive = active === 'true' ? true : active === 'false' ? false : undefined;
-    const scopeOrgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
-    const orgIds = scopeOrgId === null ? undefined : await this.orgs.getSubtreeOrgIds(scopeOrgId);
-    return (await this.staffService.findAll(isActive, scopeOrgId === null ? null : undefined, orgIds)).map(toPublicStaff);
+    const orgId = resolveOrgScope({ ...req.user, effectiveOrgId: req.effectiveOrgId });
+    return (await this.staffService.findAll(isActive, orgId)).map(toPublicStaff);
   }
 
   @Get(':id')
@@ -57,6 +52,7 @@ export class StaffController {
     return staff ? toPublicStaff(staff) : null;
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Post()
   @ApiOperation({ summary: 'Neue Mitarbeitende anlegen' })
   async create(@Body() data: CreateStaffDto, @Req() req: { user: { role: string; orgId?: string|null }; effectiveOrgId?: string|null|undefined }) {
@@ -64,6 +60,7 @@ export class StaffController {
     return toPublicStaff(await this.staffService.create({ ...(data as Partial<Staff>), orgId }));
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Patch(':id')
   @ApiOperation({ summary: 'Mitarbeitende bearbeiten' })
   async update(

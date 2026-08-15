@@ -61,6 +61,7 @@ type UploadReferenceBreakdown = {
   projectDocuments: number;
   projectTemplates: number;
   userAvatars: number;
+  organizationBanners: number;
 };
 
 type UploadReferenceKey = keyof UploadReferenceBreakdown;
@@ -70,6 +71,7 @@ type UploadReferenceDetails = {
   projectDocuments: Array<{ id: string; filename: string; projectId: string; projectTitle: string | null; orgId: string | null }>;
   projectTemplates: Array<{ id: string; title: string; orgId: string | null }>;
   userAvatars: Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null }>;
+  organizationBanners: Array<{ id: string; name: string }>;
 };
 
 type UploadReferenceSummary = {
@@ -87,6 +89,7 @@ const EMPTY_UPLOAD_REFERENCE_BREAKDOWN: UploadReferenceBreakdown = {
   projectDocuments: 0,
   projectTemplates: 0,
   userAvatars: 0,
+  organizationBanners: 0,
 };
 
 @Injectable()
@@ -886,6 +889,14 @@ export class SystemDataService {
       orgId: row.orgId ?? null,
     }));
 
+    const organizationRows = await queryRunner.query(
+      `SELECT "id", "name", "bannerUrl" FROM ${this.escapeTablePath('organizations')} WHERE "bannerUrl" IS NOT NULL AND "bannerUrl" != ''`,
+    ) as Array<{ id: string; name: string; bannerUrl?: string | null }>;
+    organizationRows.forEach((row) => addReference(row.bannerUrl, 'organizationBanners', {
+      id: row.id,
+      name: row.name,
+    }));
+
     return references;
   }
 
@@ -896,12 +907,14 @@ export class SystemDataService {
       projectDocuments: await this.countUploadFieldMatches(queryRunner, 'project_documents', 'storageRef', candidates),
       projectTemplates: await this.countUploadFieldMatches(queryRunner, 'project_templates', 'imageUrl', candidates),
       userAvatars: await this.countUploadFieldMatches(queryRunner, 'users', 'avatarUrl', candidates),
+      organizationBanners: await this.countUploadFieldMatches(queryRunner, 'organizations', 'bannerUrl', candidates),
     } satisfies UploadReferenceBreakdown;
 
     await this.clearUploadField(queryRunner, 'projects', { imageUrl: null, imageSize: null }, 'imageUrl', candidates);
     await this.deleteUploadRows(queryRunner, 'project_documents', 'storageRef', candidates);
     await this.clearUploadField(queryRunner, 'project_templates', { imageUrl: null }, 'imageUrl', candidates);
     await this.clearUploadField(queryRunner, 'users', { avatarUrl: null }, 'avatarUrl', candidates);
+    await this.clearUploadField(queryRunner, 'organizations', { bannerUrl: null }, 'bannerUrl', candidates);
 
     return referenceBreakdown;
   }
@@ -1016,6 +1029,7 @@ export class SystemDataService {
         projectDocuments: [],
         projectTemplates: [],
         userAvatars: [],
+        organizationBanners: [],
       },
     };
   }

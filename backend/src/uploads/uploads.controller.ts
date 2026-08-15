@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, NotFoundException, Param, Post, Res, StreamableFile, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Res, StreamableFile, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -23,6 +23,7 @@ import type { Response } from 'express';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_WIDTH = 600;
+const MAX_ORGANIZATION_BANNER_WIDTH = 1600;
 
 function sanitizeBaseName(originalName: string) {
   const name = (originalName || 'file').toLowerCase().replace(/[^a-z0-9_.-]+/g, '-');
@@ -83,7 +84,10 @@ export class UploadsController {
       },
     }),
   )
-  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('variant') variant?: string,
+  ) {
     if (!file) {
       return { message: 'No file uploaded' };
     }
@@ -107,9 +111,10 @@ export class UploadsController {
     const outPath = join(uploadsDir, filename);
 
     // Resize and re-encode. rotate() fixes EXIF orientation.
+    const maxWidth = variant === 'organization-banner' ? MAX_ORGANIZATION_BANNER_WIDTH : MAX_IMAGE_WIDTH;
     const { data, info } = await sharp(file.buffer)
       .rotate()
-      .resize({ width: MAX_IMAGE_WIDTH, withoutEnlargement: true })
+      .resize({ width: maxWidth, withoutEnlargement: true })
       .toFormat(format, format === 'jpeg' ? { quality: 82 } : format === 'webp' ? { quality: 82 } : { compressionLevel: 9 })
       .toBuffer({ resolveWithObject: true });
 

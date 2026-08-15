@@ -98,8 +98,9 @@ export default function SettingsCohorts() {
   const [confirm, setConfirm] = useState<{ open: boolean; cohort?: Cohort; countActivities?: number; countParticipants?: number; loading?: boolean }>({ open: false });
 
   const cohorts = data || [];
-  const canCreateOwn = access?.cohorts.canCreateOwn ?? true;
-  const canDeleteTaxonomy = canManageSettingsDestructiveActions(user?.role);
+  const canManageTaxonomy = canManageSettingsDestructiveActions(user?.role);
+  const canCreateOwn = canManageTaxonomy && (access?.cohorts.canCreateOwn ?? true);
+  const canDeleteTaxonomy = canManageTaxonomy;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -129,7 +130,7 @@ export default function SettingsCohorts() {
       <div className="divide-y">
         {cohorts.map((c) => {
           const isInherited = !!c.isInherited;
-          const canManage = c.canManage !== false;
+          const canManage = canManageTaxonomy && c.canManage !== false;
           return (
           <div key={c.id} className={`py-3 flex items-center justify-between ${isInherited ? "bg-gray-50" : ''}`}>
             <div className="min-w-0">
@@ -138,6 +139,9 @@ export default function SettingsCohorts() {
                 {isInherited && (
                   <span className="text-xs bg-cambridge-blue/20 text-cambridge-blue px-1.5 py-0.5 rounded">{autoT('ui_a699c6f5aade')}{c.sourceOrgName ? ` aus ${c.sourceOrgName}` : ''}
                   </span>
+                )}
+                {c.active === false && (
+                  <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-xs text-[var(--text-muted)]">Archiviert</span>
                 )}
               </div>
               <div className="text-sm text-gray-600">{c.minAge}–{c.maxAge}{' '}{autoT('ui_b0bf2144b683')}</div>

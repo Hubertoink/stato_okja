@@ -1,32 +1,39 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import { listOrgs, createOrgApi, type OrgDto } from '@/lib/orgs';
-import { useAuth } from '@/lib/auth';
-import { api } from '@/lib/api';
+import { useAuth, type Role } from '@/lib/auth';
+import { fetchUserMemberships, type UserOrganizationMembership } from '@/lib/users';
 import { autoT } from '@/i18n/auto';
-import { Button } from '@/components/ui/Button';
+import { Button, CloseButton } from '@/components/ui/Button';
 import { FieldLabel, Input, Select } from '@/components/ui/Field';
 
 export default function AssignOrgModal({
   open,
   onClose,
   userName,
-  currentOrgId,
+  userId,
   onAssign,
+  onRemoveMembership,
 }: {
   open: boolean;
   onClose: () => void;
   userName: string;
-  currentOrgId?: string | null;
-  onAssign: (orgId: string | null) => Promise<void> | void;
+  userId: string;
+  onAssign: (orgIds: string[], role: Exclude<Role, 'superadmin'>) => Promise<void> | void;
+  onRemoveMembership?: (orgId: string) => Promise<void> | void;
 }) {
   const [orgs, setOrgs] = useState<OrgDto[]>([]);
+  const [memberships, setMemberships] = useState<UserOrganizationMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
-  const [selected, setSelected] = useState<string | null>(currentOrgId ?? null);
+  const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
+  const [selectedRole, setSelectedRole] = useState<Exclude<Role, 'superadmin'>>('user');
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newParentId, setNewParentId] = useState<string | ''>('');
+  const [removingOrgId, setRemovingOrgId] = useState<string | null>(null);
+  const [membershipPendingRemoval, setMembershipPendingRemoval] = useState<UserOrganizationMembership | null>(null);
+  const [membershipError, setMembershipError] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('recent_org_ids') || '[]');
@@ -41,24 +48,29 @@ export default function AssignOrgModal({
     (async () => {
       setLoading(true);
       try {
-        if (user?.role === 'superadmin') {
-          const all = await listOrgs();
-          setOrgs(all);
-        } else if (user?.orgId) {
-          const res = await api.get<OrgDto[]>('/orgs/subtree');
-          setOrgs(res.data);
-        } else {
-          setOrgs([]);
-        }
+        const [availableOrgs, existingMemberships] = await Promise.all([
+          user?.role === 'superadmin'
+            ? listOrgs()
+            : Promise.resolve((user?.memberships || []).map((membership) => ({
+              id: membership.orgId,
+              name: membership.orgName,
+            }))),
+          fetchUserMemberships(userId),
+        ]);
+        setOrgs(availableOrgs);
+        setMemberships(existingMemberships);
       } finally {
         setLoading(false);
       }
     })();
-  }, [open, user?.id, user?.role, user?.orgId]);
+  }, [open, user?.id, user?.role, user?.memberships, userId]);
 
   useEffect(() => {
-    setSelected(currentOrgId ?? null);
-  }, [currentOrgId, open]);
+    if (!open) return;
+    setSelectedOrgIds([]);
+    setSelectedRole('user');
+    setQ('');
+  }, [open]);
 
   const idToOrg = useMemo(() => new Map(orgs.map((o) => [o.id, o] as const)), [orgs]);
   const breadcrumbFor = (o: OrgDto) => {
@@ -84,29 +96,54 @@ export default function AssignOrgModal({
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    if (!term) return orgs;
     return orgs.filter((o) => {
+      if (!term) return true;
       const breadcrumb = breadcrumbFor(o);
       return (o.name || '').toLowerCase().includes(term) || breadcrumb.toLowerCase().includes(term);
     });
-  }, [orgs, q, breadcrumbFor]);
+  }, [orgs, memberships, q, breadcrumbFor]);
 
   const recentOrgs = useMemo(
-    () => recent.map((id) => orgs.find((o) => o.id === id)).filter(Boolean) as OrgDto[],
-    [recent, orgs],
+    () => recent
+      .map((id) => orgs.find((o) => o.id === id))
+      .filter((org): org is OrgDto => Boolean(org) && !memberships.some((membership) => membership.orgId === org?.id && membership.status === 'active')),
+    [recent, orgs, memberships],
   );
 
   async function handleAssign() {
-    await onAssign(selected ?? null);
+    if (!selectedOrgIds.length) return;
+    await onAssign(selectedOrgIds, selectedRole);
     // persist recent
-    if (selected) {
-      const next = [selected, ...recent.filter((x) => x !== selected)].slice(0, 5);
+    if (selectedOrgIds.length) {
+      const next = [...selectedOrgIds, ...recent.filter((x) => !selectedOrgIds.includes(x))].slice(0, 5);
       setRecent(next);
       try {
         localStorage.setItem('recent_org_ids', JSON.stringify(next));
       } catch (_e) {
         /* ignore */
       }
+    }
+  }
+
+  function requestRemoveMembership(membership: UserOrganizationMembership) {
+    if (!onRemoveMembership || removingOrgId) return;
+    setMembershipError(null);
+    setMembershipPendingRemoval(membership);
+  }
+
+  async function confirmRemoveMembership() {
+    const membership = membershipPendingRemoval;
+    if (!membership || !onRemoveMembership || removingOrgId) return;
+    setRemovingOrgId(membership.orgId);
+    try {
+      await onRemoveMembership(membership.orgId);
+      setMemberships((current) => current.filter((item) => item.orgId !== membership.orgId));
+      setMembershipPendingRemoval(null);
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+      setMembershipError(Array.isArray(message) ? message.join(', ') : String(message || 'Zugang konnte nicht entfernt werden.'));
+    } finally {
+      setRemovingOrgId(null);
     }
   }
 
@@ -121,24 +158,31 @@ export default function AssignOrgModal({
     if (user?.role === 'superadmin') {
       const all = await listOrgs();
       setOrgs(all);
-    } else if (user?.orgId) {
-      const res = await api.get<OrgDto[]>('/orgs/subtree');
-      setOrgs(res.data);
+    } else {
+      setOrgs((user?.memberships || []).map((membership) => ({
+        id: membership.orgId,
+        name: membership.orgName,
+      })));
     }
-    setSelected(org.id);
+    setSelectedOrgIds((current) => [...current, org.id]);
     setCreating(false);
     setNewName('');
     setNewParentId('');
   }
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={autoT('ui_3c189622881d', { value0: userName })}
-      maxWidth="md"
-    >
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        title={`Organisationszugänge verwalten – ${userName}`}
+        maxWidth="md"
+      >
       <div className="space-y-3">
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3 text-sm text-[var(--text-secondary)]">
+          Wähle eine oder mehrere Organisationen aus, um Zugänge hinzuzufügen. Das rote X entzieht nur den jeweiligen Organisationszugang – Konto und weitere Zugänge bleiben erhalten.
+        </div>
+        <FieldLabel>Organisationen verwalten</FieldLabel>
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -205,8 +249,8 @@ export default function AssignOrgModal({
               {recentOrgs.map((o) => (
                 <button
                   key={o.id}
-                  className={`rounded-full border px-2 py-1 text-xs transition-colors ${selected === o.id ? 'border-viridian bg-viridian text-white' : 'border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:bg-[var(--interactive-soft)]'}`}
-                  onClick={() => setSelected(o.id)}
+                  className={`rounded-full border px-2 py-1 text-xs transition-colors ${selectedOrgIds.includes(o.id) ? 'border-viridian bg-viridian text-white' : 'border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:bg-[var(--interactive-soft)]'}`}
+                  onClick={() => setSelectedOrgIds((current) => current.includes(o.id) ? current.filter((id) => id !== o.id) : [...current, o.id])}
                 >
                   {o.name}
                 </button>
@@ -224,36 +268,106 @@ export default function AssignOrgModal({
             <div className="p-3 text-[var(--text-muted)]">{autoT('ui_921d42241b62')}</div>
           )}
           {!loading &&
-            filtered.map((o) => (
-              <label
-                key={o.id}
-                className="flex cursor-pointer items-center gap-2 px-3 py-2 transition-colors hover:bg-[var(--interactive-soft)] active:bg-[var(--interactive-soft-strong)]"
-              >
-                <input
-                  type="radio"
-                  className="accent-viridian"
-                  checked={selected === o.id}
-                  onChange={() => setSelected(o.id)}
-                />
-                <div className="truncate">
-                  <div className="text-sm font-medium text-[var(--text-primary)]">{o.name}</div>
-                  <div className="truncate text-xs text-[var(--text-muted)]">
-                    {breadcrumbFor(o)}
-                  </div>
+            filtered.map((o) => {
+              const membership = memberships.find((item) => item.orgId === o.id && item.status === 'active');
+              const isAssigned = Boolean(membership);
+              return (
+                <div
+                  key={o.id}
+                  className={`flex items-center gap-2 px-3 py-2 transition-colors ${isAssigned ? 'bg-[var(--surface-2)] opacity-75' : 'hover:bg-[var(--interactive-soft)] active:bg-[var(--interactive-soft-strong)]'}`}
+                >
+                  <label className={`flex min-w-0 flex-1 items-center gap-2 ${isAssigned ? 'cursor-default' : 'cursor-pointer'}`}>
+                    <input
+                      type="checkbox"
+                      className="accent-viridian"
+                      checked={isAssigned || selectedOrgIds.includes(o.id)}
+                      disabled={isAssigned}
+                      onChange={() => setSelectedOrgIds((current) => current.includes(o.id) ? current.filter((id) => id !== o.id) : [...current, o.id])}
+                    />
+                    <div className="min-w-0 truncate">
+                      <div className="text-sm font-medium text-[var(--text-primary)]">
+                        {o.name}
+                        {membership && (
+                          <span className="ml-2 text-xs font-normal text-[var(--text-muted)]">
+                            bereits zugewiesen · {membership.role === 'org_admin' ? 'Organisationsadmin' : membership.role === 'editor' ? 'Editor' : 'Benutzer'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="truncate text-xs text-[var(--text-muted)]">
+                        {breadcrumbFor(o)}
+                      </div>
+                    </div>
+                  </label>
+                  {membership && onRemoveMembership && (
+                    <CloseButton
+                      aria-label={`Zugang zu ${membership.orgName} entfernen`}
+                      title={`Zugang zu ${membership.orgName} entfernen`}
+                      size="icon-compact"
+                      disabled={removingOrgId === membership.orgId}
+                      onClick={() => requestRemoveMembership(membership)}
+                    />
+                  )}
                 </div>
-              </label>
-            ))}
+              );
+            })}
+        </div>
+
+        <div>
+          <FieldLabel className="mb-1">Rolle in den zusätzlichen Organisationen</FieldLabel>
+          <Select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value as Exclude<Role, 'superadmin'>)}>
+            <option value="user">Benutzer</option>
+            <option value="editor">Editor</option>
+            <option value="org_admin">Organisationsadmin</option>
+          </Select>
         </div>
 
         <div className="-mx-4 mt-3 sticky bottom-0 flex items-center justify-end gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-2 pb-safe md:-mx-6 md:px-6">
           <Button size="sm" variant="secondary" onClick={onClose}>
             {autoT('ui_07af7cb30fca')}
           </Button>
-          <Button size="sm" disabled={selected === (currentOrgId ?? null)} onClick={handleAssign}>
-            {autoT('ui_a4ed9add9edd')}
+          <Button size="sm" disabled={!selectedOrgIds.length} onClick={handleAssign}>
+            {selectedOrgIds.length === 1 ? 'Zusätzlichen Zugang hinzufügen' : `${selectedOrgIds.length} zusätzliche Zugänge hinzufügen`}
           </Button>
         </div>
       </div>
-    </Modal>
+      </Modal>
+      <Modal
+        open={Boolean(membershipPendingRemoval)}
+        onClose={() => {
+          if (!removingOrgId) setMembershipPendingRemoval(null);
+        }}
+        title="Organisationszugang entziehen"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--text-secondary)]">
+            Möchtest du <strong className="text-[var(--text-primary)]">{userName}</strong> den Zugang zu
+            {' '}<strong className="text-[var(--text-primary)]">{membershipPendingRemoval?.orgName}</strong> entziehen?
+          </p>
+          <div className="rounded-xl border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] p-3 text-sm text-[var(--status-danger-text)]">
+            Das Benutzerkonto und Zugänge zu anderen Organisationen bleiben erhalten.
+          </div>
+          {membershipError && <p className="text-sm text-[var(--status-danger-text)]">{membershipError}</p>}
+          <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-4">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={Boolean(removingOrgId)}
+              onClick={() => setMembershipPendingRemoval(null)}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={Boolean(removingOrgId)}
+              onClick={() => void confirmRemoveMembership()}
+            >
+              {removingOrgId ? 'Wird entzogen …' : 'Zugang entziehen'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }

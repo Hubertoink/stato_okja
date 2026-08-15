@@ -25,9 +25,11 @@ describe('AuthService invitations', () => {
       save: jest.fn(async (session) => session),
       delete: jest.fn().mockResolvedValue(undefined),
     };
+    const memberships = { find: jest.fn().mockResolvedValue([]), findOne: jest.fn(), save: jest.fn(), create: jest.fn() };
     const service = new AuthService(
       users as never,
       orgs as never,
+      memberships as never,
       {} as never,
       refreshSessions as never,
       jwt as never,
@@ -35,7 +37,7 @@ describe('AuthService invitations', () => {
       {} as never,
       { getTermsOfUseVersion: jest.fn().mockResolvedValue('test-terms-version') } as never,
     );
-    return { service, users, jwt, email, refreshSessions };
+    return { service, users, memberships, jwt, email, refreshSessions };
   }
 
   it('does not return an invite token and binds it to the pending invite version', async () => {
@@ -65,8 +67,8 @@ describe('AuthService invitations', () => {
     );
   });
 
-  it('rejects inviting an already active account', async () => {
-    const { service } = createService({
+  it('adds an organization membership to an already active account', async () => {
+    const { service, memberships } = createService({
       existingUser: {
         id: 'active-user',
         email: 'active@example.org',
@@ -76,9 +78,11 @@ describe('AuthService invitations', () => {
       },
     });
 
-    await expect(
-      service.inviteUser({ email: 'active@example.org', name: 'Active User', role: 'org_admin', orgId: 'org-2' }),
-    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.inviteUser({ email: 'active@example.org', name: 'Active User', role: 'org_admin', orgId: 'org-2' }))
+      .resolves.toEqual(expect.objectContaining({ invitationSent: true }));
+    expect(memberships.create).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'active-user', orgId: 'org-2', role: 'org_admin', status: 'active',
+    }));
   });
 
   it('does not change role or organization when resending a pending invite', async () => {
@@ -185,6 +189,28 @@ describe('AuthService invitations', () => {
       refresh_csrf_token: expect.any(String),
       user: expect.objectContaining({ mustChangePassword: false }),
     }));
+  });
+
+  it('reports an incorrect current password as a client error', async () => {
+    const { service } = createService({
+      existingUser: {
+        id: 'user-1',
+        email: 'local@example.org',
+        name: 'Local User',
+        role: 'user',
+        orgId: 'org-1',
+        passwordHash: await bcrypt.hash('CurrentPassword1!', 10),
+      },
+    });
+
+    await expect(service.changePassword(
+      'user-1',
+      'IncorrectPassword1!',
+      'ReplacementPassword1!',
+    )).rejects.toMatchObject({
+      status: 400,
+      message: 'Aktuelles Passwort ist falsch',
+    });
   });
 
   it('accepts an active reset token without consuming it', async () => {

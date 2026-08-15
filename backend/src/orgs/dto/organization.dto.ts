@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '../../users/entities/user.entity';
 
 export class CreateOrganizationDto {
@@ -18,6 +18,24 @@ export class MasterDataContentDto {
 
 export class UpdateDefaultLocaleDto {
   @IsIn(SUPPORTED_LOCALES) locale!: SupportedLocale;
+}
+
+export class UpdateOrganizationBrandingDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  bannerUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  brandColor?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  bannerPosition?: number | null;
 }
 
 export class OpeningHoursDayDto {

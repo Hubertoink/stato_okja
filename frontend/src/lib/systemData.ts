@@ -28,12 +28,14 @@ export type SystemDataUploadItem = {
     projectDocuments: number;
     projectTemplates: number;
     userAvatars: number;
+    organizationBanners: number;
   };
   referenceDetails: {
     projects: Array<{ id: string; title: string; orgId: string | null }>;
     projectDocuments: Array<{ id: string; filename: string; projectId: string; projectTitle: string | null; orgId: string | null }>;
     projectTemplates: Array<{ id: string; title: string; orgId: string | null }>;
     userAvatars: Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null }>;
+    organizationBanners: Array<{ id: string; name: string }>;
   };
 };
 
@@ -52,6 +54,7 @@ type DeleteSystemDataUploadResult = {
     projectDocuments: number;
     projectTemplates: number;
     userAvatars: number;
+    organizationBanners: number;
   };
 };
 

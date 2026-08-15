@@ -10,15 +10,11 @@ import { OrgsService } from '../orgs/orgs.service';
  *   - Header absent -> effectiveOrgId = null (no-org)  (global scope intentionally disabled)
  *   - Header 'null' or empty -> effectiveOrgId = null
  *   - Header '<uuid>' -> effectiveOrgId = that uuid (no subtree validation here)
- * - org_admin / user:
- *   - If user.orgId is null:
- *       - Header must be absent, empty or 'null' -> effectiveOrgId = null
- *       - Otherwise -> 403
- *   - If user.orgId is set:
- *       - Header absent -> effectiveOrgId = user.orgId (default to own org)
- *       - Header 'null' or empty -> 403 (cannot scope outside subtree)
- *       - Header '<uuid>' -> must be within subtree of user's org
- *         otherwise it falls back to user.orgId to recover from stale client scope
+ * - Tenant users:
+ *   - The selected organization must be an active membership of the user.
+ *   - Header absent -> first/default active membership is selected.
+ *   - Header empty, null or a foreign organization -> 403.
+ *   - The role on request.user is replaced by the role of that membership.
  */
 @Injectable()
 export class OrgScopeGuard implements CanActivate {
@@ -27,7 +23,7 @@ export class OrgScopeGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest() as {
       headers: Record<string, unknown>;
-      user?: { role?: string; orgId?: string | null };
+      user?: { id?: string; role?: string; orgId?: string | null };
       effectiveOrgId?: string | null | undefined;
     };
 
@@ -52,32 +48,21 @@ export class OrgScopeGuard implements CanActivate {
       return true;
     }
 
-    const myOrgId = user.orgId ?? null;
-    if (myOrgId === null) {
-      // Only null scope allowed
-      if (typeof requested === 'undefined' || requested === null) {
-        request.effectiveOrgId = null;
-        return true;
-      }
-      throw new ForbiddenException('Nicht erlaubt (Org-Scope)');
-    }
+    if (!user.id) throw new ForbiddenException('Nicht erlaubt (Org-Scope)');
 
-    // User has an org; default to own org when header missing
-    if (typeof requested === 'undefined') {
-      request.effectiveOrgId = myOrgId;
-      return true;
-    }
-    if (requested === null) {
-      throw new ForbiddenException('Nicht erlaubt (Org-Scope)');
-    }
-    // Validate requested is within subtree of myOrgId
-    const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-    if (subtree.includes(requested)) {
-      request.effectiveOrgId = requested;
-      return true;
-    }
+    const memberships = await this.orgs.listActiveMemberships(user.id);
+    const selectedOrgId =
+      typeof requested === 'undefined'
+        ? memberships.find((membership) => membership.orgId === user.orgId)?.orgId ?? memberships[0]?.orgId
+        : requested;
+    if (!selectedOrgId) throw new ForbiddenException('Keine aktive Organisationsmitgliedschaft vorhanden');
 
-    request.effectiveOrgId = myOrgId;
+    const membership = memberships.find((entry) => entry.orgId === selectedOrgId);
+    if (!membership) throw new ForbiddenException('Nicht erlaubt (Org-Scope)');
+
+    request.effectiveOrgId = membership.orgId;
+    user.orgId = membership.orgId;
+    user.role = membership.role;
     return true;
   }
 }

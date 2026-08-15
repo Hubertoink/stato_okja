@@ -140,6 +140,13 @@ function handleOrgs(method: string, segments: string[], params: Record<string, u
   if (method === 'get' && segments[2] === 'users') return ok(demo.listDemoUsers());
   if (method === 'get' && segments[2] === 'taxonomy-settings') return ok(demo.getDemoTaxonomySettings());
   if (method === 'patch' && segments[2] === 'taxonomy-settings') return ok(demo.getDemoTaxonomySettings());
+  if (method === 'patch' && segments[2] === 'branding') {
+    return ok(demo.updateDemoOrgBranding(orgId, {
+      bannerUrl: typeof body.bannerUrl === 'string' ? body.bannerUrl : null,
+      brandColor: typeof body.brandColor === 'string' ? body.brandColor : null,
+      bannerPosition: typeof body.bannerPosition === 'number' ? body.bannerPosition : null,
+    }));
+  }
   if (method === 'get' && segments[2] === 'opening-hours') return ok(demo.getDemoOpeningHours());
   if (method === 'patch' && segments[2] === 'opening-hours') return ok(demo.updateDemoOpeningHours(body as never));
   if (method === 'get' && segments[2] === 'closure-days') return ok(demo.listDemoClosureDays(params));

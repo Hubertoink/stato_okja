@@ -24,7 +24,7 @@ import { toPublicUser } from '../common/public-response';
 
 type ManageableUserRole = 'superadmin' | 'org_admin' | 'editor' | 'user';
 
-@UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
+@UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
@@ -83,9 +83,17 @@ export class UsersController {
     if (req.user.role !== 'superadmin' || req.effectiveOrgId !== null) {
       throw new ForbiddenException('Globale Benutzerliste nur im Superadmin-Bereich verfügbar');
     }
-    return (await this.service.findAll()).map(toPublicUser);
+    // A person with two accesses is intentionally present in both organisation
+    // groups. The role and organisation on each row come from that membership,
+    // never from the legacy user.orgId field.
+    const membershipUsers = await this.service.findAllActiveMembershipUsers();
+    const membershipUserIds = new Set(membershipUsers.map((user) => user.id));
+    const standaloneUsers = (await this.service.findAll())
+      .filter((user) => !membershipUserIds.has(user.id));
+    return [...membershipUsers, ...standaloneUsers].map(toPublicUser);
   }
 
+  @Roles('org_admin', 'superadmin')
   @Get()
   async list(
     @Req()
@@ -94,109 +102,61 @@ export class UsersController {
       effectiveOrgId?: string | null | undefined;
     },
   ) {
-    if (req.user.role === 'superadmin') {
-      // Superadmin must scope explicitly to see tenant users; global listing is intentionally disabled.
-      if (typeof req.effectiveOrgId === 'undefined' || req.effectiveOrgId === null) {
-        const visibleUsers = await this.service.findByOrg(null);
-        const allUsers = this.isUserDiagnosticsEnabled() ? await this.service.findAll() : null;
-        this.logUserListDiagnostics({
-          branch: 'superadmin-unscoped',
-          requester: {
-            id: req.user.id ?? null,
-            email: req.user.email ?? null,
-            role: req.user.role,
-            orgId: req.user.orgId ?? null,
-          },
-          effectiveOrgId: req.effectiveOrgId ?? null,
-          note: 'Ohne ausgewählten Org-Scope werden absichtlich nur Benutzer mit orgId=null zurückgegeben.',
-          visibleCount: visibleUsers.length,
-          visibleUsers: this.summarizeUsers(visibleUsers),
-          totalUsersInDb: allUsers?.length ?? undefined,
-          allUsersPreview: allUsers ? this.summarizeUsers(allUsers) : undefined,
-        });
-        return visibleUsers.map(toPublicUser);
-      }
-      const subtree = await this.orgs.getSubtreeOrgIds(req.effectiveOrgId);
-      const users = await this.service.findByOrgIds(subtree);
-      this.logUserListDiagnostics({
-        branch: 'superadmin-scoped',
-        requester: {
-          id: req.user.id ?? null,
-          email: req.user.email ?? null,
-          role: req.user.role,
-          orgId: req.user.orgId ?? null,
-        },
-        effectiveOrgId: req.effectiveOrgId,
-        subtree,
-        visibleCount: users.length,
-        visibleUsers: this.summarizeUsers(users),
-      });
-      return users.map(toPublicUser);
-    }
-    const myOrgId =
-      typeof req.effectiveOrgId === 'undefined' ? req.user.orgId || null : req.effectiveOrgId;
-    if (!myOrgId) {
-      const users = await this.service.findByOrg(null);
-      this.logUserListDiagnostics({
-        branch: 'org-user-no-org',
-        requester: {
-          id: req.user.id ?? null,
-          email: req.user.email ?? null,
-          role: req.user.role,
-          orgId: req.user.orgId ?? null,
-        },
-        effectiveOrgId: req.effectiveOrgId ?? null,
-        visibleCount: users.length,
-        visibleUsers: this.summarizeUsers(users),
-      });
-      return users.map(toPublicUser);
-    }
-    const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-    const users = await this.service.findByOrgIds(subtree);
+    const orgId = req.effectiveOrgId ?? null;
+    if (!orgId) return [];
+    const users = await this.service.findByMembershipOrg(orgId);
     this.logUserListDiagnostics({
-      branch: 'org-user-scoped',
-      requester: {
-        id: req.user.id ?? null,
-        email: req.user.email ?? null,
-        role: req.user.role,
-        orgId: req.user.orgId ?? null,
-      },
-      effectiveOrgId: req.effectiveOrgId ?? null,
-      subtree,
+      branch: 'exact-membership-scope',
+      requester: { id: req.user.id ?? null, email: req.user.email ?? null, role: req.user.role, orgId },
+      effectiveOrgId: orgId,
       visibleCount: users.length,
-      visibleUsers: this.summarizeUsers(users),
     });
     return users.map(toPublicUser);
+  }
+
+  /**
+   * A superadmin may inspect all active memberships before granting another
+   * one. Tenant admins only receive the membership in their current scope.
+   */
+  @Roles('org_admin', 'superadmin')
+  @Get(':id/memberships')
+  async memberships(
+    @Param('id') id: string,
+    @Req() req: { user: { role: string }; effectiveOrgId?: string | null },
+  ) {
+    const memberships = await this.service.listMemberships(id);
+    const visible = req.user.role === 'superadmin'
+      ? memberships
+      : memberships.filter((membership) => membership.orgId === (req.effectiveOrgId ?? null));
+    return visible.map((membership) => ({
+      orgId: membership.orgId,
+      orgName: membership.organization?.name ?? membership.orgId,
+      role: membership.role,
+      status: membership.status,
+    }));
   }
 
   @Roles('org_admin', 'superadmin')
   @Post()
   async create(
     @Body() body: CreateUserDto,
-    @Req() req: { user: { role: string; orgId?: string | null } },
+    @Req() req: { user: { role: string; orgId?: string | null }; effectiveOrgId?: string | null },
   ) {
     const requestedRole = this.parseRole(body?.role);
-    // Require an organization for all users
-    const requestedOrgId =
-      typeof body.orgId === 'undefined' ? req.user.orgId || null : (body.orgId ?? null);
+    // The active server-validated scope owns the new membership; never trust body.orgId.
+    const requestedOrgId = req.effectiveOrgId ?? null;
     if (!requestedOrgId) {
       throw new BadRequestException('Organisation ist erforderlich');
     }
-    // Admins can only create users in their own org subtree
     if (req.user.role !== 'superadmin') {
-      const myOrgId = req.user.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
       if (requestedRole === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
-      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-      if (!(requestedOrgId && subtree.includes(requestedOrgId)))
-        throw new ForbiddenException('Nicht erlaubt');
-      return toPublicUser(
-        await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }),
-      );
     }
-    return toPublicUser(
-      await this.service.create({ ...body, role: requestedRole, orgId: requestedOrgId }),
-    );
+    const result = await this.service.createOrAddMembership({ ...body, role: requestedRole, orgId: requestedOrgId });
+    return toPublicUser({
+      ...result.user,
+      role: result.membership.role,
+      orgId: result.membership.orgId,
+    });
   }
 
   @Roles('org_admin', 'superadmin')
@@ -204,30 +164,65 @@ export class UsersController {
   async update(
     @Param('id') id: string,
     @Body() patch: UpdateUserDto,
-    @Req() req: { user: { role: string; orgId?: string | null } },
+    @Req() req: { user: { role: string; orgId?: string | null }; effectiveOrgId?: string | null },
   ) {
     const target = await this.service.findById(id);
     if (!target) throw new BadRequestException('User not found');
+    const scopeOrgId = req.effectiveOrgId ?? null;
+    const requestedOrgId = typeof patch.orgId === 'undefined' ? scopeOrgId : patch.orgId;
+    if (!requestedOrgId) throw new ForbiddenException('Organisation ist erforderlich');
+    if (req.user.role !== 'superadmin' && requestedOrgId !== scopeOrgId) {
+      throw new ForbiddenException('Nicht erlaubt');
+    }
+    const existingMembership = await this.service.findMembership(id, requestedOrgId);
     const requestedRole =
       typeof patch.role === 'undefined'
         ? undefined
-        : this.parseRole(patch.role, target.role as ManageableUserRole);
+        : this.parseRole(patch.role, 'user');
 
-    // Admins can only change role within subtree and cannot move users outside subtree
     if (req.user.role !== 'superadmin') {
-      const myOrgId = req.user.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-      const currentOrgId = target.orgId ?? null;
-      const nextOrgId = typeof patch.orgId === 'undefined' ? currentOrgId : (patch.orgId ?? null);
-
-      if (!currentOrgId || !subtree.includes(currentOrgId))
-        throw new ForbiddenException('Nicht erlaubt');
-      if (!nextOrgId || !subtree.includes(nextOrgId)) throw new ForbiddenException('Nicht erlaubt');
       if (requestedRole === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
-      if (target.role === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
     }
-    await this.service.update(id, { ...patch, role: requestedRole });
+    if (requestedRole === 'superadmin') throw new ForbiddenException('Organisationsrollen dürfen nicht superadmin sein');
+    // Do not allow a role change to remove the final active admin. The same
+    // invariant is already enforced when an organisation access is removed.
+    if (
+      existingMembership?.status === 'active' &&
+      existingMembership.role === 'org_admin' &&
+      requestedRole !== undefined &&
+      requestedRole !== 'org_admin' &&
+      (await this.service.countActiveMembershipAdmins(requestedOrgId)) <= 1
+    ) {
+      throw new BadRequestException('Der letzte Organisationsadmin kann nicht herabgestuft werden');
+    }
+    const fallbackRole = target.role === 'org_admin' || target.role === 'editor' || target.role === 'user'
+      ? target.role
+      : 'user';
+    await this.service.addMembership(id, requestedOrgId, requestedRole ?? existingMembership?.role ?? fallbackRole);
+    return { ok: true };
+  }
+
+  /**
+   * Removes exactly one organisation access. An organisation admin is limited
+   * to the active organisation; superadmins may manage explicit memberships.
+   */
+  @Roles('org_admin', 'superadmin')
+  @Delete(':id/memberships/:orgId')
+  async removeMembership(
+    @Param('id') id: string,
+    @Param('orgId') orgId: string,
+    @Req() req: { user: { id: string; role: string }; effectiveOrgId?: string | null },
+  ) {
+    if (req.user.id === id) throw new BadRequestException('Cannot remove yourself');
+    if (req.user.role !== 'superadmin' && orgId !== (req.effectiveOrgId ?? null)) {
+      throw new ForbiddenException('Nicht erlaubt');
+    }
+    const membership = await this.service.findMembership(id, orgId);
+    if (!membership) throw new BadRequestException('Mitgliedschaft nicht gefunden');
+    if (membership.role === 'org_admin' && (await this.service.countActiveMembershipAdmins(orgId)) <= 1) {
+      throw new BadRequestException('Der letzte Organisationsadmin kann nicht entfernt werden');
+    }
+    await this.service.disableMembership(id, orgId);
     return { ok: true };
   }
 
@@ -235,32 +230,17 @@ export class UsersController {
   @Delete(':id')
   async remove(
     @Param('id') id: string,
-    @Req() req: { user: { id: string; orgId?: string | null; role: string } },
+    @Req() req: { user: { id: string; orgId?: string | null; role: string }; effectiveOrgId?: string | null },
   ) {
     if (req.user.id === id) throw new BadRequestException('Cannot remove yourself');
-    const target = await this.service.findById(id);
-    if (!target) throw new BadRequestException('User not found');
-
-    if (req.user.role !== 'superadmin') {
-      const myOrgId = req.user.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-      if (target.role === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
-      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-      if (!target.orgId || !subtree.includes(target.orgId))
-        throw new ForbiddenException('Nicht erlaubt');
+    const orgId = req.effectiveOrgId ?? null;
+    if (!orgId) throw new ForbiddenException('Organisation ist erforderlich');
+    const membership = await this.service.findMembership(id, orgId);
+    if (!membership) throw new BadRequestException('Mitgliedschaft nicht gefunden');
+    if (membership.role === 'org_admin' && (await this.service.countActiveMembershipAdmins(orgId)) <= 1) {
+      throw new BadRequestException('Der letzte Organisationsadmin kann nicht entfernt werden');
     }
-
-    // Prevent deleting last superadmin globally
-    if (target.role === 'superadmin') {
-      const superadmins = await this.service.countSuperadmins();
-      if (superadmins <= 1) throw new BadRequestException('Cannot remove the last superadmin');
-    }
-    // Prevent deleting last org admin in the target's org
-    if (target.role === 'org_admin') {
-      const adminsInOrg = await this.service.countAdmins(target.orgId ?? null);
-      if (adminsInOrg <= 1) throw new BadRequestException('Cannot remove the last org admin');
-    }
-    await this.service.remove(id);
+    await this.service.disableMembership(id, orgId);
     return { ok: true };
   }
 }

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes, randomInt } from 'crypto';
 import { SUPPORTED_LOCALES, type SupportedLocale, SUPPORTED_THEME_MODES, type ThemeMode, User } from '../users/entities/user.entity';
+import { OrganizationMembership } from '../users/entities/organization-membership.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
 import { RefreshSession } from './entities/refresh-session.entity';
@@ -42,6 +43,11 @@ export type AuthUserResponse = {
   locale: SupportedLocale;
   mustChangePassword: boolean;
   termsAcceptanceRequired: boolean;
+  memberships: Array<{
+    orgId: string;
+    orgName: string;
+    role: Exclude<UserRole, 'superadmin'>;
+  }>;
 };
 
 export type InviteUserResponse = {
@@ -110,6 +116,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Organization) private readonly orgs: Repository<Organization>,
+    @InjectRepository(OrganizationMembership)
+    private readonly memberships: Repository<OrganizationMembership>,
     @InjectRepository(Location) private readonly locations: Repository<Location>,
     @InjectRepository(RefreshSession) private readonly refreshSessions: Repository<RefreshSession>,
     private readonly jwt: JwtService,
@@ -206,10 +214,23 @@ export class AuthService {
     return { refreshToken, refreshCsrfToken, refreshTokenMaxAgeMs, sessionId: session.id };
   }
 
-  private async getSessionUser(user: User): Promise<AuthUserResponse> {
-    const org = user.orgId
+  private async getSessionUser(user: User, requestedOrgId?: string | null): Promise<AuthUserResponse> {
+    const memberships = user.role === 'superadmin'
+      ? []
+      : await this.memberships.find({
+          where: { userId: user.id, status: 'active' },
+          relations: { organization: true },
+          order: { createdAt: 'ASC' },
+        });
+    const selectedMembership =
+      (requestedOrgId
+        ? memberships.find((membership) => membership.orgId === requestedOrgId)
+        : undefined) ??
+      memberships.find((membership) => membership.orgId === user.orgId) ??
+      memberships[0];
+    const org = selectedMembership?.organization ?? (user.orgId
       ? await this.orgs.findOne({ where: { id: user.orgId } })
-      : null;
+      : null);
     const orgName = org?.name ?? null;
     const avatarUrl = normalizeUploadPath(
       (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
@@ -228,8 +249,8 @@ export class AuthService {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role,
-      orgId: user.orgId,
+      role: user.role === 'superadmin' ? user.role : selectedMembership?.role ?? 'user',
+      orgId: selectedMembership?.orgId ?? null,
       orgName,
       avatarUrl,
       theme,
@@ -237,6 +258,11 @@ export class AuthService {
       locale: resolveLocale(user.locale ?? org?.defaultLocale),
       mustChangePassword: user.mustChangePassword === true,
       termsAcceptanceRequired: user.termsAcceptedVersion !== (await this.legalContent.getTermsOfUseVersion()),
+      memberships: memberships.map((membership) => ({
+        orgId: membership.orgId,
+        orgName: membership.organization.name,
+        role: membership.role,
+      })),
     };
   }
 
@@ -701,13 +727,6 @@ export class AuthService {
     let user = await this.users.findOne({ where: { email } });
     let resolvedOrgId: string | null | undefined = payload.orgId;
 
-    // Invites must never repurpose an active account. This prevents an admin in one
-    // organization from changing the role, password state, or organization of a
-    // known email address from another organization.
-    if (user?.passwordHash) {
-      throw new ConflictException('Zu dieser E-Mail-Adresse existiert bereits ein aktives Konto.');
-    }
-
     if (!resolvedOrgId && payload.orgName) {
       const existingOrg = await this.orgs.findOne({ where: { name: payload.orgName } });
       if (existingOrg) {
@@ -727,6 +746,39 @@ export class AuthService {
 
     const targetOrgId = (typeof resolvedOrgId !== 'undefined' ? resolvedOrgId : payload.orgId) ?? null;
     const targetRole: UserRole = (payload.role ?? 'user') as UserRole;
+
+    if (user?.passwordHash) {
+      if (!targetOrgId || targetRole === 'superadmin') {
+        throw new ConflictException('Bestehende Konten können nur einer Organisation zugeordnet werden.');
+      }
+      const existingMembership = await this.memberships.findOne({
+        where: { userId: user.id, orgId: targetOrgId },
+      });
+      if (existingMembership) {
+        existingMembership.role = targetRole as Exclude<UserRole, 'superadmin'>;
+        existingMembership.status = 'active';
+        await this.memberships.save(existingMembership);
+      } else {
+        await this.memberships.save(this.memberships.create({
+          userId: user.id,
+          orgId: targetOrgId,
+          role: targetRole as Exclude<UserRole, 'superadmin'>,
+          status: 'active',
+        }));
+      }
+      return {
+        invitationSent: true,
+        emailQueued: false,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: targetRole,
+          orgId: targetOrgId,
+        },
+      };
+    }
+
     const isPendingInvite = !!user;
     const previousInviteTokenVersion = user?.inviteTokenVersion ?? 0;
 
@@ -749,6 +801,19 @@ export class AuthService {
 
     user.inviteTokenVersion = previousInviteTokenVersion + 1;
     await this.users.save(user);
+    if (targetOrgId && targetRole !== 'superadmin') {
+      const existingMembership = await this.memberships.findOne({
+        where: { userId: user.id, orgId: targetOrgId },
+      });
+      if (!existingMembership) {
+        await this.memberships.save(this.memberships.create({
+          userId: user.id,
+          orgId: targetOrgId,
+          role: targetRole,
+          status: 'active',
+        }));
+      }
+    }
     const token = await this.jwt.signAsync(
       { sub: user.id, purpose: 'invite', version: user.inviteTokenVersion },
       { expiresIn: this.getInviteTokenExpirationSeconds() },
@@ -798,8 +863,31 @@ export class AuthService {
 
     const email = payload.email.toLowerCase();
     const existing = await this.users.findOne({ where: { email } });
-    if (existing) {
-      throw new ConflictException('Diese E-Mail-Adresse wird bereits verwendet.');
+    if (existing?.passwordHash) {
+      const role = (payload.role ?? 'user') as Exclude<UserRole, 'superadmin'>;
+      const membership = await this.memberships.findOne({
+        where: { userId: existing.id, orgId: payload.orgId },
+      });
+      if (membership) {
+        membership.role = role;
+        membership.status = 'active';
+        await this.memberships.save(membership);
+      } else {
+        await this.memberships.save(this.memberships.create({
+          userId: existing.id,
+          orgId: payload.orgId,
+          role,
+          status: 'active',
+        }));
+      }
+      return {
+        id: existing.id,
+        email: existing.email,
+        name: existing.name,
+        role,
+        orgId: payload.orgId,
+        mustChangePassword: false,
+      };
     }
 
     const user = this.users.create({
@@ -811,6 +899,14 @@ export class AuthService {
       mustChangePassword: false,
     });
     await this.users.save(user);
+    if (payload.role !== 'superadmin') {
+      await this.memberships.save(this.memberships.create({
+        userId: user.id,
+        orgId: payload.orgId,
+        role: (payload.role ?? 'user') as Exclude<UserRole, 'superadmin'>,
+        status: 'active',
+      }));
+    }
     await this.savePassword(user, payload.temporaryPassword, {
       mustChangePassword: true,
       bumpResetVersion: true,
@@ -868,10 +964,10 @@ export class AuthService {
     return this.getProfile(user.id);
   }
 
-  async getProfile(userId: string) {
+  async getProfile(userId: string, requestedOrgId?: string | null) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) return null;
-    return this.getSessionUser(user);
+    return this.getSessionUser(user, requestedOrgId);
   }
 
   async updateProfile(
@@ -905,10 +1001,10 @@ export class AuthService {
   ) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user || !user.passwordHash) {
-      throw new Error('Passwortänderung nicht möglich');
+      throw new BadRequestException('Passwortänderung nicht möglich');
     }
     const ok = await bcrypt.compare(currentPassword || '', user.passwordHash || '');
-    if (!ok) throw new Error('Aktuelles Passwort ist falsch');
+    if (!ok) throw new BadRequestException('Aktuelles Passwort ist falsch');
     await this.savePassword(user, newPassword, { mustChangePassword: false, bumpResetVersion: true });
     // savePassword invalidates all refresh sessions, including the one that
     // authorized this request. Replace it immediately so the mandatory

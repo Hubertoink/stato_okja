@@ -23,7 +23,13 @@ export type Role = 'superadmin' | 'org_admin' | 'editor' | 'user';
 export function canManageSettingsDestructiveActions(role?: Role | null) {
   return role === 'superadmin' || role === 'org_admin' || role === 'editor';
 }
-export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
+export type OrganizationMembership = {
+  orgId: string;
+  orgName: string;
+  role: Exclude<Role, 'superadmin'>;
+};
+
+export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; memberships?: OrganizationMembership[]; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
 
 type TwoFactorChallenge = {
   requiresTwoFactor: true;

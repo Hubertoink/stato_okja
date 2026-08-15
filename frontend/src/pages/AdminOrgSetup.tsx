@@ -18,6 +18,8 @@ import {
   getOrgTaxonomySettings,
   updateOrgTaxonomySettings,
   updateOrgDefaultLocale,
+  updateOrgBranding,
+  uploadOrganizationBanner,
 } from '@/lib/orgs';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -43,7 +45,9 @@ import {
   FolderOpen,
   Tag,
   UsersRound,
+  ImagePlus,
 } from 'lucide-react';
+import ProtectedImage, { useResolvedImageSrc } from '@/components/ProtectedImage';
 import DeleteOrgModal from '@/components/DeleteOrgModal';
 import DemoHoverHint from '@/demo/DemoHoverHint';
 import Toggle from '@/components/Toggle';
@@ -53,10 +57,13 @@ import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getEmailValidationMessage } from '@/lib/emailValidation';
 import { autoT } from '@/i18n/auto';
 import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
-import { Button, CreateButton, DeleteIconButton } from '@/components/ui/Button';
+import { Button, CreateButton, DeleteIconButton, IconButton } from '@/components/ui/Button';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
+import { extractAccentColorFromImage } from '@/lib/imageAccentColor';
+import { Input } from '@/components/ui/Field';
 import {
   downloadBlob,
   downloadOrgMasterData,
@@ -1432,6 +1439,7 @@ export default function AdminOrgSetup() {
   const [loading, setLoading] = useState(true);
   const isSuperadmin = user?.role === 'superadmin';
   const [settingsOrg, setSettingsOrg] = useState<OrgDto | null>(null);
+  const [brandingOrg, setBrandingOrg] = useState<OrgDto | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [savingDefaultLocale, setSavingDefaultLocale] = useState(false);
 
@@ -1781,6 +1789,10 @@ export default function AdminOrgSetup() {
                         setSelectedOrgId(nextOrg.id);
                         setSettingsOrg(nextOrg);
                       }}
+                      onOpenBranding={(nextOrg) => {
+                        setSelectedOrgId(nextOrg.id);
+                        setBrandingOrg(nextOrg);
+                      }}
                     />
                   ))}
                 </ul>
@@ -1901,8 +1913,8 @@ export default function AdminOrgSetup() {
                 <p className="text-xs text-gray-500 mt-1">{autoT('ui_14c8987e027b')}</p>
               </div>
               {publicConfig.userProvisioningMode === 'local' && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-3">
+                  <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
                     {autoT('ui_c07dc032f12a')}
                   </label>
                   <input
@@ -1913,7 +1925,7 @@ export default function AdminOrgSetup() {
                     autoComplete="new-password"
                   />
                   <PasswordRequirementsHint password={adminTemporaryPassword} className="mt-2" />
-                  <p className="text-xs text-gray-600 mt-2">{autoT('ui_198d169e7342')}</p>
+                  <p className="mt-2 text-xs text-[var(--text-secondary)]">{autoT('ui_198d169e7342')}</p>
                 </div>
               )}
             </div>
@@ -1960,6 +1972,18 @@ export default function AdminOrgSetup() {
           void Promise.all([reloadOrgs(), invalidateTaxonomyQueriesForOrgTree(settingsOrg.id)]);
         }}
       />
+      <OrganizationBrandingModal
+        org={brandingOrg}
+        open={!!brandingOrg}
+        onClose={() => setBrandingOrg(null)}
+        onSaved={(updated) => {
+          setOrgs((current) => current.map((org) => (org.id === updated.id ? updated : org)));
+          window.dispatchEvent(
+            new CustomEvent<OrgDto>('stato:organization-branding-changed', { detail: updated }),
+          );
+          setBrandingOrg(null);
+        }}
+      />
     </div>
   );
 }
@@ -1974,6 +1998,7 @@ function OrgTree({
   onSelectOrg,
   onMoved,
   onOpenSettings,
+  onOpenBranding,
 }: {
   node: OrgTreeNode;
   depth: number;
@@ -1983,6 +2008,7 @@ function OrgTree({
   onSelectOrg: (org: OrgDto) => void;
   onMoved: () => void;
   onOpenSettings: (org: OrgDto) => void;
+  onOpenBranding: (org: OrgDto) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
@@ -1996,6 +2022,7 @@ function OrgTree({
         taxonomyPermissions={taxonomyPermissions}
         onMoved={onMoved}
         onOpenSettings={onOpenSettings}
+        onOpenBranding={onOpenBranding}
         hasChildren={hasChildren}
         childCount={node.children.length}
         expanded={expanded}
@@ -2015,9 +2042,51 @@ function OrgTree({
             onSelectOrg={onSelectOrg}
             onMoved={onMoved}
             onOpenSettings={onOpenSettings}
+            onOpenBranding={onOpenBranding}
           />
         ))}
     </>
+  );
+}
+
+function OrganizationBannerIconButton({
+  org,
+  onClick,
+}: {
+  org: OrgDto;
+  onClick: () => void;
+}) {
+  const bannerSrc = useResolvedImageSrc(org.bannerUrl);
+  const label = org.bannerUrl
+    ? 'Organisationsbanner bearbeiten (Banner gesetzt)'
+    : 'Organisationsbanner bearbeiten';
+
+  return (
+    <IconButton
+      size="icon-compact"
+      variant="secondary"
+      className="org-tree-icon-button relative overflow-hidden"
+      aria-label={label}
+      title={label}
+      style={org.bannerUrl && org.brandColor ? { backgroundColor: `${org.brandColor}2b` } : undefined}
+      onClick={onClick}
+    >
+      {bannerSrc ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 bg-cover bg-center opacity-40"
+          style={{ backgroundImage: `url("${bannerSrc}")` }}
+        />
+      ) : null}
+      {org.bannerUrl ? (
+        <span
+          aria-hidden="true"
+          className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full shadow-sm"
+          style={{ backgroundColor: org.brandColor || 'var(--viridian)' }}
+        />
+      ) : null}
+      <ImagePlus aria-hidden="true" className="relative z-10" />
+    </IconButton>
   );
 }
 
@@ -2028,6 +2097,7 @@ function OrgRow({
   taxonomyPermissions,
   onMoved,
   onOpenSettings,
+  onOpenBranding,
   hasChildren,
   childCount,
   expanded,
@@ -2041,6 +2111,7 @@ function OrgRow({
   taxonomyPermissions: Record<string, boolean> | null;
   onMoved: () => void;
   onOpenSettings: (org: OrgDto) => void;
+  onOpenBranding: (org: OrgDto) => void;
   hasChildren: boolean;
   childCount: number;
   expanded: boolean;
@@ -2056,6 +2127,8 @@ function OrgRow({
       (user.role === 'org_admin' &&
         taxonomyPermissions?.[org.id] === true &&
         (org.id === user.orgId || org.parentId === user.orgId)));
+  const canConfigureBranding =
+    !!user && (user.role === 'superadmin' || (user.role === 'org_admin' && org.id === user.orgId));
   const [orgUsers, setOrgUsers] = useState<{
     admins: { name: string }[];
     users: { name: string }[];
@@ -2272,6 +2345,15 @@ function OrgRow({
               <Settings2 className="w-4 h-4" />
             </button>
           )}
+          {canConfigureBranding && (
+            <OrganizationBannerIconButton
+              org={org}
+              onClick={() => {
+                onSelectOrg(org);
+                onOpenBranding(org);
+              }}
+            />
+          )}
           {canMoveOrg && (
             <button
               className="org-tree-icon-button inline-flex items-center justify-center w-8 h-8 rounded"
@@ -2364,6 +2446,16 @@ function OrgRow({
             <Settings2 className="w-4 h-4" />
             <span className="hidden xl:inline">{autoT('ui_53b85ac95f23')}</span>
           </button>
+        )}
+
+        {canConfigureBranding && (
+          <OrganizationBannerIconButton
+            org={org}
+            onClick={() => {
+              onSelectOrg(org);
+              onOpenBranding(org);
+            }}
+          />
         )}
 
         {/* Move Dropdown */}
@@ -2690,5 +2782,204 @@ function OrgRow({
             />
         )}
     </li>
+  );
+}
+
+function OrganizationBrandingModal({
+  org,
+  open,
+  onClose,
+  onSaved,
+}: {
+  org: OrgDto | null;
+  open: boolean;
+  onClose: () => void;
+  onSaved: (updated: OrgDto) => void;
+}) {
+  const { showToast } = useToast();
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [brandColor, setBrandColor] = useState<string>('#4f46e5');
+  const [bannerPosition, setBannerPosition] = useState(50);
+  const [uploading, setUploading] = useState(false);
+  const [extractingColor, setExtractingColor] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const resolvedBannerSrc = useResolvedImageSrc(bannerUrl);
+
+  useEffect(() => {
+    if (!open || !org) return;
+    setBannerUrl(org.bannerUrl ?? null);
+    setBrandColor(org.brandColor ?? '#4f46e5');
+    setBannerPosition(org.bannerPosition ?? 50);
+  }, [open, org?.id, org?.bannerUrl, org?.brandColor, org?.bannerPosition]);
+
+  const uploadBanner = async (file: File) => {
+    if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) {
+      showToast('Bitte ein PNG-, JPG- oder WebP-Bild auswählen.', { type: 'error' });
+      return;
+    }
+    setUploading(true);
+    try {
+      const [uploadedUrl, extractedColor] = await Promise.all([
+        uploadOrganizationBanner(file),
+        extractAccentColorFromImage(file),
+      ]);
+      setBannerUrl(uploadedUrl);
+      if (extractedColor) setBrandColor(extractedColor);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
+        'Das Banner konnte nicht hochgeladen werden.';
+      showToast(String(message), { type: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const applyAccentColorFromBanner = async () => {
+    if (!resolvedBannerSrc || extractingColor) return;
+    setExtractingColor(true);
+    try {
+      const extractedColor = await extractAccentColorFromImage(resolvedBannerSrc);
+      if (!extractedColor) {
+        showToast('Aus dem Banner konnte keine Akzentfarbe bestimmt werden.', { type: 'error' });
+        return;
+      }
+      setBrandColor(extractedColor);
+      showToast('Akzentfarbe aus dem Banner übernommen.', { type: 'success' });
+    } finally {
+      setExtractingColor(false);
+    }
+  };
+
+  const save = async () => {
+    if (!org || saving || uploading) return;
+    setSaving(true);
+    try {
+      const updated = await updateOrgBranding(org.id, {
+        bannerUrl,
+        brandColor,
+        bannerPosition,
+      });
+      showToast('Organisationsbanner gespeichert.', { type: 'success' });
+      onSaved(updated);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
+        'Das Organisationsbanner konnte nicht gespeichert werden.';
+      showToast(String(message), { type: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={org ? `Organisationsbanner · ${org.name}` : 'Organisationsbanner'}
+      maxWidth="md"
+    >
+      <div className="space-y-5">
+        <p className="text-sm text-[var(--text-secondary)]">
+          Das Banner erscheint im Kopfbereich, sobald diese Organisation aktiv ist.
+        </p>
+
+        <div className="overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)]">
+          {bannerUrl ? (
+            <div className="relative h-36">
+              <ProtectedImage
+                src={bannerUrl}
+                alt="Vorschau des Organisationsbanners"
+                className="h-full w-full object-cover"
+                style={{ objectPosition: `center ${bannerPosition}%` }}
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-1"
+                style={{ backgroundColor: brandColor }}
+              />
+            </div>
+          ) : (
+            <div className="flex h-36 items-center justify-center text-sm text-[var(--text-muted)]">
+              Noch kein Banner ausgewählt
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--interactive-soft)]">
+            <Upload className="h-4 w-4" aria-hidden="true" />
+            {uploading ? 'Banner wird hochgeladen…' : 'Banner auswählen'}
+            <Input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="sr-only"
+              disabled={uploading || saving}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = '';
+                if (file) void uploadBanner(file);
+              }}
+            />
+          </label>
+          {bannerUrl ? (
+            <Button variant="danger-ghost" onClick={() => setBannerUrl(null)} disabled={uploading || saving}>
+              Banner entfernen
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+          <label className="block text-sm font-medium text-[var(--text-secondary)]">
+            Akzentfarbe
+            <span className="mt-1 block">
+              <ColorPicker
+                id="organization-banner-accent-color"
+                value={brandColor}
+                onChange={setBrandColor}
+                disabled={saving}
+              />
+            </span>
+          </label>
+          <div className="text-xs text-[var(--text-muted)]">Die Farbe markiert auch Banner ohne Bild.</div>
+        </div>
+
+        {bannerUrl ? (
+          <div className="flex justify-start">
+            <Button
+              variant="secondary"
+              onClick={() => void applyAccentColorFromBanner()}
+              disabled={!resolvedBannerSrc || extractingColor || saving}
+            >
+              {extractingColor ? 'Farbe wird bestimmt…' : 'Farbe aus Bild übernehmen'}
+            </Button>
+          </div>
+        ) : null}
+
+        {bannerUrl ? (
+          <label className="block text-sm font-medium text-[var(--text-secondary)]">
+            Bildausschnitt vertikal
+            <Input
+              type="range"
+              min="0"
+              max="100"
+              value={bannerPosition}
+              className="mt-3 w-full accent-viridian"
+              disabled={saving}
+              onChange={(event) => setBannerPosition(Number(event.target.value))}
+            />
+          </label>
+        ) : null}
+
+        <div className="flex justify-end gap-3 border-t border-[var(--border-subtle)] pt-4">
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Abbrechen
+          </Button>
+          <Button onClick={() => void save()} disabled={saving || uploading}>
+            {saving ? 'Speichert…' : 'Speichern'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }

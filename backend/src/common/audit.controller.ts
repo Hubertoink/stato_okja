@@ -5,7 +5,6 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import { OrgsService } from '../orgs/orgs.service';
 import { AuditAction } from './enums';
 
 type AuditListRequest = {
@@ -15,31 +14,12 @@ type AuditListRequest = {
 
 @ApiTags('audit')
 @Controller('audit')
-@UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
+@UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
 export class AuditController {
-  constructor(
-    private readonly audit: AuditService,
-    private readonly orgs: OrgsService,
-  ) {}
+  constructor(private readonly audit: AuditService) {}
 
-  private async resolveAuditFilter(req: AuditListRequest) {
-    const superAdminScoped = typeof req.effectiveOrgId === 'undefined' ? null : req.effectiveOrgId;
-    const orgIdRaw =
-      req.user.role === 'superadmin'
-        ? superAdminScoped
-        : typeof req.effectiveOrgId === 'undefined'
-          ? req.user.orgId || null
-          : req.effectiveOrgId;
-
-    let orgId: string | null | undefined = orgIdRaw;
-    let orgIds: string[] | undefined;
-
-    if (typeof orgIdRaw === 'string') {
-      orgIds = await this.orgs.getSubtreeOrgIds(orgIdRaw);
-      orgId = undefined;
-    }
-
-    return { orgId, orgIds };
+  private resolveAuditFilter(req: AuditListRequest) {
+    return { orgId: req.effectiveOrgId ?? null, orgIds: undefined };
   }
 
   private parseActions(actions?: string) {
@@ -65,7 +45,7 @@ export class AuditController {
     @Query('actions') actions?: string,
   ) {
     const l = limit ? Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100) : 50;
-    const { orgId, orgIds } = await this.resolveAuditFilter(req);
+    const { orgId, orgIds } = this.resolveAuditFilter(req);
     return this.audit.list({ orgId, orgIds, limit: l, actions: this.parseActions(actions) });
   }
 

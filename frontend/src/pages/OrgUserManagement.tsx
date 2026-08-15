@@ -4,11 +4,11 @@ import {
   fetchGlobalUsers,
   fetchUsers,
   removeUserApi,
+  removeUserMembershipApi,
   updateUserApi,
   type UserDto,
 } from '@/lib/users';
-import { createLocalUserApi, inviteUserApi, listOrgs, type OrgDto } from '@/lib/orgs';
-import { api } from '@/lib/api';
+import { createLocalUserApi, inviteUserApi, listAccessibleOrgs, listOrgs, type OrgDto } from '@/lib/orgs';
 import { useOrgScope } from '@/lib/orgScope';
 import {
   Trash2,
@@ -151,17 +151,20 @@ export default function OrgUserManagement() {
       try {
         if (user?.role === 'superadmin') {
           setOrgs(await listOrgs());
-        } else if (user?.orgId) {
-          const res = await api.get<OrgDto[]>('/orgs/subtree');
-          setOrgs(res.data);
         } else {
-          setOrgs([]);
+          setOrgs(await listAccessibleOrgs());
         }
       } catch {
         /* ignore */
       }
     })();
-  }, [user?.id, user?.role, user?.orgId]);
+  }, [user?.id, user?.role, user?.memberships]);
+
+  // Organisation admins always create or add users in the active scope. Keep
+  // the form state in sync when they switch between two admin memberships.
+  useEffect(() => {
+    if (user?.role !== 'superadmin') setTargetOrgId(user?.orgId ?? '');
+  }, [user?.role, user?.orgId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -266,15 +269,11 @@ export default function OrgUserManagement() {
 
   if (!user) return null;
 
-  // Get available orgs for selection (filtered for non-superadmins)
-  const availableOrgs = orgs.filter((o) => {
-    if (user?.role === 'superadmin') return true;
-    const my = orgs.find((x) => x.id === user?.orgId);
-    if (!my) return o.id === user?.orgId;
-    const myPath = my.path || my.id;
-    const oPath = o.path || o.id;
-    return oPath.startsWith(myPath);
-  });
+  // An organisation admin manages users only in the active organisation. A
+  // different organisation requires an explicit scope switch first.
+  const availableOrgs = user?.role === 'superadmin'
+    ? orgs
+    : orgs.filter((org) => org.id === (user?.orgId ?? scope));
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4">
@@ -496,6 +495,7 @@ export default function OrgUserManagement() {
                 className="w-full"
                 value={targetOrgId}
                 onChange={(e) => setTargetOrgId(e.target.value)}
+                disabled={user?.role !== 'superadmin'}
               >
                 <option value="">{autoT('ui_4b0896060a4d')}</option>
                 {availableOrgs.map((o) => (
@@ -582,14 +582,16 @@ export default function OrgUserManagement() {
         open={!!assignUser}
         onClose={() => setAssignUser(null)}
         userName={assignUser?.name || assignUser?.email || ''}
-        currentOrgId={(assignUser?.orgId ?? assignUser?.org?.id) || null}
-        onAssign={async (orgId) => {
+        userId={assignUser?.id || ''}
+        onAssign={async (orgIds, role) => {
           if (!assignUser) return;
           try {
-            await updateUserApi(assignUser.id, { orgId });
+            for (const orgId of orgIds) {
+              await updateUserApi(assignUser.id, { orgId, role });
+            }
             setAssignUser(null);
             await reload();
-            showToast(autoT('ui_fd4267b6a968'), { type: 'success' });
+            showToast(orgIds.length === 1 ? 'Zusätzlicher Organisationszugang wurde hinzugefügt.' : `${orgIds.length} zusätzliche Organisationszugänge wurden hinzugefügt.`, { type: 'success' });
           } catch (err: unknown) {
             const msg =
               (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message ||
@@ -601,6 +603,12 @@ export default function OrgUserManagement() {
               { type: 'error' },
             );
           }
+        }}
+        onRemoveMembership={async (orgId) => {
+          if (!assignUser) return;
+          await removeUserMembershipApi(assignUser.id, orgId);
+          await reload();
+          showToast('Organisationszugang wurde entfernt.', { type: 'success' });
         }}
       />
     </div>
@@ -711,8 +719,7 @@ function UserRow({
             </button>
           )}
 
-          {(currentUser.role === 'superadmin' || currentUser.role === 'org_admin') &&
-            !isCurrentUser && (
+          {currentUser.role === 'superadmin' && !isCurrentUser && (
               <button
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 onClick={onAssign}
@@ -799,11 +806,10 @@ function UserRow({
           )}
 
           {/* Org assign button */}
-          {(currentUser.role === 'superadmin' || currentUser.role === 'org_admin') &&
-            !isCurrentUser && (
+          {currentUser.role === 'superadmin' && !isCurrentUser && (
               <button
                 className="p-2 rounded hover:bg-gray-200 transition-colors"
-                title={autoT('ui_f132125032ab')}
+                title="Weiteren Organisationszugang hinzufügen"
                 onClick={onAssign}
               >
                 <Building2 className="w-4 h-4 text-gray-600" />
@@ -1264,13 +1270,15 @@ function RemoveUserModal({
 }) {
   if (!user) return null;
   return (
-    <Modal open={true} onClose={onClose} title={autoT('ui_2a1dd54ba9b6')} maxWidth="sm">
+    <Modal open={true} onClose={onClose} title="Organisationszugang entziehen" maxWidth="sm">
       <p className="text-sm text-gray-700">
-        {autoT('ui_278bb06ac706')}
+        Möchtest du
+        {' '}
         <span className="font-medium">{user.name || user.email}</span>
-        {autoT('ui_9c7ba5c37be5')}
+        {' '}
+        den Zugang zur aktuell ausgewählten Organisation entziehen?
       </p>
-      <p className="text-xs text-gray-500 mt-2">{autoT('ui_c7cd00d4551a')}</p>
+      <p className="text-xs text-gray-500 mt-2">Das Benutzerkonto und Zugänge zu anderen Organisationen bleiben erhalten.</p>
       <div className="mt-4 flex items-center justify-end gap-2">
         <button
           className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"

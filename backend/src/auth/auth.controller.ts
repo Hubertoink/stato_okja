@@ -5,6 +5,7 @@ import { AuthService, type AuthenticatedSessionResponse } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
+import { OrgScopeGuard } from './org-scope.guard';
 import { OrgsService } from '../orgs/orgs.service';
 import type { AdminResetActionMode } from './auth.service';
 import { getAuthRateLimitOverride } from '../config/rate-limit.config';
@@ -283,10 +284,10 @@ export class AuthController {
     return { ok: true };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OrgScopeGuard)
   @Get('me')
-  me(@Req() req: { user: { id: string; role: string; orgId?: string | null } }) {
-    return this.auth.getProfile(req.user.id);
+  me(@Req() req: { user: { id: string; role: string; orgId?: string | null }; effectiveOrgId?: string | null }) {
+    return this.auth.getProfile(req.user.id, req.effectiveOrgId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -301,13 +302,13 @@ export class AuthController {
     return this.auth.revokeRefreshSessionById(req.user.id, sessionId);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
   @Roles('superadmin','org_admin')
   @Throttle(AUTH_RATE_LIMIT)
   @Post('invite')
   async invite(
     @Body() body: InviteUserDto,
-    @Req() req: { user: { role: string; orgId?: string | null } },
+    @Req() req: { user: { role: string; orgId?: string | null }; effectiveOrgId?: string | null },
   ) {
     if (!body?.orgId && !body?.orgName) {
       throw new BadRequestException('Organisation ist erforderlich');
@@ -322,14 +323,8 @@ export class AuthController {
         throw new ForbiddenException('Organisationen bitte separat innerhalb der eigenen Struktur anlegen');
       }
 
-      const myOrgId = actor.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-
-      const requestedOrgId = body?.orgId ?? myOrgId;
+      const requestedOrgId = req.effectiveOrgId ?? null;
       if (!requestedOrgId) throw new ForbiddenException('Nicht erlaubt');
-
-      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-      if (!subtree.includes(requestedOrgId)) throw new ForbiddenException('Nicht erlaubt');
 
       return this.auth.inviteUser({
         ...body,
@@ -344,27 +339,31 @@ export class AuthController {
       ...body,
       name: body.name || body.email,
       role,
+      orgId: req.effectiveOrgId ?? body.orgId ?? null,
     });
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
   @Roles('superadmin','org_admin')
   @Throttle(AUTH_RATE_LIMIT)
   @Post('local-user')
   async createLocalUser(
     @Body() body: CreateLocalUserDto,
-    @Req() req: { user: { id?: string; name?: string | null; role: string; orgId?: string | null } },
+    @Req() req: { user: { id?: string; name?: string | null; role: string; orgId?: string | null }; effectiveOrgId?: string | null },
   ) {
     const role = this.parseInviteRole(body?.role);
     const actor = req.user;
-    const requestedOrgId = body.orgId;
+    // In the global superadmin area there is deliberately no active scope.
+    // In that case the explicitly selected target organisation is valid.
+    // Once a superadmin has switched into an organisation, that active scope
+    // remains authoritative just like it is for organisation admins.
+    const requestedOrgId = actor.role === 'superadmin'
+      ? req.effectiveOrgId ?? body.orgId ?? null
+      : req.effectiveOrgId ?? null;
+    if (!requestedOrgId) throw new ForbiddenException('Organisation ist erforderlich');
 
     if (actor.role !== 'superadmin') {
       if (role === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
-      const myOrgId = actor.orgId || null;
-      if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-      const subtree = await this.orgs.getSubtreeOrgIds(myOrgId);
-      if (!subtree.includes(requestedOrgId)) throw new ForbiddenException('Nicht erlaubt');
     }
 
     return this.auth.createLocalUser({

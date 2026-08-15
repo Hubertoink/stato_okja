@@ -30,6 +30,9 @@ describe('SystemDataService', () => {
       { id: 'user-1', name: 'Org Admin', email: 'user@example.com', role: 'org_admin', orgId: 'org-1', avatarUrl: '/uploads/images/shared.jpg' },
       { id: 'user-2', name: 'Legacy Avatar', email: 'legacy@example.com', role: 'user', orgId: 'org-1', avatarUrl: 'avatar-legacy.jpg' },
     ];
+    const organizationBannerRows: Array<{ id: string; name: string; bannerUrl: string | null }> = [
+      { id: 'org-1', name: 'Beispielstadt', bannerUrl: '/uploads/images/shared.jpg' },
+    ];
     const queryRunner = {
       connect: jest.fn(async () => undefined),
       release: jest.fn(async () => undefined),
@@ -56,6 +59,9 @@ describe('SystemDataService', () => {
         if (sql === 'SELECT "id", "name", "email", "role", "orgId", "avatarUrl" FROM "users" WHERE "avatarUrl" IS NOT NULL AND "avatarUrl" != \'\'') {
           return userAvatarRows.filter((row) => row.avatarUrl);
         }
+        if (sql === 'SELECT "id", "name", "bannerUrl" FROM "organizations" WHERE "bannerUrl" IS NOT NULL AND "bannerUrl" != \'\'') {
+          return organizationBannerRows.filter((row) => row.bannerUrl);
+        }
         if (sql.startsWith('SELECT COUNT(*) AS count FROM "projects" WHERE "imageUrl" IN ')) {
           const matches = new Set((params || []).map((value) => String(value)));
           return [{ count: String(projectImageRows.filter((row) => row.imageUrl && matches.has(String(row.imageUrl))).length) }];
@@ -71,6 +77,10 @@ describe('SystemDataService', () => {
         if (sql.startsWith('SELECT COUNT(*) AS count FROM "users" WHERE "avatarUrl" IN ')) {
           const matches = new Set((params || []).map((value) => String(value)));
           return [{ count: String(userAvatarRows.filter((row) => row.avatarUrl && matches.has(String(row.avatarUrl))).length) }];
+        }
+        if (sql.startsWith('SELECT COUNT(*) AS count FROM "organizations" WHERE "bannerUrl" IN ')) {
+          const matches = new Set((params || []).map((value) => String(value)));
+          return [{ count: String(organizationBannerRows.filter((row) => row.bannerUrl && matches.has(String(row.bannerUrl))).length) }];
         }
         if (sql.startsWith('UPDATE "projects" SET "imageUrl" = ') && Array.isArray(params)) {
           const matches = new Set(params.slice(2).map((value) => String(value)));
@@ -99,6 +109,13 @@ describe('SystemDataService', () => {
           const matches = new Set(params.slice(1).map((value) => String(value)));
           userAvatarRows.forEach((row) => {
             if (row.avatarUrl && matches.has(String(row.avatarUrl))) row.avatarUrl = null;
+          });
+          return [];
+        }
+        if (sql.startsWith('UPDATE "organizations" SET "bannerUrl" = ') && Array.isArray(params)) {
+          const matches = new Set(params.slice(1).map((value) => String(value)));
+          organizationBannerRows.forEach((row) => {
+            if (row.bannerUrl && matches.has(String(row.bannerUrl))) row.bannerUrl = null;
           });
           return [];
         }
@@ -423,13 +440,14 @@ describe('SystemDataService', () => {
 
     expect(result.uploads[0]).toMatchObject({
       relativePath: 'images/shared.jpg',
-      referenceCount: 4,
-      referenceBreakdown: { projects: 1, projectDocuments: 1, projectTemplates: 1, userAvatars: 1 },
+      referenceCount: 5,
+      referenceBreakdown: { projects: 1, projectDocuments: 1, projectTemplates: 1, userAvatars: 1, organizationBanners: 1 },
       referenceDetails: {
         projects: [{ id: 'project-1', title: 'Projekt Shared', orgId: 'org-1' }],
         projectDocuments: [{ id: 'project-doc-1', filename: 'Konzeption Shared.pdf', projectId: 'project-1', projectTitle: 'Projekt Shared', orgId: 'org-1' }],
         projectTemplates: [{ id: 'template-1', title: 'Vorlage Shared', orgId: 'org-1' }],
         userAvatars: [{ id: 'user-1', name: 'Org Admin', email: 'user@example.com', role: 'org_admin', orgId: 'org-1' }],
+        organizationBanners: [{ id: 'org-1', name: 'Beispielstadt' }],
       },
     });
     expect(result.uploads[1]).toMatchObject({
@@ -453,13 +471,14 @@ describe('SystemDataService', () => {
         relativePath: 'images/shared.jpg',
         deleted: true,
         deletedBytes: 2048,
-        clearedReferences: 4,
-        referenceBreakdown: { projects: 1, projectDocuments: 1, projectTemplates: 1, userAvatars: 1 },
+        clearedReferences: 5,
+        referenceBreakdown: { projects: 1, projectDocuments: 1, projectTemplates: 1, userAvatars: 1, organizationBanners: 1 },
       });
       expect(queryLog).toContain('UPDATE "projects" SET "imageUrl" = ?, "imageSize" = ? WHERE "imageUrl" IN (?, ?, ?, ?)');
       expect(queryLog).toContain('DELETE FROM "project_documents" WHERE "storageRef" IN (?, ?, ?, ?)');
       expect(queryLog).toContain('UPDATE "project_templates" SET "imageUrl" = ? WHERE "imageUrl" IN (?, ?, ?, ?)');
       expect(queryLog).toContain('UPDATE "users" SET "avatarUrl" = ? WHERE "avatarUrl" IN (?, ?, ?, ?)');
+      expect(queryLog).toContain('UPDATE "organizations" SET "bannerUrl" = ? WHERE "bannerUrl" IN (?, ?, ?, ?)');
       expect(unlinkSpy).toHaveBeenCalledWith(expect.stringContaining('images'));
       expect(auditService.log).toHaveBeenCalled();
     } finally {

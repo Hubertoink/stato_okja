@@ -70,6 +70,7 @@ function formatUploadReferenceLabel(upload: SystemDataUploadItem) {
   if (upload.referenceBreakdown.projectDocuments) parts.push(`${upload.referenceBreakdown.projectDocuments} Projektdokumente`);
   if (upload.referenceBreakdown.projectTemplates) parts.push(`${upload.referenceBreakdown.projectTemplates} Vorlagen`);
   if (upload.referenceBreakdown.userAvatars) parts.push(`${upload.referenceBreakdown.userAvatars} Avatare`);
+  if (upload.referenceBreakdown.organizationBanners) parts.push(`${upload.referenceBreakdown.organizationBanners} Organisationsbanner`);
   return parts.join(' · ');
 }
 
@@ -129,6 +130,18 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
             <div className="text-gray-500 break-all">{user.email}</div>
           </div>
         ))}
+      </div>,
+    );
+  }
+  if (upload.referenceDetails.organizationBanners.length) {
+    blocks.push(
+      <div key="organization-banners">
+        <div className="mb-1 text-xs font-medium text-[var(--text-secondary)]">Organisationsbanner</div>
+        <ul className="space-y-1 text-xs text-[var(--text-muted)]">
+          {upload.referenceDetails.organizationBanners.map((organization) => (
+            <li key={organization.id}>{organization.name}</li>
+          ))}
+        </ul>
       </div>,
     );
   }

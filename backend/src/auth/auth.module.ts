@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { User } from '../users/entities/user.entity';
+import { OrganizationMembership } from '../users/entities/organization-membership.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
 import { RefreshSession } from './entities/refresh-session.entity';
@@ -15,6 +16,8 @@ import { getJwtSecret } from '../config/security.config';
 import { OrgsModule } from '../orgs/orgs.module';
 import { LegalContentOverride } from '../legal/entities/legal-content-override.entity';
 import { LegalContentService } from '../legal/legal-content.service';
+import { OrgScopeGuard } from './org-scope.guard';
+import { RolesGuard } from './roles.guard';
 
 function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: number) {
 	const value = String(raw || '').trim().toLowerCase();
@@ -32,7 +35,7 @@ function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: num
 
 @Module({
 	imports: [
-	TypeOrmModule.forFeature([User, Organization, Location, RefreshSession, LegalContentOverride]),
+	TypeOrmModule.forFeature([User, Organization, OrganizationMembership, Location, RefreshSession, LegalContentOverride]),
 		PassportModule,
 		AuditModule,
 		OrgsModule,
@@ -42,7 +45,7 @@ function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: num
 		}),
 	],
 	controllers: [AuthController],
-	providers: [AuthService, JwtStrategy, EmailService, LegalContentService],
+	providers: [AuthService, JwtStrategy, EmailService, LegalContentService, OrgScopeGuard, RolesGuard],
 	exports: [JwtModule, AuthService, EmailService],
 })
 export class AuthModule implements OnModuleInit {

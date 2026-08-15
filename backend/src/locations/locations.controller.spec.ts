@@ -11,16 +11,12 @@ describe('LocationsController org scoping', () => {
     updateScoped: jest.fn(async () => ({} as unknown as import('./entities/location.entity').Location)),
     removeScoped: jest.fn(async () => undefined),
   };
-  const orgs: Pick<OrgsService, 'getSubtreeOrgIds'> = {
-    getSubtreeOrgIds: jest.fn(async (id: string) => [id, 'child-1']),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LocationsController],
       providers: [
         { provide: LocationsService, useValue: service },
-        { provide: OrgsService, useValue: orgs },
+        { provide: OrgsService, useValue: { listActiveMemberships: jest.fn() } },
       ],
     }).compile();
 
@@ -30,13 +26,12 @@ describe('LocationsController org scoping', () => {
 
   it('superadmin without scope lists only null org', async () => {
     await controller.findAll({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: undefined }, undefined);
-    expect(service.findAll).toHaveBeenCalledWith(undefined, null, undefined);
+    expect(service.findAll).toHaveBeenCalledWith(undefined, null);
   });
 
-  it('superadmin scoped to org expands to subtree', async () => {
+  it('superadmin scoped to org lists that organization only', async () => {
     await controller.findAll({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined);
-    expect(orgs.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
-    expect(service.findAll).toHaveBeenCalledWith(undefined, undefined, ['org-1', 'child-1']);
+    expect(service.findAll).toHaveBeenCalledWith(undefined, 'org-1');
   });
 
   it('create sets orgId from scope and ignores body orgId', async () => {

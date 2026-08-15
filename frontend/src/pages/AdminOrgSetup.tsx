@@ -60,6 +60,7 @@ import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
 import { Button, CreateButton, DeleteIconButton, IconButton } from '@/components/ui/Button';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { extractAccentColorFromImage } from '@/lib/imageAccentColor';
 import { Input } from '@/components/ui/Field';
@@ -1912,8 +1913,8 @@ export default function AdminOrgSetup() {
                 <p className="text-xs text-gray-500 mt-1">{autoT('ui_14c8987e027b')}</p>
               </div>
               {publicConfig.userProvisioningMode === 'local' && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-3">
+                  <label className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
                     {autoT('ui_c07dc032f12a')}
                   </label>
                   <input
@@ -1924,7 +1925,7 @@ export default function AdminOrgSetup() {
                     autoComplete="new-password"
                   />
                   <PasswordRequirementsHint password={adminTemporaryPassword} className="mt-2" />
-                  <p className="text-xs text-gray-600 mt-2">{autoT('ui_198d169e7342')}</p>
+                  <p className="mt-2 text-xs text-[var(--text-secondary)]">{autoT('ui_198d169e7342')}</p>
                 </div>
               )}
             </div>
@@ -2931,16 +2932,13 @@ function OrganizationBrandingModal({
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
           <label className="block text-sm font-medium text-[var(--text-secondary)]">
             Akzentfarbe
-            <span className="mt-1 flex h-11 items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3">
-              <Input
-                type="color"
+            <span className="mt-1 block">
+              <ColorPicker
+                id="organization-banner-accent-color"
                 value={brandColor}
-                aria-label="Akzentfarbe auswählen"
-                className="h-7 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+                onChange={setBrandColor}
                 disabled={saving}
-                onChange={(event) => setBrandColor(event.target.value)}
               />
-              <span className="font-mono text-xs uppercase text-[var(--text-muted)]">{brandColor}</span>
             </span>
           </label>
           <div className="text-xs text-[var(--text-muted)]">Die Farbe markiert auch Banner ohne Bild.</div>

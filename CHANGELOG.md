@@ -7,6 +7,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.8.2] - 2026-08-15
+
+### Changed
+- Organisationsbanner erstrecken sich im Desktop-Header über die Icon-Leiste;
+  ein sanfter Verlauf verbessert dort die Lesbarkeit der Navigation.
+- Der Dialog zum Organisationswechsel zeigt je Organisation das Banner dezent
+  im Hintergrund oder – ohne Banner – die konfigurierte Akzentfarbe.
+
+---
+
 ## [1.8.1] - 2026-08-15
 
 ### Changed

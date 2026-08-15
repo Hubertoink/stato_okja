@@ -403,6 +403,38 @@
   box-shadow: inset 3px 0 0 var(--viridian);
 }
 
+/* Branding is provided by the shared OrganisationScopeOption component. The
+   colour is also shown when no banner has been configured for an organisation. */
+.org-scope-option-branding {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--organization-brand-color) 12%, var(--surface-1));
+}
+
+.org-scope-option-branding > :not(.org-scope-option-banner) {
+  position: relative;
+  z-index: 1;
+}
+
+.org-scope-option-banner {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.3;
+}
+
+.org-scope-option-branding:hover {
+  background: color-mix(in srgb, var(--organization-brand-color) 20%, var(--surface-1));
+}
+
+.org-scope-option-branding.org-scope-option-active {
+  background: color-mix(in srgb, var(--organization-brand-color) 26%, var(--surface-1));
+  box-shadow: inset 3px 0 0 var(--organization-brand-color);
+}
+
 .org-scope-icon-shell {
   display: inline-flex;
   width: 1.75rem;

@@ -82,6 +82,71 @@ function flattenOrgScopeTree(
   ]);
 }
 
+type OrganizationScopeOptionProps = {
+  org: OrgDto;
+  depth: number;
+  selected: boolean;
+  onSelect: (orgId: string) => void;
+};
+
+/**
+ * Shared organisation-row presentation for the scope switcher. It keeps the
+ * branding treatment close to the data source and resolves protected banners
+ * through the same image helper as the application header.
+ */
+function OrganizationScopeOption({
+  org,
+  depth,
+  selected,
+  onSelect,
+}: OrganizationScopeOptionProps) {
+  const bannerSrc = useResolvedImageSrc(org.bannerUrl);
+  const brandingStyle = {
+    '--organization-brand-color': org.brandColor || 'var(--viridian)',
+    paddingLeft: `${0.75 + depth * 1.25}rem`,
+  } as CSSProperties;
+
+  return (
+    <li>
+      <label
+        className={`org-scope-option org-scope-option-branding flex cursor-pointer items-center gap-3 text-sm ${selected ? 'org-scope-option-active' : ''}`}
+        style={brandingStyle}
+      >
+        {bannerSrc ? (
+          <span
+            aria-hidden="true"
+            className="org-scope-option-banner"
+            style={{
+              backgroundImage: `url("${bannerSrc}")`,
+              backgroundPosition: `center ${org.bannerPosition ?? 50}%`,
+            }}
+          />
+        ) : null}
+        <input
+          type="radio"
+          name="orgscope"
+          checked={selected}
+          onChange={() => onSelect(org.id)}
+          className="h-4 w-4 shrink-0"
+        />
+        <span className="org-scope-icon-shell">
+          {depth === 0 ? (
+            <Building2 className="h-4 w-4" />
+          ) : (
+            <GitBranch className="h-4 w-4" />
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{org.name}</span>
+          <span className="org-scope-depth-label">
+            {depth === 0 ? autoT('ui_e96857c58f71') : `Ebene ${depth}`}
+          </span>
+        </span>
+      </label>
+    </li>
+  );
+}
+
 export default function Layout() {
   const { t } = useTranslation('common');
   const location = useLocation();
@@ -395,9 +460,9 @@ export default function Layout() {
   // VisualViewport exposes a strip below the app when Android opens its keyboard UI.
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header
-        className="fixed top-0 inset-x-0 z-40 header-surface overflow-visible text-gray-900"
+      {/* Header and desktop navigation share the banner background. */}
+      <div
+        className="header-navigation-shell fixed inset-x-0 top-0 z-40"
         style={{
           '--organization-banner-position': `${activeOrgBranding?.bannerPosition ?? 50}%`,
         } as CSSProperties}
@@ -409,6 +474,7 @@ export default function Layout() {
             style={{ backgroundImage: `url("${activeBannerSrc}")` }}
           />
         ) : null}
+        <header className={`relative z-20 header-surface overflow-visible text-gray-900 ${activeBannerSrc ? 'header-surface-with-banner' : ''}`}>
         {activeOrgBranding?.brandColor ? (
           <div
             aria-hidden="true"
@@ -658,11 +724,11 @@ export default function Layout() {
             )}
           </div>
         </div>
-      </header>
+        </header>
 
-      {/* Navigation (desktop) - fixed under header */}
+      {/* Navigation (desktop) */}
       {!restrictToPasswordChange && (
-        <nav className="nav-surface hidden md:block fixed top-14 md:top-20 inset-x-0 z-30">
+        <nav className={`nav-surface relative z-10 hidden md:block ${activeBannerSrc ? 'nav-surface-with-banner' : ''}`}>
           <div className="container mx-auto px-4">
             <ul className="flex space-x-1">
               <li>
@@ -805,6 +871,7 @@ export default function Layout() {
           </div>
         </nav>
       )}
+      </div>
 
       {/* Tiny spacer below fixed desktop nav for visual breathing room */}
       {!restrictToPasswordChange && <div className="hidden md:block h-[5px]" aria-hidden="true" />}
@@ -1052,33 +1119,13 @@ export default function Layout() {
             <ul className="divide-y divide-[var(--border-subtle)]">
               {/* Non-superadmins only see their explicitly assigned organizations. */}
               {scopeOrgRows.map(({ org, depth }) => (
-                <li key={org.id}>
-                  <label
-                    className={`org-scope-option flex cursor-pointer items-center gap-3 text-sm ${pendingScope === org.id ? 'org-scope-option-active' : ''}`}
-                    style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}
-                  >
-                    <input
-                      type="radio"
-                      name="orgscope"
-                      checked={pendingScope === org.id}
-                      onChange={() => setPendingScope(org.id)}
-                      className="h-4 w-4 shrink-0"
-                    />
-                    <span className="org-scope-icon-shell">
-                      {depth === 0 ? (
-                        <Building2 className="h-4 w-4" />
-                      ) : (
-                        <GitBranch className="h-4 w-4" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{org.name}</span>
-                      <span className="org-scope-depth-label">
-                        {depth === 0 ? autoT('ui_e96857c58f71') : `Ebene ${depth}`}
-                      </span>
-                    </span>
-                  </label>
-                </li>
+                <OrganizationScopeOption
+                  key={org.id}
+                  org={org}
+                  depth={depth}
+                  selected={pendingScope === org.id}
+                  onSelect={setPendingScope}
+                />
               ))}
             </ul>
           </div>

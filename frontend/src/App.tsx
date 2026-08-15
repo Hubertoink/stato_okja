@@ -434,6 +434,10 @@ function AuthedRoutes() {
               }
             />
           )}
+          {/* A scope switch can reduce the effective role (for example from
+              org admin to editor). Always leave an unavailable admin route
+              for a safe, usable page instead of rendering no matching route. */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
     </PostLoginPrefetch>

@@ -13,38 +13,61 @@ function createExecutionContext(request: Record<string, unknown>): ExecutionCont
 }
 
 describe('OrgScopeGuard', () => {
-  it('falls back to the current org when a stored scope becomes stale', async () => {
+  it('rejects a stored scope that is not an active membership', async () => {
     const orgs = {
-      getSubtreeOrgIds: jest.fn().mockResolvedValue(['new-org', 'child-org']),
+      listActiveMemberships: jest.fn().mockResolvedValue([
+        { orgId: 'new-org', role: 'editor' },
+      ]),
     } as unknown as OrgsService;
     const guard = new OrgScopeGuard(orgs);
     const request: {
       headers: { 'x-org-scope': string };
-      user: { role: string; orgId: string };
+      user: { id: string; role: string; orgId: string };
       effectiveOrgId?: string | null;
     } = {
       headers: { 'x-org-scope': 'old-org' },
-      user: { role: 'user', orgId: 'new-org' },
+      user: { id: 'user-1', role: 'user', orgId: 'new-org' },
     };
 
-    await expect(guard.canActivate(createExecutionContext(request))).resolves.toBe(true);
-    expect(request.effectiveOrgId).toBe('new-org');
+    await expect(guard.canActivate(createExecutionContext(request))).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('still rejects null scope for users that must stay inside their org', async () => {
     const orgs = {
-      getSubtreeOrgIds: jest.fn(),
+      listActiveMemberships: jest.fn().mockResolvedValue([{ orgId: 'own-org', role: 'org_admin' }]),
     } as unknown as OrgsService;
     const guard = new OrgScopeGuard(orgs);
     const request: {
       headers: { 'x-org-scope': string };
-      user: { role: string; orgId: string };
+      user: { id: string; role: string; orgId: string };
       effectiveOrgId?: string | null;
     } = {
       headers: { 'x-org-scope': 'null' },
-      user: { role: 'org_admin', orgId: 'own-org' },
+      user: { id: 'user-1', role: 'org_admin', orgId: 'own-org' },
     };
 
     await expect(guard.canActivate(createExecutionContext(request))).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('switches role and scope only to an explicitly assigned organization', async () => {
+    const orgs = {
+      listActiveMemberships: jest.fn().mockResolvedValue([
+        { orgId: 'house-a', role: 'editor' },
+        { orgId: 'house-b', role: 'org_admin' },
+      ]),
+    } as unknown as OrgsService;
+    const guard = new OrgScopeGuard(orgs);
+    const request: {
+      headers: { 'x-org-scope': string };
+      user: { id: string; role: string; orgId: string };
+      effectiveOrgId?: string | null;
+    } = {
+      headers: { 'x-org-scope': 'house-b' },
+      user: { id: 'user-1', role: 'editor', orgId: 'house-a' },
+    };
+
+    await expect(guard.canActivate(createExecutionContext(request))).resolves.toBe(true);
+    expect(request.effectiveOrgId).toBe('house-b');
+    expect(request.user).toMatchObject({ orgId: 'house-b', role: 'org_admin' });
   });
 });

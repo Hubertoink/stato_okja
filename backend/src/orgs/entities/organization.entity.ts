@@ -1,5 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import type { User } from '../../users/entities/user.entity';
+import type { OrganizationMembership } from '../../users/entities/organization-membership.entity';
 
 // Öffnungszeiten pro Wochentag
 interface DayOpeningHours {
@@ -60,8 +61,22 @@ export class Organization {
   @Column({ type: 'varchar', length: 8, default: DEFAULT_ORGANIZATION_LOCALE })
   defaultLocale!: string;
 
+  // Visual identity shown in the application header for the active organisation.
+  // These values deliberately do not inherit through the organisation tree.
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  bannerUrl!: string | null;
+
+  @Column({ type: 'varchar', length: 7, nullable: true })
+  brandColor!: string | null;
+
+  @Column({ type: 'smallint', nullable: true })
+  bannerPosition!: number | null;
+
   @OneToMany('User', (u: User) => u.org)
   users!: User[];
+
+  @OneToMany('OrganizationMembership', (membership: OrganizationMembership) => membership.organization)
+  memberships!: OrganizationMembership[];
 
   // Hierarchy support
   @Column({ type: 'uuid', nullable: true })

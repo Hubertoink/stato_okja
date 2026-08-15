@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Equal, IsNull, FindOptionsWhere, In } from 'typeorm';
 import { Location } from './entities/location.entity';
 import {
-  assertOrgScopedEntityAccessForUser,
+  assertExactOrgScopedEntityAccess,
   removeOrgIdForNonSuperadmin,
   type OrgScopedUser,
 } from '../auth/org-scope-access';
@@ -17,8 +17,8 @@ export class LocationsService {
     private readonly orgs: OrgsService,
   ) {}
 
-  private async assertUserCanAccessLocation(location: Pick<Location, 'orgId'>, user: OrgScopedUser) {
-    await assertOrgScopedEntityAccessForUser(location, user, this.orgs);
+  private assertUserCanAccessLocation(location: Pick<Location, 'orgId'>, user: OrgScopedUser) {
+    assertExactOrgScopedEntityAccess(location, user);
   }
 
   findAll(active?: boolean, orgId?: string|null, orgIds?: string[]): Promise<Location[]> {

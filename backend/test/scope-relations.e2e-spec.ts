@@ -52,7 +52,7 @@ function scopedEditorHeader() {
   return JSON.stringify({
     id: '60000000-0000-4000-8000-000000000001',
     role: 'editor',
-    orgId: ROOT_ORG_ID,
+    orgId: CHILD_ORG_ID,
     name: 'Scope Test',
   });
 }
@@ -84,6 +84,7 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
       ids.map((id) => source.get(id)).filter((entry): entry is Record<string, unknown> => Boolean(entry));
     const subtree = (orgId: string) => orgId === ROOT_ORG_ID ? [ROOT_ORG_ID, CHILD_ORG_ID] : [orgId];
     const orgs = {
+      listActiveMemberships: jest.fn(async () => [{ orgId: CHILD_ORG_ID, role: 'editor' }]),
       getSubtreeOrgIds: jest.fn(async (orgId: string) => subtree(orgId)),
       getResolvedOrgScope: jest.fn(async (orgId: string | null) =>
         orgId === null ? { orgId: null } : { orgId, orgIds: subtree(orgId) },
@@ -178,7 +179,7 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
     });
   }
 
-  it('uses the selected child subtree consistently for details and mutations', async () => {
+  it('uses the selected explicitly assigned organization consistently for details and mutations', async () => {
     for (const path of [
       `/activities/${CHILD_ACTIVITY_ID}`,
       `/locations/${CHILD_LOCATION_ID}`,

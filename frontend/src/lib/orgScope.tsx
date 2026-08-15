@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuth } from './auth';
 import { getStoredAuthToken } from './authStorage';
-import type { OrgDto } from './orgs';
 
 type OrgScopeValue = string | null | undefined;
 interface OrgScopeState {
@@ -91,7 +90,7 @@ try {
 } catch { /* ignore */ }
 
 export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, updateSessionUser } = useAuth();
   const [scope, setScopeState] = useState<OrgScopeValue>(initialStoredScope);
   const [switching, setSwitching] = useState(false);
   const qc = useQueryClient();
@@ -112,8 +111,13 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Any scope updates in this effect are hydration/init.
-    scopeChangeSourceRef.current = 'init';
+    // Do not overwrite an explicit scope switch. `setScope` also updates the
+    // session user (active role/org), which reruns this effect before the
+    // scope effect can start its refresh. Resetting the marker here stranded
+    // the transition overlay in its loading state.
+    if (scopeChangeSourceRef.current !== 'user') {
+      scopeChangeSourceRef.current = 'init';
+    }
     const previousUser = previousUserRef.current;
     const key = storageKeyFor(user.id);
     // Migrate legacy key -> user-specific key if needed
@@ -148,50 +152,22 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
       previousUser.orgId !== (user.orgId ?? null)
     );
 
-    // org_admin/user: never trust a scope restored from local storage. Use the
-    // direct organization until the persisted child scope has been validated.
-    const ownScope = user.orgId ?? null;
+    // A non-superadmin can only select an explicitly assigned membership. This
+    // deliberately does not inherit a parent or child organization scope.
+    const memberships = user.memberships || [];
+    const ownScope = user.orgId ?? memberships[0]?.orgId ?? null;
     const requestedScope = !roleOrOrgChangedForSameUser && typeof parsed === 'string'
       ? parsed
       : null;
-    setScopeState(ownScope);
+    const selectedScope = requestedScope && memberships.some((membership) => membership.orgId === requestedScope)
+      ? requestedScope
+      : ownScope;
+    setScopeState(selectedScope);
     previousUserRef.current = { id: user.id, orgId: user.orgId ?? null, role: user.role };
 
-    if (!requestedScope || requestedScope === ownScope) {
-      try { localStorage.setItem(key, ownScope === null ? 'null' : ownScope); } catch { /* ignore */ }
-      return;
-    }
-
-    // Users without an organization cannot have a child scope. For organization
-    // users, verify the stored value against the subtree before restoring it.
-    if (ownScope === null) {
-      removeCachedOrgName(requestedScope);
-      try { localStorage.setItem(key, 'null'); } catch { /* ignore */ }
-      return;
-    }
-
-    let cancelled = false;
-    void api.get<OrgDto[]>('/orgs/subtree')
-      .then((res) => {
-        if (cancelled) return;
-        if (res.data.some((org) => org.id === requestedScope)) {
-          setScopeState(requestedScope);
-          try { localStorage.setItem(key, requestedScope); } catch { /* ignore */ }
-          return;
-        }
-
-        removeCachedOrgName(requestedScope);
-        try { localStorage.setItem(key, ownScope); } catch { /* ignore */ }
-      })
-      .catch(() => {
-        // Keep the direct organization as the safe fallback. Do not overwrite a
-        // potentially valid child selection when its validation request failed.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, user?.role, user?.orgId, loading]);
+    if (requestedScope && selectedScope !== requestedScope) removeCachedOrgName(requestedScope);
+    try { localStorage.setItem(key, selectedScope === null ? 'null' : selectedScope); } catch { /* ignore */ }
+  }, [user?.id, user?.role, user?.orgId, user?.memberships, loading]);
 
   // Apply the org scope header before regular query effects run.
   useLayoutEffect(() => {
@@ -206,13 +182,14 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
 
     const runId = ++switchRunIdRef.current;
     setSwitching(true);
-    // Queries use the scope as part of their key, so changing the scope is enough to
-    // start fresh requests.  Cancelling every query here raced those new requests and
-    // could leave the currently visible dashboard with data from the previous scope.
-    void qc.invalidateQueries({ predicate: () => true, refetchType: 'active' })
-      .finally(() => {
-        if (switchRunIdRef.current === runId) setSwitching(false);
-      });
+    // Queries use the scope as part of their key, so changing the scope starts
+    // fresh requests. Refreshing background queries must not keep the whole UI
+    // blocked: an unrelated request can retry indefinitely. Fire it in the
+    // background and end the transition after React applied the new scope.
+    void qc.invalidateQueries({ predicate: () => true, refetchType: 'active' });
+    requestAnimationFrame(() => {
+      if (switchRunIdRef.current === runId) setSwitching(false);
+    });
   }, [scope, qc]);
 
   const setScope = useCallback((v: OrgScopeValue) => {
@@ -224,13 +201,24 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     setSwitching(true);
     applyOrgScopeHeader(v);
     setScopeState(v);
+    if (user && typeof v === 'string' && user.role !== 'superadmin') {
+      const membership = user.memberships?.find((item) => item.orgId === v);
+      if (membership) {
+        updateSessionUser({
+          ...user,
+          orgId: membership.orgId,
+          orgName: membership.orgName,
+          role: membership.role,
+        });
+      }
+    }
     try {
       const key = storageKeyFor(user?.id);
       if (typeof v === 'undefined') localStorage.removeItem(key);
       else if (v === null) localStorage.setItem(key, 'null');
       else localStorage.setItem(key, v);
     } catch { /* ignore */ }
-  }, [user?.id, scope]);
+  }, [user, scope, updateSessionUser]);
 
   const value = useMemo<OrgScopeState>(() => ({
     scope,

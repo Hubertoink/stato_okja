@@ -71,7 +71,7 @@ function parseActiveQuery(active?: string) {
 
 @ApiTags('taxonomy')
 @Controller('taxonomy')
-@UseGuards(JwtAuthGuard, RolesGuard, OrgScopeGuard)
+@UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
 export class TaxonomyController {
   constructor(private readonly taxonomyService: TaxonomyService, private readonly orgs: OrgsService) {}
 
@@ -118,6 +118,7 @@ export class TaxonomyController {
     return this.orgs.getTaxonomyAccessForOrg(this.resolveScopedOrgId(req) ?? null);
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Post('categories')
   @ApiOperation({ summary: 'Neue Kategorie anlegen' })
   async createCategory(@Body() data: CreateCategoryDto, @Req() req: TaxonomyRequest) {
@@ -125,6 +126,7 @@ export class TaxonomyController {
     return this.taxonomyService.createCategory({ ...sanitizeCategoryPayload(data as Partial<Category>), orgId }, user);
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Patch('categories/:id')
   updateCategory(@Param('id') id: string, @Body() data: UpdateCategoryDto, @Req() req: TaxonomyRequest) {
     const payload = sanitizeCategoryPayload(data as Partial<Category>);
@@ -151,6 +153,7 @@ export class TaxonomyController {
     return this.taxonomyService.findOneTagScoped(id, this.getScopedUser(req));
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Post('tags')
   @ApiOperation({ summary: 'Neues Tag anlegen' })
   async createTag(@Body() data: CreateTagDto, @Req() req: TaxonomyRequest) {
@@ -158,6 +161,7 @@ export class TaxonomyController {
     return this.taxonomyService.createTag({ ...sanitizeTagPayload(data as Partial<Tag>), orgId }, user);
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Patch('tags/:id')
   updateTag(@Param('id') id: string, @Body() data: UpdateTagDto, @Req() req: TaxonomyRequest) {
     const payload = sanitizeTagPayload(data as Partial<Tag>);
@@ -184,6 +188,7 @@ export class TaxonomyController {
     return this.taxonomyService.findOneCohortScoped(id, this.getScopedUser(req));
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Post('cohorts')
   @ApiOperation({ summary: 'Neue Kohorte anlegen' })
   async createCohort(@Body() data: CreateCohortDto, @Req() req: TaxonomyRequest) {
@@ -191,6 +196,7 @@ export class TaxonomyController {
     return this.taxonomyService.createCohort({ ...sanitizeCohortPayload(data as Partial<Cohort>), orgId }, user);
   }
 
+  @Roles('superadmin', 'org_admin', 'editor')
   @Patch('cohorts/:id')
   updateCohort(@Param('id') id: string, @Body() data: UpdateCohortDto, @Req() req: TaxonomyRequest) {
     const payload = sanitizeCohortPayload(data as Partial<Cohort>);

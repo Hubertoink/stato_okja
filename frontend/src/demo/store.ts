@@ -1187,6 +1187,16 @@ export function listDemoOrgs(): OrgDto[] {
   return clone(store.orgs);
 }
 
+export function updateDemoOrgBranding(
+  orgId: string,
+  patch: Pick<OrgDto, 'bannerUrl' | 'brandColor' | 'bannerPosition'>,
+): OrgDto {
+  const index = store.orgs.findIndex((org) => org.id === orgId);
+  if (index < 0) throw new Error('Organisation nicht gefunden');
+  store.orgs[index] = { ...store.orgs[index], ...patch };
+  return clone(store.orgs[index]);
+}
+
 export function listDemoUsers() {
   return [{ id: store.user.id, email: store.user.email, name: store.user.name, role: store.user.role, orgId: DEMO_ORG_ID, org: { id: DEMO_ORG_ID, name: 'Demo Jugendhaus' } }];
 }

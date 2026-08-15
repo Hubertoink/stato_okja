@@ -10,9 +10,9 @@ import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { OrgsService } from '../orgs/orgs.service';
 import {
-  assertOrgScopedEntityAccessForUser,
+  assertExactOrgScopedEntityAccess,
   removeOrgIdForNonSuperadmin,
-  resolveOrgScopeForUser,
+  resolveOrgScope,
   type OrgScopedUser,
 } from '../auth/org-scope-access';
 
@@ -188,10 +188,10 @@ export class ProjectsService {
     archived: boolean | undefined,
     user: OrgScopedUser,
   ): Promise<Project[]> {
-    const scope = await resolveOrgScopeForUser(this.orgs, user);
+    const orgId = resolveOrgScope(user);
     // Projects are owned by their exact organization. Unlike shared taxonomy,
     // a parent organization must not receive projects created in a child scope.
-    return this.findAll(search, archived, scope.orgId);
+    return this.findAll(search, archived, orgId);
   }
 
   findOne(id: string): Promise<Project | null> {
@@ -324,7 +324,7 @@ export class ProjectsService {
   async findOneScoped(id: string, user: OrgScopedUser) {
     const p = await this.findOne(id);
     if (!p) return null;
-    await assertOrgScopedEntityAccessForUser(p, user, this.orgs);
+    assertExactOrgScopedEntityAccess(p, user);
     return p;
   }
 
@@ -430,7 +430,7 @@ export class ProjectsService {
   async updateScoped(id: string, data: Partial<Project>, user: OrgScopedUser & { id?: string }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return null;
-    await assertOrgScopedEntityAccessForUser(existing, user, this.orgs);
+    assertExactOrgScopedEntityAccess(existing, user);
     const sanitized = removeOrgIdForNonSuperadmin(data, user);
     const updated = await this.update(id, sanitized);
     if (updated)
@@ -449,14 +449,14 @@ export class ProjectsService {
   async removeScoped(id: string, user: OrgScopedUser & { id?: string }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return;
-    await assertOrgScopedEntityAccessForUser(existing, user, this.orgs);
+    assertExactOrgScopedEntityAccess(existing, user);
     await this.remove(id, user);
   }
 
   async archiveScoped(id: string, archived: boolean, user: OrgScopedUser & { id?: string }) {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return null;
-    await assertOrgScopedEntityAccessForUser(existing, user, this.orgs);
+    assertExactOrgScopedEntityAccess(existing, user);
     const p = await this.archive(id, archived);
     if (p)
       await this.audit.log({

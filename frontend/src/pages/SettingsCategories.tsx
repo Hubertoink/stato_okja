@@ -42,8 +42,9 @@ export default function SettingsCategories() {
   const [selectedDefaultNames, setSelectedDefaultNames] = useState<string[]>([]);
 
   const categories = data || [];
-  const canCreateOwn = access?.categories.canCreateOwn ?? true;
-  const canDeleteTaxonomy = canManageSettingsDestructiveActions(user?.role);
+  const canManageTaxonomy = canManageSettingsDestructiveActions(user?.role);
+  const canCreateOwn = canManageTaxonomy && (access?.categories.canCreateOwn ?? true);
+  const canDeleteTaxonomy = canManageTaxonomy;
   const allExisting = useMemo(
     () => [...(data || []), ...(archivedOnly || [])] as Category[],
     [data, archivedOnly],
@@ -139,7 +140,7 @@ export default function SettingsCategories() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {categories.map((c) => {
           const isInherited = !!c.isInherited;
-          const canManage = c.canManage !== false;
+          const canManage = canManageTaxonomy && c.canManage !== false;
           return (
             <div key={c.id} className={`p-3 rounded border border-gray-200 flex items-center justify-between ${isInherited ? "bg-gray-50" : ''}`}>
               <div className="min-w-0 flex items-center gap-3">

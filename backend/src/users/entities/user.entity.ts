@@ -1,5 +1,6 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import type { Organization } from '../../orgs/entities/organization.entity';
+import type { OrganizationMembership } from './organization-membership.entity';
 
 export const SUPPORTED_LOCALES = ['de', 'en'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -41,6 +42,10 @@ export class User {
   @ManyToOne('Organization', (o: Organization) => o.users, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'orgId' })
   org!: Organization | null;
+
+  /** @deprecated Compatibility default; authorization uses memberships. */
+  @OneToMany('OrganizationMembership', (membership: OrganizationMembership) => membership.user)
+  memberships!: OrganizationMembership[];
 
   @Column({ type: 'varchar', length: 50, default: 'Default Theme' })
   theme!: string;

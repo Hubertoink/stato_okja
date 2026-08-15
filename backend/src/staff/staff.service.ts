@@ -5,7 +5,7 @@ import { Staff } from './entities/staff.entity';
 import * as bcrypt from 'bcryptjs';
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../auth/password-policy';
 import {
-  assertOrgScopedEntityAccessForUser,
+  assertExactOrgScopedEntityAccess,
   removeOrgIdForNonSuperadmin,
   type OrgScopedUser,
 } from '../auth/org-scope-access';
@@ -30,8 +30,8 @@ export class StaffService {
     return this.staffRepository.find({ where });
   }
 
-  private async assertUserCanAccessStaff(staff: Pick<Staff, 'orgId'>, user: OrgScopedUser) {
-    await assertOrgScopedEntityAccessForUser(staff, user, this.orgs);
+  private assertUserCanAccessStaff(staff: Pick<Staff, 'orgId'>, user: OrgScopedUser) {
+    assertExactOrgScopedEntityAccess(staff, user);
   }
 
   async findOne(id: string): Promise<Staff | null> {

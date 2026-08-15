@@ -28,8 +28,9 @@ export default function SettingsTags() {
   }>({ open: false });
 
   const tags = data || [];
-  const canCreateOwn = access?.tags.canCreateOwn ?? true;
-  const canDeleteTaxonomy = canManageSettingsDestructiveActions(user?.role);
+  const canManageTaxonomy = canManageSettingsDestructiveActions(user?.role);
+  const canCreateOwn = canManageTaxonomy && (access?.tags.canCreateOwn ?? true);
+  const canDeleteTaxonomy = canManageTaxonomy;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -80,7 +81,7 @@ export default function SettingsTags() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {tags.map((t) => {
           const isInherited = !!t.isInherited;
-          const canManage = t.canManage !== false;
+          const canManage = canManageTaxonomy && t.canManage !== false;
           return (
             <div key={t.id} className={`p-3 rounded border border-gray-200 flex items-center justify-between ${isInherited ? "bg-gray-50" : ''}`}>
               <div className="min-w-0 flex items-center gap-3">

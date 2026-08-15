@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getOpeningHours, updateOpeningHours, OpeningHours, DayOpeningHours, DEFAULT_OPENING_HOURS } from '@/lib/orgs';
-import { useAuth } from '@/lib/auth';
+import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import { Save as SaveIcon, Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,7 @@ export default function SettingsOpeningHours() {
   const { user } = useAuth();
   const { scope } = useOrgScope();
   const qc = useQueryClient();
+  const canManageOpeningHours = canManageSettingsDestructiveActions(user?.role);
 
   // Determine effective orgId: for superadmin use scope, for others use user.orgId
   // scope can be: undefined (global), null (root), or a string (specific orgId)
@@ -48,6 +49,7 @@ export default function SettingsOpeningHours() {
   });
 
   const updateDay = (day: keyof OpeningHours, patch: Partial<DayOpeningHours>) => {
+    if (!canManageOpeningHours) return;
     setHours((prev) => ({
       ...prev,
       [day]: { ...prev[day], ...patch },
@@ -79,13 +81,19 @@ export default function SettingsOpeningHours() {
         </div>
         <button
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition disabled:opacity-50"
-          disabled={!dirty || mutation.isPending}
+          disabled={!canManageOpeningHours || !dirty || mutation.isPending}
           onClick={() => mutation.mutate()}
+          title={canManageOpeningHours ? undefined : 'Nur Editor oder Organisationsadmin dürfen Öffnungszeiten bearbeiten'}
         >
           <SaveIcon className="w-5 h-5" />
           {t('common:actions.save')}
         </button>
       </div>
+      {!canManageOpeningHours && (
+        <p className="mb-4 text-sm text-gray-500">
+          Öffnungszeiten können nur von Editor:innen oder Organisationsadmins bearbeitet werden.
+        </p>
+      )}
 
       {isLoading ? (
         <p className="text-gray-500">{t('openingHours.loading')}</p>
@@ -101,6 +109,7 @@ export default function SettingsOpeningHours() {
                     type="checkbox"
                     className="w-5 h-5 text-viridian rounded focus:ring-viridian"
                     checked={day.open}
+                    disabled={!canManageOpeningHours}
                     onChange={(e) => updateDay(key, { open: e.target.checked })}
                   />
                   <span className="font-medium text-gray-800 w-24">{t(`openingHours.days.${key}`)}</span>
@@ -115,6 +124,7 @@ export default function SettingsOpeningHours() {
                         type="time"
                         className="min-w-0 flex-1 border rounded px-2 py-1 text-sm sm:w-auto sm:flex-none"
                         value={day.from || '08:00'}
+                        disabled={!canManageOpeningHours}
                         onChange={(e) => updateDay(key, { from: e.target.value })}
                       />
                     </div>
@@ -125,6 +135,7 @@ export default function SettingsOpeningHours() {
                         type="time"
                         className="min-w-0 flex-1 border rounded px-2 py-1 text-sm sm:w-auto sm:flex-none"
                         value={day.to || '17:00'}
+                        disabled={!canManageOpeningHours}
                         onChange={(e) => updateDay(key, { to: e.target.value })}
                       />
                     </div>

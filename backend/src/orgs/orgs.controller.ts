@@ -19,12 +19,14 @@ import { OrgMasterDataService } from './org-master-data.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { toPublicUser } from '../common/public-response';
-import { SUPPORTED_LOCALES } from '../users/entities/user.entity';
+import { SUPPORTED_LOCALES, type UserRole } from '../users/entities/user.entity';
 import {
   CreateOrganizationDto,
   MasterDataContentDto,
   MoveOrganizationDto,
+  UpdateOrganizationBrandingDto,
   UpdateDefaultLocaleDto,
   UpdateOpeningHoursDto,
   UpdateOrganizationTaxonomySettingsDto,
@@ -37,7 +39,7 @@ function orgMoveFeatureEnabled() {
   );
 }
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
 @Controller('orgs')
 export class OrgsController {
   constructor(
@@ -47,12 +49,7 @@ export class OrgsController {
 
   private async assertCanAccessOrg(id: string, user: { role: string; orgId?: string | null }) {
     if (user.role === 'superadmin') return;
-
-    const myOrgId = user.orgId || null;
-    if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
-
-    const subtree = await this.service.getSubtreeOrgIds(myOrgId);
-    if (!subtree.includes(id)) throw new ForbiddenException('Nicht erlaubt');
+    if ((user.orgId || null) !== id) throw new ForbiddenException('Nicht erlaubt');
   }
 
   @Roles('superadmin', 'org_admin')
@@ -75,7 +72,7 @@ export class OrgsController {
   @Post()
   async create(
     @Body() body: CreateOrganizationDto,
-    @Req() req: { user: { role: string; orgId?: string | null } },
+    @Req() req: { user: { id?: string; role: string; orgId?: string | null } },
   ) {
     if (req.user.role === 'superadmin') {
       return this.service.create(body?.name, body?.parentId ?? null);
@@ -91,7 +88,15 @@ export class OrgsController {
         'Org-Admins können nur direkte Unterorganisationen ihrer eigenen Organisation anlegen',
       );
     }
-    return this.service.create(body?.name, myOrgId);
+    const created = await this.service.create(body?.name, myOrgId);
+    if (req.user.id) {
+      await this.service.grantActiveMembership(
+        req.user.id,
+        created.id,
+        req.user.role as Exclude<UserRole, 'superadmin'>,
+      );
+    }
+    return created;
   }
 
   @Roles('superadmin')
@@ -114,7 +119,7 @@ export class OrgsController {
   @Get(':id/taxonomy-settings')
   taxonomySettings(
     @Param('id') id: string,
-    @Req() req: { user: { role: string; orgId?: string | null } },
+    @Req() req: { user: { id?: string; role: string; orgId?: string | null } },
   ) {
     return this.service.getChildTaxonomySettingsScoped(id, req.user);
   }
@@ -198,38 +203,47 @@ export class OrgsController {
     return this.service.updateDefaultLocale(id, body.locale);
   }
 
+  @Roles('superadmin', 'org_admin')
+  @Patch(':id/branding')
+  async updateBranding(
+    @Param('id') id: string,
+    @Body() body: UpdateOrganizationBrandingDto,
+    @Req() req: { user: { role: string; orgId?: string | null } },
+  ) {
+    await this.assertCanAccessOrg(id, req.user);
+    return this.service.updateBranding(id, body || {});
+  }
+
   // List users for an org (optionally include subtree)
   @Get(':id/users')
   async usersByOrg(
     @Param('id') id: string,
-    @Req() req: { user: { role: string; orgId?: string | null } },
+    @Req() req: { user: { id?: string; role: string; orgId?: string | null } },
     @Query('includeSubtree') includeSubtree?: string,
   ) {
     const include = includeSubtree === 'true';
     if (req.user.role === 'superadmin') {
       if (include) {
         const ids = await this.service.getSubtreeOrgIds(id);
-        return (await this.service.findUsersByOrgIds(ids)).map(toPublicUser);
+        return (await this.service.findMembershipUsersByOrgIds(ids)).map(toPublicUser);
       }
-      return (await this.service.findUsersByOrg(id || null)).map(toPublicUser);
+      return (await this.service.findMembershipUsersByOrgIds([id])).map(toPublicUser);
     }
-    const myOrgId = req.user.orgId || null;
-    if (!myOrgId) return [];
-    const ids = await this.service.getSubtreeOrgIds(myOrgId);
-    if (!ids.includes(id)) return [];
-    if (include) {
-      const subtree = await this.service.getSubtreeOrgIds(id);
-      return (await this.service.findUsersByOrgIds(subtree)).map(toPublicUser);
-    }
-    return (await this.service.findUsersByOrg(id || null)).map(toPublicUser);
+    // The organisation tree may request a count for another selected access.
+    // Allow that only when the requester has a direct admin membership in the
+    // requested organisation. A parent/child relationship never grants this.
+    if (!req.user.id) return [];
+    const membership = await this.service.getActiveMembership(req.user.id, id);
+    if (membership?.role !== 'org_admin') return [];
+    void include; // Memberships are always exact; hierarchy never expands user data.
+    return (await this.service.findMembershipUsersByOrgIds([id])).map(toPublicUser);
   }
 
-  // Return the list of Organization DTOs in the caller's subtree.
-  // - superadmin can pass ?rootId to get any subtree; without it returns all orgs
-  // - org_admin/user receive the subtree of their own org; null-org users get empty list
+  // Return selectable organizations. Non-superadmins receive only explicit
+  // memberships, never the structural organization subtree.
   @Get('subtree')
   async subtree(
-    @Req() req: { user: { role: string; orgId?: string | null } },
+    @Req() req: { user: { id?: string; role: string; orgId?: string | null } },
     @Query('rootId') rootId?: string,
   ) {
     if (req.user.role === 'superadmin') {
@@ -240,11 +254,9 @@ export class OrgsController {
       }
       return this.service.findAll();
     }
-    const myOrgId = req.user.orgId || null;
-    if (!myOrgId) return [];
-    const ids = await this.service.getSubtreeOrgIds(myOrgId);
-    const all = await this.service.findAll();
-    return all.filter((o) => ids.includes(o.id));
+    if (!req.user.id) return [];
+    const memberships = await this.service.listActiveMemberships(req.user.id);
+    return memberships.map((membership) => membership.organization).filter(Boolean);
   }
 
   // Get opening hours for an org
@@ -258,6 +270,7 @@ export class OrgsController {
   }
 
   // Update opening hours for an org
+  @Roles('superadmin', 'org_admin', 'editor')
   @Patch(':id/opening-hours')
   async updateOpeningHours(
     @Param('id') id: string,

@@ -10,11 +10,12 @@ import { LogbookService } from './logbook.service';
 import { LogbookComment } from './entities/logbook-comment.entity';
 import { LogbookEntry } from './entities/logbook-entry.entity';
 import { LogbookEntryView } from './entities/logbook-entry-view.entity';
+import { OrgScopeGuard } from '../auth/org-scope.guard';
 
 @Module({
   imports: [TypeOrmModule.forFeature([LogbookEntry, LogbookComment, LogbookEntryView, Activity, Project, User]), AuditModule, OrgsModule],
   controllers: [LogbookController],
-  providers: [LogbookService],
+  providers: [LogbookService, OrgScopeGuard],
   exports: [LogbookService],
 })
 export class LogbookModule {}

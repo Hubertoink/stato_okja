@@ -10,16 +10,12 @@ describe('AuditController scoped listing', () => {
     list: jest.fn(async () => []),
   };
 
-  const orgsService: Pick<OrgsService, 'getSubtreeOrgIds'> = {
-    getSubtreeOrgIds: jest.fn(async (id: string) => [id, 'child-org']),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuditController],
       providers: [
         { provide: AuditService, useValue: auditService },
-        { provide: OrgsService, useValue: orgsService },
+        { provide: OrgsService, useValue: { listActiveMemberships: jest.fn() } },
       ],
     }).compile();
 
@@ -27,30 +23,28 @@ describe('AuditController scoped listing', () => {
     jest.clearAllMocks();
   });
 
-  it('uses subtree scope for an org admin in their own org', async () => {
+  it('uses the exact scope for an org admin in their own org', async () => {
     await controller.list(
-      { user: { id: 'u-1', role: 'org_admin', orgId: 'org-1' }, effectiveOrgId: undefined },
+      { user: { id: 'u-1', role: 'org_admin', orgId: 'org-1' }, effectiveOrgId: 'org-1' },
       '25',
     );
 
-    expect(orgsService.getSubtreeOrgIds).toHaveBeenCalledWith('org-1');
     expect(auditService.list).toHaveBeenCalledWith({
-      orgId: undefined,
-      orgIds: ['org-1', 'child-org'],
+      orgId: 'org-1',
+      orgIds: undefined,
       limit: 25,
     });
   });
 
-  it('uses explicit superadmin scope subtree when selected', async () => {
+  it('uses exact superadmin scope when selected', async () => {
     await controller.list(
       { user: { id: 'u-2', role: 'superadmin', orgId: null }, effectiveOrgId: 'org-2' },
       undefined,
     );
 
-    expect(orgsService.getSubtreeOrgIds).toHaveBeenCalledWith('org-2');
     expect(auditService.list).toHaveBeenCalledWith({
-      orgId: undefined,
-      orgIds: ['org-2', 'child-org'],
+      orgId: 'org-2',
+      orgIds: undefined,
       limit: 50,
     });
   });
@@ -61,7 +55,6 @@ describe('AuditController scoped listing', () => {
       '10',
     );
 
-    expect(orgsService.getSubtreeOrgIds).not.toHaveBeenCalled();
     expect(auditService.list).toHaveBeenCalledWith({
       orgId: null,
       orgIds: undefined,

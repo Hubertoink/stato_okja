@@ -16,12 +16,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import Modal from '@/components/Modal';
-import ProtectedImage from '@/components/ProtectedImage';
-import { listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
-import { api } from '@/lib/api';
+import ProtectedImage, { useResolvedImageSrc } from '@/components/ProtectedImage';
+import { listAccessibleOrgs, listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { canAccessDevTools } from '@/lib/devToolsConfig';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
@@ -43,12 +42,23 @@ import { autoT } from '@/i18n/auto';
 
 type OrgScopeTreeNode = { org: OrgDto; children: OrgScopeTreeNode[] };
 
+function parentIdFromOrgPath(org: OrgDto): string | null {
+  if (!org.path) return null;
+  const segments = org.path.split('/').filter(Boolean);
+  const ownIndex = segments.lastIndexOf(org.id);
+  if (ownIndex <= 0) return null;
+  return segments[ownIndex - 1] || null;
+}
+
 function buildOrgScopeTree(orgs: OrgDto[]): OrgScopeTreeNode[] {
   const byId = new Map(orgs.map((org) => [org.id, { org, children: [] as OrgScopeTreeNode[] }]));
   const roots: OrgScopeTreeNode[] = [];
 
   for (const node of byId.values()) {
-    const parent = node.org.parentId ? byId.get(node.org.parentId) : undefined;
+    // parentId is the canonical hierarchy field. The path fallback keeps the
+    // switcher hierarchical for older or reduced API responses as well.
+    const parentId = node.org.parentId ?? parentIdFromOrgPath(node.org);
+    const parent = parentId ? byId.get(parentId) : undefined;
     if (parent) parent.children.push(node);
     else roots.push(node);
   }
@@ -194,15 +204,27 @@ export default function Layout() {
   const [orgList, setOrgList] = useState<OrgDto[]>([]);
   const [pendingScope, setPendingScope] = useState<string | null | undefined>(undefined);
   const [activeOrgName, setActiveOrgName] = useState<string | null>(null);
+  const [activeOrgBranding, setActiveOrgBranding] = useState<OrgDto | null>(null);
   const [branding, setBranding] = useState(DEFAULT_PUBLIC_CONFIG);
   // Quick-create org modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const [parentForNewOrg, setParentForNewOrg] = useState<string | 'root' | ''>('');
   const isSuperadmin = user?.role === 'superadmin';
+  const canSwitchOrganization = isSuperadmin || (user?.memberships?.length ?? 0) > 1;
+  const assignedOrgs = useMemo<OrgDto[]>(() => (user?.memberships || []).map((membership) => ({
+    id: membership.orgId,
+    name: membership.orgName,
+  })), [user?.memberships]);
   const fixedParentOrgName =
     orgList.find((o) => o.id === user?.orgId)?.name || user?.orgName || autoT('ui_89e32a6a5474');
-  const scopeOrgRows = useMemo(() => flattenOrgScopeTree(buildOrgScopeTree(orgList)), [orgList]);
+  // Keep the visible organisation structure in the switcher for every role.
+  // This affects presentation only: orgList for non-superadmins contains
+  // exclusively their own explicit memberships (see /orgs/subtree).
+  const scopeOrgRows = useMemo(
+    () => flattenOrgScopeTree(buildOrgScopeTree(orgList)),
+    [orgList],
+  );
   const keyboardOpen = useKeyboardOpen();
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
@@ -216,6 +238,7 @@ export default function Layout() {
     setDemoMobileGuideMuted(false);
     setMenuOpen(false);
   };
+  const activeBannerSrc = useResolvedImageSrc(activeOrgBranding?.bannerUrl);
 
   // Resolve the active org name once on load and whenever scope/user changes
   useEffect(() => {
@@ -263,9 +286,8 @@ export default function Layout() {
         let list: OrgDto[] = [];
         if (user?.role === 'superadmin') {
           list = await listOrgs();
-        } else if (user?.orgId) {
-          const res = await api.get<OrgDto[]>('/orgs/subtree');
-          list = res.data;
+        } else {
+          list = assignedOrgs;
         }
         const found = list.find((o) => o.id === scope);
         if (!cancelled) {
@@ -284,18 +306,46 @@ export default function Layout() {
     return () => {
       cancelled = true;
     };
-  }, [scope, user?.id, user?.role, user?.orgId, user?.orgName]);
+  }, [scope, user?.id, user?.role, user?.orgId, user?.orgName, assignedOrgs]);
+
+  // Banner data is loaded independently from the name cache so an organisation
+  // switch never briefly shows the preceding organisation's visual identity.
+  useEffect(() => {
+    if (typeof scope !== 'string') {
+      setActiveOrgBranding(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const orgs = user?.role === 'superadmin' ? await listOrgs() : await listAccessibleOrgs();
+        const active = orgs.find((org) => org.id === scope) || null;
+        if (!cancelled) setActiveOrgBranding(active);
+      } catch {
+        if (!cancelled) setActiveOrgBranding(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scope, user?.id, user?.role]);
+
+  useEffect(() => {
+    const onBrandingChanged = (event: Event) => {
+      const updated = (event as CustomEvent<OrgDto>).detail;
+      if (updated?.id && updated.id === scope) setActiveOrgBranding(updated);
+    };
+    window.addEventListener('stato:organization-branding-changed', onBrandingChanged);
+    return () => window.removeEventListener('stato:organization-branding-changed', onBrandingChanged);
+  }, [scope]);
   useEffect(() => {
     if (!scopeModalOpen) return;
     (async () => {
       try {
         if (user?.role === 'superadmin') {
           setOrgList(await listOrgs());
-        } else if (user?.orgId) {
-          const res = await api.get<OrgDto[]>('/orgs/subtree');
-          setOrgList(res.data);
         } else {
-          setOrgList([]);
+          setOrgList(await listAccessibleOrgs());
         }
       } catch {
         /* ignore */
@@ -303,7 +353,7 @@ export default function Layout() {
       // Default selection to current scope; for legacy undefined use null (safe)
       setPendingScope(typeof scope === 'undefined' ? null : scope);
     })();
-  }, [scopeModalOpen]);
+  }, [scopeModalOpen, user?.role, assignedOrgs, scope]);
   // Load org list when opening quick-create modal as well
   useEffect(() => {
     if (!createModalOpen) return;
@@ -311,11 +361,8 @@ export default function Layout() {
       try {
         if (user?.role === 'superadmin') {
           setOrgList(await listOrgs());
-        } else if (user?.orgId) {
-          const res = await api.get<OrgDto[]>('/orgs/subtree');
-          setOrgList(res.data);
         } else {
-          setOrgList([]);
+          setOrgList(assignedOrgs);
         }
         // Default parent to user's org for org_admins; allow 'root' only for superadmin
         if (user?.role !== 'superadmin') {
@@ -327,7 +374,7 @@ export default function Layout() {
         /* ignore */
       }
     })();
-  }, [createModalOpen]);
+  }, [createModalOpen, user?.role, user?.orgId, assignedOrgs]);
 
   useEffect(() => {
     let cancelled = false;
@@ -349,8 +396,27 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="fixed top-0 inset-x-0 z-40 header-surface text-gray-900">
-        <div className="container mx-auto px-2 sm:px-3 md:px-4 py-3 md:py-4 flex items-center justify-between gap-3">
+      <header
+        className="fixed top-0 inset-x-0 z-40 header-surface overflow-visible text-gray-900"
+        style={{
+          '--organization-banner-position': `${activeOrgBranding?.bannerPosition ?? 50}%`,
+        } as CSSProperties}
+      >
+        {activeBannerSrc ? (
+          <div
+            aria-hidden="true"
+            className="header-organization-banner"
+            style={{ backgroundImage: `url("${activeBannerSrc}")` }}
+          />
+        ) : null}
+        {activeOrgBranding?.brandColor ? (
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 z-10 h-1"
+            style={{ backgroundColor: activeOrgBranding.brandColor }}
+          />
+        ) : null}
+        <div className="relative z-20 container mx-auto px-2 sm:px-3 md:px-4 py-3 md:py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <img
               src={logoUrl}
@@ -483,7 +549,7 @@ export default function Layout() {
                     </button>
                   </li>
                   {!restrictToPasswordChange &&
-                    (user?.role === 'org_admin' || user?.role === 'superadmin') && (
+                    canSwitchOrganization && (
                       <li>
                         <button
                           className="w-full px-4 py-2 text-left theme-menu-item"
@@ -984,7 +1050,7 @@ export default function Layout() {
           )}
           <div className="max-h-72 overflow-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)]">
             <ul className="divide-y divide-[var(--border-subtle)]">
-              {/* For non-superadmin, limit to subtree visually; backend enforces anyway */}
+              {/* Non-superadmins only see their explicitly assigned organizations. */}
               {scopeOrgRows.map(({ org, depth }) => (
                 <li key={org.id}>
                   <label

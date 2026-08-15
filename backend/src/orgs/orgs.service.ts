@@ -17,10 +17,12 @@ import { Tag } from '../taxonomy/entities/tag.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
-import { type SupportedLocale, User } from '../users/entities/user.entity';
+import { type SupportedLocale, type UserRole, User } from '../users/entities/user.entity';
+import { OrganizationMembership } from '../users/entities/organization-membership.entity';
 import type { ResolvedOrgScope } from '../auth/org-scope-access';
 
 const SUBTREE_CACHE_TTL_MS = 10_000;
+const ORGANIZATION_BANNER_URL_PATTERN = /^\/uploads\/images\/[a-z0-9][a-z0-9_.-]*$/i;
 type SubtreeCacheEntry = { expiresAt: number; ids: string[] };
 type TaxonomyRecord = Category | Tag | Cohort;
 type TaxonomySettingMap<T> = Record<OrganizationTaxonomyType, T>;
@@ -171,7 +173,44 @@ export class OrgsService {
     @InjectRepository(Activity) private readonly activities: Repository<Activity>,
     @InjectRepository(Project) private readonly projects: Repository<Project>,
     @InjectRepository(User) private readonly users: Repository<User>,
+    @InjectRepository(OrganizationMembership)
+    private readonly memberships?: Repository<OrganizationMembership>,
   ) {}
+
+  async getActiveMembership(userId: string, orgId: string) {
+    if (!this.memberships) return null;
+    return this.memberships.findOne({
+      where: { userId, orgId, status: 'active' },
+      relations: { organization: true },
+    });
+  }
+
+  async listActiveMemberships(userId: string) {
+    if (!this.memberships) return [];
+    return this.memberships.find({
+      where: { userId, status: 'active' },
+      relations: { organization: true },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  /**
+   * Creating a child organization does not create a hierarchy-wide data grant.
+   * The creator receives one explicit membership so they can intentionally
+   * switch into and administer the new organization.
+   */
+  async grantActiveMembership(
+    userId: string,
+    orgId: string,
+    role: Exclude<UserRole, 'superadmin'>,
+  ) {
+    if (!this.memberships) return null;
+    const existing = await this.memberships.findOne({ where: { userId, orgId } });
+    const membership = existing
+      ? Object.assign(existing, { role, status: 'active' as const })
+      : this.memberships.create({ userId, orgId, role, status: 'active' });
+    return this.memberships.save(membership);
+  }
 
   findUsersByOrg(orgId: string | null) {
     const where = orgId ? { orgId } : { orgId: IsNull() };
@@ -183,10 +222,47 @@ export class OrgsService {
     return this.users.find({ where: { orgId: In(orgIds) }, relations: { org: true } });
   }
 
+  async findMembershipUsersByOrgIds(orgIds: string[]) {
+    if (!this.memberships || !orgIds.length) return [] as User[];
+    const memberships = await this.memberships.find({
+      where: { orgId: In(orgIds), status: 'active' },
+      relations: { user: true, organization: true },
+    });
+    return memberships.map((membership) => ({
+      ...membership.user,
+      orgId: membership.orgId,
+      role: membership.role,
+      org: membership.organization,
+    }));
+  }
+
   async updateDefaultLocale(id: string, locale: SupportedLocale) {
     const org = await this.repo.findOne({ where: { id } });
     if (!org) throw new BadRequestException('Organization not found');
     org.defaultLocale = locale;
+    return this.repo.save(org);
+  }
+
+  async updateBranding(
+    id: string,
+    branding: {
+      bannerUrl?: string | null;
+      brandColor?: string | null;
+      bannerPosition?: number | null;
+    },
+  ) {
+    const org = await this.repo.findOne({ where: { id } });
+    if (!org) throw new BadRequestException('Organisation nicht gefunden');
+
+    if (typeof branding.bannerUrl !== 'undefined') {
+      if (branding.bannerUrl !== null && !ORGANIZATION_BANNER_URL_PATTERN.test(branding.bannerUrl)) {
+        throw new BadRequestException('Ungültiger Organisationsbanner');
+      }
+      org.bannerUrl = branding.bannerUrl;
+    }
+    if (typeof branding.brandColor !== 'undefined') org.brandColor = branding.brandColor;
+    if (typeof branding.bannerPosition !== 'undefined') org.bannerPosition = branding.bannerPosition;
+
     return this.repo.save(org);
   }
 
@@ -602,10 +678,6 @@ export class OrgsService {
       return { canView: false, canEditSelf: false, canEditChildDefaults: false };
     }
 
-    if (org.parentId === actorOrgId) {
-      return { canView: true, canEditSelf: true, canEditChildDefaults: true };
-    }
-
     if (org.id === actorOrgId) {
       const ownPolicy = this.resolveOwnAdminPolicyForOrg(org, orgMap);
       return {
@@ -629,7 +701,7 @@ export class OrgsService {
 
     const permissions = this.getTaxonomyConfigPermissions(org, actor, orgMap);
     if (!permissions.canView) {
-      throw new ForbiddenException('Org-Admins können nur die eigene Organisation und direkte Unterorganisationen konfigurieren');
+      throw new ForbiddenException('Organisation ist nicht als Mitgliedschaft zugewiesen');
     }
 
     return { orgs, orgMap, org, permissions };

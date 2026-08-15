@@ -126,7 +126,7 @@ describe('ProjectsService idempotent create', () => {
     expect(projectRepository.update).not.toHaveBeenCalled();
   });
 
-  it('allows direct updates in a descendant of the effective project scope', async () => {
+  it('allows direct updates only in the selected project organization', async () => {
     const projectRepository = {
       findOne: jest
         .fn()
@@ -139,12 +139,12 @@ describe('ProjectsService idempotent create', () => {
         }),
       update: jest.fn().mockResolvedValue(undefined),
     };
-    const service = createService(projectRepository, { 'parent-1': ['parent-1', 'child-1'] });
+    const service = createService(projectRepository);
 
     const result = await service.updateScoped(
       'project-1',
       { title: 'Child edit' },
-      { role: 'superadmin', orgId: null, effectiveOrgId: 'parent-1' },
+      { role: 'superadmin', orgId: null, effectiveOrgId: 'child-1' },
     );
 
     expect(projectRepository.update).toHaveBeenCalledWith(

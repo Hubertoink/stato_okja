@@ -3,6 +3,7 @@ import Modal from '@/components/Modal';
 import { deleteOrgApi } from '@/lib/orgs';
 import { useToast } from '@/components/Toast';
 import { autoT } from '@/i18n/auto';
+import { Button } from '@/components/ui/Button';
 
 interface DeleteOrgModalProps {
   orgId: string | null;
@@ -43,12 +44,13 @@ export default function DeleteOrgModal({ orgId, orgName, open, onClose, onDelete
         </div>
         {error && <div className="text-xs text-red-600 bg-red-50 border border-red-300 rounded p-2">{error}</div>}
         <div className="flex items-center justify-end gap-2">
-          <button className="px-3 py-1.5 rounded bg-gray-200 text-gray-700" disabled={busy} onClick={()=> onClose()}>{autoT('ui_07af7cb30fca')}</button>
-          <button
-            className="px-3 py-1.5 rounded bg-red-600 text-white disabled:opacity-60"
+          <Button variant="secondary" size="sm" disabled={busy} onClick={()=> onClose()}>{autoT('ui_07af7cb30fca')}</Button>
+          <Button
+            variant="danger"
+            size="sm"
             disabled={busy || !orgId}
             onClick={handleDelete}
-          >{busy ? autoT('ui_2b5a5dd9afbb') : autoT('ui_65cebdf22580')}</button>
+          >{busy ? autoT('ui_2b5a5dd9afbb') : autoT('ui_65cebdf22580')}</Button>
         </div>
       </div>
     </Modal>

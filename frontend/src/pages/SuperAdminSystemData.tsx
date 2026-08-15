@@ -1,9 +1,10 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckSquare, ChevronDown, ChevronUp, Clock, Copy, Database, Download, FileArchive, HardDrive, Image as ImageIcon, Search, Server, ShieldAlert, ShieldCheck, Square, Trash2, Upload } from 'lucide-react';
+import { Fragment, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, CheckSquare, ChevronDown, ChevronUp, Clock, Copy, Database, Download, ExternalLink, FileArchive, HardDrive, Image as ImageIcon, Search, Server, ShieldAlert, ShieldCheck, Square, Trash2, Upload } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import Modal from '@/components/Modal';
-import ProtectedImage from '@/components/ProtectedImage';
 import { useToast } from '@/components/Toast';
+import { Button, DeleteIconButton, IconButton } from '@/components/ui/Button';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import {
@@ -82,9 +83,9 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
       <div key="projects" className="space-y-1">
         <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">{autoT('ui_3930f79f07e5')}</div>
         {upload.referenceDetails.projects.map((project) => (
-          <div key={project.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
-            <div className="font-medium text-gray-900">{project.title}</div>
-            <div className="text-gray-500 break-all">{autoT('ui_d789a1e992ad')}{' '}{project.id}</div>
+          <div key={project.id} className="rounded-lg bg-[var(--surface-1)] px-2.5 py-2 text-xs text-[var(--text-secondary)]">
+            <div className="font-medium text-[var(--text-primary)]">{project.title}</div>
+            <div className="break-all text-[var(--text-muted)]">{autoT('ui_d789a1e992ad')}{' '}{project.id}</div>
           </div>
         ))}
       </div>,
@@ -96,10 +97,10 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
       <div key="project-documents" className="space-y-1">
         <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">{autoT('ui_bf0baf670db3')}</div>
         {upload.referenceDetails.projectDocuments.map((document) => (
-          <div key={document.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
-            <div className="font-medium text-gray-900">{document.filename}</div>
-            <div className="text-gray-500">{document.projectTitle || autoT('ui_5b4a4a84148c')}</div>
-            <div className="text-gray-500 break-all">{autoT('ui_17ae70e559aa')}{' '}{document.projectId}</div>
+          <div key={document.id} className="rounded-lg bg-[var(--surface-1)] px-2.5 py-2 text-xs text-[var(--text-secondary)]">
+            <div className="font-medium text-[var(--text-primary)]">{document.filename}</div>
+            <div className="text-[var(--text-muted)]">{document.projectTitle || autoT('ui_5b4a4a84148c')}</div>
+            <div className="break-all text-[var(--text-muted)]">{autoT('ui_17ae70e559aa')}{' '}{document.projectId}</div>
           </div>
         ))}
       </div>,
@@ -111,9 +112,9 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
       <div key="templates" className="space-y-1">
         <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">{autoT('ui_ab41f3ac9b6f')}</div>
         {upload.referenceDetails.projectTemplates.map((template) => (
-          <div key={template.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
-            <div className="font-medium text-gray-900">{template.title}</div>
-            <div className="text-gray-500 break-all">{autoT('ui_d789a1e992ad')}{' '}{template.id}</div>
+          <div key={template.id} className="rounded-lg bg-[var(--surface-1)] px-2.5 py-2 text-xs text-[var(--text-secondary)]">
+            <div className="font-medium text-[var(--text-primary)]">{template.title}</div>
+            <div className="break-all text-[var(--text-muted)]">{autoT('ui_d789a1e992ad')}{' '}{template.id}</div>
           </div>
         ))}
       </div>,
@@ -125,9 +126,9 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
       <div key="avatars" className="space-y-1">
         <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">{autoT('ui_5b0a6e00f3c3')}</div>
         {upload.referenceDetails.userAvatars.map((user) => (
-          <div key={user.id} className="text-xs text-gray-700 rounded-lg bg-gray-50 px-2.5 py-2">
-            <div className="font-medium text-gray-900">{user.name || user.email}</div>
-            <div className="text-gray-500 break-all">{user.email}</div>
+          <div key={user.id} className="rounded-lg bg-[var(--surface-1)] px-2.5 py-2 text-xs text-[var(--text-secondary)]">
+            <div className="font-medium text-[var(--text-primary)]">{user.name || user.email}</div>
+            <div className="break-all text-[var(--text-muted)]">{user.email}</div>
           </div>
         ))}
       </div>,
@@ -147,29 +148,6 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
   }
 
   return blocks;
-}
-
-function AuthorizedUploadThumbnail({ upload }: { upload: SystemDataUploadItem }) {
-  if (!upload.isImage) {
-    return (
-      <div className="w-full h-28 rounded-lg border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-gray-400">
-        <FileArchive className="w-7 h-7" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative w-full h-28 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
-      <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-        <ImageIcon className="w-7 h-7" />
-      </div>
-      <ProtectedImage
-        src={upload.url}
-        alt={upload.filename}
-        className="relative z-[1] w-full h-full object-cover"
-      />
-    </div>
-  );
 }
 
 const EASY_BACKUP_COMMAND = '.\\scripts\\onprem-backup-easy.ps1 -OpenFolder';
@@ -232,6 +210,7 @@ export default function SuperAdminSystemData() {
   const [showOrphanedOnly, setShowOrphanedOnly] = useState(false);
   const [selectedUploadPaths, setSelectedUploadPaths] = useState<string[]>([]);
   const [expandedUploadPaths, setExpandedUploadPaths] = useState<string[]>([]);
+  const [openingUploadPath, setOpeningUploadPath] = useState<string | null>(null);
   const [uploadsToDelete, setUploadsToDelete] = useState<SystemDataUploadItem[]>([]);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
   const [purgeConfirmOpen, setPurgeConfirmOpen] = useState(false);
@@ -444,6 +423,36 @@ export default function SuperAdminSystemData() {
         ? current.filter((path) => path !== relativePath)
         : [...current, relativePath]
     ));
+  };
+
+  const handleOpenUpload = async (upload: SystemDataUploadItem) => {
+    // Open the tab synchronously so browsers retain the user's click gesture;
+    // the protected file itself is loaded afterwards with the authenticated API client.
+    const previewWindow = window.open('', '_blank');
+    if (previewWindow) previewWindow.opener = null;
+
+    setOpeningUploadPath(upload.relativePath);
+    try {
+      const response = await api.get<Blob>(upload.url, { responseType: 'blob' });
+      const blobUrl = URL.createObjectURL(response.data);
+
+      if (previewWindow) {
+        previewWindow.location.replace(blobUrl);
+      } else {
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.click();
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 5 * 60_000);
+    } catch (error) {
+      previewWindow?.close();
+      showToast(getApiErrorMessage(error, 'Die Datei konnte nicht geöffnet werden.'), { type: 'error', durationMs: 4000 });
+    } finally {
+      setOpeningUploadPath(null);
+    }
   };
 
   return (
@@ -825,15 +834,16 @@ export default function SuperAdminSystemData() {
                   />
                 </label>
 
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                <Button
+                  variant="danger"
+                  size="lg"
+                  className="w-full"
                   onClick={() => setPurgeConfirmOpen(true)}
                   disabled={purgeMutation.isPending || !password.trim() || !isConfirmationValid}
                 >
                   <Trash2 className="w-4 h-4" />
                   {purgeMutation.isPending ? autoT('ui_7f0db1dc1f8e') : autoT('ui_223bdd6ba83d')}
-                </button>
+                </Button>
 
                 {lastPurgeSummary && (
                   <div className="system-data-banner system-data-banner-success rounded-xl px-4 py-3 text-sm space-y-1">
@@ -984,14 +994,14 @@ export default function SuperAdminSystemData() {
               {allFilteredSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
               {allFilteredSelected ? autoT('ui_8305635fe472') : autoT('ui_590a14424612')}
             </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+            <Button
+              variant="danger"
+              size="md"
               onClick={() => setUploadsToDelete(selectedUploads)}
               disabled={!selectedUploads.length || deleteUploadsMutation.isPending}
             >
               <Trash2 className="w-4 h-4" />{autoT('ui_7864577e5ee3')}{selectedUploads.length})
-            </button>
+            </Button>
           </div>
 
           {uploadsQuery.isLoading && (
@@ -1009,69 +1019,115 @@ export default function SuperAdminSystemData() {
           )}
 
           {filteredUploads.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto pr-1">
-              {filteredUploads.map((upload) => {
-                const isSelected = selectedUploadPathSet.has(upload.relativePath);
-                const isExpanded = expandedUploadPathSet.has(upload.relativePath);
-                const details = renderUploadReferenceDetails(upload);
-                return (
-                  <div key={upload.relativePath} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm space-y-2.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="rounded border-gray-300 text-viridian focus:ring-viridian/30"
-                          checked={isSelected}
-                          onChange={() => toggleUploadSelection(upload.relativePath)}
-                        />{autoT('ui_bc4e896ee3c2')}</label>
-                      {upload.referenceCount > 0 && (
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 text-xs font-medium text-viridian hover:text-viridian/80"
-                          onClick={() => toggleExpandedUpload(upload.relativePath)}
+            <div className="max-h-[60vh] overflow-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)]">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="sticky top-0 z-10 border-b border-[var(--border-subtle)] bg-[var(--surface-2)] text-xs uppercase tracking-wide text-[var(--text-secondary)]">
+                  <tr>
+                    <th className="w-12 px-4 py-3 text-center font-semibold">
+                      <span className="sr-only">{autoT('ui_0177f6dca0b7')}</span>
+                    </th>
+                    <th className="px-4 py-3 font-semibold">Datei</th>
+                    <th className="px-4 py-3 text-right font-semibold">Größe</th>
+                    <th className="px-4 py-3 font-semibold">Verknüpfungen</th>
+                    <th className="px-4 py-3 text-right font-semibold">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  {filteredUploads.map((upload) => {
+                    const isSelected = selectedUploadPathSet.has(upload.relativePath);
+                    const isExpanded = expandedUploadPathSet.has(upload.relativePath);
+                    const details = renderUploadReferenceDetails(upload);
+                    const UploadTypeIcon = upload.isImage ? ImageIcon : FileArchive;
+                    const openLabel = upload.isImage ? 'Bild öffnen' : 'Datei öffnen';
+
+                    return (
+                      <Fragment key={upload.relativePath}>
+                        <tr
+                          className={`cursor-pointer transition-colors hover:bg-[var(--interactive-soft)] ${isSelected ? 'bg-[var(--interactive-soft)]' : ''}`}
+                          aria-selected={isSelected}
+                          onClick={(event) => {
+                            if ((event.target as HTMLElement).closest('button, input, label, a')) return;
+                            toggleUploadSelection(upload.relativePath);
+                          }}
                         >
-                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          {isExpanded ? autoT('ui_ffb39dcd1d39') : autoT('ui_696e24e12eb2')}
-                        </button>
-                      )}
-                    </div>
-
-                    <AuthorizedUploadThumbnail upload={upload} />
-
-                    <div className="space-y-1">
-                      <div className="text-[13px] font-semibold text-gray-900 break-all leading-5">{upload.filename}</div>
-                      <div className="text-xs text-gray-500 break-all">{upload.relativePath}</div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-gray-100 text-gray-700 font-medium text-xs">
-                        {formatBytes(upload.size)}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${upload.referenceCount ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                        {upload.referenceCount ? autoT('ui_b7efbd005cd8', { value0: upload.referenceCount }) : autoT('ui_3ae893fbd38a')}
-                      </span>
-                    </div>
-
-                    <div className="text-xs text-gray-600 min-h-[2rem]">
-                      {formatUploadReferenceLabel(upload)}
-                    </div>
-
-                    {isExpanded && details.length > 0 && (
-                      <div className="rounded-lg border border-gray-200 bg-white p-2.5 space-y-3 max-h-48 overflow-y-auto">
-                        {details}
-                      </div>
-                    )}
-
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center gap-2 w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
-                      onClick={() => setUploadsToDelete([upload])}
-                      disabled={deleteUploadsMutation.isPending}
-                    >
-                      <Trash2 className="w-4 h-4" />{autoT('ui_6491dcdaf491')}</button>
-                  </div>
-                );
-              })}
+                          <td className="px-4 py-3 text-center align-middle">
+                            <label className="inline-flex cursor-pointer items-center justify-center">
+                              <input
+                                type="checkbox"
+                                className="rounded border-[var(--border-strong)] text-viridian focus:ring-[var(--focus-ring)]"
+                                checked={isSelected}
+                                onChange={() => toggleUploadSelection(upload.relativePath)}
+                                aria-label={`${autoT('ui_bc4e896ee3c2')}: ${upload.filename}`}
+                              />
+                            </label>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex min-w-0 items-start gap-3">
+                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--surface-2)] text-[var(--text-secondary)]">
+                                <UploadTypeIcon className="h-4 w-4" aria-hidden="true" />
+                              </span>
+                              <div className="min-w-0">
+                                <div className="break-all font-medium leading-5 text-[var(--text-primary)]">{upload.filename}</div>
+                                <div className="mt-0.5 break-all text-xs text-[var(--text-muted)]">{upload.relativePath}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right align-top text-[var(--text-secondary)]">
+                            {formatBytes(upload.size)}
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${upload.referenceCount ? 'bg-[var(--status-success-bg)] text-[var(--status-success-text)]' : 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'}`}>
+                                {upload.referenceCount ? autoT('ui_b7efbd005cd8', { value0: upload.referenceCount }) : autoT('ui_3ae893fbd38a')}
+                              </span>
+                              {upload.referenceCount > 0 && details.length > 0 ? (
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                                  onClick={() => toggleExpandedUpload(upload.relativePath)}
+                                  aria-expanded={isExpanded}
+                                >
+                                  {isExpanded ? <ChevronUp className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
+                                  {isExpanded ? autoT('ui_ffb39dcd1d39') : autoT('ui_696e24e12eb2')}
+                                </button>
+                              ) : null}
+                            </div>
+                            <div className="mt-1 text-xs text-[var(--text-muted)]">{formatUploadReferenceLabel(upload)}</div>
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <div className="flex justify-end gap-2">
+                              <IconButton
+                                aria-label={openLabel}
+                                size="icon-compact"
+                                variant="secondary"
+                                title={openLabel}
+                                onClick={() => void handleOpenUpload(upload)}
+                                disabled={openingUploadPath === upload.relativePath}
+                              >
+                                <ExternalLink aria-hidden="true" />
+                              </IconButton>
+                              <DeleteIconButton
+                                aria-label={`${autoT('ui_6491dcdaf491')}: ${upload.filename}`}
+                                size="icon-compact"
+                                title={autoT('ui_6491dcdaf491')}
+                                onClick={() => setUploadsToDelete([upload])}
+                                disabled={deleteUploadsMutation.isPending}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && details.length > 0 ? (
+                          <tr key={`${upload.relativePath}-details`} className="bg-[var(--surface-2)]">
+                            <td colSpan={5} className="px-4 py-3">
+                              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{details}</div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

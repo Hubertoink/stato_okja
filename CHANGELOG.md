@@ -15,6 +15,11 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Der Dialog zum Organisationswechsel zeigt je Organisation das Banner dezent
   im Hintergrund oder – ohne Banner – die konfigurierte Akzentfarbe.
 
+### Fixed
+- Die verzögerte Scroll-Lock-Bereinigung von Dialogen ist auch beim Abbau einer
+  Testumgebung sicher und verursacht keinen Zugriff auf ein nicht mehr
+  verfügbares Browserfenster.
+
 ---
 
 ## [1.8.1] - 2026-08-15

@@ -25,6 +25,10 @@ function currentScrollY() {
 
 function restoreScrollPosition(scrollY: number, scrollElement: HTMLElement | null) {
   const restore = () => {
+    // A deferred cleanup may run while a test environment is already being
+    // torn down. Browsers always have window, but the guard keeps the cleanup
+    // safe for SSR and jsdom teardown as well.
+    if (typeof window === 'undefined') return;
     // Some browsers restore the document through <html>, others through window.
     // Updating both keeps the position stable while the fixed body is released.
     window.scrollTo({ top: scrollY, left: 0, behavior: 'auto' });
@@ -33,10 +37,10 @@ function restoreScrollPosition(scrollY: number, scrollElement: HTMLElement | nul
 
   restore();
   window.requestAnimationFrame(() => {
-    if (lockCount !== 0) return;
+    if (typeof window === 'undefined' || lockCount !== 0) return;
     restore();
     window.setTimeout(() => {
-      if (lockCount === 0) restore();
+      if (typeof window !== 'undefined' && lockCount === 0) restore();
     }, 0);
   });
 }
@@ -98,7 +102,9 @@ function unlockBody() {
     const { scrollY, scrollElement, historyScrollRestoration } = restoreState;
     restoreScrollPosition(scrollY, scrollElement);
     window.setTimeout(() => {
-      if (lockCount === 0) window.history.scrollRestoration = historyScrollRestoration;
+      if (typeof window !== 'undefined' && lockCount === 0) {
+        window.history.scrollRestoration = historyScrollRestoration;
+      }
     }, 50);
     restoreState = null;
   }

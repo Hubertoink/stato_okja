@@ -7,6 +7,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.8.1] - 2026-08-15
+
+### Changed
+- Die Upload-Verwaltung verwendet eine zugängliche Tabelle mit Dateityp,
+  Größe, Verknüpfungen, Referenzdetails sowie geschützten Öffnen-Aktionen.
+- Uploads lassen sich über die gesamte Tabellenzeile auswählen; die
+  destruktiven Aktionen verwenden projektweit die zentrale Button-Variante.
+- Der technische Browser-Download-Hinweis wurde aus dem Dashboard-Datenexport
+  entfernt.
+
+---
+
 ## [1.8.0] - 2026-08-15
 
 ### Fixed

@@ -699,7 +699,6 @@ export default function ExportModal({
         </div>
         <div className="text-xs text-gray-500">{autoT('ui_deec288a9b9b')}{from}{' '}{autoT('ui_1094cd06521b')}{' '}{effectiveTo}{' '}{autoT('ui_fd8ac07baabd')}{' '}{activities.length}
         </div>
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">{autoT('ui_a8d6d9cbf768')}</div>
         <div>
           <h4 className="font-semibold text-viridian mb-1">{autoT('ui_42b453dcfd49')}</h4>
           <p className="text-sm text-gray-600 mb-3">{autoT('ui_7400b87b587a')}</p>

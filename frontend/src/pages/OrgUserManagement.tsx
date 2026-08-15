@@ -39,7 +39,7 @@ import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getEmailValidationMessage } from '@/lib/emailValidation';
 import { autoT } from '@/i18n/auto';
 import { useTranslation } from 'react-i18next';
-import { Button, CreateButton } from '@/components/ui/Button';
+import { Button, CreateButton, DeleteIconButton } from '@/components/ui/Button';
 import { FieldError, FieldLabel, Input, Select } from '@/components/ui/Field';
 
 type UserGroup = { key: string; name: string; users: UserDto[] };
@@ -741,13 +741,14 @@ function UserRow({
           )}
 
           {!isCurrentUser && (
-            <button
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+            <Button
+              variant="danger"
+              size="lg"
               onClick={onDelete}
             >
               <Trash2 className="w-4 h-4" />
               {autoT('ui_f78b6376e028')}
-            </button>
+            </Button>
           )}
         </div>
       </li>
@@ -831,13 +832,12 @@ function UserRow({
 
           {/* Delete button (not for self) */}
           {!isCurrentUser && (
-            <button
-              className="p-2 rounded hover:bg-red-100 transition-colors"
+            <DeleteIconButton
+              size="icon-compact"
               title={autoT('ui_2a1dd54ba9b6')}
+              aria-label={autoT('ui_2a1dd54ba9b6')}
               onClick={onDelete}
-            >
-              <Trash2 className="w-4 h-4 text-red-600" />
-            </button>
+            />
           )}
         </div>
       </div>

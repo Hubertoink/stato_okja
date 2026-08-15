@@ -15,6 +15,7 @@ import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { useToast } from '@/components/Toast';
+import { Button } from '@/components/ui/Button';
 
 export default function MyProfile() {
   const { user, refresh, replaceSession } = useAuth();
@@ -210,16 +211,16 @@ function SessionsSection() {
               </div>
               {session.ipAddress && <div className="mt-1 text-xs text-gray-500">{autoT('ui_97322c15b2fa')}{' '}{session.ipAddress}</div>}
             </div>
-            <button
-              type="button"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+            <Button
+              variant="danger"
+              size="md"
               disabled={busyId === session.id}
               onClick={() => void revokeSession(session.id)}
               title={session.isCurrent ? autoT('ui_e5f0d590864f') : autoT('ui_d53c36e80d08')}
             >
               <Trash2 className="w-4 h-4" />
               {session.isCurrent ? autoT('ui_e5f0d590864f') : autoT('ui_2c7ccedb30fe')}
-            </button>
+            </Button>
           </div>
         ))}
       </div>

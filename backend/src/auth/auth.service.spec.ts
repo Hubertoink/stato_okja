@@ -191,6 +191,28 @@ describe('AuthService invitations', () => {
     }));
   });
 
+  it('reports an incorrect current password as a client error', async () => {
+    const { service } = createService({
+      existingUser: {
+        id: 'user-1',
+        email: 'local@example.org',
+        name: 'Local User',
+        role: 'user',
+        orgId: 'org-1',
+        passwordHash: await bcrypt.hash('CurrentPassword1!', 10),
+      },
+    });
+
+    await expect(service.changePassword(
+      'user-1',
+      'IncorrectPassword1!',
+      'ReplacementPassword1!',
+    )).rejects.toMatchObject({
+      status: 400,
+      message: 'Aktuelles Passwort ist falsch',
+    });
+  });
+
   it('accepts an active reset token without consuming it', async () => {
     const { service, jwt } = createService({
       existingUser: { id: 'user-1', passwordResetTokenVersion: 3 },

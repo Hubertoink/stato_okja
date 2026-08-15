@@ -1001,10 +1001,10 @@ export class AuthService {
   ) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user || !user.passwordHash) {
-      throw new Error('Passwortänderung nicht möglich');
+      throw new BadRequestException('Passwortänderung nicht möglich');
     }
     const ok = await bcrypt.compare(currentPassword || '', user.passwordHash || '');
-    if (!ok) throw new Error('Aktuelles Passwort ist falsch');
+    if (!ok) throw new BadRequestException('Aktuelles Passwort ist falsch');
     await this.savePassword(user, newPassword, { mustChangePassword: false, bumpResetVersion: true });
     // savePassword invalidates all refresh sessions, including the one that
     // authorized this request. Replace it immediately so the mandatory

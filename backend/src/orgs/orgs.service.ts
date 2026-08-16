@@ -266,6 +266,19 @@ export class OrgsService {
     return this.repo.save(org);
   }
 
+  async updateProcessesEnabled(id: string, enabled: boolean) {
+    const org = await this.repo.findOne({ where: { id } });
+    if (!org) throw new BadRequestException('Organisation nicht gefunden');
+    org.processesEnabled = enabled;
+    return this.repo.save(org);
+  }
+
+  async isProcessesEnabled(id: string | null): Promise<boolean> {
+    if (!id) return false;
+    const org = await this.repo.findOne({ where: { id }, select: { id: true, processesEnabled: true } });
+    return org?.processesEnabled === true;
+  }
+
   private clearSubtreeCache() {
     this.subtreeCache.clear();
   }

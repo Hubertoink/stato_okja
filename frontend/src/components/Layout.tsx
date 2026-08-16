@@ -22,6 +22,7 @@ import Modal from '@/components/Modal';
 import ProtectedImage, { useResolvedImageSrc } from '@/components/ProtectedImage';
 import { listAccessibleOrgs, listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
 import { canAccessDevTools } from '@/lib/devToolsConfig';
+import { useProcessOAccess } from '@/lib/processes';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
 import { ImprintModal, PrivacyNoticeModal, TermsOfUseModal } from '@/components/LegalModals';
@@ -188,6 +189,8 @@ export default function Layout() {
 
   const { session: quickTallySession } = useQuickTallySession();
   const [quickTallyOpen, setQuickTallyOpen] = useState(false);
+  const processOAccess = useProcessOAccess();
+  const processOEnabled = processOAccess.data?.enabled === true;
 
   const openQuickTally = () => setQuickTallyOpen(true);
   const minimizeQuickTally = () => setQuickTallyOpen(false);
@@ -245,14 +248,18 @@ export default function Layout() {
     logbook: t('navigation.logbook'),
     calendar: t('navigation.calendar'),
     projects: t('navigation.projects'),
+    processes: 'ProzessO',
     surveys: t('navigation.surveys'),
     statistics: t('navigation.statistics'),
     settings: t('navigation.settings'),
   };
   const mobileBottomItems = mobileNavLayout.bottom.map((id) => mobileNavItems[id]);
-  const mobileMoreItems = MOBILE_NAV_ITEM_IDS.filter(
-    (id) => !mobileNavLayout.bottom.includes(id),
-  ).map((id) => mobileNavItems[id]);
+  const mobileMoreItems = [
+    ...MOBILE_NAV_ITEM_IDS.filter(
+      (id) => !mobileNavLayout.bottom.includes(id),
+    ).map((id) => mobileNavItems[id]),
+    ...(processOEnabled ? [{ to: '/processes', label: 'ProzessO', icon: GitBranch }] : []),
+  ];
 
   useEffect(() => {
     const syncMobileLayout = () => setMobileNavLayout(getMobileNavLayout(user?.id));
@@ -816,6 +823,25 @@ export default function Layout() {
                   </span>
                 </Link>
               </li>
+              {processOEnabled && (
+                <li>
+                  <Link
+                    to="/processes"
+                    data-tooltip={navLabels.processes}
+                    className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
+                      isActive('/processes') ? 'theme-nav-item-active' : ''
+                    }`}
+                  >
+                    <GitBranch className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                    <span
+                      className={`nav-label ${isActive('/processes') ? 'nav-label-active' : ''}`}
+                      data-text={navLabels.processes}
+                    >
+                      {navLabels.processes}
+                    </span>
+                  </Link>
+                </li>
+              )}
               <li>
                 <Link
                   to="/surveys"

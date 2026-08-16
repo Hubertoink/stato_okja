@@ -27,6 +27,7 @@ import {
   MasterDataContentDto,
   MoveOrganizationDto,
   UpdateOrganizationBrandingDto,
+  UpdateOrganizationProcessesEnabledDto,
   UpdateDefaultLocaleDto,
   UpdateOpeningHoursDto,
   UpdateOrganizationTaxonomySettingsDto,
@@ -212,6 +213,15 @@ export class OrgsController {
   ) {
     await this.assertCanAccessOrg(id, req.user);
     return this.service.updateBranding(id, body || {});
+  }
+
+  @Roles('superadmin')
+  @Patch(':id/processes-enabled')
+  updateProcessesEnabled(
+    @Param('id') id: string,
+    @Body() body: UpdateOrganizationProcessesEnabledDto,
+  ) {
+    return this.service.updateProcessesEnabled(id, body.enabled);
   }
 
   // List users for an org (optionally include subtree)

@@ -76,6 +76,7 @@ const ProjectPickerPage = lazyWithReload(() => import('@/pages/ProjectPickerPage
 const Logbook = lazyWithReload(() => import('@/pages/Logbook'));
 const LogbookEntryPage = lazyWithReload(() => import('@/pages/LogbookEntryPage'));
 const Surveys = lazyWithReload(() => import('@/pages/Surveys'));
+const Processes = lazyWithReload(() => import('@/pages/Processes'));
 const SurveyDetail = lazyWithReload(() => import('@/pages/SurveyDetail'));
 const PublicSurvey = lazyWithReload(() => import('@/pages/PublicSurvey'));
 
@@ -322,6 +323,14 @@ function AuthedRoutes() {
             element={
               <RouteBoundary label={t('navigation.projects')}>
                 <Projects />
+              </RouteBoundary>
+            }
+          />
+          <Route
+            path="processes"
+            element={
+              <RouteBoundary label="ProzessO">
+                <Processes />
               </RouteBoundary>
             }
           />

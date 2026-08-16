@@ -19,6 +19,7 @@ import {
   updateOrgTaxonomySettings,
   updateOrgDefaultLocale,
   updateOrgBranding,
+  updateOrgProcessesEnabled,
   uploadOrganizationBanner,
 } from '@/lib/orgs';
 import { api } from '@/lib/api';
@@ -1512,6 +1513,17 @@ export default function AdminOrgSetup() {
     reloadOrgs();
   }, [user?.id, user?.role, user?.orgId]);
 
+  async function handleProcessesEnabled(orgId: string, enabled: boolean) {
+    try {
+      const updated = await updateOrgProcessesEnabled(orgId, enabled);
+      setOrgs((current) => current.map((org) => (org.id === updated.id ? updated : org)));
+      await qc.invalidateQueries({ queryKey: ['processes', 'access', orgId] });
+      showToast(enabled ? 'ProzessO für die Organisation freigeschaltet.' : 'ProzessO für die Organisation deaktiviert.');
+    } catch {
+      showToast('Die ProzessO-Freischaltung konnte nicht geändert werden.', { type: 'error' });
+    }
+  }
+
   useEffect(() => {
     setSelectedOrgId((current) => {
       if (current && orgs.some((org) => org.id === current)) return current;
@@ -1793,6 +1805,7 @@ export default function AdminOrgSetup() {
                         setSelectedOrgId(nextOrg.id);
                         setBrandingOrg(nextOrg);
                       }}
+                      onSetProcessesEnabled={(orgId, enabled) => void handleProcessesEnabled(orgId, enabled)}
                     />
                   ))}
                 </ul>
@@ -1999,6 +2012,7 @@ function OrgTree({
   onMoved,
   onOpenSettings,
   onOpenBranding,
+  onSetProcessesEnabled,
 }: {
   node: OrgTreeNode;
   depth: number;
@@ -2009,6 +2023,7 @@ function OrgTree({
   onMoved: () => void;
   onOpenSettings: (org: OrgDto) => void;
   onOpenBranding: (org: OrgDto) => void;
+  onSetProcessesEnabled: (orgId: string, enabled: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
@@ -2023,6 +2038,7 @@ function OrgTree({
         onMoved={onMoved}
         onOpenSettings={onOpenSettings}
         onOpenBranding={onOpenBranding}
+        onSetProcessesEnabled={onSetProcessesEnabled}
         hasChildren={hasChildren}
         childCount={node.children.length}
         expanded={expanded}
@@ -2043,6 +2059,7 @@ function OrgTree({
             onMoved={onMoved}
             onOpenSettings={onOpenSettings}
             onOpenBranding={onOpenBranding}
+            onSetProcessesEnabled={onSetProcessesEnabled}
           />
         ))}
     </>
@@ -2098,6 +2115,7 @@ function OrgRow({
   onMoved,
   onOpenSettings,
   onOpenBranding,
+  onSetProcessesEnabled,
   hasChildren,
   childCount,
   expanded,
@@ -2112,6 +2130,7 @@ function OrgRow({
   onMoved: () => void;
   onOpenSettings: (org: OrgDto) => void;
   onOpenBranding: (org: OrgDto) => void;
+  onSetProcessesEnabled: (orgId: string, enabled: boolean) => void;
   hasChildren: boolean;
   childCount: number;
   expanded: boolean;
@@ -2341,6 +2360,14 @@ function OrgRow({
               }}
             />
           )}
+          {user?.role === 'superadmin' && (
+            <Toggle
+              checked={org.processesEnabled === true}
+              onChange={(enabled) => onSetProcessesEnabled(org.id, enabled)}
+              label="ProzessO"
+              ariaLabel={`ProzessO für ${org.name} ${org.processesEnabled ? 'deaktivieren' : 'aktivieren'}`}
+            />
+          )}
           {canMoveOrg && (
             <button
               className="org-tree-icon-button inline-flex items-center justify-center w-8 h-8 rounded"
@@ -2443,6 +2470,18 @@ function OrgRow({
               onOpenBranding(org);
             }}
           />
+        )}
+
+        {user?.role === 'superadmin' && (
+          <button
+            type="button"
+            className={`org-tree-action-button inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${org.processesEnabled ? 'text-viridian' : ''}`}
+            title={org.processesEnabled ? 'ProzessO deaktivieren' : 'ProzessO aktivieren'}
+            onClick={() => onSetProcessesEnabled(org.id, org.processesEnabled !== true)}
+          >
+            <GitBranch className="w-4 h-4" />
+            <span>ProzessO {org.processesEnabled ? 'an' : 'aus'}</span>
+          </button>
         )}
 
         {/* Move Dropdown */}

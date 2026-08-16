@@ -23,6 +23,7 @@ import { ThrottlerBehindProxyGuard } from './common/throttler-behind-proxy.guard
 import { HealthController } from './health.controller';
 import { LogbookModule } from './logbook/logbook.module';
 import { SurveysModule } from './surveys/surveys.module';
+import { ProcessesModule } from './processes/processes.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { SurveysModule } from './surveys/surveys.module';
     SystemDataModule,
     LogbookModule,
     SurveysModule,
+    ProcessesModule,
   ],
   controllers: [HealthController],
   providers: [

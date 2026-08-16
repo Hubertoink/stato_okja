@@ -72,6 +72,11 @@ export class Organization {
   @Column({ type: 'smallint', nullable: true })
   bannerPosition!: number | null;
 
+  // Optional process-management workspace. Superadmins decide per
+  // organization whether ProzessO is available to its members.
+  @Column({ type: 'boolean', default: false })
+  processesEnabled!: boolean;
+
   @OneToMany('User', (u: User) => u.org)
   users!: User[];
 

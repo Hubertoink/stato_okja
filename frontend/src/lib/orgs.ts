@@ -11,6 +11,7 @@ export interface OrgDto {
   bannerUrl?: string | null;
   brandColor?: string | null;
   bannerPosition?: number | null;
+  processesEnabled?: boolean;
 }
 
 export interface OrganizationBrandingUpdate {
@@ -164,6 +165,11 @@ export async function updateOrgBranding(
   branding: OrganizationBrandingUpdate,
 ): Promise<OrgDto> {
   const res = await api.patch<OrgDto>(`/orgs/${orgId}/branding`, branding);
+  return res.data;
+}
+
+export async function updateOrgProcessesEnabled(orgId: string, enabled: boolean): Promise<OrgDto> {
+  const res = await api.patch<OrgDto>(`/orgs/${orgId}/processes-enabled`, { enabled });
   return res.data;
 }
 

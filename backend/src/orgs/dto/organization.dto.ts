@@ -38,6 +38,11 @@ export class UpdateOrganizationBrandingDto {
   bannerPosition?: number | null;
 }
 
+export class UpdateOrganizationProcessesEnabledDto {
+  @IsBoolean()
+  enabled!: boolean;
+}
+
 export class OpeningHoursDayDto {
   @IsBoolean() open!: boolean;
   @IsOptional() @IsString() from?: string;

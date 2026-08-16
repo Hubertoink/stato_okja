@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addEdge,
@@ -16,9 +16,10 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import '@/styles/processes.css';
 import { HelpCircle, FilePlus2, GitBranch, Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Button, CreateButton } from '@/components/ui/Button';
+import { Button, CreateButton, IconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import { useToast } from '@/components/Toast';
 import { useOrgScopeKey } from '@/lib/orgScope';
@@ -39,6 +40,9 @@ type FlowNodeData = {
   description?: string;
   responsibleRole?: string;
   nodeType: ProcessNodeType;
+  canEdit?: boolean;
+  onDelete?: (nodeId: string) => void;
+  onAppendActivity?: (nodeId: string) => void;
 };
 type FlowNode = Node<FlowNodeData, 'process'>;
 
@@ -64,12 +68,20 @@ function nodeId() {
   return globalThis.crypto?.randomUUID?.() || `process-node-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function toFlowNodes(definition: ProcessDefinition): FlowNode[] {
+type FlowNodeActions = Pick<FlowNodeData, 'canEdit' | 'onDelete' | 'onAppendActivity'>;
+
+const workflowEdgeStyle = {
+  stroke: 'rgba(192, 202, 224, 0.72)',
+  strokeWidth: 1.5,
+  strokeDasharray: '4 5',
+};
+
+function toFlowNodes(definition: ProcessDefinition, actions: FlowNodeActions): FlowNode[] {
   return definition.nodes.map((node) => ({
     id: node.id,
     type: 'process',
     position: node.position,
-    data: { ...node.data, nodeType: node.type },
+    data: { ...node.data, nodeType: node.type, ...actions },
   }));
 }
 
@@ -79,7 +91,8 @@ function toFlowEdges(definition: ProcessDefinition): Edge[] {
     source: edge.source,
     target: edge.target,
     label: edge.label,
-    type: 'smoothstep',
+    type: 'bezier',
+    style: workflowEdgeStyle,
   }));
 }
 
@@ -105,22 +118,54 @@ function toDefinition(nodes: FlowNode[], edges: Edge[]): ProcessDefinition {
   };
 }
 
-const ProcessNodeCard = memo(({ data, selected }: NodeProps<FlowNode>) => {
+const ProcessNodeCard = memo(({ id, data, selected }: NodeProps<FlowNode>) => {
   const color = nodeColors[data.nodeType];
   return (
     <div
-      className={`min-w-44 rounded-xl border bg-[var(--surface-1)] shadow-sm ${selected ? 'ring-2 ring-viridian' : ''}`}
+      className={`process-o-node min-w-44 rounded-xl border bg-[var(--surface-1)] shadow-sm ${selected ? 'ring-2 ring-viridian' : ''}`}
       style={{ borderColor: `${color}80` }}
     >
       <Handle type="target" position={Position.Left} className="!h-2.5 !w-2.5" style={{ background: color }} />
-      <div className="rounded-t-xl px-3 py-1.5 text-xs font-semibold text-white" style={{ background: color }}>
-        {nodeLabels[data.nodeType]}
+      <div className="flex items-center justify-between rounded-t-xl px-3 py-1.5 text-xs font-semibold text-white" style={{ background: color }}>
+        <span>{nodeLabels[data.nodeType]}</span>
+        {data.canEdit ? (
+          <IconButton
+            className="process-o-node-delete nodrag nowheel"
+            aria-label={`${data.label || 'Schritt'} entfernen`}
+            size="icon-compact"
+            variant="ghost"
+            title="Schritt entfernen"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              data.onDelete?.(id);
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconButton>
+        ) : null}
       </div>
       <div className="px-3 py-2">
         <div className="font-semibold text-[var(--text-primary)]">{data.label || 'Unbenannter Schritt'}</div>
         {data.responsibleRole ? <div className="mt-1 text-xs text-[var(--text-muted)]">{data.responsibleRole}</div> : null}
       </div>
       <Handle type="source" position={Position.Right} className="!h-2.5 !w-2.5" style={{ background: color }} />
+      {data.canEdit ? (
+        <IconButton
+          className="process-o-node-add nodrag nowheel"
+          aria-label="Aktivität nach diesem Schritt hinzufügen"
+          size="icon-compact"
+          variant="ghost"
+          title="Aktivität nach diesem Schritt hinzufügen"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            data.onAppendActivity?.(id);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </IconButton>
+      ) : null}
     </div>
   );
 });
@@ -139,6 +184,7 @@ export default function Processes() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const nodesRef = useRef<FlowNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
@@ -149,6 +195,44 @@ export default function Processes() {
   const canEdit = access.data?.canEdit === true;
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) || null;
   const nodeTypes = useMemo(() => ({ process: ProcessNodeCard }), []);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  const removeStep = useCallback((nodeIdToRemove: string) => {
+    if (!canEdit) return;
+    setNodes((current) => current.filter((node) => node.id !== nodeIdToRemove));
+    setEdges((current) => current.filter((edge) => edge.source !== nodeIdToRemove && edge.target !== nodeIdToRemove));
+    setSelectedNodeId((current) => current === nodeIdToRemove ? null : current);
+  }, [canEdit, setEdges, setNodes]);
+
+  const appendActivity = useCallback((sourceId: string) => {
+    if (!canEdit) return;
+    const source = nodesRef.current.find((node) => node.id === sourceId);
+    if (!source) return;
+    const id = nodeId();
+    setNodes((current) => [...current, {
+      id,
+      type: 'process',
+      position: { x: source.position.x + 240, y: source.position.y + 110 },
+      data: {
+        label: nodeLabels.activity,
+        nodeType: 'activity',
+        canEdit,
+        onDelete: removeStep,
+        onAppendActivity: appendActivity,
+      },
+    }]);
+    setEdges((current) => [...current, {
+      id: nodeId(),
+      source: sourceId,
+      target: id,
+      type: 'bezier',
+      style: workflowEdgeStyle,
+    }]);
+    setSelectedNodeId(id);
+  }, [canEdit, removeStep, setEdges, setNodes]);
 
   useEffect(() => {
     if (!selectedId && processes[0]) setSelectedId(processes[0].id);
@@ -168,10 +252,14 @@ export default function Processes() {
     }
     setTitle(selectedProcess.title);
     setPurpose(selectedProcess.purpose || '');
-    setNodes(toFlowNodes(selectedProcess.definition || emptyProcessDefinition()));
+    setNodes(toFlowNodes(selectedProcess.definition || emptyProcessDefinition(), {
+      canEdit,
+      onDelete: removeStep,
+      onAppendActivity: appendActivity,
+    }));
     setEdges(toFlowEdges(selectedProcess.definition || emptyProcessDefinition()));
     setSelectedNodeId(null);
-  }, [selectedProcess, setEdges, setNodes]);
+  }, [appendActivity, canEdit, removeStep, selectedProcess, setEdges, setNodes]);
 
   const storeProcess = useCallback((updated: ProcessDto) => {
     queryClient.setQueryData<ProcessDto[]>(['processes', scopeKey], (current = []) =>
@@ -183,7 +271,7 @@ export default function Processes() {
 
   const onConnect = useCallback((connection: Connection) => {
     if (!canEdit) return;
-    setEdges((current) => addEdge({ ...connection, id: nodeId(), type: 'smoothstep' }, current));
+    setEdges((current) => addEdge({ ...connection, id: nodeId(), type: 'bezier', style: workflowEdgeStyle }, current));
   }, [canEdit, setEdges]);
 
   const addNode = (nodeType: ProcessNodeType) => {
@@ -194,7 +282,13 @@ export default function Processes() {
       id,
       type: 'process',
       position: { x: 120 + offset, y: 120 + offset },
-      data: { label: nodeLabels[nodeType], nodeType },
+      data: {
+        label: nodeLabels[nodeType],
+        nodeType,
+        canEdit,
+        onDelete: removeStep,
+        onAppendActivity: appendActivity,
+      },
     }]);
     setSelectedNodeId(id);
   };
@@ -355,10 +449,18 @@ export default function Processes() {
                     nodesConnectable={canEdit}
                     fitView
                     minZoom={0.2}
+                    colorMode="dark"
+                    defaultEdgeOptions={{ type: 'bezier', style: workflowEdgeStyle }}
                   >
-                    <Background gap={16} size={1} />
+                    <Background gap={16} size={1} color="#4a5878" />
                     <Controls showInteractive={false} />
-                    <MiniMap nodeColor={(node) => nodeColors[(node.data as FlowNodeData).nodeType] || '#6b9080'} />
+                    <MiniMap
+                      nodeColor={(node) => nodeColors[(node.data as FlowNodeData).nodeType] || '#6b9080'}
+                      nodeStrokeColor="#d7dfef"
+                      nodeBorderRadius={8}
+                      bgColor="#121827"
+                      maskColor="rgba(10, 15, 27, 0.72)"
+                    />
                   </ReactFlow>
                 </div>
 
@@ -385,11 +487,7 @@ export default function Processes() {
                       <label className="block text-xs font-medium text-[var(--text-secondary)]">Hinweis / Reflexionsfrage
                         <textarea value={selectedNode.data.description || ''} disabled={!canEdit} onChange={(event) => updateSelectedNode({ description: event.target.value })} className="mt-1 min-h-24 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--input-bg)] px-2 py-2 text-sm" />
                       </label>
-                      {canEdit ? <Button size="sm" variant="danger-ghost" onClick={() => {
-                        setNodes((current) => current.filter((node) => node.id !== selectedNode.id));
-                        setEdges((current) => current.filter((edge) => edge.source !== selectedNode.id && edge.target !== selectedNode.id));
-                        setSelectedNodeId(null);
-                      }}><Trash2 className="h-4 w-4" /> Schritt entfernen</Button> : null}
+                      {canEdit ? <Button size="sm" variant="danger-ghost" onClick={() => removeStep(selectedNode.id)}><Trash2 className="h-4 w-4" /> Schritt entfernen</Button> : null}
                     </div>
                   )}
                 </aside>

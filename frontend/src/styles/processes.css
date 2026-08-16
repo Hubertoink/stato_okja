@@ -1,0 +1,92 @@
+.process-o-canvas {
+  --xy-background-color: #151b2b;
+  --xy-edge-stroke: rgba(192, 202, 224, 0.72);
+  --xy-edge-stroke-selected: #8fb3ff;
+  background: #151b2b;
+  color-scheme: dark;
+}
+
+.process-o-canvas .react-flow__renderer,
+.process-o-canvas .react-flow__pane {
+  background: #151b2b;
+}
+
+.process-o-canvas .react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+.process-o-canvas .react-flow__controls {
+  overflow: hidden;
+  border: 1px solid #485573;
+  border-radius: 0.7rem;
+  background: #202a40;
+  box-shadow: 0 8px 20px rgba(7, 11, 21, 0.34);
+}
+
+.process-o-canvas .react-flow__controls-button {
+  border-bottom-color: #485573;
+  background: #202a40;
+  color: #dbe7ff;
+}
+
+.process-o-canvas .react-flow__controls-button:hover {
+  background: #303e5d;
+}
+
+.process-o-canvas .react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+.process-o-canvas .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid #485573;
+  border-radius: 0.7rem;
+  box-shadow: 0 8px 20px rgba(7, 11, 21, 0.34);
+}
+
+.process-o-canvas .react-flow__attribution {
+  border-radius: 0.35rem 0 0 0;
+  background: rgba(20, 27, 43, 0.86);
+  color: #aebbd7;
+}
+
+.process-o-node {
+  position: relative;
+}
+
+.process-o-node-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.3rem;
+  padding: 0.1rem;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.process-o-node-delete:hover {
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+}
+
+.process-o-node-add {
+  position: absolute;
+  z-index: 2;
+  bottom: -1.05rem;
+  left: 50%;
+  display: flex;
+  height: 1.35rem;
+  width: 1.35rem;
+  transform: translateX(-50%);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #697899;
+  border-radius: 999px;
+  background: #27334c;
+  color: #e6eeff;
+  box-shadow: 0 2px 8px rgba(7, 11, 21, 0.45);
+}
+
+.process-o-node-add:hover {
+  border-color: #a9bbdf;
+  background: #3b4b6d;
+}

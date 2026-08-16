@@ -3,7 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addEdge,
   Background,
+  BaseEdge,
   Controls,
+  EdgeLabelRenderer,
+  getBezierPath,
   Handle,
   MiniMap,
   Position,
@@ -12,12 +15,13 @@ import {
   useNodesState,
   type Connection,
   type Edge,
+  type EdgeProps,
   type Node,
   type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import '@/styles/processes.css';
-import { HelpCircle, FilePlus2, GitBranch, Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { Activity, FilePlus2, GitBranch, HelpCircle, Loader2, LogIn, LogOut, Plus, Save, Sparkles, Trash2, type LucideIcon } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button, CreateButton, IconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
@@ -42,9 +46,14 @@ type FlowNodeData = {
   nodeType: ProcessNodeType;
   canEdit?: boolean;
   onDelete?: (nodeId: string) => void;
-  onAppendActivity?: (nodeId: string) => void;
 };
 type FlowNode = Node<FlowNodeData, 'process'>;
+
+type FlowEdgeData = {
+  canEdit?: boolean;
+  onInsertNode?: (edgeId: string, nodeType: ProcessNodeType, position: { x: number; y: number }) => void;
+};
+type FlowEdge = Edge<FlowEdgeData, 'process-edge'>;
 
 const nodeLabels: Record<ProcessNodeType, string> = {
   input: 'Input',
@@ -64,11 +73,21 @@ const nodeColors: Record<ProcessNodeType, string> = {
   reflection: '#a16207',
 };
 
+const nodeIcons: Record<ProcessNodeType, LucideIcon> = {
+  input: LogIn,
+  activity: Activity,
+  decision: GitBranch,
+  output: LogOut,
+  outcome: Sparkles,
+  reflection: HelpCircle,
+};
+
 function nodeId() {
   return globalThis.crypto?.randomUUID?.() || `process-node-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-type FlowNodeActions = Pick<FlowNodeData, 'canEdit' | 'onDelete' | 'onAppendActivity'>;
+type FlowNodeActions = Pick<FlowNodeData, 'canEdit' | 'onDelete'>;
+type FlowEdgeActions = Pick<FlowEdgeData, 'canEdit' | 'onInsertNode'>;
 
 const workflowEdgeStyle = {
   stroke: 'rgba(192, 202, 224, 0.72)',
@@ -85,18 +104,19 @@ function toFlowNodes(definition: ProcessDefinition, actions: FlowNodeActions): F
   }));
 }
 
-function toFlowEdges(definition: ProcessDefinition): Edge[] {
+function toFlowEdges(definition: ProcessDefinition, actions: FlowEdgeActions): FlowEdge[] {
   return definition.edges.map((edge) => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,
     label: edge.label,
-    type: 'bezier',
+    type: 'process-edge',
     style: workflowEdgeStyle,
+    data: actions,
   }));
 }
 
-function toDefinition(nodes: FlowNode[], edges: Edge[]): ProcessDefinition {
+function toDefinition(nodes: FlowNode[], edges: FlowEdge[]): ProcessDefinition {
   return {
     schemaVersion: 1,
     nodes: nodes.map((node) => ({
@@ -120,6 +140,7 @@ function toDefinition(nodes: FlowNode[], edges: Edge[]): ProcessDefinition {
 
 const ProcessNodeCard = memo(({ id, data, selected }: NodeProps<FlowNode>) => {
   const color = nodeColors[data.nodeType];
+  const NodeIcon = nodeIcons[data.nodeType];
   return (
     <div
       className={`process-o-node min-w-44 rounded-xl border bg-[var(--surface-1)] shadow-sm ${selected ? 'ring-2 ring-viridian' : ''}`}
@@ -127,7 +148,7 @@ const ProcessNodeCard = memo(({ id, data, selected }: NodeProps<FlowNode>) => {
     >
       <Handle type="target" position={Position.Left} className="!h-2.5 !w-2.5" style={{ background: color }} />
       <div className="flex items-center justify-between rounded-t-xl px-3 py-1.5 text-xs font-semibold text-white" style={{ background: color }}>
-        <span>{nodeLabels[data.nodeType]}</span>
+        <span className="flex items-center gap-1.5"><NodeIcon className="h-3.5 w-3.5" aria-hidden="true" />{nodeLabels[data.nodeType]}</span>
         {data.canEdit ? (
           <IconButton
             className="process-o-node-delete nodrag nowheel"
@@ -150,26 +171,68 @@ const ProcessNodeCard = memo(({ id, data, selected }: NodeProps<FlowNode>) => {
         {data.responsibleRole ? <div className="mt-1 text-xs text-[var(--text-muted)]">{data.responsibleRole}</div> : null}
       </div>
       <Handle type="source" position={Position.Right} className="!h-2.5 !w-2.5" style={{ background: color }} />
-      {data.canEdit ? (
-        <IconButton
-          className="process-o-node-add nodrag nowheel"
-          aria-label="Aktivität nach diesem Schritt hinzufügen"
-          size="icon-compact"
-          variant="ghost"
-          title="Aktivität nach diesem Schritt hinzufügen"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            data.onAppendActivity?.(id);
-          }}
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </IconButton>
-      ) : null}
     </div>
   );
 });
 ProcessNodeCard.displayName = 'ProcessNodeCard';
+
+const ProcessEdge = memo(({ id, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, style, data }: EdgeProps<FlowEdge>) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  const insertNode = (nodeType: ProcessNodeType) => {
+    data?.onInsertNode?.(id, nodeType, { x: labelX, y: labelY });
+    setIsMenuOpen(false);
+  };
+
+  return (
+    <>
+      <BaseEdge path={edgePath} style={style} />
+      {data?.canEdit ? (
+        <EdgeLabelRenderer>
+          <div
+            className="process-o-edge-control nodrag nopan"
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <IconButton
+              aria-label="Schritt in Verbindung einfügen"
+              className="process-o-edge-add"
+              size="icon-compact"
+              variant="ghost"
+              title="Schritt einfügen"
+              onClick={() => setIsMenuOpen((current) => !current)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </IconButton>
+            {isMenuOpen ? (
+              <div className="process-o-edge-menu" role="menu" aria-label="Schritttyp auswählen">
+                <div className="px-1.5 pb-1 text-xs font-semibold text-[var(--text-muted)]">Schritt einfügen</div>
+                {(Object.keys(nodeLabels) as ProcessNodeType[]).map((nodeType) => {
+                  const NodeIcon = nodeIcons[nodeType];
+                  return (
+                    <Button key={nodeType} size="sm" variant="ghost" className="process-o-edge-menu-item" onClick={() => insertNode(nodeType)}>
+                      <NodeIcon className="h-3.5 w-3.5" style={{ color: nodeColors[nodeType] }} aria-hidden="true" />
+                      {nodeLabels[nodeType]}
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        </EdgeLabelRenderer>
+      ) : null}
+    </>
+  );
+});
+ProcessEdge.displayName = 'ProcessEdge';
 
 export default function Processes() {
   const { showToast } = useToast();
@@ -183,8 +246,8 @@ export default function Processes() {
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const nodesRef = useRef<FlowNode[]>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([]);
+  const edgesRef = useRef<FlowEdge[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
@@ -195,10 +258,11 @@ export default function Processes() {
   const canEdit = access.data?.canEdit === true;
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) || null;
   const nodeTypes = useMemo(() => ({ process: ProcessNodeCard }), []);
+  const edgeTypes = useMemo(() => ({ 'process-edge': ProcessEdge }), []);
 
   useEffect(() => {
-    nodesRef.current = nodes;
-  }, [nodes]);
+    edgesRef.current = edges;
+  }, [edges]);
 
   const removeStep = useCallback((nodeIdToRemove: string) => {
     if (!canEdit) return;
@@ -207,30 +271,41 @@ export default function Processes() {
     setSelectedNodeId((current) => current === nodeIdToRemove ? null : current);
   }, [canEdit, setEdges, setNodes]);
 
-  const appendActivity = useCallback((sourceId: string) => {
+  const insertNodeOnEdge = useCallback((edgeId: string, nodeType: ProcessNodeType, position: { x: number; y: number }) => {
     if (!canEdit) return;
-    const source = nodesRef.current.find((node) => node.id === sourceId);
-    if (!source) return;
+    const edge = edgesRef.current.find((current) => current.id === edgeId);
+    if (!edge) return;
     const id = nodeId();
     setNodes((current) => [...current, {
       id,
       type: 'process',
-      position: { x: source.position.x + 240, y: source.position.y + 110 },
+      position: { x: position.x - 88, y: position.y - 32 },
       data: {
-        label: nodeLabels.activity,
-        nodeType: 'activity',
+        label: nodeLabels[nodeType],
+        nodeType,
         canEdit,
         onDelete: removeStep,
-        onAppendActivity: appendActivity,
       },
     }]);
-    setEdges((current) => [...current, {
-      id: nodeId(),
-      source: sourceId,
-      target: id,
-      type: 'bezier',
-      style: workflowEdgeStyle,
-    }]);
+    setEdges((current) => [
+      ...current.filter((currentEdge) => currentEdge.id !== edgeId),
+      {
+        id: nodeId(),
+        source: edge.source,
+        target: id,
+        type: 'process-edge',
+        style: workflowEdgeStyle,
+        data: { canEdit, onInsertNode: insertNodeOnEdge },
+      },
+      {
+        id: nodeId(),
+        source: id,
+        target: edge.target,
+        type: 'process-edge',
+        style: workflowEdgeStyle,
+        data: { canEdit, onInsertNode: insertNodeOnEdge },
+      },
+    ]);
     setSelectedNodeId(id);
   }, [canEdit, removeStep, setEdges, setNodes]);
 
@@ -255,11 +330,13 @@ export default function Processes() {
     setNodes(toFlowNodes(selectedProcess.definition || emptyProcessDefinition(), {
       canEdit,
       onDelete: removeStep,
-      onAppendActivity: appendActivity,
     }));
-    setEdges(toFlowEdges(selectedProcess.definition || emptyProcessDefinition()));
+    setEdges(toFlowEdges(selectedProcess.definition || emptyProcessDefinition(), {
+      canEdit,
+      onInsertNode: insertNodeOnEdge,
+    }));
     setSelectedNodeId(null);
-  }, [appendActivity, canEdit, removeStep, selectedProcess, setEdges, setNodes]);
+  }, [canEdit, insertNodeOnEdge, removeStep, selectedProcess, setEdges, setNodes]);
 
   const storeProcess = useCallback((updated: ProcessDto) => {
     queryClient.setQueryData<ProcessDto[]>(['processes', scopeKey], (current = []) =>
@@ -271,8 +348,14 @@ export default function Processes() {
 
   const onConnect = useCallback((connection: Connection) => {
     if (!canEdit) return;
-    setEdges((current) => addEdge({ ...connection, id: nodeId(), type: 'bezier', style: workflowEdgeStyle }, current));
-  }, [canEdit, setEdges]);
+    setEdges((current) => addEdge({
+      ...connection,
+      id: nodeId(),
+      type: 'process-edge',
+      style: workflowEdgeStyle,
+      data: { canEdit, onInsertNode: insertNodeOnEdge },
+    }, current));
+  }, [canEdit, insertNodeOnEdge, setEdges]);
 
   const addNode = (nodeType: ProcessNodeType) => {
     if (!canEdit) return;
@@ -287,7 +370,6 @@ export default function Processes() {
         nodeType,
         canEdit,
         onDelete: removeStep,
-        onAppendActivity: appendActivity,
       },
     }]);
     setSelectedNodeId(id);
@@ -377,7 +459,7 @@ export default function Processes() {
         actions={canEdit ? <CreateButton disabled={saving} onClick={() => void create()}>Neuer Prozess</CreateButton> : undefined}
       />
       <div className="grid gap-4 xl:grid-cols-[17rem_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 shadow-sm">
+        <aside className="px-1 py-2">
           <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Prozessvorlagen</div>
           {processesQuery.isLoading ? <div className="p-3 text-sm text-[var(--text-muted)]">Lädt …</div> : null}
           {!processesQuery.isLoading && processes.length === 0 ? (
@@ -429,7 +511,12 @@ export default function Processes() {
                 <div className="flex flex-wrap gap-2 rounded-xl bg-[var(--surface-2)] p-2">
                   {(Object.keys(nodeLabels) as ProcessNodeType[]).map((nodeType) => (
                     <Button key={nodeType} size="sm" variant="secondary" onClick={() => addNode(nodeType)}>
-                      <Plus className="h-3.5 w-3.5" /> {nodeLabels[nodeType]}
+                      <Plus className="h-3.5 w-3.5" />
+                      {(() => {
+                        const NodeIcon = nodeIcons[nodeType];
+                        return <NodeIcon className="h-3.5 w-3.5" aria-hidden="true" />;
+                      })()}
+                      {nodeLabels[nodeType]}
                     </Button>
                   ))}
                 </div>
@@ -441,6 +528,7 @@ export default function Processes() {
                     nodes={nodes}
                     edges={edges}
                     nodeTypes={nodeTypes}
+                    edgeTypes={edgeTypes}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
@@ -450,7 +538,7 @@ export default function Processes() {
                     fitView
                     minZoom={0.2}
                     colorMode="dark"
-                    defaultEdgeOptions={{ type: 'bezier', style: workflowEdgeStyle }}
+                    defaultEdgeOptions={{ type: 'process-edge', style: workflowEdgeStyle }}
                   >
                     <Background gap={16} size={1} color="#4a5878" />
                     <Controls showInteractive={false} />
@@ -465,7 +553,7 @@ export default function Processes() {
                 </div>
 
                 <aside className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
-                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]"><HelpCircle className="h-4 w-4 text-viridian" /> Schritt bearbeiten</div>
+                  <div className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Schritt bearbeiten</div>
                   {!selectedNode ? <p className="text-sm text-[var(--text-muted)]">Wähle einen Prozessschritt im Diagramm aus.</p> : (
                     <div className="space-y-3">
                       <label className="block text-xs font-medium text-[var(--text-secondary)]">Typ

@@ -68,15 +68,19 @@
   color: #fff;
 }
 
-.process-o-node-add {
+.process-o-edge-control {
   position: absolute;
-  z-index: 2;
-  bottom: -1.05rem;
-  left: 50%;
+  z-index: 5;
   display: flex;
-  height: 1.35rem;
-  width: 1.35rem;
-  transform: translateX(-50%);
+  align-items: center;
+  justify-content: center;
+}
+
+.process-o-edge-add {
+  z-index: 2;
+  display: flex;
+  height: 1.55rem;
+  width: 1.55rem;
   align-items: center;
   justify-content: center;
   border: 1px solid #697899;
@@ -86,7 +90,27 @@
   box-shadow: 0 2px 8px rgba(7, 11, 21, 0.45);
 }
 
-.process-o-node-add:hover {
+.process-o-edge-add:hover {
   border-color: #a9bbdf;
   background: #3b4b6d;
+}
+
+.process-o-edge-menu {
+  position: absolute;
+  z-index: 3;
+  bottom: 1.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 10.5rem;
+  padding: 0.45rem;
+  border: 1px solid #586785;
+  border-radius: 0.7rem;
+  background: #202a40;
+  box-shadow: 0 12px 28px rgba(7, 11, 21, 0.48);
+}
+
+.process-o-edge-menu-item {
+  width: 100%;
+  justify-content: flex-start;
+  padding-inline: 0.5rem;
 }

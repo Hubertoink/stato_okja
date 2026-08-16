@@ -7,6 +7,17 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.8.3] - 2026-08-16
+
+### Changed
+- Die Kontrastwirkung von Organisationsbannern in Header und Navigation wurde
+  für eine besser lesbare Desktop-Darstellung erhöht.
+
+### Fixed
+- Der Organisationsdialog liest nicht mehr automatisch die Zwischenablage aus.
+
+---
+
 ## [1.8.2] - 2026-08-15
 
 ### Changed

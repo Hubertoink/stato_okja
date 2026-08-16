@@ -2222,19 +2222,6 @@ function OrgRow({
     };
   }, [org.id]);
 
-  useEffect(() => {
-    const isEmail = (t: string) => /[^\s@]+@[^\s@]+\.[^\s@]+/.test(t);
-    if (!open) return;
-    (async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        if (text && isEmail(text.trim()) && !inviteEmail) setInviteEmail(text.trim());
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, [open, inviteEmail]);
-
   const targetParentName = moveDialog.targetParentId
     ? allOrgs.find((candidate) => candidate.id === moveDialog.targetParentId)?.name ||
       'Zielorganisation'

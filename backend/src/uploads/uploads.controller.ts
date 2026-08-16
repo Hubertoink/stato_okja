@@ -22,6 +22,7 @@ import type { Express } from 'express';
 import type { Response } from 'express';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const MAX_PROCESS_FILE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_WIDTH = 600;
 const MAX_ORGANIZATION_BANNER_WIDTH = 1600;
 
@@ -42,6 +43,14 @@ function makeFilename(originalName: string, ext: string) {
 
 function getImageContentType(filename: string) {
   const ext = extname(filename).toLowerCase();
+  if (ext === '.png') return 'image/png';
+  if (ext === '.webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
+function getProcessFileContentType(filename: string) {
+  const ext = extname(filename).toLowerCase();
+  if (ext === '.pdf') return 'application/pdf';
   if (ext === '.png') return 'image/png';
   if (ext === '.webp') return 'image/webp';
   return 'image/jpeg';
@@ -125,5 +134,56 @@ export class UploadsController {
     writeFileSync(outPath, data);
     const url = `/uploads/images/${filename}`;
     return { url, size: info.size };
+  }
+
+  @Get('files/:filename')
+  @ApiOperation({ summary: 'Prozess-Datei laden (auth-geschützt)' })
+  getProcessFile(@Param('filename') filename: string, @Res({ passthrough: true }) res: Response) {
+    const safeName = basename(filename || '');
+    if (!safeName || safeName !== filename || !/^[a-z0-9][a-z0-9_.-]*$/i.test(safeName)) {
+      throw new NotFoundException();
+    }
+    const filePath = join(process.cwd(), 'uploads', 'process-files', safeName);
+    if (!existsSync(filePath)) throw new NotFoundException();
+
+    res.setHeader('Content-Type', getProcessFileContentType(safeName));
+    res.setHeader('Content-Disposition', `inline; filename="${safeName}"`);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return new StreamableFile(createReadStream(filePath));
+  }
+
+  @Post('files')
+  @ApiOperation({ summary: 'Bild oder PDF für ProzessO hochladen' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_PROCESS_FILE_BYTES },
+      fileFilter: (req, file, cb) => {
+        const ok = /^image\/(png|jpe?g|webp)$/.test(file.mimetype || '') || file.mimetype === 'application/pdf';
+        cb(ok ? null : new Error('Unsupported file type'), ok);
+      },
+    }),
+  )
+  uploadProcessFile(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Keine Datei hochgeladen.');
+    const mimeType = (file.mimetype || '').toLowerCase();
+    const extension = mimeType === 'application/pdf'
+      ? '.pdf'
+      : mimeType === 'image/png'
+        ? '.png'
+        : mimeType === 'image/webp'
+          ? '.webp'
+          : '.jpg';
+    const uploadsDir = join(process.cwd(), 'uploads', 'process-files');
+    mkdirSync(uploadsDir, { recursive: true });
+    const filename = makeFilename(file.originalname, extension);
+    writeFileSync(join(uploadsDir, filename), file.buffer);
+    return {
+      url: `/uploads/files/${filename}`,
+      filename: file.originalname,
+      mimeType,
+      size: file.size,
+    };
   }
 }

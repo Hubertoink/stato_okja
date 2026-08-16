@@ -81,6 +81,7 @@ const BASE_VARIABLES = [
   ['LOGIN_LOCKOUT_MINUTES', '10'],
   ['VITE_ENABLE_DEV_TOOLS', 'false'],
   ['ENABLE_ORG_MOVE', 'false'],
+  ['ENABLE_PROCESSES', 'true'],
   ['TZ', (config) => config.timezone],
   ['BACKUP_RETENTION_DAYS', (config) => config.backupRetentionDays],
   ['APP_ENV', 'production'],

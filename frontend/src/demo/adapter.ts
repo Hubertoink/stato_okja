@@ -2,6 +2,7 @@ import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import { AxiosError, AxiosHeaders } from 'axios';
 import * as demo from './store';
 import { autoT } from '@/i18n/auto';
+import type { ProcessWriteData } from '@/lib/processes';
 
 type HandlerResult = { status?: number; data?: unknown; headers?: Record<string, string> };
 
@@ -260,6 +261,18 @@ function handleSurveys(method: string, segments: string[], params: Record<string
   return undefined;
 }
 
+function handleProcesses(method: string, segments: string[], body: Record<string, unknown>): HandlerResult | undefined {
+  if (segments[0] !== 'processes') return undefined;
+  if (method === 'get' && segments[1] === 'access') return ok(demo.getDemoProcessAccess());
+  if (method === 'get' && segments.length === 1) return ok(demo.listDemoProcesses());
+  if (method === 'post' && segments.length === 1) return ok(demo.createDemoProcess(body as Partial<ProcessWriteData>), 201);
+  const processId = segments[1] ? decodeURIComponent(segments[1]) : '';
+  if (!processId) return undefined;
+  if (method === 'patch') return ok(demo.updateDemoProcess(processId, body as Partial<ProcessWriteData>));
+  if (method === 'delete') { demo.deleteDemoProcess(processId); return noContent(); }
+  return undefined;
+}
+
 function handleRequest(method: string, path: string, params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult {
   const segments = path.split('/').filter(Boolean);
   const authResult = handleAuth(method, path, body);
@@ -278,6 +291,8 @@ function handleRequest(method: string, path: string, params: Record<string, unkn
   if (templateResult) return templateResult;
   const surveyResult = handleSurveys(method, segments, params, body);
   if (surveyResult) return surveyResult;
+  const processResult = handleProcesses(method, segments, body);
+  if (processResult) return processResult;
 
   if (method === 'get' && path === '/locations') return ok(demo.listDemoLocations(params));
   if (method === 'post' && path === '/locations') return ok(demo.createDemoLocation(body), 201);

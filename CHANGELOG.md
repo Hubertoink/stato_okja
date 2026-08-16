@@ -7,6 +7,27 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.8.5] - 2026-08-16
+
+### Added
+- ProzessO bietet einen visuellen Workflow-Editor mit Prozessschritten,
+  Verzweigungen, Nebenprozessen, Datei-Anhängen, Reflexionshinweisen,
+  PDF-Export und automatischer Anordnung.
+- Der Demo-Modus enthält nun drei verknüpfte Beispielprozesse für
+  Veranstaltungsplanung, Öffentlichkeitsarbeit und Teamreflexion.
+- ProzessO ist in Deutsch und Englisch übersetzt.
+
+### Changed
+- ProzessO speichert Änderungen automatisch und zeigt beim Wechsel eines
+  Prozesses eine dezente Erfolgsrückmeldung.
+- Der Bereich „Prozessvorlagen“ heißt nun „Meine Prozesse“.
+
+### Security
+- `ENABLE_PROCESSES=false` deaktiviert ProzessO serverseitig für den gesamten
+  Backend-Container, ohne bestehende Organisationsfreigaben zu verändern.
+
+---
+
 ## [1.8.3] - 2026-08-16
 
 ### Changed

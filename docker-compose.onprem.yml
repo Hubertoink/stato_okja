@@ -90,6 +90,8 @@ services:
       SUPERADMIN_PASSWORD_FORCE: ${SUPERADMIN_PASSWORD_FORCE:-false}
       INITIAL_SETUP_ENABLED: ${INITIAL_SETUP_ENABLED:-false}
       ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
+      # Global ProcessO switch. Individual organisations still need to be enabled by a superadmin.
+      ENABLE_PROCESSES: ${ENABLE_PROCESSES:-true}
 
       # SMTP (optional)
       SMTP_HOST: "${SMTP_HOST:-}"

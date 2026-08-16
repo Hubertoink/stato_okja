@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth, type AuthSessionPayload } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { applyTheme, DEFAULT_DARK_THEME, DEFAULT_LIGHT_THEME, normalizeThemeMode, THEME_DEFINITIONS, type ThemeMode } from '@/lib/theme';
@@ -9,6 +9,7 @@ import { Camera, ChevronDown, ChevronUp, Eye, EyeOff, GripVertical, RotateCcw, S
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
 import { getMobileNavLayout, MOBILE_NAV_ITEM_IDS, resetMobileNavLayout, saveMobileNavLayout, type MobileNavItemId } from '@/lib/mobileNavigation';
+import { useProcessOAccess } from '@/lib/processes';
 import { useTranslation } from 'react-i18next';
 import { setPreferredLocale } from '@/i18n';
 import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
@@ -40,23 +41,29 @@ export default function MyProfile() {
 
 function MobileNavigationSettings({ userId }: { userId?: string }) {
   const { t } = useTranslation('common');
+  const processOAccess = useProcessOAccess();
+  const availableItemIds = useMemo(
+    () => processOAccess.data?.enabled ? MOBILE_NAV_ITEM_IDS : MOBILE_NAV_ITEM_IDS.filter((id) => id !== 'processes'),
+    [processOAccess.data?.enabled],
+  );
   const mobileNavLabels: Record<MobileNavItemId, string> = {
     dashboard: t('navigation.dashboard'),
     activities: t('navigation.activities'),
     logbook: t('navigation.logbook'),
     calendar: t('navigation.calendar'),
     projects: t('navigation.projects'),
+    processes: t('navigation.processes'),
     surveys: t('navigation.surveys'),
     statistics: t('navigation.statistics'),
     settings: t('navigation.settings'),
   };
-  const [bottom, setBottom] = useState<MobileNavItemId[]>(() => getMobileNavLayout(userId).bottom);
+  const [bottom, setBottom] = useState<MobileNavItemId[]>(() => getMobileNavLayout(userId, availableItemIds).bottom);
   const [dragged, setDragged] = useState<MobileNavItemId | null>(null);
-  useEffect(() => setBottom(getMobileNavLayout(userId).bottom), [userId]);
-  const more = MOBILE_NAV_ITEM_IDS.filter((id) => !bottom.includes(id));
+  useEffect(() => setBottom(getMobileNavLayout(userId, availableItemIds).bottom), [availableItemIds, userId]);
+  const more = availableItemIds.filter((id) => !bottom.includes(id));
   const persist = (next: MobileNavItemId[]) => {
     setBottom(next);
-    saveMobileNavLayout({ bottom: next }, userId);
+    saveMobileNavLayout({ bottom: next }, userId, availableItemIds);
   };
   const swapWithBottom = (id: MobileNavItemId, target: MobileNavItemId) => {
     if (id === target) return;
@@ -81,7 +88,7 @@ function MobileNavigationSettings({ userId }: { userId?: string }) {
           <h3 className="text-lg font-semibold text-viridian">{autoT('ui_23f0292a1de9')}</h3>
           <p className="mt-1 text-sm text-gray-600">{autoT('ui_393e7b57db57')}</p>
         </div>
-        <button type="button" onClick={() => { resetMobileNavLayout(userId); setBottom(getMobileNavLayout(userId).bottom); }} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100">
+        <button type="button" onClick={() => { resetMobileNavLayout(userId, availableItemIds); setBottom(getMobileNavLayout(userId, availableItemIds).bottom); }} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100">
           <RotateCcw className="h-4 w-4" />{autoT('ui_a4565af537e2')}</button>
       </div>
       <div className="mt-5 grid gap-4 md:grid-cols-2">

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
 import { useOrgScopeKey } from './orgScope';
 
-export type ProcessNodeType = 'input' | 'activity' | 'decision' | 'output' | 'outcome' | 'reflection';
+export type ProcessNodeType = 'input' | 'activity' | 'decision' | 'branch' | 'subprocess' | 'file' | 'output' | 'outcome' | 'reflection';
 
 export interface ProcessDefinition {
   schemaVersion: 1;
@@ -10,9 +10,9 @@ export interface ProcessDefinition {
     id: string;
     type: ProcessNodeType;
     position: { x: number; y: number };
-    data: { label: string; description?: string; responsibleRole?: string };
+    data: { label: string; description?: string; responsibleRole?: string; linkedProcessId?: string; fileUrl?: string; fileName?: string; fileMimeType?: string };
   }>;
-  edges: Array<{ id: string; source: string; target: string; label?: string }>;
+  edges: Array<{ id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string; label?: string }>;
 }
 
 export interface ProcessDto {
@@ -73,4 +73,15 @@ export async function updateProcess(id: string, data: Partial<ProcessWriteData>)
 
 export async function deleteProcess(id: string): Promise<void> {
   await api.delete(`/processes/${id}`);
+}
+
+export type ProcessFileUpload = { url: string; filename: string; mimeType: string; size: number };
+
+export async function uploadProcessFile(file: File): Promise<ProcessFileUpload> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await api.post<ProcessFileUpload>('/uploads/files', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
 }

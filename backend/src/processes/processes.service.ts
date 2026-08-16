@@ -12,6 +12,15 @@ type ProcessActor = OrgScopedUser & { id?: string; name?: string | null };
 
 const emptyDefinition = (): ProcessDefinition => ({ schemaVersion: 1, nodes: [], edges: [] });
 
+/**
+ * Global deployment switch for ProcessO. It is intentionally evaluated at
+ * request time so a container restart with a changed environment is enough to
+ * disable the workspace regardless of individual organisation settings.
+ */
+export function isProcessesFeatureEnabled(value = process.env.ENABLE_PROCESSES): boolean {
+  return !['0', 'false', 'no', 'off'].includes(value?.trim().toLowerCase() || 'true');
+}
+
 @Injectable()
 export class ProcessesService {
   constructor(
@@ -26,7 +35,7 @@ export class ProcessesService {
 
   private async requireEnabledScope(actor: ProcessActor) {
     const orgId = resolveOrgScope(actor);
-    if (!orgId || !(await this.orgs.isProcessesEnabled(orgId))) {
+    if (!isProcessesFeatureEnabled() || !orgId || !(await this.orgs.isProcessesEnabled(orgId))) {
       throw new ForbiddenException('ProzessO ist für diese Organisation nicht freigeschaltet.');
     }
     return orgId;
@@ -53,7 +62,7 @@ export class ProcessesService {
 
   async access(actor: ProcessActor) {
     const orgId = resolveOrgScope(actor);
-    const enabled = await this.orgs.isProcessesEnabled(orgId);
+    const enabled = isProcessesFeatureEnabled() && await this.orgs.isProcessesEnabled(orgId);
     return { enabled, canEdit: enabled && this.canWrite(actor), orgId };
   }
 

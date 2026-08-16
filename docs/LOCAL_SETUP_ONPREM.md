@@ -156,13 +156,19 @@ cp .env.onprem.example .env.onprem
 
 Dann mindestens `APP_ORIGIN`, `CORS_ORIGINS`, `JWT_SECRET`, `SUPERADMIN_*` und die DB‑Credentials in `.env.onprem` setzen.
 
-Zusätzlich unterstützt das On-Prem-Compose inzwischen auch optionale Variablen wie `TZ`, `APP_ENV`, `NODE_ENV`, `DB_LOGGING`, `DB_REQUIRE_SSL`, `DB_SSL`, `DB_SSL_REJECT_UNAUTHORIZED`, `VITE_ENABLE_DEV_TOOLS` und `ENABLE_ORG_MOVE`.
+Zusätzlich unterstützt das On-Prem-Compose inzwischen auch optionale Variablen wie `TZ`, `APP_ENV`, `NODE_ENV`, `DB_LOGGING`, `DB_REQUIRE_SSL`, `DB_SSL`, `DB_SSL_REJECT_UNAUTHORIZED`, `VITE_ENABLE_DEV_TOOLS`, `ENABLE_ORG_MOVE` und `ENABLE_PROCESSES`.
 
 Für `ENABLE_ORG_MOVE` gilt bewusst:
 
 - Standard `false`
 - erst bei `true` wird Organisationsverschiebung im Backend und im Frontend freigeschaltet
 - nach Änderung des Werts den Frontend-Container neu bauen
+
+Für `ENABLE_PROCESSES` gilt bewusst:
+
+- Standard `true`
+- bei `false` wird ProzessO durch den Backend-Container global deaktiviert, die organisationsbezogenen Einstellungen bleiben erhalten
+- nach Änderung nur den Backend-Container neu starten
 
 Die vollständige Beschreibung steht in [docs/DOCKER_ONPREM_SETUP.md](../docs/DOCKER_ONPREM_SETUP.md).
 

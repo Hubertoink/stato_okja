@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import { ProcessesService } from './processes.service';
+import { isProcessesFeatureEnabled, ProcessesService } from './processes.service';
 import type { ProcessDefinition } from './entities/process.entity';
 
 const definition = (overrides: Partial<ProcessDefinition> = {}): ProcessDefinition => ({
@@ -39,6 +39,22 @@ describe('ProcessesService', () => {
 
     await expect(service.list(editor)).rejects.toBeInstanceOf(ForbiddenException);
     expect(repository.find).not.toHaveBeenCalled();
+  });
+
+  it('honours the global container switch before organisation settings', async () => {
+    expect(isProcessesFeatureEnabled('false')).toBe(false);
+    expect(isProcessesFeatureEnabled('0')).toBe(false);
+    expect(isProcessesFeatureEnabled('true')).toBe(true);
+
+    const previous = process.env.ENABLE_PROCESSES;
+    process.env.ENABLE_PROCESSES = 'false';
+    try {
+      await expect(service.access(editor)).resolves.toEqual({ enabled: false, canEdit: false, orgId: 'org-1' });
+      expect(orgs.isProcessesEnabled).not.toHaveBeenCalled();
+    } finally {
+      if (typeof previous === 'undefined') delete process.env.ENABLE_PROCESSES;
+      else process.env.ENABLE_PROCESSES = previous;
+    }
   });
 
   it('keeps read-only users from creating process definitions', async () => {

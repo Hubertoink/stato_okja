@@ -1,14 +1,40 @@
 .process-o-canvas {
-  --xy-background-color: #151b2b;
-  --xy-edge-stroke: rgba(192, 202, 224, 0.72);
-  --xy-edge-stroke-selected: #8fb3ff;
-  background: #151b2b;
+  --process-canvas-bg: color-mix(in srgb, var(--surface-2) 92%, var(--app-bg));
+  --process-canvas-grid: color-mix(in srgb, var(--text-primary) 18%, transparent);
+  --process-canvas-edge: color-mix(in srgb, var(--text-primary) 54%, transparent);
+  --process-canvas-edge-selected: var(--viridian);
+  --process-canvas-control-bg: var(--surface-1);
+  --process-canvas-control-hover: var(--surface-2);
+  --process-canvas-control-border: var(--border-strong);
+  --process-canvas-control-text: var(--text-primary);
+  --process-canvas-minimap-bg: var(--surface-1);
+  --process-canvas-minimap-mask: color-mix(in srgb, var(--app-bg) 56%, transparent);
+  --process-canvas-minimap-stroke: var(--border-strong);
+  --xy-background-color: var(--process-canvas-bg);
+  --xy-edge-stroke: var(--process-canvas-edge);
+  --xy-edge-stroke-selected: var(--process-canvas-edge-selected);
+  background: var(--process-canvas-bg);
+  color-scheme: light;
+}
+
+:root[data-color-mode='dark'] .process-o-canvas {
+  --process-canvas-bg: #151b2b;
+  --process-canvas-grid: #4a5878;
+  --process-canvas-edge: rgba(192, 202, 224, 0.72);
+  --process-canvas-edge-selected: #8fb3ff;
+  --process-canvas-control-bg: #202a40;
+  --process-canvas-control-hover: #303e5d;
+  --process-canvas-control-border: #485573;
+  --process-canvas-control-text: #dbe7ff;
+  --process-canvas-minimap-bg: #121827;
+  --process-canvas-minimap-mask: rgba(10, 15, 27, 0.72);
+  --process-canvas-minimap-stroke: #d7dfef;
   color-scheme: dark;
 }
 
 .process-o-canvas .react-flow__renderer,
 .process-o-canvas .react-flow__pane {
-  background: #151b2b;
+  background: var(--process-canvas-bg);
 }
 
 .process-o-canvas .react-flow__edge-path {
@@ -17,20 +43,20 @@
 
 .process-o-canvas .react-flow__controls {
   overflow: hidden;
-  border: 1px solid #485573;
+  border: 1px solid var(--process-canvas-control-border);
   border-radius: 0.7rem;
-  background: #202a40;
+  background: var(--process-canvas-control-bg);
   box-shadow: 0 8px 20px rgba(7, 11, 21, 0.34);
 }
 
 .process-o-canvas .react-flow__controls-button {
-  border-bottom-color: #485573;
-  background: #202a40;
-  color: #dbe7ff;
+  border-bottom-color: var(--process-canvas-control-border);
+  background: var(--process-canvas-control-bg);
+  color: var(--process-canvas-control-text);
 }
 
 .process-o-canvas .react-flow__controls-button:hover {
-  background: #303e5d;
+  background: var(--process-canvas-control-hover);
 }
 
 .process-o-canvas .react-flow__controls-button svg {
@@ -39,33 +65,182 @@
 
 .process-o-canvas .react-flow__minimap {
   overflow: hidden;
-  border: 1px solid #485573;
+  border: 1px solid var(--process-canvas-control-border);
   border-radius: 0.7rem;
   box-shadow: 0 8px 20px rgba(7, 11, 21, 0.34);
 }
 
 .process-o-canvas .react-flow__attribution {
   border-radius: 0.35rem 0 0 0;
-  background: rgba(20, 27, 43, 0.86);
-  color: #aebbd7;
+  background: color-mix(in srgb, var(--process-canvas-bg) 86%, transparent);
+  color: var(--text-muted);
 }
 
 .process-o-node {
   position: relative;
 }
 
+.process-o-file-preview {
+  display: block;
+  max-height: 7rem;
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.45rem;
+  object-fit: cover;
+}
+
+.process-o-node-hint {
+  min-height: 1.65rem;
+  width: 100%;
+  justify-content: flex-start;
+  border-radius: 0.45rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.6875rem;
+}
+
+.process-o-node-hint svg:last-child {
+  margin-left: auto;
+}
+
+.process-o-node-description {
+  margin: 0.35rem 0 0;
+  border-left: 2px solid var(--border-subtle);
+  padding-left: 0.45rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
 .process-o-node-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.3rem;
-  padding: 0.1rem;
-  color: rgba(255, 255, 255, 0.86);
+  height: 1.55rem;
+  width: 1.55rem;
+  border-color: transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow: none;
 }
 
 .process-o-node-delete:hover {
-  background: rgba(0, 0, 0, 0.2);
-  color: #fff;
+  border-color: var(--status-danger-border);
+  background: color-mix(in srgb, var(--status-danger-bg) 88%, transparent);
+  color: var(--status-danger-text);
+}
+
+.process-o-process-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+/* Match the shared modal editor hierarchy: panel on surface 1, controls on
+ * the editor-field surface. This keeps fields visibly editable in dark themes. */
+.process-o-node-editor {
+  background: var(--surface-1);
+}
+
+.process-o-node-editor .ui-field-control {
+  background: var(--editor-field-bg, var(--input-bg));
+  border-color: var(--border-strong);
+}
+
+.process-o-node-editor .ui-field-control:hover:not(:disabled),
+.process-o-node-editor .ui-field-control:focus {
+  border-color: var(--viridian);
+}
+
+.process-o-template {
+  position: relative;
+}
+
+.process-o-template-main {
+  padding-right: 2.75rem;
+}
+
+.process-o-template:not(.process-o-template-selected):hover .process-o-template-main,
+.process-o-template:not(.process-o-template-selected):focus-within .process-o-template-main {
+  background: color-mix(in srgb, var(--interactive-soft-strong) 72%, var(--surface-1));
+  color: var(--viridian);
+}
+
+.process-o-template-actions {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  display: flex;
+  transform: translateY(-50%);
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.process-o-template-edit {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 150ms ease, transform 150ms ease, color 150ms ease, background-color 150ms ease;
+}
+
+.process-o-template:hover .process-o-template-edit,
+.process-o-template:focus-within .process-o-template-edit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.process-o-template-edit:hover,
+.process-o-template-edit:focus-visible {
+  color: var(--viridian);
+}
+
+.process-o-node-picker:hover:not(:disabled),
+.process-o-node-picker:focus-visible:not(:disabled) {
+  border-color: var(--process-node-color) !important;
+  background: color-mix(in srgb, var(--process-node-color) 13%, var(--surface-1)) !important;
+  color: var(--process-node-color) !important;
+}
+
+.process-o-auto-layout-panel {
+  margin: 0 0 9.5rem 0;
+}
+
+.process-o-auto-layout-button {
+  border-color: var(--process-canvas-control-border);
+  background: var(--process-canvas-control-bg);
+  color: var(--process-canvas-control-text);
+  box-shadow: 0 4px 14px rgba(7, 11, 21, 0.2);
+}
+
+.process-o-tabs {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0.2rem 0;
+}
+
+.process-o-tab {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.65rem;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.process-o-tab:hover {
+  border-color: var(--interactive-soft-border);
+  background: var(--interactive-soft);
+}
+
+.process-o-tab-active {
+  border-color: var(--interactive-soft-border);
+  background: var(--interactive-soft-strong);
+  color: var(--viridian);
 }
 
 .process-o-edge-control {
@@ -83,16 +258,16 @@
   width: 1.55rem;
   align-items: center;
   justify-content: center;
-  border: 1px solid #697899;
+  border: 1px solid var(--process-canvas-control-border);
   border-radius: 999px;
-  background: #27334c;
-  color: #e6eeff;
+  background: var(--process-canvas-control-bg);
+  color: var(--process-canvas-control-text);
   box-shadow: 0 2px 8px rgba(7, 11, 21, 0.45);
 }
 
 .process-o-edge-add:hover {
-  border-color: #a9bbdf;
-  background: #3b4b6d;
+  border-color: var(--viridian);
+  background: var(--process-canvas-control-hover);
 }
 
 .process-o-edge-menu {
@@ -103,9 +278,9 @@
   transform: translateX(-50%);
   min-width: 10.5rem;
   padding: 0.45rem;
-  border: 1px solid #586785;
+  border: 1px solid var(--process-canvas-control-border);
   border-radius: 0.7rem;
-  background: #202a40;
+  background: var(--process-canvas-control-bg);
   box-shadow: 0 12px 28px rgba(7, 11, 21, 0.48);
 }
 
@@ -113,4 +288,95 @@
   width: 100%;
   justify-content: flex-start;
   padding-inline: 0.5rem;
+}
+
+.process-o-fullscreen-button {
+  border-color: var(--process-canvas-control-border);
+  background: var(--process-canvas-control-bg);
+  color: var(--process-canvas-control-text);
+  box-shadow: 0 4px 14px rgba(7, 11, 21, 0.2);
+}
+
+.process-o-canvas:fullscreen,
+.process-o-canvas-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
+.process-o-canvas-expanded {
+  /* Leave room for header, tabs and the process list in window mode so a
+   * common 1080px desktop viewport does not acquire a page-level scrollbar. */
+  height: clamp(28rem, calc(100svh - 19rem), 52rem);
+}
+
+.process-o-fullscreen-palette {
+  margin-bottom: 1.25rem;
+}
+
+.process-o-fullscreen-palette-inner {
+  display: flex;
+  max-width: calc(100vw - 2rem);
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  border: 1px solid var(--process-canvas-control-border);
+  border-radius: 0.9rem;
+  background: var(--process-canvas-control-bg);
+  padding: 0.4rem;
+  box-shadow: 0 10px 28px rgba(7, 11, 21, 0.32);
+}
+
+.process-o-fullscreen-palette-button {
+  flex: 0 0 auto;
+  border-color: var(--process-canvas-control-border);
+  background: var(--process-canvas-bg);
+}
+
+@media (hover: hover) {
+  .process-o-icon-tooltip {
+    position: relative;
+  }
+
+  .process-o-icon-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    left: 50%;
+    z-index: 40;
+    transform: translateX(-50%);
+    border-radius: 0.4rem;
+    background: rgba(17, 24, 39, 0.95);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    opacity: 0;
+    padding: 0.5rem 0.75rem;
+    pointer-events: none;
+    transition: opacity 0s, visibility 0s;
+    visibility: hidden;
+    white-space: nowrap;
+  }
+
+  .process-o-icon-tooltip:hover::after,
+  .process-o-icon-tooltip:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.process-o-canvas-editor {
+  width: min(20rem, calc(100vw - 2rem));
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+  border: 1px solid var(--process-canvas-control-border);
+  border-radius: 0.8rem;
+  background: var(--process-canvas-control-bg);
+  padding: 0.85rem;
+  box-shadow: 0 10px 28px rgba(7, 11, 21, 0.32);
 }

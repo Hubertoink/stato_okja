@@ -1,4 +1,4 @@
-import { DEMO_ORG_ID, demoUser } from './config';
+import { DEMO_ORG_ID, DEMO_USER_ID, demoUser } from './config';
 import type { Activity, PagedActivitiesResult } from '../lib/activities';
 import type { AuditLog, AuditLogAction } from '../lib/audit';
 import type { AuthUser } from '../lib/auth';
@@ -6,6 +6,7 @@ import type { Location } from '../lib/locations';
 import type { OpeningHours, OrganizationClosureDay, OrgDto, OrgTaxonomySettingsSnapshot } from '../lib/orgs';
 import type { ProjectTemplateDto } from '../lib/projectTemplatesApi';
 import type { Project } from '../lib/projects';
+import type { ProcessDefinition, ProcessDto, ProcessWriteData } from '../lib/processes';
 import type { LogbookComment, LogbookEntry, LogbookEntryInput, LogbookEntryStatus, LogbookEntryType } from '../lib/logbook';
 import type { StaffMember, StaffRole } from '../lib/staff';
 import type { ActiveSurveyDashboardSummary, Survey, SurveyAnalytics, SurveyInput, SurveyQuestion, SurveyResponse, SurveyTrend } from '../lib/surveys';
@@ -47,6 +48,7 @@ type DemoStore = {
   logbookEntries: DemoLogbookEntry[];
   surveys: DemoSurvey[];
   surveyResponses: Record<string, SurveyResponse[]>;
+  processes: ProcessDto[];
 };
 
 type StatsOverviewResponse = {
@@ -625,6 +627,78 @@ function projectTemplateSeed(): DemoProjectTemplate[] {
   ];
 }
 
+function processSeed(now: Date): ProcessDto[] {
+  const createdAt = now.toISOString();
+  const definition = (nodes: ProcessDefinition['nodes'], edges: ProcessDefinition['edges']): ProcessDefinition => ({ schemaVersion: 1, nodes, edges });
+  return [
+    {
+      id: 'demo-process-event',
+      orgId: DEMO_ORG_ID,
+      title: 'Veranstaltung planen',
+      purpose: 'Von der ersten Idee bis zur gemeinsamen Auswertung einer Veranstaltung.',
+      createdByUserId: DEMO_USER_ID,
+      createdAt,
+      updatedAt: createdAt,
+      definition: definition([
+        { id: 'event-input', type: 'input', position: { x: 40, y: 210 }, data: { label: 'Idee und Bedarf', description: 'Welches Anliegen oder welchen Bedarf greifen wir auf?', responsibleRole: 'Team' } },
+        { id: 'event-plan', type: 'activity', position: { x: 330, y: 210 }, data: { label: 'Planung im Team', description: 'Zielgruppe, Termin, Raum und Ressourcen gemeinsam klären.', responsibleRole: 'Teamleitung' } },
+        { id: 'event-decision', type: 'decision', position: { x: 620, y: 210 }, data: { label: 'Ist die Planung tragfähig?', description: 'Sind Ressourcen, Schutz und Beteiligung ausreichend berücksichtigt?' } },
+        { id: 'event-branch', type: 'branch', position: { x: 910, y: 185 }, data: { label: 'Nächste Schritte' } },
+        { id: 'event-marketing', type: 'subprocess', position: { x: 1210, y: 100 }, data: { label: 'Öffentlichkeitsarbeit', linkedProcessId: 'demo-process-marketing', description: 'Kommunikation und Bewerbung als eigener Teilprozess.' } },
+        { id: 'event-run', type: 'activity', position: { x: 1210, y: 300 }, data: { label: 'Veranstaltung durchführen', responsibleRole: 'Veranstaltungsteam' } },
+        { id: 'event-output', type: 'output', position: { x: 1500, y: 300 }, data: { label: 'Durchgeführte Veranstaltung' } },
+        { id: 'event-reflection', type: 'reflection', position: { x: 1790, y: 300 }, data: { label: 'Gemeinsam reflektieren', description: 'Was hat gut geklappt, wen haben wir erreicht und was verändern wir beim nächsten Mal?' } },
+      ], [
+        { id: 'event-edge-1', source: 'event-input', target: 'event-plan' },
+        { id: 'event-edge-2', source: 'event-plan', target: 'event-decision' },
+        { id: 'event-edge-3', source: 'event-decision', target: 'event-branch' },
+        { id: 'event-edge-4', source: 'event-branch', sourceHandle: 'branch-a', target: 'event-marketing' },
+        { id: 'event-edge-5', source: 'event-branch', sourceHandle: 'branch-b', target: 'event-run' },
+        { id: 'event-edge-6', source: 'event-run', target: 'event-output' },
+        { id: 'event-edge-7', source: 'event-output', target: 'event-reflection' },
+      ]),
+    },
+    {
+      id: 'demo-process-marketing',
+      orgId: DEMO_ORG_ID,
+      title: 'Öffentlichkeitsarbeit',
+      purpose: 'Nebenprozess für eine zielgruppengerechte und nachvollziehbare Bewerbung.',
+      createdByUserId: DEMO_USER_ID,
+      createdAt,
+      updatedAt: createdAt,
+      definition: definition([
+        { id: 'marketing-input', type: 'input', position: { x: 40, y: 150 }, data: { label: 'Veranstaltungsinfos', responsibleRole: 'Planungsteam' } },
+        { id: 'marketing-activity', type: 'activity', position: { x: 340, y: 150 }, data: { label: 'Botschaft und Kanäle wählen', description: 'Welche Sprache, Bilder und Kanäle erreichen die Zielgruppe?' } },
+        { id: 'marketing-output', type: 'output', position: { x: 650, y: 150 }, data: { label: 'Bewerbung veröffentlicht' } },
+        { id: 'marketing-outcome', type: 'outcome', position: { x: 940, y: 150 }, data: { label: 'Zielgruppe informiert', description: 'Rückmeldungen und Reichweite beobachten.' } },
+      ], [
+        { id: 'marketing-edge-1', source: 'marketing-input', target: 'marketing-activity' },
+        { id: 'marketing-edge-2', source: 'marketing-activity', target: 'marketing-output' },
+        { id: 'marketing-edge-3', source: 'marketing-output', target: 'marketing-outcome' },
+      ]),
+    },
+    {
+      id: 'demo-process-team-reflection',
+      orgId: DEMO_ORG_ID,
+      title: 'Teamreflexion nach einem Angebot',
+      purpose: 'Lernerfahrungen festhalten und konkrete Verbesserungen vereinbaren.',
+      createdByUserId: DEMO_USER_ID,
+      createdAt,
+      updatedAt: createdAt,
+      definition: definition([
+        { id: 'reflection-input', type: 'input', position: { x: 40, y: 150 }, data: { label: 'Beobachtungen sammeln', description: 'Perspektiven der Jugendlichen und des Teams zusammentragen.' } },
+        { id: 'reflection-activity', type: 'activity', position: { x: 340, y: 150 }, data: { label: 'Auswertung im Team', responsibleRole: 'Moderation' } },
+        { id: 'reflection-note', type: 'reflection', position: { x: 640, y: 150 }, data: { label: 'Lernfrage beantworten', description: 'Was behalten wir bei, was ändern wir und wer übernimmt den nächsten Schritt?' } },
+        { id: 'reflection-output', type: 'output', position: { x: 940, y: 150 }, data: { label: 'Vereinbarung dokumentiert' } },
+      ], [
+        { id: 'reflection-edge-1', source: 'reflection-input', target: 'reflection-activity' },
+        { id: 'reflection-edge-2', source: 'reflection-activity', target: 'reflection-note' },
+        { id: 'reflection-edge-3', source: 'reflection-note', target: 'reflection-output' },
+      ]),
+    },
+  ];
+}
+
 function createInitialAuditLogs(activities: DemoActivityRecord[], projects: DemoProject[]): AuditLog[] {
   const recentActivities = activities.slice(0, 8);
   return [
@@ -762,13 +836,14 @@ function createDemoStore(now = new Date()): DemoStore {
   const projects = projectSeed(windowStart, windowEnd);
   const activities = activitySeed(windowStart, windowEnd, projects, tags, staff);
   const surveyData = surveySeed(now);
+  const processes = processSeed(now);
   return {
     generatedAt: now.toISOString(),
     windowStart,
     windowEnd,
     sequence: 10000,
     user: { ...demoUser },
-    orgs: [{ id: DEMO_ORG_ID, name: 'Demo Jugendhaus', parentId: null, path: DEMO_ORG_ID }],
+    orgs: [{ id: DEMO_ORG_ID, name: 'Demo Jugendhaus', parentId: null, path: DEMO_ORG_ID, processesEnabled: true }],
     categories,
     tags,
     cohorts,
@@ -782,6 +857,7 @@ function createDemoStore(now = new Date()): DemoStore {
     acks: {},
     auditLogs: createInitialAuditLogs(activities, projects),
     logbookEntries: logbookSeed(activities, projects),
+    processes,
     ...surveyData,
   };
 }
@@ -1885,6 +1961,49 @@ export function updateDemoProjectTemplate(id: string, data: Partial<ProjectTempl
 
 export function deleteDemoProjectTemplate(id: string) {
   store.projectTemplates = store.projectTemplates.filter((entry) => entry.id !== id);
+}
+
+export function getDemoProcessAccess() {
+  return { enabled: true, canEdit: true, orgId: DEMO_ORG_ID };
+}
+
+export function listDemoProcesses(): ProcessDto[] {
+  return clone([...store.processes].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.title.localeCompare(right.title)));
+}
+
+export function createDemoProcess(data: Partial<ProcessWriteData>): ProcessDto {
+  const now = new Date().toISOString();
+  const process: ProcessDto = {
+    id: nextId('process'),
+    orgId: DEMO_ORG_ID,
+    title: String(data.title || 'Neuer Prozess').trim() || 'Neuer Prozess',
+    purpose: typeof data.purpose === 'string' ? data.purpose : null,
+    definition: data.definition || { schemaVersion: 1, nodes: [], edges: [] },
+    createdByUserId: DEMO_USER_ID,
+    createdAt: now,
+    updatedAt: now,
+  };
+  store.processes.unshift(process);
+  addAudit('process', process.id, 'create', process.title);
+  return clone(process);
+}
+
+export function updateDemoProcess(id: string, data: Partial<ProcessWriteData>): ProcessDto {
+  const process = store.processes.find((entry) => entry.id === id);
+  if (!process) throw new Error('Prozess nicht gefunden');
+  if (typeof data.title === 'string') process.title = data.title.trim() || process.title;
+  if (typeof data.purpose !== 'undefined') process.purpose = typeof data.purpose === 'string' ? data.purpose : null;
+  if (data.definition) process.definition = data.definition;
+  process.updatedAt = new Date().toISOString();
+  addAudit('process', process.id, 'update', process.title);
+  return clone(process);
+}
+
+export function deleteDemoProcess(id: string) {
+  const process = store.processes.find((entry) => entry.id === id);
+  if (!process) throw new Error('Prozess nicht gefunden');
+  store.processes = store.processes.filter((entry) => entry.id !== id);
+  addAudit('process', process.id, 'delete', process.title);
 }
 
 export function getDemoGeneratedInfo() {

@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
-export const PROCESS_NODE_TYPES = ['input', 'activity', 'decision', 'output', 'outcome', 'reflection'] as const;
+export const PROCESS_NODE_TYPES = ['input', 'activity', 'decision', 'branch', 'subprocess', 'file', 'output', 'outcome', 'reflection'] as const;
 export type ProcessNodeType = (typeof PROCESS_NODE_TYPES)[number];
 
 export interface ProcessDefinition {
@@ -9,9 +9,9 @@ export interface ProcessDefinition {
     id: string;
     type: ProcessNodeType;
     position: { x: number; y: number };
-    data: { label: string; description?: string; responsibleRole?: string };
+    data: { label: string; description?: string; responsibleRole?: string; linkedProcessId?: string; fileUrl?: string; fileName?: string; fileMimeType?: string };
   }>;
-  edges: Array<{ id: string; source: string; target: string; label?: string }>;
+  edges: Array<{ id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string; label?: string }>;
 }
 
 @Entity('processes')

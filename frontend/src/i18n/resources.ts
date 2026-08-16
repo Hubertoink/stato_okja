@@ -24,6 +24,7 @@ export const resources = {
         projects: 'Projekte',
         surveys: 'Umfragen',
         statistics: 'Statistiken',
+        processes: 'ProzessO',
         settings: 'Einstellungen',
         more: 'Mehr',
         userMenu: 'Benutzermenü öffnen',
@@ -991,6 +992,42 @@ export const resources = {
         next: 'Weiter',
       },
     },
+    processes: {
+      title: 'ProzessO',
+      description: 'Prozesse gemeinsam klären, visualisieren und reflektieren.',
+      listHeading: 'Meine Prozesse',
+      openProcesses: 'Geöffnete Prozesse',
+      newProcess: 'Neuer Prozess',
+      cancel: 'Abbrechen',
+      loading: 'ProzessO wird geladen …',
+      disabledTitle: 'ProzessO ist nicht freigeschaltet',
+      disabledDescription: 'Ein Superadmin kann ProzessO für diese Organisation in der Organisationsverwaltung aktivieren.',
+      empty: 'Noch keine Prozesse vorhanden.',
+      emptySelection: 'Wähle einen Prozess oder lege einen neuen an.',
+      nodes: {
+        input: 'Input', activity: 'Aktivität', decision: 'Entscheidung', branch: 'Verzweigung', subprocess: 'Nebenprozess', file: 'Datei', output: 'Output', outcome: 'Wirkung', reflection: 'Reflexion',
+      },
+      node: {
+        type: 'Typ', title: 'Titel', responsibility: 'Verantwortung', hint: 'Hinweis', reflectionQuestion: 'Hinweis / Reflexionsfrage', remove: 'Schritt entfernen', unnamed: 'Unbenannter Schritt', select: 'Wähle einen Prozessschritt im Diagramm aus.', edit: 'Schritt bearbeiten', insert: 'Schritt einfügen', selectType: 'Schritttyp auswählen', add: '{{type}} hinzufügen',
+        multiplePaths: 'Mehrere Pfade verbinden', unlinked: 'Noch nicht verknüpft', linkedSubprocess: 'Verknüpfter Nebenprozess', notLinked: 'Nicht verknüpft', createSubprocess: 'Neuen Nebenprozess anlegen', openSubprocess: 'Nebenprozess öffnen',
+        addFile: 'Bild oder PDF hinzufügen', fileHint: 'PNG, JPG, WebP oder PDF, maximal 12 MB.', openFile: 'Datei öffnen', pdfFile: 'PDF-Datei', responsibilityPlaceholder: 'z. B. Teamleitung',
+      },
+      actions: {
+        exportPdf: 'PDF exportieren', fullscreen: 'Vollbild', leaveFullscreen: 'Vollbild verlassen', autoArrange: 'Workflow automatisch anordnen', deleteProcess: 'Prozess löschen', editDetails: 'Titel und Beschreibung bearbeiten',
+      },
+      metadata: {
+        createTitle: 'Neuen Prozess anlegen', editTitle: 'Prozessdetails bearbeiten', title: 'Titel', description: 'Beschreibung', optional: 'optional', titlePlaceholder: 'z. B. Veranstaltungsplanung', descriptionPlaceholder: 'Wozu dient dieser Prozess?', create: 'Prozess anlegen', apply: 'Änderungen übernehmen', newSubprocessTitle: 'Neuer Nebenprozess', newSubprocessPurpose: 'Eigenständiger Teilprozess',
+      },
+      pdf: {
+        exportedAt: 'Exportiert am', noDescription: 'Ohne Beschreibung', detailsTitle: 'Schritte und Reflexion', empty: 'Dieser Prozess enthält noch keine Schritte.', fileFallback: 'Prozess',
+      },
+      deleteConfirmation: {
+        question: 'Möchtest du „{{title}}“ wirklich löschen?', notice: 'Der Prozess und sein Workflow können danach nicht wiederhergestellt werden.',
+      },
+      messages: {
+        saved: 'Änderungen automatisch gespeichert.', saveFailed: 'Änderungen konnten nicht gesichert werden. Die Sicherung wird automatisch erneut versucht.', fileOpenFailed: 'Die Datei konnte nicht geöffnet werden.', fileUploaded: 'Datei hochgeladen und wird automatisch gesichert.', fileUploadFailed: 'Die Datei konnte nicht hochgeladen werden. Erlaubt sind Bilder und PDFs bis 12 MB.', subprocessCreated: 'Nebenprozess angelegt und verknüpft.', subprocessCreateFailed: 'Der Nebenprozess konnte nicht angelegt werden.', workflowArranged: 'Workflow automatisch angeordnet und gesichert.', workflowArrangeFailed: 'Der Workflow konnte nicht automatisch angeordnet werden.', created: 'Neuer Prozess angelegt.', createFailed: 'Der Prozess konnte nicht angelegt werden.', deleted: 'Prozess gelöscht.', deleteFailed: 'Der Prozess konnte nicht gelöscht werden.', pdfCreated: 'PDF-Export wurde erstellt.', pdfFailed: 'Der PDF-Export konnte nicht erstellt werden.',
+      },
+    },
   },
   en: {
     auto: autoResources.en,
@@ -1015,6 +1052,7 @@ export const resources = {
         projects: 'Projects',
         surveys: 'Surveys',
         statistics: 'Statistics',
+        processes: 'ProcessO',
         settings: 'Settings',
         more: 'More',
         userMenu: 'Open user menu',
@@ -1953,6 +1991,42 @@ export const resources = {
         sending: 'Sending…',
         submit: 'Submit',
         next: 'Next',
+      },
+    },
+    processes: {
+      title: 'ProcessO',
+      description: 'Clarify, visualise and reflect on processes together.',
+      listHeading: 'My processes',
+      openProcesses: 'Open processes',
+      newProcess: 'New process',
+      cancel: 'Cancel',
+      loading: 'Loading ProcessO …',
+      disabledTitle: 'ProcessO is not enabled',
+      disabledDescription: 'A superadmin can enable ProcessO for this organisation in organisation management.',
+      empty: 'No processes yet.',
+      emptySelection: 'Choose a process or create a new one.',
+      nodes: {
+        input: 'Input', activity: 'Activity', decision: 'Decision', branch: 'Branch', subprocess: 'Subprocess', file: 'File', output: 'Output', outcome: 'Outcome', reflection: 'Reflection',
+      },
+      node: {
+        type: 'Type', title: 'Title', responsibility: 'Responsibility', hint: 'Note', reflectionQuestion: 'Note / reflection question', remove: 'Remove step', unnamed: 'Untitled step', select: 'Select a process step in the diagram.', edit: 'Edit step', insert: 'Insert step', selectType: 'Choose step type', add: 'Add {{type}}',
+        multiplePaths: 'Connect multiple paths', unlinked: 'Not linked yet', linkedSubprocess: 'Linked subprocess', notLinked: 'Not linked', createSubprocess: 'Create subprocess', openSubprocess: 'Open subprocess',
+        addFile: 'Add image or PDF', fileHint: 'PNG, JPG, WebP or PDF, maximum 12 MB.', openFile: 'Open file', pdfFile: 'PDF file', responsibilityPlaceholder: 'e.g. team lead',
+      },
+      actions: {
+        exportPdf: 'Export PDF', fullscreen: 'Fullscreen', leaveFullscreen: 'Exit fullscreen', autoArrange: 'Automatically arrange workflow', deleteProcess: 'Delete process', editDetails: 'Edit title and description',
+      },
+      metadata: {
+        createTitle: 'Create process', editTitle: 'Edit process details', title: 'Title', description: 'Description', optional: 'optional', titlePlaceholder: 'e.g. event planning', descriptionPlaceholder: 'What is this process for?', create: 'Create process', apply: 'Apply changes', newSubprocessTitle: 'New subprocess', newSubprocessPurpose: 'Independent subprocess',
+      },
+      pdf: {
+        exportedAt: 'Exported on', noDescription: 'No description', detailsTitle: 'Steps and reflection', empty: 'This process does not contain any steps yet.', fileFallback: 'Process',
+      },
+      deleteConfirmation: {
+        question: 'Do you really want to delete “{{title}}”?', notice: 'The process and its workflow cannot be restored afterwards.',
+      },
+      messages: {
+        saved: 'Changes saved automatically.', saveFailed: 'Changes could not be saved. Saving will be retried automatically.', fileOpenFailed: 'The file could not be opened.', fileUploaded: 'File uploaded and will be saved automatically.', fileUploadFailed: 'The file could not be uploaded. Images and PDFs up to 12 MB are allowed.', subprocessCreated: 'Subprocess created and linked.', subprocessCreateFailed: 'The subprocess could not be created.', workflowArranged: 'Workflow arranged and saved automatically.', workflowArrangeFailed: 'The workflow could not be arranged automatically.', created: 'New process created.', createFailed: 'The process could not be created.', deleted: 'Process deleted.', deleteFailed: 'The process could not be deleted.', pdfCreated: 'PDF export created.', pdfFailed: 'The PDF export could not be created.',
       },
     },
   },

@@ -295,6 +295,7 @@ Hinweis: Feinsteuerung wie `RESET_TOKEN_EXPIRATION` oder `INVITE_TOKEN_EXPIRATIO
 
 - `VITE_ENABLE_DEV_TOOLS=false`
 - `ENABLE_ORG_MOVE=false`
+- `ENABLE_PROCESSES=true`
 
 Für einen echten On-Prem-Produktivbetrieb sollte das normalerweise `false` bleiben.
 
@@ -303,6 +304,12 @@ Zusätzlich bei `ENABLE_ORG_MOVE`:
 - Standard ist bewusst `false`, damit Organisationsverschiebungen nicht versehentlich im Betrieb genutzt werden.
 - Erst bei `ENABLE_ORG_MOVE=true` werden die Move-Endpunkte im Backend aktiviert und der Verschieben-Button in den Frontend-Build aufgenommen.
 - Nach einer Änderung des Werts muss der Frontend-Container neu gebaut werden.
+
+Für `ENABLE_PROCESSES` gilt:
+
+- Standard ist `true`.
+- Bei `false` deaktiviert der Backend-Container ProzessO global, ohne die je Organisation gespeicherte Freischaltung zu verändern.
+- Nach einer Änderung muss nur der Backend-Container neu gestartet werden.
 
 ## Vollständiges Beispiel für `.env.onprem`
 

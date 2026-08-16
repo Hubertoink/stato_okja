@@ -203,7 +203,11 @@ export default function Layout() {
   };
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
-  const [mobileNavLayout, setMobileNavLayout] = useState(() => getMobileNavLayout(user?.id));
+  const availableMobileNavItemIds = useMemo(
+    () => processOEnabled ? MOBILE_NAV_ITEM_IDS : MOBILE_NAV_ITEM_IDS.filter((id) => id !== 'processes'),
+    [processOEnabled],
+  );
+  const [mobileNavLayout, setMobileNavLayout] = useState(() => getMobileNavLayout(user?.id, availableMobileNavItemIds));
   const closeTimer = useRef<number | null>(null);
   const [hoverable, setHoverable] = useState(false);
   useEffect(() => {
@@ -238,6 +242,7 @@ export default function Layout() {
       logbook: { to: '/logbook', label: t('navigation.logbook'), icon: BookOpen },
       calendar: { to: '/calendar', label: t('navigation.calendar'), icon: CalendarIcon },
       projects: { to: '/projects', label: t('navigation.projects'), icon: Boxes },
+      processes: { to: '/processes', label: t('navigation.processes'), icon: GitBranch },
       surveys: { to: '/surveys', label: t('navigation.surveys'), icon: ClipboardList },
       statistics: { to: '/statistics', label: t('navigation.statistics'), icon: BarChart3 },
       settings: { to: '/settings', label: t('navigation.settings'), icon: Settings },
@@ -248,25 +253,24 @@ export default function Layout() {
     logbook: t('navigation.logbook'),
     calendar: t('navigation.calendar'),
     projects: t('navigation.projects'),
-    processes: 'ProzessO',
+    processes: t('navigation.processes'),
     surveys: t('navigation.surveys'),
     statistics: t('navigation.statistics'),
     settings: t('navigation.settings'),
   };
   const mobileBottomItems = mobileNavLayout.bottom.map((id) => mobileNavItems[id]);
   const mobileMoreItems = [
-    ...MOBILE_NAV_ITEM_IDS.filter(
+    ...availableMobileNavItemIds.filter(
       (id) => !mobileNavLayout.bottom.includes(id),
     ).map((id) => mobileNavItems[id]),
-    ...(processOEnabled ? [{ to: '/processes', label: 'ProzessO', icon: GitBranch }] : []),
   ];
 
   useEffect(() => {
-    const syncMobileLayout = () => setMobileNavLayout(getMobileNavLayout(user?.id));
+    const syncMobileLayout = () => setMobileNavLayout(getMobileNavLayout(user?.id, availableMobileNavItemIds));
     syncMobileLayout();
     window.addEventListener('stato:mobile-nav-layout', syncMobileLayout);
     return () => window.removeEventListener('stato:mobile-nav-layout', syncMobileLayout);
-  }, [user?.id]);
+  }, [availableMobileNavItemIds, user?.id]);
 
   // Org scope switcher
   const [scopeModalOpen, setScopeModalOpen] = useState(false);
@@ -746,7 +750,7 @@ export default function Layout() {
                     isActive('/dashboard') ? 'theme-nav-item-active' : ''
                   }`}
                 >
-                  <Home className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <Home className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
                   <span
                     className={`nav-label ${isActive('/dashboard') ? 'nav-label-active' : ''}`}
                     data-text={navLabels.dashboard}
@@ -763,7 +767,7 @@ export default function Layout() {
                     isActive('/activities') ? 'theme-nav-item-active' : ''
                   }`}
                 >
-                  <Activity className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <Activity className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
                   <span
                     className={`nav-label ${isActive('/activities') ? 'nav-label-active' : ''}`}
                     data-text={navLabels.activities}
@@ -780,7 +784,7 @@ export default function Layout() {
                     isActive('/logbook') ? 'theme-nav-item-active' : ''
                   }`}
                 >
-                  <BookOpen className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <BookOpen className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
                   <span
                     className={`nav-label ${isActive('/logbook') ? 'nav-label-active' : ''}`}
                     data-text={navLabels.logbook}
@@ -797,7 +801,7 @@ export default function Layout() {
                     isActive('/calendar') ? 'theme-nav-item-active' : ''
                   }`}
                 >
-                  <CalendarIcon className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <CalendarIcon className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
                   <span
                     className={`nav-label ${isActive('/calendar') ? 'nav-label-active' : ''}`}
                     data-text={navLabels.calendar}
@@ -814,7 +818,7 @@ export default function Layout() {
                     isActive('/projects') ? 'theme-nav-item-active' : ''
                   }`}
                 >
-                  <Boxes className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <Boxes className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
                   <span
                     className={`nav-label ${isActive('/projects') ? 'nav-label-active' : ''}`}
                     data-text={navLabels.projects}
@@ -832,7 +836,7 @@ export default function Layout() {
                       isActive('/processes') ? 'theme-nav-item-active' : ''
                     }`}
                   >
-                    <GitBranch className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                    <GitBranch className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
                     <span
                       className={`nav-label ${isActive('/processes') ? 'nav-label-active' : ''}`}
                       data-text={navLabels.processes}
@@ -850,7 +854,7 @@ export default function Layout() {
                     isActive('/surveys') ? 'theme-nav-item-active' : ''
                   }`}
                 >
-                  <ClipboardList className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <ClipboardList className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
                   <span
                     className={`nav-label ${isActive('/surveys') ? 'nav-label-active' : ''}`}
                     data-text={navLabels.surveys}
@@ -867,7 +871,7 @@ export default function Layout() {
                     isActive('/statistics') ? 'theme-nav-item-active' : ''
                   }`}
                 >
-                  <BarChart3 className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <BarChart3 className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
                   <span
                     className={`nav-label ${isActive('/statistics') ? 'nav-label-active' : ''}`}
                     data-text={navLabels.statistics}
@@ -884,7 +888,7 @@ export default function Layout() {
                     isActive('/settings') ? 'theme-nav-item-active' : ''
                   }`}
                 >
-                  <Settings className="w-5 h-5 min-[1101px]:mr-2 flex-shrink-0" />
+                  <Settings className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
                   <span
                     className={`nav-label ${isActive('/settings') ? 'nav-label-active' : ''}`}
                     data-text={navLabels.settings}

@@ -329,7 +329,7 @@ function AuthedRoutes() {
           <Route
             path="processes"
             element={
-              <RouteBoundary label="ProzessO">
+              <RouteBoundary label={t('navigation.processes')}>
                 <Processes />
               </RouteBoundary>
             }

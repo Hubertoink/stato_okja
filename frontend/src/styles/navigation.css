@@ -22,8 +22,8 @@
 }
 
 /* Keep the compact icon-only navigation only while desktop width is limited.
-   From 1101px the component exposes its labels next to the icons. */
-@media (min-width: 768px) and (max-width: 1100px) {
+   From 1400px the component exposes its labels next to the icons. */
+@media (min-width: 768px) and (max-width: 1399px) {
   .nav-label {
     /* Visually hidden but accessible */
     position: absolute;

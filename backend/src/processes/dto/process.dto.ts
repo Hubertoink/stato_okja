@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   Min,
   ValidateNested,
@@ -22,6 +23,10 @@ export class ProcessNodeDataDto {
   @IsString() @MaxLength(180) label!: string;
   @IsOptional() @IsString() @MaxLength(8_000) description?: string;
   @IsOptional() @IsString() @MaxLength(120) responsibleRole?: string;
+  @IsOptional() @IsUUID() linkedProcessId?: string;
+  @IsOptional() @IsString() @MaxLength(500) fileUrl?: string;
+  @IsOptional() @IsString() @MaxLength(255) fileName?: string;
+  @IsOptional() @IsString() @MaxLength(120) fileMimeType?: string;
 }
 
 export class ProcessDefinitionNodeDto {
@@ -35,6 +40,8 @@ export class ProcessDefinitionEdgeDto {
   @IsString() @MaxLength(120) id!: string;
   @IsString() @MaxLength(120) source!: string;
   @IsString() @MaxLength(120) target!: string;
+  @IsOptional() @IsString() @MaxLength(120) sourceHandle?: string;
+  @IsOptional() @IsString() @MaxLength(120) targetHandle?: string;
   @IsOptional() @IsString() @MaxLength(180) label?: string;
 }
 

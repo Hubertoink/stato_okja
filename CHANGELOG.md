@@ -7,6 +7,30 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.9.0] - 2026-08-17
+
+### Added
+- Die Datenbank-Analyse bietet einen interaktiven Beziehungsgraphen mit
+  Datenflussrichtung, Detailansicht und Übersichtskarte.
+- Eine öffentliche, interaktive Sicherheitsarchitektur visualisiert den
+  Mittwald- und On-Premises-Betrieb; sie kann auf `stato-okja.de` eingebettet
+  werden.
+- ProzessO unterstützt zusätzliche Schrittinformationen, Checklisten,
+  Ressourcen, Voraussetzungen, Abschlusskriterien und parallele Wege.
+
+### Changed
+- Die Datenbank-Analyse umfasst zusätzliche Systemdaten-Informationen und
+  lässt sich für die technische Dokumentation besser navigieren.
+- Die Sicherheitsarchitektur verwendet die StatO-Farbwelt und hebt die
+  Beschriftungen ausgewählter Verbindungen lesbar über den Knoten hervor.
+
+### Security
+- Nur die öffentliche Sicherheitsarchitektur darf von `stato-okja.de` per
+  iframe eingebettet werden; alle übrigen Anwendungsrouten senden wieder
+  explizit `frame-ancestors 'none'` und `X-Frame-Options: DENY`.
+
+---
+
 ## [1.8.5] - 2026-08-16
 
 ### Added

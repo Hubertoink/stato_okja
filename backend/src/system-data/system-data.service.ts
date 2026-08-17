@@ -56,12 +56,38 @@ export type SystemDataActor = {
 
 type ManagedTable = SystemDataManagedTable;
 
+type DatabaseExplorerColumn = {
+  name: string;
+  type: string;
+  nullable: boolean;
+  primary: boolean;
+  generated: boolean;
+  hidden: boolean;
+  reference?: { tableKey: string; column: string };
+};
+
+type DatabaseExplorerTable = ManagedTable & {
+  columns: DatabaseExplorerColumn[];
+  primaryColumn: string | null;
+  organizationColumn: string | null;
+};
+
+type DatabaseExplorerRowsQuery = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sort?: string;
+  direction?: 'asc' | 'desc';
+  orgId?: string;
+};
+
 type UploadReferenceBreakdown = {
   projects: number;
   projectDocuments: number;
   projectTemplates: number;
   userAvatars: number;
   organizationBanners: number;
+  processFiles: number;
 };
 
 type UploadReferenceKey = keyof UploadReferenceBreakdown;
@@ -72,6 +98,7 @@ type UploadReferenceDetails = {
   projectTemplates: Array<{ id: string; title: string; orgId: string | null }>;
   userAvatars: Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null }>;
   organizationBanners: Array<{ id: string; name: string }>;
+  processFiles: Array<{ id: string; title: string; orgId: string | null; nodeId: string; nodeLabel: string }>;
 };
 
 type UploadReferenceSummary = {
@@ -90,6 +117,7 @@ const EMPTY_UPLOAD_REFERENCE_BREAKDOWN: UploadReferenceBreakdown = {
   projectTemplates: 0,
   userAvatars: 0,
   organizationBanners: 0,
+  processFiles: 0,
 };
 
 @Injectable()
@@ -669,6 +697,158 @@ export class SystemDataService {
     return Array.from(map.values()).sort((left, right) => left.filename.localeCompare(right.filename));
   }
 
+  private getDatabaseExplorerTables(): DatabaseExplorerTable[] {
+    const metadataByKey = new Map<string, (typeof this.dataSource.entityMetadatas)[number]>();
+    for (const metadata of this.dataSource.entityMetadatas) {
+      const key = this.normalizeTableKey(metadata.tablePath || metadata.tableName);
+      if (key) metadataByKey.set(key, metadata);
+      for (const relation of metadata.relations) {
+        const junction = relation.junctionEntityMetadata;
+        if (!junction) continue;
+        const junctionKey = this.normalizeTableKey(junction.tablePath || junction.tableName);
+        if (junctionKey) metadataByKey.set(junctionKey, junction);
+      }
+    }
+
+    return this.getManagedTables().map((managedTable) => {
+      const metadata = metadataByKey.get(managedTable.key);
+      const references = new Map<string, { tableKey: string; column: string }>();
+      for (const relation of metadata?.relations || []) {
+        const target = relation.inverseEntityMetadata;
+        const targetKey = target ? this.normalizeTableKey(target.tablePath || target.tableName) : '';
+        for (const joinColumn of relation.joinColumns || []) {
+          const localColumn = String(joinColumn.databaseName || '').trim();
+          const targetColumn = String(joinColumn.referencedColumn?.databaseName || 'id').trim();
+          if (localColumn && targetKey) references.set(localColumn, { tableKey: targetKey, column: targetColumn });
+        }
+      }
+
+      const physicalMetadataColumns = (metadata?.columns || [])
+          // VirtualColumn values are calculated by TypeORM and have no
+          // physical column to select from the underlying database table.
+        .filter((column) => !column.isVirtual && !column.isVirtualProperty);
+      const columns = (physicalMetadataColumns.length
+        ? physicalMetadataColumns.map((column) => ({
+          name: String(column.databaseName || '').trim(),
+          type: this.normalizeColumnType(column.type),
+          nullable: Boolean(column.isNullable),
+          primary: Boolean(column.isPrimary),
+          generated: Boolean(column.isGenerated),
+        }))
+        : Object.entries(managedTable.columnTypes).map(([name, type]) => ({
+          name,
+          type,
+          nullable: true,
+          primary: name === 'id',
+          generated: false,
+        })))
+        .filter((column) => column.name)
+        .map((column) => ({
+          ...column,
+          hidden: this.isSensitiveExplorerColumn(column.name),
+          // Several StatO entities intentionally keep orgId as a plain column
+          // instead of declaring a TypeORM relation. It is still a stable,
+          // useful relationship in the explorer.
+          reference: references.get(column.name)
+            || (column.name === 'orgId' && managedTable.key !== 'organizations'
+              ? { tableKey: 'organizations', column: 'id' }
+              : undefined),
+        }));
+
+      return {
+        ...managedTable,
+        columns,
+        primaryColumn: columns.find((column) => column.primary)?.name || null,
+        organizationColumn: columns.find((column) => column.name === 'orgId')?.name || null,
+      };
+    });
+  }
+
+  private isSensitiveExplorerColumn(columnName: string) {
+    const name = String(columnName || '').toLowerCase();
+    return name.includes('password') || name.includes('token') || name.includes('secret') || name.includes('hash');
+  }
+
+  private isStructuredExplorerColumn(type: string) {
+    const normalized = String(type || '').toLowerCase();
+    return normalized.includes('json') || normalized.includes('bytea') || normalized.includes('blob');
+  }
+
+  private serializeExplorerRecord(row: Record<string, unknown>, columns: DatabaseExplorerColumn[]) {
+    const typeByName = new Map(columns.map((column) => [column.name, column.type]));
+    return Object.fromEntries(Object.entries(row).map(([key, value]) => [key, this.serializeExplorerValue(value, typeByName.get(key) || '')]));
+  }
+
+  private serializeExplorerValue(value: unknown, type: string): unknown {
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === 'bigint') return String(value);
+    if (Buffer.isBuffer(value)) return `[Binärdaten: ${value.length} Bytes]`;
+    if (typeof value === 'string' && this.isStructuredExplorerColumn(type)) {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  }
+
+  private async resolveExplorerReferences(
+    queryRunner: QueryRunner,
+    table: DatabaseExplorerTable,
+    records: Array<Record<string, unknown>>,
+  ) {
+    const result: Array<Record<string, { tableKey: string; id: string; label: string }>> = records.map(() => ({}));
+    const definitions = new Map(this.getDatabaseExplorerTables().map((definition) => [definition.key, definition]));
+    const referenceColumns = table.columns.filter((column) => column.reference && !column.hidden);
+
+    for (const column of referenceColumns) {
+      const reference = column.reference!;
+      const target = definitions.get(reference.tableKey);
+      if (!target || reference.column !== 'id') continue;
+      const ids = Array.from(new Set(records.map((record) => String(record[column.name] || '')).filter(Boolean))).slice(0, 100);
+      if (!ids.length) continue;
+
+      const labelColumn = target.columns.find((candidate) => ['title', 'name', 'email', 'filename', 'label'].includes(candidate.name) && !candidate.hidden)?.name || 'id';
+      const placeholders = ids.map((_id, index) => this.getParameterPlaceholder(index + 1)).join(', ');
+      const targetRows = await queryRunner.query(
+        `SELECT ${this.escapeIdentifier('id')}, ${this.escapeIdentifier(labelColumn)} FROM ${this.escapeTablePath(target.path)} WHERE ${this.escapeIdentifier('id')} IN (${placeholders})`,
+        ids,
+      ) as Array<{ id: string; [key: string]: unknown }>;
+      const labels = new Map(targetRows.map((row) => [String(row.id), String(row[labelColumn] || row.id)]));
+      records.forEach((record, index) => {
+        const id = String(record[column.name] || '');
+        const label = labels.get(id);
+        if (id && label) result[index][column.name] = { tableKey: reference.tableKey, id, label };
+      });
+    }
+
+    return result;
+  }
+
+  private async getExplorerOrganizationStats(
+    queryRunner: QueryRunner,
+    table: DatabaseExplorerTable,
+    whereSql: string,
+    params: unknown[],
+  ) {
+    if (!table.organizationColumn || table.key === 'organizations') {
+      return [] as Array<{ id: string; name: string; count: number }>;
+    }
+
+    const qualifiedWhereSql = whereSql.replace(/"([^".]+)"/g, 'source."$1"');
+    const rows = await queryRunner.query(
+      `SELECT o."id", o."name", COUNT(*) AS count FROM ${this.escapeTablePath(table.path)} source LEFT JOIN ${this.escapeTablePath('organizations')} o ON o."id" = source.${this.escapeIdentifier(table.organizationColumn)}${qualifiedWhereSql} GROUP BY o."id", o."name" ORDER BY count DESC, o."name" ASC LIMIT 12`,
+      params,
+    ) as Array<{ id: string | null; name: string | null; count?: string | number }>;
+
+    return rows.map((row) => ({
+      id: String(row.id || ''),
+      name: row.name || 'Ohne Organisation',
+      count: Number(row.count || 0),
+    }));
+  }
+
   private registerManagedTable(
     target: Map<string, ManagedTable>,
     tablePath: string,
@@ -897,7 +1077,163 @@ export class SystemDataService {
       name: row.name,
     }));
 
+    const processRows = await queryRunner.query(
+      `SELECT "id", "title", "orgId", "definition" FROM ${this.escapeTablePath('processes')}`,
+    ) as Array<{ id: string; title: string; orgId: string | null; definition: unknown }>;
+    processRows.forEach((process) => {
+      const definition = this.parseProcessDefinition(process.definition);
+      const nodes = Array.isArray(definition?.nodes) ? definition.nodes : [];
+      nodes.forEach((node) => {
+        const data = node && typeof node === 'object' ? (node as { id?: unknown; data?: unknown }).data : undefined;
+        if (!data || typeof data !== 'object') return;
+        const fileUrl = (data as { fileUrl?: unknown }).fileUrl;
+        const nodeId = typeof (node as { id?: unknown }).id === 'string' ? (node as { id: string }).id : '';
+        const nodeLabel = typeof (data as { label?: unknown }).label === 'string' ? (data as { label: string }).label : 'Datei';
+        addReference(fileUrl, 'processFiles', {
+          id: process.id,
+          title: process.title,
+          orgId: process.orgId ?? null,
+          nodeId,
+          nodeLabel,
+        });
+      });
+    });
+
     return references;
+  }
+
+  /**
+   * Metadata for the Superadmin database explorer. The explorer intentionally
+   * uses the same managed-table allowlist as export/import and never accepts
+   * arbitrary SQL or table paths from the browser.
+   */
+  async listDatabaseExplorerTables(actor: SystemDataActor) {
+    this.assertSuperadmin(actor);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    try {
+      const definitions = this.getDatabaseExplorerTables();
+      const tables = await Promise.all(definitions.map(async (table) => ({
+        key: table.key,
+        rowCount: await this.countRows(queryRunner, table.path),
+        organizationColumn: table.organizationColumn,
+        columns: table.columns.map((column) => ({
+          name: column.name,
+          type: column.type,
+          nullable: column.nullable,
+          primary: column.primary,
+          generated: column.generated,
+          hidden: column.hidden,
+          reference: column.reference,
+        })),
+      })));
+
+      // Read foreign keys from the actual database schema as well. This covers
+      // generated junction tables (for example activity_categories) whose
+      // TypeORM relation metadata is intentionally sparse.
+      const definitionByKey = new Map(definitions.map((table) => [table.key, table]));
+      const schemaTables = await queryRunner.getTables(definitions.map((table) => table.path));
+      const relations = schemaTables.flatMap((schemaTable) => {
+        const sourceTable = this.normalizeTableKey(schemaTable.name);
+        if (!definitionByKey.has(sourceTable)) return [];
+        return schemaTable.foreignKeys.flatMap((foreignKey) => {
+          const targetTable = this.normalizeTableKey(foreignKey.referencedTableName);
+          if (!definitionByKey.has(targetTable)) return [];
+          return foreignKey.columnNames.map((sourceColumn, index) => ({
+            id: `${foreignKey.name || `${sourceTable}-${targetTable}`}-${sourceColumn}`,
+            sourceTable,
+            sourceColumn,
+            targetTable,
+            targetColumn: foreignKey.referencedColumnNames[index] || 'id',
+          }));
+        });
+      });
+
+      const organizations = await queryRunner.query(
+        `SELECT "id", "name" FROM ${this.escapeTablePath('organizations')} ORDER BY "name" ASC`,
+      ) as Array<{ id: string; name: string }>;
+
+      return { generatedAt: new Date().toISOString(), tables, relations, organizations };
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async listDatabaseExplorerRows(actor: SystemDataActor, tableKey: string, input: DatabaseExplorerRowsQuery) {
+    this.assertSuperadmin(actor);
+    const table = this.getDatabaseExplorerTables().find((candidate) => candidate.key === String(tableKey || '').toLowerCase());
+    if (!table) throw new NotFoundException('Diese Tabelle ist im Datenbank-Explorer nicht verfügbar.');
+
+    const page = Math.max(1, Number(input?.page) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(input?.pageSize) || 50));
+    const requestedSearch = String(input?.search || '').trim().slice(0, 180);
+    const requestedOrgId = String(input?.orgId || '').trim();
+    if (requestedOrgId && !table.organizationColumn) {
+      throw new BadRequestException('Für diese Tabelle ist kein Organisationsfilter verfügbar.');
+    }
+
+    const visibleColumns = table.columns.filter((column) => !column.hidden);
+    const sortColumn = visibleColumns.find((column) => column.name === input?.sort)?.name
+      || (visibleColumns.some((column) => column.name === 'updatedAt') ? 'updatedAt' : table.primaryColumn)
+      || visibleColumns[0]?.name;
+    if (!sortColumn) throw new BadRequestException('Die Tabelle enthält keine lesbaren Spalten.');
+    const direction = input?.direction === 'asc' ? 'ASC' : 'DESC';
+
+    const params: unknown[] = [];
+    const where: string[] = [];
+    if (requestedOrgId && table.organizationColumn) {
+      params.push(requestedOrgId);
+      where.push(`${this.escapeIdentifier(table.organizationColumn)} = ${this.getParameterPlaceholder(params.length)}`);
+    }
+    if (requestedSearch) {
+      const searchableColumns = visibleColumns
+        .filter((column) => !this.isStructuredExplorerColumn(column.type))
+        .slice(0, 16);
+      if (searchableColumns.length) {
+        params.push(`%${requestedSearch}%`);
+        const placeholder = this.getParameterPlaceholder(params.length);
+        where.push(`(${searchableColumns.map((column) => `LOWER(CAST(${this.escapeIdentifier(column.name)} AS TEXT)) LIKE LOWER(${placeholder})`).join(' OR ')})`);
+      }
+    }
+
+    const whereSql = where.length ? ` WHERE ${where.join(' AND ')}` : '';
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    try {
+      const countRows = await queryRunner.query(
+        `SELECT COUNT(*) AS count FROM ${this.escapeTablePath(table.path)}${whereSql}`,
+        params,
+      ) as Array<{ count?: string | number }>;
+      const total = Number(countRows?.[0]?.count || 0);
+      const offset = (page - 1) * pageSize;
+      const rowParams = [...params, pageSize, offset];
+      const selectSql = visibleColumns.map((column) => this.escapeIdentifier(column.name)).join(', ');
+      const rows = await queryRunner.query(
+        `SELECT ${selectSql} FROM ${this.escapeTablePath(table.path)}${whereSql} ORDER BY ${this.escapeIdentifier(sortColumn)} ${direction} LIMIT ${this.getParameterPlaceholder(rowParams.length - 1)} OFFSET ${this.getParameterPlaceholder(rowParams.length)}`,
+        rowParams,
+      ) as Array<Record<string, unknown>>;
+      const records = rows.map((row) => this.serializeExplorerRecord(row, table.columns));
+      const references = await this.resolveExplorerReferences(queryRunner, table, records);
+      const organizationStats = await this.getExplorerOrganizationStats(queryRunner, table, whereSql, params);
+
+      return {
+        table: {
+          key: table.key,
+          rowCount: total,
+          organizationColumn: table.organizationColumn,
+          columns: table.columns.map(({ name, type, nullable, primary, generated, hidden, reference }) => ({ name, type, nullable, primary, generated, hidden, reference })),
+        },
+        page,
+        pageSize,
+        total,
+        pageCount: Math.max(1, Math.ceil(total / pageSize)),
+        organizationStats,
+        rows: records.map((record, index) => ({ values: record, references: references[index] || {} })),
+      };
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   private async clearUploadReferences(queryRunner: QueryRunner, relativePath: string) {
@@ -908,6 +1244,7 @@ export class SystemDataService {
       projectTemplates: await this.countUploadFieldMatches(queryRunner, 'project_templates', 'imageUrl', candidates),
       userAvatars: await this.countUploadFieldMatches(queryRunner, 'users', 'avatarUrl', candidates),
       organizationBanners: await this.countUploadFieldMatches(queryRunner, 'organizations', 'bannerUrl', candidates),
+      processFiles: await this.clearProcessFileReferences(queryRunner, candidates),
     } satisfies UploadReferenceBreakdown;
 
     await this.clearUploadField(queryRunner, 'projects', { imageUrl: null, imageSize: null }, 'imageUrl', candidates);
@@ -932,6 +1269,54 @@ export class SystemDataService {
       candidates,
     ) as Array<{ count?: string | number }>;
     return Number(rows[0]?.count || 0) || 0;
+  }
+
+  private parseProcessDefinition(value: unknown): { nodes?: unknown[] } | null {
+    if (value && typeof value === 'object') return value as { nodes?: unknown[] };
+    if (typeof value !== 'string') return null;
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return parsed && typeof parsed === 'object' ? parsed as { nodes?: unknown[] } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async clearProcessFileReferences(queryRunner: QueryRunner, candidates: string[]) {
+    if (!candidates.length) return 0;
+    const candidateSet = new Set(candidates.map((candidate) => normalizeUploadPath(candidate) || candidate));
+    const rows = await queryRunner.query(
+      `SELECT "id", "definition" FROM ${this.escapeTablePath('processes')}`,
+    ) as Array<{ id: string; definition: unknown }>;
+    let cleared = 0;
+
+    for (const row of rows) {
+      const definition = this.parseProcessDefinition(row.definition);
+      const nodes = Array.isArray(definition?.nodes) ? definition.nodes : [];
+      let changed = false;
+
+      nodes.forEach((node) => {
+        const data = node && typeof node === 'object' ? (node as { data?: unknown }).data : undefined;
+        if (!data || typeof data !== 'object') return;
+        const nodeData = data as Record<string, unknown>;
+        const fileUrl = normalizeUploadPath(typeof nodeData.fileUrl === 'string' ? nodeData.fileUrl : null);
+        if (!fileUrl || !candidateSet.has(fileUrl)) return;
+        delete nodeData.fileUrl;
+        delete nodeData.fileName;
+        delete nodeData.fileMimeType;
+        changed = true;
+        cleared += 1;
+      });
+
+      if (changed) {
+        await queryRunner.query(
+          `UPDATE ${this.escapeTablePath('processes')} SET "definition" = ${this.getParameterPlaceholder(1)} WHERE "id" = ${this.getParameterPlaceholder(2)}`,
+          [JSON.stringify(definition), row.id],
+        );
+      }
+    }
+
+    return cleared;
   }
 
   private async clearUploadField(
@@ -1030,12 +1415,15 @@ export class SystemDataService {
         projectTemplates: [],
         userAvatars: [],
         organizationBanners: [],
+        processFiles: [],
       },
     };
   }
 
   private getUploadUrl(relativePath: string) {
-    return `/uploads/${String(relativePath || '').replace(/^\/+/, '').replace(/\\/g, '/')}`;
+    const normalized = String(relativePath || '').replace(/^\/+/, '').replace(/\\/g, '/');
+    if (normalized.startsWith('process-files/')) return `/uploads/files/${normalized.slice('process-files/'.length)}`;
+    return `/uploads/${normalized}`;
   }
 
   private isImagePath(relativePath: string) {
@@ -1067,6 +1455,14 @@ export class SystemDataService {
     if (normalized.startsWith('images/')) {
       const filename = normalized.slice('images/'.length);
       if (filename) candidates.add(filename);
+    }
+    if (normalized.startsWith('process-files/')) {
+      const filename = normalized.slice('process-files/'.length);
+      if (filename) {
+        candidates.add(`/uploads/files/${filename}`);
+        candidates.add(`uploads/files/${filename}`);
+        candidates.add(`/uploads/process-files/${filename}`);
+      }
     }
     return Array.from(candidates);
   }

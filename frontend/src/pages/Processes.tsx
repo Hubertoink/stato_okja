@@ -15,6 +15,7 @@ import {
   ReactFlow,
   useEdgesState,
   useNodesState,
+  useUpdateNodeInternals,
   type Connection,
   type Edge,
   type EdgeProps,
@@ -24,7 +25,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import '@/styles/processes.css';
-import { Activity, Blocks, ChevronDown, ChevronUp, ExternalLink, FileDown, FileText, FilePlus2, GitBranch, GitFork, HelpCircle, LayoutPanelTop, Loader2, LogIn, LogOut, Maximize2, MessageCircle, Minimize2, Pencil, Plus, Save, Sparkles, Trash2, type LucideIcon } from 'lucide-react';
+import { Activity, Blocks, CheckSquare, ChevronDown, ChevronUp, Clock3, ExternalLink, FileDown, FileText, FilePlus2, GitBranch, GitFork, HelpCircle, LayoutPanelTop, Loader2, LogIn, LogOut, Maximize2, MessageCircle, Minimize2, Paperclip, Pencil, Plus, Save, Sparkles, Trash2, Undo2, X, type LucideIcon } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button, CreateButton, DeleteIconButton, IconButton } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Field';
@@ -41,8 +42,12 @@ import {
   emptyProcessDefinition,
   listProcesses,
   type ProcessDefinition,
+  type ProcessChecklistItem,
   type ProcessDto,
   type ProcessNodeType,
+  type ProcessPath,
+  type ProcessPathTone,
+  type ProcessStepModule,
   updateProcess,
   uploadProcessFile,
   useProcessOAccess,
@@ -52,10 +57,17 @@ type FlowNodeData = {
   label: string;
   description?: string;
   responsibleRole?: string;
+  estimatedDurationMinutes?: number;
+  resources?: string[];
+  checklist?: ProcessChecklistItem[];
+  startCondition?: string;
+  completionCriterion?: string;
+  detailModuleOrder?: ProcessStepModule[];
   linkedProcessId?: string;
   fileUrl?: string;
   fileName?: string;
   fileMimeType?: string;
+  paths?: ProcessPath[];
   nodeType: ProcessNodeType;
   canEdit?: boolean;
   onDelete?: (nodeId: string) => void;
@@ -66,6 +78,7 @@ type FlowNode = Node<FlowNodeData, 'process'>;
 type FlowEdgeData = {
   canEdit?: boolean;
   onInsertNode?: (edgeId: string, nodeType: ProcessNodeType, position: { x: number; y: number }) => void;
+  pathTone?: ProcessPathTone;
 };
 type FlowEdge = Edge<FlowEdgeData, 'process-edge'>;
 
@@ -81,6 +94,30 @@ type ProcessMetadataModal =
   | { mode: 'create' }
   | { mode: 'edit' }
   | null;
+
+type StepModule = ProcessStepModule;
+
+const stepModules: StepModule[] = ['duration', 'resources', 'checklist', 'startCondition', 'completionCriterion'];
+
+function hasStepModuleData(data: Pick<FlowNodeData, 'estimatedDurationMinutes' | 'resources' | 'checklist' | 'startCondition' | 'completionCriterion'>, module: StepModule) {
+  switch (module) {
+    case 'duration': return typeof data.estimatedDurationMinutes === 'number';
+    case 'resources': return Boolean(data.resources?.length);
+    case 'checklist': return Boolean(data.checklist?.length);
+    case 'startCondition': return Boolean(data.startCondition);
+    case 'completionCriterion': return Boolean(data.completionCriterion);
+  }
+}
+
+function orderedStepModules(data: Pick<FlowNodeData, 'estimatedDurationMinutes' | 'resources' | 'checklist' | 'startCondition' | 'completionCriterion' | 'detailModuleOrder'>) {
+  const seen = new Set<StepModule>();
+  const persisted = (data.detailModuleOrder || []).filter((module): module is StepModule => {
+    if (!stepModules.includes(module) || seen.has(module)) return false;
+    seen.add(module);
+    return true;
+  });
+  return [...persisted, ...stepModules.filter((module) => !seen.has(module) && hasStepModuleData(data, module))];
+}
 
 type ElkConstructor = typeof import('elkjs/lib/elk.bundled.js').default;
 let elkConstructorPromise: Promise<ElkConstructor> | null = null;
@@ -103,6 +140,18 @@ const nodeLabelKeys: Record<ProcessNodeType, string> = {
   outcome: 'nodes.outcome',
   reflection: 'nodes.reflection',
 };
+
+function processSelectionStorageKey(scopeKey: string) {
+  return `stato.processo.selected-process.${scopeKey}`;
+}
+
+function readRememberedProcessId(scopeKey: string) {
+  try {
+    return window.localStorage.getItem(processSelectionStorageKey(scopeKey));
+  } catch {
+    return null;
+  }
+}
 
 const nodeColors: Record<ProcessNodeType, string> = {
   input: '#2563eb',
@@ -141,6 +190,48 @@ const workflowEdgeStyle = {
   strokeDasharray: '4 5',
 };
 
+const pathToneColors: Record<ProcessPathTone, string> = {
+  positive: '#15803d',
+  negative: '#dc2626',
+  neutral: '#64748b',
+};
+
+const defaultDecisionPaths: ProcessPath[] = [
+  { id: 'yes', label: 'Ja', tone: 'positive' },
+  { id: 'no', label: 'Nein', tone: 'negative' },
+];
+
+const defaultParallelPaths: ProcessPath[] = [
+  { id: 'path-a', label: 'Pfad 1', tone: 'neutral' },
+  { id: 'path-b', label: 'Pfad 2', tone: 'neutral' },
+];
+
+function defaultPathsFor(nodeType: ProcessNodeType): ProcessPath[] | undefined {
+  if (nodeType === 'decision') return defaultDecisionPaths.map((path) => ({ ...path }));
+  if (nodeType === 'branch') return defaultParallelPaths.map((path) => ({ ...path }));
+  return undefined;
+}
+
+function nodePaths(nodeType: ProcessNodeType, paths?: ProcessPath[]): ProcessPath[] {
+  if (paths?.length) return paths;
+  return defaultPathsFor(nodeType) || [];
+}
+
+function pathHandleId(pathId: string) {
+  return `path-${pathId}`;
+}
+
+function getPathForEdge(sourceNode: FlowNode | undefined, sourceHandle?: string | null) {
+  if (!sourceNode || !sourceHandle?.startsWith('path-')) return undefined;
+  return nodePaths(sourceNode.data.nodeType, sourceNode.data.paths).find((path) => pathHandleId(path.id) === sourceHandle);
+}
+
+function getWorkflowEdgeStyle(pathTone?: ProcessPathTone) {
+  return pathTone
+    ? { ...workflowEdgeStyle, stroke: pathToneColors[pathTone] }
+    : workflowEdgeStyle;
+}
+
 function toFlowNodes(definition: ProcessDefinition, actions: FlowNodeActions): FlowNode[] {
   return definition.nodes.map((node) => ({
     id: node.id,
@@ -151,17 +242,30 @@ function toFlowNodes(definition: ProcessDefinition, actions: FlowNodeActions): F
 }
 
 function toFlowEdges(definition: ProcessDefinition, actions: FlowEdgeActions): FlowEdge[] {
-  return definition.edges.map((edge) => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    sourceHandle: edge.sourceHandle,
-    targetHandle: edge.targetHandle,
-    label: edge.label,
-    type: 'process-edge',
-    style: workflowEdgeStyle,
-    data: actions,
-  }));
+  return definition.edges.map((edge) => {
+    // Path labels and colours are derived from the source node as they are the
+    // semantic outcome of a decision or parallelisation.
+    const sourceNode = definition.nodes.find((node) => node.id === edge.source);
+    const sourceHandle = edge.sourceHandle === 'branch-a'
+      ? pathHandleId('path-a')
+      : edge.sourceHandle === 'branch-b'
+        ? pathHandleId('path-b')
+        : edge.sourceHandle;
+    const path = sourceNode && sourceHandle
+      ? nodePaths(sourceNode.type, sourceNode.data.paths).find((candidate) => pathHandleId(candidate.id) === sourceHandle)
+      : undefined;
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle,
+      targetHandle: edge.targetHandle,
+      label: edge.label || path?.label,
+      type: 'process-edge',
+      style: getWorkflowEdgeStyle(path?.tone),
+      data: { ...actions, pathTone: path?.tone },
+    };
+  });
 }
 
 function toDefinition(nodes: FlowNode[], edges: FlowEdge[]): ProcessDefinition {
@@ -175,10 +279,17 @@ function toDefinition(nodes: FlowNode[], edges: FlowEdge[]): ProcessDefinition {
         label: node.data.label,
         ...(node.data.description ? { description: node.data.description } : {}),
         ...(node.data.responsibleRole ? { responsibleRole: node.data.responsibleRole } : {}),
+        ...(typeof node.data.estimatedDurationMinutes === 'number' ? { estimatedDurationMinutes: node.data.estimatedDurationMinutes } : {}),
+        ...(node.data.resources?.length ? { resources: node.data.resources } : {}),
+        ...(node.data.checklist?.length ? { checklist: node.data.checklist } : {}),
+        ...(node.data.startCondition ? { startCondition: node.data.startCondition } : {}),
+        ...(node.data.completionCriterion ? { completionCriterion: node.data.completionCriterion } : {}),
+        ...(node.data.detailModuleOrder?.length ? { detailModuleOrder: node.data.detailModuleOrder } : {}),
         ...(node.data.linkedProcessId ? { linkedProcessId: node.data.linkedProcessId } : {}),
         ...(node.data.fileUrl ? { fileUrl: node.data.fileUrl } : {}),
         ...(node.data.fileName ? { fileName: node.data.fileName } : {}),
         ...(node.data.fileMimeType ? { fileMimeType: node.data.fileMimeType } : {}),
+        ...(node.data.paths?.length ? { paths: node.data.paths } : {}),
       },
     })),
     edges: edges.map((edge) => ({
@@ -193,9 +304,19 @@ function toDefinition(nodes: FlowNode[], edges: FlowEdge[]): ProcessDefinition {
 }
 
 function getNodeDimensions(node: FlowNode) {
+  const pathCount = node.data.nodeType === 'decision' || node.data.nodeType === 'branch'
+    ? nodePaths(node.data.nodeType, node.data.paths).length
+    : 0;
+  const detailCount = Number(Boolean(node.data.resources?.length))
+    + Number(Boolean(node.data.checklist?.length))
+    + Number(Boolean(node.data.startCondition))
+    + Number(Boolean(node.data.completionCriterion));
   return {
     width: 208,
-    height: node.data.nodeType === 'file' && node.data.fileUrl ? 190 : node.data.description ? 160 : 108,
+    height: (node.data.nodeType === 'file' && node.data.fileUrl ? 190 : node.data.description ? 160 : 108)
+      + (typeof node.data.estimatedDurationMinutes === 'number' ? 18 : 0)
+      + detailCount * 18
+      + pathCount * 26,
   };
 }
 
@@ -244,10 +365,17 @@ function getProcessSnapshot(title: string, purpose: string, definition: ProcessD
         label: node.data.label,
         ...(node.data.description ? { description: node.data.description } : {}),
         ...(node.data.responsibleRole ? { responsibleRole: node.data.responsibleRole } : {}),
+        ...(typeof node.data.estimatedDurationMinutes === 'number' ? { estimatedDurationMinutes: node.data.estimatedDurationMinutes } : {}),
+        ...(node.data.resources?.length ? { resources: node.data.resources } : {}),
+        ...(node.data.checklist?.length ? { checklist: node.data.checklist } : {}),
+        ...(node.data.startCondition ? { startCondition: node.data.startCondition } : {}),
+        ...(node.data.completionCriterion ? { completionCriterion: node.data.completionCriterion } : {}),
+        ...(node.data.detailModuleOrder?.length ? { detailModuleOrder: node.data.detailModuleOrder } : {}),
         ...(node.data.linkedProcessId ? { linkedProcessId: node.data.linkedProcessId } : {}),
         ...(node.data.fileUrl ? { fileUrl: node.data.fileUrl } : {}),
         ...(node.data.fileName ? { fileName: node.data.fileName } : {}),
         ...(node.data.fileMimeType ? { fileMimeType: node.data.fileMimeType } : {}),
+        ...(node.data.paths?.length ? { paths: node.data.paths } : {}),
       },
     })),
     edges: definition.edges.map((edge) => ({
@@ -267,6 +395,14 @@ const ProcessNodeCard = memo(({ id, data, selected }: NodeProps<FlowNode>) => {
   const color = nodeColors[data.nodeType];
   const NodeIcon = nodeIcons[data.nodeType];
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const updateNodeInternals = useUpdateNodeInternals();
+  const paths = nodePaths(data.nodeType, data.paths);
+  const hasPaths = paths.length > 0;
+
+  useEffect(() => {
+    if (hasPaths) updateNodeInternals(id);
+  }, [hasPaths, id, paths, updateNodeInternals]);
+
   return (
     <div
       className={`process-o-node min-w-44 rounded-xl border bg-[var(--surface-1)] shadow-sm ${selected ? 'ring-2 ring-viridian' : ''}`}
@@ -313,6 +449,26 @@ const ProcessNodeCard = memo(({ id, data, selected }: NodeProps<FlowNode>) => {
       <div className="px-3 py-2">
         <div className="font-semibold text-[var(--text-primary)]">{data.label || t('node.unnamed')}</div>
         {data.responsibleRole ? <div className="mt-1 text-xs text-[var(--text-muted)]">{data.responsibleRole}</div> : null}
+        {typeof data.estimatedDurationMinutes === 'number' ? (
+          <div className="mt-1 flex items-center gap-1 text-xs text-[var(--text-muted)]">
+            <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('node.estimatedDurationValue', { minutes: data.estimatedDurationMinutes })}
+          </div>
+        ) : null}
+        {data.resources?.length ? (
+          <div className="mt-1 flex items-center gap-1 text-xs text-[var(--text-muted)]">
+            <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('node.resourcesSummary', { count: data.resources.length })}
+          </div>
+        ) : null}
+        {data.checklist?.length ? (
+          <div className="mt-1 flex items-center gap-1 text-xs text-[var(--text-muted)]">
+            <CheckSquare className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('node.checklistSummary', { count: data.checklist.length })}
+          </div>
+        ) : null}
+        {data.startCondition ? <div className="mt-1 text-xs text-[var(--text-muted)]">{t('node.startConditionShort')}</div> : null}
+        {data.completionCriterion ? <div className="mt-1 text-xs text-[var(--text-muted)]">{t('node.completionCriterionShort')}</div> : null}
         {data.nodeType === 'branch' ? <div className="mt-1 text-xs text-[var(--text-muted)]">{t('node.multiplePaths')}</div> : null}
         {data.nodeType === 'subprocess' && !data.linkedProcessId ? <div className="mt-1 text-xs text-[var(--text-muted)]">{t('node.unlinked')}</div> : null}
         {data.nodeType === 'file' && data.fileUrl ? (
@@ -339,19 +495,32 @@ const ProcessNodeCard = memo(({ id, data, selected }: NodeProps<FlowNode>) => {
             {isDescriptionOpen ? <p className="process-o-node-description nodrag nowheel">{data.description}</p> : null}
           </div>
         ) : null}
+        {hasPaths ? (
+          <div className="process-o-node-paths nodrag nowheel" aria-label={t('node.paths')}>
+            {paths.map((path) => (
+              <div key={path.id} className="process-o-node-path-row">
+                <span className={`process-o-path-badge process-o-path-${path.tone}`}>
+                  {path.label || t('node.unnamedPath')}
+                </span>
+                <Handle
+                  id={pathHandleId(path.id)}
+                  type="source"
+                  position={Position.Right}
+                  className="process-o-path-handle !h-2.5 !w-2.5"
+                  style={{ background: pathToneColors[path.tone] }}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
-      {data.nodeType === 'branch' ? (
-        <>
-          <Handle id="branch-a" type="source" position={Position.Right} className="!h-2.5 !w-2.5" style={{ top: '35%', background: color }} />
-          <Handle id="branch-b" type="source" position={Position.Right} className="!h-2.5 !w-2.5" style={{ top: '65%', background: color }} />
-        </>
-      ) : <Handle type="source" position={Position.Right} className="!h-2.5 !w-2.5" style={{ background: color }} />}
+      {!hasPaths ? <Handle type="source" position={Position.Right} className="!h-2.5 !w-2.5" style={{ background: color }} /> : null}
     </div>
   );
 });
 ProcessNodeCard.displayName = 'ProcessNodeCard';
 
-const ProcessEdge = memo(({ id, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, style, data }: EdgeProps<FlowEdge>) => {
+const ProcessEdge = memo(({ id, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, style, data, label }: EdgeProps<FlowEdge>) => {
   const { t } = useTranslation('processes');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [edgePath, labelX, labelY] = getBezierPath({
@@ -371,6 +540,20 @@ const ProcessEdge = memo(({ id, sourceX, sourceY, sourcePosition, targetX, targe
   return (
     <>
       <BaseEdge path={edgePath} style={style} />
+      {typeof label === 'string' && label.trim() ? (
+        <EdgeLabelRenderer>
+          <div
+            className="process-o-edge-label nopan"
+            style={{
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 22}px)`,
+              borderColor: data?.pathTone ? pathToneColors[data.pathTone] : undefined,
+              color: data?.pathTone ? pathToneColors[data.pathTone] : undefined,
+            }}
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      ) : null}
       {data?.canEdit ? (
         <EdgeLabelRenderer>
           <div
@@ -430,6 +613,7 @@ export default function Processes() {
   const savedProcessSnapshotsRef = useRef(new Map<string, string>());
   const pendingAutoSavesRef = useRef(new Map<string, AutoSavePayload>());
   const inFlightAutoSavesRef = useRef(new Map<string, AutoSavePayload>());
+  const workflowHistoryRef = useRef<ProcessDefinition[]>([]);
   const autoSaveTimerRef = useRef<number | null>(null);
   const autoSaveRetryTimerRef = useRef<number | null>(null);
   const autoSaveInFlightRef = useRef(false);
@@ -442,7 +626,6 @@ export default function Processes() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const flowInstanceRef = useRef<ReactFlowInstance<FlowNode, FlowEdge> | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [openProcessIds, setOpenProcessIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
   const [saving, setSaving] = useState(false);
@@ -453,13 +636,18 @@ export default function Processes() {
   const [metadataModal, setMetadataModal] = useState<ProcessMetadataModal>(null);
   const [metadataTitle, setMetadataTitle] = useState('');
   const [metadataPurpose, setMetadataPurpose] = useState('');
+  const [expandedStepModules, setExpandedStepModules] = useState<Record<string, Partial<Record<StepModule, boolean>>>>({});
+  const [resourceDraft, setResourceDraft] = useState('');
+  const [checklistDraft, setChecklistDraft] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDarkTheme, setIsDarkTheme] = useState(() => document.documentElement.getAttribute('data-color-mode') === 'dark');
+  const [undoCount, setUndoCount] = useState(0);
 
   const processes = processesQuery.data || [];
   const selectedProcess = processes.find((process) => process.id === selectedId) || null;
   const canEdit = access.data?.canEdit === true;
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) || null;
+  const selectedNodeModuleOrder = selectedNode ? orderedStepModules(selectedNode.data) : [];
   const nodeTypes = useMemo(() => ({ process: ProcessNodeCard }), []);
   const edgeTypes = useMemo(() => ({ 'process-edge': ProcessEdge }), []);
 
@@ -474,6 +662,11 @@ export default function Processes() {
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  useEffect(() => {
+    setResourceDraft('');
+    setChecklistDraft('');
+  }, [selectedNodeId]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -498,12 +691,22 @@ export default function Processes() {
     }
   }, []);
 
+  const captureWorkflowHistory = useCallback(() => {
+    if (!canEdit || !selectedIdRef.current) return;
+    const snapshot = toDefinition(nodesRef.current, edgesRef.current);
+    const latest = workflowHistoryRef.current.at(-1);
+    if (latest && JSON.stringify(latest) === JSON.stringify(snapshot)) return;
+    workflowHistoryRef.current = [...workflowHistoryRef.current.slice(-39), snapshot];
+    setUndoCount(workflowHistoryRef.current.length);
+  }, [canEdit]);
+
   const removeStep = useCallback((nodeIdToRemove: string) => {
     if (!canEdit) return;
+    captureWorkflowHistory();
     setNodes((current) => current.filter((node) => node.id !== nodeIdToRemove));
     setEdges((current) => current.filter((edge) => edge.source !== nodeIdToRemove && edge.target !== nodeIdToRemove));
     setSelectedNodeId((current) => current === nodeIdToRemove ? null : current);
-  }, [canEdit, setEdges, setNodes]);
+  }, [canEdit, captureWorkflowHistory, setEdges, setNodes]);
 
   const openProcessFile = useCallback(async (fileUrl: string) => {
     const fileWindow = window.open('about:blank', '_blank');
@@ -523,6 +726,7 @@ export default function Processes() {
     if (!canEdit) return;
     const edge = edgesRef.current.find((current) => current.id === edgeId);
     if (!edge) return;
+    captureWorkflowHistory();
     const id = nodeId();
     setNodes((current) => [...current, {
       id,
@@ -531,6 +735,7 @@ export default function Processes() {
       data: {
         label: t(nodeLabelKeys[nodeType]),
         nodeType,
+        ...(defaultPathsFor(nodeType) ? { paths: defaultPathsFor(nodeType) } : {}),
         canEdit,
         onDelete: removeStep,
         onOpenFile: openProcessFile,
@@ -541,22 +746,38 @@ export default function Processes() {
       {
         id: nodeId(),
         source: edge.source,
+        sourceHandle: edge.sourceHandle,
         target: id,
+        label: edge.label,
         type: 'process-edge',
-        style: workflowEdgeStyle,
-        data: { canEdit, onInsertNode: insertNodeOnEdge },
+        style: edge.style,
+        data: edge.data,
       },
       {
         id: nodeId(),
         source: id,
         target: edge.target,
+        targetHandle: edge.targetHandle,
         type: 'process-edge',
         style: workflowEdgeStyle,
         data: { canEdit, onInsertNode: insertNodeOnEdge },
       },
     ]);
     setSelectedNodeId(id);
-  }, [canEdit, openProcessFile, removeStep, setEdges, setNodes, t]);
+  }, [canEdit, captureWorkflowHistory, openProcessFile, removeStep, setEdges, setNodes, t]);
+
+  const undoWorkflow = useCallback(() => {
+    if (!canEdit) return;
+    const previous = workflowHistoryRef.current.at(-1);
+    if (!previous) return;
+    workflowHistoryRef.current = workflowHistoryRef.current.slice(0, -1);
+    setUndoCount(workflowHistoryRef.current.length);
+    setNodes(toFlowNodes(previous, { canEdit, onDelete: removeStep, onOpenFile: openProcessFile }));
+    setEdges(toFlowEdges(previous, { canEdit, onInsertNode: insertNodeOnEdge }));
+    setSelectedNodeId(null);
+    setExpandedStepModules({});
+    showToast(t('messages.workflowUndone'));
+  }, [canEdit, insertNodeOnEdge, openProcessFile, removeStep, setEdges, setNodes, showToast, t]);
 
   const isCurrentProcessDirty = useMemo(() => {
     if (!selectedId) return false;
@@ -567,17 +788,28 @@ export default function Processes() {
   const isCurrentProcessAutoSaving = isAutoSaving && autoSaveInFlightProcessIdRef.current === selectedId;
 
   useEffect(() => {
-    if (!selectedId && processes[0]) {
-      selectedIdRef.current = processes[0].id;
-      setOpenProcessIds((current) => current.includes(processes[0].id) ? current : [...current, processes[0].id]);
-      setSelectedId(processes[0].id);
+    if (!processes.length || processes.some((process) => process.id === selectedId)) return;
+    const rememberedId = readRememberedProcessId(scopeKey);
+    const nextProcess = processes.find((process) => process.id === rememberedId) || processes[0];
+    selectedIdRef.current = nextProcess.id;
+    setSelectedId(nextProcess.id);
+  }, [processes, scopeKey, selectedId]);
+
+  useEffect(() => {
+    if (!selectedId || !processes.some((process) => process.id === selectedId)) return;
+    try {
+      window.localStorage.setItem(processSelectionStorageKey(scopeKey), selectedId);
+    } catch {
+      // Persistence is a convenience; private browser modes may deny storage.
     }
-  }, [processes, selectedId]);
+  }, [processes, scopeKey, selectedId]);
 
   useEffect(() => {
     if (!selectedProcess) {
       hydratedProcessIdRef.current = null;
       skipAutoSaveAfterHydrationRef.current = null;
+      workflowHistoryRef.current = [];
+      setUndoCount(0);
       setTitle('');
       setPurpose('');
       setNodes([]);
@@ -586,6 +818,8 @@ export default function Processes() {
       return;
     }
     if (hydratedProcessIdRef.current === selectedProcess.id) return;
+    workflowHistoryRef.current = [];
+    setUndoCount(0);
     if (!savedProcessSnapshotsRef.current.has(selectedProcess.id)) {
       savedProcessSnapshotsRef.current.set(
         selectedProcess.id,
@@ -721,7 +955,6 @@ export default function Processes() {
     if (selectedId && isCurrentProcessDirty) autosaveTransitionNoticeRef.current = selectedId;
     queueCurrentProcessAutoSave();
     selectedIdRef.current = processId;
-    setOpenProcessIds((current) => current.includes(processId) ? current : [...current, processId]);
     setSelectedId(processId);
   }, [isCurrentProcessDirty, queueCurrentProcessAutoSave, selectedId]);
 
@@ -766,17 +999,38 @@ export default function Processes() {
 
   const onConnect = useCallback((connection: Connection) => {
     if (!canEdit) return;
+    captureWorkflowHistory();
+    const sourcePath = getPathForEdge(
+      nodesRef.current.find((node) => node.id === connection.source),
+      connection.sourceHandle,
+    );
     setEdges((current) => addEdge({
       ...connection,
       id: nodeId(),
       type: 'process-edge',
-      style: workflowEdgeStyle,
-      data: { canEdit, onInsertNode: insertNodeOnEdge },
+      ...(sourcePath ? { label: sourcePath.label } : {}),
+      style: getWorkflowEdgeStyle(sourcePath?.tone),
+      data: { canEdit, onInsertNode: insertNodeOnEdge, pathTone: sourcePath?.tone },
     }, current));
-  }, [canEdit, insertNodeOnEdge, setEdges]);
+  }, [canEdit, captureWorkflowHistory, insertNodeOnEdge, setEdges]);
+
+  const handleNodesChange = useCallback((changes: Parameters<typeof onNodesChange>[0]) => {
+    if (canEdit && changes.some((change) => change.type === 'remove')) captureWorkflowHistory();
+    onNodesChange(changes);
+  }, [canEdit, captureWorkflowHistory, onNodesChange]);
+
+  const handleEdgesChange = useCallback((changes: Parameters<typeof onEdgesChange>[0]) => {
+    if (canEdit && changes.some((change) => change.type === 'remove')) captureWorkflowHistory();
+    onEdgesChange(changes);
+  }, [canEdit, captureWorkflowHistory, onEdgesChange]);
+
+  const handleNodeDragStart = useCallback(() => {
+    captureWorkflowHistory();
+  }, [captureWorkflowHistory]);
 
   const addNode = (nodeType: ProcessNodeType) => {
     if (!canEdit) return;
+    captureWorkflowHistory();
     const offset = nodes.length * 24;
     const id = nodeId();
     setNodes((current) => [...current, {
@@ -786,6 +1040,7 @@ export default function Processes() {
       data: {
         label: t(nodeLabelKeys[nodeType]),
         nodeType,
+        ...(defaultPathsFor(nodeType) ? { paths: defaultPathsFor(nodeType) } : {}),
         canEdit,
         onDelete: removeStep,
         onOpenFile: openProcessFile,
@@ -796,9 +1051,114 @@ export default function Processes() {
 
   const updateSelectedNode = (patch: Partial<FlowNodeData>) => {
     if (!selectedNodeId || !canEdit) return;
+    captureWorkflowHistory();
     setNodes((current) => current.map((node) =>
-      node.id === selectedNodeId ? { ...node, data: { ...node.data, ...patch } } : node,
+      node.id === selectedNodeId ? {
+        ...node,
+        data: {
+          ...node.data,
+          ...patch,
+          ...((patch.nodeType === 'decision' || patch.nodeType === 'branch') && !node.data.paths
+            ? { paths: defaultPathsFor(patch.nodeType) }
+            : {}),
+        },
+      } : node,
     ));
+  };
+
+  const showStepModule = (nodeIdToUpdate: string, module: StepModule) => {
+    if (!canEdit) return;
+    captureWorkflowHistory();
+    setExpandedStepModules((current) => ({
+      ...current,
+      [nodeIdToUpdate]: { ...current[nodeIdToUpdate], [module]: true },
+    }));
+    setNodes((current) => current.map((node) => {
+      if (node.id !== nodeIdToUpdate) return node;
+      const previousOrder = orderedStepModules(node.data).filter((currentModule) => currentModule !== module);
+      return { ...node, data: { ...node.data, detailModuleOrder: [...previousOrder, module] } };
+    }));
+  };
+
+  const hideStepModule = (nodeIdToUpdate: string, module: StepModule) => {
+    if (!canEdit) return;
+    captureWorkflowHistory();
+    setExpandedStepModules((current) => ({
+      ...current,
+      [nodeIdToUpdate]: { ...current[nodeIdToUpdate], [module]: false },
+    }));
+    setNodes((current) => current.map((node) => {
+      if (node.id !== nodeIdToUpdate) return node;
+      const nextOrder = orderedStepModules(node.data).filter((currentModule) => currentModule !== module);
+      return { ...node, data: { ...node.data, ...(nextOrder.length ? { detailModuleOrder: nextOrder } : { detailModuleOrder: undefined }) } };
+    }));
+  };
+
+  const addNodeResource = (nodeIdToUpdate: string, value: string) => {
+    const resource = value.trim();
+    if (!canEdit || !resource) return;
+    captureWorkflowHistory();
+    setNodes((current) => current.map((node) => {
+      if (node.id !== nodeIdToUpdate) return node;
+      const resources = node.data.resources || [];
+      if (resources.some((item) => item.localeCompare(resource, undefined, { sensitivity: 'accent' }) === 0)) return node;
+      return { ...node, data: { ...node.data, resources: [...resources, resource] } };
+    }));
+  };
+
+  const addNodeChecklistItem = (nodeIdToUpdate: string, value: string) => {
+    const label = value.trim();
+    if (!canEdit || !label) return;
+    captureWorkflowHistory();
+    setNodes((current) => current.map((node) => node.id === nodeIdToUpdate ? {
+      ...node,
+      data: { ...node.data, checklist: [...(node.data.checklist || []), { id: `check-${nodeId()}`, label }] },
+    } : node));
+  };
+
+  const updateNodePath = (nodeIdToUpdate: string, pathId: string, patch: Partial<ProcessPath>) => {
+    if (!canEdit) return;
+    const targetNode = nodesRef.current.find((node) => node.id === nodeIdToUpdate);
+    const currentPath = targetNode && nodePaths(targetNode.data.nodeType, targetNode.data.paths).find((path) => path.id === pathId);
+    if (!currentPath) return;
+    captureWorkflowHistory();
+    const nextPath = { ...currentPath, ...patch };
+    setNodes((current) => current.map((node) => node.id === nodeIdToUpdate ? {
+      ...node,
+      data: {
+        ...node.data,
+        paths: nodePaths(node.data.nodeType, node.data.paths).map((path) => path.id === pathId ? nextPath : path),
+      },
+    } : node));
+    setEdges((current) => current.map((edge) => edge.source === nodeIdToUpdate && edge.sourceHandle === pathHandleId(pathId) ? {
+      ...edge,
+      label: nextPath.label,
+      style: getWorkflowEdgeStyle(nextPath.tone),
+      data: { ...edge.data, pathTone: nextPath.tone },
+    } : edge));
+  };
+
+  const addNodePath = (nodeIdToUpdate: string) => {
+    if (!canEdit) return;
+    captureWorkflowHistory();
+    const id = `path-${nodeId()}`;
+    setNodes((current) => current.map((node) => node.id === nodeIdToUpdate ? {
+      ...node,
+      data: {
+        ...node.data,
+        paths: [...nodePaths(node.data.nodeType, node.data.paths), { id, label: t('node.newPath'), tone: 'neutral' }],
+      },
+    } : node));
+  };
+
+  const removeNodePath = (nodeIdToUpdate: string, pathId: string) => {
+    if (!canEdit) return;
+    captureWorkflowHistory();
+    setNodes((current) => current.map((node) => node.id === nodeIdToUpdate ? {
+      ...node,
+      data: { ...node.data, paths: nodePaths(node.data.nodeType, node.data.paths).filter((path) => path.id !== pathId) },
+    } : node));
+    setEdges((current) => current.filter((edge) => !(edge.source === nodeIdToUpdate && edge.sourceHandle === pathHandleId(pathId))));
   };
 
   const uploadFileToSelectedNode = async (file: File) => {
@@ -843,6 +1203,7 @@ export default function Processes() {
     if (!canEdit || nodes.length === 0) return;
     setLayouting(true);
     try {
+      captureWorkflowHistory();
       setNodes(await getAutoLayoutedNodes(nodes, edges));
       window.requestAnimationFrame(() => {
         flowInstanceRef.current?.fitView({ padding: 0.2, duration: 300 });
@@ -907,9 +1268,24 @@ export default function Processes() {
         const targetSize = getNodeDimensions(target);
         const from = project({ x: source.position.x + sourceSize.width, y: source.position.y + sourceSize.height / 2 });
         const to = project({ x: target.position.x, y: target.position.y + targetSize.height / 2 });
+        const pathTone = edge.data?.pathTone;
+        const [edgeRed, edgeGreen, edgeBlue] = pathTone ? hexToRgb(pathToneColors[pathTone]) : [100, 116, 139];
+        pdf.setDrawColor(edgeRed, edgeGreen, edgeBlue);
         pdf.line(from.x, from.y, to.x, to.y);
-        pdf.setFillColor(100, 116, 139);
+        pdf.setFillColor(edgeRed, edgeGreen, edgeBlue);
         pdf.triangle(to.x, to.y, to.x - 1.8, to.y - 1.2, to.x - 1.8, to.y + 1.2, 'F');
+        if (typeof edge.label === 'string' && edge.label.trim()) {
+          const label = edge.label.trim();
+          const midX = (from.x + to.x) / 2;
+          const midY = (from.y + to.y) / 2 - 2;
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(6);
+          const labelWidth = pdf.getTextWidth(label) + 2.5;
+          pdf.setFillColor(255, 255, 255);
+          pdf.roundedRect(midX - labelWidth / 2, midY - 2.5, labelWidth, 3.8, 0.9, 0.9, 'F');
+          pdf.setTextColor(edgeRed, edgeGreen, edgeBlue);
+          pdf.text(label, midX, midY, { align: 'center' });
+        }
       });
 
       arrangedNodes.forEach((node) => {
@@ -974,8 +1350,26 @@ export default function Processes() {
         const contentWidth = detailsPageWidth - detailMargin * 2 - 8;
         const titleLines = pdf.splitTextToSize(node.data.label || t('node.unnamed'), contentWidth);
         const responsibilityLines = node.data.responsibleRole ? pdf.splitTextToSize(`${t('node.responsibility')}: ${node.data.responsibleRole}`, contentWidth) : [];
+        const durationLines = typeof node.data.estimatedDurationMinutes === 'number'
+          ? pdf.splitTextToSize(`${t('node.estimatedDuration')}: ${t('node.estimatedDurationValue', { minutes: node.data.estimatedDurationMinutes })}`, contentWidth)
+          : [];
+        const resourceLines = node.data.resources?.length
+          ? pdf.splitTextToSize(`${t('node.resources')}: ${node.data.resources.join(' · ')}`, contentWidth)
+          : [];
+        const checklistLines = node.data.checklist?.length
+          ? pdf.splitTextToSize(`${t('node.checklist')}: ${node.data.checklist.map((item) => item.label).join(' · ')}`, contentWidth)
+          : [];
+        const startConditionLines = node.data.startCondition
+          ? pdf.splitTextToSize(`${t('node.startCondition')}: ${node.data.startCondition}`, contentWidth)
+          : [];
+        const completionCriterionLines = node.data.completionCriterion
+          ? pdf.splitTextToSize(`${t('node.completionCriterion')}: ${node.data.completionCriterion}`, contentWidth)
+          : [];
         const reflectionLines = node.data.description ? pdf.splitTextToSize(`${t('node.reflectionQuestion')}: ${node.data.description}`, contentWidth) : [];
-        const itemHeight = 17 + titleLines.length * 4.6 + responsibilityLines.length * 4.3 + reflectionLines.length * 4.3;
+        const pathLines = nodePaths(node.data.nodeType, node.data.paths).length
+          ? pdf.splitTextToSize(`${t('node.paths')}: ${nodePaths(node.data.nodeType, node.data.paths).map((path) => path.label).join(' · ')}`, contentWidth)
+          : [];
+        const itemHeight = 17 + titleLines.length * 4.6 + responsibilityLines.length * 4.3 + durationLines.length * 4.3 + resourceLines.length * 4.3 + checklistLines.length * 4.3 + startConditionLines.length * 4.3 + completionCriterionLines.length * 4.3 + reflectionLines.length * 4.3 + pathLines.length * 4.3;
         if (detailY + itemHeight > detailsPageHeight - detailMargin) {
           pdf.addPage('a4', 'portrait');
           detailY = 18;
@@ -1002,9 +1396,39 @@ export default function Processes() {
           pdf.text(responsibilityLines, detailMargin + 8, contentY);
           contentY += responsibilityLines.length * 4.3;
         }
+        if (durationLines.length) {
+          contentY += 2;
+          pdf.text(durationLines, detailMargin + 8, contentY);
+          contentY += durationLines.length * 4.3;
+        }
+        if (resourceLines.length) {
+          contentY += 2;
+          pdf.text(resourceLines, detailMargin + 8, contentY);
+          contentY += resourceLines.length * 4.3;
+        }
+        if (checklistLines.length) {
+          contentY += 2;
+          pdf.text(checklistLines, detailMargin + 8, contentY);
+          contentY += checklistLines.length * 4.3;
+        }
+        if (startConditionLines.length) {
+          contentY += 2;
+          pdf.text(startConditionLines, detailMargin + 8, contentY);
+          contentY += startConditionLines.length * 4.3;
+        }
+        if (completionCriterionLines.length) {
+          contentY += 2;
+          pdf.text(completionCriterionLines, detailMargin + 8, contentY);
+          contentY += completionCriterionLines.length * 4.3;
+        }
         if (reflectionLines.length) {
           contentY += 2;
           pdf.text(reflectionLines, detailMargin + 8, contentY);
+          contentY += reflectionLines.length * 4.3;
+        }
+        if (pathLines.length) {
+          contentY += 2;
+          pdf.text(pathLines, detailMargin + 8, contentY);
         }
         detailY += itemHeight + 5;
       });
@@ -1059,7 +1483,6 @@ export default function Processes() {
       storeProcess(created);
       hydratedProcessIdRef.current = null;
       selectedIdRef.current = created.id;
-      setOpenProcessIds((current) => current.includes(created.id) ? current : [...current, created.id]);
       setSelectedId(created.id);
       setMetadataModal(null);
       showToast(t('messages.created'));
@@ -1087,7 +1510,6 @@ export default function Processes() {
       );
       savedProcessSnapshotsRef.current.delete(selectedProcess.id);
       inFlightAutoSavesRef.current.delete(selectedProcess.id);
-      setOpenProcessIds((current) => current.filter((id) => id !== selectedProcess.id));
       hydratedProcessIdRef.current = null;
       setDeleteConfirmOpen(false);
       selectedIdRef.current = null;
@@ -1117,6 +1539,46 @@ export default function Processes() {
       <label className="block text-xs font-medium text-[var(--text-secondary)]">{t('node.title')}
         <Input className="mt-1" value={selectedNode.data.label} disabled={!canEdit} onChange={(event) => updateSelectedNode({ label: event.target.value })} />
       </label>
+      {selectedNode.data.nodeType === 'decision' || selectedNode.data.nodeType === 'branch' ? (
+        <div className="space-y-2 rounded-lg border border-[var(--border-subtle)] p-2.5">
+          <div>
+            <div className="text-xs font-medium text-[var(--text-secondary)]">{t('node.paths')}</div>
+            <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+              {selectedNode.data.nodeType === 'decision' ? t('node.decisionPathsHint') : t('node.parallelPathsHint')}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            {nodePaths(selectedNode.data.nodeType, selectedNode.data.paths).map((path) => (
+              <div key={path.id} className="grid grid-cols-[minmax(0,1fr)_6.5rem_auto] gap-1.5">
+                <Input
+                  value={path.label}
+                  disabled={!canEdit}
+                  aria-label={t('node.pathLabel')}
+                  onChange={(event) => updateNodePath(selectedNode.id, path.id, { label: event.target.value })}
+                />
+                <Select
+                  value={path.tone}
+                  disabled={!canEdit}
+                  aria-label={t('node.pathTone')}
+                  onChange={(event) => updateNodePath(selectedNode.id, path.id, { tone: event.target.value as ProcessPathTone })}
+                >
+                  <option value="positive">{t('node.pathPositive')}</option>
+                  <option value="negative">{t('node.pathNegative')}</option>
+                  <option value="neutral">{t('node.pathNeutral')}</option>
+                </Select>
+                <DeleteIconButton
+                  aria-label={t('node.removePath')}
+                  title={t('node.removePath')}
+                  size="icon-compact"
+                  disabled={!canEdit || nodePaths(selectedNode.data.nodeType, selectedNode.data.paths).length <= 1}
+                  onClick={() => removeNodePath(selectedNode.id, path.id)}
+                />
+              </div>
+            ))}
+          </div>
+          {canEdit ? <Button size="sm" variant="secondary" onClick={() => addNodePath(selectedNode.id)}><Plus className="h-4 w-4" /> {t('node.addPath')}</Button> : null}
+        </div>
+      ) : null}
       {selectedNode.data.nodeType === 'subprocess' ? (
         <div className="space-y-2 rounded-lg border border-[var(--border-subtle)] p-2.5">
           <label className="block text-xs font-medium text-[var(--text-secondary)]">{t('node.linkedSubprocess')}
@@ -1165,6 +1627,127 @@ export default function Processes() {
       <label className="block text-xs font-medium text-[var(--text-secondary)]">{t('node.reflectionQuestion')}
         <Textarea value={selectedNode.data.description || ''} disabled={!canEdit} onChange={(event) => updateSelectedNode({ description: event.target.value })} className="mt-1 min-h-24" />
       </label>
+      <div className="process-o-step-additional">
+        <div className="process-o-step-additional-heading">{t('node.additionalDetails')}</div>
+        {typeof selectedNode.data.estimatedDurationMinutes === 'number' || expandedStepModules[selectedNode.id]?.duration ? (
+          <div className="process-o-step-module" style={{ order: selectedNodeModuleOrder.indexOf('duration') + 1 }}>
+            <div className="process-o-step-module-header">
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor={`process-duration-${selectedNode.id}`}>{t('node.estimatedDuration')}</label>
+              {canEdit ? (
+                <IconButton
+                  aria-label={t('node.removeDuration')}
+                  title={t('node.removeDuration')}
+                  size="icon-compact"
+                  variant="ghost"
+                  className="process-o-step-module-remove"
+                  onClick={() => {
+                    updateSelectedNode({ estimatedDurationMinutes: undefined });
+                    hideStepModule(selectedNode.id, 'duration');
+                  }}
+                ><X className="h-4 w-4" /></IconButton>
+              ) : null}
+            </div>
+            <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+              <Input
+                id={`process-duration-${selectedNode.id}`}
+                type="number"
+                min={1}
+                max={10_080}
+                step={5}
+                inputMode="numeric"
+                disabled={!canEdit}
+                value={selectedNode.data.estimatedDurationMinutes ?? ''}
+                onChange={(event) => {
+                  const value = event.target.value === '' ? undefined : Math.round(Number(event.target.value));
+                  updateSelectedNode({
+                    estimatedDurationMinutes: typeof value === 'number' && Number.isFinite(value)
+                      ? Math.min(10_080, Math.max(1, value))
+                      : undefined,
+                  });
+                }}
+              />
+              <span className="text-xs text-[var(--text-muted)]">{t('node.minutes')}</span>
+            </div>
+          </div>
+        ) : null}
+        {selectedNode.data.resources?.length || expandedStepModules[selectedNode.id]?.resources ? (
+          <div className="process-o-step-module" style={{ order: selectedNodeModuleOrder.indexOf('resources') + 1 }}>
+            <div className="process-o-step-module-header">
+              <div className="text-xs font-medium text-[var(--text-secondary)]">{t('node.resources')}</div>
+              {canEdit ? <IconButton aria-label={t('node.removeResources')} title={t('node.removeResources')} size="icon-compact" variant="ghost" className="process-o-step-module-remove" onClick={() => { updateSelectedNode({ resources: undefined }); hideStepModule(selectedNode.id, 'resources'); }}><X className="h-4 w-4" /></IconButton> : null}
+            </div>
+            {selectedNode.data.resources?.length ? (
+              <div className="process-o-step-list mt-2">
+                {selectedNode.data.resources.map((resource) => (
+                  <div key={resource} className="process-o-step-list-row">
+                    <Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>{resource}</span>
+                    {canEdit ? <IconButton aria-label={t('node.removeResource', { resource })} title={t('node.removeResource', { resource })} size="icon-compact" variant="ghost" className="process-o-step-list-remove" onClick={() => updateSelectedNode({ resources: selectedNode.data.resources?.filter((item) => item !== resource) })}><X className="h-3.5 w-3.5" /></IconButton> : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {canEdit ? (
+              <div className="mt-2 flex gap-1.5">
+                <Input value={resourceDraft} placeholder={t('node.resourcePlaceholder')} onChange={(event) => setResourceDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addNodeResource(selectedNode.id, resourceDraft); setResourceDraft(''); } }} />
+                <Button size="sm" variant="secondary" disabled={!resourceDraft.trim()} onClick={() => { addNodeResource(selectedNode.id, resourceDraft); setResourceDraft(''); }}><Plus className="h-4 w-4" /><span className="sr-only">{t('node.addResource')}</span></Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {selectedNode.data.checklist?.length || expandedStepModules[selectedNode.id]?.checklist ? (
+          <div className="process-o-step-module" style={{ order: selectedNodeModuleOrder.indexOf('checklist') + 1 }}>
+            <div className="process-o-step-module-header">
+              <div className="text-xs font-medium text-[var(--text-secondary)]">{t('node.checklist')}</div>
+              {canEdit ? <IconButton aria-label={t('node.removeChecklist')} title={t('node.removeChecklist')} size="icon-compact" variant="ghost" className="process-o-step-module-remove" onClick={() => { updateSelectedNode({ checklist: undefined }); hideStepModule(selectedNode.id, 'checklist'); }}><X className="h-4 w-4" /></IconButton> : null}
+            </div>
+            {selectedNode.data.checklist?.length ? (
+              <div className="process-o-step-list mt-2">
+                {selectedNode.data.checklist.map((item) => (
+                  <div key={item.id} className="process-o-step-list-row">
+                    <CheckSquare className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>{item.label}</span>
+                    {canEdit ? <IconButton aria-label={t('node.removeChecklistItem', { item: item.label })} title={t('node.removeChecklistItem', { item: item.label })} size="icon-compact" variant="ghost" className="process-o-step-list-remove" onClick={() => updateSelectedNode({ checklist: selectedNode.data.checklist?.filter((current) => current.id !== item.id) })}><X className="h-3.5 w-3.5" /></IconButton> : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {canEdit ? (
+              <div className="mt-2 flex gap-1.5">
+                <Input value={checklistDraft} placeholder={t('node.checklistPlaceholder')} onChange={(event) => setChecklistDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addNodeChecklistItem(selectedNode.id, checklistDraft); setChecklistDraft(''); } }} />
+                <Button size="sm" variant="secondary" disabled={!checklistDraft.trim()} onClick={() => { addNodeChecklistItem(selectedNode.id, checklistDraft); setChecklistDraft(''); }}><Plus className="h-4 w-4" /><span className="sr-only">{t('node.addChecklistItem')}</span></Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {selectedNode.data.startCondition || expandedStepModules[selectedNode.id]?.startCondition ? (
+          <div className="process-o-step-module" style={{ order: selectedNodeModuleOrder.indexOf('startCondition') + 1 }}>
+            <div className="process-o-step-module-header">
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor={`process-start-condition-${selectedNode.id}`}>{t('node.startCondition')}</label>
+              {canEdit ? <IconButton aria-label={t('node.removeStartCondition')} title={t('node.removeStartCondition')} size="icon-compact" variant="ghost" className="process-o-step-module-remove" onClick={() => { updateSelectedNode({ startCondition: undefined }); hideStepModule(selectedNode.id, 'startCondition'); }}><X className="h-4 w-4" /></IconButton> : null}
+            </div>
+            <Textarea id={`process-start-condition-${selectedNode.id}`} value={selectedNode.data.startCondition || ''} disabled={!canEdit} onChange={(event) => updateSelectedNode({ startCondition: event.target.value })} className="mt-1 min-h-20" placeholder={t('node.startConditionPlaceholder')} />
+          </div>
+        ) : null}
+        {selectedNode.data.completionCriterion || expandedStepModules[selectedNode.id]?.completionCriterion ? (
+          <div className="process-o-step-module" style={{ order: selectedNodeModuleOrder.indexOf('completionCriterion') + 1 }}>
+            <div className="process-o-step-module-header">
+              <label className="text-xs font-medium text-[var(--text-secondary)]" htmlFor={`process-completion-criterion-${selectedNode.id}`}>{t('node.completionCriterion')}</label>
+              {canEdit ? <IconButton aria-label={t('node.removeCompletionCriterion')} title={t('node.removeCompletionCriterion')} size="icon-compact" variant="ghost" className="process-o-step-module-remove" onClick={() => { updateSelectedNode({ completionCriterion: undefined }); hideStepModule(selectedNode.id, 'completionCriterion'); }}><X className="h-4 w-4" /></IconButton> : null}
+            </div>
+            <Textarea id={`process-completion-criterion-${selectedNode.id}`} value={selectedNode.data.completionCriterion || ''} disabled={!canEdit} onChange={(event) => updateSelectedNode({ completionCriterion: event.target.value })} className="mt-1 min-h-20" placeholder={t('node.completionCriterionPlaceholder')} />
+          </div>
+        ) : null}
+        {canEdit ? (
+          <div className="process-o-step-module-triggers" style={{ order: stepModules.length + 1 }}>
+            {!expandedStepModules[selectedNode.id]?.duration && typeof selectedNode.data.estimatedDurationMinutes !== 'number' ? <Button size="sm" variant="secondary" className="process-o-step-module-trigger" onClick={() => showStepModule(selectedNode.id, 'duration')}><Plus className="h-3.5 w-3.5" /> <Clock3 className="h-3.5 w-3.5" /> {t('node.addDuration')}</Button> : null}
+            {!expandedStepModules[selectedNode.id]?.resources && !selectedNode.data.resources?.length ? <Button size="sm" variant="secondary" className="process-o-step-module-trigger" onClick={() => showStepModule(selectedNode.id, 'resources')}><Plus className="h-3.5 w-3.5" /> <Paperclip className="h-3.5 w-3.5" /> {t('node.addResources')}</Button> : null}
+            {!expandedStepModules[selectedNode.id]?.checklist && !selectedNode.data.checklist?.length ? <Button size="sm" variant="secondary" className="process-o-step-module-trigger" onClick={() => showStepModule(selectedNode.id, 'checklist')}><Plus className="h-3.5 w-3.5" /> <CheckSquare className="h-3.5 w-3.5" /> {t('node.addChecklist')}</Button> : null}
+            {!expandedStepModules[selectedNode.id]?.startCondition && !selectedNode.data.startCondition ? <Button size="sm" variant="secondary" className="process-o-step-module-trigger" onClick={() => showStepModule(selectedNode.id, 'startCondition')}><Plus className="h-3.5 w-3.5" /> {t('node.addStartCondition')}</Button> : null}
+            {!expandedStepModules[selectedNode.id]?.completionCriterion && !selectedNode.data.completionCriterion ? <Button size="sm" variant="secondary" className="process-o-step-module-trigger" onClick={() => showStepModule(selectedNode.id, 'completionCriterion')}><Plus className="h-3.5 w-3.5" /> {t('node.addCompletionCriterion')}</Button> : null}
+          </div>
+        ) : null}
+      </div>
       {canEdit ? <Button size="sm" variant="danger-ghost" onClick={() => removeStep(selectedNode.id)}><Trash2 className="h-4 w-4" /> {t('node.remove')}</Button> : null}
     </div>
   );
@@ -1190,28 +1773,6 @@ export default function Processes() {
         description={t('description')}
         actions={canEdit ? <CreateButton disabled={saving} onClick={requestCreate}>{t('newProcess')}</CreateButton> : undefined}
       />
-      {openProcessIds.length > 0 ? (
-        <div className="process-o-tabs mb-3" role="tablist" aria-label={t('openProcesses')}>
-          {openProcessIds.map((processId) => {
-            const process = processes.find((item) => item.id === processId);
-            if (!process) return null;
-            return (
-              <Button
-                key={process.id}
-                size="sm"
-                variant="ghost"
-                role="tab"
-                aria-selected={process.id === selectedId}
-                onClick={() => selectProcess(process.id)}
-                className={`process-o-tab ${process.id === selectedId ? 'process-o-tab-active' : ''}`}
-              >
-                <GitBranch className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="max-w-44 truncate">{process.title}</span>
-              </Button>
-            );
-          })}
-        </div>
-      ) : null}
       <div className="grid gap-4 xl:grid-cols-[17rem_minmax(0,1fr)]">
         <aside className="px-1 py-2">
           <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{t('listHeading')}</div>
@@ -1266,9 +1827,10 @@ export default function Processes() {
                     edges={edges}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
+                    onNodesChange={handleNodesChange}
+                    onEdgesChange={handleEdgesChange}
                     onConnect={onConnect}
+                    onNodeDragStart={handleNodeDragStart}
                     onSelectionChange={({ nodes: selection }) => setSelectedNodeId(selection[0]?.id || null)}
                     nodesDraggable={canEdit}
                     nodesConnectable={canEdit}
@@ -1309,6 +1871,17 @@ export default function Processes() {
                     </Panel>
                     {canEdit ? (
                       <Panel position="bottom-right" className="process-o-auto-layout-panel">
+                        <IconButton
+                          aria-label={t('actions.undo')}
+                          title={t('actions.undo')}
+                          size="icon"
+                          variant="secondary"
+                          className="process-o-auto-layout-button"
+                          disabled={undoCount === 0}
+                          onClick={undoWorkflow}
+                        >
+                          <Undo2 aria-hidden="true" />
+                        </IconButton>
                         <IconButton
                           aria-label={t('actions.autoArrange')}
                           title={t('actions.autoArrange')}

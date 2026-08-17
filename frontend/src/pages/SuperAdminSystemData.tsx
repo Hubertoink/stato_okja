@@ -2,6 +2,7 @@ import { Fragment, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, CheckSquare, ChevronDown, ChevronUp, Clock, Copy, Database, Download, ExternalLink, FileArchive, HardDrive, Image as ImageIcon, Search, Server, ShieldAlert, ShieldCheck, Square, Trash2, Upload } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import Modal from '@/components/Modal';
+import DatabaseExplorerModal from '@/components/system-data/DatabaseExplorerModal';
 import { useToast } from '@/components/Toast';
 import { Button, DeleteIconButton, IconButton } from '@/components/ui/Button';
 import { api } from '@/lib/api';
@@ -22,6 +23,7 @@ import {
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 function formatBytes(bytes: number) {
   const value = Number(bytes) || 0;
@@ -72,6 +74,7 @@ function formatUploadReferenceLabel(upload: SystemDataUploadItem) {
   if (upload.referenceBreakdown.projectTemplates) parts.push(`${upload.referenceBreakdown.projectTemplates} Vorlagen`);
   if (upload.referenceBreakdown.userAvatars) parts.push(`${upload.referenceBreakdown.userAvatars} Avatare`);
   if (upload.referenceBreakdown.organizationBanners) parts.push(`${upload.referenceBreakdown.organizationBanners} Organisationsbanner`);
+  if (upload.referenceBreakdown.processFiles) parts.push(`${upload.referenceBreakdown.processFiles} ProzessO`);
   return parts.join(' · ');
 }
 
@@ -146,6 +149,19 @@ function renderUploadReferenceDetails(upload: SystemDataUploadItem) {
       </div>,
     );
   }
+  if (upload.referenceDetails.processFiles.length) {
+    blocks.push(
+      <div key="process-files" className="space-y-1">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">ProzessO</div>
+        {upload.referenceDetails.processFiles.map((process) => (
+          <div key={`${process.id}-${process.nodeId}`} className="rounded-lg bg-[var(--surface-1)] px-2.5 py-2 text-xs text-[var(--text-secondary)]">
+            <div className="font-medium text-[var(--text-primary)]">{process.title}</div>
+            <div className="text-[var(--text-muted)]">{process.nodeLabel}</div>
+          </div>
+        ))}
+      </div>,
+    );
+  }
 
   return blocks;
 }
@@ -186,6 +202,7 @@ function CommandSnippet({
 }
 
 export default function SuperAdminSystemData() {
+  const { t } = useTranslation('common');
   const { user } = useAuth();
   const { setScope } = useOrgScope();
   const queryClient = useQueryClient();
@@ -206,6 +223,7 @@ export default function SuperAdminSystemData() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isPurgeOpen, setIsPurgeOpen] = useState(false);
   const [isUploadsOpen, setIsUploadsOpen] = useState(false);
+  const [isDatabaseExplorerOpen, setIsDatabaseExplorerOpen] = useState(false);
   const [uploadSearch, setUploadSearch] = useState('');
   const [showOrphanedOnly, setShowOrphanedOnly] = useState(false);
   const [selectedUploadPaths, setSelectedUploadPaths] = useState<string[]>([]);
@@ -495,6 +513,14 @@ export default function SuperAdminSystemData() {
                     <p className="system-data-panel-copy text-sm text-gray-500 mt-1">{autoT('ui_9479ab856d30')}</p>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
+                      onClick={() => setIsDatabaseExplorerOpen(true)}
+                    >
+                      <Database className="w-4 h-4" />{t('databaseExplorer.open')}
+                    </Button>
                     <button
                       type="button"
                       className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
@@ -1132,6 +1158,8 @@ export default function SuperAdminSystemData() {
           )}
         </div>
       </Modal>
+
+      <DatabaseExplorerModal open={isDatabaseExplorerOpen} onClose={() => setIsDatabaseExplorerOpen(false)} />
     </div>
   );
 }

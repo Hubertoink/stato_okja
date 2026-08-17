@@ -16,6 +16,60 @@ type SystemDataSummary = {
   tables: Array<{ tableName: string; rowCount: number }>;
 };
 
+export type DatabaseExplorerColumn = {
+  name: string;
+  type: string;
+  nullable: boolean;
+  primary: boolean;
+  generated: boolean;
+  hidden: boolean;
+  reference?: { tableKey: string; column: string };
+};
+
+export type DatabaseExplorerTable = {
+  key: string;
+  rowCount: number;
+  organizationColumn: string | null;
+  columns: DatabaseExplorerColumn[];
+};
+
+export type DatabaseExplorerRelation = {
+  id: string;
+  sourceTable: string;
+  sourceColumn: string;
+  targetTable: string;
+  targetColumn: string;
+};
+
+export type DatabaseExplorerTablesResponse = {
+  generatedAt: string;
+  organizations: Array<{ id: string; name: string }>;
+  tables: DatabaseExplorerTable[];
+  relations: DatabaseExplorerRelation[];
+};
+
+export type DatabaseExplorerRowsResponse = {
+  table: Omit<DatabaseExplorerTable, 'rowCount'> & { rowCount: number };
+  page: number;
+  pageSize: number;
+  total: number;
+  pageCount: number;
+  organizationStats: Array<{ id: string; name: string; count: number }>;
+  rows: Array<{
+    values: Record<string, unknown>;
+    references: Record<string, { tableKey: string; id: string; label: string }>;
+  }>;
+};
+
+export type DatabaseExplorerRowsParams = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sort?: string;
+  direction?: 'asc' | 'desc';
+  orgId?: string;
+};
+
 export type SystemDataUploadItem = {
   relativePath: string;
   filename: string;
@@ -29,6 +83,7 @@ export type SystemDataUploadItem = {
     projectTemplates: number;
     userAvatars: number;
     organizationBanners: number;
+    processFiles: number;
   };
   referenceDetails: {
     projects: Array<{ id: string; title: string; orgId: string | null }>;
@@ -36,6 +91,7 @@ export type SystemDataUploadItem = {
     projectTemplates: Array<{ id: string; title: string; orgId: string | null }>;
     userAvatars: Array<{ id: string; name: string | null; email: string; role: string; orgId: string | null }>;
     organizationBanners: Array<{ id: string; name: string }>;
+    processFiles: Array<{ id: string; title: string; orgId: string | null; nodeId: string; nodeLabel: string }>;
   };
 };
 
@@ -55,6 +111,7 @@ type DeleteSystemDataUploadResult = {
     projectTemplates: number;
     userAvatars: number;
     organizationBanners: number;
+    processFiles: number;
   };
 };
 
@@ -155,6 +212,30 @@ export function useSystemDataSummary() {
       return res.data;
     },
     staleTime: 60_000,
+  });
+}
+
+export function useDatabaseExplorerTables(enabled: boolean) {
+  return useQuery({
+    queryKey: ['system-data-database-explorer-tables'],
+    queryFn: async () => {
+      const res = await api.get<DatabaseExplorerTablesResponse>('/admin/system-data/database/tables');
+      return res.data;
+    },
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useDatabaseExplorerRows(tableKey: string | null, params: DatabaseExplorerRowsParams, enabled: boolean) {
+  return useQuery({
+    queryKey: ['system-data-database-explorer-rows', tableKey, params],
+    queryFn: async () => {
+      const res = await api.get<DatabaseExplorerRowsResponse>(`/admin/system-data/database/tables/${encodeURIComponent(String(tableKey))}/rows`, { params });
+      return res.data;
+    },
+    enabled: enabled && Boolean(tableKey),
+    staleTime: 10_000,
   });
 }
 

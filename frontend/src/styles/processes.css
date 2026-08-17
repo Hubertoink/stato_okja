@@ -41,6 +41,21 @@
   stroke-linecap: round;
 }
 
+.process-o-canvas .database-relation-flow-dot {
+  fill: var(--process-canvas-edge-selected);
+  stroke: var(--process-canvas-bg);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--process-canvas-edge-selected) 88%, transparent));
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .process-o-canvas .database-relation-flow-dot {
+    display: none;
+  }
+}
+
 .process-o-canvas .react-flow__controls {
   overflow: hidden;
   border: 1px solid var(--process-canvas-control-border);
@@ -112,6 +127,63 @@
   white-space: pre-wrap;
 }
 
+.process-o-node-paths {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.55rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.process-o-node-path-row {
+  display: flex;
+  min-height: 1.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.process-o-path-badge {
+  display: inline-flex;
+  min-width: 0;
+  max-width: calc(100% - 1.1rem);
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.1rem 0.42rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.process-o-path-positive {
+  background: color-mix(in srgb, #15803d 14%, var(--surface-1));
+  color: #15803d;
+}
+
+.process-o-path-negative {
+  background: color-mix(in srgb, #dc2626 12%, var(--surface-1));
+  color: #dc2626;
+}
+
+.process-o-path-neutral {
+  background: color-mix(in srgb, #64748b 12%, var(--surface-1));
+  color: #64748b;
+}
+
+:root[data-color-mode='dark'] .process-o-path-positive { color: #86efac; }
+:root[data-color-mode='dark'] .process-o-path-negative { color: #fca5a5; }
+:root[data-color-mode='dark'] .process-o-path-neutral { color: #cbd5e1; }
+
+.process-o-path-handle {
+  position: static !important;
+  flex: 0 0 auto;
+  transform: none !important;
+}
+
 .process-o-node-delete {
   height: 1.55rem;
   width: 1.55rem;
@@ -138,7 +210,10 @@
 /* Match the shared modal editor hierarchy: panel on surface 1, controls on
  * the editor-field surface. This keeps fields visibly editable in dark themes. */
 .process-o-node-editor {
-  background: var(--surface-1);
+  /* Keep the editing surface visually lighter than the workframe without
+   * turning it into a second opaque canvas. */
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  backdrop-filter: blur(6px);
 }
 
 .process-o-node-editor .ui-field-control {
@@ -149,6 +224,102 @@
 .process-o-node-editor .ui-field-control:hover:not(:disabled),
 .process-o-node-editor .ui-field-control:focus {
   border-color: var(--viridian);
+}
+
+.process-o-step-additional {
+  display: grid;
+  gap: 0.7rem;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.8rem;
+}
+
+.process-o-step-additional-heading {
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.process-o-step-module {
+  min-width: 0;
+}
+
+.process-o-step-module-header {
+  display: flex;
+  min-height: 1.9rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-strong);
+  padding: 0 0.1rem 0.4rem;
+}
+
+.process-o-step-module-remove,
+.process-o-step-list-remove {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+.process-o-step-module-remove {
+  opacity: 0;
+  pointer-events: none;
+  transition: color 140ms ease, opacity 140ms ease;
+}
+
+.process-o-step-module-header:hover .process-o-step-module-remove,
+.process-o-step-module-header:focus-within .process-o-step-module-remove,
+.process-o-step-module-remove:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.process-o-step-list-remove {
+  /* Distinguish a checklist-item action from the module action above it. */
+  margin-right: 0.7rem;
+}
+
+.process-o-step-module-remove:hover,
+.process-o-step-module-remove:focus-visible,
+.process-o-step-list-remove:hover,
+.process-o-step-list-remove:focus-visible {
+  background: transparent;
+  color: var(--status-danger-text);
+}
+
+.process-o-step-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.process-o-step-list-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 0.35rem 0.1rem;
+}
+
+.process-o-step-list-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.process-o-step-module-triggers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-top: 0.05rem;
+}
+
+.process-o-step-module-trigger {
+  border-radius: 999px;
+  font-size: 0.75rem;
 }
 
 .process-o-template {
@@ -200,6 +371,9 @@
 }
 
 .process-o-auto-layout-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   margin: 0 0 9.5rem 0;
 }
 
@@ -210,45 +384,31 @@
   box-shadow: 0 4px 14px rgba(7, 11, 21, 0.2);
 }
 
-.process-o-tabs {
-  display: flex;
-  gap: 0.35rem;
-  overflow-x: auto;
-  padding: 0.2rem 0;
-}
-
-.process-o-tab {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.65rem;
-  background: var(--surface-1);
-  color: var(--text-secondary);
-  padding: 0.4rem 0.65rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
-}
-
-.process-o-tab:hover {
-  border-color: var(--interactive-soft-border);
-  background: var(--interactive-soft);
-}
-
-.process-o-tab-active {
-  border-color: var(--interactive-soft-border);
-  background: var(--interactive-soft-strong);
-  color: var(--viridian);
-}
-
 .process-o-edge-control {
   position: absolute;
   z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.process-o-edge-label {
+  position: absolute;
+  z-index: 4;
+  max-width: 10rem;
+  overflow: hidden;
+  border: 1px solid var(--process-canvas-control-border);
+  border-radius: 999px;
+  background: var(--process-canvas-control-bg);
+  box-shadow: 0 2px 7px rgba(7, 11, 21, 0.24);
+  color: var(--process-canvas-control-text);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0.2rem 0.45rem;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .process-o-edge-add {

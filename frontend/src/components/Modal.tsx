@@ -126,12 +126,14 @@ export default function Modal({
   headerActions,
   mobilePlacement = 'bottom',
   theme = 'app',
+  fullScreen = false,
+  contentClassName = '',
 }: {
   open: boolean;
   title?: string;
   children: React.ReactNode;
   onClose: () => void;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | 'screen';
   blur?: boolean;
   showCloseButton?: boolean;
   /** Information and form modals keep their title and controls visible while their content scrolls. */
@@ -141,6 +143,10 @@ export default function Modal({
   mobilePlacement?: 'bottom' | 'top';
   /** Public pages deliberately keep their own presentation independent of a stored app theme. */
   theme?: 'app' | 'public';
+  /** Uses the entire viewport for focused workspaces such as visual data maps. */
+  fullScreen?: boolean;
+  /** Optional layout overrides for the scrollable information-modal content area. */
+  contentClassName?: string;
 }) {
   const { t } = useTranslation('common');
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -208,12 +214,13 @@ export default function Modal({
     '4xl': 'md:max-w-4xl',
     '5xl': 'md:max-w-5xl',
     '6xl': 'md:max-w-6xl',
+    screen: 'md:max-w-[calc(100vw-3rem)]',
   }[maxWidth];
   const isStructuredModal = variant === 'information' || variant === 'form';
   const themeClassName = theme === 'public' ? 'public-survey public-survey-modal' : '';
   const content = (
     <div
-      className={`visual-viewport-fixed z-[70] bg-black/40 flex ${mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center p-0 md:p-6 modal-overlay ${themeClassName} ${blur ? "backdrop-blur-sm" : ''}`}
+      className={`visual-viewport-fixed z-[70] bg-black/40 flex ${fullScreen ? 'items-stretch' : mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center ${fullScreen ? 'p-0' : 'p-0 md:p-6'} modal-overlay ${themeClassName} ${blur ? "backdrop-blur-sm" : ''}`}
       onWheel={(e) => e.stopPropagation()}
       onClick={(event) => {
         if (event.target === event.currentTarget) dismiss();
@@ -224,7 +231,7 @@ export default function Modal({
         aria-label={title ? undefined : t('dialog.ariaLabel')}
         aria-labelledby={title ? titleId : undefined}
         aria-modal="true"
-        className={`w-full ${maxW} max-h-[85vh] ${mobilePlacement === 'top' ? 'rounded-b-3xl top-sheet-animate' : 'rounded-t-3xl bottom-sheet-animate'} border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl modal-panel-roomy ${themeClassName} ${variant === 'form' ? 'modal-editor-surface' : ''} md:rounded-2xl ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-x-hidden overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
+        className={`w-full ${fullScreen ? 'max-w-none max-h-none h-[100dvh] rounded-none border-0' : `${maxW} max-h-[85vh] ${mobilePlacement === 'top' ? 'rounded-b-3xl top-sheet-animate' : 'rounded-t-3xl bottom-sheet-animate'} border border-[var(--border-subtle)] md:rounded-2xl`} bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl modal-panel-roomy ${themeClassName} ${variant === 'form' ? 'modal-editor-surface' : ''} ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-x-hidden overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
         role="dialog"
         tabIndex={-1}
         onKeyDown={handleDialogKeyDown}
@@ -250,7 +257,7 @@ export default function Modal({
           </div>
         )}
         {variant === 'information' ? (
-          <div className="min-h-0 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6">
+          <div className={`min-h-0 flex-1 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6 ${contentClassName}`}>
             {children}
           </div>
         ) : children}

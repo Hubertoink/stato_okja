@@ -20,6 +20,12 @@ describe('demo statistics', () => {
     expect(access).toEqual({ enabled: true, canEdit: true, orgId: 'demo-org' });
     expect(processes).toHaveLength(3);
     expect(processes.some((process) => process.title === 'Veranstaltung planen')).toBe(true);
-    expect(processes.find((process) => process.id === 'demo-process-event')?.definition.edges.length).toBeGreaterThan(0);
+    const eventProcess = processes.find((process) => process.id === 'demo-process-event');
+    const planningStep = eventProcess?.definition.nodes.find((node) => node.id === 'event-plan');
+    expect(eventProcess?.definition.edges.length).toBeGreaterThan(0);
+    expect(planningStep?.data.resources).toContain('Raumbuchung');
+    expect(planningStep?.data.checklist).toHaveLength(2);
+    expect(planningStep?.data.startCondition).toBeTruthy();
+    expect(planningStep?.data.completionCriterion).toBeTruthy();
   });
 });

@@ -4,6 +4,8 @@ import {
   Controller,
   Get,
   Post,
+  Param,
+  Query,
   Req,
   Res,
   StreamableFile,
@@ -21,7 +23,7 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { SystemDataService, type SystemDataActor } from './system-data.service';
-import { ConfirmSystemDataOperationDto, DeleteSystemDataUploadDto, DeleteSystemDataUploadsDto } from './dto/system-data.dto';
+import { ConfirmSystemDataOperationDto, DatabaseExplorerRowsQueryDto, DeleteSystemDataUploadDto, DeleteSystemDataUploadsDto } from './dto/system-data.dto';
 
 const systemDataImportTempDir = join(process.cwd(), '.tmp', 'system-data-imports');
 
@@ -59,6 +61,24 @@ export class SystemDataController {
   @ApiOperation({ summary: 'Liefert globale Metadaten für den Superadmin-Datenexport und die Voll-Löschung' })
   summary() {
     return this.systemDataService.getSummary();
+  }
+
+  @Get('database/tables')
+  @Roles('superadmin')
+  @ApiOperation({ summary: 'Listet die für den schreibgeschützten Datenbank-Explorer verfügbaren Tabellen und ihr Schema' })
+  databaseTables(@Req() req: { user: SystemDataActor }) {
+    return this.systemDataService.listDatabaseExplorerTables(req.user);
+  }
+
+  @Get('database/tables/:tableKey/rows')
+  @Roles('superadmin')
+  @ApiOperation({ summary: 'Liest paginierte Datensätze einer freigegebenen Tabelle für den Datenbank-Explorer' })
+  databaseRows(
+    @Req() req: { user: SystemDataActor },
+    @Param('tableKey') tableKey: string,
+    @Query() query: DatabaseExplorerRowsQueryDto,
+  ) {
+    return this.systemDataService.listDatabaseExplorerRows(req.user, tableKey, query);
   }
 
   @Get('uploads')

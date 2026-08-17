@@ -79,6 +79,7 @@ const Surveys = lazyWithReload(() => import('@/pages/Surveys'));
 const Processes = lazyWithReload(() => import('@/pages/Processes'));
 const SurveyDetail = lazyWithReload(() => import('@/pages/SurveyDetail'));
 const PublicSurvey = lazyWithReload(() => import('@/pages/PublicSurvey'));
+const SecurityArchitectureEmbed = lazyWithReload(() => import('@/pages/SecurityArchitectureEmbed'));
 
 function LogbookEditorRoute() {
   return (
@@ -164,6 +165,14 @@ function App() {
             element={
               <RouteBoundary label={t('routes.survey')}>
                 <PublicSurvey />
+              </RouteBoundary>
+            }
+          />
+          <Route
+            path="/security-architecture"
+            element={
+              <RouteBoundary label="Sicherheitsarchitektur">
+                <SecurityArchitectureEmbed />
               </RouteBoundary>
             }
           />

@@ -3,6 +3,20 @@ import { api } from './api';
 import { useOrgScopeKey } from './orgScope';
 
 export type ProcessNodeType = 'input' | 'activity' | 'decision' | 'branch' | 'subprocess' | 'file' | 'output' | 'outcome' | 'reflection';
+export type ProcessPathTone = 'positive' | 'negative' | 'neutral';
+
+export interface ProcessPath {
+  id: string;
+  label: string;
+  tone: ProcessPathTone;
+}
+
+export interface ProcessChecklistItem {
+  id: string;
+  label: string;
+}
+
+export type ProcessStepModule = 'duration' | 'resources' | 'checklist' | 'startCondition' | 'completionCriterion';
 
 export interface ProcessDefinition {
   schemaVersion: 1;
@@ -10,7 +24,7 @@ export interface ProcessDefinition {
     id: string;
     type: ProcessNodeType;
     position: { x: number; y: number };
-    data: { label: string; description?: string; responsibleRole?: string; linkedProcessId?: string; fileUrl?: string; fileName?: string; fileMimeType?: string };
+    data: { label: string; description?: string; responsibleRole?: string; estimatedDurationMinutes?: number; resources?: string[]; checklist?: ProcessChecklistItem[]; startCondition?: string; completionCriterion?: string; detailModuleOrder?: ProcessStepModule[]; linkedProcessId?: string; fileUrl?: string; fileName?: string; fileMimeType?: string; paths?: ProcessPath[] };
   }>;
   edges: Array<{ id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string; label?: string }>;
 }

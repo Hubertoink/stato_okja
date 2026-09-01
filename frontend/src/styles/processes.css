@@ -45,7 +45,9 @@
   fill: var(--process-canvas-edge-selected);
   stroke: var(--process-canvas-bg);
   stroke-width: 2;
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--process-canvas-edge-selected) 88%, transparent));
+  filter: drop-shadow(
+    0 0 5px color-mix(in srgb, var(--process-canvas-edge-selected) 88%, transparent)
+  );
   pointer-events: none;
   vector-effect: non-scaling-stroke;
 }
@@ -174,14 +176,24 @@
   color: #64748b;
 }
 
-:root[data-color-mode='dark'] .process-o-path-positive { color: #86efac; }
-:root[data-color-mode='dark'] .process-o-path-negative { color: #fca5a5; }
-:root[data-color-mode='dark'] .process-o-path-neutral { color: #cbd5e1; }
+:root[data-color-mode='dark'] .process-o-path-positive {
+  color: #86efac;
+}
+:root[data-color-mode='dark'] .process-o-path-negative {
+  color: #fca5a5;
+}
+:root[data-color-mode='dark'] .process-o-path-neutral {
+  color: #cbd5e1;
+}
 
-.process-o-path-handle {
-  position: static !important;
+.process-o-path-connector {
+  display: block;
+  height: 0.6rem;
+  width: 0.6rem;
   flex: 0 0 auto;
-  transform: none !important;
+  border: 1px solid var(--surface-1);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 20%, transparent);
 }
 
 .process-o-node-delete {
@@ -266,7 +278,9 @@
 .process-o-step-module-remove {
   opacity: 0;
   pointer-events: none;
-  transition: color 140ms ease, opacity 140ms ease;
+  transition:
+    color 140ms ease,
+    opacity 140ms ease;
 }
 
 .process-o-step-module-header:hover .process-o-step-module-remove,
@@ -349,7 +363,11 @@
 .process-o-template-edit {
   opacity: 0;
   transform: scale(0.9);
-  transition: opacity 150ms ease, transform 150ms ease, color 150ms ease, background-color 150ms ease;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    color 150ms ease,
+    background-color 150ms ease;
 }
 
 .process-o-template:hover .process-o-template-edit,
@@ -518,7 +536,9 @@
     opacity: 0;
     padding: 0.5rem 0.75rem;
     pointer-events: none;
-    transition: opacity 0s, visibility 0s;
+    transition:
+      opacity 0s,
+      visibility 0s;
     visibility: hidden;
     white-space: nowrap;
   }

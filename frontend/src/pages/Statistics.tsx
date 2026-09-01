@@ -73,28 +73,12 @@ import { useStatisticsOverview } from './statistics/useStatisticsOverview';
 import { useStatisticsFilters } from './statistics/useStatisticsFilters';
 import { StatisticsKpis } from './statistics/StatisticsKpis';
 import { StatisticsActivitiesTable } from './statistics/StatisticsActivitiesTable';
-import type { ActivitiesExportFormat, ChartExportFormat } from './statistics/types';
+import type { ActivitiesExportFormat } from './statistics/types';
 import {
-  appendActivitiesTableToPdf,
+  exportActivitiesAsCsv as runActivitiesCsvExport,
   exportActivitiesAsExcel as runActivitiesExcelExport,
-  exportActivitiesAsPdf as runActivitiesPdfExport,
 } from './statistics/export/activitiesExport';
 import { exportControllingDataAsExcel as runControllingExcelExport } from './statistics/export/controllingExport';
-import {
-  addPdfPageHeader,
-  buildPdfSlices,
-  canvasToBlob,
-  CHART_EXPORT_HEADER_HEIGHT_MM,
-  collectPdfBreakpoints,
-  createCanvasSlice,
-  downloadBlob,
-  loadPdfExportDependencies,
-  PDF_HEADER_HEIGHT_MM,
-  PDF_MARGIN_MM,
-  PDF_MAX_RENDER_HEIGHT_PX,
-  PDF_RENDER_SCALE,
-  renderParticipantsTrendCanvas,
-} from './statistics/export/pdfCanvas';
 
 const TYPE_LABEL: Record<string, string> = {
   open_door: autoT('ui_a80778b6b148'),
@@ -215,8 +199,6 @@ export default function Statistics() {
   const [timeAggregation, setTimeAggregation] = useState<'day' | 'week' | 'month'>('day');
   const ACTIVITIES_PER_PAGE = 50;
 
-  const [pdfMode, setPdfMode] = useState(false);
-  const reportRef = useRef<HTMLDivElement | null>(null);
   const chartCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const statsUiFlowIdRef = useRef<string | null>(null);
   const statsUiFlowCompletedRef = useRef(false);
@@ -229,7 +211,6 @@ export default function Statistics() {
   const [isControllingExporting, setIsControllingExporting] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
   const reportExportTriggerRef = useRef<HTMLDivElement | null>(null);
-  const [includeActivitiesInPdf, setIncludeActivitiesInPdf] = useState(false);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isExportInProgress, setIsExportInProgress] = useState(false);
   const exportInProgressRef = useRef(false);
@@ -588,13 +569,14 @@ export default function Statistics() {
   const chartValueLabelStroke = isDarkTheme ? 'rgba(8, 14, 26, 0.92)' : 'rgba(255, 255, 255, 0.9)';
   const chartGridColor = isDarkTheme ? 'rgba(148, 163, 184, 0.28)' : 'rgba(107, 114, 128, 0.35)';
   const chartAxisTick = { fontSize: 12, fill: chartLegendTextColor } as const;
-  const lineChartMargin = isMobile
+  const useMobileChartLayout = isMobile;
+  const lineChartMargin = useMobileChartLayout
     ? { top: 10, right: 6, left: -14, bottom: 0 }
     : { top: 10, right: 20, left: 0, bottom: 0 };
-  const compactBarChartMargin = isMobile
+  const compactBarChartMargin = useMobileChartLayout
     ? { top: 16, right: 6, left: -14, bottom: 0 }
     : { top: 20, right: 20, left: 0, bottom: 0 };
-  const compactBarChartMarginWithBottom = isMobile
+  const compactBarChartMarginWithBottom = useMobileChartLayout
     ? { top: 16, right: 6, left: -14, bottom: 4 }
     : { top: 20, right: 20, left: 0, bottom: 8 };
   const chartTooltipContentStyle = {
@@ -627,16 +609,16 @@ export default function Statistics() {
     fontSize: '13px',
     lineHeight: '20px',
     paddingTop: '10px',
-    paddingLeft: isMobile ? '12px' : '0px',
-    paddingRight: isMobile ? '12px' : '0px',
+    paddingLeft: useMobileChartLayout ? '12px' : '0px',
+    paddingRight: useMobileChartLayout ? '12px' : '0px',
   } as const;
-  const byTypePieCenterY = isMobile ? '41%' : '45%';
-  const byTypeOuterRadius = isMobile ? 68 : 88;
-  const genderPieCenterY = isMobile ? '42%' : '46%';
-  const genderInnerRadius = isMobile ? 44 : 54;
-  const genderOuterRadius = isMobile ? 72 : 88;
-  const cohortPieCenterY = isMobile ? '41%' : '45%';
-  const cohortPieOuterRadius = isMobile ? 60 : 76;
+  const byTypePieCenterY = useMobileChartLayout ? '41%' : '45%';
+  const byTypeOuterRadius = useMobileChartLayout ? 68 : 88;
+  const genderPieCenterY = useMobileChartLayout ? '42%' : '46%';
+  const genderInnerRadius = useMobileChartLayout ? 44 : 54;
+  const genderOuterRadius = useMobileChartLayout ? 72 : 88;
+  const cohortPieCenterY = useMobileChartLayout ? '41%' : '45%';
+  const cohortPieOuterRadius = useMobileChartLayout ? 60 : 76;
   const mobilePrimaryTextClass = isDarkTheme ? 'text-slate-100' : 'text-slate-900';
   const mobileSecondaryTextClass = isDarkTheme ? 'text-slate-300' : 'text-slate-700';
   const mobileLabelTextClass = isDarkTheme ? 'text-slate-400' : 'text-slate-600';
@@ -942,12 +924,12 @@ export default function Statistics() {
     chartCardRefs.current[chartId] = node;
   };
 
-  const getChartFileName = (chartTitle: string, extension: ChartExportFormat) => {
+  const getChartFileName = (chartTitle: string) => {
     return buildStatisticsChartFileName({
       orgName: user?.orgName,
       chartTitle,
       exportRangeLabel,
-      extension,
+      extension: 'png',
     });
   };
 
@@ -1005,11 +987,9 @@ export default function Statistics() {
         return;
       }
 
-      await runActivitiesPdfExport({
+      await runActivitiesCsvExport({
         activities,
-        fileName: getActivitiesExportFileName('pdf'),
-        orgName: user?.orgName,
-        exportRangeLabel,
+        fileName: getActivitiesExportFileName('csv'),
         getTypeLabel: getActivityTypeLabel,
         onProgress: setExportProgress,
       });
@@ -1064,72 +1044,43 @@ export default function Statistics() {
     }
   }
 
-  async function exportChart(chartId: string, chartTitle: string, format: ChartExportFormat) {
+  async function exportChart(chartId: string, chartTitle: string) {
     const card = chartCardRefs.current[chartId];
     if (!card) return;
     if (!beginExport()) return;
 
-    const exportKey = `${chartId}:${format}`;
+    const exportKey = `${chartId}:png`;
     setActiveChartExport(exportKey);
-    setExportProgress(
-      format === 'pdf' ? autoT('ui_70aa98ab3b7d') : 'Diagramm wird als Bild aufbereitet …',
-    );
+    setExportProgress('Diagramm wird als Bild aufbereitet …');
     // The browser-native export capture applies a static export palette to
     // the cloned chart, leaving the interactive page untouched.
-    card.classList.add('statistics-pdf-export-card');
+    card.classList.add('statistics-chart-export-card');
 
     try {
-      const { JsPDF } = await loadPdfExportDependencies();
       await new Promise(requestAnimationFrame);
       await new Promise(requestAnimationFrame);
 
-      const canvas =
-        chartId === 'participants-trend'
-          ? await renderParticipantsTrendCanvas(card, chartTitle)
-          : await captureExportNode(card, {
-              scale: PDF_RENDER_SCALE,
-              ignoreElements: (element) =>
-                element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
-            });
-
-      if (format === 'png') {
-        setExportProgress(autoT('ui_8b3d272f0e55'));
-        await new Promise(requestAnimationFrame);
-        const blob = await canvasToBlob(canvas);
-        downloadBlob(blob, getChartFileName(chartTitle, 'png'));
-        return;
-      }
-
-      const orientation = canvas.width >= canvas.height ? 'landscape' : 'portrait';
-      const pdf = new JsPDF({ orientation, unit: 'mm', format: 'a4' });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const availableWidth = pageWidth - PDF_MARGIN_MM * 2;
-      const availableHeight = pageHeight - CHART_EXPORT_HEADER_HEIGHT_MM - PDF_MARGIN_MM;
-      const scale = Math.min(availableWidth / canvas.width, availableHeight / canvas.height);
-      const imageWidth = canvas.width * scale;
-      const imageHeight = canvas.height * scale;
-      const imageX = (pageWidth - imageWidth) / 2;
-
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(15);
-      pdf.text(chartTitle, PDF_MARGIN_MM, 16);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(11);
-      pdf.text(exportRangeLabel, PDF_MARGIN_MM, 23);
-      pdf.addImage(
-        canvas.toDataURL('image/png'),
-        'PNG',
-        imageX,
-        CHART_EXPORT_HEADER_HEIGHT_MM,
-        imageWidth,
-        imageHeight,
-        undefined,
-        'FAST',
-      );
-      setExportProgress(autoT('ui_0acf469c6a6c'));
+      const canvas = await captureExportNode(card, {
+        scale: 2,
+        ignoreElements: (element) =>
+          element instanceof HTMLElement && element.dataset.chartExportIgnore === 'true',
+      });
+      setExportProgress(autoT('ui_8b3d272f0e55'));
       await new Promise(requestAnimationFrame);
-      pdf.save(getChartFileName(chartTitle, 'pdf'));
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) =>
+          result ? resolve(result) : reject(new Error('Canvas export failed.')),
+        );
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = getChartFileName(chartTitle);
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
       console.error('Chart export failed', error);
       showToast('Das Diagramm konnte nicht exportiert werden. Bitte erneut versuchen.', {
@@ -1137,7 +1088,7 @@ export default function Statistics() {
         durationMs: 5000,
       });
     } finally {
-      card.classList.remove('statistics-pdf-export-card');
+      card.classList.remove('statistics-chart-export-card');
       setActiveChartExport(null);
       setExportProgress(null);
       finishExport();
@@ -1157,12 +1108,7 @@ export default function Statistics() {
           {
             label: autoT('ui_eac2deaf6270'),
             meta: 'Bild',
-            onClick: () => void exportChart(chartId, chartTitle, 'png'),
-          },
-          {
-            label: autoT('ui_d2ca42015ecd'),
-            meta: 'A4',
-            onClick: () => void exportChart(chartId, chartTitle, 'pdf'),
+            onClick: () => void exportChart(chartId, chartTitle),
           },
         ]}
       />
@@ -1179,9 +1125,9 @@ export default function Statistics() {
         isExporting={isExporting}
         options={[
           {
-            label: autoT('ui_d2ca42015ecd'),
+            label: 'CSV',
             meta: 'Komplett',
-            onClick: () => void exportActivitiesTable('pdf'),
+            onClick: () => void exportActivitiesTable('csv'),
           },
           {
             label: autoT('ui_27c7a74a3136'),
@@ -1192,100 +1138,6 @@ export default function Statistics() {
       />
     );
   };
-
-  async function exportPdf(includeActivities: boolean) {
-    // Render the report container to images and assemble into a PDF (A4 portrait)
-    if (!reportRef.current) return;
-    if (!beginExport()) return;
-
-    try {
-      setExportProgress(
-        includeActivities
-          ? 'Aktivitäten werden geladen. Das kann bei großen Datenmengen etwas dauern …'
-          : 'PDF-Bericht wird vorbereitet …',
-      );
-      // Give React a frame to render the blocking progress dialog before the
-      // paginated requests begin. This prevents accidental parallel exports.
-      await new Promise(requestAnimationFrame);
-      const activitiesForPdf = includeActivities ? await fetchAllFilteredActivities() : [];
-      setPdfMode(true);
-      setExportProgress(autoT('ui_c49a3f591c68'));
-      const { JsPDF } = await loadPdfExportDependencies();
-      await new Promise(requestAnimationFrame);
-      const el = reportRef.current;
-      if (!el) return;
-
-      await new Promise(requestAnimationFrame);
-      const renderScale = Math.min(
-        PDF_RENDER_SCALE,
-        Math.max(1, PDF_MAX_RENDER_HEIGHT_PX / Math.max(el.scrollHeight, 1)),
-      );
-      const canvas = await captureExportNode(el, {
-        scale: renderScale,
-      });
-
-      const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      setExportProgress(autoT('ui_cd0d0b4b7c4d'));
-      await new Promise(requestAnimationFrame);
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const orgTitle = user?.orgName || autoT('ui_6e99c1d3b150');
-      const dateRange = [from, to].filter(Boolean).join(' bis ');
-      const availableWidth = pageWidth - PDF_MARGIN_MM * 2;
-      const availableHeight = pageHeight - PDF_HEADER_HEIGHT_MM - PDF_MARGIN_MM;
-      const mmPerPx = availableWidth / canvas.width;
-      const pageHeightPx = Math.floor(availableHeight / mmPerPx);
-      const breakpoints = collectPdfBreakpoints(el, canvas);
-      const slices = buildPdfSlices(canvas.height, pageHeightPx, breakpoints);
-
-      slices.forEach((slice, index) => {
-        const sliceCanvas = createCanvasSlice(canvas, slice.startPx, slice.endPx);
-        if (!sliceCanvas) return;
-
-        if (index > 0) {
-          pdf.addPage('a4', 'portrait');
-        }
-
-        addPdfPageHeader(pdf, orgTitle, dateRange);
-        pdf.addImage(
-          sliceCanvas.toDataURL('image/png'),
-          'PNG',
-          PDF_MARGIN_MM,
-          PDF_HEADER_HEIGHT_MM,
-          availableWidth,
-          (slice.endPx - slice.startPx) * mmPerPx,
-          undefined,
-          'FAST',
-        );
-      });
-
-      if (includeActivities && activitiesForPdf.length > 0) {
-        setExportProgress('Aktivitätenliste wird hinzugefügt …');
-        await new Promise(requestAnimationFrame);
-        appendActivitiesTableToPdf(
-          pdf,
-          activitiesForPdf,
-          orgTitle,
-          dateRange,
-          getActivityTypeLabel,
-        );
-      }
-
-      setExportProgress(autoT('ui_0acf469c6a6c'));
-      await new Promise(requestAnimationFrame);
-      pdf.save(`StatO-Bericht-${orgTitle.replace(/\s+/g, '_')}.pdf`);
-    } catch (error) {
-      console.error('Statistics PDF export failed', error);
-      showToast('Der PDF-Bericht konnte nicht erstellt werden. Bitte erneut versuchen.', {
-        type: 'error',
-        durationMs: 5000,
-      });
-    } finally {
-      setPdfMode(false);
-      setExportProgress(null);
-      finishExport();
-    }
-  }
 
   return (
     <div className="relative">
@@ -2069,9 +1921,8 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      <div ref={reportRef} className={pdfMode ? 'statistics-pdf-report' : ''}>
+      <div>
         <StatisticsKpis
-          pdfMode={pdfMode}
           showAverage={showAverage}
           onShowAverageChange={setShowAverage}
           summary={summary}
@@ -2086,8 +1937,7 @@ export default function Statistics() {
           <WeeklyProfileHeatmap
             profile={weeklyProfile}
             selectedWeekdays={selectedWeekdays}
-            isMobile={isMobile}
-            pdfMode={pdfMode}
+            isMobile={useMobileChartLayout}
             chartRef={setChartCardRef('weekly-profile')}
             exportActions={renderChartExportActions('weekly-profile', 'Wochenprofil')}
           />
@@ -2098,7 +1948,7 @@ export default function Statistics() {
           className="mt-6"
           from={from || undefined}
           to={to || undefined}
-          showManager={!pdfMode}
+          showManager
           refreshOptions={{
             refetchOnWindowFocus: true,
             refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
@@ -2106,12 +1956,10 @@ export default function Statistics() {
         />
 
         {/* Charts */}
-        <div className={`grid gap-6 ${pdfMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <StatisticsPieChartCard
             title={autoT('ui_7a55d1e6e986')}
-            exportActions={
-              pdfMode ? null : renderChartExportActions('activity-types', autoT('ui_7a55d1e6e986'))
-            }
+            exportActions={renderChartExportActions('activity-types', autoT('ui_7a55d1e6e986'))}
             bodyClassName="h-80 md:h-[23rem]"
             chartRef={setChartCardRef('activity-types')}
             data={byTypeData}
@@ -2130,11 +1978,10 @@ export default function Statistics() {
 
           <StatisticsPieChartCard
             title={autoT('ui_2b8c8cd6a28c')}
-            exportActions={
-              pdfMode
-                ? null
-                : renderChartExportActions('gender-distribution', 'Geschlechterverteilung')
-            }
+            exportActions={renderChartExportActions(
+              'gender-distribution',
+              'Geschlechterverteilung',
+            )}
             bodyClassName="h-80 md:h-[23rem]"
             chartRef={setChartCardRef('gender-distribution')}
             data={genderData}
@@ -2162,24 +2009,22 @@ export default function Statistics() {
               <h3 className="statistics-chart-title text-lg font-semibold text-viridian">
                 {showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5')}
               </h3>
-              {!pdfMode && (
-                <div className="flex items-center gap-2">
-                  {renderChartExportActions(
-                    'participants-trend',
-                    showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5'),
-                  )}
-                  <SegmentedControl<'day' | 'week' | 'month'>
-                    ariaLabel={autoT('ui_3b658714e6c5')}
-                    onChange={setTimeAggregation}
-                    options={[
-                      { value: 'day', label: autoT('ui_982963c1c41c') },
-                      { value: 'week', label: autoT('ui_7b2207dc85a6') },
-                      { value: 'month', label: autoT('ui_da13625eeb37') },
-                    ]}
-                    value={timeAggregation}
-                  />
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {renderChartExportActions(
+                  'participants-trend',
+                  showAverage ? autoT('ui_0a94bbd542a9') : autoT('ui_3b658714e6c5'),
+                )}
+                <SegmentedControl<'day' | 'week' | 'month'>
+                  ariaLabel={autoT('ui_3b658714e6c5')}
+                  onChange={setTimeAggregation}
+                  options={[
+                    { value: 'day', label: autoT('ui_982963c1c41c') },
+                    { value: 'week', label: autoT('ui_7b2207dc85a6') },
+                    { value: 'month', label: autoT('ui_da13625eeb37') },
+                  ]}
+                  value={timeAggregation}
+                />
+              </div>
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -2255,16 +2100,12 @@ export default function Statistics() {
 
           <StatisticsPieChartCard
             title={showAverage ? autoT('ui_784a48af8419') : autoT('ui_4d34ac48c54e')}
-            exportActions={
-              pdfMode
-                ? null
-                : renderChartExportActions(
-                    'cohorts',
-                    showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
-                  )
-            }
+            exportActions={renderChartExportActions(
+              'cohorts',
+              showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
+            )}
             cardClassName="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
-            bodyClassName={pdfMode ? 'h-72' : 'h-80 md:h-[23rem]'}
+            bodyClassName="h-80 md:h-[23rem]"
             chartRef={setChartCardRef('cohorts')}
             data={cohortPieData}
             centerY={cohortPieCenterY}
@@ -2282,12 +2123,10 @@ export default function Statistics() {
 
           <StatisticsBarChartCard
             title={autoT('ui_14a39a02cc68')}
-            exportActions={
-              pdfMode ? null : renderChartExportActions('top-categories', 'Top Kategorien')
-            }
+            exportActions={renderChartExportActions('top-categories', 'Top Kategorien')}
             chartRef={setChartCardRef('top-categories')}
             data={topCategoryChartData}
-            bodyClassName={pdfMode ? 'h-64' : 'h-80 md:h-[23rem]'}
+            bodyClassName="h-80 md:h-[23rem]"
             margin={compactBarChartMarginWithBottom}
             gridStroke={chartGridColor}
             axisTick={chartAxisTick}
@@ -2308,7 +2147,7 @@ export default function Statistics() {
 
           <StatisticsBarChartCard
             title={autoT('ui_0fb32d3b3eaa')}
-            exportActions={pdfMode ? null : renderChartExportActions('top-tags', 'Top Tags')}
+            exportActions={renderChartExportActions('top-tags', 'Top Tags')}
             chartRef={setChartCardRef('top-tags')}
             data={topTags}
             bodyClassName="h-64"
@@ -2335,7 +2174,7 @@ export default function Statistics() {
           {projectId ? (
             <StatisticsBarChartCard
               title={autoT('ui_77e6509147ca')}
-              exportActions={pdfMode ? null : renderChartExportActions('top-days', 'Top Tage')}
+              exportActions={renderChartExportActions('top-days', 'Top Tage')}
               chartRef={setChartCardRef('top-days')}
               data={topDays}
               bodyClassName="h-64"
@@ -2365,9 +2204,7 @@ export default function Statistics() {
           ) : (
             <StatisticsBarChartCard
               title={autoT('ui_70494e6a6cd0')}
-              exportActions={
-                pdfMode ? null : renderChartExportActions('top-projects', autoT('ui_70494e6a6cd0'))
-              }
+              exportActions={renderChartExportActions('top-projects', autoT('ui_70494e6a6cd0'))}
               chartRef={setChartCardRef('top-projects')}
               data={topProjects}
               bodyClassName="h-64"
@@ -2402,7 +2239,6 @@ export default function Statistics() {
           totalPages={totalActivityPages}
           perPage={ACTIVITIES_PER_PAGE}
           onPageChange={setActivitiesPage}
-          pdfMode={pdfMode}
           isMobile={isMobile}
           exportActions={renderActivitiesExportActions()}
           formatNumber={fmtNumber}
@@ -2660,39 +2496,7 @@ export default function Statistics() {
       >
         <div className="space-y-4 text-sm text-gray-700">
           <p>{autoT('ui_fabb2abae3a4')}</p>
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 text-left">
-            <input
-              type="checkbox"
-              checked={includeActivitiesInPdf}
-              onChange={(event) => setIncludeActivitiesInPdf(event.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-viridian focus:ring-viridian"
-            />
-            <span>
-              <span className="block font-semibold text-gray-900">Aktivitätenliste anhängen</span>
-              <span className="mt-0.5 block text-xs text-gray-600">
-                Für große Datenmengen wird die Liste als eigene, paginierte Tabelle ergänzt.
-              </span>
-            </span>
-          </label>
           <div className="grid gap-2">
-            <Button
-              className="export-option-card h-auto min-h-0 w-full p-3"
-              disabled={isExportInProgress}
-              onClick={() => {
-                setReportExportOpen(false);
-                void exportPdf(includeActivitiesInPdf);
-              }}
-              variant="secondary"
-            >
-              <span>
-                <span className="block font-semibold text-[var(--text-primary)]">
-                  {autoT('ui_104827f9e0c7')}
-                </span>
-                <span className="mt-1 block text-xs font-normal text-[var(--text-secondary)]">
-                  {autoT('ui_49b7d61d6e43')}
-                </span>
-              </span>
-            </Button>
             <Button
               className="export-option-card export-option-card--stato h-auto min-h-0 w-full p-3"
               disabled={isExportInProgress}
@@ -2708,6 +2512,22 @@ export default function Statistics() {
                 </span>
                 <span className="mt-1 block text-xs font-normal text-[var(--text-secondary)]">
                   {autoT('ui_c40ca967212f')}
+                </span>
+              </span>
+            </Button>
+            <Button
+              className="export-option-card h-auto min-h-0 w-full p-3"
+              disabled={isExportInProgress}
+              onClick={() => {
+                setReportExportOpen(false);
+                void exportActivitiesTable('csv');
+              }}
+              variant="secondary"
+            >
+              <span>
+                <span className="block font-semibold text-[var(--text-primary)]">CSV</span>
+                <span className="mt-1 block text-xs font-normal text-[var(--text-secondary)]">
+                  Aktivitäten als CSV-Datei für Tabellenprogramme.
                 </span>
               </span>
             </Button>

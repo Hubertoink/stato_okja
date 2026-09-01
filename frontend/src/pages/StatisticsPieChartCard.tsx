@@ -78,12 +78,18 @@ export function StatisticsPieChartCard({
               contentStyle={tooltipContentStyle}
               labelStyle={tooltipLabelStyle}
               itemStyle={tooltipItemStyle}
-              formatter={(value: number, _name: string, entry?: { payload?: { name?: string } }) => [
-                formatValue(value),
-                entry?.payload?.name || '',
-              ]}
+              formatter={(
+                value: number,
+                _name: string,
+                entry?: { payload?: { name?: string } },
+              ) => [formatValue(value), entry?.payload?.name || '']}
             />
-            <Legend verticalAlign="bottom" align="center" iconSize={11} wrapperStyle={legendWrapperStyle} />
+            <Legend
+              verticalAlign="bottom"
+              align="center"
+              iconSize={11}
+              wrapperStyle={legendWrapperStyle}
+            />
           </PieChart>
         </ResponsiveContainer>
       </div>

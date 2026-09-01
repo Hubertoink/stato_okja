@@ -4,6 +4,7 @@ import {
   formatActivityDateGerman,
   getActivityDurationMinutes,
   getActivityParticipantTotal,
+  serializeActivitiesAsCsv,
   toActivityExportRows,
 } from './activitiesExport';
 
@@ -49,5 +50,19 @@ describe('activitiesExport helpers', () => {
       getActivityDurationMinutes({ ...activity, startTime: '17:00', endTime: '16:00' }),
     ).toBeUndefined();
     expect(formatActivityDateGerman('2026')).toBe('2026');
+  });
+
+  it('creates an Excel-friendly, semicolon-separated CSV without formula injection', () => {
+    const activity = {
+      id: 'activity-csv-1',
+      date: '2026-08-14',
+      type: 'event',
+      title: '=SUM(A1:A2)',
+      project: { title: 'Jugendtreff; Nord' },
+    } as Activity;
+
+    expect(serializeActivitiesAsCsv([activity], () => 'Veranstaltung')).toContain(
+      `"14.08.2026";"Veranstaltung";"'=SUM(A1:A2)";"Jugendtreff; Nord"`,
+    );
   });
 });

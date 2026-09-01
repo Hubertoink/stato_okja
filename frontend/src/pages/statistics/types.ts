@@ -53,8 +53,7 @@ export type StatisticsOverviewParams = {
   weekdays?: number[];
 };
 
-export type ChartExportFormat = 'png' | 'pdf';
-export type ActivitiesExportFormat = 'pdf' | 'xlsx';
+export type ActivitiesExportFormat = 'csv' | 'xlsx';
 
 export type ControllingExportRow = Activity & {
   project?: { title?: string | null; type?: string | null } | null;

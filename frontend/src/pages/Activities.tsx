@@ -92,6 +92,17 @@ function formatActivityMobileDate(date?: string | null) {
   return weekday ? `${weekday}, ${formattedDate}` : formattedDate;
 }
 
+function ActiveFilterBadge({ label }: { label: string }) {
+  return (
+    <span
+      className="inline-flex min-w-0 max-w-[calc(100vw-6.5rem)] items-center rounded-full bg-azure-web px-2 py-1 text-viridian md:max-w-[34rem]"
+      title={label}
+    >
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
 function toLocalIsoDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -822,12 +833,12 @@ export default function Activities() {
               {activitiesLoading ? t('filters.resultsLoading') : t('filters.results', { count: exportCountLabel })}
             </Badge>
           {searchTerm.trim() ? (
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-azure-web text-viridian">
-              <span>{t('search.label', { value: searchTerm.trim() })}</span>
+            <span className="inline-flex min-w-0 max-w-[calc(100vw-6.5rem)] items-center gap-1 rounded-full bg-azure-web px-2 py-1 text-viridian md:max-w-[34rem]">
+              <span className="min-w-0 truncate" title={t('search.label', { value: searchTerm.trim() })}>{t('search.label', { value: searchTerm.trim() })}</span>
               <button
                 type="button"
                 onClick={clearSearch}
-                className="rounded-full text-viridian/80 hover:text-viridian"
+                className="shrink-0 rounded-full text-viridian/80 hover:text-viridian"
                 aria-label={t('search.clear')}
                 title={t('search.clear')}
               >
@@ -835,50 +846,40 @@ export default function Activities() {
               </button>
             </span>
           ) : null}
-          {effectiveAdvanced.from || effectiveAdvanced.to ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{rangeBadgeLabel}</span>
-          ) : null}
-          {weekdaysBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{weekdaysBadgeLabel}</span> : null}
-          {typesBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{typesBadgeLabel}</span> : null}
-          {locationsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{locationsBadgeLabel}</span> : null}
-          {projectsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{projectsBadgeLabel}</span> : null}
-          {categoriesBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{categoriesBadgeLabel}</span> : null}
+          {effectiveAdvanced.from || effectiveAdvanced.to ? <ActiveFilterBadge label={rangeBadgeLabel} /> : null}
+          {weekdaysBadgeLabel ? <ActiveFilterBadge label={weekdaysBadgeLabel} /> : null}
+          {typesBadgeLabel ? <ActiveFilterBadge label={typesBadgeLabel} /> : null}
+          {locationsBadgeLabel ? <ActiveFilterBadge label={locationsBadgeLabel} /> : null}
+          {projectsBadgeLabel ? <ActiveFilterBadge label={projectsBadgeLabel} /> : null}
+          {categoriesBadgeLabel ? <ActiveFilterBadge label={categoriesBadgeLabel} /> : null}
           {effectiveAdvanced.uncategorized ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              {t('filters.uncategorized')}
-            </span>
+            <ActiveFilterBadge label={t('filters.uncategorized')} />
           ) : null}
-          {tagsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{tagsBadgeLabel}</span> : null}
-          {staffBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{staffBadgeLabel}</span> : null}
-          {cohortsBadgeLabel ? <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{cohortsBadgeLabel}</span> : null}
+          {tagsBadgeLabel ? <ActiveFilterBadge label={tagsBadgeLabel} /> : null}
+          {staffBadgeLabel ? <ActiveFilterBadge label={staffBadgeLabel} /> : null}
+          {cohortsBadgeLabel ? <ActiveFilterBadge label={cohortsBadgeLabel} /> : null}
           {executionStatusBadgeLabel ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">{executionStatusBadgeLabel}</span>
+            <ActiveFilterBadge label={executionStatusBadgeLabel} />
           ) : null}
           {effectiveAdvanced.hasNotes ? (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              {t('filters.onlyNotes')}
-            </span>
+            <ActiveFilterBadge label={t('filters.onlyNotes')} />
           ) : null}
           {(typeof effectiveAdvanced.participantsMin === 'number' ||
             typeof effectiveAdvanced.participantsMax === 'number') && (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              {t('filters.participants', { value: typeof effectiveAdvanced.participantsMin === 'number' &&
+            <ActiveFilterBadge label={t('filters.participants', { value: typeof effectiveAdvanced.participantsMin === 'number' &&
               typeof effectiveAdvanced.participantsMax === 'number'
                 ? `${effectiveAdvanced.participantsMin}–${effectiveAdvanced.participantsMax}`
                 : typeof effectiveAdvanced.participantsMin === 'number'
                   ? `≥ ${effectiveAdvanced.participantsMin}`
-                  : `≤ ${effectiveAdvanced.participantsMax}` })}
-            </span>
+                  : `≤ ${effectiveAdvanced.participantsMax}` })} />
           )}
           {(typeof effectiveAdvanced.durationMin === 'number' ||
             typeof effectiveAdvanced.durationMax === 'number') && (
-            <span className="px-2 py-1 rounded-full bg-azure-web text-viridian">
-              {t('filters.duration', { value: typeof effectiveAdvanced.durationMin === 'number' && typeof effectiveAdvanced.durationMax === 'number'
+            <ActiveFilterBadge label={t('filters.duration', { value: typeof effectiveAdvanced.durationMin === 'number' && typeof effectiveAdvanced.durationMax === 'number'
                 ? `${effectiveAdvanced.durationMin}–${effectiveAdvanced.durationMax}`
                 : typeof effectiveAdvanced.durationMin === 'number'
                   ? `≥ ${effectiveAdvanced.durationMin}`
-                  : `≤ ${effectiveAdvanced.durationMax}` })}
-            </span>
+                  : `≤ ${effectiveAdvanced.durationMax}` })} />
           )}
           {hasAdvancedFilters && (
             <button
@@ -1096,7 +1097,7 @@ export default function Activities() {
       <div className={`mt-4 mb-4 flex items-center gap-3 md:mb-0 ${total > 0 ? "justify-between" : "justify-end"}`}>
         {total > 0 ? (
           <div className="text-sm text-gray-600">
-            {t('pagination.summary', { page, pageCount, total: formatNumber(total) })}
+            {t('pagination.summary', { page, pageCount })}
           </div>
         ) : null}
         <PaginationControls
@@ -1287,7 +1288,7 @@ export default function Activities() {
       <div className={`mt-4 flex items-center gap-3 md:hidden ${total > 0 ? "justify-between" : "justify-end"}`}>
         {total > 0 ? (
           <div className="text-sm text-gray-600">
-            {t('pagination.summary', { page, pageCount, total: formatNumber(total) })}
+            {t('pagination.summary', { page, pageCount })}
           </div>
         ) : null}
         <PaginationControls

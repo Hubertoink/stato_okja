@@ -1,6 +1,16 @@
 import { useId } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useEmbeddedImageSrc } from '@/components/ProtectedImage';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 
@@ -108,7 +118,11 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
   tooltipLabelStyle?: CSSProperties;
   tooltipItemStyle?: CSSProperties;
   tooltipCursor?: object;
-  tooltipFormatter?: (value: number, name?: string, entry?: { payload?: T }) => string | [string, string];
+  tooltipFormatter?: (
+    value: number,
+    name?: string,
+    entry?: { payload?: T },
+  ) => string | [string, string];
   tooltipLabelFormatter?: (label: string | number, payload?: Array<{ payload?: T }>) => string;
   barDataKey: string;
   labelDataKey: string;
@@ -150,7 +164,8 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
               }
               labelFormatter={
                 tooltipLabelFormatter
-                  ? (label, payload) => tooltipLabelFormatter(label, payload as Array<{ payload?: T }>)
+                  ? (label, payload) =>
+                      tooltipLabelFormatter(label, payload as Array<{ payload?: T }>)
                   : undefined
               }
             />
@@ -159,9 +174,11 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
               name={barName}
               fill={barFill}
               shape={
-                getCellImageUrl
-                  ? <ImageBarShape getImageUrl={getCellImageUrl as ImageBarShapeProps['getImageUrl']} />
-                  : undefined
+                getCellImageUrl ? (
+                  <ImageBarShape
+                    getImageUrl={getCellImageUrl as ImageBarShapeProps['getImageUrl']}
+                  />
+                ) : undefined
               }
             >
               {getCellFill

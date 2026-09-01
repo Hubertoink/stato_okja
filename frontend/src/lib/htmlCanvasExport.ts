@@ -10,6 +10,13 @@ type Html2Canvas = typeof html2canvasType;
 let html2canvasPromise: Promise<Html2Canvas> | null = null;
 let exportCaptureSequence = 0;
 
+type SuspendedStyle = {
+  element: HTMLStyleElement;
+  media: string | null;
+};
+
+const REMOTE_FONT_FACE_PATTERN = /@font-face[\s\S]*?url\(\s*["']?https?:\/\//i;
+
 const LAYOUT_PROPERTIES = [
   'display', 'position', 'box-sizing', 'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
   'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
@@ -29,6 +36,26 @@ function loadHtml2Canvas() {
     html2canvasPromise = import('html2canvas').then((module) => module.default);
   }
   return html2canvasPromise;
+}
+
+function suspendInjectedRemoteFontStyles(): SuspendedStyle[] {
+  return Array.from(document.querySelectorAll<HTMLStyleElement>('style'))
+    .filter((element) => REMOTE_FONT_FACE_PATTERN.test(element.textContent || ''))
+    .map((element) => {
+      const suspended = { element, media: element.getAttribute('media') };
+      // html2canvas clones the complete document and waits for clone.fonts.ready
+      // before onclone runs. Mark third-party font styles inactive up front so
+      // extension-injected Office/Fabric fonts are neither fetched nor awaited.
+      element.setAttribute('media', 'not all');
+      return suspended;
+    });
+}
+
+function restoreSuspendedStyles(styles: SuspendedStyle[]) {
+  styles.forEach(({ element, media }) => {
+    if (media === null) element.removeAttribute('media');
+    else element.setAttribute('media', media);
+  });
 }
 
 function copyExportLayout(source: Element, target: HTMLElement | SVGElement) {
@@ -106,6 +133,7 @@ function prepareSafeExportClone(sourceRoot: HTMLElement, cloneRoot: HTMLElement,
 export async function captureExportNode(node: HTMLElement, options: ExportCaptureOptions) {
   const html2canvas = await loadHtml2Canvas();
   const captureId = `export-${++exportCaptureSequence}`;
+  const suspendedStyles = suspendInjectedRemoteFontStyles();
   node.setAttribute('data-export-capture-id', captureId);
   try {
     return await html2canvas(node, {
@@ -121,5 +149,6 @@ export async function captureExportNode(node: HTMLElement, options: ExportCaptur
     });
   } finally {
     node.removeAttribute('data-export-capture-id');
+    restoreSuspendedStyles(suspendedStyles);
   }
 }

@@ -1669,8 +1669,8 @@ export default function Calendar() {
           </div>
           <div className="calendar-analysis-scroll overflow-x-auto overflow-y-hidden">
             <div
-              className="calendar-analysis-grid min-w-[27.5rem] md:min-w-[61rem]"
-              style={{ gridTemplateColumns: `4.25rem repeat(${visibleDays.length}, minmax(8rem, 1fr))` }}
+              className="calendar-analysis-grid min-w-0 md:min-w-[61rem]"
+              style={{ gridTemplateColumns: `var(--calendar-analysis-time-column, 4.25rem) repeat(${visibleDays.length}, minmax(0, 1fr))` }}
             >
               <div className="calendar-analysis-time-header" aria-hidden="true">Uhrzeit</div>
               {visibleDays.map((day) => {

@@ -354,7 +354,7 @@ export const resources = {
         previous: 'Vorherige Seite',
         next: 'Nächste Seite',
         last: 'Letzte Seite',
-        summary: 'Seite {{page}} von {{pageCount}} · {{total}} Einträge',
+        summary: 'Seite {{page}} von {{pageCount}}',
       },
       title: 'Aktivitäten',
       search: {
@@ -1400,7 +1400,7 @@ export const resources = {
         previous: 'Previous page',
         next: 'Next page',
         last: 'Last page',
-        summary: 'Page {{page}} of {{pageCount}} · {{total}} entries',
+        summary: 'Page {{page}} of {{pageCount}}',
       },
       title: 'Activities',
       search: {

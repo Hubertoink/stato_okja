@@ -19,7 +19,6 @@ export function StatisticsActivitiesTable({
   totalPages,
   perPage,
   onPageChange,
-  pdfMode,
   isMobile,
   exportActions,
   formatNumber,
@@ -32,7 +31,6 @@ export function StatisticsActivitiesTable({
   totalPages: number;
   perPage: number;
   onPageChange: (page: number | ((page: number) => number)) => void;
-  pdfMode: boolean;
   isMobile: boolean;
   exportActions: ReactNode;
   formatNumber: (value?: number) => string;
@@ -49,10 +47,7 @@ export function StatisticsActivitiesTable({
     pages.push(totalPages);
   }
   return (
-    <div
-      className={`${pdfMode ? 'hidden ' : ''}group/chart-card mt-8 rounded-lg bg-white p-6 shadow`}
-      data-pdf-section
-    >
+    <div className="group/chart-card mt-8 rounded-lg bg-white p-6 shadow" data-pdf-section>
       <div className="flex items-center justify-between mb-4 gap-3">
         <h3 className="text-lg font-semibold text-viridian">
           {autoT('ui_44eeeedb9e8f')}
@@ -61,8 +56,8 @@ export function StatisticsActivitiesTable({
           </span>
         </h3>
         <div className="flex items-center gap-2" data-chart-export-ignore="true">
-          {!pdfMode && exportActions}
-          {!pdfMode && totalPages > 1 && (
+          {exportActions}
+          {totalPages > 1 && (
             <div className="flex items-center gap-2 text-sm">
               <span className="statistics-page-summary text-gray-500">
                 <span className="statistics-page-summary-desktop">{autoT('ui_633082b8c84b')} </span>
@@ -126,16 +121,12 @@ export function StatisticsActivitiesTable({
                 </tr>
               );
             })}
-            {!pdfMode && isLoading && activities.length === 0 && (
-              <EmptyRow label={autoT('ui_c2b2d9c3136c')} />
-            )}
-            {!pdfMode && !isLoading && activities.length === 0 && (
-              <EmptyRow label={autoT('ui_afc08a0675e3')} />
-            )}
+            {isLoading && activities.length === 0 && <EmptyRow label={autoT('ui_c2b2d9c3136c')} />}
+            {!isLoading && activities.length === 0 && <EmptyRow label={autoT('ui_afc08a0675e3')} />}
           </tbody>
         </table>
       </div>
-      {!pdfMode && totalPages > 1 && (
+      {totalPages > 1 && (
         <div className="mt-4 border-t border-gray-100 pt-4" data-chart-export-ignore="true">
           <div className="mb-3 text-xs text-gray-500 sm:mb-0">
             {autoT('ui_6e7156111137')} {(page - 1) * perPage + 1}–

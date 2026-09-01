@@ -9,7 +9,6 @@ import hoursKpiIcon from '../../../assets/Illust_Amigos/Stunden.svg';
 import participantsPerHourKpiIcon from '../../../assets/Illust_Amigos/proAktivität.svg';
 
 export function StatisticsKpis({
-  pdfMode,
   showAverage,
   onShowAverageChange,
   summary,
@@ -19,7 +18,6 @@ export function StatisticsKpis({
   averageHoursPerActivity,
   formatNumber,
 }: {
-  pdfMode: boolean;
   showAverage: boolean;
   onShowAverageChange: (showAverage: boolean) => void;
   summary?: StatsOverviewResponse['summary'];
@@ -31,19 +29,17 @@ export function StatisticsKpis({
 }) {
   return (
     <>
-      {!pdfMode && (
-        <div className="flex items-center justify-end mb-4" data-pdf-section>
-          <SegmentedControl<'absolute' | 'average'>
-            ariaLabel={`${autoT('ui_ffa660db79fb')} / ${autoT('ui_388b22eb70db')}`}
-            onChange={(mode) => onShowAverageChange(mode === 'average')}
-            options={[
-              { value: 'absolute', label: autoT('ui_ffa660db79fb') },
-              { value: 'average', label: autoT('ui_388b22eb70db') },
-            ]}
-            value={showAverage ? 'average' : 'absolute'}
-          />
-        </div>
-      )}
+      <div className="flex items-center justify-end mb-4" data-pdf-section>
+        <SegmentedControl<'absolute' | 'average'>
+          ariaLabel={`${autoT('ui_ffa660db79fb')} / ${autoT('ui_388b22eb70db')}`}
+          onChange={(mode) => onShowAverageChange(mode === 'average')}
+          options={[
+            { value: 'absolute', label: autoT('ui_ffa660db79fb') },
+            { value: 'average', label: autoT('ui_388b22eb70db') },
+          ]}
+          value={showAverage ? 'average' : 'absolute'}
+        />
+      </div>
       <div
         className={`statistics-kpi-grid ${selectedClosureState === 'closed' ? 'statistics-kpi-grid--with-closure' : ''}`}
         data-pdf-section

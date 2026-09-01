@@ -1117,6 +1117,14 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 }
 
 @media (max-width: 767px) {
+  .calendar-analysis-surface {
+    --calendar-analysis-time-column: 2.25rem;
+  }
+
+  .calendar-analysis-scroll {
+    overflow-x: hidden;
+  }
+
   .calendar-analysis-intro {
     padding-inline: 0.875rem;
   }
@@ -1124,7 +1132,19 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   .calendar-analysis-time-header,
   .calendar-analysis-day-header {
     min-height: 6rem;
-    padding: 0.625rem;
+    min-width: 0;
+    padding: 0.5rem;
+  }
+
+  .calendar-analysis-time-header {
+    padding-block: 0.375rem;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+  }
+
+  .calendar-analysis-time-axis span {
+    right: 0.25rem;
+    font-size: 0.625rem;
   }
 
   .calendar-analysis-event-vertical .calendar-analysis-event-title,

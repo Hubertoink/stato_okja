@@ -25,6 +25,20 @@
   color: var(--text-primary) !important;
 }
 
+/* Touch counters use an inline surface color by default. In the activity
+ * editor they are fields, so keep the same field/background contrast as the
+ * desktop inputs when the mobile tap mode is active. */
+.activity-cohort-count--tap {
+  background-color: var(--editor-field-bg, var(--input-bg)) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+.activity-cohort-count--tap:hover {
+  background-color: var(--editor-field-bg, var(--input-bg)) !important;
+  border-color: var(--border-strong) !important;
+}
+
 /* The desktop header is 5rem and the icon navigation is 2.75rem high.
  * Align with their real lower edge and overlap it slightly to avoid a seam. */
 @media (min-width: 768px) {

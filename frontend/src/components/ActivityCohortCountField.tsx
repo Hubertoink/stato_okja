@@ -30,7 +30,7 @@ export default function ActivityCohortCountField({
         value={value}
         onChange={onChange}
         label={ariaLabel}
-        className={`h-12 w-full min-w-0 min-h-[3rem] rounded-md border border-gray-300 px-1.5 py-1 text-gray-900 hover:border-gray-400 hover:bg-gray-50 active:border-viridian md:h-11 md:min-h-[2.75rem] md:rounded-md md:px-1.5 ${
+        className={`activity-cohort-count--tap h-12 w-full min-w-0 min-h-[3rem] rounded-md border border-gray-300 px-1.5 py-1 text-gray-900 hover:border-gray-400 hover:bg-gray-50 active:border-viridian md:h-11 md:min-h-[2.75rem] md:rounded-md md:px-1.5 ${
           changed ? 'activity-cohort-count--changed' : ''
         }`}
         valueClassName="text-lg md:text-lg"

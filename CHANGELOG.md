@@ -7,6 +7,22 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.9.1] - 2026-09-02
+
+### Added
+- Der Prozess-Editor und die Statistik-Exporte wurden überarbeitet und um
+  robustere HTML-Canvas-Exporte ergänzt.
+
+### Changed
+- Aktivitäten, Kalender, Prozessansicht und Statistiken nutzen die
+  überarbeiteten Darstellungen und Exportabläufe.
+
+### Fixed
+- Die Kontrastdarstellung des Aktivitätszählers auf mobilen Ansichten wurde
+  verbessert.
+
+---
+
 ## [1.9.0] - 2026-08-17
 
 ### Added

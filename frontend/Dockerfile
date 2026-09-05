@@ -1,7 +1,7 @@
 # Frontend production Dockerfile (React + Vite) with unprivileged Nginx
 # Build context must be the repository root so npm can use the workspace lockfile.
 
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./

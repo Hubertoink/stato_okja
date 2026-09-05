@@ -42,7 +42,7 @@ export function EditorSurface({
 }: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-[var(--card-shadow)] ${className}`}
+      className={`modal-editor-surface overflow-hidden rounded-2xl border border-[var(--border-subtle)] text-[var(--text-primary)] shadow-[var(--card-shadow)] ${className}`}
       {...props}
     >
       {children}

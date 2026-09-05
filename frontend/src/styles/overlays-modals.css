@@ -68,10 +68,10 @@
   scrollbar-color: color-mix(in srgb, var(--viridian) 45%, var(--border-strong)) transparent;
 }
 
-/* Form modals deliberately use two surface levels: the editor itself sits on
- * surface 1 while editable controls recede to the shared editor-field level.
- * This keeps projects, activities, logbook entries and surveys visually
- * aligned in every theme. */
+/* Standard dialogs, structured form modals and standalone/mobile editors
+ * share two surface levels: surface 1 behind editor-field controls. Keep this
+ * independent of viewport width so fields never blend into the form surface.
+ * The existing important rule also overrides legacy bg-white utilities. */
 .modal-editor-surface {
   background: var(--surface-1) !important;
 }

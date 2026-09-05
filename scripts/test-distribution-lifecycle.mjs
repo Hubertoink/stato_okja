@@ -53,7 +53,8 @@ try {
   assert.match(await (await fetch(`${address}/start/`)).text(), /Ein einfacher Start/);
   const generator = await (await fetch(`${address}/env-generator/template.js`)).text();
   assert.ok(generator.includes(`ZIMAOS_DEFAULT_VERSION = "${readFileSync(join(root, 'VERSION'), 'utf8').trim()}"`));
-  assert.ok(compose('exec', '-T', 'backup', 'cat', '/backups/last-success.txt'));
+  // Compose waits for running containers, not for the first asynchronous backup.
+  compose('exec', '-T', 'backup', 'sh', '-ec', 'for attempt in $(seq 1 60); do if test -s /backups/last-success.txt; then exit 0; fi; sleep 1; done; echo "First automatic backup did not finish" >&2; exit 1');
   const setup = body => fetch(`${address}/api/auth/initial-setup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   const password = 'DistributionTest_9!Secure';
   assert.equal((await setup({ password, setupToken: 'x'.repeat(64), email: 'pilot@stato.local' })).status, 403);
@@ -99,6 +100,10 @@ try {
   status.push('Container replacement preserves data; packaged restore restores DB and uploads');
   status.push('Corrupt backup rejected without stopping app; historical checksum paths restored');
   console.log(status.join('\n'));
+} catch (error) {
+  // Backup logs contain paths/status only, never configuration or dump contents.
+  try { console.error(compose('logs', '--no-color', '--tail', '80', 'backup')); } catch { /* Preserve original failure. */ }
+  throw error;
 } finally {
   // The generated Compose file exclusively names resources with this random prefix.
   compose('down', '--volumes', '--remove-orphans');

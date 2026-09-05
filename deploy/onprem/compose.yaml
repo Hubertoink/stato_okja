@@ -185,6 +185,12 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # Host config is private to the installing user (0600); the backup process
+    # must read it and write to a host-owned export directory. Only this service
+    # gets these filesystem capabilities; configuration remains mounted read-only.
+    cap_add:
+      - DAC_OVERRIDE
+      - CHOWN
     environment:
       PGHOST: postgres
       PGPORT: 5432

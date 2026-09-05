@@ -27,7 +27,12 @@ vorhandenen Cronjob weiterverwenden oder explizit das Intervall setzen.
 `BACKUP_COPY_DIR` bezeichnet ein zweites Ziel auf dem Docker-Host. Standard ist
 `./backup-export`; für Schutz vor Hostverlust muss die IT dort einen absoluten
 Pfad auf getrenntem Speicher eintragen. Backups enthalten Secrets und sind
-entsprechend vor fremdem Zugriff zu schützen. Externe Kopien werden absichtlich
+entsprechend vor fremdem Zugriff zu schützen. Exportierte Dateien gehören dem
+Besitzer des Zielordners und behalten ihre privaten Zugriffsrechte. Der
+On-Prem-Backupdienst erhält dafür gezielt `DAC_OVERRIDE` und `CHOWN`, damit er
+unter Linux auch die private Konfiguration eines anderen Host-Benutzers lesen
+kann; die Konfiguration bleibt schreibgeschützt gemountet.
+Externe Kopien werden absichtlich
 nicht automatisch gelöscht; deren Aufbewahrung am Ziel konfigurieren.
 
 Das interne Backup-Volume bewahrt standardmäßig 14 Tage auf. Erst nach

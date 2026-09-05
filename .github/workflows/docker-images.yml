@@ -125,6 +125,9 @@ jobs:
       - name: Test installation and packaged restore
         run: node scripts/test-distribution-lifecycle.mjs
 
+      - name: Test backup permissions for non-root Linux installations
+        run: bash scripts/test-backup-permissions.sh stato-backup:distribution-review
+
   release-gate:
     name: Release-Tag pruefen
     runs-on: ubuntu-latest

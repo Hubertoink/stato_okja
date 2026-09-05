@@ -91,7 +91,13 @@ EOF
 mv "$backup_root" "$final_root"
 backup_root="$final_root"
 # A mounted second destination can be a host directory on separate storage.
-if [ -d /mnt/backup-copy ]; then cp -R "$backup_root" /mnt/backup-copy/; fi
+if [ -d /mnt/backup-copy ]; then
+  cp -R "$backup_root" /mnt/backup-copy/
+  # Keep exported private files readable by the owner of the destination,
+  # including non-root Docker users on Linux.
+  destination_owner=$(stat -c '%u:%g' /mnt/backup-copy)
+  chown -R "$destination_owner" "/mnt/backup-copy/$(basename "$backup_root")"
+fi
 printf '%s\n' "$generated_at" > "$BACKUP_OUTPUT_DIR/last-success.txt"
 
 if [ "$BACKUP_RETENTION_DAYS" -gt 0 ]; then

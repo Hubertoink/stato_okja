@@ -1,12 +1,20 @@
-FROM postgres:16-alpine
+FROM postgres:16-alpine3.24 AS postgres-client
+
+# Backups need PostgreSQL clients, not the database server and its extensions.
+# Keep both stages on the same Alpine release for musl/library compatibility.
+FROM alpine:3.24 AS runner
+
+# Refresh security fixes independently of the upstream PostgreSQL image rebuild.
+RUN apk upgrade --no-cache
+
+RUN apk add --no-cache ca-certificates krb5-libs libldap libedit \
+  zstd-libs lz4-libs libssl3 libcrypto3 zlib
+COPY --from=postgres-client /usr/local/bin/pg_dump /usr/local/bin/pg_restore /usr/local/bin/pg_isready /usr/local/bin/psql /usr/local/bin/
+COPY --from=postgres-client /usr/local/lib/libpq.so.5* /usr/local/lib/
 
 COPY backup/container-backup.sh /usr/local/bin/stato-container-backup
-# The official postgres entrypoint (and its gosu helper) is intentionally not
-# used below: this image only runs pg_dump and the StatO backup command.
-# Remove the unused Go binary from the final image to avoid carrying its
-# unrelated runtime vulnerabilities.
 RUN chmod 0555 /usr/local/bin/stato-container-backup \
-  && rm -f /usr/local/bin/gosu
+  && pg_dump --version && pg_restore --version && pg_isready --version && psql --version
 
 ENTRYPOINT ["/bin/sh", "-lc"]
 CMD ["sleep infinity"]

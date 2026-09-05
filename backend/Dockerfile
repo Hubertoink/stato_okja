@@ -17,6 +17,8 @@ WORKDIR /app/backend
 RUN rm -f tsconfig.tsbuildinfo && npm run build
 
 FROM node:24-alpine AS runner
+# Refresh security fixes even when the upstream Node image has not been rebuilt.
+RUN apk upgrade --no-cache
 WORKDIR /app
 ENV NODE_ENV=production
 # npm installs workspace dependencies below /app/backend/node_modules. The

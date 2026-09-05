@@ -73,3 +73,16 @@ updates:
       frontend-docker-images:
         patterns:
           - "*"
+
+  - package-ecosystem: docker
+    directory: /backup
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:30"
+      timezone: Europe/Berlin
+    ignore:
+      # PostgreSQL major upgrades require a separate compatibility review.
+      - dependency-name: postgres
+        update-types:
+          - version-update:semver-major

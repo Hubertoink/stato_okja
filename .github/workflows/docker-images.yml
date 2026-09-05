@@ -6,6 +6,8 @@ on:
     tags: ['v*']
   pull_request:
     branches: [dev, main, demo]
+  schedule:
+    - cron: '23 5 * * *'
   workflow_dispatch:
     inputs:
       promote_version:
@@ -68,6 +70,9 @@ jobs:
       - name: Check release version
         run: npm run version:check
 
+      - name: Test container security gates
+        run: node --test scripts/container-security.test.mjs
+
       - name: Test On-Prem environment generator
         run: npm run test:env-generator
 
@@ -91,6 +96,7 @@ jobs:
 
       - name: Test and build frontend
         run: |
+          npm run lint --workspace=frontend
           npm run test --workspace=frontend
           npm run build --workspace=frontend
 
@@ -121,8 +127,8 @@ jobs:
 
   backend:
     name: Backend image
-    if: github.ref != 'refs/heads/demo' && github.base_ref != 'demo'
-    needs: [quality, release-gate]
+    if: github.event_name != 'schedule' && (github.ref != 'refs/heads/demo' && github.base_ref != 'demo')
+    needs: [quality, release-gate, security-scan]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-backend-${{ github.ref }}
@@ -163,23 +169,19 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and (optionally) push backend
-        uses: docker/build-push-action@v7
+        uses: ./.github/actions/publish-scanned-image
         with:
-          context: .
           file: ./backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          pull: true
-          sbom: true
-          provenance: true
+          cache-scope: backend
           platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 
   frontend:
     name: Frontend image
-    needs: [quality, release-gate]
+    if: github.event_name != 'schedule'
+    needs: [quality, release-gate, security-scan]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-frontend-${{ github.ref }}
@@ -221,18 +223,13 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and (optionally) push frontend
-        uses: docker/build-push-action@v7
+        uses: ./.github/actions/publish-scanned-image
         with:
-          context: .
           file: ./frontend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          pull: true
-          sbom: true
-          provenance: true
+          cache-scope: frontend
           platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           build-args: |
             VITE_API_BASE_URL=${{ github.ref == 'refs/heads/demo' && '/api' || (github.ref == 'refs/heads/dev' && 'https://devapi.stato-okja.de/api' || env.FRONTEND_API_BASE_URL) }}
@@ -243,8 +240,8 @@ jobs:
 
   frontend-stack:
     name: Frontend image for Mittwald stacks
-    if: github.ref == 'refs/heads/main'
-    needs: [quality, release-gate]
+    if: github.event_name != 'schedule' && (github.ref == 'refs/heads/main')
+    needs: [quality, release-gate, security-scan]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-frontend-stack-${{ github.ref }}
@@ -281,18 +278,13 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and push stack frontend
-        uses: docker/build-push-action@v7
+        uses: ./.github/actions/publish-scanned-image
         with:
-          context: .
           file: ./frontend/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          pull: true
-          sbom: true
-          provenance: true
+          cache-scope: frontend-stack
           platforms: linux/amd64
           build-args: |
             VITE_API_BASE_URL=/api
@@ -303,7 +295,8 @@ jobs:
 
   frontend-onprem:
     name: On-Prem frontend image
-    needs: [quality, release-gate]
+    if: github.event_name != 'schedule'
+    needs: [quality, release-gate, security-scan]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-frontend-onprem-${{ github.ref }}
@@ -344,18 +337,13 @@ jobs:
             org.opencontainers.image.title=StatO On-Prem Frontend
 
       - name: Build and (optionally) push On-Prem frontend
-        uses: docker/build-push-action@v7
+        uses: ./.github/actions/publish-scanned-image
         with:
-          context: .
           file: ./frontend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=frontend-onprem
-          cache-to: type=gha,mode=max,scope=frontend-onprem
-          pull: true
-          sbom: true
-          provenance: true
+          cache-scope: frontend-onprem
           platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           build-args: |
             VITE_API_BASE_URL=/api
@@ -366,7 +354,8 @@ jobs:
 
   backup:
     name: Backup image
-    needs: [quality, release-gate]
+    if: github.event_name != 'schedule'
+    needs: [quality, release-gate, security-scan]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-backup-${{ github.ref }}
@@ -407,23 +396,19 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and (optionally) push backup
-        uses: docker/build-push-action@v7
+        uses: ./.github/actions/publish-scanned-image
         with:
-          context: .
           file: ./backup/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          pull: true
-          sbom: true
-          provenance: true
+          cache-scope: backup
           platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 
   security-scan:
     name: Container scan and SBOM
-    needs: [quality, release-gate]
+    # Keep security reporting independent of test failures, including daily scans.
+    needs: [release-gate]
     runs-on: ubuntu-latest
     concurrency:
       group: docker-security-${{ github.ref }}
@@ -444,6 +429,7 @@ jobs:
           tags: stato-backend:security-scan
           cache-from: type=gha
           pull: true
+          no-cache-filters: runner
 
       - name: Build frontend image for scanning
         uses: docker/build-push-action@v7
@@ -454,6 +440,7 @@ jobs:
           tags: stato-frontend:security-scan
           cache-from: type=gha
           pull: true
+          no-cache-filters: runner
           build-args: |
             VITE_API_BASE_URL=/api
             VITE_ENABLE_DEV_TOOLS=false
@@ -468,6 +455,10 @@ jobs:
           tags: stato-backup:security-scan
           cache-from: type=gha
           pull: true
+          no-cache-filters: runner
+
+      - name: Test backup and restore with the built image
+        run: bash scripts/test-backup-image.sh stato-backup:security-scan
 
       - name: Scan backend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -475,9 +466,11 @@ jobs:
           image-ref: stato-backend:security-scan
           format: sarif
           output: trivy-backend.sarif
-          severity: HIGH,CRITICAL
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          scanners: vuln
           vuln-type: os,library
-          ignore-unfixed: true
+          ignore-unfixed: false
+          exit-code: 0
 
       - name: Scan frontend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -485,9 +478,11 @@ jobs:
           image-ref: stato-frontend:security-scan
           format: sarif
           output: trivy-frontend.sarif
-          severity: HIGH,CRITICAL
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          scanners: vuln
           vuln-type: os,library
-          ignore-unfixed: true
+          ignore-unfixed: false
+          exit-code: 0
 
       - name: Scan backup image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -495,9 +490,11 @@ jobs:
           image-ref: stato-backup:security-scan
           format: sarif
           output: trivy-backup.sarif
-          severity: HIGH,CRITICAL
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          scanners: vuln
           vuln-type: os,library
-          ignore-unfixed: true
+          ignore-unfixed: false
+          exit-code: 0
 
       - name: Upload backend Trivy SARIF
         uses: github/codeql-action/upload-sarif@v4
@@ -532,6 +529,17 @@ jobs:
         with:
           name: stato-sbom-spdx
           path: stato-sbom.spdx.json
+
+      - name: Block fixable high and critical vulnerabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          for image in stato-backend stato-frontend stato-backup; do
+            trivy image --image-src docker --scanners vuln --severity HIGH,CRITICAL \
+              --ignore-unfixed --exit-code 1 --timeout 10m "$image:security-scan" || status=1
+          done
+          exit "$status"
 
   release-assets:
     name: Release-Artefakte vorbereiten
@@ -660,6 +668,15 @@ jobs:
     needs: [github-release]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          version: v0.70.0
+          cache: true
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -675,16 +692,22 @@ jobs:
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          for image in "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"; do
-            image="$(tr '[:upper:]' '[:lower:]' <<< "$image")"
-            docker buildx imagetools create --tag "$image:latest" "$image:$version"
-          done
+          bash scripts/promote-scanned-release.sh "$version" "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"
 
   manual-promote-latest:
     name: Bestehendes Release auf latest promoten
     if: github.event_name == 'workflow_dispatch' && inputs.promote_version != ''
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          version: v0.70.0
+          cache: true
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -702,7 +725,4 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          for image in "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"; do
-            image="$(tr '[:upper:]' '[:lower:]' <<< "$image")"
-            docker buildx imagetools create --tag "$image:latest" "$image:$VERSION"
-          done
+          bash scripts/promote-scanned-release.sh "$VERSION" "$IMAGE_BACKEND" "$IMAGE_FRONTEND" "$IMAGE_BACKUP"

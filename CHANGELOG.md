@@ -7,6 +7,33 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.9.2] - 2026-09-05
+
+### Added
+- Die Ersteinrichtung verwendet einen separaten Einrichtungscode und eine frei
+  wählbare Admin-Adresse; anschließend führt StatO zur Organisationsverwaltung.
+- Eine Startseite, ein Konfigurationsgenerator und Betriebsanleitungen vereinfachen
+  die Installation für Kommunen und Jugendeinrichtungen.
+- Automatische Sicherungen, Backup-Exporte und Wiederherstellungshelfer ergänzen
+  die On-Prem-Installation. Ein Windows-Helfer ermöglicht isolierte Dev-Tests.
+
+### Changed
+- Die Ersteinrichtung nutzt auf dem Desktop zwei Spalten und bleibt auf kleinen
+  Bildschirmen scrollbar. Passwortanforderungen erscheinen ohne doppelten Hinweistext.
+- Das E-Mail-Feld beim Anlegen von Benutzern erhält mehr Platz.
+- Einrichtungen werden über einen Bestätigungsdialog mit Name und Fehleranzeige gelöscht.
+
+### Fixed
+- Backups berücksichtigen geschützte Konfigurationsdateien und Eigentümerrechte
+  auf Linux-Hosts; Installation und Wiederherstellung werden mit echten Containern geprüft.
+- Die Lockdatei enthält wieder den vollständigen transitiven Abhängigkeitsgraphen.
+
+### Security
+- Laufzeit-Images und Abhängigkeiten wurden aktualisiert. Container-Prüfungen
+  verhindern die Veröffentlichung bei behebbaren hohen oder kritischen Schwachstellen.
+
+---
+
 ## [1.9.1] - 2026-09-02
 
 ### Added

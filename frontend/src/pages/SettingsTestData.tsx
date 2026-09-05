@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, Database, Download, Eraser, Gauge, Trash2, Wand2 } from 'lucide-react';
+import { Activity, AlertTriangle, Download, Eraser, Gauge, Trash2, Wand2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import {
   type GenerateTestDataResult,
@@ -114,25 +114,21 @@ export default function SettingsTestData() {
 
   if (!canUse) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-semibold text-viridian mb-2">{autoT('ui_90a22a75b20f')}</h3>
-        <p className="text-gray-600">{autoT('ui_34bcc331b116')}</p>
+      <div>
+        <h2 className="text-3xl font-bold text-viridian">{autoT('ui_90a22a75b20f')}</h2>
+        <p className="text-gray-600 mt-1">{autoT('ui_34bcc331b116')}</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-xl font-semibold text-viridian">{autoT('ui_90a22a75b20f')}</h3>
-          <p className="text-sm text-gray-600 mt-1">{autoT('ui_76f94040820a')}</p>
-        </div>
-        <div className="hidden md:flex items-center justify-center rounded-2xl bg-azure-web text-viridian w-12 h-12">
-          <Database className="w-6 h-6" />
-        </div>
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold text-viridian">{autoT('ui_90a22a75b20f')}</h2>
+        <p className="text-gray-600 mt-1">{autoT('ui_76f94040820a')}</p>
       </div>
 
+      <div className="bg-white rounded-lg shadow p-6 space-y-5">
       <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
@@ -384,6 +380,7 @@ export default function SettingsTestData() {
           )}
         </div>
       )}
+      </div>
       </div>
     </div>
   );

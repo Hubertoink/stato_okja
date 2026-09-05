@@ -138,8 +138,8 @@ export default function Login() {
 
   return (
     <div className="login-screen min-h-screen flex items-center justify-center p-4">
-      <div className="login-card backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
+      <div className={`login-card backdrop-blur-xl rounded-3xl shadow-2xl w-full ${branding.initialSetupRequired ? 'max-w-3xl p-5 sm:p-6' : 'max-w-md p-8'}`}>
+        <div className={`text-center ${branding.initialSetupRequired ? 'mb-5' : 'mb-8'}`}>
           <h1 className="text-3xl md:text-4xl font-extrabold gradient-text leading-tight whitespace-normal break-words">
             {branding.loginTitle}
           </h1>
@@ -147,16 +147,16 @@ export default function Login() {
         </div>
 
         {branding.initialSetupRequired ? (
-          <form className="space-y-6" onSubmit={onInitialSetup}>
-            <div className="login-info rounded-2xl px-4 py-3 text-sm">
+          <form className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-x-6" onSubmit={onInitialSetup}>
+            <div className="login-info rounded-2xl px-4 py-3 text-sm md:col-span-2">
               {t('login.initialSetupInfo')}
             </div>
-            <label className="login-label block text-sm font-semibold">
+            <label className="login-label block min-w-0 text-sm font-semibold">
               {t('login.setupCode')}
               <Input name="setupToken" type="password" autoComplete="off" required minLength={32} maxLength={256} value={setupToken} onChange={(event) => setSetupToken(event.target.value)} />
               <span className="block mt-2 text-sm font-normal">{t('login.setupCodeHelp')}</span>
             </label>
-            <label className="login-label block text-sm font-semibold">
+            <label className="login-label block min-w-0 text-sm font-semibold">
               {t('login.setupEmail')}
               <Input name="setupEmail" type="email" autoComplete="email" required maxLength={200} value={setupEmail} onChange={(event) => setSetupEmail(event.target.value)} />
             </label>
@@ -185,7 +185,6 @@ export default function Login() {
                   {showSetupPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                 </IconButton>
               </div>
-              <PasswordRequirementsHint password={setupPassword} className="mt-2" />
             </div>
             <div>
               <label htmlFor="initial-password-confirmation" className="login-label mb-2 block text-sm font-semibold">{t('login.repeatPassword')}</label>
@@ -212,10 +211,11 @@ export default function Login() {
                 </IconButton>
               </div>
             </div>
+            <PasswordRequirementsHint password={setupPassword} className="md:col-span-2" listClassName="sm:grid-cols-2 md:grid-cols-3" />
             <Button
               type="submit"
               size="lg"
-              className="w-full"
+              className="w-full md:col-span-2"
               disabled={
                 busy ||
                 !setupPassword ||
@@ -226,7 +226,7 @@ export default function Login() {
             >
               {t('login.setupAdmin')}
             </Button>
-            {error && <div className="chip chip-danger mt-2 w-full justify-center">{error}</div>}
+            {error && <div role="alert" className="chip chip-danger w-full justify-center md:col-span-2">{error}</div>}
           </form>
         ) : (
         <form className="space-y-6" onSubmit={onSubmit}>

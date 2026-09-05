@@ -238,7 +238,9 @@
 .login-screen {
   height: 100dvh;
   min-height: 100dvh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  align-items: flex-start;
   overscroll-behavior: none;
   color: var(--text-primary);
   background:
@@ -248,6 +250,8 @@
 }
 
 .login-card {
+  margin-block: auto;
+  flex-shrink: 0;
   color: var(--text-primary);
   background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
   border: 1px solid color-mix(in srgb, var(--border-strong) 62%, transparent);

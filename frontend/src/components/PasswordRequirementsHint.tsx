@@ -1,11 +1,13 @@
-import { getPasswordRequirementStates, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/passwordPolicy';
+import { getPasswordRequirementStates } from '@/lib/passwordPolicy';
 
 export default function PasswordRequirementsHint({
   password,
   className = '',
+  listClassName = '',
 }: {
   password: string;
   className?: string;
+  listClassName?: string;
 }) {
   const hasInput = password.trim().length > 0;
   const requirements = getPasswordRequirementStates(password);
@@ -14,10 +16,7 @@ export default function PasswordRequirementsHint({
     <div
       className={`rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] px-3 py-3 ${className}`.trim()}
     >
-      <div className="text-xs font-medium text-[var(--text-secondary)]">
-        {PASSWORD_REQUIREMENTS_TEXT}
-      </div>
-      <div className="mt-2 space-y-1.5">
+      <div className={`grid gap-1.5 ${listClassName}`.trim()}>
         {requirements.map((requirement) => {
           const toneClass = requirement.met
             ? 'text-[var(--status-success-text)]'

@@ -814,6 +814,8 @@ export const resources = {
         address: 'Adresse',
         roomType: 'Raumtyp',
         deleteConfirm: 'Einrichtung löschen?',
+        deleteMessage: 'Möchtest du die Einrichtung „{{name}}“ wirklich löschen?',
+        deleteFailed: 'Die Einrichtung konnte nicht gelöscht werden. Bitte versuche es erneut.',
         empty: 'Noch keine Einrichtungen.',
       },
       holidays: {
@@ -1857,6 +1859,8 @@ export const resources = {
         address: 'Address',
         roomType: 'Room type',
         deleteConfirm: 'Delete location?',
+        deleteMessage: 'Do you really want to delete the location “{{name}}”?',
+        deleteFailed: 'The location could not be deleted. Please try again.',
         empty: 'No locations yet.',
       },
       holidays: {

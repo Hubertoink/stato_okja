@@ -7,6 +7,7 @@ import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useModalHistory } from '@/components/Modal';
 import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
+import ConfirmModal from '@/components/ConfirmModal';
 
 function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Location>; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation(['settings', 'common']);
@@ -69,8 +70,26 @@ export default function SettingsLocations() {
   const { user } = useAuth();
   const { data, refetch } = useLocations({ active: true });
   const [modal, setModal] = useState<{ mode: 'create'|'edit'; loc?: Location }|null>(null);
+  const [deleteLocation, setDeleteLocation] = useState<Location | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const locations = data || [];
   const canManageLocations = canManageSettingsDestructiveActions(user?.role);
+
+  const confirmDelete = async () => {
+    if (!deleteLocation || deleting || !canManageLocations) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await api.delete(`/locations/${deleteLocation.id}`);
+      setDeleteLocation(null);
+      await refetch();
+    } catch {
+      setDeleteError(t('locations.deleteFailed'));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden bg-white rounded-lg shadow p-6">
@@ -98,7 +117,7 @@ export default function SettingsLocations() {
             </div>
             <div className="flex shrink-0 gap-2">
               {canManageLocations && <button className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5" onClick={()=> setModal({ mode: 'edit', loc: l })} aria-label={t('common:actions.edit')}><Pencil className="w-4 h-4 text-viridian"/></button>}
-              {canManageLocations && <DeleteIconButton size="icon-compact" onClick={async ()=> { if (!confirm(t('locations.deleteConfirm'))) return; await api.delete(`/locations/${l.id}`); await refetch(); }} aria-label={t('common:actions.delete')} />}
+              {canManageLocations && <DeleteIconButton size="icon-compact" onClick={() => { setDeleteError(''); setDeleteLocation(l); }} aria-label={t('common:actions.delete')} />}
             </div>
           </div>
         ))}
@@ -107,6 +126,15 @@ export default function SettingsLocations() {
       {modal && (
         <LocationForm initial={modal.mode==='edit'? modal.loc : undefined} onClose={()=> setModal(null)} onSaved={async ()=> { setModal(null); await refetch(); }} />
       )}
+      <ConfirmModal
+        open={Boolean(deleteLocation)}
+        title={t('locations.deleteConfirm')}
+        message={<div className="space-y-2"><p>{t('locations.deleteMessage', { name: deleteLocation?.name })}</p>{deleteError && <p role="alert" className="text-[var(--status-danger-text)]">{deleteError}</p>}</div>}
+        confirmLabel={t('common:actions.delete')}
+        confirmDisabled={deleting}
+        onCancel={() => { if (!deleting) setDeleteLocation(null); }}
+        onConfirm={() => { void confirmDelete(); }}
+      />
     </div>
   );
 }

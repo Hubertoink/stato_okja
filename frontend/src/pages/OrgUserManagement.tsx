@@ -440,10 +440,10 @@ export default function OrgUserManagement() {
             ? autoT('ui_d18b3ef3514d')
             : autoT('ui_be454fe3dbfd')
         }
-        maxWidth="md"
+        maxWidth="lg"
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <FieldLabel className="mb-1">{autoT('ui_709a23220f2c')}</FieldLabel>
               <Input

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
@@ -27,6 +28,7 @@ export function StatisticsKpis({
   averageHoursPerActivity: number;
   formatNumber: (value?: number) => string;
 }) {
+  const { t } = useTranslation('common');
   return (
     <>
       <div className="flex items-center justify-end mb-4" data-pdf-section>
@@ -64,7 +66,7 @@ export function StatisticsKpis({
               ? summary?.averageParticipants?.toLocaleString('de-DE', { maximumFractionDigits: 1 })
               : formatNumber(summary?.totalParticipants)
           }
-          label={showAverage ? autoT('ui_ce999918d5c2') : autoT('ui_a8a4d6b019af')}
+          label={showAverage ? autoT('ui_ce999918d5c2') : t('workflow.attendances')}
         />
         <KpiCard
           icon={participantsPerHourKpiIcon}

@@ -1,3 +1,4 @@
+import { useQuickTallySession } from '@/components/QuickTally';
 import { Suspense, lazy, useMemo, useState, useEffect, type ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -231,6 +232,7 @@ function formatAuditDiffValue(entityType: string, key: string, value: unknown, t
 }
 
 export default function Dashboard() {
+  const { session: tallySession } = useQuickTallySession();
   const { t } = useTranslation(['dashboard', 'activities']);
   const { openQuickTally } = useOutletContext<{ openQuickTally: () => void }>();
   const scopeKey = useOrgScopeKey();
@@ -561,6 +563,8 @@ export default function Dashboard() {
       /* ignore */
     }
   }, [doneMap]);
+  const todayISO = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+  const todayActivities = (activitiesMonth || []).filter(activity => activity.date.slice(0, 10) === todayISO);
   const dailyLog = useMemo(() => {
     const candidates = (activitiesMonth || []).filter(
       (a) =>
@@ -702,146 +706,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* KPI trend */}
-      <section className="dashboard-trend-card" aria-labelledby="dashboard-trend-title">
-        <div className="dashboard-trend-card-header">
-          <div>
-            <h2 id="dashboard-trend-title" className="dashboard-trend-title">{dashboardTrendRange.title}</h2>
-            <p className="dashboard-trend-context">{dashboardTrendRange.context}</p>
-          </div>
-          <div className="dashboard-trend-controls">
-            <SegmentedControl<DashboardTrendPeriod>
-              ariaLabel={t('trend.periodLabel')}
-              className="dashboard-trend-period-toggle"
-              onChange={setDashboardTrendPeriod}
-              options={(['week', 'month', 'year'] as const).map((period) => ({
-                value: period,
-                label: t(`trend.periods.${period}`),
-              }))}
-              value={dashboardTrendPeriod}
-            />
-            <SegmentedControl
-              ariaLabel={t('trend.title')}
-              className="dashboard-trend-toggle"
-              onChange={setDashboardTrendMode}
-              options={[
-                { value: 'activity', label: t('trend.activityMode'), icon: <CalendarIcon /> },
-                { value: 'efficiency', label: t('trend.efficiencyMode'), icon: <Clock /> },
-              ]}
-              value={dashboardTrendMode}
-              variant="emphasis"
-            />
-          </div>
-        </div>
-
-        <div className="dashboard-trend-legend" aria-hidden="true">
-          <span>
-            <i className={`dashboard-trend-legend-dot ${dashboardTrendMode === 'activity' ? 'dashboard-trend-legend-dot--teal' : 'dashboard-trend-legend-dot--mint'}`} />
-            {activeTrendLabels.primary}
-          </span>
-          <span>
-            <i className={`dashboard-trend-legend-dot ${dashboardTrendMode === 'activity' ? 'dashboard-trend-legend-dot--blue' : 'dashboard-trend-legend-dot--purple'}`} />
-            {activeTrendLabels.secondary}
-          </span>
-        </div>
-
-        <div className="dashboard-trend-chart">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={dashboardTrend} margin={{ top: 8, right: isMobile ? 2 : 14, left: isMobile ? -18 : 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="dashboardTrendArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'} stopOpacity={0.28} />
-                  <stop offset="100%" stopColor={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'} stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} stroke={dashboardChartGridColor} strokeDasharray="3 3" />
-              <XAxis dataKey="label" tick={dashboardChartAxisTick} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="primary" tick={dashboardChartAxisTick} tickLine={false} axisLine={false} allowDecimals={false} width={isMobile ? 28 : 38} />
-              <YAxis yAxisId="secondary" orientation="right" tick={dashboardChartAxisTick} tickLine={false} axisLine={false} allowDecimals width={isMobile ? 28 : 38} />
-              <Tooltip
-                contentStyle={dashboardChartTooltip}
-                labelStyle={{ color: 'var(--text-secondary)', fontWeight: 600 }}
-                cursor={{ stroke: 'var(--border-strong)', strokeDasharray: '4 4' }}
-                labelFormatter={(label, payload) => String(payload?.[0]?.payload?.tooltipLabel || label)}
-                formatter={(value: number, name: string) => [
-                  formatNumber(value, { maximumFractionDigits: dashboardTrendMode === 'activity' ? 0 : 1 }),
-                  name,
-                ]}
-              />
-              <Area
-                yAxisId="primary"
-                type="monotone"
-                dataKey={dashboardTrendMode === 'activity' ? 'participants' : 'hours'}
-                name={activeTrendLabels.primary}
-                stroke={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'}
-                fill="url(#dashboardTrendArea)"
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5, stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
-              />
-              <Line
-                yAxisId="secondary"
-                type="monotone"
-                dataKey={dashboardTrendMode === 'activity' ? 'activities' : 'averageParticipants'}
-                name={activeTrendLabels.secondary}
-                stroke={dashboardTrendMode === 'activity' ? '#5b6cff' : '#8b5cf6'}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5, stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="dashboard-trend-summary" aria-label={t('trend.selectedPeriod')}>
-          <div className="statistics-kpi-card statistics-kpi-card--activities dashboard-month-kpi-card">
-            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.activities} alt="" aria-hidden="true" />
-            <div className="statistics-kpi-card-content">
-              <p className="statistics-kpi-card-value">{fmt(summary?.totalActivities ?? dashboardTrendSummary.activities)}</p>
-              <p className="statistics-kpi-card-label">{t('trend.activities')}</p>
-            </div>
-          </div>
-          <div className="statistics-kpi-card statistics-kpi-card--participants dashboard-month-kpi-card">
-            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.participants} alt="" aria-hidden="true" />
-            <div className="statistics-kpi-card-content">
-              <p className="statistics-kpi-card-value">{fmt(summary?.totalParticipants ?? dashboardTrendSummary.participants)}</p>
-              <p className="statistics-kpi-card-label">{t('trend.participants')}</p>
-            </div>
-          </div>
-          <div className="statistics-kpi-card statistics-kpi-card--participants-per-hour dashboard-month-kpi-card">
-            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.average} alt="" aria-hidden="true" />
-            <div className="statistics-kpi-card-content">
-              <p className="statistics-kpi-card-value">{formatNumber(summary?.averageParticipants ?? dashboardTrendSummary.averageParticipants)}</p>
-              <p className="statistics-kpi-card-label">{t('trend.average')}</p>
-            </div>
-          </div>
-          <div className="statistics-kpi-card statistics-kpi-card--hours dashboard-month-kpi-card">
-            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.hours} alt="" aria-hidden="true" />
-            <div className="statistics-kpi-card-content">
-              <p className="statistics-kpi-card-value">{formatNumber(summary?.totalHours ?? dashboardTrendSummary.hours)}</p>
-              <p className="statistics-kpi-card-label">{t('trend.hours')}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <CustomKpiCards
-        surface="dashboard"
-        from={currentMonthRange.from}
-        to={currentMonthRange.to}
-        className="mb-6"
-        refreshOptions={{
-          refetchOnWindowFocus: 'always',
-          refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
-        }}
-      />
-
       {/* Quick Actions */}
       <SurfaceCard className="dashboard-outer-surface mb-8">
         <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">{t('quick.title')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
-            className="w-full"
+            className="h-auto w-full whitespace-normal py-3"
             onClick={() => {
               const dateISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
               if (isMobile) {
@@ -851,26 +721,34 @@ export default function Dashboard() {
               }
             }}
           >
-            {t('quick.activity')}
+            <span>{t('quick.activity')}<span className="mt-1 block text-xs font-normal">{t('common:workflow.activityHelp')}</span></span>
           </Button>
           <Button
-            className="w-full"
+            className="h-auto w-full whitespace-normal py-3"
             variant="secondary"
             onClick={openQuickTally}
           >
             <Users className="h-4 w-4" />
-            {t('tally.start')}
+            <span>{tallySession ? t('common:workflow.resumeTally') : t('tally.start')}<span className="mt-1 block text-xs font-normal">{t('common:workflow.tallyHelp')}</span></span>
           </Button>
           <Button
-            className="w-full"
+            className="h-auto w-full whitespace-normal py-3"
             variant="secondary"
-            onClick={() => setExportOpen(true)}
-            onMouseEnter={preloadExportModal}
-            onFocus={preloadExportModal}
+            onClick={() => navigate('/logbook/new', { state: { returnTo: '/dashboard' } })}
           >
-            {t('quick.export')}
+            {t('logbook.entry')}
           </Button>
         </div>
+      </SurfaceCard>
+
+      <Button variant="secondary" className="mb-6" onClick={() => navigate('/logbook?status=open')}>{t('common:workflow.openTopics')}</Button>
+
+      <SurfaceCard className="mb-6">
+        <h3 className="mb-3 font-semibold">{t('common:workflow.todayActivities')}</h3>
+        {todayActivities.length === 0 ? <p className="text-sm text-[var(--text-secondary)]">{t('common:workflow.noActivitiesToday')}</p> : (
+          <div className="grid gap-2 md:grid-cols-2">{todayActivities.slice(0, 6).map(activity => <Button key={activity.id} variant="secondary" className="h-auto justify-start whitespace-normal text-left" onClick={() => navigate('/activities/' + activity.id + '/edit')}>{activity.startTime?.slice(0, 5)} {activity.title || activity.project?.title || t('quick.activity')}</Button>)}</div>
+        )}
+        <Button variant="ghost" className="mt-3" onClick={() => navigate('/calendar')}>{t('common:navigation.calendar')}</Button>
       </SurfaceCard>
 
       <DashboardActiveSurveys
@@ -1064,6 +942,142 @@ export default function Dashboard() {
         </div>
       )}
 
+      <p className="mb-3 text-sm text-[var(--text-secondary)]">{t('common:workflow.participationsHelp')}</p>
+      <Button className="mb-4" variant="secondary" onClick={() => setExportOpen(true)} onMouseEnter={preloadExportModal} onFocus={preloadExportModal}>{t('quick.export')}</Button>
+      {/* KPI trend */}
+      <section className="dashboard-trend-card" aria-labelledby="dashboard-trend-title">
+        <div className="dashboard-trend-card-header">
+          <div>
+            <h2 id="dashboard-trend-title" className="dashboard-trend-title">{dashboardTrendRange.title}</h2>
+            <p className="dashboard-trend-context">{dashboardTrendRange.context}</p>
+          </div>
+          <div className="dashboard-trend-controls">
+            <SegmentedControl<DashboardTrendPeriod>
+              ariaLabel={t('trend.periodLabel')}
+              className="dashboard-trend-period-toggle"
+              onChange={setDashboardTrendPeriod}
+              options={(['week', 'month', 'year'] as const).map((period) => ({
+                value: period,
+                label: t(`trend.periods.${period}`),
+              }))}
+              value={dashboardTrendPeriod}
+            />
+            <SegmentedControl
+              ariaLabel={t('trend.title')}
+              className="dashboard-trend-toggle"
+              onChange={setDashboardTrendMode}
+              options={[
+                { value: 'activity', label: t('trend.activityMode'), icon: <CalendarIcon /> },
+                { value: 'efficiency', label: t('trend.efficiencyMode'), icon: <Clock /> },
+              ]}
+              value={dashboardTrendMode}
+              variant="emphasis"
+            />
+          </div>
+        </div>
+
+        <div className="dashboard-trend-legend" aria-hidden="true">
+          <span>
+            <i className={`dashboard-trend-legend-dot ${dashboardTrendMode === 'activity' ? 'dashboard-trend-legend-dot--teal' : 'dashboard-trend-legend-dot--mint'}`} />
+            {activeTrendLabels.primary}
+          </span>
+          <span>
+            <i className={`dashboard-trend-legend-dot ${dashboardTrendMode === 'activity' ? 'dashboard-trend-legend-dot--blue' : 'dashboard-trend-legend-dot--purple'}`} />
+            {activeTrendLabels.secondary}
+          </span>
+        </div>
+
+        <div className="dashboard-trend-chart">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={dashboardTrend} margin={{ top: 8, right: isMobile ? 2 : 14, left: isMobile ? -18 : 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="dashboardTrendArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'} stopOpacity={0.28} />
+                  <stop offset="100%" stopColor={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke={dashboardChartGridColor} strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={dashboardChartAxisTick} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="primary" tick={dashboardChartAxisTick} tickLine={false} axisLine={false} allowDecimals={false} width={isMobile ? 28 : 38} />
+              <YAxis yAxisId="secondary" orientation="right" tick={dashboardChartAxisTick} tickLine={false} axisLine={false} allowDecimals width={isMobile ? 28 : 38} />
+              <Tooltip
+                contentStyle={dashboardChartTooltip}
+                labelStyle={{ color: 'var(--text-secondary)', fontWeight: 600 }}
+                cursor={{ stroke: 'var(--border-strong)', strokeDasharray: '4 4' }}
+                labelFormatter={(label, payload) => String(payload?.[0]?.payload?.tooltipLabel || label)}
+                formatter={(value: number, name: string) => [
+                  formatNumber(value, { maximumFractionDigits: dashboardTrendMode === 'activity' ? 0 : 1 }),
+                  name,
+                ]}
+              />
+              <Area
+                yAxisId="primary"
+                type="monotone"
+                dataKey={dashboardTrendMode === 'activity' ? 'participants' : 'hours'}
+                name={activeTrendLabels.primary}
+                stroke={dashboardTrendMode === 'activity' ? '#10b981' : '#14b8a6'}
+                fill="url(#dashboardTrendArea)"
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5, stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
+              />
+              <Line
+                yAxisId="secondary"
+                type="monotone"
+                dataKey={dashboardTrendMode === 'activity' ? 'activities' : 'averageParticipants'}
+                name={activeTrendLabels.secondary}
+                stroke={dashboardTrendMode === 'activity' ? '#5b6cff' : '#8b5cf6'}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5, stroke: isDarkTheme ? '#ecf3ff' : '#ffffff', strokeWidth: 2 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="dashboard-trend-summary" aria-label={t('trend.selectedPeriod')}>
+          <div className="statistics-kpi-card statistics-kpi-card--activities dashboard-month-kpi-card">
+            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.activities} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">{fmt(summary?.totalActivities ?? dashboardTrendSummary.activities)}</p>
+              <p className="statistics-kpi-card-label">{t('trend.activities')}</p>
+            </div>
+          </div>
+          <div className="statistics-kpi-card statistics-kpi-card--participants dashboard-month-kpi-card">
+            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.participants} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">{fmt(summary?.totalParticipants ?? dashboardTrendSummary.participants)}</p>
+              <p className="statistics-kpi-card-label">{t('trend.participants')}</p>
+            </div>
+          </div>
+          <div className="statistics-kpi-card statistics-kpi-card--participants-per-hour dashboard-month-kpi-card">
+            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.average} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">{formatNumber(summary?.averageParticipants ?? dashboardTrendSummary.averageParticipants)}</p>
+              <p className="statistics-kpi-card-label">{t('trend.average')}</p>
+            </div>
+          </div>
+          <div className="statistics-kpi-card statistics-kpi-card--hours dashboard-month-kpi-card">
+            <img className="statistics-kpi-card-icon" src={DASHBOARD_KPI_ICONS.hours} alt="" aria-hidden="true" />
+            <div className="statistics-kpi-card-content">
+              <p className="statistics-kpi-card-value">{formatNumber(summary?.totalHours ?? dashboardTrendSummary.hours)}</p>
+              <p className="statistics-kpi-card-label">{t('trend.hours')}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <CustomKpiCards
+        surface="dashboard"
+        from={dashboardTrendRange.from}
+        to={dashboardTrendRange.to}
+        className="mb-6"
+        refreshOptions={{
+          refetchOnWindowFocus: 'always',
+          refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+        }}
+      />
+
       {/* Recent Actions */}
       <div className="modern-card dashboard-outer-surface p-4 sm:p-6">
         <h3 className="mb-3 text-lg font-bold text-gray-800 sm:mb-4 sm:text-xl">{t('recent.title')}</h3>
@@ -1158,8 +1172,8 @@ export default function Dashboard() {
           <ExportModal
             open={exportOpen}
             onClose={() => setExportOpen(false)}
-            initialFrom={currentMonthRange.from}
-            initialTo={currentMonthRange.to}
+            initialFrom={dashboardTrendRange.from}
+            initialTo={dashboardTrendRange.to}
           />
         </Suspense>
       )}

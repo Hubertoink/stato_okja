@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/Button';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -516,6 +517,11 @@ export default function Layout() {
               </p>
             </div>
           </div>
+          {!restrictToPasswordChange && canSwitchOrganization && (
+            <Button variant="secondary" size="sm" className="max-w-[40vw] min-w-0" onClick={() => setScopeModalOpen(true)} title={t('workflow.chooseOrganization')}>
+              <span className="truncate">{scope ? activeOrgName || t('workflow.organization') : t('workflow.noOrganization')}</span>
+            </Button>
+          )}
           {/* Current user and org summary (moved next to avatar on desktop) */}
           <div className="hidden"></div>
           {/* User menu */}
@@ -910,7 +916,13 @@ export default function Layout() {
       <main
         className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 ${usesCompactMobileEditorSpacing ? 'pt-[4.25rem]' : 'pt-24'} md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
-        <Outlet key={scopeKey} context={{ openQuickTally }} />
+        {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|settings)(\/|$)/.test(location.pathname) ? (
+          <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6">
+            <h2 className="text-xl font-semibold">{t('workflow.noOrganization')}</h2>
+            <p className="my-3">{t('workflow.contextHelp')}</p>
+            <Button onClick={() => setScopeModalOpen(true)}>{t('workflow.chooseOrganization')}</Button>
+          </section>
+        ) : <Outlet key={scopeKey} context={{ openQuickTally }} />}
       </main>
 
       {/* QuickTally overlay (global) */}

@@ -244,7 +244,7 @@ export async function exportControllingDataAsExcel({
       [autoT('ui_b6bf5f1a2033'), projectActivities.length],
       [autoT('ui_59c83f1c873f'), totalParticipants],
       [
-        'Ø Besucher*innen',
+        'Ø Teilnahmen / Aktivität',
         projectActivities.length
           ? Math.round((totalParticipants / projectActivities.length) * 10) / 10
           : 0,

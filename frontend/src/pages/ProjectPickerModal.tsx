@@ -1,3 +1,4 @@
+import { useRecentProjectChoices } from '@/lib/useRecentProjectChoices';
 import { useProjects, Project } from '@/lib/projects';
 import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
@@ -28,6 +29,7 @@ export default function ProjectPickerModal({
   const { dismiss } = useModalHistory(onClose);
   // This component mounts only when open – lock body scroll while mounted
   useBodyScrollLock(true);
+  const { recentIds, remember } = useRecentProjectChoices();
   const [search, setSearch] = useState('');
   const { data } = useProjects({ archived: false, search });
   const projects = useMemo(() => {
@@ -37,9 +39,13 @@ export default function ProjectPickerModal({
       const sa = starred.has(a.id) ? 1 : 0;
       const sb = starred.has(b.id) ? 1 : 0;
       if (sa !== sb) return sb - sa; // starred first
-      return compareLocalized(a.title, b.title);
+      const recentA = recentIds.indexOf(a.id);
+      const recentB = recentIds.indexOf(b.id);
+      const rankA = recentA < 0 ? Infinity : recentA;
+      const rankB = recentB < 0 ? Infinity : recentB;
+      return (rankA === rankB ? 0 : rankA - rankB) || compareLocalized(a.title, b.title);
     });
-  }, [data]);
+  }, [data, recentIds]);
   // Lade Kompakt-Einstellung aus localStorage, damit sie beim Wiederkommen erhalten bleibt
   const [compact, setCompact] = useState<boolean>(() => {
     try {
@@ -107,13 +113,14 @@ export default function ProjectPickerModal({
           </label>
         </div>
 
+        <p className="mb-3 text-xs text-[var(--text-secondary)]">{t('workflow.recentOffers')}</p>
         <div className="project-picker-scroll min-h-0 flex-1 overflow-y-auto pb-4">
           {!compact && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {projects.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => onPick(p)}
+                  onClick={() => { remember(p.id); onPick(p); }}
                   className="rounded-xl overflow-hidden shadow focus:outline-none focus:ring-2 focus:ring-viridian text-left"
                 >
                   <div className="relative h-24">
@@ -146,7 +153,7 @@ export default function ProjectPickerModal({
               ))}
               {projects.length === 0 && (
                 <div className="col-span-full py-10 md:py-14 text-center">
-                  <div className="text-gray-500">{t('projectPicker.empty')}</div>
+                  <div className="text-gray-500">{search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}</div>
                   <div className="mt-2 text-xs text-gray-600">
                     {t('projectPicker.emptyHint')}
                     <Link
@@ -187,7 +194,7 @@ export default function ProjectPickerModal({
               ))}
               {projects.length === 0 && (
                 <li className="col-span-full px-3 py-10 md:py-14 text-center text-gray-500">
-                  {t('projectPicker.empty')}
+                  {search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}
                 </li>
               )}
             </ul>

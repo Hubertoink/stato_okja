@@ -63,7 +63,7 @@ const TYPE_OPTIONS = [
 
 const METRIC_OPTIONS: Array<{ value: CustomKpiMetric; label: string; hint: string }> = [
   { value: 'activity_count', label: autoT('ui_b6bf5f1a2033'), hint: autoT('ui_90afe1f69e39') },
-  { value: 'participant_total', label: autoT('ui_a8a4d6b019af'), hint: 'Summe aller Teilnehmenden' },
+  { value: 'participant_total', label: autoT('ui_59c83f1c873f'), hint: 'Summe aller Teilnahmen; wiederkehrende Personen werden mehrfach gezählt' },
   { value: 'duration_hours', label: autoT('ui_ebe374fcd912'), hint: 'Summe der Dauer in Stunden' },
   {
     value: 'duration_hours_per_week',

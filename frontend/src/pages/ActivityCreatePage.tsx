@@ -102,7 +102,7 @@ export default function ActivityCreatePage() {
     const id = form.projectId || qpProjectId;
     return (projects || []).find((p) => p.id === id);
   }, [projects, qpProjectId, form.projectId]);
-  const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
+  const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
   const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end);

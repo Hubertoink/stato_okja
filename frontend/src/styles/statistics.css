@@ -23,11 +23,7 @@
   padding: 1.25rem 1.5rem;
   border: 1px solid color-mix(in srgb, var(--statistics-kpi-accent) 22%, var(--border-subtle));
   border-radius: var(--card-radius);
-  background: linear-gradient(
-    135deg,
-    var(--surface-1) 0%,
-    color-mix(in srgb, var(--statistics-kpi-accent) 9%, var(--surface-1)) 100%
-  );
+  background: var(--surface-1);
   box-shadow: var(--card-shadow);
   text-align: left;
 }
@@ -50,6 +46,7 @@
 }
 
 .statistics-kpi-card-icon {
+  display: none;
   position: absolute;
   z-index: -1;
   right: -0.75rem;
@@ -80,7 +77,7 @@
 
 .statistics-kpi-card-value {
   margin: 0;
-  color: var(--statistics-kpi-accent);
+  color: var(--text-primary);
   font-size: clamp(1.85rem, 3vw, 2.5rem);
   font-weight: 800;
   line-height: 1;

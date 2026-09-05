@@ -1,3 +1,6 @@
+import { formatDate } from '@/i18n/formatters';
+import { useTranslation } from 'react-i18next';
+import { useActiveOrganizationName } from '@/lib/useActiveOrganizationName';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ResponsiveContainer,
@@ -137,6 +140,8 @@ function getActivityTypeLabel(type?: string | null) {
 }
 
 export default function Statistics() {
+  const { t } = useTranslation('common');
+  const organizationName = useActiveOrganizationName();
   const isMobile = useIsMobile(768);
   const {
     currentYear,
@@ -926,7 +931,7 @@ export default function Statistics() {
 
   const getChartFileName = (chartTitle: string) => {
     return buildStatisticsChartFileName({
-      orgName: user?.orgName,
+      orgName: organizationName,
       chartTitle,
       exportRangeLabel,
       extension: 'png',
@@ -935,7 +940,7 @@ export default function Statistics() {
 
   const getActivitiesExportFileName = (extension: ActivitiesExportFormat) => {
     return buildStatisticsActivitiesFileName({
-      orgName: user?.orgName,
+      orgName: organizationName,
       exportRangeLabel,
       extension,
     });
@@ -943,7 +948,7 @@ export default function Statistics() {
 
   const getControllingExportFileName = () => {
     return buildStatisticsControllingFileName({
-      orgName: user?.orgName,
+      orgName: organizationName,
       exportRangeLabel,
     });
   };
@@ -1142,6 +1147,7 @@ export default function Statistics() {
   return (
     <div className="relative">
       <PageHeader title={autoT('ui_23ad8442dc9f')} />
+      <p className="mb-4 text-sm text-[var(--text-secondary)]">{t('workflow.participationsHelp')}</p>
 
       {/* Time Range Selector */}
       <SurfaceCard className="mb-6">
@@ -2057,7 +2063,7 @@ export default function Statistics() {
                       const item = payload[0];
                       const itemLabel = String(
                         item.name ||
-                          (showAverage ? autoT('ui_c649f425302c') : autoT('ui_a8a4d6b019af')),
+                          (showAverage ? autoT('ui_c649f425302c') : t('workflow.attendances')),
                       );
                       const value = Number(item.value ?? 0).toLocaleString(getCurrentIntlLocale(), {
                         maximumFractionDigits: 1,
@@ -2081,7 +2087,7 @@ export default function Statistics() {
                   <Line
                     type="monotone"
                     dataKey="totalParticipants"
-                    name={showAverage ? autoT('ui_c649f425302c') : autoT('ui_a8a4d6b019af')}
+                    name={showAverage ? autoT('ui_c649f425302c') : t('workflow.attendances')}
                     stroke="#10b981"
                     strokeWidth={2}
                     isAnimationActive={!isParticipantsTrendExporting}
@@ -2197,7 +2203,7 @@ export default function Statistics() {
               }
               barDataKey={showAverage ? 'chartValue' : 'count'}
               labelDataKey={showAverage ? 'chartValue' : 'count'}
-              barName={showAverage ? autoT('ui_c649f425302c') : autoT('ui_a8a4d6b019af')}
+              barName={showAverage ? autoT('ui_c649f425302c') : t('workflow.attendances')}
               barFill="#10b981"
               valueLabelContent={<ValueLabel />}
             />
@@ -2256,7 +2262,7 @@ export default function Statistics() {
                   <tr className="bg-azure-web text-gray-700">
                     <th className="px-3 py-2 text-left">{autoT('ui_edcaf9aaa282')}</th>
                     <th className="px-3 py-2 text-right">{autoT('ui_b6bf5f1a2033')}</th>
-                    <th className="px-3 py-2 text-right">{autoT('ui_a8a4d6b019af')}</th>
+                    <th className="px-3 py-2 text-right">{t('workflow.attendances')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -2495,6 +2501,9 @@ export default function Statistics() {
         title={autoT('ui_8dbb5c1c7f40')}
       >
         <div className="space-y-4 text-sm text-gray-700">
+          <p className="font-medium">{t('workflow.organization')}: {organizationName || t('workflow.noOrganization')}</p>
+          <p>{formatDate(from + 'T12:00:00')} – {formatDate(to + 'T12:00:00')} · {totalActivities} {autoT('ui_b6bf5f1a2033')}</p>
+          <p>{t('workflow.reportScope')}</p>
           <p>{autoT('ui_fabb2abae3a4')}</p>
           <div className="grid gap-2">
             <Button
@@ -2542,7 +2551,7 @@ export default function Statistics() {
             >
               <span>
                 <span className="block font-semibold text-[var(--text-primary)]">
-                  {autoT('ui_601dd4ee44ea')}
+                  {autoT('ui_601dd4ee44ea')} · {t('workflow.logbookExport')}
                 </span>
                 <span className="mt-1 block text-xs font-normal text-[var(--text-secondary)]">
                   {autoT('ui_b56d47e133a3')}

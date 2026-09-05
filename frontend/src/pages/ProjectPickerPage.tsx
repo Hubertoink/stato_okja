@@ -1,3 +1,4 @@
+import { useRecentProjectChoices } from '@/lib/useRecentProjectChoices';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects, type Project } from '@/lib/projects';
@@ -20,6 +21,7 @@ export default function ProjectPickerPage() {
   const [params] = useSearchParams();
   const date = params.get('date') || undefined;
   const navigate = useNavigate();
+  const { recentIds, remember } = useRecentProjectChoices();
   const [search, setSearch] = useState('');
   const { data } = useProjects({ archived: false, search });
   const starredProjectIds = useMemo(() => new Set(getStarredProjectIds()), [data]);
@@ -29,9 +31,13 @@ export default function ProjectPickerPage() {
       const sa = starredProjectIds.has(a.id) ? 1 : 0;
       const sb = starredProjectIds.has(b.id) ? 1 : 0;
       if (sa !== sb) return sb - sa; // starred first
-      return compareLocalized(a.title, b.title);
+      const recentA = recentIds.indexOf(a.id);
+      const recentB = recentIds.indexOf(b.id);
+      const rankA = recentA < 0 ? Infinity : recentA;
+      const rankB = recentB < 0 ? Infinity : recentB;
+      return (rankA === rankB ? 0 : rankA - rankB) || compareLocalized(a.title, b.title);
     });
-  }, [data, starredProjectIds]);
+  }, [data, starredProjectIds, recentIds]);
   // Lade Kompakt-Einstellung aus localStorage, damit sie beim Wiederkommen erhalten bleibt
   const [compact, setCompact] = useState<boolean>(() => {
     try {
@@ -113,7 +119,7 @@ export default function ProjectPickerPage() {
             {(projects || []).map((p) => (
               <button
                 key={p.id}
-                onClick={() => onPick(p)}
+                onClick={() => { remember(p.id); onPick(p); }}
                 className="rounded-xl overflow-hidden shadow focus:outline-none focus:ring-2 focus:ring-viridian text-left"
               >
                 <div className="relative h-24">
@@ -142,7 +148,7 @@ export default function ProjectPickerPage() {
             ))}
             {(projects || []).length === 0 && (
               <div className="col-span-full text-center py-6 text-gray-500">
-                {t('projectPicker.empty')}
+                {search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}
               </div>
             )}
           </div>
@@ -172,7 +178,7 @@ export default function ProjectPickerPage() {
               </li>
             ))}
             {(projects || []).length === 0 && (
-              <li className="px-3 py-6 text-center text-gray-500">{t('projectPicker.empty')}</li>
+              <li className="px-3 py-6 text-center text-gray-500">{search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}</li>
             )}
           </ul>
         )}

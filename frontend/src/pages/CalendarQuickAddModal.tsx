@@ -138,7 +138,7 @@ export default function ActivityQuickAdd({
     () => (projects || []).find((p: Project) => p.id === form.projectId) || initialProject,
     [projects, form.projectId, initialProject],
   );
-  const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
+  const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
   const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
@@ -462,7 +462,7 @@ export default function ActivityQuickAdd({
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <div className="mb-1 flex items-baseline gap-2">
+                  <div className="mb-1 flex flex-wrap items-baseline gap-2">
                     <label className="block text-sm font-medium" htmlFor="activity-date">
                       {t('quickAdd.date')}
                     </label>
@@ -775,7 +775,8 @@ export default function ActivityQuickAdd({
                 </div>
               </div>
             </div>
-            <div className="space-y-3">
+            <details open={!isMobile} className="space-y-3">
+              <summary className="cursor-pointer font-medium md:hidden">{t('common:workflow.extraDetails')}</summary>
               {(!selectedProject || selectedProject.type !== 'open_door') && (
                 <div>
                   <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -988,7 +989,7 @@ export default function ActivityQuickAdd({
                   aria-label={t('quickAdd.notes')}
                 />
               </div>
-            </div>
+            </details>
           </div>
         </div>
 

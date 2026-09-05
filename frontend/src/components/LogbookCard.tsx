@@ -48,7 +48,7 @@ export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; on
           <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
             <span>{formatDate(entry.occurredAt, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
             <LogbookTypeBadge label={t(`types.${entry.type}`)} type={entry.type} />
-            {entry.visibility === 'admins' ? <Badge className="bg-violet-100 text-violet-700">{t('card.internal')}</Badge> : null}
+            <Badge>{entry.visibility === 'admins' ? t('card.internal') : t('visibilityTeam')}</Badge>
           </div>
           <h3 className="truncate text-base font-semibold text-[var(--text-primary)] sm:text-lg">{entry.title}</h3>
         </div>
@@ -61,12 +61,12 @@ export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; on
           {entry.activity?.title ? <span className="rounded bg-[var(--surface-2)] px-2 py-1 text-[var(--text-secondary)]">{t('card.activity', { name: entry.activity.title })}</span> : null}
         </div>
       ) : null}
-      <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3 text-xs text-[var(--text-secondary)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3 text-xs text-[var(--text-secondary)]">
         <div className="min-w-0">
           <AuthorBadge name={entry.createdByName} avatarUrl={entry.createdByUser?.avatarUrl ?? (entry.createdByUserId === user?.id ? user?.avatarUrl : null)} />
           {entry.documentationUpdatedAt ? <span className="mt-1 block text-[11px] text-[var(--text-faint)]">{t('card.changed', { date: formatDate(entry.documentationUpdatedAt, { dateStyle: 'short', timeStyle: 'short' }) })}</span> : null}
         </div>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex max-w-full flex-wrap items-center gap-3">
           <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{entry.commentCount || 0}</span>
           {canManage && entry.status !== 'discussed' && entry.status !== 'archived' ? (
             <button
@@ -75,7 +75,7 @@ export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; on
               className="flex items-center gap-1 rounded-md px-2 py-1 font-medium text-green-700 transition-colors hover:bg-green-50"
               title={t('card.markDiscussed')}
             >
-              <CheckCircle2 className="h-4 w-4" />{t('card.discussed')}
+              <CheckCircle2 className="h-4 w-4" />{t('card.markDiscussed')}
             </button>
           ) : null}
           <ChevronRight className="h-4 w-4" />

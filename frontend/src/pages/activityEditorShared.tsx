@@ -76,7 +76,7 @@ export function appendUniqueId(currentIds: string[] | undefined, id: string): st
   return Array.from(next);
 }
 
-export function getWeekdayLabel(value?: string): string {
+export function getWeekdayLabel(value?: string, includeDate = false): string {
   const isoDate = (value || '').slice(0, 10);
   if (!isoDate) return '';
 
@@ -86,7 +86,7 @@ export function getWeekdayLabel(value?: string): string {
   const date = new Date(year, month - 1, day);
   if (Number.isNaN(date.getTime())) return '';
 
-  return formatDate(date, { weekday: 'long' });
+  return formatDate(date, { weekday: 'long', ...(includeDate ? { day: '2-digit', month: '2-digit', year: 'numeric' } as const : {}) });
 }
 
 export function getCohortSums(

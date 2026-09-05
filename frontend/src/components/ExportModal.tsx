@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import { useActiveOrganizationName } from '@/lib/useActiveOrganizationName';
 import { useMemo, useState } from 'react';
 import Modal from './Modal';
 import type { Activity } from '@/lib/activities';
@@ -99,6 +101,8 @@ export default function ExportModal({
   initialFrom: string;
   initialTo: string;
 }) {
+  const { t } = useTranslation('common');
+  const organizationName = useActiveOrganizationName();
   const todayDate = useMemo(() => new Date(), []);
   const today = useMemo(() => isoDate(todayDate), [todayDate]);
   const [from, setFrom] = useState<string>(initialFrom);
@@ -650,6 +654,8 @@ export default function ExportModal({
 
   return (
     <Modal open={open} onClose={onClose} title={autoT('ui_03423082c4e8')} maxWidth="lg">
+      <p className="mb-2 text-sm font-medium">{t('workflow.organization')}: {organizationName || t('workflow.noOrganization')}</p>
+      <p className="mb-4 text-sm text-[var(--text-secondary)]">{t('workflow.statisticsOnly')}</p>
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="text-sm text-gray-600">{autoT('ui_a4b078f9eb7b')}<input

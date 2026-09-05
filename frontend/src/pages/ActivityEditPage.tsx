@@ -114,7 +114,7 @@ export default function ActivityEditPage() {
     () => (projects || []).find((p) => p.id === form.projectId),
     [projects, form.projectId],
   );
-  const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date), [form.date]);
+  const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
   const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
   const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
   const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);

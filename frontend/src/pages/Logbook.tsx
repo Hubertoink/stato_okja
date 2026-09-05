@@ -49,10 +49,10 @@ export default function Logbook() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [initialFilters] = useState(loadLogbookFilters);
-  const [search, setSearch] = useState(initialFilters.search);
+  const [search, setSearch] = useState(params.get('status') === 'open' ? '' : initialFilters.search);
   const [searchOpen, setSearchOpen] = useState(false);
   const [filterDrawer, setFilterDrawer] = useState(false);
-  const [advanced, setAdvanced] = useState<LogbookAdvancedFilters>(initialFilters.advanced);
+  const [advanced, setAdvanced] = useState<LogbookAdvancedFilters>(() => params.get('status') === 'open' ? { status: 'open' } : initialFilters.advanced);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [tableView, setTableView] = useState(initialFilters.tableView);
   const [tablePage, setTablePage] = useState(1);
@@ -201,10 +201,10 @@ export default function Logbook() {
             value={search}
           />
           <IconButton
-            aria-label={t('export')}
+            aria-label={t('common:workflow.logbookExport')}
             disabled={exporting}
             onClick={() => void exportToExcel()}
-            title={t('export')}
+            title={t('common:workflow.logbookExport')}
             variant="secondary"
           >
             <Download aria-hidden="true" />
@@ -246,6 +246,7 @@ export default function Logbook() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
+        <Button variant={advanced.status === 'open' ? 'primary' : 'secondary'} size="sm" aria-pressed={advanced.status === 'open'} onClick={() => { setSearch(''); setAdvanced(advanced.status === 'open' ? {} : { status: 'open' }); }}>{t('common:workflow.openTopics')}</Button>
         <Badge variant="count">
           {isLoading ? t('loadingResults') : t('results', { count: formatNumber(data?.total || 0) })}
         </Badge>

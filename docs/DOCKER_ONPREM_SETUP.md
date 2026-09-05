@@ -1,5 +1,7 @@
 # StatO On-Prem Docker Setup
 
+Bereits installiert? [Variablen ändern und Updates übernehmen](CONFIGURATION_AND_UPDATES.md) erklärt den nächsten Schritt mit ausführbaren Beispielen.
+
 Für den Einstieg: [StatO starten](START.md). Für Updates und Wiederherstellung:
 [Betriebsblatt](OPERATIONS.md). Die folgenden Details ergänzen diese Kurzleitungen.
 

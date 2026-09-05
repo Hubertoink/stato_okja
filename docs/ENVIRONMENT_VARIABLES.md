@@ -1,5 +1,7 @@
 # Environment-Variablen
 
+Du hast einen Wert geändert und möchtest ihn anwenden? Die [Schritt-für-Schritt-Anleitung](CONFIGURATION_AND_UPDATES.md) unterscheidet Release-Installation, lokale Docker-Tests und Frontend-Build-Variablen.
+
 Diese Datei ist die zentrale Git-Referenz fuer die im Repository verwendeten Environment-Variablen, ihre moeglichen Werte und ihre Funktion.
 
 ## Quellen im Repository

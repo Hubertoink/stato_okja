@@ -50,6 +50,17 @@ StatO speichert keine personenbezogenen Daten von teilnehmenden jungen Menschen.
 
 Für die IT: [Betriebsblatt mit Backup, Wiederherstellung und Updates](docs/OPERATIONS.md).
 
+### Bereits installiert – was ist der nächste Schritt?
+
+| Ich möchte … | Anleitung |
+| --- | --- |
+| eine Variable ändern und wirksam übernehmen | [Konfiguration anwenden](docs/CONFIGURATION_AND_UPDATES.md#variablen-einer-release-installation-ändern) |
+| Dev lokal mit Docker testen oder Dev-Tools aktivieren | [Lokale Testinstanz und Build](docs/CONFIGURATION_AND_UPDATES.md#lokale-docker-testinstanz-unter-windows) |
+| Code pushen und den neuen Stand testen | [Push, Image-Build und Containerupdate](docs/CONFIGURATION_AND_UPDATES.md#code-pushen-und-den-stand-testen) |
+| eine bestehende Installation aktualisieren | [Release-Update im bisherigen Ordner](docs/CONFIGURATION_AND_UPDATES.md#eine-bestehende-release-installation-aktualisieren) |
+
+`VITE_*`-Variablen benötigen einen Frontend-Build. Ein Push nach `dev` allein aktualisiert keine laufende Installation.
+
 ### On-Prem mit Docker
 
 Voraussetzung sind Docker und das Docker-Compose-Plugin. Der Installer lädt ein

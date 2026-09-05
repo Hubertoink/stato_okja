@@ -1,5 +1,7 @@
 # Dev auf einem Windows-PC testen
 
+Für Änderungen nach dem ersten Start: [Variablen ändern, Dev-Tools aktivieren und Updates übernehmen](CONFIGURATION_AND_UPDATES.md).
+
 Docker Desktop mit Linux-Containern starten. Die folgenden Befehle verwenden
 PowerShell 7 (`pwsh`). Für den lokalen Container-Build ist keine lokale
 Node.js-Installation erforderlich.
@@ -22,6 +24,11 @@ Docker-Volumes erhalten. Konfiguration, Helfer und Backup-Kopien liegen unter
 Alternativ nach erfolgreichem GitHub-Image-Build ohne `-Build` starten, um die
 Images `dev` und `onprem-dev` zu verwenden. Dies ist unabhängig vom stabilen
 Release-Installer, der weiterhin den letzten veröffentlichten Release lädt.
+
+Das fertige `onprem-dev`-Frontend wird ohne Dev-Tools gebaut. Ein lokales
+`VITE_ENABLE_DEV_TOOLS=true` ändert dieses Image nicht. Für eigene Frontend-Flags
+immer den aktuellen Quellcode und `-Build` verwenden. Ein späterer Aufruf ohne
+`-Build` wechselt wieder zu den veröffentlichten Images.
 
 ## Was du prüfen solltest
 

@@ -1,5 +1,7 @@
 # StatO – Betriebsblatt
 
+Konkrete Befehle für [Konfigurationsänderungen, lokale Tests und Release-Updates](CONFIGURATION_AND_UPDATES.md).
+
 ## Verantwortlichkeit und Infrastruktur
 
 Vor Übergabe eine zuständige Person für Server, Updates, Backupkontrolle und

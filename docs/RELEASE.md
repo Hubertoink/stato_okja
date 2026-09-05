@@ -1,5 +1,9 @@
 # StatO-Release-Prozess
 
+Für einen normalen `dev`-Push und das Aktualisieren der Testinstanz siehe
+[Code pushen und den Stand testen](CONFIGURATION_AND_UPDATES.md#code-pushen-und-den-stand-testen).
+Ein `dev`-Push veröffentlicht noch keinen stabilen Release und aktualisiert keine laufenden Container.
+
 Ein StatO-Release ist ein unveraenderlicher Git-Tag `v<Version>` auf `main`.
 Die Version in `VERSION`, im Root-Package sowie in Backend und Frontend muss
 identisch sein; `npm run version:check` prueft dies.

@@ -242,7 +242,7 @@ export default function Layout() {
       activities: { to: '/activities', label: t('navigation.activities'), icon: Activity },
       logbook: { to: '/logbook', label: t('navigation.logbook'), icon: BookOpen },
       calendar: { to: '/calendar', label: t('navigation.calendar'), icon: CalendarIcon },
-      projects: { to: '/projects', label: t('navigation.projects'), icon: Boxes },
+      projects: { to: '/projects', label: t('navigation.projectsShort'), icon: Boxes },
       processes: { to: '/processes', label: t('navigation.processes'), icon: GitBranch },
       surveys: { to: '/surveys', label: t('navigation.surveys'), icon: ClipboardList },
       statistics: { to: '/statistics', label: t('navigation.statistics'), icon: BarChart3 },

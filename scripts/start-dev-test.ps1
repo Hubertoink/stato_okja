@@ -63,7 +63,9 @@ if ($Build) {
         $runtime.services[$service].image = "${project}-${service}:local"
         $runtime.services[$service].build = @{ context = $root; dockerfile = "$service/Dockerfile" }
     }
-    $runtime.services.frontend.build.args = @{ NGINX_MODE = 'proxy'; VITE_API_BASE_URL = '/api' }
+    $devToolsFlag = ((Get-Content -LiteralPath $envFile | Where-Object { $_ -match '^VITE_ENABLE_DEV_TOOLS=' } | Select-Object -First 1) -replace '^VITE_ENABLE_DEV_TOOLS=', '').Trim()
+    if ($devToolsFlag -notin @('true', 'false')) { $devToolsFlag = 'false' }
+    $runtime.services.frontend.build.args = @{ NGINX_MODE = 'proxy'; VITE_API_BASE_URL = '/api'; VITE_ENABLE_DEV_TOOLS = $devToolsFlag }
     $runtime.services.backup.environment.STATO_BACKUP_VERSION = 'dev-local'
 }
 $composeFile = Join-Path $Directory 'compose.yaml'

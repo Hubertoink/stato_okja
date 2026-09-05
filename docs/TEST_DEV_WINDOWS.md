@@ -27,6 +27,9 @@ Release-Installer, der weiterhin den letzten veröffentlichten Release lädt.
 
 1. `notepad "$env:USERPROFILE\stato-dev-test\config\stato.env"` öffnen.
    Den Wert hinter `INITIAL_SETUP_TOKEN=` kopieren.
+   Für Dev Tools zusätzlich im Backend `NODE_ENV=development` und `APP_ENV=development`
+   setzen sowie `VITE_ENABLE_DEV_TOOLS=true` eintragen. Danach den Launcher mit
+   `-Build` erneut ausführen; das Frontend-Flag wird beim Build eingebettet.
 2. <http://localhost:8091> öffnen. Code, eigene Admin-Adresse und neues Passwort
    eingeben. Du wirst zur Organisationsverwaltung weitergeleitet.
 3. Eine Testorganisation und ein Teammitglied anlegen. Ohne SMTP vergibst du

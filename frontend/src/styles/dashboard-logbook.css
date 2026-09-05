@@ -224,10 +224,21 @@
 .dashboard-illustrated-surface {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.dashboard-illustrated-surface > :not(.dashboard-section-illustration) {
+/* Clip only the decoration; entry shadows and focus rings may extend beyond
+   the section, especially below the last Daily Log card. */
+.dashboard-illustration-clip {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dashboard-illustrated-surface > :not(.dashboard-illustration-clip) {
   position: relative;
   z-index: 1;
 }

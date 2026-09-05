@@ -563,8 +563,6 @@ export default function Dashboard() {
       /* ignore */
     }
   }, [doneMap]);
-  const todayISO = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-  const todayActivities = (activitiesMonth || []).filter(activity => activity.date.slice(0, 10) === todayISO);
   const dailyLog = useMemo(() => {
     const candidates = (activitiesMonth || []).filter(
       (a) =>
@@ -734,21 +732,13 @@ export default function Dashboard() {
           <Button
             className="h-auto w-full whitespace-normal py-3"
             variant="secondary"
-            onClick={() => navigate('/logbook/new', { state: { returnTo: '/dashboard' } })}
+            onClick={() => setExportOpen(true)}
+            onMouseEnter={preloadExportModal}
+            onFocus={preloadExportModal}
           >
-            {t('logbook.entry')}
+            {t('quick.export')}
           </Button>
         </div>
-      </SurfaceCard>
-
-      <Button variant="secondary" className="mb-6" onClick={() => navigate('/logbook?status=open')}>{t('common:workflow.openTopics')}</Button>
-
-      <SurfaceCard className="mb-6">
-        <h3 className="mb-3 font-semibold">{t('common:workflow.todayActivities')}</h3>
-        {todayActivities.length === 0 ? <p className="text-sm text-[var(--text-secondary)]">{t('common:workflow.noActivitiesToday')}</p> : (
-          <div className="grid gap-2 md:grid-cols-2">{todayActivities.slice(0, 6).map(activity => <Button key={activity.id} variant="secondary" className="h-auto justify-start whitespace-normal text-left" onClick={() => navigate('/activities/' + activity.id + '/edit')}>{activity.startTime?.slice(0, 5)} {activity.title || activity.project?.title || t('quick.activity')}</Button>)}</div>
-        )}
-        <Button variant="ghost" className="mt-3" onClick={() => navigate('/calendar')}>{t('common:navigation.calendar')}</Button>
       </SurfaceCard>
 
       <DashboardActiveSurveys
@@ -758,7 +748,9 @@ export default function Dashboard() {
 
       {recentLogbookEntries.length > 0 && (
         <SurfaceCard className="dashboard-outer-surface dashboard-illustrated-surface mb-6 px-6" padding="none">
-        <img className="dashboard-section-illustration" src={logbookEmptyIllustration} alt="" aria-hidden="true" />
+        <div className="dashboard-illustration-clip" aria-hidden="true">
+          <img className="dashboard-section-illustration" src={logbookEmptyIllustration} alt="" />
+        </div>
         <div className="mb-4 flex flex-wrap items-center justify-start gap-3">
           <h3 className="text-lg font-semibold text-[var(--text-primary)]">{t('logbook.title')}</h3>
           <Button
@@ -829,7 +821,9 @@ export default function Dashboard() {
       {/* Daily Log */}
       {dailyLog.length > 0 && (
         <div className="modern-card dashboard-outer-surface dashboard-illustrated-surface mb-6 px-6 py-0">
-        <img className="dashboard-section-illustration" src={dailyLogEmptyIllustration} alt="" aria-hidden="true" />
+        <div className="dashboard-illustration-clip" aria-hidden="true">
+          <img className="dashboard-section-illustration" src={dailyLogEmptyIllustration} alt="" />
+        </div>
         <h3 className="mb-3 text-lg font-semibold text-gray-800">
           {t('daily.title')}
           <span className="ml-2 text-xs text-gray-400 font-normal">{t('daily.period')}</span>
@@ -943,7 +937,6 @@ export default function Dashboard() {
       )}
 
       <p className="mb-3 text-sm text-[var(--text-secondary)]">{t('common:workflow.participationsHelp')}</p>
-      <Button className="mb-4" variant="secondary" onClick={() => setExportOpen(true)} onMouseEnter={preloadExportModal} onFocus={preloadExportModal}>{t('quick.export')}</Button>
       {/* KPI trend */}
       <section className="dashboard-trend-card" aria-labelledby="dashboard-trend-title">
         <div className="dashboard-trend-card-header">

@@ -29,11 +29,13 @@ FROM nginxinc/nginx-unprivileged:1.31-alpine AS runner
 USER root
 WORKDIR /usr/share/nginx/html
 
-# Refresh Alpine packages before removing the otherwise unused curl stack.
+# Refresh Alpine packages before removing the unused curl and image-filter stacks.
 # This keeps the final Nginx image on the patched package revisions published
 # by the upstream Alpine repository.
+# Image filtering is handled by the backend; Nginx only serves static assets
+# and proxies requests. Removing this module also removes libuuid/X11 dependencies.
 RUN apk upgrade --no-cache && \
-		apk del --no-network curl
+		apk del --no-network curl nginx-module-image-filter
 
 # Remove default content and config
 RUN rm -rf ./* /etc/nginx/conf.d/* /etc/nginx/templates/*

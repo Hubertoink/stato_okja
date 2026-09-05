@@ -1,0 +1,86 @@
+name: Publish scanned image
+description: Build once, scan every runtime platform by digest, then assign deployment tags.
+inputs:
+  file:
+    required: true
+    description: Dockerfile path
+  tags:
+    required: true
+    description: Newline-separated destination tags
+  labels:
+    required: true
+    description: Image labels
+  platforms:
+    required: true
+    description: Comma-separated runtime platforms
+  build-args:
+    default: ''
+    description: Docker build arguments
+  cache-scope:
+    required: true
+    description: Isolated build cache scope
+  push:
+    required: true
+    description: Whether deployment tags should be published
+runs:
+  using: composite
+  steps:
+    - name: Determine candidate repository
+      id: repository
+      shell: bash
+      env:
+        IMAGE_TAGS: ${{ inputs.tags }}
+      run: |
+        set -euo pipefail
+        first_tag="${IMAGE_TAGS%%$'\n'*}"
+        echo "name=${first_tag%:*}" >> "$GITHUB_OUTPUT"
+
+    # Upload only an untagged content-addressed candidate. Release, branch and
+    # deployment tags remain untouched until every architecture passes the gate.
+    - name: Build candidate
+      id: build
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ${{ inputs.file }}
+        tags: ${{ steps.repository.outputs.name }}
+        labels: ${{ inputs.labels }}
+        outputs: type=image,push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+        platforms: ${{ inputs.platforms }}
+        build-args: ${{ inputs.build-args }}
+        cache-from: type=gha,scope=${{ inputs.cache-scope }}
+        cache-to: type=gha,scope=${{ inputs.cache-scope }},mode=max
+        pull: true
+        # Package upgrades must not reuse a stale RUN apk upgrade layer.
+        no-cache-filters: runner
+        sbom: true
+        provenance: true
+
+    - name: Set up Trivy
+      if: inputs.push == 'true'
+      uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+      with:
+        version: v0.70.0
+        cache: true
+
+    - name: Check candidate on every platform
+      if: inputs.push == 'true'
+      shell: bash
+      env:
+        IMAGE_REF: ${{ steps.repository.outputs.name }}@${{ steps.build.outputs.digest }}
+        IMAGE_PLATFORMS: ${{ inputs.platforms }}
+      run: bash scripts/check-container-security.sh "$IMAGE_REF" "$IMAGE_PLATFORMS"
+
+    - name: Assign tags to the checked digest
+      if: inputs.push == 'true'
+      shell: bash
+      env:
+        IMAGE_REF: ${{ steps.repository.outputs.name }}@${{ steps.build.outputs.digest }}
+        IMAGE_TAGS: ${{ inputs.tags }}
+      run: |
+        set -euo pipefail
+        tag_args=()
+        while IFS= read -r tag; do
+          if [ -n "$tag" ]; then tag_args+=(--tag "$tag"); fi
+        done <<< "$IMAGE_TAGS"
+        docker buildx imagetools create "${tag_args[@]}" "$IMAGE_REF"

@@ -1,7 +1,7 @@
 # Backend production Dockerfile (NestJS)
 # Build context must be the repository root so npm can use the workspace lockfile.
 
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -16,7 +16,7 @@ WORKDIR /app/backend
 # so Nest always emits the complete runtime bundle inside the image.
 RUN rm -f tsconfig.tsbuildinfo && npm run build
 
-FROM node:24-alpine AS runner
+FROM node:26-alpine AS runner
 # Refresh security fixes even when the upstream Node image has not been rebuilt.
 RUN apk upgrade --no-cache
 WORKDIR /app

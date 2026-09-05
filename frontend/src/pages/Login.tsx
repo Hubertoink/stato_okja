@@ -22,6 +22,8 @@ export default function Login() {
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('admin');
   const [setupPassword, setSetupPassword] = useState('');
+  const [setupToken, setSetupToken] = useState('');
+  const [setupEmail, setSetupEmail] = useState('');
   const [setupPasswordConfirmation, setSetupPasswordConfirmation] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
@@ -123,12 +125,12 @@ export default function Login() {
     setBusy(true);
     setError(null);
     try {
-      const result = await completeInitialSetup(setupPassword);
+      const result = await completeInitialSetup(setupPassword, setupToken.trim(), setupEmail.trim());
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      navigate('/dashboard');
+      navigate('/admin/orgs?welcome=1');
     } finally {
       setBusy(false);
     }
@@ -149,10 +151,20 @@ export default function Login() {
             <div className="login-info rounded-2xl px-4 py-3 text-sm">
               {t('login.initialSetupInfo')}
             </div>
+            <label className="login-label block text-sm font-semibold">
+              {t('login.setupCode')}
+              <Input name="setupToken" type="password" autoComplete="off" required minLength={32} maxLength={256} value={setupToken} onChange={(event) => setSetupToken(event.target.value)} />
+              <span className="block mt-2 text-sm font-normal">{t('login.setupCodeHelp')}</span>
+            </label>
+            <label className="login-label block text-sm font-semibold">
+              {t('login.setupEmail')}
+              <Input name="setupEmail" type="email" autoComplete="email" required maxLength={200} value={setupEmail} onChange={(event) => setSetupEmail(event.target.value)} />
+            </label>
             <div>
-              <label className="login-label mb-2 block text-sm font-semibold">{t('login.adminPassword')}</label>
+              <label htmlFor="initial-password" className="login-label mb-2 block text-sm font-semibold">{t('login.adminPassword')}</label>
               <div className="relative">
                 <Input
+                  id="initial-password"
                   type={showSetupPassword ? 'text' : 'password'}
                   required
                   minLength={12}
@@ -176,9 +188,10 @@ export default function Login() {
               <PasswordRequirementsHint password={setupPassword} className="mt-2" />
             </div>
             <div>
-              <label className="login-label mb-2 block text-sm font-semibold">{t('login.repeatPassword')}</label>
+              <label htmlFor="initial-password-confirmation" className="login-label mb-2 block text-sm font-semibold">{t('login.repeatPassword')}</label>
               <div className="relative">
                 <Input
+                  id="initial-password-confirmation"
                   type={showSetupPasswordConfirmation ? 'text' : 'password'}
                   required
                   value={setupPasswordConfirmation}

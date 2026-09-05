@@ -11,6 +11,8 @@ COPY frontend/package.json ./frontend/package.json
 RUN npm ci --workspace frontend --include-workspace-root=false --no-audit --no-fund
 
 COPY frontend ./frontend
+COPY docs/env-generator ./docs/env-generator
+RUN node -e "const fs=require('fs'); const p='docs/env-generator/template.js'; const v=fs.readFileSync('VERSION','utf8').trim(); fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace(/ZIMAOS_DEFAULT_VERSION = '[^']+'/,'ZIMAOS_DEFAULT_VERSION = '+JSON.stringify(v)))"
 WORKDIR /app/frontend
 # Allow passing the API base URL at build time for Modus B
 ARG VITE_API_BASE_URL
@@ -42,6 +44,8 @@ RUN rm -rf ./* /etc/nginx/conf.d/* /etc/nginx/templates/*
 
 # Copy build
 COPY --from=builder --chown=101:101 /app/frontend/dist .
+COPY --from=builder --chown=101:101 /app/docs/env-generator ./env-generator
+COPY --chown=101:101 docs/start ./start
 
 # Add our Nginx configs and select based on build arg (default: direct = prod safety net). Also support direct-dev.
 ARG NGINX_MODE=direct

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { DEFAULT_VALUES, createSecrets, getGeneratedEnvironmentKeys, renderEnvFile, renderZimaDeployFile, validateConfig } from './template.js';
+import { DEFAULT_VALUES, ZIMAOS_DEFAULT_VERSION, createSecrets, getGeneratedEnvironmentKeys, renderEnvFile, renderZimaDeployFile, validateConfig } from './template.js';
 
 const cryptoApi = {
   getRandomValues(bytes) {
@@ -46,6 +46,19 @@ test('includes SMTP settings only when email is enabled', () => {
   const config = { ...validConfig(), enableEmail: true, smtpHost: 'mail.example.org', smtpUser: 'mailer@example.org', smtpPass: 'secret', smtpFrom: 'no-reply@example.org' };
   assert.match(renderEnvFile(config), /SMTP_HOST=mail.example.org/);
   assert.doesNotMatch(renderEnvFile(validConfig()), /SMTP_HOST=/);
+  assert.match(renderEnvFile(validConfig()), /USER_PROVISIONING_MODE=local/);
+});
+
+test('uses secure cookies for HTTPS behind an external proxy', () => {
+  assert.match(renderEnvFile({ ...validConfig(), appOrigin: 'https://stato.example.org' }), /AUTH_REFRESH_COOKIE_SECURE=true/);
+});
+
+test('requires a separate setup code and preserves it in both formats', () => {
+  const config = validConfig();
+  assert.notEqual(config.setupToken, config.jwtSecret);
+  assert.ok(validateConfig({ ...config, setupToken: '' }).length);
+  assert.ok(renderEnvFile(config).includes(`INITIAL_SETUP_TOKEN=${config.setupToken}`));
+  assert.ok(renderZimaDeployFile({ ...config, outputFormat: 'zimaos' }).includes(`INITIAL_SETUP_TOKEN: "${config.setupToken}"`));
 });
 
 test('renders a self-contained ZimaOS deployment file and derives the HTTP port', () => {
@@ -59,7 +72,7 @@ test('renders a self-contained ZimaOS deployment file and derives the HTTP port'
   const output = renderZimaDeployFile(config);
 
   assert.match(output, /^name: stato-zimaos/m);
-  assert.match(output, /image: "ghcr\.io\/hubertoink\/stato-backend:1\.6\.0"/);
+  assert.ok(output.includes(`image: "ghcr.io/hubertoink/stato-backend:${ZIMAOS_DEFAULT_VERSION}"`));
   assert.match(output, /APP_ORIGIN: "https:\/\/stato\.example\.org"/);
   assert.match(output, /AUTH_REFRESH_COOKIE_SECURE: "true"/);
   assert.match(output, /POSTGRES_PASSWORD: "StatoDb_00010203/);

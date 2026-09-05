@@ -70,11 +70,17 @@ jobs:
       - name: Check release version
         run: npm run version:check
 
+      - name: Synchronize distribution version
+        run: node scripts/sync-distribution-version.mjs
+
       - name: Test container security gates
         run: node --test scripts/container-security.test.mjs
 
       - name: Test On-Prem environment generator
         run: npm run test:env-generator
+
+      - name: Test release installer failure handling
+        run: pwsh -NoProfile -File scripts/test-release-installer.ps1
 
       - name: Validate release-based On-Prem runtime
         shell: bash
@@ -85,6 +91,7 @@ jobs:
           grep -F 'proxy_pass http://backend:3000/api/' frontend/nginx.proxy.conf
           ! grep -F 'api.stato-okja.de' frontend/nginx.proxy.conf
           bash -n scripts/install-onprem-release.sh
+          for script in scripts/onprem-runtime.sh backup/container-backup.sh backup/scheduler.sh; do bash -n "$script"; done
           pwsh -NoProfile -Command '$errors = $null; [System.Management.Automation.Language.Parser]::ParseFile("scripts/install-onprem-release.ps1", [ref]$null, [ref]$errors) | Out-Null; if ($errors.Count) { $errors | Format-List | Out-String | Write-Error; exit 1 }'
 
       - name: Test and build backend
@@ -99,6 +106,24 @@ jobs:
           npm run lint --workspace=frontend
           npm run test --workspace=frontend
           npm run build --workspace=frontend
+
+  distribution-test:
+    name: Installation and restore with real containers
+    needs: [quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Build test images
+        run: |
+          docker build -f backend/Dockerfile -t stato-backend:distribution-review .
+          docker build -f frontend/Dockerfile --build-arg NGINX_MODE=proxy --build-arg VITE_API_BASE_URL=/api -t stato-frontend:distribution-review .
+          docker build -f backup/Dockerfile -t stato-backup:distribution-review .
+      - name: Test installation and packaged restore
+        run: node scripts/test-distribution-lifecycle.mjs
 
   release-gate:
     name: Release-Tag pruefen
@@ -567,6 +592,7 @@ jobs:
           set -euo pipefail
           version="$(tr -d '\r\n' < VERSION)"
           test "$GITHUB_REF_NAME" = "v$version"
+          node scripts/sync-distribution-version.mjs
           node scripts/extract-release-notes.mjs "$version" > RELEASE_NOTES.md
           test -s RELEASE_NOTES.md
 
@@ -585,11 +611,15 @@ jobs:
           cp release-assets/install-onprem.ps1 release-assets/bundle/install-onprem.ps1
           cp release-assets/stato-sbom.spdx.json release-assets/bundle/stato-sbom.spdx.json
           cp RELEASE_NOTES.md release-assets/bundle/RELEASE_NOTES.md
+          cp scripts/onprem-runtime.sh scripts/onprem-runtime.ps1 release-assets/bundle/
+          cp docs/START.md docs/OPERATIONS.md release-assets/bundle/
+          cp -R docs/env-generator release-assets/bundle/env-generator
+          cp -R docs/start release-assets/bundle/start
           printf '%s\n' \
             '# StatO Release-Bundle' \
             '' \
             'Dieses Bundle enthält die On-Prem-Compose-Konfiguration, die Konfigurationsvorlage, Caddy, Rechtstexte und die SBOM.' \
-            '1. config/stato.env.example nach config/stato.env kopieren und Secrets sowie die öffentliche URL setzen.' \
+            '1. config/stato.env.example nach config/stato.env kopieren und Secrets einschließlich INITIAL_SETUP_TOKEN sowie die öffentliche URL setzen.' \
             '2. docker compose --env-file config/stato.env -f compose.yaml pull ausführen.' \
             '3. docker compose --env-file config/stato.env -f compose.yaml up -d --no-build ausführen.' \
             'STATO_IMAGE_TAG und STATO_FRONTEND_IMAGE_TAG sind absichtlich auf feste Release-Tags gesetzt; die Compose-Datei baut nie lokal.' \
@@ -618,7 +648,7 @@ jobs:
   github-release:
     name: GitHub Release erstellen
     if: github.ref_type == 'tag'
-    needs: [backend, frontend, frontend-onprem, backup, security-scan, release-assets]
+    needs: [backend, frontend, frontend-onprem, backup, security-scan, release-assets, distribution-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

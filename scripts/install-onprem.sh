@@ -187,6 +187,10 @@ ensure_env_value HTTPS_BIND_ADDRESS 0.0.0.0
 ensure_env_value HTTPS_PORT 443
 ensure_env_value STATO_IMAGE_TAG ''
 ensure_env_value INITIAL_SETUP_ENABLED true
+ensure_env_value INITIAL_SETUP_TOKEN GENERATED_BY_INSTALLER
+if [ "$(get_env_value INITIAL_SETUP_TOKEN)" = GENERATED_BY_INSTALLER ]; then
+  replace_env_value INITIAL_SETUP_TOKEN "$(random_hex 32)"
+fi
 
 # An explicit environment value is useful for one-command installs; otherwise
 # retain the version selected in .env.onprem for subsequent installer runs.

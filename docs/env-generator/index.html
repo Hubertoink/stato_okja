@@ -81,6 +81,7 @@
             </div>
             <div class="secret">
               <label>JWT-Secret <input name="jwtSecret" type="text" spellcheck="false" required /></label>
+              <label>Einrichtungscode <input name="setupToken" type="text" spellcheck="false" required minlength="32" /><small>Diesen Code beim ersten Aufruf von StatO eingeben.</small></label>
               <button id="regenerate-jwt-secret" type="button" class="secondary">Neu erzeugen</button>
             </div>
           </fieldset>

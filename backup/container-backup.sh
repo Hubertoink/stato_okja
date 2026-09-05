@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+umask 077
 
 : "${PGHOST:=postgres}"
 : "${PGPORT:=5432}"
@@ -23,9 +24,17 @@ if [ ! -d "$BACKUP_UPLOADS_DIR" ]; then
   exit 1
 fi
 
+mkdir -p "$BACKUP_OUTPUT_DIR"
+exec 9>"$BACKUP_OUTPUT_DIR/.backup.lock"
+flock -w 180 9 || { echo 'Another backup is still running.' >&2; exit 1; }
+
 timestamp="$(date -u +%Y%m%d-%H%M%S)"
 generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-backup_root="$BACKUP_OUTPUT_DIR/$BACKUP_PREFIX-$timestamp"
+backup_root="$BACKUP_OUTPUT_DIR/$BACKUP_PREFIX-$timestamp-$$"
+final_root="$backup_root"
+backup_root="$BACKUP_OUTPUT_DIR/.$BACKUP_PREFIX-$timestamp-$$.incomplete"
+incomplete_root="$backup_root"
+trap 'if [ -d "$incomplete_root" ]; then rm -rf "$incomplete_root"; fi' EXIT
 db_dump_path="$backup_root/postgres.dump"
 uploads_archive_path="$backup_root/uploads.tar.gz"
 
@@ -49,7 +58,18 @@ pg_dump --format=custom --no-owner --no-acl --file="$db_dump_path"
 echo "Archiving uploads from $BACKUP_UPLOADS_DIR..."
 tar -czf "$uploads_archive_path" -C "$BACKUP_UPLOADS_DIR" .
 
-sha256sum "$db_dump_path" "$uploads_archive_path" > "$backup_root/SHA256SUMS"
+extra_files=''
+if [ -d /mnt/config ]; then
+  tar -czf "$backup_root/config.tar.gz" -C /mnt/config .
+  extra_files="$extra_files, {\"path\": \"config.tar.gz\", \"purpose\": \"Instance configuration including secrets\"}"
+fi
+if [ -n "${STATO_BACKUP_VERSION:-}" ]; then
+  printf '%s\n' "$STATO_BACKUP_VERSION" > "$backup_root/VERSION"
+  extra_files="$extra_files, {\"path\": \"VERSION\", \"purpose\": \"Installed image version\"}"
+fi
+(cd "$backup_root" && sha256sum postgres.dump uploads.tar.gz > SHA256SUMS
+  if [ -f config.tar.gz ]; then sha256sum config.tar.gz >> SHA256SUMS; fi
+  if [ -f VERSION ]; then sha256sum VERSION >> SHA256SUMS; fi)
 
 cat > "$backup_root/manifest.json" <<EOF
 {
@@ -63,15 +83,21 @@ cat > "$backup_root/manifest.json" <<EOF
   "files": [
     { "path": "postgres.dump", "purpose": "Postgres custom-format dump" },
     { "path": "uploads.tar.gz", "purpose": "Backend uploads volume archive" },
-    { "path": "SHA256SUMS", "purpose": "Backup file checksums" }
+    { "path": "SHA256SUMS", "purpose": "Backup file checksums" }$extra_files
   ]
 }
 EOF
+
+mv "$backup_root" "$final_root"
+backup_root="$final_root"
+# A mounted second destination can be a host directory on separate storage.
+if [ -d /mnt/backup-copy ]; then cp -R "$backup_root" /mnt/backup-copy/; fi
+printf '%s\n' "$generated_at" > "$BACKUP_OUTPUT_DIR/last-success.txt"
 
 if [ "$BACKUP_RETENTION_DAYS" -gt 0 ]; then
   find "$BACKUP_OUTPUT_DIR" -mindepth 1 -maxdepth 1 -type d -name "$BACKUP_PREFIX-*" -mtime +"$BACKUP_RETENTION_DAYS" -exec rm -rf {} +
 fi
 
 echo "Backup created: $backup_root"
-echo "Database dump: $db_dump_path"
-echo "Uploads archive: $uploads_archive_path"
+echo "Database dump: $backup_root/postgres.dump"
+echo "Uploads archive: $backup_root/uploads.tar.gz"

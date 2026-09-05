@@ -14,6 +14,15 @@ export class LoginDto {
 
 export class InitialSetupDto {
   @IsString()
+  @Length(32, 256)
+  setupToken!: string;
+
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(200)
+  email?: string;
+
+  @IsString()
   @MinLength(1)
   password!: string;
 }

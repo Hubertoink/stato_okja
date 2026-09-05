@@ -88,11 +88,8 @@ resolve_first_install_http_port() {
 }
 
 create_pre_update_backup() {
-  postgres_id=$(compose ps -q postgres || true)
-  [ -n "$postgres_id" ] || return 0
-
   say 'Sicherheitsbackup vor dem Update erstellen'
-  compose up -d --no-build postgres backup
+  compose up -d --no-build --wait --wait-timeout 120 postgres backup
   compose exec -T backup /usr/local/bin/stato-container-backup
   inside_path=$(compose exec -T backup sh -lc 'ls -td /backups/stato-container-* | head -1')
   [ -n "$inside_path" ] || fail 'Das erzeugte Sicherheitsbackup konnte nicht gefunden werden.'
@@ -106,7 +103,12 @@ say 'Voraussetzungen prüfen'
 require_command docker 'Bitte Docker Engine bzw. Docker Desktop installieren.'
 require_command curl 'Bitte curl installieren.'
 require_command tar 'Bitte tar installieren.'
-require_command sha256sum 'Bitte sha256sum installieren.'
+if command -v sha256sum >/dev/null 2>&1; then
+  checksum() { sha256sum "$1"; }
+else
+  require_command shasum 'Bitte sha256sum oder shasum installieren.'
+  checksum() { shasum -a 256 "$1"; }
+fi
 require_command od 'Bitte die POSIX-Core-Utilities installieren.'
 docker compose version >/dev/null 2>&1 || fail "Das Docker-Compose-Plugin fehlt (erwartet: 'docker compose')."
 docker info >/dev/null 2>&1 || fail 'Docker ist nicht erreichbar.'
@@ -140,7 +142,7 @@ curl -fsSL "$BASE_URL/SHA256SUMS" -o "$TEMP_DIR/SHA256SUMS"
 curl -fsSL "$BASE_URL/$ASSET" -o "$TEMP_DIR/$ASSET"
 EXPECTED_HASH=$(grep -E "[[:space:]]\*?$ASSET$" "$TEMP_DIR/SHA256SUMS" | awk '{print $1}' | head -n 1)
 [ -n "$EXPECTED_HASH" ] || fail "Pruefsumme fuer '$ASSET' fehlt."
-ACTUAL_HASH=$(sha256sum "$TEMP_DIR/$ASSET" | awk '{print $1}')
+ACTUAL_HASH=$(checksum "$TEMP_DIR/$ASSET" | awk '{print $1}')
 [ "$EXPECTED_HASH" = "$ACTUAL_HASH" ] || fail 'Die Pruefsumme des Release-Bundles stimmt nicht.'
 mkdir -p "$TEMP_DIR/bundle"
 tar -xzf "$TEMP_DIR/$ASSET" -C "$TEMP_DIR/bundle"
@@ -153,6 +155,17 @@ if [ ! -f "$MARKER_FILE" ] && docker volume ls --format '{{.Name}}' | grep -Fx '
 fi
 
 mkdir -p "$INSTALL_DIR" "$CONFIG_DIR" "$(dirname "$RELEASE_DIR")"
+umask 077
+# Use the previous runtime and credentials until its backup has completed.
+if [ -f "$MARKER_FILE" ]; then
+  TLS_ENABLED=false
+  [ "$(get_env_value STATO_TLS_MODE)" != internal ] || TLS_ENABLED=true
+  create_pre_update_backup
+  SNAPSHOT_DIR="$BACKUP_DIR/runtime-$(date -u +%Y%m%d-%H%M%S)"
+  mkdir -p "$SNAPSHOT_DIR"
+  cp -R "$CONFIG_DIR" "$SNAPSHOT_DIR/config"
+  cp "$RUNTIME_COMPOSE" "$MARKER_FILE" "$INSTALL_DIR/VERSION" "$SNAPSHOT_DIR/"
+fi
 if [ ! -d "$RELEASE_DIR" ]; then cp -R "$TEMP_DIR/bundle" "$RELEASE_DIR"; fi
 if [ ! -f "$ENV_FILE" ]; then
   if [ -f "$INSTALL_DIR/.env.onprem" ]; then
@@ -172,6 +185,9 @@ ensure_env_value STATO_PUBLIC_HOST ''
 ensure_env_value HTTPS_BIND_ADDRESS 0.0.0.0
 ensure_env_value HTTPS_PORT 443
 ensure_env_value INITIAL_SETUP_ENABLED true
+ensure_env_value INITIAL_SETUP_TOKEN GENERATED_BY_INSTALLER
+setup_token=$(get_env_value INITIAL_SETUP_TOKEN)
+if [ "$setup_token" = GENERATED_BY_INSTALLER ]; then set_env_value INITIAL_SETUP_TOKEN "$(random_hex 32)"; fi
 ensure_env_value STATO_FRONTEND_IMAGE_TAG ''
 [ "$(get_env_value POSTGRES_PASSWORD)" != GENERATED_BY_INSTALLER ] || set_env_value POSTGRES_PASSWORD "StatoDb_$(random_hex 24)_A9!"
 [ "$(get_env_value JWT_SECRET)" != GENERATED_BY_INSTALLER ] || set_env_value JWT_SECRET "$(random_hex 48)"
@@ -204,6 +220,9 @@ case "$TLS_MODE" in
 esac
 
 cp "$TEMP_DIR/bundle/compose.yaml" "$RUNTIME_COMPOSE"
+for file in onprem-runtime.sh onprem-runtime.ps1 START.md OPERATIONS.md; do
+  if [ -f "$TEMP_DIR/bundle/$file" ]; then cp "$TEMP_DIR/bundle/$file" "$INSTALL_DIR/$file"; fi
+done
 say 'Compose-Konfiguration prüfen'
 compose config --quiet
 say 'Release-Images laden'
@@ -211,7 +230,6 @@ compose pull postgres backend frontend backup
 if [ "$TLS_ENABLED" = true ]; then compose pull caddy; fi
 say 'HTTP-Port pruefen'
 resolve_first_install_http_port
-if [ -f "$MARKER_FILE" ]; then create_pre_update_backup; fi
 
 say 'PostgreSQL starten und Zugang synchronisieren'
 compose up -d --no-build --wait --wait-timeout 120 postgres
@@ -229,8 +247,10 @@ if [ "$SCHEMA_STATE" = missing ]; then
 fi
 
 say 'StatO starten'
-compose up -d --no-build
+compose up -d --no-build --wait --wait-timeout 180
+compose exec -T frontend wget -q -O /dev/null http://127.0.0.1:8080/api/health
 compose ps
 printf '%s\n' "$RELEASE_TAG" > "$MARKER_FILE"
 printf '%s\n' "$VERSION" > "$INSTALL_DIR/VERSION"
 printf '\nInstallation: %s\nKonfiguration: %s\nRelease:      %s\n' "$INSTALL_DIR" "$ENV_FILE" "$RELEASE_TAG"
+printf 'Adresse:      %s\nEinrichtungscode: INITIAL_SETUP_TOKEN in %s\n' "$(get_env_value APP_ORIGIN)" "$ENV_FILE"

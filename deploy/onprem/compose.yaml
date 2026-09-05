@@ -88,6 +88,7 @@ services:
       SUPERADMIN_EMAIL_FORCE: ${SUPERADMIN_EMAIL_FORCE:-false}
       SUPERADMIN_PASSWORD_FORCE: ${SUPERADMIN_PASSWORD_FORCE:-false}
       INITIAL_SETUP_ENABLED: ${INITIAL_SETUP_ENABLED:-false}
+      INITIAL_SETUP_TOKEN: ${INITIAL_SETUP_TOKEN:-}
       ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
       # Global ProcessO switch. Individual organisations still need to be enabled by a superadmin.
       ENABLE_PROCESSES: ${ENABLE_PROCESSES:-true}
@@ -193,12 +194,16 @@ services:
       BACKUP_OUTPUT_DIR: /backups
       BACKUP_UPLOADS_DIR: /mnt/uploads
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      STATO_BACKUP_VERSION: ${STATO_IMAGE_TAG:-local}
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - backend-uploads:/mnt/uploads:ro
       - backup-data:/backups
+      - ./config:/mnt/config:ro
+      - ${BACKUP_COPY_DIR:-./backup-export}:/mnt/backup-copy
     networks: [backend-db]
 
   # Optional: lokale SMTP-Testbox (Mailpit)

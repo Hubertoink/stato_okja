@@ -4,6 +4,23 @@ Ein StatO-Release ist ein unveraenderlicher Git-Tag `v<Version>` auf `main`.
 Die Version in `VERSION`, im Root-Package sowie in Backend und Frontend muss
 identisch sein; `npm run version:check` prueft dies.
 
+Nach lokalen Versionsänderungen `node scripts/sync-distribution-version.mjs`
+ausführen. Der Release-Workflow synchronisiert den Generator und die
+NAS-Vorlagen ebenfalls aus `VERSION`. Das Frontend liefert `/start/` und
+`/env-generator/` mit aus; eine separate WordPress-Kopie muss gesondert
+aktualisiert werden.
+
+Die Veröffentlichung wartet zusätzlich auf den Docker-Integrationstest für
+Ersteinrichtung, Containerwechsel und Wiederherstellung. Die Installer-Tests
+prüfen erfolgreiche Updates sowie Backup- und Healthcheck-Fehler.
+
+Kompatibilität: Neue noch nicht eingerichtete Instanzen benötigen
+`INITIAL_SETUP_TOKEN` (mindestens 32 zufällige Zeichen). Die Installer erzeugen
+ihn selbst. Bei manuellen Deployments und eigenen Compose-Dateien muss er
+gesetzt und an das Backend weitergereicht werden. Bestehende Adminzugänge
+bleiben erhalten. Neue On-Prem-Backups verwenden relative Prüfsummenpfade und
+werden mit den mitgelieferten `onprem-runtime`-Helfern wiederhergestellt.
+
 ## Release erstellen
 
 1. Release-Stand nach `main` mergen und den erfolgreichen Workflow

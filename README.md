@@ -46,6 +46,10 @@ StatO speichert keine personenbezogenen Daten von teilnehmenden jungen Menschen.
 
 ## Schnellstart
 
+**[StatO starten: betreuter Zugang, eigener Server oder NAS](docs/START.md)**
+
+Für die IT: [Betriebsblatt mit Backup, Wiederherstellung und Updates](docs/OPERATIONS.md).
+
 ### On-Prem mit Docker
 
 Voraussetzung sind Docker und das Docker-Compose-Plugin. Der Installer lädt ein

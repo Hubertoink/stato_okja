@@ -1696,6 +1696,18 @@ export default function AdminOrgSetup() {
 
   return (
     <div className="mx-auto max-w-6xl px-3 sm:px-4">
+      {new URLSearchParams(window.location.search).get('welcome') === '1' && (
+        <section className="mb-6 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-5" aria-label="Erste Schritte">
+          <h1 className="text-xl font-semibold">Willkommen bei StatO</h1>
+          <ol className="mt-3 list-decimal space-y-2 pl-5">
+            <li>{orgs.length ? 'Organisation angelegt. Weitere Einrichtungen kannst du darunter ergänzen.' : 'Lege über „Organisation erstellen“ deinen Träger oder deine Einrichtung an.'}</li>
+            <li>Öffne die Organisation und füge dein erstes Teammitglied hinzu. Ohne Mailversand vergibst du ein temporäres Passwort.</li>
+            <li>Prüfe die Rechtstexte im Benutzermenü und lasse die betreuende IT den Backup-Status kontrollieren.</li>
+          </ol>
+          <p className="mt-3 text-sm">Verbindung: {window.location.protocol === 'https:' ? 'HTTPS aktiv' : 'HTTP – für den produktiven Zugriff HTTPS einrichten lassen'}.</p>
+          <a className="mt-3 inline-block underline" href="/dashboard">Zum Dashboard</a>
+        </section>
+      )}
       {/* Header */}
       <DemoHoverHint
         title={autoT('ui_4048d8ed39f2')}

@@ -28,6 +28,7 @@ function setInitialSecrets() {
   const secrets = createSecrets();
   form.elements.databasePassword.value = secrets.databasePassword;
   form.elements.jwtSecret.value = secrets.jwtSecret;
+  form.elements.setupToken.value = secrets.setupToken;
 }
 
 function showErrors(validationErrors) {

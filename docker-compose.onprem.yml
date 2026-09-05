@@ -89,6 +89,7 @@ services:
       SUPERADMIN_EMAIL_FORCE: ${SUPERADMIN_EMAIL_FORCE:-false}
       SUPERADMIN_PASSWORD_FORCE: ${SUPERADMIN_PASSWORD_FORCE:-false}
       INITIAL_SETUP_ENABLED: ${INITIAL_SETUP_ENABLED:-false}
+      INITIAL_SETUP_TOKEN: ${INITIAL_SETUP_TOKEN:-}
       ENABLE_ORG_MOVE: ${ENABLE_ORG_MOVE:-false}
       # Global ProcessO switch. Individual organisations still need to be enabled by a superadmin.
       ENABLE_PROCESSES: ${ENABLE_PROCESSES:-true}

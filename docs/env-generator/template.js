@@ -23,9 +23,10 @@ export const DEFAULT_VALUES = {
   enableTwoFactor: false,
   databasePassword: '',
   jwtSecret: '',
+  setupToken: '',
 };
 
-export const ZIMAOS_DEFAULT_VERSION = '1.6.0';
+export const ZIMAOS_DEFAULT_VERSION = '1.9.1';
 
 const BASE_VARIABLES = [
   ['POSTGRES_DB', 'stato_prod'],
@@ -41,7 +42,7 @@ const BASE_VARIABLES = [
   ['STATO_PUBLIC_HOST', (config) => (config.installationMode === 'internal-tls' ? config.publicHost : '')],
   ['HTTPS_BIND_ADDRESS', '0.0.0.0'],
   ['HTTPS_PORT', (config) => config.httpsPort],
-  ['AUTH_REFRESH_COOKIE_SECURE', (config) => String(config.installationMode === 'internal-tls')],
+  ['AUTH_REFRESH_COOKIE_SECURE', (config) => String(config.appOrigin.startsWith('https://'))],
   ['AUTH_REFRESH_COOKIE_SAMESITE', 'lax'],
   ['JWT_SECRET', (config) => config.jwtSecret],
   ['JWT_ACCESS_EXPIRATION', '15m'],
@@ -57,6 +58,7 @@ const BASE_VARIABLES = [
   ['SUPERADMIN_EMAIL_FORCE', 'false'],
   ['SUPERADMIN_PASSWORD_FORCE', 'false'],
   ['INITIAL_SETUP_ENABLED', 'true'],
+  ['INITIAL_SETUP_TOKEN', (config) => config.setupToken],
   ['DB_SYNCHRONIZE', 'false'],
   ['DB_MIGRATIONS_RUN', 'true'],
   ['DB_BOOTSTRAP_ON_EMPTY', 'true'],
@@ -65,7 +67,7 @@ const BASE_VARIABLES = [
   ['DB_SSL', 'false'],
   ['DB_SSL_REJECT_UNAUTHORIZED', 'false'],
   ['PASSWORD_RESET_MODE', (config) => (config.enableEmail ? 'email' : 'admin_temp_password')],
-  ['USER_PROVISIONING_MODE', (config) => config.provisioningMode],
+  ['USER_PROVISIONING_MODE', (config) => config.enableEmail ? config.provisioningMode : 'local'],
   ['STATO_IMAGE_TAG', (config) => config.imageTag],
   ['STATO_FRONTEND_IMAGE_TAG', (config) => (config.imageTag ? `onprem-${config.imageTag}` : '')],
   ['PUBLIC_APP_NAME', (config) => config.appName],
@@ -84,6 +86,8 @@ const BASE_VARIABLES = [
   ['ENABLE_PROCESSES', 'true'],
   ['TZ', (config) => config.timezone],
   ['BACKUP_RETENTION_DAYS', (config) => config.backupRetentionDays],
+  ['BACKUP_INTERVAL_SECONDS', '86400'],
+  ['BACKUP_COPY_DIR', './backup-export'],
   ['APP_ENV', 'production'],
   ['NODE_ENV', 'production'],
 ];
@@ -106,6 +110,7 @@ export function createSecrets(cryptoApi = globalThis.crypto) {
   return {
     databasePassword: `StatoDb_${createRandomHex(24, cryptoApi)}_A9!`,
     jwtSecret: createRandomHex(48, cryptoApi),
+    setupToken: createRandomHex(32, cryptoApi),
   };
 }
 
@@ -159,6 +164,7 @@ export function validateConfig(config) {
     ['Superadmin-E-Mail', config.superadminEmail],
     ['Datenbankpasswort', config.databasePassword],
     ['JWT-Secret', config.jwtSecret],
+    ['Einrichtungscode', config.setupToken],
   ];
 
   if (config.outputFormat !== 'zimaos') {
@@ -175,6 +181,7 @@ export function validateConfig(config) {
   if (!validPort(config.httpPort)) errors.push('Der HTTP-Port muss zwischen 1 und 65535 liegen.');
   if (!validPort(config.httpsPort)) errors.push('Der HTTPS-Port muss zwischen 1 und 65535 liegen.');
   if (config.jwtSecret.length < 64) errors.push('Das JWT-Secret muss mindestens 64 Zeichen lang sein.');
+  if (!config.setupToken || config.setupToken.length < 32) errors.push('Der Einrichtungscode muss mindestens 32 Zeichen lang sein.');
 
   if (config.outputFormat === 'zimaos' && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(zimaVersion(config))) {
     errors.push('Die Image-Version muss eine gültige Versionsnummer wie 1.6.0 sein.');
@@ -319,6 +326,7 @@ export function renderZimaDeployFile(config) {
     '      USER_PROVISIONING_MODE: local',
     `      SUPERADMIN_EMAIL: ${yamlString(config.superadminEmail)}`,
     '      INITIAL_SETUP_ENABLED: "true"',
+    `      INITIAL_SETUP_TOKEN: ${yamlString(config.setupToken)}`,
     '    depends_on:',
     '      postgres:',
     '        condition: service_healthy',
@@ -356,6 +364,7 @@ export function renderZimaDeployFile(config) {
     '      BACKUP_OUTPUT_DIR: /backups',
     '      BACKUP_UPLOADS_DIR: /mnt/uploads',
     '      BACKUP_RETENTION_DAYS: "14"',
+    '      BACKUP_INTERVAL_SECONDS: "86400"',
     '    depends_on:',
     '      postgres:',
     '        condition: service_healthy',

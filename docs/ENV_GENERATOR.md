@@ -32,6 +32,14 @@ Der Test stellt sicher, dass jede nicht auskommentierte Variable aus [`deploy/on
 
 ## Bereitstellung
 
+Der Release-Workflow synchronisiert die Standardversion automatisch aus `VERSION`
+und liefert den Generator im Release-Bundle mit. Auch jedes neue Frontend-Image
+enthält ihn unter `/env-generator/`; dadurch wird er mit dem Frontend aktualisiert.
+Eine separat betriebene WordPress-Kopie muss weiterhin durch Austausch des Ordners
+aktualisiert werden. Die Veröffentlichung eines Releases ändert diese Kopie nicht.
+
+Für einen lokalen Versionswechsel: `node scripts/sync-distribution-version.mjs`.
+
 Der Ordner `docs/env-generator/` muss als statischer Inhalt unter folgender URL bereitgestellt werden:
 
 ```text
@@ -64,3 +72,7 @@ Die Mindesthöhe kann nach einem visuellen Test angepasst werden. Da Quelle und 
 3. Secrets nur bei Bedarf mit **Neu erzeugen** ersetzen.
 4. Datei herunterladen und als `config/stato.env` im StatO-Installationsverzeichnis ablegen.
 5. Die On-Prem-Installation wie in [DOCKER_ONPREM_SETUP.md](./DOCKER_ONPREM_SETUP.md) fortsetzen.
+
+Den separat erzeugten Einrichtungscode beim ersten Aufruf eingeben. Vorhandene
+DB-/JWT-Secrets bei Updates beibehalten; neue Dateien nicht blind über eine
+bestehende Installationskonfiguration kopieren.

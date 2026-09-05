@@ -273,7 +273,10 @@ export const resources = {
         twoFactorLinkRequiresLogin:
           'Bitte zuerst mit E-Mail und Passwort anmelden. Danach kann der Code aus dem E-Mail-Link automatisch übernommen werden.',
         initialSetupInfo:
-          'Lege jetzt das Passwort für den Administratorzugang fest. Es wird nicht in der Server-Konfiguration gespeichert.',
+          'Lege deinen Administrationszugang an. Anschließend richtest du deine Organisation und das Team ein.',
+        setupCode: 'Einrichtungscode',
+        setupCodeHelp: 'Den Code erhältst du von der Person, die StatO installiert hat.',
+        setupEmail: 'Deine Admin-E-Mail-Adresse',
         adminPassword: 'Admin-Passwort',
         minimumTwelve: 'Mindestens 12 Zeichen',
         repeatPassword: 'Passwort wiederholen',
@@ -1320,7 +1323,10 @@ export const resources = {
         twoFactorLinkRequiresLogin:
           'Please sign in with your email address and password first. The code from the email link can then be entered automatically.',
         initialSetupInfo:
-          'Set the password for the administrator account now. It is not stored in the server configuration.',
+          'Create your administrator account. Next, set up your organization and team.',
+        setupCode: 'Setup code',
+        setupCodeHelp: 'Get this code from the person who installed StatO.',
+        setupEmail: 'Your administrator email address',
         adminPassword: 'Administrator password',
         minimumTwelve: 'At least 12 characters',
         repeatPassword: 'Repeat password',

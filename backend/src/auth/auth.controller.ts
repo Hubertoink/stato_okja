@@ -222,7 +222,7 @@ export class AuthController {
     @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const session = await this.auth.completeInitialSetup(body.password, getSessionMetadata(req));
+    const session = await this.auth.completeInitialSetup(body.password, getSessionMetadata(req), body.setupToken, body.email);
     return this.finalizeAuthSession(res, session);
   }
 

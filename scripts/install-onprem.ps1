@@ -246,6 +246,10 @@ Ensure-EnvValue $envFile 'HTTPS_BIND_ADDRESS' '0.0.0.0'
 Ensure-EnvValue $envFile 'HTTPS_PORT' '443'
 Ensure-EnvValue $envFile 'STATO_IMAGE_TAG' ''
 Ensure-EnvValue $envFile 'INITIAL_SETUP_ENABLED' 'true'
+Ensure-EnvValue $envFile 'INITIAL_SETUP_TOKEN' 'GENERATED_BY_INSTALLER'
+if ((Get-EnvValue $envFile 'INITIAL_SETUP_TOKEN') -eq 'GENERATED_BY_INSTALLER') {
+    Set-EnvValue $envFile 'INITIAL_SETUP_TOKEN' (New-RandomHex 32)
+}
 
 # An explicit environment value is useful for one-command installs; otherwise
 # retain the version selected in .env.onprem for subsequent installer runs.

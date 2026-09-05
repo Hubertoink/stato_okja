@@ -1,10 +1,14 @@
 # StatO On-Prem Docker Setup
 
-Diese Anleitung beschreibt ein vollständiges Docker-Setup für einen eigenen Server oder On-Prem-Rechner mit drei Containern:
+Für den Einstieg: [StatO starten](START.md). Für Updates und Wiederherstellung:
+[Betriebsblatt](OPERATIONS.md). Die folgenden Details ergänzen diese Kurzleitungen.
+
+Diese Anleitung beschreibt ein Docker-Setup für einen eigenen Server mit vier regulären Diensten:
 
 - PostgreSQL
 - Backend
 - Frontend
+- Backup
 
 Ziel ist ein Betrieb ohne Mittwald, ohne externe StatO-API und ohne lokale Node-Entwicklungsumgebung für den eigentlichen App-Betrieb.
 
@@ -44,7 +48,7 @@ Auf dem Server sollten vorhanden sein:
 
 - Docker
 - Docker Compose Plugin, also `docker compose`
-- Git oder eine andere Möglichkeit, das Repo auf den Server zu bringen
+- Internetzugriff zum Herunterladen des Release-Bundles und der Container-Images
 - genügend freier Speicher für DB, Uploads und Images
 
 Empfohlen für Produktion:
@@ -108,8 +112,9 @@ passt die Standardadresse auf `http://localhost:<port>` an. Bestehende
 Installationen und bewusst konfigurierte Ports werden nie automatisch
 geändert.
 
-Beim ersten Aufruf von StatO erscheint stattdessen die Ersteinrichtung. Dort
-wird das Passwort für `admin@stato.local` festgelegt; es wird ausschließlich
+Beim ersten Aufruf erscheint die Ersteinrichtung. Den Einrichtungscode
+`INITIAL_SETUP_TOKEN` aus `config/stato.env` eingeben und die eigene Admin-Adresse
+sowie das Passwort festlegen. Das Passwort wird ausschließlich
 als Passwort-Hash in der Datenbank gespeichert und nicht in `config/stato.env`
 abgelegt. Fuer den produktiven Betrieb danach mindestens Domain, E-Mail,
 Branding und HTTPS-Einstellungen pruefen.

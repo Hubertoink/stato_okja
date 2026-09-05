@@ -176,6 +176,13 @@ if ($configuredAdminEmail -notmatch '^[^@\s]+@[^@\s]+\.[^@\s]+$') {
 Set-EnvValue $envFile 'SUPERADMIN_EMAIL' $configuredAdminEmail
 
 Write-Step 'Konfiguration pruefen'
+if (-not (Select-String -LiteralPath $envFile -Pattern '^INITIAL_SETUP_TOKEN=' -Quiet)) {
+    Set-EnvValue $envFile 'INITIAL_SETUP_TOKEN' (New-RandomHex 32)
+}
+if ((Get-EnvValue $envFile 'INITIAL_SETUP_TOKEN') -eq 'GENERATED_BY_INSTALLER') {
+    Set-EnvValue $envFile 'INITIAL_SETUP_TOKEN' (New-RandomHex 32)
+}
+Write-Host "Einrichtungscode: INITIAL_SETUP_TOKEN in $envFile"
 $requiredKeys = @('STATO_IMAGE_TAG', 'STATO_FRONTEND_IMAGE_TAG', 'APP_ORIGIN', 'CORS_ORIGINS', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'JWT_SECRET', 'SUPERADMIN_EMAIL')
 foreach ($key in $requiredKeys) {
     if (-not (Get-EnvValue $envFile $key)) {

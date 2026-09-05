@@ -158,11 +158,8 @@ function Invoke-Compose([string[]]$Arguments) {
 }
 
 function New-PreUpdateBackup([string]$BackupDirectory) {
-    $postgresId = (& docker @script:composeArguments ps -q postgres).Trim()
-    if ($LASTEXITCODE -ne 0 -or -not $postgresId) { return }
-
     Write-Step 'Sicherheitsbackup vor dem Update erstellen'
-    Invoke-Compose @('up', '-d', '--no-build', 'postgres', 'backup')
+    Invoke-Compose @('up', '-d', '--no-build', '--wait', '--wait-timeout', '120', 'postgres', 'backup')
     Invoke-Compose @('exec', '-T', 'backup', '/usr/local/bin/stato-container-backup')
     $insidePath = (& docker @script:composeArguments exec -T backup sh -lc 'ls -td /backups/stato-container-* | head -1').Trim()
     if ($LASTEXITCODE -ne 0 -or -not $insidePath) { throw 'Das erzeugte Sicherheitsbackup konnte nicht gefunden werden.' }
@@ -218,6 +215,16 @@ try {
     }
 
     New-Item -ItemType Directory -Force -Path $InstallDirectory, $configDirectory, (Split-Path -Parent $releaseDirectory) | Out-Null
+    if ($knownRuntime) {
+        $script:composeArguments = @('compose')
+        if ((Get-EnvValue $envFile 'STATO_TLS_MODE') -eq 'internal') { $script:composeArguments += @('--profile', 'internal-tls') }
+        $script:composeArguments += @('-f', $runtimeComposeFile, '--env-file', $envFile)
+        New-PreUpdateBackup $backupDirectory
+        $snapshotDirectory = Join-Path $backupDirectory ("runtime-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        New-Item -ItemType Directory -Path $snapshotDirectory | Out-Null
+        Copy-Item -Recurse -LiteralPath $configDirectory -Destination (Join-Path $snapshotDirectory 'config')
+        Copy-Item -LiteralPath $runtimeComposeFile, $markerFile, (Join-Path $InstallDirectory 'VERSION') -Destination $snapshotDirectory
+    }
     if (-not (Test-Path $releaseDirectory)) { Copy-Item -Recurse -Force $bundleDirectory $releaseDirectory }
 
     if (-not (Test-Path $envFile)) {
@@ -237,8 +244,9 @@ try {
     foreach ($default in @(
         @('HTTP_BIND_ADDRESS', '0.0.0.0'), @('STATO_TLS_MODE', 'off'), @('STATO_PUBLIC_HOST', ''),
         @('HTTPS_BIND_ADDRESS', '0.0.0.0'), @('HTTPS_PORT', '443'), @('INITIAL_SETUP_ENABLED', 'true'),
-        @('STATO_FRONTEND_IMAGE_TAG', '')
+        @('STATO_FRONTEND_IMAGE_TAG', ''), @('INITIAL_SETUP_TOKEN', 'GENERATED_BY_INSTALLER')
     )) { Ensure-EnvValue $envFile $default[0] $default[1] }
+    if ((Get-EnvValue $envFile 'INITIAL_SETUP_TOKEN') -eq 'GENERATED_BY_INSTALLER') { Set-EnvValue $envFile 'INITIAL_SETUP_TOKEN' (New-RandomHex 32) }
     if ((Get-EnvValue $envFile 'POSTGRES_PASSWORD') -eq 'GENERATED_BY_INSTALLER') { Set-EnvValue $envFile 'POSTGRES_PASSWORD' "StatoDb_$(New-RandomHex 24)_A9!" }
     if ((Get-EnvValue $envFile 'JWT_SECRET') -eq 'GENERATED_BY_INSTALLER') { Set-EnvValue $envFile 'JWT_SECRET' (New-RandomHex 48) }
     Set-EnvValue $envFile 'STATO_IMAGE_TAG' $version
@@ -250,6 +258,10 @@ try {
 
     $tlsEnabled = Test-InternalTls $envFile
     Copy-Item -Force (Join-Path $bundleDirectory 'compose.yaml') $runtimeComposeFile
+    foreach ($file in @('onprem-runtime.sh', 'onprem-runtime.ps1', 'START.md', 'OPERATIONS.md')) {
+        $source = Join-Path $bundleDirectory $file
+        if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $InstallDirectory $file) -Force }
+    }
 
     $script:composeArguments = @('compose')
     if ($tlsEnabled) { $script:composeArguments += @('--profile', 'internal-tls') }
@@ -262,7 +274,6 @@ try {
     if ($tlsEnabled) { Invoke-Compose @('pull', 'caddy') }
     Write-Step 'HTTP-Port prüfen'
     Resolve-FirstInstallHttpPort $envFile $knownRuntime
-    if ($knownRuntime) { New-PreUpdateBackup $backupDirectory }
 
     Write-Step 'PostgreSQL starten und Zugang synchronisieren'
     Invoke-Compose @('up', '-d', '--no-build', '--wait', '--wait-timeout', '120', 'postgres')
@@ -290,13 +301,21 @@ try {
     }
 
     Write-Step 'StatO starten'
-    Invoke-Compose @('up', '-d', '--no-build')
+    Invoke-Compose @('up', '-d', '--no-build', '--wait', '--wait-timeout', '180')
+    Invoke-Compose @('exec', '-T', 'frontend', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/api/health')
     Invoke-Compose @('ps')
     [System.IO.File]::WriteAllText($markerFile, "$resolvedTag`n", (New-Object System.Text.UTF8Encoding($false)))
     [System.IO.File]::WriteAllText((Join-Path $InstallDirectory 'VERSION'), "$version`n", (New-Object System.Text.UTF8Encoding($false)))
     Write-Host "`nInstallation: $InstallDirectory"
     Write-Host "Konfiguration: $envFile"
     Write-Host "Release:      $resolvedTag"
+    Write-Host "Adresse:      $(Get-EnvValue $envFile 'APP_ORIGIN')"
+    Write-Host "Einrichtungscode: INITIAL_SETUP_TOKEN in $envFile"
 } finally {
-    if (Test-Path $temporaryDirectory) { Remove-Item -Recurse -Force $temporaryDirectory }
+    $resolvedTemporaryDirectory = [System.IO.Path]::GetFullPath($temporaryDirectory)
+    $temporaryPrefix = Join-Path ([System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())) 'stato-onprem-'
+    if (-not $resolvedTemporaryDirectory.StartsWith($temporaryPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Temporäres Verzeichnis liegt außerhalb des Installer-Bereichs.'
+    }
+    if (Test-Path -LiteralPath $resolvedTemporaryDirectory) { Remove-Item -LiteralPath $resolvedTemporaryDirectory -Recurse -Force }
 }

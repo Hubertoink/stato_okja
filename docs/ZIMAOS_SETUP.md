@@ -30,7 +30,7 @@ veröffentlichte StatO-Version wie `1.6.0`, nie einen beweglichen Tag wie
    direkt in ZimaOS; zusätzliche Variablenfelder sind nicht nötig.
 
    Alternativ kannst du [compose.yaml](../deploy/zimaos/compose.yaml) zusammen
-   mit den sieben Werten aus
+   mit den acht Werten aus
    [stato.env.example](../deploy/zimaos/stato.env.example) verwenden:
 
    | Variable | Beispiel | Zweck |
@@ -42,6 +42,7 @@ veröffentlichte StatO-Version wie `1.6.0`, nie einen beweglichen Tag wie
    | `POSTGRES_PASSWORD` | langes, einzigartiges Passwort | Datenbankzugang |
    | `JWT_SECRET` | mindestens 48 zufällige Zeichen | Signatur der Login-Sitzungen |
    | `SUPERADMIN_EMAIL` | `admin@organisation.de` | E-Mail für die einmalige Ersteinrichtung |
+   | `INITIAL_SETUP_TOKEN` | mindestens 32 zufällige Zeichen | separater Einrichtungscode für den ersten Aufruf |
 
    `STATO_URL` muss den gleichen Host, Port und das gleiche Protokoll enthalten
    wie die Adresse im Browser. Die Compose-Vorlage verwendet diesen einen Wert
@@ -51,7 +52,8 @@ veröffentlichte StatO-Version wie `1.6.0`, nie einen beweglichen Tag wie
    Docker-Volumes für PostgreSQL, Uploads und Backups an.
 6. Warte, bis die Dienste den Status „running/healthy“ zeigen, und öffne
    `http://<ZIMAOS-IP>:<WEBUI_PORT>`.
-7. Beim ersten Aufruf legst du das Passwort für `SUPERADMIN_EMAIL` fest. Es
+7. Beim ersten Aufruf gibst du den `INITIAL_SETUP_TOKEN` aus der generierten
+   Datei ein und legst deine Admin-E-Mail-Adresse sowie das Passwort fest. Es
    wird nur als Hash in PostgreSQL gespeichert.
 
 Das Frontend ist der einzige veröffentlichte Dienst. Alle Container verwenden
@@ -123,9 +125,11 @@ Quickstart-Formular.
 
 ## Backups
 
-Der Stack enthält einen ruhenden `backup`-Dienst sowie drei persistente
+Der Stack enthält einen automatisch sichernden `backup`-Dienst sowie drei persistente
 Volumes: Datenbank, Uploads und Backup-Ausgaben. Vor Updates sollte ein Backup
-ausgeführt und aus ZimaOS heraus gesichert werden. Der Befehl lautet über SSH:
+ausgeführt und aus ZimaOS heraus gesichert werden. Neue Releases sichern beim
+Start und alle 24 Stunden; die `deploy.yaml` mit den Secrets separat sichern.
+Der Befehl für eine zusätzliche Sicherung lautet über SSH:
 
 ```bash
 docker compose -f compose.yaml exec backup /usr/local/bin/stato-container-backup

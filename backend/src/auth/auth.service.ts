@@ -19,6 +19,7 @@ import { isStrictSecurityMode } from '../config/security.config';
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from './password-policy';
 import { LegalContentService } from '../legal/legal-content.service';
 import { getTwoFactorCodeTtlSeconds, isTwoFactorAuthenticationEnabled } from './two-factor.config';
+import { assertInitialSetupToken } from './initial-setup-token';
 
 export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
 export type AdminResetActionMode = 'email' | 'temporary_password';
@@ -498,32 +499,38 @@ export class AuthService {
     return !(await this.users.findOne({ where: { role: 'superadmin' } }));
   }
 
-  async completeInitialSetup(password: string, metadata?: RefreshSessionMetadata) {
+  async completeInitialSetup(password: string, metadata?: RefreshSessionMetadata, setupToken?: string, adminEmail?: string) {
     if (!this.isInitialSetupEnabled()) {
       throw new BadRequestException('Die Ersteinrichtung ist nicht aktiviert.');
     }
+    assertInitialSetupToken(setupToken);
     if (!isStrongPassword(password)) {
       throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
     }
 
-    const existing = await this.users.findOne({ where: { role: 'superadmin' } });
-    if (existing) {
-      throw new ConflictException('Die Ersteinrichtung wurde bereits abgeschlossen.');
-    }
-
-    const email = String(process.env.SUPERADMIN_EMAIL || '').trim().toLowerCase();
+    const email = String(adminEmail || process.env.SUPERADMIN_EMAIL || '').trim().toLowerCase();
     if (!email || PLACEHOLDER_SUPERADMIN_EMAILS.has(email)) {
       throw new BadRequestException('SUPERADMIN_EMAIL muss für die Ersteinrichtung gesetzt sein.');
     }
 
-    const user = this.users.create({
-      email,
-      name: 'Super Admin',
-      role: 'superadmin',
-      passwordHash: await bcrypt.hash(password, 10),
-      mustChangePassword: false,
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await this.users.manager.transaction(async (manager) => {
+      // Serialize initial setup even when two backend processes receive the code.
+      if (manager.connection.options.type === 'postgres') {
+        await manager.query('SELECT pg_advisory_xact_lock(1937006964, 1)');
+      }
+      const users = manager.getRepository(User);
+      if (await users.findOne({ where: { role: 'superadmin' } })) {
+        throw new ConflictException('Die Ersteinrichtung wurde bereits abgeschlossen.');
+      }
+      return users.save(users.create({
+        email,
+        name: 'Super Admin',
+        role: 'superadmin',
+        passwordHash,
+        mustChangePassword: false,
+      }));
     });
-    await this.users.save(user);
     return this.createAuthenticatedSession(user, { sessionMetadata: metadata });
   }
 

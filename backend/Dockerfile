@@ -38,8 +38,7 @@ RUN npm ci --workspace backend --include-workspace-root=false --omit=dev --no-au
 	&& rm -rf /app/backend/node_modules/brace-expansion \
 	&& cp -a /tmp/runtime-patches/node_modules/brace-expansion /app/backend/node_modules/brace-expansion \
 	&& rm -rf /tmp/runtime-patches \
-	&& npm install --prefix /app/node_modules/@nestjs/swagger js-yaml@5.2.2 --no-save --package-lock=false --ignore-scripts --no-audit --no-fund \
-	&& node -e "const path = require('path'); const typeorm = require.resolve('typeorm'); require.resolve('tinyglobby', { paths: [path.dirname(typeorm)] }); for (const dependency of ['@nestjs/swagger', 'body-parser', 'brace-expansion']) require.resolve(dependency); if (require('brace-expansion/package.json').version !== '2.1.4' || require('/app/node_modules/@nestjs/swagger/node_modules/js-yaml/package.json').version !== '5.2.2') process.exit(1)" \
+	&& node -e "const path = require('path'); const typeorm = require.resolve('typeorm'); require.resolve('tinyglobby', { paths: [path.dirname(typeorm)] }); for (const dependency of ['@nestjs/swagger', 'body-parser', 'brace-expansion']) require.resolve(dependency); const [yamlMajor, yamlMinor, yamlPatch] = require(require.resolve('js-yaml/package.json', { paths: [path.dirname(require.resolve('@nestjs/swagger'))] })).version.split('.').map(Number); if (yamlMajor !== 5 || !(yamlMinor > 2 || (yamlMinor === 2 && yamlPatch >= 2))) throw new Error('Swagger requires patched js-yaml >=5.2.2 <6'); if (require('brace-expansion/package.json').version !== '2.1.4') process.exit(1)" \
 	&& npm cache clean --force \
 	&& rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 

@@ -52,3 +52,21 @@ were enabled in GitHub. Newly visible npm alerts also cover build tooling and
 other application dependencies. Review the generated Dependabot PRs separately;
 a clean final container scan does not establish that the complete npm dependency
 tree is free of vulnerabilities. Frontend lint is now part of the quality gate.
+
+## Dependency follow-up
+
+The follow-up updates React Router to 7.18.2 and Vite to the security-supported
+6.4 line, plus the compatible minor/patch dependency group. The lockfile includes
+fast-uri 3.1.7, postcss-selector-parser 6.1.4, fflate 0.8.3 and nanoid 3.3.18.
+js-yaml 3/4 stay on their respective patched major versions; Swagger 11.4.7
+brings patched js-yaml 5.3.0, replacing the Docker-only npm installation.
+The Trivy setup action is pinned to 0.3.1, including its script-injection fix.
+
+Router regressions cover public survey links, protected deep links, navigation,
+restricted admin routes and password/terms gates. ELK compatibility tests check
+branch layouts in both application directions for non-overlapping nodes.
+
+Node 26 Docker updates are deferred while the project requires Node 24 LTS.
+TypeScript 7 is deferred because ts-jest still needs the TypeScript 5 compiler API.
+Dependabot ignores those major updates until a deliberate toolchain migration.
+The optional Lucide and concurrently major updates remain separate reviews.

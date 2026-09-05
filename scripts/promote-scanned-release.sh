@@ -2,9 +2,15 @@
 # Scan the requested release itself, including manual promotions of old tags.
 set -euo pipefail
 version="${1:?Release version is required}"
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo 'Release version must be a stable version such as 1.9.1 (without v).' >&2
+  exit 1
+fi
 shift
-(( $# > 0 ))
+if (( $# == 0 )); then
+  echo 'At least one image repository is required for promotion.' >&2
+  exit 1
+fi
 checked_refs=()
 for image in "$@"; do
   image="${image,,}"

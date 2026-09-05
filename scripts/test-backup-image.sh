@@ -32,7 +32,12 @@ docker run --rm --network "$network" -v "$volume:/test" \
     printf "backup fixture\n" > /test/uploads/example.txt
     psql -v ON_ERROR_STOP=1 -c "CREATE TABLE fixture (id integer PRIMARY KEY, value text); INSERT INTO fixture VALUES (1, '\''restored'\'');"
     stato-container-backup
-    backup_dir=$(find /test/backups -mindepth 1 -maxdepth 1 -type d)
+    set -- /test/backups/*
+    if [ "$#" -ne 1 ] || [ ! -d "$1" ]; then
+      echo "Expected exactly one backup directory in the disposable volume." >&2
+      exit 1
+    fi
+    backup_dir=$1
     sha256sum -c "$backup_dir/SHA256SUMS"
     psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE restored;"
     pg_restore --exit-on-error --no-owner --no-acl -d restored "$backup_dir/postgres.dump"

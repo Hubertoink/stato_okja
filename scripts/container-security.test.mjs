@@ -81,5 +81,13 @@ test('promotion reuses the scanned digests after all images pass', () => {
 test('invalid release versions cannot be promoted', () => {
   const result = run('scripts/promote-scanned-release.sh', ['1.9.1;invalid', 'example/backend']);
   assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Release version must be a stable version/);
+  assert.deepEqual(result.lines, []);
+});
+
+test('missing image repositories produce an actionable error', () => {
+  const result = run('scripts/promote-scanned-release.sh', ['1.9.1']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /At least one image repository is required/);
   assert.deepEqual(result.lines, []);
 });

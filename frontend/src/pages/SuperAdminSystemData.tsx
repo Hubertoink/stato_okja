@@ -25,6 +25,10 @@ import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
+// Uploads are fetched only when their dialog opens. Keep the empty fallback
+// stable so the selection cleanup effect cannot trigger a render loop.
+const EMPTY_UPLOADS: SystemDataUploadItem[] = [];
+
 function formatBytes(bytes: number) {
   const value = Number(bytes) || 0;
   if (value < 1024) return `${value} B`;
@@ -249,7 +253,7 @@ export default function SuperAdminSystemData() {
   const uploadsQuery = useSystemDataUploads(isUploadsOpen);
   const tablePreview = useMemo(() => (summary?.tables ?? []).slice().sort((left, right) => right.rowCount - left.rowCount), [summary?.tables]);
   const deferredUploadSearch = useDeferredValue(uploadSearch.trim().toLowerCase());
-  const uploads = uploadsQuery.data?.uploads ?? [];
+  const uploads = uploadsQuery.data?.uploads ?? EMPTY_UPLOADS;
   const selectedUploadPathSet = useMemo(() => new Set(selectedUploadPaths), [selectedUploadPaths]);
   const expandedUploadPathSet = useMemo(() => new Set(expandedUploadPaths), [expandedUploadPaths]);
   const filteredUploads = useMemo(() => {

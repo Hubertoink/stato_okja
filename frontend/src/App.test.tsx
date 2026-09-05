@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 const auth = vi.hoisted(() => ({ user: null as null | { role: string; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }, loading: false }));
@@ -26,6 +26,8 @@ vi.mock('./pages/PublicSurvey', async () => {
 });
 
 describe('application routing after the router upgrade', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   beforeEach(() => {
     auth.user = null;
     auth.loading = false;

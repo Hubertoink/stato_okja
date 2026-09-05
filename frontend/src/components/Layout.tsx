@@ -917,12 +917,12 @@ export default function Layout() {
         className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 ${usesCompactMobileEditorSpacing ? 'pt-[4.25rem]' : 'pt-24'} md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
         {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|settings)(\/|$)/.test(location.pathname) ? (
-          <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6">
+          <section className="mx-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 md:mx-2">
             <h2 className="text-xl font-semibold">{t('workflow.noOrganization')}</h2>
             <p className="my-3">{t('workflow.contextHelp')}</p>
             <Button onClick={() => setScopeModalOpen(true)}>{t('workflow.chooseOrganization')}</Button>
           </section>
-        ) : <Outlet key={scopeKey} context={{ openQuickTally }} />}
+        ) : <Outlet key={`${scopeKey}:${location.pathname}`} context={{ openQuickTally }} />}
       </main>
 
       {/* QuickTally overlay (global) */}

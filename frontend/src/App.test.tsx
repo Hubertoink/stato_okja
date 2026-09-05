@@ -5,16 +5,19 @@ import App from './App';
 
 const auth = vi.hoisted(() => ({ user: null as null | { role: string; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }, loading: false }));
 vi.mock('./lib/auth', () => ({ useAuth: () => auth, AuthProvider: ({ children }: { children: ReactNode }) => children }));
+vi.mock('./lib/devToolsConfig', () => ({ canAccessDevTools: () => true }));
 vi.mock('./lib/orgScope', () => ({ OrgScopeProvider: ({ children }: { children: ReactNode }) => children }));
 vi.mock('./components/Toast', () => ({ ToastProvider: ({ children }: { children: ReactNode }) => children }));
 vi.mock('./components/PostLoginPrefetch', () => ({ default: ({ children }: { children: ReactNode }) => children }));
 vi.mock('./components/TermsAcceptanceGate', () => ({ default: () => <p>Accept terms</p> }));
 vi.mock('./components/Layout', async () => {
   const { Link, Outlet } = await import('react-router-dom');
-  return { default: () => <><Link to="/dashboard">Home</Link><Outlet /></> };
+  return { default: () => <><Link to="/dashboard">Home</Link><Link to="/admin/system-data">Data</Link><Link to="/admin/dev-tools">Dev</Link><Outlet /></> };
 });
 vi.mock('./pages/Login', () => ({ default: () => <p>Login required</p> }));
 vi.mock('./pages/Dashboard', () => ({ default: () => <p>Dashboard content</p> }));
+vi.mock('./pages/SettingsTestData', () => ({ default: () => <p>Dev Tools content</p> }));
+vi.mock('./pages/SuperAdminSystemData', () => ({ default: () => <p>Data management content</p> }));
 vi.mock('./pages/MyProfile', () => ({ default: () => <p>Profile content</p> }));
 vi.mock('./pages/ActivityEditPage', async () => {
   const { useParams, useLocation } = await import('react-router-dom');
@@ -56,6 +59,19 @@ describe('application routing after the router upgrade', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Home' }));
     expect(await screen.findByText('Dashboard content')).toBeInTheDocument();
     expect(window.location.pathname).toBe('/dashboard');
+  });
+
+  it('switches between superadmin data routes when only the pathname changes', async () => {
+    auth.user = { role: 'superadmin' };
+    window.history.replaceState(null, '', '/admin/system-data');
+    render(<App />);
+    expect(await screen.findByText('Data management content')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Dev' }));
+    expect(await screen.findByText('Dev Tools content')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/admin/dev-tools');
+    fireEvent.click(screen.getByRole('link', { name: 'Data' }));
+    expect(await screen.findByText('Data management content')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/admin/system-data');
   });
 
   it('redirects unavailable admin routes to the dashboard', async () => {

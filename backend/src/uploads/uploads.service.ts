@@ -1,10 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { Brackets, In, IsNull, Repository } from 'typeorm';
 import { ProjectTemplate } from '../project-templates/entities/project-template.entity';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { OrgsService } from '../orgs/orgs.service';
 import { StoredUpload } from './stored-upload.entity';
+import { User } from '../users/entities/user.entity';
+import { LogbookEntry } from '../logbook/entities/logbook-entry.entity';
+import { LogbookVisibility } from '../common/enums';
 
 type UploadUser = { id: string; role: string };
 type UploadKind = StoredUpload['kind'];
@@ -65,6 +68,7 @@ export class UploadsService {
     });
     if (exists) return;
     if (kind === 'image') {
+      if (effectiveOrgId && await this.canReadLogbookAvatar(filename, user, effectiveOrgId)) return;
       const ancestors = effectiveOrgId ? await this.orgs.getAncestorOrgIds(effectiveOrgId) : [];
       const templates = await this.uploads.manager.getRepository(ProjectTemplate).find({
         where: [
@@ -80,6 +84,37 @@ export class UploadsService {
       }
     }
     throw new NotFoundException();
+  }
+
+  private async canReadLogbookAvatar(filename: string, user: UploadUser, orgId: string): Promise<boolean> {
+    // A global upload alone does not grant access. It must be a current
+    // superadmin avatar referenced by an entry this reader is allowed to see.
+    const authors = await this.uploads.manager.getRepository(User).find({
+      where: { role: 'superadmin' },
+      select: { id: true, avatarUrl: true },
+    });
+    const authorIds = authors
+      .filter((author) => normalizeUploadPath(author.avatarUrl) === `/uploads/images/${filename}`)
+      .map((author) => author.id);
+    if (!authorIds.length) return false;
+    if (!await this.uploads.existsBy({ filename, kind: 'image', scopeKey: 'global' })) return false;
+
+    const entries = this.uploads.manager.getRepository(LogbookEntry)
+      .createQueryBuilder('entry')
+      .leftJoin('entry.comments', 'comment')
+      .where('entry.orgId = :orgId', { orgId })
+      .andWhere(new Brackets((reference) => {
+        reference.where('entry.createdByUserId IN (:...authorIds)', { authorIds })
+          .orWhere('comment.createdByUserId IN (:...authorIds)', { authorIds });
+      }));
+    // Match LogbookService's visibility rules, including author access.
+    if (user.role !== 'org_admin') {
+      entries.andWhere(new Brackets((visibility) => {
+        visibility.where('entry.visibility = :teamVisibility', { teamVisibility: LogbookVisibility.TEAM })
+          .orWhere('entry.createdByUserId = :readerId', { readerId: user.id });
+      }));
+    }
+    return entries.getExists();
   }
 
   async retainProjectImage(imageUrl: string | null | undefined, orgId: string | null) {

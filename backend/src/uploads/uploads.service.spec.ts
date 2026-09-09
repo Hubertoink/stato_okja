@@ -1,8 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
 import { UploadsService } from './uploads.service';
+import { User } from '../users/entities/user.entity';
 
 describe('UploadsService', () => {
   const templates = { find: jest.fn() };
+  const authors = { find: jest.fn() };
   const repository = {
     exists: jest.fn(),
     existsBy: jest.fn(),
@@ -11,7 +13,7 @@ describe('UploadsService', () => {
     create: jest.fn((value) => value),
     save: jest.fn(),
     delete: jest.fn(),
-    manager: { dataSource: { options: { type: 'sqljs' } }, getRepository: () => templates },
+    manager: { dataSource: { options: { type: 'sqljs' } }, getRepository: (entity: unknown) => entity === User ? authors : templates },
   };
   const orgs = { listActiveMemberships: jest.fn(), getAncestorOrgIds: jest.fn() };
   const service = new UploadsService(repository as never, orgs as never);
@@ -21,6 +23,7 @@ describe('UploadsService', () => {
     repository.existsBy.mockResolvedValue(false);
     repository.sum.mockResolvedValue(0);
     templates.find.mockResolvedValue([]);
+    authors.find.mockResolvedValue([]);
     orgs.getAncestorOrgIds.mockResolvedValue(['parent']);
   });
 

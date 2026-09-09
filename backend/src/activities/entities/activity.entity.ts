@@ -152,6 +152,9 @@ export class Activity {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column({ type: 'integer', default: 0 })
+  version!: number;
+
   // Daily Log acknowledgment (per activity/org)
   // When true, the activity has been marked as "discussed/done" in the Daily Log
   @Column({ type: 'boolean', default: false })

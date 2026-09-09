@@ -84,6 +84,7 @@ export default function ActivityQuickAdd({
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const handlePanelFocus = useFocusedFieldVisibility(panelRef, keyboardOpen);
   const submitLockedRef = useRef(false);
+  const formVersionRef = useRef(activity?.version);
   const { data: projects } = useProjects({ archived: false });
   const { data: staff } = useStaff({ active: true });
   const { data: allStaff } = useStaff();
@@ -377,7 +378,7 @@ export default function ActivityQuickAdd({
 
     const doUpdate = () =>
       update.mutate(
-        { id: activity!.id, data: payloadBase },
+        { id: activity!.id, data: { ...payloadBase, expectedVersion: formVersionRef.current } },
         {
           onSuccess: () => {
             showToast(t('quickAdd.updated'));
@@ -385,7 +386,8 @@ export default function ActivityQuickAdd({
           },
           onError: (error: unknown) => {
             console.error(error);
-            setErrorOpen(t('quickAdd.saveFailed'));
+            const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+            setErrorOpen(message || t('quickAdd.saveFailed'));
           },
         },
       );

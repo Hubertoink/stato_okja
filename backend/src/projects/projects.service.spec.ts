@@ -18,6 +18,7 @@ describe('ProjectsService idempotent create', () => {
       } as never,
       { log: jest.fn().mockResolvedValue(undefined) } as never,
       {} as never,
+      { retainProjectImage: jest.fn().mockResolvedValue(undefined) } as never,
     );
   }
 
@@ -43,6 +44,7 @@ describe('ProjectsService idempotent create', () => {
       {} as never,
       audit as never,
       {} as never,
+      { retainProjectImage: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     const result = await service.create(
@@ -91,6 +93,7 @@ describe('ProjectsService idempotent create', () => {
       {} as never,
       audit as never,
       {} as never,
+      { retainProjectImage: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     const result = await service.create(
@@ -186,6 +189,7 @@ describe('ProjectsService idempotent create', () => {
       {} as never,
       { log: jest.fn() } as never,
       activityRepository as never,
+      { retainProjectImage: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await expect(service.remove('project-1')).rejects.toBeInstanceOf(ConflictException);
@@ -208,6 +212,7 @@ describe('ProjectsService idempotent create', () => {
       {} as never,
       audit as never,
       activityRepository as never,
+      { retainProjectImage: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await service.remove('project-1');

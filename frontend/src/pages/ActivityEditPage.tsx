@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Save as SaveIcon, Trash2 as TrashIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
-import { useActivity, useUpdateActivity, useRemoveActivity, type Activity } from '@/lib/activities';
+import { useActivity, useUpdateActivity, useRemoveActivity } from '@/lib/activities';
 import { useProjects, type Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import {
@@ -86,6 +86,7 @@ export default function ActivityEditPage() {
   })();
 
   const [form, setForm] = useState<ActivityFormState>({ cohortCounts: {} });
+  const formVersionRef = useRef<number | undefined>(undefined);
   const initialCohortCountsRef = useRef<NonNullable<ActivityFormState['cohortCounts']>>({});
   const [formInitialized, setFormInitialized] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{ date?: string; project?: string }>({});
@@ -105,6 +106,7 @@ export default function ActivityEditPage() {
       executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
     };
     initialCohortCountsRef.current = nextForm.cohortCounts || {};
+    formVersionRef.current = activity.version;
     setForm(nextForm);
     reset(nextForm);
     setFormInitialized(true);
@@ -209,11 +211,15 @@ export default function ActivityEditPage() {
       durationMinutesOverride: activity.durationMinutes,
     });
     update.mutate(
-      { id: activity.id, data: payload as Partial<Activity> & Record<string, unknown> },
+      { id: activity.id, data: { ...payload, expectedVersion: formVersionRef.current } },
       {
         onSuccess: () => {
           showToast(t('quickAdd.updated'));
           navigate(returnTo, { replace: true });
+        },
+        onError: (error: unknown) => {
+          const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+          showToast(message || t('quickAdd.saveFailed'), { type: 'error' });
         },
       },
     );

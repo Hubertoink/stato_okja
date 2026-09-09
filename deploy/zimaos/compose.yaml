@@ -62,6 +62,7 @@ services:
     environment:
       NODE_ENV: production
       APP_ENV: production
+      TRUST_PROXY: "1"
       TZ: Europe/Berlin
       APP_ORIGIN: ${STATO_URL:?Required - for example http://192.168.1.50:8088}
       CORS_ORIGINS: ${STATO_URL:?Required - for example http://192.168.1.50:8088}

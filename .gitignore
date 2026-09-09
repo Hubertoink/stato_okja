@@ -90,3 +90,6 @@ backups/
 
 # Generated Impeccable critique artifacts
 .impeccable/
+
+!backend/src/uploads/
+!backend/src/uploads/**

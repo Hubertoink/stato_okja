@@ -9,7 +9,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { assertSecureRuntimeConfig, shouldExposeSwaggerDocs } from './config/security.config';
-import { shouldTrustProxy } from './config/rate-limit.config';
+import { getTrustProxySetting } from './config/rate-limit.config';
 import { assertTwoFactorRuntimeConfig, isTwoFactorAuthenticationEnabled } from './auth/two-factor.config';
 import { EmailService } from './email/email.service';
 import { HttpExceptionFilter } from './common/http-exception.filter';
@@ -39,9 +39,7 @@ async function bootstrap() {
     });
   }
 
-  if (shouldTrustProxy(process.env.TRUST_PROXY)) {
-    app.set('trust proxy', true);
-  }
+  app.set('trust proxy', getTrustProxySetting(process.env.TRUST_PROXY));
 
   app.use(
     helmet({

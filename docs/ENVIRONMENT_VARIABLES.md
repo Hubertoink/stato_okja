@@ -37,7 +37,7 @@ Wichtig:
 | `API_PREFIX` | Pfadsegment wie `api` | Prefix fuer alle API-Routen, typischerweise `/api`. |
 | `APP_ORIGIN` | vollstaendige URL | Oeffentliche URL des Frontends. Wird fuer Reset-, Invite- und 2FA-Links verwendet. |
 | `CORS_ORIGINS` | eine oder mehrere Origins, komma-separiert | Legt fest, von welchen Browser-Origins API-Requests erlaubt sind. |
-| `TRUST_PROXY` | `true`, `false` | Muss hinter Nginx, Varnish oder anderem Reverse Proxy meist `true` sein, damit echte Client-IPs erkannt werden. |
+| `TRUST_PROXY` | `false`, Hop-Anzahl oder Proxy-IP/CIDR | Standard ohne Konfiguration: `false`. Mit genau einem vorgeschalteten Proxy: `1` (`true` ist ein Alias). Bei Hop-Anzahlen darf das Backend nicht direkt erreichbar sein. |
 | `SWAGGER_ENABLED` | `true`, `false` | Aktiviert oder deaktiviert die Swagger-Doku des Backends. In Produktion meist `false`. |
 
 ## Datenbank und Migrationen
@@ -151,7 +151,7 @@ NODE_ENV=production
 APP_ENV=production
 APP_ORIGIN=https://stato.example.org
 CORS_ORIGINS=https://stato.example.org
-TRUST_PROXY=true
+TRUST_PROXY=1
 POSTGRES_DB=stato_prod
 POSTGRES_USER=stato_user
 POSTGRES_PASSWORD=<starkes-passwort>
@@ -170,7 +170,7 @@ NODE_ENV=production
 APP_ENV=production
 APP_ORIGIN=https://app.example.org
 CORS_ORIGINS=https://app.example.org
-TRUST_PROXY=true
+TRUST_PROXY=1
 DB_HOST=db.example.org
 DB_PORT=5432
 DB_USERNAME=stato_user

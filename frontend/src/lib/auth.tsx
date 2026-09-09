@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useQueryClient } from '@tanstack/react-query';
 import { demoModeEnabled, demoUser } from '../demo/config';
 import { getDemoUser, resetDemoStore } from '../demo/store';
-import { api, setAuthToken } from './api';
+import { api, getAuthSessionGeneration, invalidateAuthSession, setAuthToken } from './api';
 import {
   clearStoredAuthToken,
   clearStoredPendingTwoFactorChallenge,
@@ -94,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [qc]);
 
   const clearSession = useCallback(() => {
+    invalidateAuthSession();
     setAuthToken(undefined);
     clearStoredAuthToken();
     clearStoredPendingTwoFactorChallenge();
@@ -104,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [qc]);
 
   const applyAuthenticatedSession = useCallback((payload: AuthSessionPayload) => {
+    invalidateAuthSession();
     const token = payload.access_token;
     storeAuthToken(token);
     storeRefreshCsrfToken(payload.refresh_csrf_token);
@@ -118,8 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       applyResolvedUser(getDemoUser());
       return;
     }
+    const generation = getAuthSessionGeneration();
     try {
       const res = await api.get<AuthUser>('/auth/me');
+      if (generation !== getAuthSessionGeneration()) return;
       const nextUser = res.data;
       const mustResetCache = !!user && (
         user.id !== nextUser.id ||
@@ -145,10 +149,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = getStoredAuthToken();
     if (token) {
       setAuthToken(token);
+      const generation = getAuthSessionGeneration();
       api.get<AuthUser>('/auth/me').then(res => {
+        if (generation !== getAuthSessionGeneration()) return;
         applyResolvedUser(res.data);
         setLoading(false);
       }).catch(() => {
+        if (generation !== getAuthSessionGeneration()) return;
         clearSession();
         setLoading(false);
       });

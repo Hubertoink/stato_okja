@@ -1,3 +1,4 @@
+import { UploadsService } from '../src/uploads/uploads.service';
 import { CanActivate, ExecutionContext, INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -92,7 +93,10 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
       assertTaxonomyIdsVisibleForOrg: jest.fn(async () => undefined),
     };
     const activityRepository = {
-      findOne: jest.fn(async ({ where }: { where: { id: string } }) => activities.get(where.id) ?? null),
+      findOne: jest.fn(async ({ where }: { where: { id: string } }) => {
+        const record = activities.get(where.id);
+        return record ? { version: 0, ...record } : null;
+      }),
       create: jest.fn((data: Record<string, unknown>) => ({ ...data })),
       save: jest.fn(async (activity: Record<string, unknown>) => {
         const id = String(activity.id || `90000000-0000-4000-8000-${String(++generatedActivityId).padStart(12, '0')}`);
@@ -100,7 +104,22 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
         activities.set(id, saved);
         return saved;
       }),
+      update: jest.fn(async (criteria: string | { id: string; version: number }, data: Record<string, unknown>) => {
+        const id = typeof criteria === 'string' ? criteria : criteria.id;
+        const record = activities.get(id);
+        if (!record || (typeof criteria !== 'string' && criteria.version !== (record.version ?? 0))) {
+          return { affected: 0 };
+        }
+        activities.set(id, {
+          ...record, ...data,
+          version: typeof data.version === 'function' ? Number(record.version ?? 0) + 1 : data.version,
+        });
+        return { affected: 1 };
+      }),
     };
+    Object.assign(activityRepository, {
+      manager: { transaction: async (operation: (manager: unknown) => unknown) => operation({ getRepository: () => activityRepository }) },
+    });
     const locationRepository = {
       find: jest.fn(),
       findOne: jest.fn(async ({ where }: { where: { id: string } }) => locations.get(where.id) ?? null),
@@ -136,6 +155,7 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
         LocationsService,
         StaffService,
         ProjectsService,
+        { provide: UploadsService, useValue: { retainProjectImage: jest.fn() } },
         OrgScopeGuard,
         RolesGuard,
         Reflector,
@@ -204,6 +224,17 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
     ]) {
       expect((await request(path)).status).toBe(403);
     }
+  });
+
+  it('rejects a stale editor version without overwriting the first save', async () => {
+    const initial = await (await request(`/activities/${CHILD_ACTIVITY_ID}`)).json() as { version: number };
+    const save = (title: string) => request(`/activities/${CHILD_ACTIVITY_ID}`, {
+      method: 'PATCH', body: JSON.stringify({ title, expectedVersion: initial.version }),
+    });
+    expect((await save('First edit')).status).toBe(200);
+    expect((await save('Stale edit')).status).toBe(409);
+    const current = await (await request(`/activities/${CHILD_ACTIVITY_ID}`)).json();
+    expect(current).toMatchObject({ title: 'First edit', version: initial.version + 1 });
   });
 
   it('rejects activity relations outside the activity organization', async () => {

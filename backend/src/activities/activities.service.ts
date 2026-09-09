@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, SelectQueryBuilder } from 'typeorm';
 import { Activity } from './entities/activity.entity';
@@ -393,8 +393,8 @@ export class ActivitiesService {
     };
   }
 
-  findOne(id: string): Promise<Activity | null> {
-    return this.activityRepository.findOne({
+  findOne(id: string, repository = this.activityRepository): Promise<Activity | null> {
+    return repository.findOne({
       where: { id },
       relations: {
         location: true,
@@ -513,6 +513,11 @@ export class ActivitiesService {
       },
     });
     if (!existing) return null;
+    const { expectedVersion, ...updateData } = data as typeof data & { expectedVersion?: number };
+    const version = existing.version;
+    if (expectedVersion !== undefined && expectedVersion !== version) {
+      throw new ConflictException('Die Aktivität wurde inzwischen geändert. Bitte neu laden und Änderungen erneut prüfen.');
+    }
     const beforeActivityForAudit: Partial<Activity> = {
       ...existing,
       categories: Array.isArray(existing.categories) ? [...existing.categories] : [],
@@ -526,7 +531,7 @@ export class ActivitiesService {
     };
     const activityOrgId = existing.orgId ?? null;
 
-    const { tagIds, staffIds, categoryIds, cohorts, ...rest } = data as Partial<Activity> & {
+    const { tagIds, staffIds, categoryIds, cohorts, ...rest } = updateData as Partial<Activity> & {
       tagIds?: string[];
       staffIds?: string[];
       categoryIds?: string[];
@@ -576,8 +581,16 @@ export class ActivitiesService {
 
     normalizeActivityMetrics(existing);
 
-    await this.activityRepository.save(existing);
-    const updated = await this.findOne(id);
+    const updated = await this.activityRepository.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(Activity);
+      const result = await repository.update({ id, version }, { version: version + 1 });
+      if (result.affected !== 1) {
+        throw new ConflictException('Die Aktivität wurde inzwischen geändert. Bitte neu laden und Änderungen erneut prüfen.');
+      }
+      existing.version = version + 1;
+      await repository.save(existing);
+      return this.findOne(id, repository);
+    });
     if (updated) {
       const cohortNamesById = await this.loadCohortNames([
         beforeActivityForAudit.cohorts,
@@ -670,8 +683,7 @@ export class ActivitiesService {
     const existing = await this.activityRepository.findOne({ where: { id } });
     if (!existing) return null;
     await this.assertUserCanAccessActivity(existing, user);
-    existing.ackDone = !!done;
-    await this.activityRepository.save(existing);
+    await this.activityRepository.update(id, { ackDone: !!done, version: () => 'version + 1' });
     const updated = await this.findOne(id);
     if (updated) {
       await this.audit.log({

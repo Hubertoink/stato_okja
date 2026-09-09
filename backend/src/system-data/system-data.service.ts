@@ -16,6 +16,8 @@ import { DataSource, QueryRunner } from 'typeorm';
 import { AuthService } from '../auth/auth.service';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
+import { StoredUploadScopes20260909120000 } from '../database/migrations/20260909120000-stored-upload-scopes';
+import { StoredUpload } from '../uploads/stored-upload.entity';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { normalizeActivityMetrics } from '../activities/activity-metrics';
 import {
@@ -243,6 +245,12 @@ export class SystemDataService {
 
     try {
       await this.unlinkUploadWithRetry(absolutePath);
+      const upload = /^(images|process-files)\/([^/]+)$/.exec(relativePath);
+      if (upload) {
+        await this.dataSource.getRepository(StoredUpload).delete({
+          filename: upload[2], kind: upload[1] === 'images' ? 'image' : 'process-file',
+        });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown upload delete error';
       throw new InternalServerErrorException(`Upload-Datei konnte nicht gelöscht werden: ${message}`);
@@ -463,7 +471,24 @@ export class SystemDataService {
         importedTables.push({ tableName: table.filename, importedRows: rows.length });
       }
 
+      await new StoredUploadScopes20260909120000().rebuild(queryRunner);
+
       appliedUploads = await this.uploadStore.applyImportedUploads(stagedUploads);
+      // Use actual restored bytes, never size values from an imported manifest.
+      // Keep accounting in this transaction so no zero-sized backfill is visible.
+      const restoredFiles = await this.uploadStore.scanUploads();
+      if (restoredFiles.warnings.length) {
+        throw new InternalServerErrorException('Wiederhergestellte Upload-Größen konnten nicht ermittelt werden.');
+      }
+      const uploadRepository = queryRunner.manager.getRepository(StoredUpload);
+      await uploadRepository.createQueryBuilder().update().set({ size: 0 }).execute();
+      for (const file of restoredFiles.files) {
+        const match = /^(images|process-files)\/([a-z0-9][a-z0-9_.-]*)$/i.exec(file.relativePath);
+        if (!match) continue;
+        await uploadRepository.update({
+          filename: match[2], kind: match[1] === 'images' ? 'image' : 'process-file',
+        }, { size: file.size });
+      }
       await queryRunner.commitTransaction();
 
       if (appliedUploads.backupRoot) {
@@ -1011,6 +1036,16 @@ export class SystemDataService {
         .sort((left, right) => right.rowCount - left.rowCount),
       warnings: archive.warnings,
     };
+  }
+
+  async getReferencedUploadPaths(): Promise<Set<string>> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    try {
+      return new Set((await this.buildUploadReferenceIndex(queryRunner)).keys());
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   private async buildUploadReferenceIndex(queryRunner: QueryRunner) {

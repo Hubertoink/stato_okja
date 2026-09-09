@@ -1,5 +1,6 @@
-import { api } from '@/lib/api';
+import { api, getAuthSessionGeneration } from '@/lib/api';
 import { ImgHTMLAttributes, useEffect, useState } from 'react';
+import { useOrgScopeKey } from '@/lib/orgScope';
 import { isProtectedUploadPath, normalizeUploadPath } from '@/lib/uploadPaths';
 
 type ProtectedImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
@@ -16,11 +17,11 @@ type CachedProtectedImage = {
 const protectedImageCache = new Map<string, CachedProtectedImage>();
 const PROTECTED_IMAGE_CACHE_TTL_MS = 60_000;
 
-function acquireProtectedImage(src: string): Promise<string | undefined> {
-  let cached = protectedImageCache.get(src);
+function acquireProtectedImage(cacheKey: string, src: string): Promise<string | undefined> {
+  let cached = protectedImageCache.get(cacheKey);
   if (!cached) {
     cached = { consumers: 0 };
-    protectedImageCache.set(src, cached);
+    protectedImageCache.set(cacheKey, cached);
   }
   cached.consumers += 1;
   if (cached.evictionTimer) {
@@ -34,31 +35,31 @@ function acquireProtectedImage(src: string): Promise<string | undefined> {
     .get(src, { responseType: 'blob' })
     .then((response) => {
       const url = URL.createObjectURL(response.data as Blob);
-      const current = protectedImageCache.get(src);
+      const current = protectedImageCache.get(cacheKey);
       if (current) current.url = url;
       return url;
     })
     .catch(() => {
-      protectedImageCache.delete(src);
+      protectedImageCache.delete(cacheKey);
       return undefined;
     })
     .finally(() => {
-      const current = protectedImageCache.get(src);
+      const current = protectedImageCache.get(cacheKey);
       if (current) current.request = undefined;
     });
   return cached.request;
 }
 
-function releaseProtectedImage(src: string) {
-  const cached = protectedImageCache.get(src);
+function releaseProtectedImage(cacheKey: string) {
+  const cached = protectedImageCache.get(cacheKey);
   if (!cached) return;
   cached.consumers = Math.max(cached.consumers - 1, 0);
   if (cached.consumers > 0) return;
   cached.evictionTimer = setTimeout(() => {
-    const current = protectedImageCache.get(src);
+    const current = protectedImageCache.get(cacheKey);
     if (!current || current.consumers > 0) return;
     if (current.url) URL.revokeObjectURL(current.url);
-    protectedImageCache.delete(src);
+    protectedImageCache.delete(cacheKey);
   }, PROTECTED_IMAGE_CACHE_TTL_MS);
 }
 
@@ -77,35 +78,36 @@ function blobUrlToDataUrl(url: string): Promise<string | undefined> {
     .catch(() => undefined);
 }
 export function useResolvedImageSrc(src?: string | null) {
-  const [resolvedSrc, setResolvedSrc] = useState<string | undefined>(undefined);
+  const scopeKey = useOrgScopeKey();
+  const normalizedSrc = normalizeUploadPath(src);
+  const cacheKey = `${getAuthSessionGeneration()}\0${scopeKey}\0${normalizedSrc}`;
+  const [resolved, setResolved] = useState<{ key: string; url?: string }>();
 
   useEffect(() => {
-    const normalizedSrc = normalizeUploadPath(src);
     if (!normalizedSrc) {
-      setResolvedSrc(undefined);
       return;
     }
 
     if (!isProtectedUploadPath(normalizedSrc)) {
-      setResolvedSrc(normalizedSrc);
       return;
     }
 
     let active = true;
-    setResolvedSrc(undefined);
 
-    void acquireProtectedImage(normalizedSrc).then((url) => {
+    void acquireProtectedImage(cacheKey, normalizedSrc).then((url) => {
         if (!active) return;
-        setResolvedSrc(url);
+        setResolved({ key: cacheKey, url });
       });
 
     return () => {
       active = false;
-      releaseProtectedImage(normalizedSrc);
+      releaseProtectedImage(cacheKey);
     };
-  }, [src]);
+  }, [cacheKey, normalizedSrc]);
 
-  return resolvedSrc;
+  if (!normalizedSrc) return undefined;
+  if (!isProtectedUploadPath(normalizedSrc)) return normalizedSrc;
+  return resolved?.key === cacheKey ? resolved.url : undefined;
 }
 
 /**

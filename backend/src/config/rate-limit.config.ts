@@ -39,10 +39,17 @@ export function getAuthRateLimitOverride(authRateLimitTtlRaw?: string, authRateL
   };
 }
 
-export function shouldTrustProxy(trustProxyRaw?: string | null) {
-  const explicit = parseBooleanish(trustProxyRaw);
-  if (typeof explicit === 'boolean') return explicit;
-
-  const nodeEnv = String(process.env.NODE_ENV || '').trim().toLowerCase();
-  return nodeEnv === 'production' || nodeEnv === 'staging';
+/** Explicit hop count or proxy CIDRs; no implicit trust based on NODE_ENV. */
+export function getTrustProxySetting(trustProxyRaw?: string | null): false | number | string {
+  const value = String(trustProxyRaw || '').trim();
+  const explicit = parseBooleanish(value);
+  if (!value || explicit === false) return false;
+  // Compatibility for existing installations: true means exactly one proxy hop.
+  if (explicit === true) return 1;
+  if (/^\d+$/.test(value)) {
+    const hops = Number(value);
+    if (!Number.isSafeInteger(hops) || hops < 1) throw new Error('Invalid TRUST_PROXY hop count');
+    return hops;
+  }
+  return value;
 }

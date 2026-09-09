@@ -23,6 +23,7 @@ export const api = axios.create({
 
 let devMetricsInterceptorsAttached = false;
 let refreshAccessTokenPromise: Promise<string | null> | null = null;
+let authSessionGeneration = 0;
 
 type AuthRefreshResponse = {
   access_token: string;
@@ -30,6 +31,7 @@ type AuthRefreshResponse = {
 };
 
 type RetriableRequestConfig = AxiosRequestConfig & {
+  __authSessionGeneration?: number;
   __isRetryRequest?: boolean;
   __skipAuthRefresh?: boolean;
 };
@@ -54,7 +56,8 @@ function summarizeParams(value: unknown): Record<string, unknown> | undefined {
 
 export async function refreshAccessToken() {
   if (!refreshAccessTokenPromise) {
-    refreshAccessTokenPromise = (async () => {
+    const generation = authSessionGeneration;
+    const pendingRefresh = (async () => {
       const csrfToken = getStoredRefreshCsrfToken();
       if (!csrfToken) return null;
 
@@ -66,29 +69,44 @@ export async function refreshAccessToken() {
           __skipAuthRefresh: true,
         };
         const res = await api.request<AuthRefreshResponse>(refreshConfig);
+        if (generation !== authSessionGeneration) return null;
         const nextToken = res.data.access_token;
         storeAuthToken(nextToken);
         storeRefreshCsrfToken(res.data.refresh_csrf_token);
         setAuthToken(nextToken);
         return nextToken;
       } catch {
+        if (generation !== authSessionGeneration) return null;
         clearStoredAuthToken();
         clearStoredRefreshCsrfToken();
         setAuthToken(undefined);
         return null;
       }
     })().finally(() => {
-      refreshAccessTokenPromise = null;
+      if (refreshAccessTokenPromise === pendingRefresh) {
+        refreshAccessTokenPromise = null;
+      }
     });
+    refreshAccessTokenPromise = pendingRefresh;
   }
 
   return refreshAccessTokenPromise;
+}
+
+export function invalidateAuthSession() {
+  authSessionGeneration += 1;
+  refreshAccessTokenPromise = null;
+}
+
+export function getAuthSessionGeneration() {
+  return authSessionGeneration;
 }
 
 if (!devMetricsInterceptorsAttached) {
   devMetricsInterceptorsAttached = true;
 
   api.interceptors.request.use((config) => {
+    (config as RetriableRequestConfig).__authSessionGeneration ??= authSessionGeneration;
     if (!devToolsFeatureEnabled) return config;
     const requestMeta = {
       startedAt: performance.now(),
@@ -150,11 +168,12 @@ if (!devMetricsInterceptorsAttached) {
       if (
         error?.response?.status === 401 &&
         config &&
+        config.__authSessionGeneration === authSessionGeneration &&
         !config.__isRetryRequest &&
         !config.__skipAuthRefresh
       ) {
         return refreshAccessToken().then((token) => {
-          if (!token) return Promise.reject(error);
+          if (!token || config.__authSessionGeneration !== authSessionGeneration) return Promise.reject(error);
           const retryConfig: RetriableRequestConfig = {
             ...config,
             __isRetryRequest: true,

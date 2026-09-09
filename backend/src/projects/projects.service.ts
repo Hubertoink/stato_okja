@@ -9,6 +9,7 @@ import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
 import { OrgsService } from '../orgs/orgs.service';
+import { UploadsService } from '../uploads/uploads.service';
 import {
   assertExactOrgScopedEntityAccess,
   removeOrgIdForNonSuperadmin,
@@ -32,6 +33,7 @@ export class ProjectsService {
     private readonly audit: AuditService,
     @InjectRepository(Activity)
     private readonly activityRepository: Repository<Activity>,
+    private readonly uploads: UploadsService,
   ) {}
 
   private withDocumentUrl(document: ProjectDocument): ProjectDocument {
@@ -223,6 +225,7 @@ export class ProjectsService {
       clearWhenEmpty: !categoryId && Array.isArray(categoryIds) && categoryIds.length > 0,
     });
 
+    await this.uploads.retainProjectImage(project.imageUrl, project.orgId ?? null);
     const saveResult = await this.saveProjectIdempotently(project, clientRequestId);
     let saved = saveResult.project;
 
@@ -246,6 +249,11 @@ export class ProjectsService {
   ): Promise<Project | null> {
     const { categoryIds, ...rest } = data as ProjectWriteData;
     const normalizedRest = this.normalizeProjectWriteData(rest);
+    if (Object.prototype.hasOwnProperty.call(normalizedRest, 'imageUrl')) {
+      const existing = await this.projectRepository.findOne({ where: { id } });
+      if (!existing) return null;
+      await this.uploads.retainProjectImage(normalizedRest.imageUrl, existing.orgId ?? null);
+    }
     await this.projectRepository.update(id, normalizedRest);
 
     if (Object.prototype.hasOwnProperty.call(data, 'categoryId') || Array.isArray(categoryIds)) {

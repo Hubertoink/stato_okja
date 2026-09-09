@@ -9,5 +9,6 @@ import { RolesGuard } from '../auth/roles.guard';
   imports: [AuthModule, AuditModule],
   controllers: [SystemDataController],
   providers: [SystemDataService, RolesGuard],
+  exports: [SystemDataService],
 })
 export class SystemDataModule {}

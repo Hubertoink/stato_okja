@@ -202,7 +202,7 @@ Mindestens diese Variablen müssen sauber gesetzt sein:
 - `APP_ORIGIN`: öffentliche URL des Frontends, z. B. `https://stato.meine-kommune.de`
 - `CORS_ORIGINS`: erlaubte Frontend-Origin, meist identisch zu `APP_ORIGIN`
 - `API_PREFIX`: optional, Default ist `api`
-- `TRUST_PROXY`: im On-Prem-Proxy-Standard auf `true`, damit Backend-Rate-Limits die echte Client-IP statt nur den Frontend-Container sehen
+- `TRUST_PROXY`: im On-Prem-Proxy-Standard auf `1` (genau ein vertrauenswürdiger Proxy-Hop), damit Backend-Rate-Limits die echte Client-IP statt nur den Frontend-Container sehen
 
 ### Sicherheit / Auth
 
@@ -335,7 +335,7 @@ HTTP_PORT=80
 APP_ORIGIN=http://localhost
 CORS_ORIGINS=http://localhost
 API_PREFIX=api
-TRUST_PROXY=true
+TRUST_PROXY=1
 
 JWT_SECRET=GENERATED_BY_INSTALLER
 JWT_ACCESS_EXPIRATION=15m

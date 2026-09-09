@@ -39,6 +39,7 @@ describe('ActivitiesService audit diff', () => {
   it('logs a curated diff for activity updates', async () => {
     const existingActivity = {
       id: 'activity-1',
+      version: 0,
       orgId: 'org-1',
       title: 'Alt',
       date: new Date('2026-04-12T00:00:00.000Z'),
@@ -86,7 +87,13 @@ describe('ActivitiesService audit diff', () => {
         .mockResolvedValueOnce({ ...existingActivity })
         .mockResolvedValueOnce({ ...updatedActivity }),
       save: jest.fn().mockResolvedValue(updatedActivity),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
+    Object.assign(activityRepository, {
+      manager: {
+        transaction: jest.fn(async (operation) => operation({ getRepository: () => activityRepository })),
+      },
+    });
     const tagRepository = {
       findBy: jest.fn().mockResolvedValue([{ id: 'tag-1', name: 'LAN' }]),
     };
@@ -145,6 +152,9 @@ describe('ActivitiesService audit diff', () => {
       { id: 'user-1', name: 'Niko', orgId: 'org-1' },
     );
 
+    expect(activityRepository.update).toHaveBeenCalledWith(
+      { id: 'activity-1', version: 0 }, { version: 1 },
+    );
     expect(audit.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.UPDATE,

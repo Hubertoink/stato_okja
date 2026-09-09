@@ -33,6 +33,7 @@ function applyOrgScopeParam(qp: Record<string, unknown>, scope: string | null | 
 
 export interface Activity {
   id: string;
+  version?: number;
   date: string; // ISO date
   startTime?: string | null;
   endTime?: string | null;

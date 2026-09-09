@@ -279,6 +279,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, 
   async function handleFile(file: File) {
     const form = new FormData();
     form.append('file', file);
+    form.append('variant', 'avatar');
     const res = await api.post('/uploads/images', form, { headers: { 'Content-Type': 'multipart/form-data' } });
     return normalizeUploadPath(res.data?.url as string) as string;
   }

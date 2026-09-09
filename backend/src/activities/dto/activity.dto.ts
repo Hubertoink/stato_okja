@@ -149,7 +149,12 @@ export class CreateActivityDto {
   cohorts?: ActivityCohortDto[];
 }
 
-export class UpdateActivityDto extends PartialType(CreateActivityDto) {}
+export class UpdateActivityDto extends PartialType(CreateActivityDto) {
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  expectedVersion?: number;
+}
 
 export class UpdateActivityAckDto {
   @IsBoolean()

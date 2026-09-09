@@ -33,7 +33,10 @@ describe('SystemDataService', () => {
     const organizationBannerRows: Array<{ id: string; name: string; bannerUrl: string | null }> = [
       { id: 'org-1', name: 'Beispielstadt', bannerUrl: '/uploads/images/shared.jpg' },
     ];
+    const sizeReset = { update: jest.fn().mockReturnThis(), set: jest.fn().mockReturnThis(), execute: jest.fn() };
+    const restoredUploadRepository = { createQueryBuilder: () => sizeReset, update: jest.fn() };
     const queryRunner = {
+      manager: { getRepository: () => restoredUploadRepository },
       connect: jest.fn(async () => undefined),
       release: jest.fn(async () => undefined),
       startTransaction: jest.fn(async () => undefined),
@@ -164,6 +167,7 @@ describe('SystemDataService', () => {
     };
 
     const dataSource = {
+      getRepository: jest.fn(() => ({ delete: jest.fn().mockResolvedValue({ affected: 1 }) })),
       options: { type: 'sqlite' },
       entityMetadatas: [
         { tableName: 'users', tablePath: 'users', relations: [], columns: [] },
@@ -193,7 +197,7 @@ describe('SystemDataService', () => {
     const service = new SystemDataService(dataSource as any, authService, auditService);
     const uploadStore = (service as any).uploadStore;
     const importArchiveReader = (service as any).importArchiveReader;
-    return { service, dataSource, queryRunner, queryLog, queryCalls, streamMetrics, authService, auditService, uploadStore, importArchiveReader };
+    return { service, dataSource, restoredUploadRepository, sizeReset, queryRunner, queryLog, queryCalls, streamMetrics, authService, auditService, uploadStore, importArchiveReader };
   }
 
   it('rejects purge when password verification fails', async () => {
@@ -351,8 +355,8 @@ describe('SystemDataService', () => {
     }
   });
 
-  it('restores backup data in dependency-safe order', async () => {
-    const { service, queryLog, queryCalls, auditService, queryRunner, uploadStore, importArchiveReader } = createService();
+  it('restores backup data and actual upload sizes before committing', async () => {
+    const { restoredUploadRepository, sizeReset, service, queryLog, queryCalls, auditService, queryRunner, uploadStore, importArchiveReader } = createService();
     jest.spyOn(importArchiveReader, 'read').mockResolvedValue({
       originalFilename: 'backup.zip',
       manifest: {},
@@ -396,6 +400,12 @@ describe('SystemDataService', () => {
     jest.spyOn(uploadStore, 'removePath').mockResolvedValue(undefined);
     jest.spyOn(uploadStore, 'restorePreviousUploads').mockResolvedValue(undefined);
 
+    jest.spyOn(uploadStore, 'scanUploads').mockResolvedValue({
+      files: [
+        { absolutePath: 'C:/uploads/images/legacy.jpg', relativePath: 'images/legacy.jpg', size: 321 },
+        { absolutePath: 'C:/uploads/process-files/legacy.pdf', relativePath: 'process-files/legacy.pdf', size: 654 },
+      ], fileCount: 2, totalBytes: 975, warnings: [],
+    });
     const result = await service.importAllData(actor, 'C:/temp/backup.zip', {
       originalFilename: 'backup.zip',
       password: 'correct',
@@ -420,8 +430,36 @@ describe('SystemDataService', () => {
     expect(insertUsersCall?.params).not.toContain('super@example.com');
     expect(insertActivitiesCall?.params).toContain('2026-04-17');
     expect(queryRunner.commitTransaction).toHaveBeenCalled();
+    expect(sizeReset.set).toHaveBeenCalledWith({ size: 0 });
+    expect(restoredUploadRepository.update).toHaveBeenCalledWith({ filename: 'legacy.jpg', kind: 'image' }, { size: 321 });
+    expect(restoredUploadRepository.update).toHaveBeenCalledWith({ filename: 'legacy.pdf', kind: 'process-file' }, { size: 654 });
+    expect(restoredUploadRepository.update.mock.invocationCallOrder[1]).toBeLessThan(queryRunner.commitTransaction.mock.invocationCallOrder[0]);
     expect(result.importedTables).toHaveLength(3);
     expect(auditService.log).toHaveBeenCalled();
+  });
+
+  it('rolls back the database and files when restored sizes cannot be scanned', async () => {
+    const { service, queryRunner, uploadStore, importArchiveReader } = createService();
+    Object.assign(queryRunner, { isTransactionActive: true });
+    jest.spyOn(importArchiveReader, 'read').mockResolvedValue({
+      originalFilename: 'backup.zip', manifest: {}, warnings: [], tables: [], uploads: [],
+    });
+    jest.spyOn(uploadStore, 'stageImportedUploads').mockResolvedValue({
+      sessionRoot: '/tmp/restore', uploadsRoot: '/tmp/restore/uploads', fileCount: 1, totalBytes: 1,
+    });
+    const applied = { backupRoot: '/tmp/previous', uploadsRoot: '/uploads' };
+    jest.spyOn(uploadStore, 'applyImportedUploads').mockResolvedValue(applied);
+    jest.spyOn(uploadStore, 'scanUploads').mockResolvedValue({
+      files: [], fileCount: 0, totalBytes: 0, warnings: ['images: permission denied'],
+    });
+    jest.spyOn(uploadStore, 'restorePreviousUploads').mockResolvedValue(undefined);
+    jest.spyOn(uploadStore, 'removePath').mockResolvedValue(undefined);
+    await expect(service.importAllData(actor, '/tmp/backup.zip', {
+      originalFilename: 'backup.zip', password: 'correct', confirmationText: 'BACKUP IMPORTIEREN',
+    })).rejects.toThrow('Upload-Größen');
+    expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+    expect(uploadStore.restorePreviousUploads).toHaveBeenCalledWith(applied);
   });
 
   it('lists uploads with aggregated reference counts', async () => {

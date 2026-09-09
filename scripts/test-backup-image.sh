@@ -20,8 +20,14 @@ docker run -d --name "$db_container" --network "$network" --network-alias postgr
   -e POSTGRES_DB=source postgres:16-alpine >/dev/null
 
 for attempt in {1..30}; do
-  if docker exec "$db_container" pg_isready -U backup_test -d source >/dev/null 2>&1; then break; fi
-  if [ "$attempt" = 30 ]; then echo 'Test database did not become ready.' >&2; exit 1; fi
+  # The image starts a temporary Unix-socket-only server during initdb. Wait
+  # for TCP so the backup container can actually connect over the network.
+  if docker exec "$db_container" pg_isready -h 127.0.0.1 -U backup_test -d source >/dev/null 2>&1; then break; fi
+  if [ "$attempt" = 30 ]; then
+    echo 'Test database did not become ready over TCP.' >&2
+    docker logs "$db_container" >&2
+    exit 1
+  fi
   sleep 1
 done
 docker run --rm --network "$network" -v "$volume:/test" \

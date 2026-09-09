@@ -1,3 +1,4 @@
+import { useOrganizationModules } from './organizationModules';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
@@ -86,7 +87,7 @@ export async function fetchAllLogbookEntries(filters: LogbookFilters = {}): Prom
   let total = 0;
 
   do {
-    const response = await api.get<LogbookListResult>('/logbook', { params: { ...filters, page, limit } });
+    const response = await api.get<LogbookListResult>('/logbook/export', { params: { ...filters, page, limit } });
     const rows = Array.isArray(response.data.data) ? response.data.data : [];
     data.push(...rows);
     total = Number.isFinite(response.data.total) ? response.data.total : data.length;
@@ -99,13 +100,14 @@ export async function fetchAllLogbookEntries(filters: LogbookFilters = {}): Prom
 
 export function useLogbookEntries(filters: LogbookFilters = {}, page = 1, limit = 30) {
   const { scopeKey, ready } = useOrgScopedQueryState();
+  const modules = useOrganizationModules();
   return useQuery({
     queryKey: ['logbook', scopeKey, filters, page, limit],
     queryFn: async () => {
       const res = await api.get('/logbook', { params: { ...filters, page, limit } });
       return res.data as LogbookListResult;
     },
-    enabled: ready,
+    enabled: ready && modules.data?.logbook === true,
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: true,
   });

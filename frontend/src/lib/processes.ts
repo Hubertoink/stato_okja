@@ -66,6 +66,7 @@ export function useProcessOAccess() {
     queryKey: ['processes', 'access', scopeKey],
     queryFn: getProcessAccess,
     staleTime: 30_000,
+    refetchInterval: 30_000,
     retry: false,
   });
 }

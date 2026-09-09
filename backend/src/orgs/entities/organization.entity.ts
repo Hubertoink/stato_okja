@@ -77,6 +77,12 @@ export class Organization {
   @Column({ type: 'boolean', default: false })
   processesEnabled!: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  logbookEnabled!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  surveysEnabled!: boolean;
+
   @OneToMany('User', (u: User) => u.org)
   users!: User[];
 

@@ -1,3 +1,4 @@
+import { useOrganizationModules } from '@/lib/organizationModules';
 import { Button } from '@/components/ui/Button';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -190,6 +191,9 @@ export default function Layout() {
 
   const { session: quickTallySession } = useQuickTallySession();
   const [quickTallyOpen, setQuickTallyOpen] = useState(false);
+  const modules = useOrganizationModules();
+  const logbookEnabled = modules.data?.logbook === true;
+  const surveysEnabled = modules.data?.surveys === true;
   const processOAccess = useProcessOAccess();
   const processOEnabled = processOAccess.data?.enabled === true;
 
@@ -205,8 +209,8 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const availableMobileNavItemIds = useMemo(
-    () => processOEnabled ? MOBILE_NAV_ITEM_IDS : MOBILE_NAV_ITEM_IDS.filter((id) => id !== 'processes'),
-    [processOEnabled],
+    () => MOBILE_NAV_ITEM_IDS.filter((id) => (id !== 'processes' || processOEnabled) && (id !== 'logbook' || logbookEnabled) && (id !== 'surveys' || surveysEnabled)),
+    [processOEnabled, logbookEnabled, surveysEnabled],
   );
   const [mobileNavLayout, setMobileNavLayout] = useState(() => getMobileNavLayout(user?.id, availableMobileNavItemIds));
   const closeTimer = useRef<number | null>(null);
@@ -782,8 +786,9 @@ export default function Layout() {
                   </span>
                 </Link>
               </li>
-              <li>
-                <Link
+              {logbookEnabled && (
+                <li>
+                  <Link
                   to="/logbook"
                   data-tooltip={navLabels.logbook}
                   className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
@@ -798,7 +803,8 @@ export default function Layout() {
                     {navLabels.logbook}
                   </span>
                 </Link>
-              </li>
+                </li>
+              )}
               <li>
                 <Link
                   to="/calendar"
@@ -852,8 +858,9 @@ export default function Layout() {
                   </Link>
                 </li>
               )}
-              <li>
-                <Link
+              {surveysEnabled && (
+                <li>
+                  <Link
                   to="/surveys"
                   data-tooltip={navLabels.surveys}
                   className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
@@ -868,7 +875,8 @@ export default function Layout() {
                     {navLabels.surveys}
                   </span>
                 </Link>
-              </li>
+                </li>
+              )}
               <li>
                 <Link
                   to="/statistics"

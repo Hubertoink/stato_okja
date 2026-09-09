@@ -1,3 +1,4 @@
+import { OrganizationModuleGuard } from '../orgs/organization-module.guard';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Activity } from '../activities/entities/activity.entity';
@@ -15,7 +16,7 @@ import { OrgScopeGuard } from '../auth/org-scope.guard';
 @Module({
   imports: [TypeOrmModule.forFeature([LogbookEntry, LogbookComment, LogbookEntryView, Activity, Project, User]), AuditModule, OrgsModule],
   controllers: [LogbookController],
-  providers: [LogbookService, OrgScopeGuard],
+  providers: [OrganizationModuleGuard, LogbookService, OrgScopeGuard],
   exports: [LogbookService],
 })
 export class LogbookModule {}

@@ -267,10 +267,27 @@ export class OrgsService {
   }
 
   async updateProcessesEnabled(id: string, enabled: boolean) {
-    const org = await this.repo.findOne({ where: { id } });
-    if (!org) throw new BadRequestException('Organisation nicht gefunden');
-    org.processesEnabled = enabled;
-    return this.repo.save(org);
+    return this.updateModule(id, 'processes', enabled);
+  }
+
+  async updateModule(id: string, module: 'processes' | 'logbook' | 'surveys', enabled: boolean) {
+    const column = `${module}Enabled` as const;
+    const result = await this.repo.update(id, { [column]: enabled });
+    if (!result.affected) throw new BadRequestException('Organisation nicht gefunden');
+    return this.repo.findOneByOrFail({ id });
+  }
+
+  async moduleAccess(id: string | null) {
+    const org = id ? await this.repo.findOne({
+      where: { id },
+      select: { id: true, processesEnabled: true, logbookEnabled: true, surveysEnabled: true },
+    }) : null;
+    return {
+      orgId: id,
+      processes: org?.processesEnabled === true,
+      logbook: org?.logbookEnabled === true,
+      surveys: org?.surveysEnabled === true,
+    };
   }
 
   async isProcessesEnabled(id: string | null): Promise<boolean> {

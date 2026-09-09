@@ -12,6 +12,8 @@ export interface OrgDto {
   brandColor?: string | null;
   bannerPosition?: number | null;
   processesEnabled?: boolean;
+  logbookEnabled?: boolean;
+  surveysEnabled?: boolean;
 }
 
 export interface OrganizationBrandingUpdate {

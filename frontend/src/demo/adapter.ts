@@ -134,6 +134,7 @@ function handleTaxonomy(method: string, segments: string[], params: Record<strin
 
 function handleOrgs(method: string, segments: string[], params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult | undefined {
   if (segments[0] !== 'orgs') return undefined;
+  if (method === 'get' && segments[1] === 'modules' && segments[2] === 'access') return ok({ orgId: demo.listDemoOrgs()[0]?.id ?? null, processes: true, logbook: true, surveys: true });
   if (method === 'get' && segments.length === 1) return ok(demo.listDemoOrgs());
   if (method === 'post' && segments.length === 1) throw new DemoHttpError(403, autoT('ui_d9f9c2039ba3'));
   if (method === 'get' && segments[1] === 'subtree') return ok(demo.listDemoOrgs());
@@ -200,7 +201,7 @@ function handleProjects(method: string, segments: string[], params: Record<strin
 
 function handleLogbook(method: string, segments: string[], params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult | undefined {
   if (segments[0] !== 'logbook') return undefined;
-  if (method === 'get' && segments.length === 1) return ok(demo.listDemoLogbookEntries(params));
+  if (method === 'get' && (segments.length === 1 || segments[1] === 'export')) return ok(demo.listDemoLogbookEntries(params));
   if (method === 'post' && segments.length === 1) return ok(demo.createDemoLogbookEntry(body), 201);
   const entryId = segments[1] ? decodeURIComponent(segments[1]) : '';
   if (method === 'get' && entryId && segments.length === 2) {

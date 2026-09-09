@@ -1,3 +1,5 @@
+import OrganizationModulesMenu from '@/components/OrganizationModulesMenu';
+import { updateOrganizationModule, type OrganizationModule } from '@/lib/organizationModules';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +21,6 @@ import {
   updateOrgTaxonomySettings,
   updateOrgDefaultLocale,
   updateOrgBranding,
-  updateOrgProcessesEnabled,
   uploadOrganizationBanner,
 } from '@/lib/orgs';
 import { api } from '@/lib/api';
@@ -1513,14 +1514,15 @@ export default function AdminOrgSetup() {
     reloadOrgs();
   }, [user?.id, user?.role, user?.orgId]);
 
-  async function handleProcessesEnabled(orgId: string, enabled: boolean) {
+  async function handleModule(orgId: string, module: OrganizationModule, enabled: boolean) {
     try {
-      const updated = await updateOrgProcessesEnabled(orgId, enabled);
+      const updated = await updateOrganizationModule(orgId, module, enabled);
       setOrgs((current) => current.map((org) => (org.id === updated.id ? updated : org)));
+      await qc.invalidateQueries({ queryKey: ['organization-modules', orgId] });
       await qc.invalidateQueries({ queryKey: ['processes', 'access', orgId] });
-      showToast(enabled ? 'ProzessO für die Organisation freigeschaltet.' : 'ProzessO für die Organisation deaktiviert.');
+      showToast(enabled ? 'Modul für die Organisation freigeschaltet.' : 'Modul deaktiviert. Alle Daten bleiben erhalten.');
     } catch {
-      showToast('Die ProzessO-Freischaltung konnte nicht geändert werden.', { type: 'error' });
+      showToast('Die Modulfreigabe konnte nicht geändert werden.', { type: 'error' });
     }
   }
 
@@ -1817,7 +1819,7 @@ export default function AdminOrgSetup() {
                         setSelectedOrgId(nextOrg.id);
                         setBrandingOrg(nextOrg);
                       }}
-                      onSetProcessesEnabled={(orgId, enabled) => void handleProcessesEnabled(orgId, enabled)}
+                      onSetModule={handleModule}
                     />
                   ))}
                 </ul>
@@ -2024,7 +2026,7 @@ function OrgTree({
   onMoved,
   onOpenSettings,
   onOpenBranding,
-  onSetProcessesEnabled,
+  onSetModule,
 }: {
   node: OrgTreeNode;
   depth: number;
@@ -2035,7 +2037,7 @@ function OrgTree({
   onMoved: () => void;
   onOpenSettings: (org: OrgDto) => void;
   onOpenBranding: (org: OrgDto) => void;
-  onSetProcessesEnabled: (orgId: string, enabled: boolean) => void;
+  onSetModule: (orgId: string, module: OrganizationModule, enabled: boolean) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
@@ -2050,7 +2052,7 @@ function OrgTree({
         onMoved={onMoved}
         onOpenSettings={onOpenSettings}
         onOpenBranding={onOpenBranding}
-        onSetProcessesEnabled={onSetProcessesEnabled}
+        onSetModule={onSetModule}
         hasChildren={hasChildren}
         childCount={node.children.length}
         expanded={expanded}
@@ -2071,7 +2073,7 @@ function OrgTree({
             onMoved={onMoved}
             onOpenSettings={onOpenSettings}
             onOpenBranding={onOpenBranding}
-            onSetProcessesEnabled={onSetProcessesEnabled}
+            onSetModule={onSetModule}
           />
         ))}
     </>
@@ -2127,7 +2129,7 @@ function OrgRow({
   onMoved,
   onOpenSettings,
   onOpenBranding,
-  onSetProcessesEnabled,
+  onSetModule,
   hasChildren,
   childCount,
   expanded,
@@ -2142,7 +2144,7 @@ function OrgRow({
   onMoved: () => void;
   onOpenSettings: (org: OrgDto) => void;
   onOpenBranding: (org: OrgDto) => void;
-  onSetProcessesEnabled: (orgId: string, enabled: boolean) => void;
+  onSetModule: (orgId: string, module: OrganizationModule, enabled: boolean) => Promise<void>;
   hasChildren: boolean;
   childCount: number;
   expanded: boolean;
@@ -2372,14 +2374,7 @@ function OrgRow({
               }}
             />
           )}
-          {user?.role === 'superadmin' && (
-            <Toggle
-              checked={org.processesEnabled === true}
-              onChange={(enabled) => onSetProcessesEnabled(org.id, enabled)}
-              label="ProzessO"
-              ariaLabel={`ProzessO für ${org.name} ${org.processesEnabled ? 'deaktivieren' : 'aktivieren'}`}
-            />
-          )}
+          {user?.role === 'superadmin' && <OrganizationModulesMenu org={org} onChange={onSetModule} />}
           {canMoveOrg && (
             <button
               className="org-tree-icon-button inline-flex items-center justify-center w-8 h-8 rounded"
@@ -2484,17 +2479,7 @@ function OrgRow({
           />
         )}
 
-        {user?.role === 'superadmin' && (
-          <button
-            type="button"
-            className={`org-tree-action-button inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${org.processesEnabled ? 'text-viridian' : ''}`}
-            title={org.processesEnabled ? 'ProzessO deaktivieren' : 'ProzessO aktivieren'}
-            onClick={() => onSetProcessesEnabled(org.id, org.processesEnabled !== true)}
-          >
-            <GitBranch className="w-4 h-4" />
-            <span>ProzessO {org.processesEnabled ? 'an' : 'aus'}</span>
-          </button>
-        )}
+        {user?.role === 'superadmin' && <OrganizationModulesMenu org={org} onChange={onSetModule} />}
 
         {/* Move Dropdown */}
         {canMoveOrg && (

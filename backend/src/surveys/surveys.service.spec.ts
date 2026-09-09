@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SurveysService } from './surveys.service';
 import type { Survey } from './entities/survey.entity';
 
@@ -70,7 +70,10 @@ describe('SurveysService', () => {
     audit as any,
   );
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    organizationRepository.findOneBy.mockResolvedValue({ id: 'org-1', name: 'Jugendhaus', surveysEnabled: true });
+  });
 
   const mockPurgeQuery = () => {
     const query = { where: jest.fn(), andWhere: jest.fn(), getMany: jest.fn() };
@@ -79,6 +82,18 @@ describe('SurveysService', () => {
     query.getMany.mockResolvedValue([]);
     surveyRepository.createQueryBuilder.mockReturnValue(query);
   };
+
+  it('pauses public links and submissions without modifying surveys or answers', async () => {
+    mockPurgeQuery();
+    surveyRepository.findOneBy.mockResolvedValue(activeSurvey());
+    organizationRepository.findOneBy.mockResolvedValue({ id: 'org-1', surveysEnabled: false });
+    await expect(service.findPublic('public-token')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.submitPublic('public-token', { 'q-choice': 'good' }, 'browser-token')).rejects.toBeInstanceOf(NotFoundException);
+    expect(responseRepository.save).not.toHaveBeenCalled();
+    expect(surveyRepository.save).not.toHaveBeenCalled();
+    organizationRepository.findOneBy.mockResolvedValue({ id: 'org-1', surveysEnabled: true });
+    await expect(service.findPublic('public-token')).resolves.toMatchObject({ title: 'Feedback' });
+  });
 
   it('validates public answers and stores only the declared question fields', async () => {
     surveyRepository.findOneBy.mockResolvedValue(activeSurvey());

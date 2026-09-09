@@ -845,7 +845,7 @@ function createDemoStore(now = new Date()): DemoStore {
     windowEnd,
     sequence: 10000,
     user: { ...demoUser },
-    orgs: [{ id: DEMO_ORG_ID, name: 'Demo Jugendhaus', parentId: null, path: DEMO_ORG_ID, processesEnabled: true }],
+    orgs: [{ id: DEMO_ORG_ID, name: 'Demo Jugendhaus', parentId: null, path: DEMO_ORG_ID, processesEnabled: true, logbookEnabled: true, surveysEnabled: true }],
     categories,
     tags,
     cohorts,

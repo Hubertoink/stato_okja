@@ -1,3 +1,4 @@
+import { useOrganizationModules } from './organizationModules';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useOrgScopeKey, useOrgScopedQueryState } from './orgScope';
@@ -187,9 +188,10 @@ export function useSurveys(params?: { search?: string; archived?: boolean }) {
 }
 export function useActiveSurveyDashboardSummaries() {
   const { scopeKey, ready } = useOrgScopedQueryState();
+  const modules = useOrganizationModules();
   return useQuery({
     queryKey: ['surveys-dashboard-active', scopeKey],
-    enabled: ready,
+    enabled: ready && modules.data?.surveys === true,
     queryFn: async () =>
       (await api.get('/surveys/dashboard/active')).data as ActiveSurveyDashboardSummary[],
     staleTime: 0,

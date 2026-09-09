@@ -43,6 +43,14 @@ export class UpdateOrganizationProcessesEnabledDto {
   enabled!: boolean;
 }
 
+export class UpdateOrganizationModuleDto {
+  @IsIn(['processes', 'logbook', 'surveys'])
+  module!: 'processes' | 'logbook' | 'surveys';
+
+  @IsBoolean()
+  enabled!: boolean;
+}
+
 export class OpeningHoursDayDto {
   @IsBoolean() open!: boolean;
   @IsOptional() @IsString() from?: string;

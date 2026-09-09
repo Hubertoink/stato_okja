@@ -1,3 +1,4 @@
+import OrganizationModuleRoute from '@/components/OrganizationModuleRoute';
 import { Suspense, lazy, useEffect, useLayoutEffect, type ReactNode } from 'react';
 import {
   BrowserRouter,
@@ -299,7 +300,7 @@ function AuthedRoutes() {
             path="logbook"
             element={
               <RouteBoundary label={t('navigation.logbook')}>
-                <Logbook />
+                <OrganizationModuleRoute module="logbook"><Logbook /></OrganizationModuleRoute>
               </RouteBoundary>
             }
           />
@@ -307,7 +308,7 @@ function AuthedRoutes() {
             path="logbook/new"
             element={
               <RouteBoundary label={t('routes.newLogbookEntry')}>
-                <LogbookEditorRoute />
+                <OrganizationModuleRoute module="logbook"><LogbookEditorRoute /></OrganizationModuleRoute>
               </RouteBoundary>
             }
           />
@@ -315,7 +316,7 @@ function AuthedRoutes() {
             path="logbook/:id"
             element={
               <RouteBoundary label={t('routes.logbookEntry')}>
-                <LogbookEntryPage />
+                <OrganizationModuleRoute module="logbook"><LogbookEntryPage /></OrganizationModuleRoute>
               </RouteBoundary>
             }
           />
@@ -323,7 +324,7 @@ function AuthedRoutes() {
             path="logbook/:id/edit"
             element={
               <RouteBoundary label={t('routes.editLogbookEntry')}>
-                <LogbookEditorRoute />
+                <OrganizationModuleRoute module="logbook"><LogbookEditorRoute /></OrganizationModuleRoute>
               </RouteBoundary>
             }
           />
@@ -363,7 +364,7 @@ function AuthedRoutes() {
             path="surveys"
             element={
               <RouteBoundary label={t('navigation.surveys')}>
-                <Surveys />
+                <OrganizationModuleRoute module="surveys"><Surveys /></OrganizationModuleRoute>
               </RouteBoundary>
             }
           />
@@ -371,7 +372,7 @@ function AuthedRoutes() {
             path="surveys/:id"
             element={
               <RouteBoundary label={t('routes.survey')}>
-                <SurveyDetail />
+                <OrganizationModuleRoute module="surveys"><SurveyDetail /></OrganizationModuleRoute>
               </RouteBoundary>
             }
           />

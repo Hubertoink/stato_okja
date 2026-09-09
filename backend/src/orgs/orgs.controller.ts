@@ -28,6 +28,7 @@ import {
   MoveOrganizationDto,
   UpdateOrganizationBrandingDto,
   UpdateOrganizationProcessesEnabledDto,
+  UpdateOrganizationModuleDto,
   UpdateDefaultLocaleDto,
   UpdateOpeningHoursDto,
   UpdateOrganizationTaxonomySettingsDto,
@@ -213,6 +214,17 @@ export class OrgsController {
   ) {
     await this.assertCanAccessOrg(id, req.user);
     return this.service.updateBranding(id, body || {});
+  }
+
+  @Get('modules/access')
+  moduleAccess(@Req() req: { effectiveOrgId?: string | null }) {
+    return this.service.moduleAccess(req.effectiveOrgId ?? null);
+  }
+
+  @Roles('superadmin')
+  @Patch(':id/modules')
+  updateModule(@Param('id') id: string, @Body() body: UpdateOrganizationModuleDto) {
+    return this.service.updateModule(id, body.module, body.enabled);
   }
 
   @Roles('superadmin')

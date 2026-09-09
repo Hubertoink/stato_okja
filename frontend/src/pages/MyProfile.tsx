@@ -1,3 +1,4 @@
+import { useOrganizationModules } from '@/lib/organizationModules';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth, type AuthSessionPayload } from '@/lib/auth';
 import { api } from '@/lib/api';
@@ -41,10 +42,11 @@ export default function MyProfile() {
 
 function MobileNavigationSettings({ userId }: { userId?: string }) {
   const { t } = useTranslation('common');
+  const modules = useOrganizationModules();
   const processOAccess = useProcessOAccess();
   const availableItemIds = useMemo(
-    () => processOAccess.data?.enabled ? MOBILE_NAV_ITEM_IDS : MOBILE_NAV_ITEM_IDS.filter((id) => id !== 'processes'),
-    [processOAccess.data?.enabled],
+    () => MOBILE_NAV_ITEM_IDS.filter((id) => (id !== 'processes' || processOAccess.data?.enabled) && (id !== 'logbook' || modules.data?.logbook) && (id !== 'surveys' || modules.data?.surveys)),
+    [processOAccess.data?.enabled, modules.data?.logbook, modules.data?.surveys],
   );
   const mobileNavLabels: Record<MobileNavItemId, string> = {
     dashboard: t('navigation.dashboard'),

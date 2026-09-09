@@ -1,3 +1,4 @@
+import { useOrganizationModules } from '@/lib/organizationModules';
 import { useQuickTallySession } from '@/components/QuickTally';
 import { Suspense, lazy, useMemo, useState, useEffect, type ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -536,6 +537,7 @@ export default function Dashboard() {
       refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
     },
   );
+  const modules = useOrganizationModules();
   const { data: logbookData } = useLogbookEntries({}, 1, 4);
   const recentLogbookEntries = logbookData?.data || [];
   const { data: activeSurveys = [] } = useActiveSurveyDashboardSummaries();
@@ -741,12 +743,12 @@ export default function Dashboard() {
         </div>
       </SurfaceCard>
 
-      <DashboardActiveSurveys
+      {modules.data?.surveys && <DashboardActiveSurveys
         surveys={activeSurveys}
         onOpenSurvey={(surveyId) => navigate(`/surveys/${surveyId}`)}
-      />
+      />}
 
-      {recentLogbookEntries.length > 0 && (
+      {modules.data?.logbook && recentLogbookEntries.length > 0 && (
         <SurfaceCard className="dashboard-outer-surface dashboard-illustrated-surface mb-6 px-6" padding="none">
         <div className="dashboard-illustration-clip" aria-hidden="true">
           <img className="dashboard-section-illustration" src={logbookEmptyIllustration} alt="" />

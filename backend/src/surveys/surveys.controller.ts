@@ -1,3 +1,4 @@
+import { OrganizationModule, OrganizationModuleGuard } from '../orgs/organization-module.guard';
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt.guard';
@@ -10,7 +11,8 @@ type SurveyRequest = { user: { id?: string; name?: string | null; role: string; 
 
 @ApiTags('surveys')
 @Controller('surveys')
-@UseGuards(JwtAuthGuard, OrgScopeGuard)
+@OrganizationModule('surveys')
+@UseGuards(JwtAuthGuard, OrgScopeGuard, OrganizationModuleGuard)
 export class SurveysController {
   constructor(private readonly service: SurveysService) {}
   private actor(req: SurveyRequest) { return { ...req.user, effectiveOrgId: req.effectiveOrgId }; }

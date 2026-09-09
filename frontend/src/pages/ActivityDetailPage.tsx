@@ -1,3 +1,4 @@
+import { useOrganizationModules } from '@/lib/organizationModules';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useActivity } from '@/lib/activities';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
@@ -25,6 +26,7 @@ export default function ActivityDetailPage() {
   const location = useLocation();
   const { id } = useParams();
   const { data: activity } = useActivity(id);
+  const modules = useOrganizationModules();
 
   const from = (() => {
     const raw = (location.state as unknown as { from?: unknown } | null)?.from;
@@ -98,7 +100,7 @@ export default function ActivityDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!!activity.id && (
+          {modules.data?.logbook && !!activity.id && (
             <button
               onClick={() =>
                 navigate(

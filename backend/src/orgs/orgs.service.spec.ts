@@ -25,6 +25,7 @@ describe('OrgsService taxonomy access', () => {
     orgRepo = {
       find: jest.fn(),
       findOne: jest.fn(),
+      findOneByOrFail: jest.fn(),
       save: jest.fn(),
       update: jest.fn(),
       create: jest.fn(),
@@ -49,6 +50,23 @@ describe('OrgsService taxonomy access', () => {
     }).compile();
 
     service = module.get(OrgsService);
+  });
+
+  it('updates only the selected module on the selected organization', async () => {
+    (orgRepo.update as jest.Mock).mockResolvedValue({ affected: 1 });
+    (orgRepo.findOneByOrFail as jest.Mock).mockResolvedValue({ id: 'child', logbookEnabled: false, surveysEnabled: true });
+    await expect(service.updateModule('child', 'logbook', false)).resolves.toMatchObject({ logbookEnabled: false, surveysEnabled: true });
+    expect(orgRepo.update).toHaveBeenCalledTimes(1);
+    expect(orgRepo.update).toHaveBeenCalledWith('child', { logbookEnabled: false });
+    expect(orgRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('reads local module settings without consulting ancestors', async () => {
+    (orgRepo.findOne as jest.Mock).mockResolvedValue({ id: 'child', parentId: 'parent', processesEnabled: false, logbookEnabled: false, surveysEnabled: true });
+    await expect(service.moduleAccess('child')).resolves.toEqual({ orgId: 'child', processes: false, logbook: false, surveys: true });
+    expect(orgRepo.findOne).toHaveBeenCalledTimes(1);
+    expect(orgRepo.findOne).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'child' } }));
+    expect(orgRepo.find).not.toHaveBeenCalled();
   });
 
   it('respects explicit local create lock for root organizations', async () => {

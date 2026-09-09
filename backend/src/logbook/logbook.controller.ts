@@ -1,3 +1,4 @@
+import { OrganizationModule, OrganizationModuleGuard } from '../orgs/organization-module.guard';
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt.guard';
@@ -15,7 +16,8 @@ type RequestShape = { user: { id: string; name?: string | null; role: string; or
 
 @ApiTags('logbook')
 @Controller('logbook')
-@UseGuards(JwtAuthGuard, OrgScopeGuard)
+@OrganizationModule('logbook')
+@UseGuards(JwtAuthGuard, OrgScopeGuard, OrganizationModuleGuard)
 export class LogbookController {
   constructor(private readonly logbook: LogbookService) {}
 
@@ -56,6 +58,15 @@ export class LogbookController {
   @ApiOperation({ summary: 'Logbucheintrag erstellen' })
   create(@Req() req: RequestShape, @Body() body: CreateLogbookEntryDto) {
     return this.logbook.create(body, this.scope(req), req.user);
+  }
+
+  // Historical reporting remains available with the same organization and
+  // visibility checks, even while the interactive logbook module is disabled.
+  @Get('export')
+  @OrganizationModule(null)
+  export(@Req() req: RequestShape, @Query() query: Record<string, string | undefined>) {
+    return this.list(req, query.search, query.from, query.to, query.type, query.status,
+      query.authorId, query.activityId, query.projectId, query.includeArchived, query.page, query.limit);
   }
 
   @Get(':id')

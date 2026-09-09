@@ -1,3 +1,4 @@
+import { OrganizationModuleGuard } from '../orgs/organization-module.guard';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Survey } from './entities/survey.entity';
@@ -12,7 +13,7 @@ import { Project } from '../projects/entities/project.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Survey, SurveyResponse, Organization, Project]), AuditModule, OrgsModule],
-  providers: [SurveysService, OrgScopeGuard],
+  providers: [OrganizationModuleGuard, SurveysService, OrgScopeGuard],
   controllers: [SurveysController, PublicSurveysController],
 })
 export class SurveysModule {}

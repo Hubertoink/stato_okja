@@ -567,6 +567,7 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     const organization = survey.orgId
       ? await this.organizations.findOneBy({ id: survey.orgId })
       : null;
+    if (organization?.surveysEnabled !== true) throw new NotFoundException('Diese Umfrage ist derzeit nicht verfügbar.');
     return {
       title: survey.title,
       introduction: survey.introduction,
@@ -628,6 +629,8 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     const survey = await this.surveys.findOneBy({ publicToken: token });
     if (!survey || !this.isPubliclyOpen(survey))
       throw new NotFoundException('Diese Umfrage ist nicht aktiv.');
+    const organization = survey.orgId ? await this.organizations.findOneBy({ id: survey.orgId }) : null;
+    if (organization?.surveysEnabled !== true) throw new NotFoundException('Diese Umfrage ist derzeit nicht verfügbar.');
     const validated = this.validateAnswers(survey, answers);
     const deviceTokenHash = survey.allowMultiplePerDevice
       ? null

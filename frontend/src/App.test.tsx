@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 const auth = vi.hoisted(() => ({ user: null as null | { role: string; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }, loading: false }));
+const modules = vi.hoisted(() => ({ data: { logbook: true, surveys: true }, isPending: false, isError: false }));
+vi.mock('./lib/organizationModules', () => ({ useOrganizationModules: () => modules }));
 vi.mock('./lib/auth', () => ({ useAuth: () => auth, AuthProvider: ({ children }: { children: ReactNode }) => children }));
 vi.mock('./lib/devToolsConfig', () => ({ canAccessDevTools: () => true }));
 vi.mock('./lib/orgScope', () => ({ OrgScopeProvider: ({ children }: { children: ReactNode }) => children }));
@@ -19,6 +21,8 @@ vi.mock('./pages/Dashboard', () => ({ default: () => <p>Dashboard content</p> })
 vi.mock('./pages/SettingsTestData', () => ({ default: () => <p>Dev Tools content</p> }));
 vi.mock('./pages/SuperAdminSystemData', () => ({ default: () => <p>Data management content</p> }));
 vi.mock('./pages/MyProfile', () => ({ default: () => <p>Profile content</p> }));
+vi.mock('./pages/Logbook', () => ({ default: () => <p>Logbook content</p> }));
+vi.mock('./pages/SurveyDetail', () => ({ default: () => <p>Survey detail content</p> }));
 vi.mock('./pages/ActivityEditPage', async () => {
   const { useParams, useLocation } = await import('react-router-dom');
   return { default: () => <p>Edit {useParams().id}{useLocation().search}</p> };
@@ -34,6 +38,8 @@ describe('application routing after the router upgrade', () => {
   beforeEach(() => {
     auth.user = null;
     auth.loading = false;
+    modules.data.logbook = true;
+    modules.data.surveys = true;
     window.history.replaceState(null, '', '/');
     vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
   });
@@ -59,6 +65,21 @@ describe('application routing after the router upgrade', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Home' }));
     expect(await screen.findByText('Dashboard content')).toBeInTheDocument();
     expect(window.location.pathname).toBe('/dashboard');
+  });
+
+  it.each([
+    ['/logbook', 'logbook', 'Logbook content'],
+    ['/surveys/42', 'surveys', 'Survey detail content'],
+  ] as const)('checks the module flag for the protected deep link %s', async (path, module, content) => {
+    auth.user = { role: 'editor' };
+    modules.data[module] = false;
+    window.history.replaceState(null, '', path);
+    const { rerender } = render(<App />);
+    expect(await screen.findByText('Modul deaktiviert')).toBeInTheDocument();
+    expect(screen.queryByText(content)).not.toBeInTheDocument();
+    modules.data[module] = true;
+    rerender(<App />);
+    expect(await screen.findByText(content)).toBeInTheDocument();
   });
 
   it('switches between superadmin data routes when only the pathname changes', async () => {

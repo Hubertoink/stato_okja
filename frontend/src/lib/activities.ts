@@ -5,6 +5,7 @@ import type { Location } from './locations';
 import type { Project } from './projects';
 import type { ActivityExecutionStatus } from './activityExecutionStatus';
 import type { OrganizationClosureStateFilter } from './orgs';
+import { usePublicConfig } from './publicConfig';
 
 function invalidateStatsQueries(qc: QueryClient, scopeKey: string) {
   void qc.invalidateQueries({
@@ -208,6 +209,7 @@ export function useActivitiesPaged(
 
 export function useActivity(id?: string) {
   const { scopeKey, ready } = useOrgScopedQueryState();
+  const { data: publicConfig } = usePublicConfig();
   return useQuery({
     queryKey: ['activity', scopeKey, id],
     queryFn: async () => {
@@ -216,6 +218,13 @@ export function useActivity(id?: string) {
       return res.data as Activity;
     },
     enabled: !!id && ready,
+    // Detail records can be restored from session storage independently of the
+    // refreshed list. Always revalidate before treating an editor as current.
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: publicConfig?.liveRefreshIntervalMs || false,
   });
 }
 
@@ -246,6 +255,11 @@ export function useUpdateActivity() {
       qc.invalidateQueries({ queryKey: ['activities', scopeKey] });
       if (variables?.id) qc.invalidateQueries({ queryKey: ['activity', scopeKey, variables.id] });
       invalidateStatsQueries(qc, scopeKey);
+    },
+    onError: (error: unknown, variables) => {
+      if ((error as { response?: { status?: number } }).response?.status !== 409) return;
+      void qc.invalidateQueries({ queryKey: ['activity', scopeKey, variables.id] });
+      void qc.invalidateQueries({ queryKey: ['activities', scopeKey] });
     },
   });
 }

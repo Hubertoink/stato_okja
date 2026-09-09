@@ -22,7 +22,7 @@ import {
   useUpdateTag,
 } from '@/lib/taxonomy';
 import type { Activity } from '@/lib/activities';
-import { useCreateActivity, useUpdateActivity, useRemoveActivity } from '@/lib/activities';
+import { useActivity, useCreateActivity, useUpdateActivity, useRemoveActivity } from '@/lib/activities';
 import ConfirmModal from '@/components/ConfirmModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import ActivityCohortCountField from '@/components/ActivityCohortCountField';
@@ -69,13 +69,17 @@ export default function ActivityQuickAdd({
   dateISO,
   onClose,
   project: initialProject,
-  activity,
+  activity: initialActivity,
 }: {
   dateISO: string;
   onClose: () => void;
   project?: Project;
   activity?: Activity;
 }) {
+  const { data: refreshedActivity } = useActivity(initialActivity?.id);
+  const activity = refreshedActivity && initialActivity && (refreshedActivity.version ?? 0) >= (initialActivity.version ?? 0)
+    ? refreshedActivity
+    : initialActivity;
   const { t } = useTranslation('activities');
   // This modal mounts only while open – lock body scroll while mounted
   useBodyScrollLock(true);
@@ -127,14 +131,29 @@ export default function ActivityQuickAdd({
     };
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const initialFormBaselineSetRef = useRef(false);
+  // Editing already has a complete baseline, even while taxonomy is loading.
+  const initialFormBaselineSetRef = useRef(Boolean(activity));
   const initialCohortCountsRef = useRef<NonNullable<ActivityFormState['cohortCounts']>>(
     activity ? getActivityCohortCounts(activity) : {},
   );
-  const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
+  const { discardDialog, requestDiscard, reset, isDirty } = useUnsavedChangesGuard(form, {
     enabled: initialFormBaselineSetRef.current,
     getSnapshot: getActivityFormSnapshot,
   });
+  useEffect(() => {
+    if (!activity || isDirty) return;
+    const nextForm = {
+      ...getActivityFormStateFromActivity(activity),
+      executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+      cohortCounts: getActivityCohortCounts(activity),
+    };
+    // Refresh the form and its version together. Never advance the version of
+    // a dirty form, which must still conflict instead of overwriting remote edits.
+    formVersionRef.current = activity.version;
+    initialCohortCountsRef.current = nextForm.cohortCounts;
+    setForm(nextForm);
+    reset(nextForm);
+  }, [activity, isDirty, reset]);
   const selectedProject: Project | undefined = useMemo(
     () => (projects || []).find((p: Project) => p.id === form.projectId) || initialProject,
     [projects, form.projectId, initialProject],
@@ -265,24 +284,7 @@ export default function ActivityQuickAdd({
     }
   }, [activity, locations, form.locationId]);
   useEffect(() => {
-    // Prefill for edit mode
-    if (activity) {
-      const cohortCounts = getActivityCohortCounts(activity);
-      initialCohortCountsRef.current = cohortCounts;
-      setForm((f: ActivityFormState) => ({
-        ...f,
-        ...getActivityFormStateFromActivity(activity, {
-          date: f.date || dateISO,
-          projectId: f.projectId || initialProject?.id,
-          start: f.start || initialProject?.defaultStartTime || '15:00',
-          end: f.end || initialProject?.defaultEndTime || '17:00',
-        }),
-        executionStatus:
-          activity.executionStatus || f.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-        cohortCounts: Object.keys(cohortCounts).length ? cohortCounts : f.cohortCounts,
-      }));
-      return;
-    }
+    if (activity) return;
     // Default times; if project provided, prefill from defaults
     setForm((f: ActivityFormState) => ({
       start: f.start || initialProject?.defaultStartTime || '15:00',

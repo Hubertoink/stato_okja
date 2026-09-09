@@ -474,7 +474,7 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       {/* Header and desktop navigation share the banner background. */}
       <div
-        className="header-navigation-shell fixed inset-x-0 top-0 z-40"
+        className={`header-navigation-shell fixed inset-x-0 top-0 z-40 ${activeBannerSrc ? 'header-navigation-shell-with-banner' : ''}`}
         style={{
           '--organization-banner-position': `${activeOrgBranding?.bannerPosition ?? 50}%`,
         } as CSSProperties}

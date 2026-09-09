@@ -3,6 +3,25 @@
   isolation: isolate;
 }
 
+/* Blur scrolling content before painting the banner. A separate layer keeps
+   fixed-position menus independent of the backdrop filter's containing block. */
+.header-navigation-shell-with-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--surface-1);
+}
+
+@supports ((backdrop-filter: blur(24px)) or (-webkit-backdrop-filter: blur(24px))) {
+  .header-navigation-shell-with-banner::before {
+    background: var(--header-surface-bg);
+    backdrop-filter: blur(24px) saturate(120%);
+    -webkit-backdrop-filter: blur(24px) saturate(120%);
+  }
+}
+
 .header-surface {
   /* Clean blur effect - no strong colors */
   color: var(--text-primary);
@@ -13,10 +32,10 @@
 }
 
 /* The banner is a sibling of the header so it can also span the navigation.
-   Both areas become one unblurred glass surface while a banner is present. */
+   The shared glass layer blurs the page underneath, keeping the banner clear. */
 .header-surface.header-surface-with-banner,
 .nav-surface.nav-surface-with-banner {
-  background: color-mix(in srgb, var(--header-surface-bg) 58%, transparent);
+  background: color-mix(in srgb, var(--header-surface-bg) 68%, transparent);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -59,8 +78,8 @@
 .nav-surface.nav-surface-with-banner {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--header-surface-bg) 44%, transparent) 0%,
-    color-mix(in srgb, var(--header-surface-bg) 78%, transparent) 100%
+    color-mix(in srgb, var(--header-surface-bg) 64%, transparent) 0%,
+    color-mix(in srgb, var(--header-surface-bg) 90%, transparent) 100%
   );
 }
 

@@ -30,7 +30,7 @@ export default function QuickTallyButton({
   const touchMoved = useRef(false);
   const wasLongPress = useRef(false);
   const lastTouchAt = useRef<number>(0);
-  const [feedback, setFeedback] = useState<1 | -1 | null>(null);
+  const [feedback, setFeedback] = useState<number | null>(null);
 
   useEffect(
     () => () => {
@@ -41,7 +41,7 @@ export default function QuickTallyButton({
   );
 
   const showFeedback = useCallback((delta: 1 | -1) => {
-    setFeedback(delta);
+    setFeedback((current) => (current ?? 0) + delta);
     if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
     feedbackTimer.current = setTimeout(() => setFeedback(null), 900);
   }, []);
@@ -231,10 +231,10 @@ export default function QuickTallyButton({
         <span
           aria-live="polite"
           className={`pointer-events-none absolute -right-1 -top-2 rounded-full bg-[var(--surface-elevated)] px-1.5 py-0.5 text-xs font-bold shadow-sm ${
-            feedback === -1 ? 'text-[var(--status-danger-text)]' : 'text-[var(--viridian)]'
+            feedback < 0 ? 'text-[var(--status-danger-text)]' : 'text-[var(--viridian)]'
           }`}
         >
-          {feedback === -1 ? '−1' : '+1'}
+          {feedback < 0 ? `−${Math.abs(feedback)}` : `+${feedback}`}
         </span>
       ) : null}
     </button>

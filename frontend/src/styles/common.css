@@ -75,6 +75,7 @@
   background: var(--surface-elevated);
   padding: 0.5rem;
   box-shadow: 0 1.25rem 2.75rem rgba(15, 23, 42, 0.18);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 
@@ -156,8 +157,14 @@
 }
 
 .export-option-card--stato {
-  border-color: color-mix(in srgb, var(--viridian) 32%, var(--border-subtle));
+  border-color: var(--viridian);
   background: var(--interactive-soft);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+  .export-option-card--stato {
+    border-color: color-mix(in srgb, var(--viridian) 32%, var(--border-subtle));
+  }
 }
 
 .export-option-card--stato:hover:not(:disabled) {
@@ -259,7 +266,13 @@
   flex-shrink: 0;
   color: var(--text-primary);
   background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border-strong) 62%, transparent);
+  border: 1px solid var(--border-subtle);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+  .login-card {
+    border: 1px solid color-mix(in srgb, var(--border-strong) 62%, transparent);
+  }
 }
 
 .login-screen .btn-modern {
@@ -296,8 +309,13 @@
 .login-screen .text-gray-400 { color: var(--text-secondary); }
 .login-info {
   color: var(--text-secondary);
-  border: 1px solid color-mix(in srgb, var(--viridian) 28%, transparent);
+  border: 1px solid var(--viridian);
   background: color-mix(in srgb, var(--viridian) 10%, transparent);
+}
+@supports (color: color-mix(in srgb, black, white)) {
+  .login-info {
+    border: 1px solid color-mix(in srgb, var(--viridian) 28%, transparent);
+  }
 }
 
 /* Emphasis text utility */
@@ -361,8 +379,13 @@
  * introduce a light surface into all dark theme families. */
 :root[data-color-mode='dark'] .legal-import-document-selected {
   background: color-mix(in srgb, var(--viridian) 15%, var(--surface-1)) !important;
-  border-color: color-mix(in srgb, var(--viridian) 56%, var(--border-subtle)) !important;
+  border-color: var(--viridian) !important;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--viridian) 32%, transparent) !important;
+}
+@supports (color: color-mix(in srgb, black, white)) {
+  :root[data-color-mode='dark'] .legal-import-document-selected {
+    border-color: color-mix(in srgb, var(--viridian) 56%, var(--border-subtle)) !important;
+  }
 }
 
 :root[data-color-mode='dark'] .legal-import-document-selected-filename,
@@ -372,8 +395,14 @@
 
 :root[data-color-mode='dark'] .legal-import-file-select-selected {
   background: color-mix(in srgb, var(--viridian) 12%, var(--surface-1)) !important;
-  border-color: color-mix(in srgb, var(--viridian) 48%, var(--border-subtle)) !important;
+  border-color: var(--viridian) !important;
   color: var(--viridian) !important;
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+  :root[data-color-mode='dark'] .legal-import-file-select-selected {
+    border-color: color-mix(in srgb, var(--viridian) 48%, var(--border-subtle)) !important;
+  }
 }
 
 :root[data-color-mode='dark'] .legal-import-file-select-selected:hover {
@@ -518,7 +547,7 @@
   min-width: 18rem;
   max-width: min(28rem, calc(100vw - 2rem));
   border-radius: 1rem;
-  border: 1px solid color-mix(in srgb, var(--border-strong) 75%, transparent);
+  border: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--surface-elevated) 94%, white 6%);
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
   color: var(--text-primary);
@@ -531,6 +560,12 @@
     opacity 140ms ease,
     transform 140ms ease,
     visibility 140ms ease;
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+  .demo-hover-hint-panel {
+    border: 1px solid color-mix(in srgb, var(--border-strong) 75%, transparent);
+  }
 }
 
 .demo-hover-hint[data-demo-hint-open='true'] > .demo-hover-hint-panel {

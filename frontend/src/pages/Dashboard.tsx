@@ -943,7 +943,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      <p className="mb-3 text-sm text-[var(--text-secondary)]">{t('common:workflow.participationsHelp')}</p>
       {/* KPI trend */}
       <section className="dashboard-trend-card" aria-labelledby="dashboard-trend-title">
         <div className="dashboard-trend-card-header">

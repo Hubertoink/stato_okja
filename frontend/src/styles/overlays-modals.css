@@ -1,7 +1,9 @@
 /* Hide scrollbars but keep scrolling (used for modals) */
 .scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+}
+@supports (scrollbar-width: none) {
+  .scrollbar-hide { scrollbar-width: none; }
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
@@ -65,7 +67,12 @@
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
-  scrollbar-color: color-mix(in srgb, var(--viridian) 45%, var(--border-strong)) transparent;
+}
+@supports (scrollbar-color: auto) {
+  .modal-panel-roomy { scrollbar-color: var(--border-strong) transparent; }
+  @supports (color: color-mix(in srgb, black, white)) {
+    .modal-panel-roomy { scrollbar-color: color-mix(in srgb, var(--viridian) 45%, var(--border-strong)) transparent; }
+  }
 }
 
 /* Standard dialogs, structured form modals and standalone/mobile editors
@@ -265,8 +272,8 @@
     rgba(255, 255, 255, 0.94) 22%,
     rgba(255, 255, 255, 0.98) 100%
   );
-  backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.08);
 }
 
@@ -281,8 +288,8 @@
   padding: 0.5rem 1rem max(env(safe-area-inset-bottom, 0px), 0.5rem);
   border-top: 1px solid rgba(229, 231, 235, 0.85);
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 
 .roomy-settings-modal-actions {

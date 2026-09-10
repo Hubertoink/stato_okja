@@ -498,43 +498,47 @@ export default function Layout() {
             style={{ backgroundColor: activeOrgBranding.brandColor }}
           />
         ) : null}
-        <div className="relative z-20 container mx-auto px-2 sm:px-3 md:px-4 py-3 md:py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="mobile-header-row relative z-20 container mx-auto px-2 sm:px-3 md:px-4 py-3 md:py-4 flex items-center justify-between gap-3">
+          <div className="mobile-header-brand flex items-center gap-3 min-w-0">
             <img
               src={logoUrl}
               alt={autoT('ui_dc03855eb505')}
               className="w-9 h-9 md:w-11 md:h-11 object-contain select-none drop-shadow-lg"
             />
-            <div className="leading-tight min-w-0">
+            <div className="hidden md:block leading-tight min-w-0">
               <div className="flex min-w-0 items-baseline gap-2">
                 <h1 className="text-xl md:text-2xl font-extrabold tracking-tight truncate">
                   {autoT('ui_3abd120bdece')}
                 </h1>
                 {branding.orgName ? (
-                  <span className="min-w-0 truncate text-xs md:text-sm font-medium text-gray-600">
+                  <span className="hidden md:block min-w-0 truncate text-xs md:text-sm font-medium text-gray-600">
                     {branding.orgName}
                   </span>
                 ) : null}
               </div>
-              <p className="text-[11px] md:text-sm text-gray-600 truncate">
+              <p className="hidden md:block text-[11px] md:text-sm text-gray-600 truncate">
                 {autoT('ui_86922bad66e8')}
               </p>
             </div>
           </div>
-          {!restrictToPasswordChange && canSwitchOrganization && (
-            <Button variant="secondary" size="sm" className="max-w-[40vw] min-w-0" onClick={() => setScopeModalOpen(true)} title={t('workflow.chooseOrganization')}>
+          {!restrictToPasswordChange && canSwitchOrganization ? (
+            <Button variant="secondary" size="sm" className="mobile-header-organization max-w-[40vw] min-w-0" onClick={() => setScopeModalOpen(true)} title={activeOrgName || t('workflow.chooseOrganization')} aria-label={`${t('workflow.chooseOrganization')}: ${activeOrgName || t('workflow.noOrganization')}`}>
               <span className="truncate">{scope ? activeOrgName || t('workflow.organization') : t('workflow.noOrganization')}</span>
             </Button>
+          ) : (
+            <span className="mobile-header-organization mobile-header-organization-static md:hidden" title={activeOrgName || user?.orgName || t('workflow.noOrganization')}>
+              <span className="truncate">{activeOrgName || user?.orgName || t('workflow.noOrganization')}</span>
+            </span>
           )}
           {/* Current user and org summary (moved next to avatar on desktop) */}
           <div className="hidden"></div>
           {/* User menu */}
           <div
-            className="relative flex items-center"
+            className="mobile-header-user relative flex items-center"
             {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}
           >
             {/* Summary on sm+ placed just left of the avatar */}
-            <div className="hidden sm:flex flex-col items-end text-sm mr-3">
+            <div className="hidden md:flex flex-col items-end text-sm mr-3">
               <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
               <div className="text-gray-600 truncate max-w-[40vw]">
                 {roleLabel[user?.role || 'user']}
@@ -544,7 +548,7 @@ export default function Layout() {
             </div>
             <button
               aria-label={t('navigation.user')}
-              className="hidden sm:flex items-center gap-2 rounded px-1 py-1 transition-colors theme-header-action"
+              className="hidden md:flex items-center gap-2 rounded px-1 py-1 transition-colors theme-header-action"
               onClick={() => setMenuOpen((v) => !v)}
             >
               {user?.avatarUrl ? (
@@ -562,17 +566,19 @@ export default function Layout() {
                 type="button"
                 aria-label={t('navigation.demoHints')}
                 title={t('navigation.demoHints')}
-                className="hidden sm:inline-flex h-8 w-8 items-center justify-center rounded-full border border-indigo-200 bg-white/75 text-indigo-600 shadow-sm transition-colors hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="hidden md:inline-flex h-8 w-8 items-center justify-center rounded-full border border-indigo-200 bg-white/75 text-indigo-600 shadow-sm transition-colors hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                 onClick={restoreDemoGuides}
               >
                 <Lightbulb aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
             {/* Compact user/org on mobile - entire area clickable */}
-            <div className="flex sm:hidden items-center gap-1">
+            <div className="flex md:hidden items-center gap-1">
               <button
                 aria-label={t('navigation.userMenu')}
-                className="flex items-center gap-2 rounded px-1 py-1 transition-colors theme-header-action"
+                aria-expanded={menuOpen}
+                aria-controls="header-user-menu"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors theme-header-action"
                 onClick={() => setMenuOpen((v) => !v)}
               >
                 {user?.avatarUrl ? (
@@ -584,32 +590,12 @@ export default function Layout() {
                 ) : (
                   <UserCircle2 className="w-8 h-8" />
                 )}
-                <div className="flex flex-col items-end text-[11px] leading-4">
-                  <div className="font-medium truncate max-w-[34vw]">
-                    {user?.name || user?.email}
-                  </div>
-                  <div className="text-gray-600 truncate max-w-[34vw]">
-                    {activeOrgName ||
-                      (typeof scope === 'string' ? `Org ${scope.substring(0, 6)}…` : '')}
-                    {orgSwitching ? autoT('ui_2e567c683582') : ''}
-                  </div>
-                </div>
               </button>
-              {showDemoGuideRestore && (
-                <button
-                  type="button"
-                  aria-label={t('navigation.demoHints')}
-                  title={t('navigation.demoHints')}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-indigo-200 bg-white/75 text-indigo-600 shadow-sm transition-colors hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  onClick={restoreDemoGuides}
-                >
-                  <Lightbulb aria-hidden="true" className="h-4 w-4" />
-                </button>
-              )}
             </div>
             {menuOpen && (
               <div
-                className="absolute right-0 top-full mt-2 w-56 z-50 rounded-xl theme-menu-panel"
+                id="header-user-menu"
+                className="mobile-header-user-menu absolute right-0 top-full mt-2 w-56 z-50 rounded-xl theme-menu-panel"
                 {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}
               >
                 <div className="px-4 py-3 border-b theme-menu-section">
@@ -624,6 +610,14 @@ export default function Layout() {
                   </div>
                 </div>
                 <ul className="py-1 text-sm">
+                  {showDemoGuideRestore && (
+                    <li className="md:hidden">
+                      <Button variant="ghost" className="w-full justify-start px-4 py-2 theme-menu-item" onClick={restoreDemoGuides}>
+                        <Lightbulb className="h-4 w-4" aria-hidden="true" />
+                        {t('navigation.demoHints')}
+                      </Button>
+                    </li>
+                  )}
                   <li>
                     <button
                       className="w-full px-4 py-2 text-left theme-menu-item"

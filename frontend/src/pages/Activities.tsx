@@ -6,6 +6,7 @@ import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@
 import { fetchAllLogbookEntries, type LogbookEntry } from '@/lib/logbook';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import ActivityTypeBadge from '@/components/ActivityTypeBadge';
+import ActivityDayGroup from '@/components/ActivityDayGroup';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
 import { Download, Plus, Users } from 'lucide-react';
@@ -231,6 +232,16 @@ export default function Activities() {
   });
   // no quick location filter
   const activities = useMemo(() => paged?.data || [], [paged]);
+  const activityDays = useMemo(() => {
+    const groups: { date: string; items: typeof activities }[] = [];
+    for (const activity of activities) {
+      const date = (activity.date || '').slice(0, 10);
+      const last = groups[groups.length - 1];
+      if (last?.date === date) last.items.push(activity);
+      else groups.push({ date, items: [activity] });
+    }
+    return groups;
+  }, [activities]);
   useRestoreActivityListPosition(returnPosition, !!paged && !activitiesLoading && !activitiesFetching);
   const openMobileActivity = (activityId: string) => {
     saveActivityListPosition(listKey, page);
@@ -1146,7 +1157,9 @@ export default function Activities() {
       >
         <div className="relative min-h-[12rem] pt-2 md:hidden">
         <div className="space-y-3">
-          {activities.map((a) => (
+          {activityDays.map((day, index) => (
+            <ActivityDayGroup key={`${day.date}-${index}`} date={day.date} label={formatActivityMobileDate(day.date)}>
+          {day.items.map((a) => (
             <div
               key={a.id}
               className="activity-mobile-card cursor-pointer focus:outline-none focus:ring-2 focus:ring-viridian/40"
@@ -1259,6 +1272,8 @@ export default function Activities() {
               )}
               {/* Mobile actions intentionally hidden; tap card to edit */}
             </div>
+          ))}
+            </ActivityDayGroup>
           ))}
           {activities.length === 0 && !activitiesLoading && !activitiesFetching && (
             <EmptyState

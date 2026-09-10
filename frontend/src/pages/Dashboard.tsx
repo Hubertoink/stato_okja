@@ -1,3 +1,4 @@
+import MobileLogbookCard from '@/components/MobileLogbookCard';
 import { useOrganizationModules } from '@/lib/organizationModules';
 import { useQuickTallySession } from '@/components/QuickTally';
 import { Suspense, lazy, useMemo, useState, useEffect, type ComponentType } from 'react';
@@ -32,7 +33,7 @@ import {
   Clock,
   MessageCircle,
 } from 'lucide-react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { useIsMobile } from '@/lib/useIsMobile';
 import ProjectPickerModal from './ProjectPickerModal';
 import ActivityQuickAdd from './CalendarQuickAddModal';
@@ -749,7 +750,7 @@ export default function Dashboard() {
       />}
 
       {modules.data?.logbook && recentLogbookEntries.length > 0 && (
-        <SurfaceCard className="dashboard-outer-surface dashboard-illustrated-surface mb-6 px-6" padding="none">
+        <SurfaceCard className="dashboard-outer-surface dashboard-illustrated-surface mb-6 px-0 md:px-6" padding="none">
         <div className="dashboard-illustration-clip" aria-hidden="true">
           <img className="dashboard-section-illustration" src={logbookEmptyIllustration} alt="" />
         </div>
@@ -764,7 +765,9 @@ export default function Dashboard() {
           </Button>
         </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {recentLogbookEntries.map((entry) => (
+            {recentLogbookEntries.map((entry) => isMobile ? (
+              <MobileLogbookCard key={entry.id} entry={entry} onOpen={setDashboardLogbookEntryId} />
+            ) : (
               <button
                 key={entry.id}
                 type="button"
@@ -822,7 +825,7 @@ export default function Dashboard() {
 
       {/* Daily Log */}
       {dailyLog.length > 0 && (
-        <div className="modern-card dashboard-outer-surface dashboard-illustrated-surface mb-6 px-6 py-0">
+        <div className="modern-card dashboard-outer-surface dashboard-illustrated-surface mb-6 px-0 md:px-6 py-0">
         <div className="dashboard-illustration-clip" aria-hidden="true">
           <img className="dashboard-section-illustration" src={dailyLogEmptyIllustration} alt="" />
         </div>
@@ -833,13 +836,14 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {dailyLog.map((item) => (
               <div key={item.id} className="dashboard-activity-card rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2 gap-2">
-                  <h4 className="font-medium text-gray-800 truncate" title={item.title}>
-                    {item.title}
+                <div className="dashboard-daily-heading mb-2">
+                  <h4 className="dashboard-daily-title font-medium text-gray-800" title={item.title}>
+                    <Link to={`/activities/${item.id}${isMobile ? '' : '/edit'}`} state={{ from: '/dashboard' }}>
+                      {item.title}
+                    </Link>
                   </h4>
-                  <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className="text-xs text-gray-500 flex items-center"
+                      className="dashboard-daily-date text-xs text-gray-500 flex items-center"
                       title={formatDate(item.createdAt || '', { dateStyle: 'medium', timeStyle: 'short' })}
                     >
                       <CalendarIcon className="w-3.5 h-3.5 mr-1" />
@@ -849,6 +853,8 @@ export default function Dashboard() {
                           weekday: 'long',
                           day: '2-digit',
                           month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
                           // year intentionally omitted for recent daily log
                         });
                       })()}
@@ -880,7 +886,6 @@ export default function Dashboard() {
                         <Circle className="w-4 h-4" />
                       )}
                     </button>
-                  </div>
                 </div>
                 <div className="text-xs text-gray-700 mb-2">
                   {(() => {

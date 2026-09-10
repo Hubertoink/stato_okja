@@ -10,6 +10,10 @@ describe('activity editor return destination', () => {
     expect(getActivityEditorReturn(state, true)).toEqual({ to: '/activities?projectId=p1', state: { activityListKey: 'list-3' } });
   });
   it('preserves direct editor entry and deep-link fallbacks', () => {
+    expect(getActivityEditorReturn({ from: '/dashboard' }).to).toBe('/dashboard');
+    const dashboardDetail = { from: '/activities/a1', returnState: { from: '/dashboard' } };
+    expect(getActivityEditorReturn(dashboardDetail)).toEqual({ to: '/activities/a1', state: { from: '/dashboard' } });
+    expect(getActivityEditorReturn(dashboardDetail, true).to).toBe('/dashboard');
     expect(getActivityEditorReturn({ from: '/calendar' }).to).toBe('/calendar');
     expect(getActivityEditorReturn(null).to).toBe('/activities');
   });

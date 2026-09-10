@@ -1343,3 +1343,30 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 .activity-detail-notes { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
 .activity-detail-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .activity-detail-actions > button { flex: 1 1 140px; min-width: 0; }
+
+/* Mobile timeline with native sticky day headings. */
+@media (max-width: 767px) {
+  .activity-day-group { position: relative; padding-bottom: 8px; }
+  .activity-day-heading {
+    position: sticky;
+    top: var(--day-sticky-top, 64px);
+    z-index: 5;
+    margin: 0 0 12px;
+    padding: 0 0 8px;
+    background: var(--app-bg);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .activity-day-heading > span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 24px;
+    padding: 4px 8px;
+    border-left: 2px solid var(--viridian);
+    border-radius: 0 4px 4px 0;
+    background: var(--surface-1);
+  }
+  .activity-day-heading svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--viridian); }
+}

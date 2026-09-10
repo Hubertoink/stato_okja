@@ -1,3 +1,5 @@
+import MobileLogbookCard from './MobileLogbookCard';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { CheckCircle2, ChevronRight, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { type LogbookEntry, useSetLogbookStatus } from '@/lib/logbook';
@@ -23,7 +25,12 @@ export default function LogbookCard({ entry, onOpen }: { entry: LogbookEntry; on
   const { t } = useTranslation(['logbook', 'common']);
   const { user } = useAuth();
   const status = useSetLogbookStatus();
+  const isMobile = useIsMobile(768);
   const canManage = user?.role === 'superadmin' || user?.role === 'org_admin' || user?.id === entry.createdByUserId;
+
+  if (isMobile) return <MobileLogbookCard entry={entry} onOpen={onOpen}
+    avatarUrl={entry.createdByUserId === user?.id ? user?.avatarUrl : null}
+    onMarkDiscussed={canManage && entry.status !== 'discussed' && entry.status !== 'archived' ? () => status.mutate({ id: entry.id, status: 'discussed' }) : undefined} />;
 
   return (
     <article

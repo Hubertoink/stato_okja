@@ -1183,37 +1183,6 @@ export default function Activities() {
               <div className="activity-mobile-backdrop" aria-hidden="true" style={{ backgroundColor: a.project?.color || colorForActivityType(a.type) }}>
                 {a.project?.imageUrl && <ProtectedImage src={a.project.imageUrl} alt="" className="h-full w-full object-cover" />}
               </div>
-              <div className="activity-mobile-header">
-                <div>
-                  {(() => {
-                    const isToday = (a.date || '').slice(0, 10) === todayIso;
-                    return (
-                      <div className={`text-sm ${isToday ? "font-semibold text-viridian" : "text-gray-500"}`}>
-                        <span className="text-xs font-medium whitespace-nowrap">{formatActivityMobileDate(a.date)}</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-                {(() => {
-                  const duration =
-                    a.durationMinutes ??
-                    (() => {
-                      const parse = (t?: string | null) => {
-                        if (!t) return undefined;
-                        const [h, m] = t.split(':').map((v) => parseInt(v, 10));
-                        if (Number.isNaN(h) || Number.isNaN(m)) return undefined;
-                        return h * 60 + m;
-                      };
-                      const s = parse(a.startTime);
-                      const e = parse(a.endTime);
-                      return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
-                    })();
-                  return duration ? (
-                    <span className="text-xs px-2 py-1 bg-viridian text-white rounded">
-                      {duration}{autoT('ui_b6c935d4f3c7')}</span>
-                  ) : null;
-                })()}
-              </div>
               <div className="activity-mobile-content">
                 <div className="activity-mobile-details">
                   <h2 className="activity-mobile-title">{a.title?.trim() || a.project?.title || activityTypeLabels[a.type] || a.type}</h2>
@@ -1245,6 +1214,27 @@ export default function Activities() {
               </div>
                 </div>
                 <div className="activity-mobile-attendance" aria-label={t('table.participants')}>
+                  <div className="activity-mobile-duration">
+                {(() => {
+                  const duration =
+                    a.durationMinutes ??
+                    (() => {
+                      const parse = (t?: string | null) => {
+                        if (!t) return undefined;
+                        const [h, m] = t.split(':').map((v) => parseInt(v, 10));
+                        if (Number.isNaN(h) || Number.isNaN(m)) return undefined;
+                        return h * 60 + m;
+                      };
+                      const s = parse(a.startTime);
+                      const e = parse(a.endTime);
+                      return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
+                    })();
+                  return duration ? (
+                    <span className="text-xs px-2 py-1 bg-viridian text-white rounded">
+                      {duration}{autoT('ui_b6c935d4f3c7')}</span>
+                  ) : null;
+                })()}
+                  </div>
                   {isCancelledActivity(a.executionStatus) ? (
                     <ActivityExecutionStatusBadge status={a.executionStatus} />
                   ) : (() => {

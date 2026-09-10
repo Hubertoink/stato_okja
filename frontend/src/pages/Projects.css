@@ -18,7 +18,7 @@
 .project-overview-description { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
 .project-overview-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--border-subtle); padding: 10px 16px; margin-top: auto; }
 .project-overview-desktop-star { display: none; }
-.project-overview-filters { display: flex; gap: 8px; overflow-x: auto; max-width: 100%; padding: 3px 1px 6px; }
+.project-overview-filters { display: flex; gap: 2px; overflow-x: auto; max-width: 100%; padding: 3px 1px 6px; }
 .project-overview-filters > button { flex-shrink: 0; border-radius: 999px; }
 @media (min-width: 768px) {
   .project-overview-filters { flex-wrap: wrap; }

@@ -119,9 +119,9 @@ export default function ActivityDetailPage() {
           <div className="activity-mobile-backdrop" aria-hidden="true" style={{ backgroundColor: activity.project?.color || colorForActivityType(activity.type) }}>
             {activity.project?.imageUrl && <ProtectedImage src={activity.project.imageUrl} alt="" className="h-full w-full object-cover" />}
           </div>
-          <div className="activity-mobile-header">
+          <div className="activity-mobile-header flex w-full items-start justify-between gap-2">
             <ActivityTypeBadge type={activity.type} label={typeLabel[activity.type] || activity.type} />
-            {!!minutes && <span className="text-xs px-2 py-1 bg-viridian text-white rounded">{minutes}{autoT('ui_b6c935d4f3c7')}</span>}
+            {!!minutes && <span className="ml-auto shrink-0 text-xs px-2 py-1 bg-viridian text-white rounded">{minutes}{autoT('ui_b6c935d4f3c7')}</span>}
           </div>
           <h1>{title}</h1>
           {activity.project?.title && activity.project.title !== title && <p className="activity-mobile-project">{activity.project.title}</p>}

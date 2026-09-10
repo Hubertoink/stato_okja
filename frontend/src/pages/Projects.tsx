@@ -17,6 +17,7 @@ import {
 } from '@/lib/projects';
 import {
   Layers,
+  Users,
   Pencil,
   Plus,
   Save as SaveIcon,
@@ -51,6 +52,8 @@ import { defaultCategoryByName } from '@/lib/defaultCategories';
 import { useProjectTemplates, type ProjectTemplateDto } from '@/lib/projectTemplatesApi';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import ProtectedImage from '@/components/ProtectedImage';
+import ActivityTypeBadge from '@/components/ActivityTypeBadge';
+import type { Activity } from '@/lib/activities';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
@@ -88,7 +91,8 @@ import { ResponsiveFilterPanel } from '@/components/ui/ResponsiveFilterPanel';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ProjectStarButton } from '@/components/ui/ProjectStar';
-import { FilterChip } from '@/components/ui/FilterChip';
+import { ProjectStarIndicator } from '@/components/ui/ProjectStar';
+import './Projects.css';
 import { loadProjectsFilters, saveProjectsFilters } from '@/lib/projectsFilterStorage';
 
 const PROJECTS_DESKTOP_VIEW_STORAGE_KEY = 'projects:desktop-view';
@@ -394,12 +398,12 @@ const pickStaffNames = (project: Project): string[] => {
   const names2 = splitProjectStaffNames(project.defaultVolunteers);
   const picked = new Set<string>();
   for (const name of names1) {
-    if (picked.size < 2) picked.add(name);
+    picked.add(name);
   }
   for (const name of names2) {
-    if (picked.size < 2) picked.add(name);
+    picked.add(name);
   }
-  return Array.from(picked).slice(0, 2);
+  return Array.from(picked);
 };
 
 const initialsOf = (name: string): string => {
@@ -625,17 +629,7 @@ function ArchiveRestoreControls({
   );
 }
 
-function ProjectGridCard({
-  project,
-  category,
-  staffNames,
-  tagList,
-  extraTags,
-  starred,
-  onOpenActivities,
-  onToggleStar,
-  onEdit,
-}: {
+type ProjectCardProps = {
   project: Project;
   category?: ProjectBadgeCategory;
   staffNames: string[];
@@ -645,350 +639,71 @@ function ProjectGridCard({
   onOpenActivities: () => void;
   onToggleStar: () => void;
   onEdit: () => void;
-}) {
-  const prettyType = PROJECT_TYPE_LABELS[project.type] || project.type;
-  const hasLongTitle = project.title.trim().length > 28;
+};
 
-  return (
-    <div
-      className="project-card relative rounded-2xl shadow group min-h-[160px]"
-      style={{
-        backgroundColor: project.imageUrl ? undefined : project.color || pickBg(project.title),
-      }}
-    >
-      <div className="absolute inset-0 rounded-2xl overflow-hidden z-0 pointer-events-none">
-        {project.imageUrl ? (
-          <>
-            <ProtectedImage
-              src={project.imageUrl}
-              alt={project.title}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-black/70" />
-          </>
-        ) : (
-          <>
-            <div className="absolute inset-0 bg-black/20" />
-            <div className="absolute inset-0 flex items-center justify-center text-white/90 text-3xl font-bold drop-shadow">
-              {project.title?.charAt(0)}
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="relative z-10 p-4 flex flex-col gap-2 text-white">
-        <div className="flex items-start justify-between gap-2 sm:gap-3">
-          <div className="min-w-0 flex-1">
-            <div
-              className={`line-clamp-2 break-words font-semibold leading-tight drop-shadow-sm ${
-                hasLongTitle ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
-              }`}
-            >
-              {project.title}
-            </div>
-            <div className="text-sm opacity-90">{prettyType}</div>
-            {Array.isArray(project.documents) && project.documents.length > 0 && (
-              <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-                <Paperclip className="w-3 h-3" />
-                {project.documents.length}
-                {autoT('ui_1e879a942da8')}
-              </div>
-            )}
-            {(category || staffNames.length > 0) && (
-              <div className="mt-1 flex items-center flex-wrap gap-2">
-                {category && (
-                  <div
-                    className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                    style={{
-                      backgroundColor: category.color || '#6b7280',
-                      color: textColorFor(category.color || '#6b7280'),
-                      border: `1px solid ${category.color || '#6b7280'}`,
-                    }}
-                  >
-                    <Layers className="w-3 h-3" />
-                    <span>{category.name}</span>
-                  </div>
-                )}
-                {staffNames.map((name) => (
-                  <span
-                    key={name}
-                    className="inline-flex items-center gap-2 pl-1 pr-2 py-0.5 rounded-full bg-white/90 text-gray-900 border border-white/40 shadow-sm"
-                    title={name}
-                    aria-label={`Mitarbeitende:r ${name}`}
-                  >
-                    <span className="w-4 h-4 rounded-full bg-gray-200 text-[10px] font-semibold flex items-center justify-center">
-                      {initialsOf(name)}
-                    </span>
-                    <span className="text-xs font-medium">{name}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="relative z-[2] flex shrink-0 items-start gap-2 text-sm sm:gap-3">
-            <span className="tooltip-wrapper">
-              <button
-                type="button"
-                onClick={onOpenActivities}
-                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 p-1.5"
-                aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })}
-              >
-                <CalendarRange className="w-4 h-4 text-white" />
-              </button>
-              <span className="tooltip-bubble">{autoT('ui_8587eefe7ef8')}</span>
-            </span>
-            <span className="tooltip-wrapper">
-              <ProjectStarButton
-                ariaLabel={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
-                onClick={onToggleStar}
-                starred={starred}
-              />
-              <span className="tooltip-bubble">
-                {starred ? autoT('ui_28f4ed84c2f4') : autoT('ui_e1da9275bc5b')}
-              </span>
-            </span>
-            <span className="tooltip-wrapper">
-              <button
-                type="button"
-                onClick={onEdit}
-                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 p-1.5"
-                aria-label={autoT('ui_47fd1acdc0a4', { value0: project.title })}
-              >
-                <Pencil className="w-4 h-4 text-white" />
-              </button>
-              <span className="tooltip-bubble">{autoT('ui_104f3bfdc340')}</span>
-            </span>
-          </div>
-        </div>
-
-        {project.description && (
-          <div className="text-sm opacity-95">
-            {truncateWords(projectDescriptionToPlainText(project.description), 20)}
-          </div>
-        )}
-
-        {tagList.length > 0 && (
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            {tagList.slice(0, 3).map((tag) => (
-              <span
-                key={tag.id}
-                className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                style={{
-                  backgroundColor: tag.color || '#6b7280',
-                  color: textColorFor(tag.color || '#6b7280'),
-                  border: `1px solid ${tag.color || '#6b7280'}`,
-                }}
-                title={tag.name}
-              >
-                <span>{tag.name}</span>
-              </span>
-            ))}
-            {extraTags > 0 && (
-              <span
-                className="inline-flex items-center justify-center px-2 h-5 rounded-full text-[10px] font-semibold"
-                style={{
-                  backgroundColor: '#ffffff',
-                  color: '#111111',
-                  border: '1px solid #e5e7eb',
-                }}
-                title={`Weitere Tags: ${tagList
-                  .slice(3)
-                  .map((tag) => tag.name)
-                  .join(', ')}`}
-                aria-label={`Weitere Tags: +${extraTags}`}
-              >
-                +{extraTags}
-              </span>
-            )}
-          </div>
-        )}
-
-        {project.archived && (
-          <div className="mt-1 text-xs inline-block px-2 py-0.5 rounded-full bg-white/25 backdrop-blur-sm">
-            {autoT('ui_7d6b45e9c890')}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+function ProjectGridCard(props: ProjectCardProps) {
+  return <ProjectOverviewCard {...props} />;
 }
 
-function ProjectListRow({
-  project,
-  category,
-  staffNames,
-  tagList,
-  extraTags,
-  starred,
-  onOpenActivities,
-  onToggleStar,
-  onEdit,
-}: {
-  project: Project;
-  category?: ProjectBadgeCategory;
-  staffNames: string[];
-  tagList: ProjectBadgeTag[];
-  extraTags: number;
-  starred: boolean;
-  onOpenActivities: () => void;
-  onToggleStar: () => void;
-  onEdit: () => void;
-}) {
+function ProjectListRow(props: ProjectCardProps) {
+  return <ProjectOverviewCard {...props} list />;
+}
+
+function ProjectOverviewCard({
+  project, category, staffNames, tagList, starred,
+  onOpenActivities, onToggleStar, onEdit, list = false,
+}: ProjectCardProps & { list?: boolean }) {
   const prettyType = PROJECT_TYPE_LABELS[project.type] || project.type;
-  const surfaceColor = project.color || pickBg(project.title);
-
+  const tagLimit = list ? 4 : 3;
   return (
-    <div className="project-card hidden md:grid md:grid-cols-[176px,minmax(0,1fr)] overflow-visible rounded-2xl border border-gray-200 bg-white shadow-sm relative">
-      <div
-        className="relative min-h-[156px] overflow-hidden rounded-l-2xl"
-        style={{ backgroundColor: project.imageUrl ? undefined : surfaceColor }}
-      >
-        {project.imageUrl ? (
-          <ProtectedImage
-            src={project.imageUrl}
-            alt={project.title}
-            className="absolute inset-0 h-full w-full object-cover"
+    <article className={`project-overview-card ${list ? 'project-overview-card--list' : ''}`}>
+      <div className="project-overview-media" style={{ backgroundColor: project.color || pickBg(project.title) }}>
+        {project.imageUrl && <ProtectedImage src={project.imageUrl} alt={project.title} className="project-overview-image" />}
+        <div className="project-overview-image-shade" />
+        <div className="project-overview-favorite">
+          <ProjectStarButton
+            ariaLabel={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
+            title={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
+            onClick={onToggleStar} starred={starred} size="icon-touch"
           />
-        ) : (
-          <div className="absolute inset-0" style={{ backgroundColor: surfaceColor }} />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-black/0 to-black/40" />
-        <div className="absolute left-3 top-3 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm shadow-sm">
-          {prettyType}
         </div>
-        {project.archived && (
-          <div className="absolute left-3 bottom-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-800 shadow-sm">
-            {autoT('ui_7d6b45e9c890')}
-          </div>
-        )}
       </div>
-
-      <div className="min-w-0 p-4 lg:p-5 flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <button
-              type="button"
-              onClick={onOpenActivities}
-              className="text-left text-lg lg:text-xl font-semibold break-words leading-snug text-[color:var(--text-primary)] hover:text-viridian transition-colors"
-              title={autoT('ui_94512e307fac')}
-              aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })}
-            >
-              {project.title}
-            </button>
-            {project.targetGroup && (
-              <div className="mt-1 text-sm font-medium text-gray-700">
-                {autoT('ui_e5e954075491')}{' '}
-                <span className="font-normal text-gray-800">{project.targetGroup}</span>
-              </div>
-            )}
-            {Array.isArray(project.documents) && project.documents.length > 0 && (
-              <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700">
-                <Paperclip className="w-3.5 h-3.5 text-viridian" />
-                {project.documents.length}
-                {autoT('ui_1e879a942da8')}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-start gap-2 shrink-0">
-            <span className="tooltip-wrapper">
-              <button
-                type="button"
-                onClick={onOpenActivities}
-                aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })}
-                className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:border-viridian hover:text-viridian"
-              >
-                <CalendarRange className="w-4 h-4" />
-              </button>
-              <span className="tooltip-bubble">{autoT('ui_8587eefe7ef8')}</span>
-            </span>
-            <span className="tooltip-wrapper">
-              <ProjectStarButton
-                ariaLabel={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')}
-                onClick={onToggleStar}
-                starred={starred}
-              />
-              <span className="tooltip-bubble">
-                {starred ? autoT('ui_054cf53eb7ef') : autoT('ui_2ed72c09fb1f')}
-              </span>
-            </span>
-            <span className="tooltip-wrapper">
-              <button
-                type="button"
-                onClick={onEdit}
-                aria-label={autoT('ui_47fd1acdc0a4', { value0: project.title })}
-                className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:border-viridian hover:text-viridian"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              <span className="tooltip-bubble">{autoT('ui_104f3bfdc340')}</span>
-            </span>
-          </div>
+      <div className="project-overview-body">
+        <div className="project-overview-heading">
+          {Object.hasOwn(PROJECT_TYPE_LABELS, project.type) ? (
+            <ActivityTypeBadge type={project.type as Activity['type']} label={prettyType} />
+          ) : (
+            <span className="project-overview-type">{prettyType}</span>
+          )}
+          {category && <span className="project-overview-chip" style={{ backgroundColor: category.color || '#6b7280', color: textColorFor(category.color || '#6b7280') }}>
+            <Layers className="h-3 w-3 shrink-0" aria-hidden="true" />{category.name}
+          </span>}
+          {project.archived && <span className="project-overview-type">{autoT('ui_7d6b45e9c890')}</span>}
         </div>
-
-        {(category || staffNames.length > 0) && (
-          <div className="flex flex-wrap items-center gap-2">
-            {category && (
-              <div
-                className="text-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-full shadow-sm"
-                style={{
-                  backgroundColor: category.color || '#6b7280',
-                  color: textColorFor(category.color || '#6b7280'),
-                  border: `1px solid ${category.color || '#6b7280'}`,
-                }}
-              >
-                <Layers className="w-3 h-3" />
-                <span>{category.name}</span>
-              </div>
-            )}
-            {staffNames.map((name) => (
-              <span
-                key={name}
-                className="inline-flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-gray-100 text-gray-900 border border-gray-200"
-                title={name}
-                aria-label={`Mitarbeitende:r ${name}`}
-              >
-                <span className="w-5 h-5 rounded-full bg-white text-[10px] font-semibold flex items-center justify-center border border-gray-200">
-                  {initialsOf(name)}
-                </span>
-                <span className="text-xs font-medium">{name}</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {tagList.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            {tagList.slice(0, 4).map((tag) => (
-              <span
-                key={tag.id}
-                className="text-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-full shadow-sm"
-                style={{
-                  backgroundColor: tag.color || '#6b7280',
-                  color: textColorFor(tag.color || '#6b7280'),
-                  border: `1px solid ${tag.color || '#6b7280'}`,
-                }}
-                title={tag.name}
-              >
-                <span>{tag.name}</span>
-              </span>
-            ))}
-            {extraTags > 0 && (
-              <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700">
-                +{extraTags}
-                {autoT('ui_4e3936d10c2b')}
-              </span>
-            )}
-          </div>
-        )}
-
-        {project.description && (
-          <p className="text-sm leading-5 text-gray-700">
-            {truncateWords(projectDescriptionToPlainText(project.description), 24)}
-          </p>
-        )}
+        <h2 className="project-overview-title">
+          <button type="button" onClick={onOpenActivities} aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })}>{project.title}</button>
+        </h2>
+        <div className="project-overview-meta">
+          {project.targetGroup && <span className="project-overview-target" aria-label={`Zielgruppe: ${project.targetGroup}`}><Users className="h-4 w-4 shrink-0" aria-hidden="true" />{project.targetGroup}</span>}
+          {staffNames.length > 0 && <div className="project-overview-staff" aria-label="Mitarbeitende">
+            {staffNames.slice(0, 3).map((name, index) => <span key={`${name}-${index}`} className="tooltip-wrapper">
+              <span tabIndex={0} className="project-overview-avatar" aria-label={`Mitarbeitende:r ${name}`} title={name}>{initialsOf(name)}</span>
+              <span className="tooltip-bubble" role="tooltip">{name}</span>
+            </span>)}
+            {staffNames.length > 3 && <span tabIndex={0} className="project-overview-avatar" title={staffNames.slice(3).join(', ')} aria-label={`Weitere Mitarbeitende: ${staffNames.slice(3).join(', ')}`}>+{staffNames.length - 3}</span>}
+          </div>}
+          {tagList.slice(0, tagLimit).map(tag => <span key={tag.id} className="project-overview-chip" style={{ backgroundColor: tag.color || '#6b7280', color: textColorFor(tag.color || '#6b7280') }}>{tag.name}</span>)}
+          {tagList.length > tagLimit && <span className="project-overview-type" title={tagList.slice(tagLimit).map(tag => tag.name).join(', ')}>+{tagList.length - tagLimit}</span>}
+          {!!project.documents?.length && <span className="project-overview-target"><Paperclip className="h-3.5 w-3.5" aria-hidden="true" />{project.documents.length}{autoT('ui_1e879a942da8')}</span>}
+        </div>
+        {project.description && <p className="project-overview-description">{truncateWords(projectDescriptionToPlainText(project.description), 24)}</p>}
       </div>
-    </div>
+      <div className="project-overview-actions">
+        <Button variant="ghost" size="sm" onClick={onOpenActivities} aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })} title={autoT('ui_8587eefe7ef8')}><CalendarRange className="h-4 w-4" /><span>Aktivitäten</span></Button>
+        <div className="project-overview-desktop-star"><ProjectStarButton ariaLabel={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')} onClick={onToggleStar} starred={starred} /></div>
+        <Button variant="secondary" size="sm" onClick={onEdit} aria-label={autoT('ui_47fd1acdc0a4', { value0: project.title })}><Pencil className="h-4 w-4" /><span>{autoT('ui_104f3bfdc340')}</span></Button>
+      </div>
+    </article>
   );
 }
 
@@ -2713,6 +2428,7 @@ export default function Projects() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   // Debounce the search to prevent firing a request for every keystroke on first usage
   const [debounced, setDebounced] = useState('');
@@ -2805,12 +2521,6 @@ export default function Projects() {
         : projects.filter((project) => projectTypeFilters.includes(project.type)),
     [projects, projectTypeFilters],
   );
-  const projectTypeFilterLabel = useMemo(() => {
-    if (projectTypeFilters.length === 1) {
-      return `Projektart: ${PROJECT_TYPE_LABELS[projectTypeFilters[0]] || projectTypeFilters[0]}`;
-    }
-    return `Projektarten: ${projectTypeFilters.length} ausgewählt`;
-  }, [projectTypeFilters]);
   const isDesktopListView = desktopView === 'list';
   const [starred, setStarred] = useState<string[]>(() => getStarredProjectIds());
   useEffect(() => {
@@ -2834,15 +2544,15 @@ export default function Projects() {
   }, [tagsList]);
   const sortedProjects = useMemo(() => {
     if (!starredFirst || filteredProjects.length < 2 || starred.length === 0)
-      return filteredProjects;
+      return favoritesOnly ? filteredProjects.filter(project => starred.includes(project.id)) : filteredProjects;
     const starredIds = new Set(starred);
-    return [...filteredProjects].sort((left, right) => {
+    return filteredProjects.filter(project => !favoritesOnly || starred.includes(project.id)).sort((left, right) => {
       const leftStarred = starredIds.has(left.id);
       const rightStarred = starredIds.has(right.id);
       if (leftStarred === rightStarred) return 0;
       return leftStarred ? -1 : 1;
     });
-  }, [filteredProjects, starred, starredFirst]);
+  }, [filteredProjects, starred, starredFirst, favoritesOnly]);
 
   const openProjectActivities = useCallback(
     (projectId: string) => {
@@ -2982,12 +2692,10 @@ export default function Projects() {
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          {projectTypeFilters.length > 0 ? (
-            <FilterChip onRemove={() => setProjectTypeFilters([])}>
-              {projectTypeFilterLabel}
-            </FilterChip>
-          ) : null}
+        <div className="project-overview-filters" role="group" aria-label="Projektart auswählen">
+          <Button size="sm" variant={projectTypeFilters.length === 0 && !favoritesOnly ? 'primary' : 'secondary'} aria-pressed={projectTypeFilters.length === 0 && !favoritesOnly} onClick={() => { setProjectTypeFilters([]); setFavoritesOnly(false); }}>Alle ({projects.length})</Button>
+          {Object.entries(PROJECT_TYPE_LABELS).map(([type, label]) => <Button key={type} size="sm" variant={projectTypeFilters.includes(type) ? 'primary' : 'secondary'} aria-pressed={projectTypeFilters.includes(type)} onClick={() => { setProjectTypeFilters([type]); setFavoritesOnly(false); }}>{label} ({projects.filter(project => project.type === type).length})</Button>)}
+          <Button size="sm" variant={favoritesOnly ? 'primary' : 'secondary'} aria-pressed={favoritesOnly} onClick={() => { setProjectTypeFilters([]); setFavoritesOnly(value => !value); }}><ProjectStarIndicator size="sm" />Favoriten ({projects.filter(project => starred.includes(project.id)).length})</Button>
         </div>
         <div className="hidden md:flex items-center gap-3">
           <span className="text-sm font-medium text-gray-700">{autoT('ui_5c388792c607')}</span>

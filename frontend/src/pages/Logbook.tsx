@@ -1,3 +1,4 @@
+import DemoHoverHint from '@/demo/DemoHoverHint';
 import { useEffect, useMemo, useState } from 'react';
 import { Download, Plus, X } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -188,6 +189,7 @@ export default function Logbook() {
         className="mb-4"
         title={t('title')}
         actions={(
+        <DemoHoverHint title="Logbuch dokumentieren" description="Erstelle einen Logbucheintrag, suche nach Beobachtungen oder exportiere die Einträge für die nächste Teamsitzung." placement="bottom" align="end">
         <div className="flex justify-end gap-2">
           <HeaderSearchAction
             clearLabel={t('clearSearch')}
@@ -242,6 +244,7 @@ export default function Logbook() {
             {t('new')}
           </CreateButton>
         </div>
+        </DemoHoverHint>
         )}
       />
 
@@ -285,6 +288,7 @@ export default function Logbook() {
         </span>
       </div>
 
+      <DemoHoverHint title="Beobachtungen im Team nachvollziehen" description="Öffne einen Eintrag, um Beobachtungen, Highlights und nächste Schritte zu lesen. Mit Filtern und Tabellenansicht findest du passende Dokumentationen für eure Reflexion." placement="bottom" className="demo-hover-hint-anchor-top">
       {isLoading ? (
         <LoadingState label={t('loading')} />
       ) : isError ? (
@@ -407,6 +411,7 @@ export default function Logbook() {
         </>
       )}
 
+      </DemoHoverHint>
       <LogbookEntryFlyout
         entryId={selectedEntryId}
         returnTo={returnTo}

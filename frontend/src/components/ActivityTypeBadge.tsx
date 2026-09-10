@@ -20,7 +20,7 @@ export default function ActivityTypeBadge({ type, label, className = '' }: Activ
     const Icon = type === 'project_open' ? Unlock : Lock;
     return (
       <span
-        className={`activity-type-badge activity-type-badge--project inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-black/10 px-2 py-1 text-xs font-medium tracking-tight ${typeClasses[type]} ${className}`}
+        className={`activity-type-badge activity-type-badge--project inline-flex items-center gap-1 whitespace-nowrap border border-black/10 px-2 py-1 text-xs font-medium tracking-tight ${typeClasses[type]} ${className}`}
         title={label}
         aria-label={label}
       >
@@ -32,7 +32,7 @@ export default function ActivityTypeBadge({ type, label, className = '' }: Activ
 
   return (
     <span
-      className={`inline-flex items-center whitespace-nowrap rounded-full border border-black/10 px-2 py-1 text-xs font-medium tracking-tight ${typeClasses[type]} ${className}`}
+      className={`activity-type-badge inline-flex items-center whitespace-nowrap border border-black/10 px-2 py-1 text-xs font-medium tracking-tight ${typeClasses[type]} ${className}`}
       title={label}
       aria-label={label}
     >

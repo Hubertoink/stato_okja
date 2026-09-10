@@ -1,3 +1,8 @@
+/* Shared project/activity type shape, distinct from round taxonomy chips. */
+.activity-type-badge {
+  border-radius: 0.25rem;
+}
+
 /* Floating action button */
 .fab {
   width: 56px;
@@ -528,29 +533,29 @@
     visibility 140ms ease;
 }
 
-.demo-hover-hint[data-demo-hint-open='true'] .demo-hover-hint-panel {
+.demo-hover-hint[data-demo-hint-open='true'] > .demo-hover-hint-panel {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
 }
 
-.demo-hover-hint-top .demo-hover-hint-panel {
+.demo-hover-hint-top > .demo-hover-hint-panel {
   bottom: calc(100% + 0.875rem);
 }
 
-.demo-hover-hint-bottom .demo-hover-hint-panel {
+.demo-hover-hint-bottom > .demo-hover-hint-panel {
   top: calc(100% + 0.875rem);
 }
 
-.demo-hover-hint-align-start .demo-hover-hint-panel {
+.demo-hover-hint-align-start > .demo-hover-hint-panel {
   left: 0;
 }
 
-.demo-hover-hint-align-end .demo-hover-hint-panel {
+.demo-hover-hint-align-end > .demo-hover-hint-panel {
   right: 0;
 }
 
-.demo-hover-hint-anchor-top.demo-hover-hint-bottom .demo-hover-hint-panel {
+.demo-hover-hint-anchor-top.demo-hover-hint-bottom > .demo-hover-hint-panel {
   top: 0;
 }
 

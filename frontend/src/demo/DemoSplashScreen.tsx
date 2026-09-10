@@ -1,3 +1,4 @@
+import './demo.css';
 import { useEffect, useRef, useState } from 'react';
 import logoUrl from '../../assets/Stato_Logo.png';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';

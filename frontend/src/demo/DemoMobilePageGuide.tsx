@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { createPortal } from 'react-dom';
+import './demo.css';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { CheckCircle2, Lightbulb, X } from 'lucide-react';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -70,6 +73,20 @@ const PAGE_GUIDES: Record<string, DemoMobilePageGuide> = {
     ],
     tryThis: 'Setze einen Jahresfilter und schalte bei den Kennzahlen auf Durchschnittswerte.',
   },
+  logbook: {
+    key: 'logbook',
+    title: 'Logbuch: Den Alltag im Team reflektieren',
+    scenario: 'Halte fest, was bei einem Angebot passiert ist und welche Beobachtungen für die nächste Teamsitzung wichtig sind.',
+    options: ['Einträge lesen und nach Zeitraum oder Projekt filtern', 'Beobachtungen mit Projekten und Aktivitäten verknüpfen', 'Highlights, Herausforderungen und nächste Schritte festhalten'],
+    tryThis: 'Öffne einen vorhandenen Eintrag und schau dir an, wie Beobachtungen und nächste Schritte dokumentiert sind.',
+  },
+  surveys: {
+    key: 'surveys',
+    title: 'Umfragen: Rückmeldungen einholen',
+    scenario: 'Nutze Umfragen, um die Perspektiven der Besucher*innen in die Planung und Auswertung eurer Angebote einzubeziehen.',
+    options: ['Vorhandene Umfragen und ihre Fragen ansehen', 'Eine eigene Umfrage vorbereiten', 'Antworten und Ergebnisse einer Umfrage auswerten'],
+    tryThis: 'Öffne eine Demo-Umfrage und wechsle zwischen den Fragen und den Ergebnissen.',
+  },
   settings: {
     key: 'settings',
     title: autoT('ui_2a46ce33e667'),
@@ -97,6 +114,28 @@ export default function DemoMobilePageGuide() {
   const isMobile = useIsMobile(768);
   const guide = useMemo(() => guideForPath(location.pathname), [location.pathname]);
   const [open, setOpen] = useState(false);
+  const [present, setPresent] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
+  useBodyScrollLock(present);
+
+  useEffect(() => {
+    if (open) { setPresent(true); return; }
+    const timer = window.setTimeout(() => setPresent(false), 220);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  useEffect(() => {
+    if (!present) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const appRoot = document.getElementById('root');
+    const wasInert = appRoot?.inert ?? false;
+    if (appRoot) appRoot.inert = true;
+    panelRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (appRoot) appRoot.inert = wasInert;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [present]);
   const [hideAfterConfirm, setHideAfterConfirm] = useState(false);
   const guidesMutedForPageLoad = useDemoMobileGuideMuted();
   const guideKey = guide?.key ?? '';
@@ -114,6 +153,15 @@ export default function DemoMobilePageGuide() {
     return () => window.clearTimeout(timer);
   }, [guideKey, guide, guidesMutedForPageLoad, isMobile]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onEscape);
+    return () => document.removeEventListener('keydown', onEscape);
+  }, [open]);
+
   const closeGuide = () => {
     setHideAfterConfirm(false);
     setOpen(false);
@@ -124,14 +172,25 @@ export default function DemoMobilePageGuide() {
     closeGuide();
   };
 
-  if (!demoModeEnabled || !isMobile || !guide || !open || guidesMutedForPageLoad) return null;
+  if (!demoModeEnabled || !isMobile || !guide || !present) return null;
 
-  return (
-    <div className="demo-mobile-page-guide-shell" aria-live="polite">
+  return createPortal(
+    <div className="demo-mobile-page-guide-shell" data-state={open ? 'open' : 'closing'} onClick={(event) => { if (event.target === event.currentTarget) closeGuide(); }}>
       <section
+        ref={panelRef}
+        tabIndex={-1}
+        onKeyDown={(event) => {
+          if (event.key !== 'Tab') return;
+          const buttons = panelRef.current?.querySelectorAll<HTMLButtonElement>('button');
+          if (!buttons?.length) return;
+          const first = buttons[0];
+          const last = buttons[buttons.length - 1];
+          if (event.shiftKey && (document.activeElement === first || document.activeElement === panelRef.current)) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }}
         className="demo-mobile-page-guide"
         role="dialog"
-        aria-modal="false"
+        aria-modal="true"
         aria-labelledby="demo-mobile-page-guide-title"
       >
         <button
@@ -164,7 +223,7 @@ export default function DemoMobilePageGuide() {
         </div>
         <button
           type="button"
-          className={`demo-mobile-page-guide-session-toggle${hideAfterConfirm ? "demo-mobile-page-guide-session-toggle-active" : ''}`}
+          className="demo-mobile-page-guide-session-toggle"
           role="switch"
           aria-checked={hideAfterConfirm}
           onClick={() => setHideAfterConfirm((current) => !current)}
@@ -180,6 +239,7 @@ export default function DemoMobilePageGuide() {
           onClick={confirmGuide}
         >{autoT('ui_5e8d360bae74')}</button>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

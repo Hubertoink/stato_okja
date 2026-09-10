@@ -1,3 +1,8 @@
+import DOMPurify from 'dompurify';
+import { useIsMobile } from '@/lib/useIsMobile';
+import ActivityTypeBadge from '@/components/ActivityTypeBadge';
+import { colorForActivityType } from '@/lib/colors';
+import { autoT } from '@/i18n/auto';
 import { useOrganizationModules } from '@/lib/organizationModules';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useActivity } from '@/lib/activities';
@@ -18,7 +23,7 @@ import { getBadgeBackgroundColor } from '@/lib/colorPalette';
 import { isCancelledActivity } from '@/lib/activityExecutionStatus';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/i18n/formatters';
-import { IconButton } from '@/components/ui/Button';
+import { Button, IconButton } from '@/components/ui/Button';
 
 export default function ActivityDetailPage() {
   const { t } = useTranslation(['activities', 'common']);
@@ -27,6 +32,8 @@ export default function ActivityDetailPage() {
   const { id } = useParams();
   const { data: activity } = useActivity(id);
   const modules = useOrganizationModules();
+  const isMobile = useIsMobile(768);
+  const activityListKey = (location.state as { activityListKey?: string } | null)?.activityListKey;
 
   const from = (() => {
     const raw = (location.state as unknown as { from?: unknown } | null)?.from;
@@ -86,6 +93,70 @@ export default function ActivityDetailPage() {
     return 'bg-azure-web text-viridian';
   };
 
+  if (isMobile) {
+    const title = activity.title?.trim() || activity.project?.title || typeLabel[activity.type];
+    const male = activity.countMale ?? 0;
+    const female = activity.countFemale ?? 0;
+    const diverse = activity.countDiverse ?? 0;
+    const total = activity.countTotal ?? male + female + diverse;
+    const minutes = activity.durationMinutes ?? (() => {
+      const parse = (value?: string | null) => {
+        if (!value) return undefined;
+        const [hours, mins] = value.split(':').map(Number);
+        return Number.isFinite(hours) && Number.isFinite(mins) ? hours * 60 + mins : undefined;
+      };
+      const start = parse(activity.startTime);
+      const end = parse(activity.endTime);
+      return start !== undefined && end !== undefined && end >= start ? end - start : undefined;
+    })();
+    return (
+      <div className="activity-detail-mobile">
+        <header className="activity-detail-mobile-nav">
+          <IconButton onClick={() => navigate(from, { replace: true, state: { activityListKey } })} aria-label={t('common:actions.back')} title={t('common:actions.back')} variant="secondary"><ArrowLeft /></IconButton>
+          <span>Aktivität</span>
+        </header>
+        <section className="activity-mobile-card activity-detail-hero" aria-label={title}>
+          <div className="activity-mobile-backdrop" aria-hidden="true" style={{ backgroundColor: activity.project?.color || colorForActivityType(activity.type) }}>
+            {activity.project?.imageUrl && <ProtectedImage src={activity.project.imageUrl} alt="" className="h-full w-full object-cover" />}
+          </div>
+          <div className="activity-mobile-header">
+            <ActivityTypeBadge type={activity.type} label={typeLabel[activity.type] || activity.type} />
+            {!!minutes && <span className="text-xs px-2 py-1 bg-viridian text-white rounded">{minutes}{autoT('ui_b6c935d4f3c7')}</span>}
+          </div>
+          <h1>{title}</h1>
+          {activity.project?.title && activity.project.title !== title && <p className="activity-mobile-project">{activity.project.title}</p>}
+          <div className="activity-detail-date">{dateLabel}{timeStr ? ` · ${timeStr}` : ''}</div>
+          <div className="activity-mobile-taxonomy">
+            {(activity.categories || []).map(category => <span key={category.id} className="activity-mobile-chip rounded-full px-2 py-1 text-xs text-white" style={{ backgroundColor: getBadgeBackgroundColor(category.color) }}>{category.name}</span>)}
+            {(activity.tags || []).map(tag => <span key={tag.id} className="activity-mobile-chip inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-white" style={{ backgroundColor: getBadgeBackgroundColor(tag.color, '#64748b') }}><TagIcon className="h-3 w-3 shrink-0" aria-hidden="true" />{tag.name}</span>)}
+          </div>
+          {activity.project?.description && <div className="activity-detail-description" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activity.project.description, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li'], ALLOWED_ATTR: [] }) }} />}
+        </section>
+        <section className="activity-detail-section activity-detail-participants" aria-label={t('detail.participants')}>
+          {isCancelledActivity(activity.executionStatus) ? <ActivityExecutionStatusBadge status={activity.executionStatus} /> : <>
+            <div><div className="activity-mobile-total"><Users className="h-6 w-6 shrink-0" aria-hidden="true" /><strong>{total}</strong></div><div className="activity-mobile-count-label">{t('detail.participants')}</div></div>
+            <div className="activity-mobile-genders"><span aria-label={`Männlich: ${male}`}>M <b>{male}</b></span><span aria-label={`Weiblich: ${female}`}>W <b>{female}</b></span><span aria-label={`Divers: ${diverse}`}>D <b>{diverse}</b></span></div>
+          </>}
+        </section>
+        <section className="activity-detail-section">
+          <h2><Users className="h-4 w-4" aria-hidden="true" />{t('detail.staff')}</h2>
+          <div className="activity-detail-staff">
+            {(activity.staff || []).map(member => <span key={member.id} className="activity-detail-staff-chip"><span className="activity-detail-avatar" aria-hidden="true">{member.name.trim().split(/\s+/).filter(Boolean).map((part, index, parts) => index === 0 || index === parts.length - 1 ? part[0] : '').join('').toUpperCase()}</span>{member.name}</span>)}
+            {!activity.staff?.length && <p className="text-sm text-[var(--text-muted)]">Keine Mitarbeitenden zugeordnet.</p>}
+          </div>
+        </section>
+        <section className="activity-detail-section">
+          <h2>{t('detail.notes')}</h2>
+          <p className="activity-detail-notes">{activity.notes?.trim() || 'Keine Notizen vorhanden.'}</p>
+        </section>
+        <footer className="activity-detail-actions">
+          <Button variant="secondary" size="lg" onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from: `/activities/${activity.id}`, activityListKey, returnState: { from, activityListKey } }, replace: true })}><Pencil className="h-4 w-4" />{t('common:actions.edit')}</Button>
+          {modules.data?.logbook && <Button variant="primary" size="lg" onClick={() => navigate(`/logbook/new?activityId=${encodeURIComponent(activity.id)}${activity.projectId ? `&projectId=${encodeURIComponent(activity.projectId)}` : ''}`)}><BookOpen className="h-4 w-4" />Logbucheintrag</Button>}
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4">
@@ -116,7 +187,7 @@ export default function ActivityDetailPage() {
           )}
           {!!activity.id && (
             <button
-              onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from }, replace: true })}
+              onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from: `/activities/${activity.id}`, activityListKey, returnState: { from, activityListKey } }, replace: true })}
               aria-label={t('common:actions.edit')}
               title={t('common:actions.edit')}
               className="inline-flex items-center justify-center rounded-full border-0 bg-transparent p-2 text-viridian transition-colors hover:bg-[var(--surface-2)]"
@@ -125,7 +196,7 @@ export default function ActivityDetailPage() {
             </button>
           )}
           <IconButton
-            onClick={() => navigate(from, { replace: true })}
+            onClick={() => navigate(from, { replace: true, state: { activityListKey } })}
             aria-label={t('common:actions.back')}
             title={t('common:actions.back')}
             variant="secondary"

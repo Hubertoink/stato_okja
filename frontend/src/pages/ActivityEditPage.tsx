@@ -1,3 +1,4 @@
+import { getActivityEditorReturn, type ActivityEditorNavigationState } from '@/lib/activityEditorReturn';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Save as SaveIcon, Trash2 as TrashIcon, Boxes, Plus as PlusIcon } from 'lucide-react';
@@ -80,10 +81,8 @@ export default function ActivityEditPage() {
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
   const keyboardOpen = useKeyboardOpen();
 
-  const returnTo = (() => {
-    const raw = (location.state as unknown as { from?: unknown } | null)?.from;
-    return typeof raw === 'string' && raw.length > 0 ? raw : '/activities';
-  })();
+  const returnTarget = getActivityEditorReturn(location.state as ActivityEditorNavigationState | null);
+  const deletedReturnTarget = getActivityEditorReturn(location.state as ActivityEditorNavigationState | null, true);
 
   const [form, setForm] = useState<ActivityFormState>({ cohortCounts: {} });
   const formVersionRef = useRef<number | undefined>(undefined);
@@ -175,7 +174,7 @@ export default function ActivityEditPage() {
       setDeleteOpen(false);
       return;
     }
-    requestDiscard(() => navigate(returnTo, { replace: true }));
+    requestDiscard(() => navigate(returnTarget.to, { replace: true, state: returnTarget.state }));
   };
 
   const handleSave = () => {
@@ -215,7 +214,7 @@ export default function ActivityEditPage() {
       {
         onSuccess: () => {
           showToast(t('quickAdd.updated'));
-          navigate(returnTo, { replace: true });
+          navigate(returnTarget.to, { replace: true, state: returnTarget.state });
         },
         onError: (error: unknown) => {
           const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
@@ -881,7 +880,7 @@ export default function ActivityEditPage() {
               onSuccess: () => {
                 showToast(t('quickAdd.deleted'));
                 setDeleteOpen(false);
-                navigate(returnTo, { replace: true });
+                navigate(deletedReturnTarget.to, { replace: true, state: deletedReturnTarget.state });
               },
               onError: () => {
                 setDeleteOpen(false);

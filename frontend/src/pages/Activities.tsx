@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { getActivityListPosition, saveActivityListPosition, useRestoreActivityListPosition } from '@/lib/activityListPosition';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@/lib/activities';
 import { fetchAllLogbookEntries, type LogbookEntry } from '@/lib/logbook';
@@ -7,7 +8,7 @@ import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBa
 import ActivityTypeBadge from '@/components/ActivityTypeBadge';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
-import { Download, Plus } from 'lucide-react';
+import { Download, Plus, Users } from 'lucide-react';
 // switched to xlsx-js-style inside the export handler to support cell styling
 // basic location quick filter removed
 import ProjectPickerModal from './ProjectPickerModal';
@@ -118,7 +119,9 @@ export default function Activities() {
   const [filterDrawer, setFilterDrawer] = useState(false);
   const [advanced, setAdvanced] = useState<ActivitiesFilter>(() => initialActivitiesFilters.advanced);
   const [picker, setPicker] = useState<boolean>(false);
-  const [page, setPage] = useState<number>(1);
+  const listKey = (location.state as { activityListKey?: string } | null)?.activityListKey || location.key;
+  const [returnPosition] = useState(() => getActivityListPosition(listKey));
+  const [page, setPage] = useState<number>(() => returnPosition?.page || 1);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(initialActivitiesFilters.search);
   const [order, setOrder] = useState<'asc' | 'desc'>(() => initialActivitiesFilters.order);
@@ -172,15 +175,17 @@ export default function Activities() {
     order,
   } as ActivitiesFilter;
 
+  const previousPageFilters = useRef({ searchTerm, temporaryDateFilter });
   useEffect(() => {
-    setPage(1);
-  }, [searchTerm]);
+    const previous = previousPageFilters.current;
+    if (previous.searchTerm !== searchTerm || previous.temporaryDateFilter !== temporaryDateFilter) setPage(1);
+    previousPageFilters.current = { searchTerm, temporaryDateFilter };
+  }, [searchTerm, temporaryDateFilter]);
 
+  const appliedProjectParams = useRef<string | null>(returnPosition ? params.toString() : null);
   useEffect(() => {
-    setPage(1);
-  }, [temporaryDateFilter]);
-
-  useEffect(() => {
+    if (appliedProjectParams.current === params.toString()) return;
+    appliedProjectParams.current = params.toString();
     const projectParam = (params.get('projectId') || '').trim();
     if (!projectParam) return;
 
@@ -226,6 +231,11 @@ export default function Activities() {
   });
   // no quick location filter
   const activities = useMemo(() => paged?.data || [], [paged]);
+  useRestoreActivityListPosition(returnPosition, !!paged && !activitiesLoading && !activitiesFetching);
+  const openMobileActivity = (activityId: string) => {
+    saveActivityListPosition(listKey, page);
+    navigate(`/activities/${activityId}`, { state: { from: `${location.pathname}${location.search}`, activityListKey: listKey } });
+  };
   const total = paged?.total || 0;
   const pageCount = Math.max(Math.ceil(total / pageSize), 1);
   const [editId, setEditId] = useState<string | null>(null);
@@ -1139,57 +1149,28 @@ export default function Activities() {
           {activities.map((a) => (
             <div
               key={a.id}
-              className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-azure-web/50 focus:outline-none focus:ring-2 focus:ring-viridian/40 relative overflow-hidden"
+              className="activity-mobile-card cursor-pointer focus:outline-none focus:ring-2 focus:ring-viridian/40"
               role="button"
               tabIndex={0}
               aria-label={t('actions.open')}
               onClick={() => {
                 if (isMobile)
-                  navigate(`/activities/${a.id}`, {
-                    state: { from: `${location.pathname}${location.search}` },
-                  });
+                  openMobileActivity(a.id);
                 else openEditActivity(a.id);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   if (isMobile)
-                    navigate(`/activities/${a.id}`, {
-                      state: { from: `${location.pathname}${location.search}` },
-                    });
+                    openMobileActivity(a.id);
                   else openEditActivity(a.id);
                 }
               }}
             >
-              {a.project?.imageUrl ? (
-                <>
-                  <ProtectedImage
-                    src={a.project.imageUrl || undefined}
-                    alt=""
-                    aria-hidden
-                    className="absolute inset-y-0 right-0 w-[42%] h-full object-cover opacity-85"
-                  />
-                  <div
-                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-[42%]"
-                    aria-hidden
-                  />
-                </>
-              ) : a.project?.color ? (
-                <>
-                  <div
-                    className="absolute inset-y-0 right-0 w-[42%] opacity-80"
-                    style={{
-                      background: `linear-gradient(225deg, ${a.project.color} 0%, color-mix(in srgb, ${a.project.color} 68%, white) 100%)`,
-                    }}
-                    aria-hidden
-                  />
-                  <div
-                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-[42%]"
-                    aria-hidden
-                  />
-                </>
-              ) : null}
-              <div className="relative z-10 flex justify-between items-start mb-2">
+              <div className="activity-mobile-backdrop" aria-hidden="true" style={{ backgroundColor: a.project?.color || colorForActivityType(a.type) }}>
+                {a.project?.imageUrl && <ProtectedImage src={a.project.imageUrl} alt="" className="h-full w-full object-cover" />}
+              </div>
+              <div className="activity-mobile-header">
                 <div>
                   {(() => {
                     const isToday = (a.date || '').slice(0, 10) === todayIso;
@@ -1199,9 +1180,6 @@ export default function Activities() {
                       </div>
                     );
                   })()}
-                  <div className="font-semibold text-viridian">
-                    {activityTypeLabels[a.type] || a.type}
-                  </div>
                 </div>
                 {(() => {
                   const duration =
@@ -1223,32 +1201,18 @@ export default function Activities() {
                   ) : null;
                 })()}
               </div>
-              <div className="relative z-10 text-sm text-gray-600 mb-1">{a.title || '-'}</div>
-              <div className="relative z-10 text-xs text-gray-500 mb-3">
-                {a.project?.title || '-'}
-              </div>
-              <div className="relative z-10 text-xs text-gray-600 mb-2">
-                {isCancelledActivity(a.executionStatus) ? (
-                  <ActivityExecutionStatusBadge status={a.executionStatus} />
-                ) : (
-                  (() => {
-                    const m = a.countMale || 0;
-                    const w = a.countFemale || 0;
-                    const d = a.countDiverse || 0;
-                    const total = (a.countTotal ?? m + w + d) || 0;
-                    return (
-                      <>
-                        {t('mobile.participants', { total, male: m, female: w, diverse: d })}
-                      </>
-                    );
-                  })()
-                )}
-              </div>
-              <div className="relative z-10 flex flex-wrap gap-1.5 mb-2">
+              <div className="activity-mobile-content">
+                <div className="activity-mobile-details">
+                  <h2 className="activity-mobile-title">{a.title?.trim() || a.project?.title || activityTypeLabels[a.type] || a.type}</h2>
+                  {a.title?.trim() && a.project?.title && a.title.trim() !== a.project.title.trim() && (
+                    <p className="activity-mobile-project">{a.project.title}</p>
+                  )}
+                  <ActivityTypeBadge type={a.type} label={activityTypeLabels[a.type] || a.type} />
+              <div className="activity-mobile-taxonomy">
                 {(a.categories || []).map((c) => (
                   <span
                     key={c.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white"
+                    className="activity-mobile-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white"
                     style={{ backgroundColor: getBadgeBackgroundColor(c.color) }}
                     title={c.name}
                   >
@@ -1258,17 +1222,38 @@ export default function Activities() {
                 {(a.tags || []).map((t) => (
                   <span
                     key={t.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white"
+                    className="activity-mobile-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-white"
                     style={{ backgroundColor: getBadgeBackgroundColor(t.color, '#64748b') }}
                     title={t.name}
                   >
-                    <TagIcon className="w-3 h-3" /> {t.name}
+                    <TagIcon className="w-3 h-3 shrink-0" /> {t.name}
                   </span>
                 ))}
               </div>
+                </div>
+                <div className="activity-mobile-attendance" aria-label={t('table.participants')}>
+                  {isCancelledActivity(a.executionStatus) ? (
+                    <ActivityExecutionStatusBadge status={a.executionStatus} />
+                  ) : (() => {
+                    const m = a.countMale ?? 0;
+                    const w = a.countFemale ?? 0;
+                    const d = a.countDiverse ?? 0;
+                    const total = a.countTotal ?? m + w + d;
+                    return <div className="activity-mobile-counts" aria-label={t('mobile.participants', { total, male: m, female: w, diverse: d })}>
+                      <div className="activity-mobile-total"><Users aria-hidden="true" className="h-5 w-5 shrink-0" /><strong>{formatNumber(total)}</strong></div>
+                      <span className="activity-mobile-count-label">{t('table.participants')}</span>
+                      <div className="activity-mobile-genders" aria-hidden="true">
+                        <span>M <b>{formatNumber(m)}</b></span>
+                        <span>W <b>{formatNumber(w)}</b></span>
+                        <span>D <b>{formatNumber(d)}</b></span>
+                      </div>
+                    </div>;
+                  })()}
+                </div>
+              </div>
               {a.notes && (
-                <div className="relative z-10 text-[12px] text-gray-600 flex items-start gap-1 mb-2">
-                  <StickyNote className="w-3.5 h-3.5 mt-[2px] text-gray-500" />
+                <div className="activity-mobile-notes">
+                  <StickyNote className="w-3.5 h-3.5 mt-[2px] shrink-0" />
                   <span>{firstWords(a.notes, 20)}</span>
                 </div>
               )}

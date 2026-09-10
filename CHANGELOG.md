@@ -7,6 +7,30 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.10.0] - 2026-09-10
+
+### Added
+- Superadmins können Module je Organisation aktivieren und deaktivieren.
+- Mobile Aktivitäten erhalten nach Tagen gruppierte Listen mit kompakten Sticky-Datumsüberschriften.
+- Demo-Hinweise unterstützen die Orientierung in Logbuch, Umfragen und weiteren Ansichten.
+
+### Changed
+- Projektübersicht, mobile Aktivitätsdetails und Logbuchkarten wurden mit klarerer Hierarchie und kompakteren Abständen überarbeitet.
+- Die mobile Kopfleiste zeigt Organisationsbadge und Avatar; Daily-Log-Titel öffnen die zugehörige Aktivität.
+- Aktive Umfragen werden vor beendeten Umfragen angezeigt.
+
+### Fixed
+- Statistikdiagramme funktionieren auch bei der Jahresauswahl „Alle“.
+- Navigation aus Aktivitätsdetails und Editoren erhält den Rückweg zur vorherigen Ansicht.
+- CSS-Fallbacks und Safari-Präfixe verbessern die Browserkompatibilität.
+- Gleichzeitige Änderungen, geschützte Uploads und die Aktualisierung geöffneter Editoren werden robuster behandelt.
+
+### Upgrade
+- Vor dem Update Datenbank und Uploads sichern; das reguläre On-Prem-Updateverfahren verwenden.
+- Die Release-Pipeline prüft Tests, Builds, PostgreSQL-Migrationen und den Installations-/Wiederherstellungsablauf vor der Veröffentlichung.
+
+---
+
 ## [1.9.2] - 2026-09-05
 
 ### Added

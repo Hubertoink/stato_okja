@@ -1,4 +1,4 @@
-import { formatDate } from '@/i18n/formatters';
+import { formatStatisticsReportPeriod } from './statistics/reportPeriod';
 import { useTranslation } from 'react-i18next';
 import { useActiveOrganizationName } from '@/lib/useActiveOrganizationName';
 import { useState, useMemo, useRef, useEffect } from 'react';
@@ -2502,7 +2502,7 @@ export default function Statistics() {
       >
         <div className="space-y-4 text-sm text-gray-700">
           <p className="font-medium">{t('workflow.organization')}: {organizationName || t('workflow.noOrganization')}</p>
-          <p>{formatDate(from + 'T12:00:00')} – {formatDate(to + 'T12:00:00')} · {totalActivities} {autoT('ui_b6bf5f1a2033')}</p>
+          <p>{formatStatisticsReportPeriod(from, to)} · {totalActivities} {autoT('ui_b6bf5f1a2033')}</p>
           <p>{t('workflow.reportScope')}</p>
           <p>{autoT('ui_fabb2abae3a4')}</p>
           <div className="grid gap-2">

@@ -8,7 +8,7 @@ import {
   ChevronDown,
   Circle,
   Edit3,
-  LockKeyhole,
+
   MessageCircle,
   Plus,
   Save,
@@ -39,8 +39,8 @@ import Modal from '@/components/Modal';
 import { Menu, MenuItem } from '@/components/ui/Menu';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
-import LogbookConnections from '@/components/LogbookConnections';
-import LogbookTypeBadge from '@/components/LogbookTypeBadge';
+import LogbookDetailContent from '@/components/LogbookDetailContent';
+
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
 import { autoT } from '@/i18n/auto';
@@ -480,9 +480,9 @@ export default function LogbookEntryPage(props: unknown = {}) {
         >
           <form
             onSubmit={save}
-            className="modal-editor-body min-h-0 flex-1 overflow-y-auto"
+            className="modal-editor-body min-h-0 flex-1 overflow-y-auto md:flex md:flex-col md:overflow-hidden"
           >
-            <div className="space-y-4 p-4 md:p-6">
+            <div className="space-y-4 p-4 md:min-h-0 md:flex-1 md:overflow-y-auto md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_e2f9e932be0a')}{occurredAtWeekday && (
                     <span className="ml-2 font-normal text-gray-500">· {occurredAtWeekday}</span>
@@ -659,6 +659,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
               </div>
             </div>
             <EditorActions
+              className="shrink-0"
               secondary={<Button variant="secondary" size="lg" onClick={closeEditing}>{autoT('ui_07af7cb30fca')}</Button>}
               primary={(
                 <Button type="submit" size="lg" disabled={create.isPending || update.isPending}>
@@ -691,7 +692,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
   if (!entry) return null;
   const archived = entry.status === 'archived';
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="logbook-detail-page mx-auto max-w-4xl">
       <div className="mb-5 flex items-center justify-between gap-3">
         <button
           type="button"
@@ -740,73 +741,9 @@ export default function LogbookEntryPage(props: unknown = {}) {
           </div>
         )}
       </div>
-      <article className="modern-card overflow-hidden">
-        <div className="border-b border-gray-100 p-5 sm:p-7">
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-            <LogbookTypeBadge label={logbookTypeLabels[entry.type]} type={entry.type} />
-            <span
-              className={`rounded-full px-2.5 py-1 font-semibold ${entry.status === 'discussed' ? "bg-green-100 text-green-700" : entry.status === 'follow_up' ? "bg-amber-100 text-amber-800" : entry.status === 'archived' ? "bg-gray-100 text-gray-600" : "bg-blue-100 text-blue-700"}`}
-            >
-              {logbookStatusLabels[entry.status]}
-            </span>
-            {entry.visibility === 'admins' && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-700">
-                <LockKeyhole className="h-3 w-3" />{autoT('ui_db8e800f08e5')}</span>
-            )}
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">{entry.title}</h1>
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
-            <span className="flex items-center gap-2">
-              <UserAvatar
-                name={entry.createdByName}
-                avatarUrl={
-                  entry.createdByUser?.avatarUrl ??
-                  (entry.createdByUserId === user?.id ? user?.avatarUrl : null)
-                }
-              />
-              {entry.createdByName}
-            </span>
-            <span>{formatDate(entry.occurredAt)}</span>
-            {entry.documentationUpdatedAt && (
-              <span>{autoT('ui_dee2fa0b54d8')}{formatDate(entry.documentationUpdatedAt)}
-                {entry.documentationUpdatedByName ? ` von ${entry.documentationUpdatedByName}` : ''}
-              </span>
-            )}
-          </div>
-          {entry.status === 'discussed' && (
-            <p className="mt-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-              <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{' '}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
-            </p>
-          )}
-        </div>
-        <div className="space-y-6 p-5 sm:p-7">
-          <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{autoT('ui_0401e23e6030')}</h2>
-            <p className="whitespace-pre-wrap leading-7 text-gray-800">{entry.body}</p>
-          </section>
-          {(entry.highlights || entry.challenges || entry.nextSteps) && (
-            <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              {entry.highlights && (
-                <div className="logbook-detail-note logbook-detail-note--success rounded-xl bg-green-50 p-4 text-green-800">
-                  <h3 className="mb-2 font-semibold">{autoT('ui_ed124d299865')}</h3>
-                  <p className="whitespace-pre-wrap text-sm">{entry.highlights}</p>
-                </div>
-              )}
-              {entry.challenges && (
-                <div className="logbook-detail-note logbook-detail-note--warning rounded-xl bg-amber-50 p-4 text-amber-800">
-                  <h3 className="mb-2 font-semibold">{autoT('ui_24cb5c6fa8e6')}</h3>
-                  <p className="whitespace-pre-wrap text-sm">{entry.challenges}</p>
-                </div>
-              )}
-              {entry.nextSteps && (
-                <div className="logbook-detail-note logbook-detail-note--info rounded-xl bg-blue-50 p-4 text-blue-800">
-                  <h3 className="mb-2 font-semibold">{autoT('ui_76231e1d047c')}</h3>
-                  <p className="whitespace-pre-wrap text-sm">{entry.nextSteps}</p>
-                </div>
-              )}
-            </section>
-          )}
-          <LogbookConnections entry={entry} />
+      <article className="logbook-detail-page-main min-w-0">
+        <div className="space-y-6 p-3 sm:p-6">
+          <LogbookDetailContent entry={entry} />
           {canManage && !archived && (
             <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-5">
               {entry.status !== 'discussed' && (
@@ -832,7 +769,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
           )}
         </div>
       </article>
-      <section className="modern-card mt-5 p-5 sm:p-7">
+      <section className="logbook-detail-page-comments modern-card mt-5 p-5 sm:p-7">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
           <MessageCircle className="h-5 w-5 text-viridian" />{autoT('ui_b9677171d9f7')}{entry.comments?.length || 0})
         </h2>

@@ -180,13 +180,13 @@ export function SurveyEditor({ open, survey, onClose, initialTemplate, instanceK
   };
   const closeEditor = () => requestDiscard(onClose);
   const actions = <EditorActions
-    className="-mx-4 -mb-5 mt-5 md:-mx-6"
+    className="shrink-0"
     secondary={<Button variant="secondary" size="lg" onClick={step === 'basics' ? closeEditor : () => setStep('basics')}>{step === 'basics' ? t('common:actions.cancel') : t('editor.backToBasics')}</Button>}
     primary={step === 'basics' ? <Button size="lg" onClick={() => setStep('questions')}>{t('editor.nextToQuestions')}</Button> : <Button size="lg" onClick={() => void save()} disabled={busy}>{busy ? t('editor.saving') : t('editor.saveDraft')}</Button>}
   />;
   const headerActions = <Button size="sm" className="min-h-11" onClick={() => void save()} disabled={busy} aria-label={t('editor.saveDraft')}><Save className="h-4 w-4" /><span className="hidden sm:inline">{busy ? t('editor.saving') : t('editor.saveDraft')}</span></Button>;
   return <><Modal open={open} onClose={closeEditor} title={survey ? t('editor.edit') : initialTemplate ? t('editor.useTemplate') : t('editor.new')} maxWidth="5xl" variant="form" headerActions={headerActions}>
-    <div className="flex min-h-0 flex-1 flex-col"><div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 md:px-6">
+    <div className="min-h-0 flex-1 overflow-y-auto md:flex md:flex-col md:overflow-hidden"><div className="space-y-5 px-4 py-5 md:min-h-0 md:flex-1 md:overflow-y-auto md:px-6">
       <div className="grid grid-cols-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-1" role="tablist" aria-label={t('editor.steps')}>
         <Button size="sm" className="min-h-11" variant={step === 'basics' ? 'primary' : 'ghost'} onClick={() => setStep('basics')} role="tab" aria-selected={step === 'basics'}>{t('editor.stepBasics')}</Button>
         <Button size="sm" className="min-h-11" variant={step === 'questions' ? 'primary' : 'ghost'} onClick={() => setStep('questions')} role="tab" aria-selected={step === 'questions'}>{t('editor.stepQuestions')}</Button>
@@ -202,8 +202,9 @@ export function SurveyEditor({ open, survey, onClose, initialTemplate, instanceK
         <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold text-viridian">{t('editor.questions')}</h4><div className="flex flex-wrap gap-2"><Button size="sm" className="min-h-11" variant={state.questions.some((entry) => entry.demographicKey === 'age_cohort') ? 'primary' : 'secondary'} onClick={() => addDemographic('age')}>+ {t('editor.age')}</Button><Button size="sm" className="min-h-11" variant={state.questions.some((entry) => entry.demographicKey === 'gender') ? 'primary' : 'secondary'} onClick={() => addDemographic('gender')}>+ {t('editor.gender')}</Button><Button size="sm" className="min-h-11" variant={state.questions.some((entry) => entry.demographicKey === 'origin_area') ? 'primary' : 'secondary'} onClick={() => addDemographic('origin')}>+ {t('editor.district')}</Button><Button size="sm" className="min-h-11" onClick={() => appendQuestion(question('single_choice', '', t))}><Plus className="h-4 w-4" /> {t('editor.question')}</Button></div></div><FieldHint>{t('editor.demographicHint')}</FieldHint>{state.questions.map((entry, index) => <QuestionEditor key={entry.id} value={entry} index={index} errors={validation.questions[entry.id]} isOpen={openQuestionIds.has(entry.id)} onToggle={() => setOpenQuestionIds((previous) => { const next = new Set(previous); if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id); return next; })} onChange={(next) => updateQuestion(index, next)} onDuplicate={() => duplicateQuestion(index)} onRemove={() => set('questions', state.questions.filter((_, itemIndex) => itemIndex !== index))} onMoveUp={() => moveQuestion(index, index - 1)} onMoveDown={() => moveQuestion(index, index + 1)} canMoveUp={index > 0} canMoveDown={index < state.questions.length - 1} />)}</div>
         <details className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-4"><summary className="cursor-pointer font-semibold text-viridian">{t('editor.preview')}</summary><ol className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">{state.questions.map((entry, index) => <li key={entry.id}><span className="font-medium text-[var(--text-primary)]">{index + 1}. {entry.label || t('questionEditor.untitled')}</span> · {t(`questionEditor.types.${entry.type}`)}{entry.required ? ` · ${t('questionEditor.requiredSummary')}` : ''}</li>)}</ol></details>
       </>}
+    </div>
       {actions}
-    </div></div>
+    </div>
   </Modal>{projectPickerOpen ? <ProjectPickerModal onClose={() => setProjectPickerOpen(false)} onPick={(project) => { set('projectId', project.id); setProjectPickerOpen(false); }} /> : null}{discardDialog}</>;
 }
 

@@ -706,6 +706,8 @@ export const resources = {
     },
     logbook: {
       title: 'Logbuch',
+      reflectionOutlook: 'Reflexion & Ausblick',
+      moreActions: 'Weitere Aktionen',
       search: 'Logbuch durchsuchen…',
       clearSearch: 'Suche löschen',
       openSearch: 'Suche öffnen',
@@ -1773,6 +1775,8 @@ export const resources = {
     },
     logbook: {
       title: 'Logbook',
+      reflectionOutlook: 'Reflection & outlook',
+      moreActions: 'More actions',
       search: 'Search logbook…',
       clearSearch: 'Clear search',
       openSearch: 'Open search',

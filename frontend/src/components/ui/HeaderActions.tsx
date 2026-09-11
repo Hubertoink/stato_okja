@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from 'react';
 import { Search, SlidersHorizontal, XCircle } from 'lucide-react';
 import { IconButton } from './Button';
 import { Input } from './Field';
@@ -25,10 +25,49 @@ export function HeaderSearchAction({
   placeholder: string;
   value: string;
 }) {
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !anchorRef.current?.contains(event.target)) {
+        onOpenChange(false);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer, true);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+  }, [open, onOpenChange]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const updatePosition = () => {
+      const anchor = anchorRef.current?.getBoundingClientRect();
+      if (!anchor) return;
+      const viewportWidth = document.documentElement.clientWidth;
+      const width = popoverRef.current?.getBoundingClientRect().width || 0;
+      const left = Math.max(16, Math.min(anchor.right - width, viewportWidth - width - 16));
+      setOffset(anchor.right - left - width);
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={anchorRef} onKeyDown={(event) => {
+      if (open && event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onOpenChange(false);
+        anchorRef.current?.querySelector<HTMLButtonElement>('button[aria-expanded]')?.focus();
+      }
+    }}>
       {open ? (
-        <div className="header-action-popover" role="search">
+        <div ref={popoverRef} className="header-action-popover" role="search" style={{ right: offset }}>
           <div className="relative">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-faint)]" />
             <Input

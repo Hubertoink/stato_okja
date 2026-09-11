@@ -24,6 +24,26 @@
   box-shadow: var(--card-shadow);
 }
 
+.dashboard-section-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border-radius: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-section-link:hover {
+  color: var(--viridian);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.dashboard-section-link:focus-visible {
+  outline: 2px solid var(--viridian);
+  outline-offset: 4px;
+}
+
 .dashboard-active-surveys {
   padding-inline: 1.5rem;
 }
@@ -174,7 +194,18 @@
 }
 
 @media (max-width: 767px) {
+  .dashboard-section-link {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 5px;
+    text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+  }
+
   .dashboard-active-surveys {
+    padding-inline: 0;
+  }
+
+  .dashboard-active-surveys-header {
     padding-inline: 1rem;
   }
 

@@ -2,12 +2,14 @@ import { FormEvent, useEffect, useState } from 'react';
 import {
   AlertTriangle,
   Archive,
+  ArrowLeft,
   CheckCircle2,
   ChevronDown,
   Circle,
   Edit3,
-  LockKeyhole,
+
   MessageCircle,
+  MoreVertical,
   Send,
   Trash2,
 } from 'lucide-react';
@@ -28,10 +30,10 @@ import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { ModalBackdrop, useModalHistory } from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
-import LogbookConnections from '@/components/LogbookConnections';
-import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
-import LogbookStatusBadge from '@/components/LogbookStatusBadge';
-import LogbookTypeBadge from '@/components/LogbookTypeBadge';
+import LogbookDetailContent from '@/components/LogbookDetailContent';
+import { logbookStatusLabels } from '@/lib/logbookLabels';
+
+
 import { ArchiveIconButton, Button, CloseButton, IconButton } from '@/components/ui/Button';
 import { FieldLabel, Textarea } from '@/components/ui/Field';
 import { Menu, MenuItem } from '@/components/ui/Menu';
@@ -166,10 +168,10 @@ export default function LogbookEntryFlyout({
         aria-label={autoT('ui_20cde07dafc6')}
         className="logbook-detail-modal relative flex h-full w-full flex-col bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl"
       >
-        <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4 sm:px-6">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">{autoT('ui_f95da57ad34c')}</p>
-            <h2 className="truncate text-lg font-bold text-[var(--text-primary)]">{autoT('ui_73d71268a537')}</h2>
+        <header className="logbook-reading-toolbar flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 py-3 md:px-6">
+          <div className="flex min-w-0 items-center gap-1">
+            <IconButton className="md:hidden" variant="ghost" onClick={dismiss} aria-label={autoT('ui_44424b18700e')}><ArrowLeft /></IconButton>
+            <h2 className="truncate text-base font-bold text-[var(--text-primary)] md:text-lg">{autoT('ui_73d71268a537')}</h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {canManage && !archived && entry && (
@@ -177,6 +179,8 @@ export default function LogbookEntryFlyout({
                 <button
                   type="button"
                   onClick={() => setStatusMenuOpen((value) => !value)}
+                  aria-label={logbookStatusLabels[entry.status]}
+                  aria-expanded={statusMenuOpen}
                   className={`status-control logbook-status-pill logbook-status-pill--${entry.status}`}
                 >
                   <LogbookStatusIcon status={entry.status} />
@@ -216,7 +220,7 @@ export default function LogbookEntryFlyout({
             )}
             {canManage && !archived && entry && (
                 <IconButton
-                  variant="secondary"
+                  variant="ghost"
                   className="logbook-edit-button"
                   onClick={() => {
                     if (onEdit) {
@@ -231,8 +235,25 @@ export default function LogbookEntryFlyout({
                 <Edit3 className="h-5 w-5" />
               </IconButton>
             )}
+            {canManage && !archived && <details className="relative md:hidden" onKeyDown={(event) => {
+              if (event.key === 'Escape' && event.currentTarget.open) {
+                event.stopPropagation();
+                event.currentTarget.open = false;
+                event.currentTarget.querySelector('summary')?.focus();
+              }
+            }}>
+              <summary className="logbook-more-trigger" aria-label={t('moreActions')}><MoreVertical aria-hidden="true" /></summary>
+              <Menu className="absolute right-0 top-full z-20 mt-2 min-w-48">
+                <MenuItem onClick={(event) => {
+                  const details = event.currentTarget.closest('details');
+                  if (details) details.open = false;
+                  setArchiveConfirmOpen(true);
+                }}><Archive className="h-4 w-4" />{autoT('ui_b81f3298d960')}</MenuItem>
+              </Menu>
+            </details>}
             {canManage && !archived && (
               <Button
+                className="hidden md:inline-flex"
                 variant="warning"
                 size="md"
                 onClick={() => setArchiveConfirmOpen(true)}
@@ -260,80 +281,22 @@ export default function LogbookEntryFlyout({
               </span>
             )}
             <CloseButton
+              className="hidden md:inline-flex"
               onClick={dismiss}
               aria-label={autoT('ui_44424b18700e')}
             />
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+        <div className="logbook-reading-scroll min-h-0 flex-1 overflow-y-auto p-3 md:p-6">
           {isLoading && <p className="text-sm text-gray-500">{autoT('ui_a7151ad4e39f')}</p>}
           {!isLoading && !entry && (
             <p className="text-sm text-gray-600">{autoT('ui_118fdc8c2826')}</p>
           )}
           {entry && (
-            <div className="space-y-6">
-              <section>
-                <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-                  <LogbookTypeBadge label={logbookTypeLabels[entry.type]} type={entry.type} />
-                  <LogbookStatusBadge status={entry.status} />
-                  {entry.visibility === 'admins' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-700">
-                      <LockKeyhole className="h-3 w-3" />{autoT('ui_db8e800f08e5')}</span>
-                  )}
-                </div>
-                <h1 className="text-2xl font-bold text-gray-800">{entry.title}</h1>
-                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
-                  <span className="flex items-center gap-2">
-                    <UserAvatar
-                      name={entry.createdByName}
-                      avatarUrl={
-                        entry.createdByUser?.avatarUrl ??
-                        (entry.createdByUserId === user?.id ? user?.avatarUrl : null)
-                      }
-                    />
-                    {entry.createdByName}
-                  </span>
-                  <span>{formatDate(entry.occurredAt)}</span>
-                  {entry.documentationUpdatedAt && (
-                    <span>{autoT('ui_dee2fa0b54d8')}{formatDate(entry.documentationUpdatedAt)}
-                      {entry.documentationUpdatedByName
-                        ? ` von ${entry.documentationUpdatedByName}`
-                        : ''}
-                    </span>
-                  )}
-                </div>
-                {entry.status === 'discussed' && (
-                  <p className="mt-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-                    <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{' '}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
-                  </p>
-                )}
-              </section>
-              <section className="border-t border-gray-100 pt-5">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{autoT('ui_0401e23e6030')}</h3>
-                <p className="whitespace-pre-wrap leading-7 text-gray-800">{entry.body}</p>
-              </section>
-              {(entry.highlights || entry.challenges || entry.nextSteps) && (
-                <section className="grid gap-3">
-                  <DetailNote
-                    title={autoT('ui_ed124d299865')}
-                    value={entry.highlights}
-                    className="logbook-detail-note--success bg-green-50 text-green-800"
-                  />
-                  <DetailNote
-                    title={autoT('ui_24cb5c6fa8e6')}
-                    value={entry.challenges}
-                    className="logbook-detail-note--warning bg-amber-50 text-amber-800"
-                  />
-                  <DetailNote
-                    title={autoT('ui_76231e1d047c')}
-                    value={entry.nextSteps}
-                    className="logbook-detail-note--info bg-blue-50 text-blue-800"
-                  />
-                </section>
-              )}
-              <LogbookConnections entry={entry} />
-              <section className="border-t border-gray-100 pt-5">
+            <div className="logbook-detail-layout">
+              <div className="logbook-detail-main"><LogbookDetailContent entry={entry} /></div>
+              <section className="logbook-detail-comments border-t border-gray-100 pt-5">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
                   <MessageCircle className="h-5 w-5 text-viridian" />{autoT('ui_b9677171d9f7')}{entry.comments?.length || 0})
                 </h3>
@@ -449,23 +412,5 @@ function StatusMenuItem({
       {logbookStatusLabels[status]}
       {active && <CheckCircle2 className="ml-auto h-4 w-4" />}
     </MenuItem>
-  );
-}
-
-function DetailNote({
-  title,
-  value,
-  className,
-}: {
-  title: string;
-  value?: string | null;
-  className: string;
-}) {
-  if (!value) return null;
-  return (
-    <div className={`logbook-detail-note rounded-xl p-4 ${className}`}>
-      <h3 className="mb-2 font-semibold">{title}</h3>
-      <p className="whitespace-pre-wrap text-sm">{value}</p>
-    </div>
   );
 }

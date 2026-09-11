@@ -1147,7 +1147,6 @@ export default function Statistics() {
   return (
     <div className="relative">
       <PageHeader title={autoT('ui_23ad8442dc9f')} />
-      <p className="mb-4 text-sm text-[var(--text-secondary)]">{t('workflow.participationsHelp')}</p>
 
       {/* Time Range Selector */}
       <SurfaceCard className="mb-6">

@@ -310,7 +310,6 @@ export default function Layout() {
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
   const isLogbookDetail = location.pathname.startsWith('/logbook/');
-  const usesCompactMobileEditorSpacing = isActivityFull || isLogbookDetail;
   const hideBottomNav = isActivityFull || isLogbookDetail || keyboardOpen;
   const hideFooter = isActivityFull || isLogbookDetail || keyboardOpen;
   const showDemoGuideRestore =
@@ -916,7 +915,7 @@ export default function Layout() {
 
       {/* Main Content */}
       <main
-        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 ${usesCompactMobileEditorSpacing ? 'pt-[4.25rem]' : 'pt-24'} md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
+        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 pt-[4.25rem] md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
         {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|settings)(\/|$)/.test(location.pathname) ? (
           <section className="mx-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 md:mx-2">

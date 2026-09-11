@@ -186,6 +186,7 @@ export default function Logbook() {
   return (
     <div>
       <PageHeader
+        mobileInlineActions
         className="mb-4"
         title={t('title')}
         actions={(

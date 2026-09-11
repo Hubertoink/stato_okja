@@ -707,6 +707,11 @@ export const resources = {
     logbook: {
       title: 'Logbuch',
       reflectionOutlook: 'Reflexion & Ausblick',
+      visibilityLabel: 'Sichtbarkeit',
+      discardEdits: 'Verwerfen',
+      unlinkProject: 'Projektverknüpfung entfernen',
+      unlinkActivity: 'Aktivitätsverknüpfung entfernen',
+      inlineValidation: 'Bitte Titel, Dokumentation und einen gültigen Zeitpunkt angeben.',
       moreActions: 'Weitere Aktionen',
       search: 'Logbuch durchsuchen…',
       clearSearch: 'Suche löschen',
@@ -1776,6 +1781,11 @@ export const resources = {
     logbook: {
       title: 'Logbook',
       reflectionOutlook: 'Reflection & outlook',
+      visibilityLabel: 'Visibility',
+      discardEdits: 'Discard',
+      unlinkProject: 'Remove project link',
+      unlinkActivity: 'Remove activity link',
+      inlineValidation: 'Please provide a title, documentation and a valid date and time.',
       moreActions: 'More actions',
       search: 'Search logbook…',
       clearSearch: 'Clear search',

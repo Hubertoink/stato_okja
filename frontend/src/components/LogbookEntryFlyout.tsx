@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useId, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Archive,
@@ -11,10 +11,10 @@ import {
   MessageCircle,
   MoreVertical,
   Send,
+  Save,
   Trash2,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import {
@@ -25,7 +25,11 @@ import {
   useRemoveLogbookComment,
   useRestoreLogbookEntry,
   useSetLogbookStatus,
+  useUpdateLogbookEntry,
 } from '@/lib/logbook';
+import { logbookDraft, logbookDraftPayload, type LogbookDraft } from '@/lib/logbookEdit';
+import { isValidLogbookDateTime } from '@/lib/logbookDate';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { ModalBackdrop, useModalHistory } from '@/components/Modal';
@@ -97,20 +101,24 @@ function getErrorMessage(error: unknown, fallback: string) {
 export default function LogbookEntryFlyout({
   entryId,
   onClose,
-  onEdit,
-  returnTo = '/logbook',
+  startEditing = false,
 }: {
   entryId: string | null;
   onClose: () => void;
-  onEdit?: (entryId: string) => void;
   returnTo?: string;
+  startEditing?: boolean;
 }) {
   const open = !!entryId;
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation('logbook');
   const { showToast } = useToast();
-  const { data: entry, isLoading } = useLogbookEntry(entryId || undefined);
+  const { data: entry, isLoading, refetch } = useLogbookEntry(entryId || undefined);
+  const update = useUpdateLogbookEntry();
+  const [draft, setDraft] = useState<LogbookDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+  const editFormId = useId();
+  const initialEditRef = useRef<string | null>(null);
+  const { requestDiscard, reset, discardDialog } = useUnsavedChangesGuard(draft, { enabled: !!draft });
   const archive = useArchiveLogbookEntry();
   const restore = useRestoreLogbookEntry();
   const setStatus = useSetLogbookStatus();
@@ -120,16 +128,39 @@ export default function LogbookEntryFlyout({
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   useBodyScrollLock(open);
-  const { dismiss } = useModalHistory(onClose, open);
+  const { dismiss } = useModalHistory(() => {
+    if (!saving) requestDiscard(() => { setDraft(null); onClose(); });
+  }, open);
+
+  const canManage = !!entry && (user?.role === 'superadmin' || user?.role === 'org_admin' || user?.id === entry.createdByUserId);
+  const beginEditing = () => {
+    if (!entry || !canManage || entry.status === 'archived') return;
+    const next = logbookDraft(entry);
+    reset(next);
+    setDraft(next);
+    setStatusMenuOpen(false);
+  };
+  useEffect(() => {
+    setDraft(null);
+    initialEditRef.current = null;
+  }, [entryId]);
+  useEffect(() => {
+    if (startEditing && entry && canManage && entry.status !== 'archived' && initialEditRef.current !== entry.id) {
+      initialEditRef.current = entry.id;
+      const next = logbookDraft(entry);
+      reset(next);
+      setDraft(next);
+    }
+  }, [startEditing, entry, canManage, reset]);
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !archiveConfirmOpen) dismiss();
+      if (event.key === 'Escape' && !event.defaultPrevented && !archiveConfirmOpen && !draft) dismiss();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [archiveConfirmOpen, dismiss, open]);
+  }, [archiveConfirmOpen, dismiss, open, draft]);
 
   useEffect(() => {
     if (!open) setComment('');
@@ -137,11 +168,30 @@ export default function LogbookEntryFlyout({
 
   if (!open || typeof document === 'undefined') return null;
   const archived = entry?.status === 'archived';
-  const canManage =
-    !!entry &&
-    (user?.role === 'superadmin' ||
-      user?.role === 'org_admin' ||
-      user?.id === entry.createdByUserId);
+  const status = draft?.status || entry?.status || 'open';
+  const changeStatus = (next: LogbookEntryStatus) => {
+    if (draft) setDraft({ ...draft, status: next });
+    else if (entry) setStatus.mutate({ id: entry.id, status: next });
+    setStatusMenuOpen(false);
+  };
+  const saveEntry = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!entry || !draft || saving || !canManage || archived) return;
+    if (!draft.title.trim() || !draft.body.trim() || !isValidLogbookDateTime(draft.occurredAt)) {
+      showToast(t('inlineValidation'), { type: 'error' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await update.mutateAsync({ id: entry.id, data: logbookDraftPayload(draft, user?.role === 'superadmin' || user?.role === 'org_admin') });
+      await refetch();
+      reset(null);
+      setDraft(null);
+      showToast(autoT('ui_e1bd2c4575ee'), { type: 'success' });
+    } catch (error) {
+      showToast(getErrorMessage(error, autoT('ui_81128854f3b0')), { type: 'error' });
+    } finally { setSaving(false); }
+  };
 
   const addComment = async (event: FormEvent) => {
     event.preventDefault();
@@ -174,17 +224,19 @@ export default function LogbookEntryFlyout({
             <h2 className="truncate text-base font-bold text-[var(--text-primary)] md:text-lg">{autoT('ui_73d71268a537')}</h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {draft && <IconButton aria-label={autoT('ui_70b73bbc118d')} title={autoT('ui_70b73bbc118d')} type="submit" form={editFormId} disabled={saving}><Save /></IconButton>}
             {canManage && !archived && entry && (
               <div className="relative">
                 <button
                   type="button"
+                  disabled={saving}
                   onClick={() => setStatusMenuOpen((value) => !value)}
-                  aria-label={logbookStatusLabels[entry.status]}
+                  aria-label={logbookStatusLabels[status]}
                   aria-expanded={statusMenuOpen}
-                  className={`status-control logbook-status-pill logbook-status-pill--${entry.status}`}
+                  className={`status-control logbook-status-pill logbook-status-pill--${status}`}
                 >
-                  <LogbookStatusIcon status={entry.status} />
-                  <span className="hidden md:inline">{logbookStatusLabels[entry.status]}</span>
+                  <LogbookStatusIcon status={status} />
+                  <span className="hidden md:inline">{logbookStatusLabels[status]}</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? "rotate-180" : ''}`} />
                 </button>
                 {statusMenuOpen && (
@@ -192,25 +244,25 @@ export default function LogbookEntryFlyout({
                     <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">{autoT('ui_95706e6c2697')}</div>
                     <StatusMenuItem
                       status="open"
-                      active={entry.status === 'open'}
+                      active={status === 'open'}
                       onSelect={() => {
-                        setStatus.mutate({ id: entry.id, status: 'open' });
+                        changeStatus('open');
                         setStatusMenuOpen(false);
                       }}
                     />
                     <StatusMenuItem
                       status="discussed"
-                      active={entry.status === 'discussed'}
+                      active={status === 'discussed'}
                       onSelect={() => {
-                        setStatus.mutate({ id: entry.id, status: 'discussed' });
+                        changeStatus('discussed');
                         setStatusMenuOpen(false);
                       }}
                     />
                     <StatusMenuItem
                       status="follow_up"
-                      active={entry.status === 'follow_up'}
+                      active={status === 'follow_up'}
                       onSelect={() => {
-                        setStatus.mutate({ id: entry.id, status: 'follow_up' });
+                        changeStatus('follow_up');
                         setStatusMenuOpen(false);
                       }}
                     />
@@ -218,24 +270,18 @@ export default function LogbookEntryFlyout({
                 )}
               </div>
             )}
-            {canManage && !archived && entry && (
+            {canManage && !archived && entry && !draft && (
                 <IconButton
                   variant="ghost"
                   className="logbook-edit-button"
-                  onClick={() => {
-                    if (onEdit) {
-                      onEdit(entry.id);
-                    } else {
-                      navigate(`/logbook/${entry.id}/edit`, { state: { returnTo } });
-                    }
-                  }}
+                  onClick={beginEditing}
                 aria-label={autoT('ui_104f3bfdc340')}
                 title={autoT('ui_104f3bfdc340')}
               >
                 <Edit3 className="h-5 w-5" />
               </IconButton>
             )}
-            {canManage && !archived && <details className="relative md:hidden" onKeyDown={(event) => {
+            {canManage && !archived && !draft && <details className="relative md:hidden" onKeyDown={(event) => {
               if (event.key === 'Escape' && event.currentTarget.open) {
                 event.stopPropagation();
                 event.currentTarget.open = false;
@@ -251,7 +297,7 @@ export default function LogbookEntryFlyout({
                 }}><Archive className="h-4 w-4" />{autoT('ui_b81f3298d960')}</MenuItem>
               </Menu>
             </details>}
-            {canManage && !archived && (
+            {canManage && !archived && !draft && (
               <Button
                 className="hidden md:inline-flex"
                 variant="warning"
@@ -295,7 +341,24 @@ export default function LogbookEntryFlyout({
           )}
           {entry && (
             <div className="logbook-detail-layout">
-              <div className="logbook-detail-main"><LogbookDetailContent entry={entry} /></div>
+              <form id={editFormId} className="logbook-detail-main" onSubmit={saveEntry} onKeyDown={event => {
+                if (!draft || saving || (event.target as HTMLElement).closest('[data-logbook-picker]')) return;
+                if (event.key === 'Escape') {
+                  event.preventDefault(); event.stopPropagation();
+                  requestDiscard(() => { reset(null); setDraft(null); });
+                }
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+                  event.preventDefault(); event.currentTarget.requestSubmit();
+                }
+              }}>
+                <fieldset disabled={saving} className="min-w-0">
+                  <LogbookDetailContent entry={entry} editor={draft ? { draft, onChange: setDraft } : undefined} />
+                </fieldset>
+                {draft && <div className="logbook-inline-actions">
+                  <Button variant="secondary" disabled={saving} onClick={() => requestDiscard(() => { reset(null); setDraft(null); })}>{t('discardEdits')}</Button>
+                  <Button type="submit" disabled={saving}><Save className="h-4 w-4" />{saving ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}</Button>
+                </div>}
+              </form>
               <section className="logbook-detail-comments border-t border-gray-100 pt-5">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
                   <MessageCircle className="h-5 w-5 text-viridian" />{autoT('ui_b9677171d9f7')}{entry.comments?.length || 0})
@@ -361,6 +424,7 @@ export default function LogbookEntryFlyout({
           )}
         </div>
       </aside>
+      {discardDialog}
       <ConfirmModal
         open={archiveConfirmOpen}
         title={autoT('ui_549a1516f520')}

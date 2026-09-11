@@ -8,6 +8,7 @@ import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useModalHistory } from '@/components/Modal';
 import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
 import ConfirmModal from '@/components/ConfirmModal';
+import { Input } from '@/components/ui/Field';
 
 function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Location>; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation(['settings', 'common']);
@@ -44,15 +45,15 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium mb-1">{t('locations.name')}</label>
-            <input className="w-full border rounded px-3 py-2" value={form.name || ''} onChange={(e)=> update('name', e.target.value)} />
+            <Input value={form.name || ''} onChange={(e)=> update('name', e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">{t('locations.address')}</label>
-            <input className="w-full border rounded px-3 py-2" value={form.address || ''} onChange={(e)=> update('address', e.target.value)} />
+            <Input value={form.address || ''} onChange={(e)=> update('address', e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">{t('locations.roomType')}</label>
-            <input className="w-full border rounded px-3 py-2" value={form.roomType || ''} onChange={(e)=> update('roomType', e.target.value)} />
+            <Input value={form.roomType || ''} onChange={(e)=> update('roomType', e.target.value)} />
           </div>
           {/* Locations are always active; no UI toggle */}
         </div>

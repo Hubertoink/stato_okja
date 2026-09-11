@@ -278,6 +278,8 @@
 }
 
 .settings-modal-actions {
+  /* Keep the last field and its shadow clear of the action bar. */
+  margin-top: 1.25rem;
   position: sticky;
   bottom: 0;
   display: flex;

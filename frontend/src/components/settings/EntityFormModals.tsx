@@ -7,7 +7,7 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
 import { useModalHistory } from '@/components/Modal';
-import { ArchiveIconButton, CloseButton, IconButton } from '@/components/ui/Button';
+import { CloseButton, IconButton } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Field';
 
 export const STAFF_ROLE_LABEL: Partial<Record<StaffRole, string>> = {
@@ -20,12 +20,10 @@ export function TagFormModal({
   initial,
   onSubmit,
   onCancel,
-  onArchive,
 }: {
   initial?: Partial<Tag>;
   onSubmit: (data: Partial<Tag>) => void;
   onCancel: () => void;
-  onArchive?: () => void;
 }) {
   const [form, setForm] = useState<Partial<Tag>>({ active: true, ...initial });
   useBodyScrollLock(true);
@@ -88,18 +86,6 @@ export function TagFormModal({
               <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
           </div>
-          <div className="flex-1 flex items-center justify-center">
-            {initial?.id && onArchive ? (
-              <span className="tooltip-wrapper">
-                <ArchiveIconButton
-                  onClick={onArchive}
-                  title={autoT('ui_b81f3298d960')}
-                  aria-label={autoT('ui_b81f3298d960')}
-                />
-                <span className="tooltip-bubble">{autoT('ui_b81f3298d960')}</span>
-              </span>
-            ) : null}
-          </div>
           <div className="flex-1 flex items-center justify-end">
             <span className="tooltip-wrapper">
               <IconButton
@@ -122,12 +108,10 @@ export function CategoryFormModal({
   initial,
   onSubmit,
   onCancel,
-  onArchive,
 }: {
   initial?: Partial<Category>;
   onSubmit: (data: Partial<Category>) => void;
   onCancel: () => void;
-  onArchive?: () => void;
 }) {
   const [form, setForm] = useState<Partial<Category>>({ active: true, ...initial });
   useBodyScrollLock(true);
@@ -201,18 +185,6 @@ export function CategoryFormModal({
               />
               <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
             </span>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            {initial?.id && onArchive ? (
-              <span className="tooltip-wrapper">
-                <ArchiveIconButton
-                  onClick={onArchive}
-                  title={autoT('ui_b81f3298d960')}
-                  aria-label={autoT('ui_b81f3298d960')}
-                />
-                <span className="tooltip-bubble">{autoT('ui_b81f3298d960')}</span>
-              </span>
-            ) : null}
           </div>
           <div className="flex-1 flex items-center justify-end">
             <span className="tooltip-wrapper">

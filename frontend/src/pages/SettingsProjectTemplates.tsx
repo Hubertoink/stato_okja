@@ -421,7 +421,7 @@ export default function SettingsProjectTemplates() {
                 <input
                   value={form.title || ''}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="w-full border rounded px-3 py-2"
+                  className="editor-field w-full px-3 py-2"
                 />
               </div>
               <div>
@@ -431,7 +431,7 @@ export default function SettingsProjectTemplates() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, type: e.target.value as ProjectTemplateDto['type'] }))
                   }
-                  className="w-full border rounded px-3 py-2"
+                  className="editor-field w-full px-3 py-2"
                 >
                   <option value="open_door">{autoT('ui_a80778b6b148')}</option>
                   <option value="project_open">{autoT('ui_00d882fbb5d4')}</option>
@@ -445,7 +445,7 @@ export default function SettingsProjectTemplates() {
                 <input
                   value={form.targetGroup || ''}
                   onChange={(e) => setForm((f) => ({ ...f, targetGroup: e.target.value }))}
-                  className="w-full border rounded px-3 py-2"
+                  className="editor-field w-full px-3 py-2"
                 />
               </div>
 
@@ -663,7 +663,7 @@ export default function SettingsProjectTemplates() {
                 <textarea
                   value={form.description || ''}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full border rounded px-3 py-2"
+                  className="editor-field w-full px-3 py-2"
                   rows={4}
                 />
               </div>

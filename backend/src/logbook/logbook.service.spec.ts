@@ -7,7 +7,7 @@ describe('logbook author permissions', () => {
     const entry = { id: 'entry', orgId: 'org', createdByUserId: 'author', title: 'Titel', body: 'Text', status: LogbookEntryStatus.OPEN, visibility: LogbookVisibility.TEAM };
     const query = { leftJoinAndSelect: jest.fn().mockReturnThis(), where: jest.fn().mockReturnThis(), andWhere: jest.fn().mockReturnThis(), getOne: jest.fn().mockResolvedValue(entry) };
     const entries = { createQueryBuilder: jest.fn(() => query), save: jest.fn(async (value) => value) };
-    const comments = { create: jest.fn((value) => value), save: jest.fn(async (value) => ({ id: 'comment', ...value })) };
+    const comments = { findOne: jest.fn().mockResolvedValue({ id: 'comment', entryId: 'entry', createdByUserId: 'author' }), remove: jest.fn(), create: jest.fn((value) => value), save: jest.fn(async (value) => ({ id: 'comment', ...value })) };
     const service = new LogbookService(entries as never, comments as never, {} as never, {} as never, {} as never, { log: jest.fn() } as never);
     jest.spyOn(service, 'findOne').mockImplementation(async () => entry as never);
     return { service, entry, entries, comments };
@@ -39,5 +39,13 @@ describe('logbook author permissions', () => {
     const { service, comments } = setup();
     await service.createComment('entry', ' Rückmeldung ', 'org', { id, role: 'user' });
     expect(comments.save).toHaveBeenCalledWith(expect.objectContaining({ entryId: 'entry', orgId: 'org', body: 'Rückmeldung', createdByUserId: id }));
+  });
+
+  it.each(['user', 'org_admin', 'superadmin'])('only permits deletion of own comments for %s', async (role) => {
+    const { service, comments } = setup();
+    await expect(service.removeComment('entry', 'comment', 'org', { id: 'other', role })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(comments.remove).not.toHaveBeenCalled();
+    await expect(service.removeComment('entry', 'comment', 'org', { id: 'author', role })).resolves.toEqual({ id: 'comment', deleted: true });
+    expect(comments.remove).toHaveBeenCalledTimes(1);
   });
 });

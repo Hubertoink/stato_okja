@@ -363,11 +363,11 @@ export default function LogbookEntryFlyout({
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
                   <MessageCircle className="h-5 w-5 text-viridian" />{autoT('ui_b9677171d9f7')}{entry.comments?.length || 0})
                 </h3>
-                <div className="space-y-3">
+                <div className="logbook-comment-list">
                   {entry.comments?.length ? (
                     entry.comments.map((item) => (
-                      <div key={item.id} className="rounded-xl bg-gray-50 p-4">
-                        <div className="mb-2 flex items-center justify-between gap-3 text-xs text-gray-500">
+                      <div key={item.id} className={`logbook-comment ${item.createdByUserId === user?.id ? 'logbook-comment--own' : 'logbook-comment--other'}`}>
+                        <div className="logbook-comment-meta">
                           <span className="flex items-center gap-2 font-semibold text-gray-700">
                             <UserAvatar
                               name={item.createdByName}
@@ -382,15 +382,13 @@ export default function LogbookEntryFlyout({
                           <span>{formatDate(item.createdAt)}</span>
                         </div>
                         <p className="whitespace-pre-wrap text-sm text-gray-800">{item.body}</p>
-                        {(user?.role === 'superadmin' ||
-                          user?.role === 'org_admin' ||
-                          user?.id === item.createdByUserId) && (
+                        {(!!user && user.id === item.createdByUserId) && (
                           <button
                             type="button"
                             onClick={() =>
                               removeComment.mutate({ entryId: entry.id, commentId: item.id })
                             }
-                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-600"
+                            className="logbook-comment-delete inline-flex items-center gap-1 text-xs font-medium text-red-600"
                           >
                             <Trash2 className="h-3.5 w-3.5" />{autoT('ui_8bb9a7f4f1ff')}</button>
                         )}

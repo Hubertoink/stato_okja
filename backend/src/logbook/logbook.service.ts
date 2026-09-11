@@ -396,7 +396,7 @@ export class LogbookService {
     this.assertVisible(entry, user);
     const comment = await this.comments.findOne({ where: { id: commentId, entryId: entry.id } });
     if (!comment) throw new NotFoundException('Kommentar nicht gefunden.');
-    if (!this.isAdmin(user) && comment.createdByUserId !== user.id) throw new ForbiddenException('Nur eigene Kommentare können gelöscht werden.');
+    if (comment.createdByUserId !== user.id) throw new ForbiddenException('Nur eigene Kommentare können gelöscht werden.');
     await this.comments.remove(comment);
     await this.audit.log({ action: AuditAction.DELETE, entityType: 'logbook_comment', entityId: commentId, entityTitle: entry.title, user, orgId, details: { entryId: entry.id } });
     return { id: commentId, deleted: true };

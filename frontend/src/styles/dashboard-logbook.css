@@ -598,6 +598,20 @@
   background: color-mix(in srgb, var(--surface-elevated) 92%, white);
 }
 .logbook-detail-comments p, .logbook-detail-page-comments p { overflow-wrap: anywhere; }
+.logbook-comment-list { display: flex; flex-direction: column; gap: 8px; }
+.logbook-comment { position: relative; width: fit-content; max-width: 92%; min-width: 0; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-1); }
+.logbook-comment--own { align-self: flex-start; border-bottom-left-radius: 3px; background: var(--interactive-soft); }
+.logbook-comment--other { align-self: flex-end; border-bottom-right-radius: 3px; }
+.logbook-comment-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 6px; font-size: 11px; color: var(--text-muted); }
+.logbook-comment-meta > span:last-child { font-size: 10px; }
+.logbook-comment-delete { min-height: 36px; margin-top: 4px; border-radius: 4px; }
+.logbook-comment-delete:focus-visible { outline: 2px solid var(--viridian); outline-offset: 2px; }
+@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+  .logbook-comment--own { padding-bottom: 26px; }
+  .logbook-comment-delete { position: absolute; bottom: 5px; left: 12px; min-height: 18px; margin: 0; opacity: 0; pointer-events: none; }
+  .logbook-comment:hover .logbook-comment-delete,
+  .logbook-comment:focus-within .logbook-comment-delete { opacity: 1; pointer-events: auto; }
+}
 @media (max-width: 767px) {
   .logbook-reading-toolbar .status-control {
     display: inline-flex;

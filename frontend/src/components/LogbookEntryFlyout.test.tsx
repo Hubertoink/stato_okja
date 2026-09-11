@@ -36,6 +36,19 @@ beforeEach(() => {
 });
 
 describe('editing inside logbook details', () => {
+  it.each(['user', 'org_admin', 'superadmin'])('shows deletion only for own comments as %s and aligns the conversation', (role) => {
+    mock.user = { id: 'author', role };
+    mock.entry.comments = [
+      { id: 'mine', entryId: 'entry', body: 'Eigener Kommentar', createdByUserId: 'author', createdByName: 'Ich', createdAt: '2026-09-11T18:00:00' },
+      { id: 'other', entryId: 'entry', body: 'Fremder Kommentar', createdByUserId: 'peter', createdByName: 'Peter', createdAt: '2026-09-11T18:01:00' },
+    ];
+    render(<LogbookEntryFlyout entryId="entry" onClose={vi.fn()} />, { wrapper: MemoryRouter });
+    expect(screen.getAllByRole('button', { name: 'Kommentar löschen' })).toHaveLength(1);
+    expect(screen.getByText('Eigener Kommentar').parentElement).toHaveClass('logbook-comment--own');
+    expect(screen.getByText('Fremder Kommentar').parentElement).toHaveClass('logbook-comment--other');
+    expect(screen.getByRole('button', { name: 'Kommentar löschen' }).closest('.logbook-comment')).toHaveClass('logbook-comment--own');
+  });
+
   it.each(['user', 'org_admin', 'superadmin'])('prevents a different %s from editing, including direct edit mode', (role) => {
     mock.user = { id: 'other', role };
     render(<LogbookEntryFlyout entryId="entry" onClose={vi.fn()} startEditing />, { wrapper: MemoryRouter });

@@ -51,7 +51,7 @@ export default function LogbookDetailContent({ entry, editor }: { entry: Logbook
           <option value="team">{autoT('ui_adc88eec60e4')}</option><option value="admins">{autoT('ui_db8e800f08e5')}</option>
         </Select></FieldLabel>}
         {entry.documentationUpdatedAt && <p className="logbook-reading-update">
-          {autoT('ui_dee2fa0b54d8')}{formatDate(entry.documentationUpdatedAt, { dateStyle: 'medium', timeStyle: 'short' })}
+          {autoT('ui_dee2fa0b54d8')}{' '}{formatDate(entry.documentationUpdatedAt, { dateStyle: 'medium', timeStyle: 'short' })}
           {entry.documentationUpdatedByName ? ` · ${entry.documentationUpdatedByName}` : ''}
         </p>}
         {entry.status === 'discussed' && <p className="logbook-reading-discussed"><CheckCircle2 aria-hidden="true" />

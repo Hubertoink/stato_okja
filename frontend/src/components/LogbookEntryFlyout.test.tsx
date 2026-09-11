@@ -6,8 +6,8 @@ import type { LogbookEntry } from '@/lib/logbook';
 import LogbookEntryFlyout from './LogbookEntryFlyout';
 import { Button } from './ui/Button';
 
-const mock = vi.hoisted(() => ({ entry: {} as LogbookEntry, save: vi.fn(), status: vi.fn(), toast: vi.fn(), refetch: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'author', role: 'org_admin' } }) }));
+const mock = vi.hoisted(() => ({ user: { id: 'author', role: 'org_admin' }, comment: vi.fn(), entry: {} as LogbookEntry, save: vi.fn(), status: vi.fn(), toast: vi.fn(), refetch: vi.fn() }));
+vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: mock.user }) }));
 vi.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: mock.toast }) }));
 vi.mock('@/lib/useBodyScrollLock', () => ({ useBodyScrollLock: () => {} }));
 vi.mock('@/components/Modal', () => ({
@@ -23,18 +23,39 @@ vi.mock('@/lib/logbook', () => ({
   useSetLogbookStatus: () => ({ mutate: mock.status }),
   useArchiveLogbookEntry: () => ({ mutate: vi.fn() }),
   useRestoreLogbookEntry: () => ({ mutate: vi.fn() }),
-  useCreateLogbookComment: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateLogbookComment: () => ({ mutateAsync: mock.comment, isPending: false }),
   useRemoveLogbookComment: () => ({ mutate: vi.fn() }),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mock.user = { id: 'author', role: 'org_admin' };
   mock.entry = { id: 'entry', orgId: 'org', title: 'Kochabend', body: 'Dokumentation', type: 'observation', status: 'open', visibility: 'team', occurredAt: '2026-09-08T08:30:00', createdByUserId: 'author', createdByName: 'Demo Admin', createdAt: '2026-09-08T08:30:00', updatedAt: '2026-09-08T08:30:00', comments: [] };
   mock.save.mockImplementation(async ({ data }) => { mock.entry = { ...mock.entry, ...data }; return mock.entry; });
   mock.refetch.mockResolvedValue({});
 });
 
 describe('editing inside logbook details', () => {
+  it.each(['user', 'org_admin', 'superadmin'])('prevents a different %s from editing, including direct edit mode', (role) => {
+    mock.user = { id: 'other', role };
+    render(<LogbookEntryFlyout entryId="entry" onClose={vi.fn()} startEditing />, { wrapper: MemoryRouter });
+    expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Titel' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Archivieren' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Offen' })).not.toBeInTheDocument();
+  });
+
+  it.each(['author', 'other'])('sends a comment by %s through the send button', async (id) => {
+    mock.user = { id, role: 'user' };
+    const user = userEvent.setup();
+    render(<LogbookEntryFlyout entryId="entry" onClose={vi.fn()} />, { wrapper: MemoryRouter });
+    const input = screen.getByRole('textbox', { name: 'Kommentar hinzufügen' });
+    await user.type(input, 'Rückmeldung aus dem Team');
+    await user.click(screen.getByRole('button', { name: 'Kommentar senden' }));
+    expect(mock.comment).toHaveBeenCalledWith({ entryId: 'entry', body: 'Rückmeldung aus dem Team' });
+    expect(input).toHaveValue('');
+  });
+
   it('saves in the same dialog while keeping comments available', async () => {
     const user = userEvent.setup();
     const close = vi.fn();

@@ -264,9 +264,7 @@ function LogbookEntryForm(props: LogbookEntryPageProps = {}) {
 
   const canManage =
     !!entry &&
-    (user?.role === 'superadmin' ||
-      user?.role === 'org_admin' ||
-      user?.id === entry.createdByUserId);
+    !!user && user.id === entry.createdByUserId;
   const isAdmin = user?.role === 'superadmin' || user?.role === 'org_admin';
   const formPayload = useMemo<LogbookEntryInput>(
     () => {
@@ -290,6 +288,7 @@ function LogbookEntryForm(props: LogbookEntryPageProps = {}) {
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
+    if (!isNew && !canManage) return;
     if (!occurredAtIsValid) {
       showToast(t('invalidDate'), { type: 'error' });
       return;
@@ -351,7 +350,7 @@ function LogbookEntryForm(props: LogbookEntryPageProps = {}) {
       <div className="modern-card p-6 text-sm text-gray-600">{autoT('ui_118fdc8c2826')}</div>
     );
 
-  if (editing)
+  if (editing && (isNew || canManage))
     return (
       <>
         <Modal

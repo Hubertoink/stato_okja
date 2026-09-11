@@ -132,7 +132,7 @@ export default function LogbookEntryFlyout({
     if (!saving) requestDiscard(() => { setDraft(null); onClose(); });
   }, open);
 
-  const canManage = !!entry && (user?.role === 'superadmin' || user?.role === 'org_admin' || user?.id === entry.createdByUserId);
+  const canManage = !!entry && !!user && user.id === entry.createdByUserId;
   const beginEditing = () => {
     if (!entry || !canManage || entry.status === 'archived') return;
     const next = logbookDraft(entry);
@@ -413,6 +413,7 @@ export default function LogbookEntryFlyout({
                     </FieldLabel>
                     <div className="mt-2 flex justify-end">
                       <Button
+                        type="submit"
                         disabled={!comment.trim() || createComment.isPending}
                       >
                         <Send className="h-4 w-4" />{autoT('ui_86b530d1039e')}</Button>

@@ -40,7 +40,7 @@ export class LogbookService {
   }
 
   private canManage(entry: LogbookEntry, user: RequestUser) {
-    return this.isAdmin(user) || entry.createdByUserId === user.id;
+    return entry.createdByUserId === user.id;
   }
 
   private cleanText(value: unknown, max: number, field: string, required = false) {

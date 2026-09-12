@@ -15,7 +15,7 @@ export function useMouseDragScroll(): HTMLAttributes<HTMLDivElement> {
       suppressClick.current = false;
       const rail = event.currentTarget;
       if (event.pointerType !== 'mouse' || event.button !== 0
-        || !window.matchMedia('(max-width: 767px)').matches
+        || !window.matchMedia?.('(max-width: 767px)').matches
         || rail.scrollWidth <= rail.clientWidth) return;
       if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return;
       gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, scrollLeft: rail.scrollLeft, dragging: false };

@@ -72,4 +72,13 @@ describe('mouse dragging dashboard rails', () => {
     fireEvent.pointerMove(rail, { clientX: 100 });
     expect(rail.scrollLeft).toBe(0);
   });
+
+  it('preserves card clicks when matchMedia is unavailable', () => {
+    vi.stubGlobal('matchMedia', undefined);
+    const { button, onClick } = setup();
+    fireEvent.pointerDown(button, { clientX: 200 });
+    fireEvent.pointerUp(button);
+    fireEvent.click(button, { detail: 1 });
+    expect(onClick).toHaveBeenCalledOnce();
+  });
 });

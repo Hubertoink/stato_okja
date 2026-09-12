@@ -544,6 +544,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 }
 
 .calendar-day-cell {
+  position: relative;
   background: var(--calendar-cell-bg);
   border-color: var(--calendar-grid-border);
 }

@@ -1557,13 +1557,19 @@ export default function Calendar() {
           >
             {visibleDays.map((d) => (
               <div key={d.toISOString()} className="px-2 py-2 text-center">
-                <div>
+                <button
+                  type="button"
+                  onClick={() => openActivitiesForDate(fmtLocalISO(d))}
+                  className="rounded px-1 hover:text-viridian hover:underline underline-offset-2"
+                  title={autoT('ui_79478f44f6bc', { value0: d.toLocaleDateString(getCurrentIntlLocale()) })}
+                  aria-label={autoT('ui_79478f44f6bc', { value0: d.toLocaleDateString(getCurrentIntlLocale()) })}
+                >
                   {d.toLocaleDateString(getCurrentIntlLocale(), {
                     weekday: 'short',
                     day: '2-digit',
                     month: '2-digit',
                   })}
-                </div>
+                </button>
                 {openingHours && (
                   <div className="text-[10px] text-viridian font-normal">
                     {getOpeningHoursForDay((d.getDay() + 6) % 7)}
@@ -1585,19 +1591,8 @@ export default function Calendar() {
                   onClick={isMobile ? undefined : () => openActivitiesForDate(iso)}
                   className={`calendar-day-cell group min-h-[68vh] md:min-h-[72vh] lg:min-h-[32rem] border p-2 text-left transition-colors ${!isMobile ? "cursor-pointer" : ''} ${isToday ? "calendar-day-cell-today" : ''} ${!isMobile && selectedDateISO === iso ? "calendar-day-cell-selected" : ''}`}
                 >
-                  <div className="mb-1 flex items-start justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openActivitiesForDate(iso);
-                      }}
-                      className="rounded px-1 -mx-1 text-xs font-medium text-gray-700 hover:bg-black/5 hover:text-viridian hover:underline underline-offset-2"
-                      title={autoT('ui_79478f44f6bc', { value0: d.toLocaleDateString(getCurrentIntlLocale()) })}
-                      aria-label={autoT('ui_79478f44f6bc', { value0: d.toLocaleDateString(getCurrentIntlLocale()) })}
-                    >
-                      {d.toLocaleDateString(getCurrentIntlLocale(), { day: '2-digit', month: '2-digit' })}
-                    </button>
+                  {/* Keep the action row's height when a modal hides its buttons. */}
+                  <div className="mb-1 flex h-6 items-start justify-end gap-2">
                     {showCalendarDayActions && (
                       <div className="calendar-day-actions flex shrink-0 items-center gap-1">
                         {effectiveOrgId && (

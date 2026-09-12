@@ -41,6 +41,17 @@
     overflow-wrap: anywhere;
   }
 
+  .dashboard-mobile-card-rail[data-mouse-dragging] {
+    scroll-snap-type: none;
+    scroll-behavior: auto;
+  }
+
+  .dashboard-mobile-card-rail[data-mouse-dragging],
+  .dashboard-mobile-card-rail[data-mouse-dragging] * {
+    cursor: grabbing;
+    user-select: none;
+  }
+
   .dashboard-mobile-card-rail::-webkit-scrollbar {
     display: none;
   }

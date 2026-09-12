@@ -502,8 +502,16 @@ export default function Layout() {
             <img
               src={logoUrl}
               alt={autoT('ui_dc03855eb505')}
-              className="w-9 h-9 md:w-11 md:h-11 object-contain select-none drop-shadow-lg"
+              className="w-9 h-9 md:w-11 md:h-11 shrink-0 object-contain select-none drop-shadow-lg"
             />
+            {branding.orgName ? (
+              <span
+                className="min-w-0 line-clamp-2 text-xs font-medium leading-tight md:hidden"
+                title={branding.orgName}
+              >
+                {branding.orgName}
+              </span>
+            ) : null}
             <div className="hidden md:block leading-tight min-w-0">
               <div className="flex min-w-0 items-baseline gap-2">
                 <h1 className="text-xl md:text-2xl font-extrabold tracking-tight truncate">

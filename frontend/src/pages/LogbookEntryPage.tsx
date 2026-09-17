@@ -8,7 +8,7 @@ import {
   ChevronDown,
   Circle,
   Edit3,
-  LockKeyhole,
+
   MessageCircle,
   Plus,
   Save,
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
-import { useActivity, useActivitiesPaged } from '@/lib/activities';
+import { useActivity } from '@/lib/activities';
 import {
   type LogbookEntryInput,
   type LogbookEntryStatus,
@@ -39,8 +39,10 @@ import Modal from '@/components/Modal';
 import { Menu, MenuItem } from '@/components/ui/Menu';
 import ProjectPickerModal from './ProjectPickerModal';
 import ProtectedImage from '@/components/ProtectedImage';
-import LogbookConnections from '@/components/LogbookConnections';
-import LogbookTypeBadge from '@/components/LogbookTypeBadge';
+import LogbookDetailContent from '@/components/LogbookDetailContent';
+import LogbookEntryFlyout from '@/components/LogbookEntryFlyout';
+import ActivityPickerModal from '@/components/LogbookActivityPicker';
+
 import { getWeekdayLabel } from './activityEditorShared';
 import { colorFromStringHash } from '@/lib/colors';
 import { autoT } from '@/i18n/auto';
@@ -52,7 +54,6 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useTranslation } from 'react-i18next';
 import {
   isValidLogbookDateTime,
-  logbookActivityPickerRange,
   toLogbookDateTimeInput,
 } from '@/lib/logbookDate';
 
@@ -151,107 +152,6 @@ function UserAvatar({
   );
 }
 
-function ActivityPickerModal({
-  open,
-  onClose,
-  onPick,
-  occurredAt,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onPick: (id: string) => void;
-  occurredAt: string;
-}) {
-  const [search, setSearch] = useState('');
-  const range = useMemo(() => {
-    return logbookActivityPickerRange(occurredAt);
-  }, [occurredAt]);
-  const { data: activityPage, isLoading } = useActivitiesPaged(
-    { ...range, search: search.trim() || undefined, order: 'desc' },
-    1,
-    50,
-    { staleTimeMs: 30_000 },
-  );
-  const activities = activityPage?.data || [];
-  return (
-    <Modal open={open} onClose={onClose} title={autoT('ui_ab6635285bc7')} maxWidth="2xl" variant="form">
-      <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 md:px-6 md:pb-6">
-        <p className="mb-3 shrink-0 text-sm text-gray-600">{autoT('ui_3c4b1175587b')}</p>
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={autoT('ui_cdcd2f758fec')}
-          className="mb-3 w-full shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
-        />
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-        {isLoading ? <p className="py-6 text-center text-sm text-gray-500">{autoT('ui_a7151ad4e39f')}</p> : null}
-        {!isLoading && activities.map((activity) => {
-          const project = activity.project;
-          const projectColor = project
-            ? project.color || colorFromStringHash(project.title)
-            : undefined;
-
-          return (
-            <button
-              key={activity.id}
-              type="button"
-              onClick={() => {
-                onPick(activity.id);
-                onClose();
-              }}
-              className="relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border border-gray-100 bg-white p-3 text-left transition hover:border-viridian hover:bg-viridian/5"
-            >
-              {project?.imageUrl ? (
-                <>
-                  <ProtectedImage
-                    src={project.imageUrl}
-                    alt=""
-                    aria-hidden
-                    className="absolute inset-y-0 right-0 h-full w-1/3 object-cover opacity-85 sm:w-1/4"
-                  />
-                  <div
-                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-1/3 sm:w-1/4"
-                    aria-hidden
-                  />
-                </>
-              ) : projectColor ? (
-                <>
-                  <div
-                    className="absolute inset-y-0 right-0 w-1/3 opacity-80 sm:w-1/4"
-                    style={{
-                      background: `linear-gradient(225deg, ${projectColor} 0%, color-mix(in srgb, ${projectColor} 68%, white) 100%)`,
-                    }}
-                    aria-hidden
-                  />
-                  <div
-                    className="activity-image-fade-mobile absolute inset-y-0 right-0 w-1/3 sm:w-1/4"
-                    aria-hidden
-                  />
-                </>
-              ) : null}
-              <span className="relative z-10 min-w-0">
-                <span className="block font-semibold text-gray-800">
-                  {activity.title || project?.title || autoT('ui_1c4aaccf808e')}
-                </span>
-                <span className="mt-1 block text-xs text-gray-500">
-                  {new Date(`${activity.date}T12:00:00`).toLocaleDateString(getCurrentIntlLocale())} ·{' '}
-                  {project?.title || autoT('ui_5b4a4a84148c')}
-                </span>
-              </span>
-              <span className="relative z-10 shrink-0 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                {activity.countTotal || 0}{autoT('ui_f79fa2d4a0a2')}</span>
-            </button>
-          );
-        })}
-        {!isLoading && activities.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-500">{autoT('ui_118fdc8c2826')}</p>
-        ) : null}
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
 export type LogbookEntryPageProps = {
   entryId?: string;
   returnTo?: string;
@@ -259,6 +159,21 @@ export type LogbookEntryPageProps = {
 };
 
 export default function LogbookEntryPage(props: unknown = {}) {
+  const { id: routeEntryId } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { entryId, returnTo, onClose } = (props ?? {}) as LogbookEntryPageProps;
+  const id = entryId ?? routeEntryId;
+  if (id) return <LogbookEntryFlyout key={id} entryId={id}
+    startEditing={!!entryId || location.pathname.endsWith('/edit')}
+    onClose={() => {
+      if (onClose) onClose();
+      else navigate(returnTo ?? ((location.state as { returnTo?: string } | null)?.returnTo === '/dashboard' ? '/dashboard' : '/logbook'), { replace: true });
+    }} />;
+  return <LogbookEntryForm {...((props ?? {}) as LogbookEntryPageProps)} />;
+}
+
+function LogbookEntryForm(props: LogbookEntryPageProps = {}) {
   const { t } = useTranslation('logbook');
   const {
     entryId: embeddedEntryId,
@@ -349,9 +264,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
 
   const canManage =
     !!entry &&
-    (user?.role === 'superadmin' ||
-      user?.role === 'org_admin' ||
-      user?.id === entry.createdByUserId);
+    !!user && user.id === entry.createdByUserId;
   const isAdmin = user?.role === 'superadmin' || user?.role === 'org_admin';
   const formPayload = useMemo<LogbookEntryInput>(
     () => {
@@ -375,6 +288,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
+    if (!isNew && !canManage) return;
     if (!occurredAtIsValid) {
       showToast(t('invalidDate'), { type: 'error' });
       return;
@@ -436,7 +350,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
       <div className="modern-card p-6 text-sm text-gray-600">{autoT('ui_118fdc8c2826')}</div>
     );
 
-  if (editing)
+  if (editing && (isNew || canManage))
     return (
       <>
         <Modal
@@ -480,9 +394,9 @@ export default function LogbookEntryPage(props: unknown = {}) {
         >
           <form
             onSubmit={save}
-            className="modal-editor-body min-h-0 flex-1 overflow-y-auto"
+            className="modal-editor-body min-h-0 flex-1 overflow-y-auto md:flex md:flex-col md:overflow-hidden"
           >
-            <div className="space-y-4 p-4 md:p-6">
+            <div className="space-y-4 p-4 md:min-h-0 md:flex-1 md:overflow-y-auto md:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">{autoT('ui_e2f9e932be0a')}{occurredAtWeekday && (
                     <span className="ml-2 font-normal text-gray-500">· {occurredAtWeekday}</span>
@@ -659,6 +573,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
               </div>
             </div>
             <EditorActions
+              className="shrink-0"
               secondary={<Button variant="secondary" size="lg" onClick={closeEditing}>{autoT('ui_07af7cb30fca')}</Button>}
               primary={(
                 <Button type="submit" size="lg" disabled={create.isPending || update.isPending}>
@@ -691,7 +606,7 @@ export default function LogbookEntryPage(props: unknown = {}) {
   if (!entry) return null;
   const archived = entry.status === 'archived';
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="logbook-detail-page mx-auto max-w-4xl">
       <div className="mb-5 flex items-center justify-between gap-3">
         <button
           type="button"
@@ -740,73 +655,9 @@ export default function LogbookEntryPage(props: unknown = {}) {
           </div>
         )}
       </div>
-      <article className="modern-card overflow-hidden">
-        <div className="border-b border-gray-100 p-5 sm:p-7">
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-            <LogbookTypeBadge label={logbookTypeLabels[entry.type]} type={entry.type} />
-            <span
-              className={`rounded-full px-2.5 py-1 font-semibold ${entry.status === 'discussed' ? "bg-green-100 text-green-700" : entry.status === 'follow_up' ? "bg-amber-100 text-amber-800" : entry.status === 'archived' ? "bg-gray-100 text-gray-600" : "bg-blue-100 text-blue-700"}`}
-            >
-              {logbookStatusLabels[entry.status]}
-            </span>
-            {entry.visibility === 'admins' && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-700">
-                <LockKeyhole className="h-3 w-3" />{autoT('ui_db8e800f08e5')}</span>
-            )}
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">{entry.title}</h1>
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
-            <span className="flex items-center gap-2">
-              <UserAvatar
-                name={entry.createdByName}
-                avatarUrl={
-                  entry.createdByUser?.avatarUrl ??
-                  (entry.createdByUserId === user?.id ? user?.avatarUrl : null)
-                }
-              />
-              {entry.createdByName}
-            </span>
-            <span>{formatDate(entry.occurredAt)}</span>
-            {entry.documentationUpdatedAt && (
-              <span>{autoT('ui_dee2fa0b54d8')}{formatDate(entry.documentationUpdatedAt)}
-                {entry.documentationUpdatedByName ? ` von ${entry.documentationUpdatedByName}` : ''}
-              </span>
-            )}
-          </div>
-          {entry.status === 'discussed' && (
-            <p className="mt-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-              <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{' '}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
-            </p>
-          )}
-        </div>
-        <div className="space-y-6 p-5 sm:p-7">
-          <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{autoT('ui_0401e23e6030')}</h2>
-            <p className="whitespace-pre-wrap leading-7 text-gray-800">{entry.body}</p>
-          </section>
-          {(entry.highlights || entry.challenges || entry.nextSteps) && (
-            <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              {entry.highlights && (
-                <div className="logbook-detail-note logbook-detail-note--success rounded-xl bg-green-50 p-4 text-green-800">
-                  <h3 className="mb-2 font-semibold">{autoT('ui_ed124d299865')}</h3>
-                  <p className="whitespace-pre-wrap text-sm">{entry.highlights}</p>
-                </div>
-              )}
-              {entry.challenges && (
-                <div className="logbook-detail-note logbook-detail-note--warning rounded-xl bg-amber-50 p-4 text-amber-800">
-                  <h3 className="mb-2 font-semibold">{autoT('ui_24cb5c6fa8e6')}</h3>
-                  <p className="whitespace-pre-wrap text-sm">{entry.challenges}</p>
-                </div>
-              )}
-              {entry.nextSteps && (
-                <div className="logbook-detail-note logbook-detail-note--info rounded-xl bg-blue-50 p-4 text-blue-800">
-                  <h3 className="mb-2 font-semibold">{autoT('ui_76231e1d047c')}</h3>
-                  <p className="whitespace-pre-wrap text-sm">{entry.nextSteps}</p>
-                </div>
-              )}
-            </section>
-          )}
-          <LogbookConnections entry={entry} />
+      <article className="logbook-detail-page-main min-w-0">
+        <div className="space-y-6 p-3 sm:p-6">
+          <LogbookDetailContent entry={entry} />
           {canManage && !archived && (
             <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-5">
               {entry.status !== 'discussed' && (
@@ -832,15 +683,15 @@ export default function LogbookEntryPage(props: unknown = {}) {
           )}
         </div>
       </article>
-      <section className="modern-card mt-5 p-5 sm:p-7">
+      <section className="logbook-detail-page-comments modern-card mt-5 p-5 sm:p-7">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
           <MessageCircle className="h-5 w-5 text-viridian" />{autoT('ui_b9677171d9f7')}{entry.comments?.length || 0})
         </h2>
-        <div className="space-y-4">
+        <div className="logbook-comment-list">
           {entry.comments?.length ? (
             entry.comments.map((item) => (
-              <div key={item.id} className="rounded-xl bg-gray-50 p-4">
-                <div className="mb-2 flex items-center justify-between gap-3 text-xs text-gray-500">
+              <div key={item.id} className={`logbook-comment ${item.createdByUserId === user?.id ? 'logbook-comment--own' : 'logbook-comment--other'}`}>
+                <div className="logbook-comment-meta">
                   <span className="flex items-center gap-2 font-semibold text-gray-700">
                     <UserAvatar
                       name={item.createdByName}
@@ -855,13 +706,11 @@ export default function LogbookEntryPage(props: unknown = {}) {
                   <span>{formatDate(item.createdAt)}</span>
                 </div>
                 <p className="whitespace-pre-wrap text-sm text-gray-800">{item.body}</p>
-                {(user?.role === 'superadmin' ||
-                  user?.role === 'org_admin' ||
-                  user?.id === item.createdByUserId) && (
+                {(!!user && user.id === item.createdByUserId) && (
                   <button
                     type="button"
                     onClick={() => removeComment.mutate({ entryId: entry.id, commentId: item.id })}
-                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-600"
+                    className="logbook-comment-delete inline-flex items-center gap-1 text-xs font-medium text-red-600"
                   >
                     <Trash2 className="h-3.5 w-3.5" />{autoT('ui_8bb9a7f4f1ff')}</button>
                 )}

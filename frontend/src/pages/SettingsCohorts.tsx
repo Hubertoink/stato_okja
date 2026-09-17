@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Toggle from '@/components/Toggle';
 import { Cohort, useCohorts, useCreateCohort, useDeleteCohort, useTaxonomyAccess, useUpdateCohort } from '@/lib/taxonomy';
-import { Pencil, Save as SaveIcon, Archive as ArchiveIcon } from 'lucide-react';
+import { Pencil, Save as SaveIcon } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
@@ -10,8 +10,9 @@ import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useModalHistory } from '@/components/Modal';
 import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
 
-function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void; onArchive?: () => void }) {
+function CohortForm({ initial, onSubmit, onCancel }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void }) {
   const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
   useBodyScrollLock(true);
   const { dismiss } = useModalHistory(onCancel);
@@ -38,20 +39,20 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium mb-1">{autoT('ui_d145bb830936')}</label>
-            <input value={form.name || ''} onChange={(e) => update('name', e.target.value)} className="w-full border rounded px-3 py-2" />
+            <Input value={form.name || ''} onChange={(e) => update('name', e.target.value)} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">{autoT('ui_1306e176bc60')}</label>
-              <input type="number" value={form.minAge ?? 0} onChange={(e) => update('minAge', Number(e.target.value))} className="w-full border rounded px-3 py-2" />
+              <Input type="number" value={form.minAge ?? 0} onChange={(e) => update('minAge', Number(e.target.value))} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">{autoT('ui_bc2b4405f91d')}</label>
-              <input type="number" value={form.maxAge ?? 0} onChange={(e) => update('maxAge', Number(e.target.value))} className="w-full border rounded px-3 py-2" />
+              <Input type="number" value={form.maxAge ?? 0} onChange={(e) => update('maxAge', Number(e.target.value))} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">{autoT('ui_84beaa4a368a')}</label>
-              <input type="number" value={form.sortOrder ?? 0} onChange={(e) => update('sortOrder', Number(e.target.value))} className="w-full border rounded px-3 py-2" />
+              <Input type="number" value={form.sortOrder ?? 0} onChange={(e) => update('sortOrder', Number(e.target.value))} />
             </div>
           </div>
           {/* Kohorten werden immer aktiv angelegt; kein Toggle im UI */}
@@ -59,13 +60,6 @@ function CohortForm({ initial, onSubmit, onCancel, onArchive }: { initial?: Part
   <div className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           <div className="flex-1 flex items-center">
             <span className="tooltip-wrapper"><CloseButton onClick={dismiss} title={autoT('ui_07af7cb30fca')} aria-label={autoT('ui_07af7cb30fca')} /><span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span></span>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            {initial?.id && onArchive ? (
-              <span className="tooltip-wrapper"><button type="button" className="inline-flex items-center justify-center p-2 rounded-full border border-gray-300 text-gray-700 bg-white" onClick={onArchive} title={autoT('ui_b81f3298d960')} aria-label={autoT('ui_b81f3298d960')}>
-                <ArchiveIcon className="w-5 h-5" />
-              </button><span className="tooltip-bubble">{autoT('ui_b81f3298d960')}</span></span>
-            ) : null}
           </div>
           <div className="flex-1 flex items-center justify-end">
             <span className="tooltip-wrapper"><button
@@ -202,7 +196,6 @@ export default function SettingsCohorts() {
               update.mutate({ id: modal.cohort.id, data: rest }, { onSuccess: () => setModal(null) });
             }
           }}
-          onArchive={canDeleteTaxonomy && modal.mode === 'edit' && modal.cohort && modal.cohort.id ? () => update.mutate({ id: modal.cohort!.id, data: { active: false } }, { onSuccess: () => setModal(null) }) : undefined}
           onCancel={() => setModal(null)}
         />
       )}

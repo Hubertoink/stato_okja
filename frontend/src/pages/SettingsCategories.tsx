@@ -224,15 +224,6 @@ export default function SettingsCategories() {
               );
             }
           }}
-          onArchive={
-            canDeleteTaxonomy && modal.mode === 'edit' && modal.category && modal.category.id
-              ? () =>
-                  update.mutate(
-                    { id: modal.category!.id, data: { active: false } },
-                    { onSuccess: () => setModal(null) },
-                  )
-              : undefined
-          }
           onCancel={() => setModal(null)}
         />
       )}

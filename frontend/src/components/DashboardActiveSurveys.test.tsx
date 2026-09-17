@@ -1,8 +1,11 @@
-import { render, screen, within } from '@testing-library/react';
+import { render as renderComponent, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActiveSurveyDashboardSummary } from '@/lib/surveys';
 import DashboardActiveSurveys from './DashboardActiveSurveys';
+
+const render = (ui: Parameters<typeof renderComponent>[0]) => renderComponent(ui, { wrapper: MemoryRouter });
 
 const summary = (
   overrides: Partial<ActiveSurveyDashboardSummary> = {},

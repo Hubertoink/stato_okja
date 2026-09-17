@@ -755,6 +755,7 @@ export default function Activities() {
   return (
     <div>
       <PageHeader
+        mobileInlineActions
         title={t('title')}
         actions={(
           <DemoHoverHint

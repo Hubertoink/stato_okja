@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useMouseDragScroll } from '@/lib/useMouseDragScroll';
+import { Link } from 'react-router-dom';
 import { CalendarClock, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ActiveSurveyDashboardSummary } from '@/lib/surveys';
@@ -42,6 +44,7 @@ export default function DashboardActiveSurveys({
   onOpenSurvey,
 }: DashboardActiveSurveysProps) {
   const { t } = useTranslation('dashboard');
+  const dragScroll = useMouseDragScroll();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,13 +57,13 @@ export default function DashboardActiveSurveys({
     <section className="dashboard-active-surveys mb-6" aria-labelledby="dashboard-active-surveys-title">
       <div className="dashboard-active-surveys-header mb-3">
         <h2 id="dashboard-active-surveys-title" className="min-w-0 text-lg font-semibold text-[var(--text-primary)]">
-          {t('surveys.title')}
+          <Link className="dashboard-section-link" to="/surveys">{t('surveys.title')}</Link>
         </h2>
         <span className="dashboard-active-surveys-count">
           {t('surveys.activeCount', { count: surveys.length })}
         </span>
       </div>
-      <div className="dashboard-active-survey-grid">
+      <div {...dragScroll} className="dashboard-active-survey-grid dashboard-mobile-card-rail">
         {surveys.map((survey) => {
           const expanded = expandedId === survey.id;
           const detailsId = `dashboard-survey-details-${survey.id}`;

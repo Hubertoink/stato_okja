@@ -163,15 +163,6 @@ export default function SettingsTags() {
               );
             }
           }}
-          onArchive={
-            canDeleteTaxonomy && modal.mode === 'edit' && modal.tag && modal.tag.id
-              ? () =>
-                  update.mutate(
-                    { id: modal.tag!.id, data: { active: false } },
-                    { onSuccess: () => setModal(null) },
-                  )
-              : undefined
-          }
           onCancel={() => setModal(null)}
         />
       )}

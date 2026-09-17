@@ -310,7 +310,6 @@ export default function Layout() {
   const isActivityFull =
     location.pathname.startsWith('/activities/') && location.pathname !== '/activities';
   const isLogbookDetail = location.pathname.startsWith('/logbook/');
-  const usesCompactMobileEditorSpacing = isActivityFull || isLogbookDetail;
   const hideBottomNav = isActivityFull || isLogbookDetail || keyboardOpen;
   const hideFooter = isActivityFull || isLogbookDetail || keyboardOpen;
   const showDemoGuideRestore =
@@ -503,8 +502,16 @@ export default function Layout() {
             <img
               src={logoUrl}
               alt={autoT('ui_dc03855eb505')}
-              className="w-9 h-9 md:w-11 md:h-11 object-contain select-none drop-shadow-lg"
+              className="w-9 h-9 md:w-11 md:h-11 shrink-0 object-contain select-none drop-shadow-lg"
             />
+            {branding.orgName ? (
+              <span
+                className="min-w-0 line-clamp-2 text-xs font-medium leading-tight md:hidden"
+                title={branding.orgName}
+              >
+                {branding.orgName}
+              </span>
+            ) : null}
             <div className="hidden md:block leading-tight min-w-0">
               <div className="flex min-w-0 items-baseline gap-2">
                 <h1 className="text-xl md:text-2xl font-extrabold tracking-tight truncate">
@@ -916,7 +923,7 @@ export default function Layout() {
 
       {/* Main Content */}
       <main
-        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 ${usesCompactMobileEditorSpacing ? 'pt-[4.25rem]' : 'pt-24'} md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
+        className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 pt-[4.25rem] md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
         {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|settings)(\/|$)/.test(location.pathname) ? (
           <section className="mx-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 md:mx-2">

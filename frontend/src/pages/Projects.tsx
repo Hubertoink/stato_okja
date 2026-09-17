@@ -2594,6 +2594,8 @@ export default function Projects() {
   return (
     <div>
       <PageHeader
+        mobileInlineActions
+        mobileTitle={autoT('ui_3930f79f07e5')}
         className="mb-4"
         title={autoT('ui_44772dcbbde7')}
         actions={

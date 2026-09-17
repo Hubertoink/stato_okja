@@ -1,7 +1,8 @@
 import MobileLogbookCard from '@/components/MobileLogbookCard';
+import { useMouseDragScroll } from '@/lib/useMouseDragScroll';
 import { useOrganizationModules } from '@/lib/organizationModules';
 import { useQuickTallySession } from '@/components/QuickTally';
-import { Suspense, lazy, useMemo, useState, useEffect, type ComponentType } from 'react';
+import { Suspense, lazy, useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActivities } from '@/lib/activities';
@@ -68,10 +69,6 @@ import dailyLogEmptyIllustration from '../../assets/Illust_Amigos/DailyLog_Keine
 import logbookEmptyIllustration from '../../assets/Illust_Amigos/Logbuch_keineEinträge.svg';
 
 const ExportModal = lazy(() => import('@/components/ExportModal'));
-const LogbookEditor = lazy(async () => {
-  const module = await import('./LogbookEntryPage');
-  return { default: module.default as ComponentType<import('./LogbookEntryPage').LogbookEntryPageProps> };
-});
 
 type DashboardRealtimeOptions = {
   refetchOnWindowFocus?: boolean | 'always';
@@ -234,6 +231,8 @@ function formatAuditDiffValue(entityType: string, key: string, value: unknown, t
 }
 
 export default function Dashboard() {
+  const logbookDragScroll = useMouseDragScroll();
+  const dailyLogDragScroll = useMouseDragScroll();
   const { session: tallySession } = useQuickTallySession();
   const { t } = useTranslation(['dashboard', 'activities']);
   const { openQuickTally } = useOutletContext<{ openQuickTally: () => void }>();
@@ -251,7 +250,6 @@ export default function Dashboard() {
   const [dashboardTrendMode, setDashboardTrendMode] = useState<'activity' | 'efficiency'>('activity');
   const [dashboardTrendPeriod, setDashboardTrendPeriod] = useState<DashboardTrendPeriod>(loadDashboardTrendPeriod);
   const [dashboardLogbookEntryId, setDashboardLogbookEntryId] = useState<string | null>(null);
-  const [dashboardLogbookEditId, setDashboardLogbookEditId] = useState<string | null>(null);
   useEffect(() => {
     saveDashboardTrendPeriod(dashboardTrendPeriod);
   }, [dashboardTrendPeriod]);
@@ -754,8 +752,10 @@ export default function Dashboard() {
         <div className="dashboard-illustration-clip" aria-hidden="true">
           <img className="dashboard-section-illustration" src={logbookEmptyIllustration} alt="" />
         </div>
-        <div className="mb-4 flex flex-wrap items-center justify-start gap-3">
-          <h3 className="text-lg font-semibold text-[var(--text-primary)]">{t('logbook.title')}</h3>
+        <div className="mb-4 flex flex-wrap items-center justify-start gap-3 px-4 md:px-0">
+          <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+            <Link className="dashboard-section-link" to="/logbook">{t('logbook.title')}</Link>
+          </h3>
           <Button
             size="sm"
             onClick={() => navigate('/logbook/new', { state: { returnTo: '/dashboard' } })}
@@ -764,7 +764,7 @@ export default function Dashboard() {
             {t('logbook.entry')}
           </Button>
         </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div {...logbookDragScroll} className="dashboard-mobile-card-rail grid grid-cols-1 gap-3 md:grid-cols-2">
             {recentLogbookEntries.map((entry) => isMobile ? (
               <MobileLogbookCard key={entry.id} entry={entry} onOpen={setDashboardLogbookEntryId} />
             ) : (
@@ -813,13 +813,6 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
-        <button
-          type="button"
-          onClick={() => navigate('/logbook')}
-          className="mt-4 text-sm font-semibold text-viridian hover:underline"
-        >
-          {t('logbook.showAll')}
-        </button>
         </SurfaceCard>
       )}
 
@@ -829,11 +822,11 @@ export default function Dashboard() {
         <div className="dashboard-illustration-clip" aria-hidden="true">
           <img className="dashboard-section-illustration" src={dailyLogEmptyIllustration} alt="" />
         </div>
-        <h3 className="mb-3 text-lg font-semibold text-gray-800">
-          {t('daily.title')}
+        <h3 className="mb-3 px-4 md:px-0 text-lg font-semibold text-gray-800">
+          <Link className="dashboard-section-link" to="/activities">{t('daily.title')}</Link>
           <span className="ml-2 text-xs text-gray-400 font-normal">{t('daily.period')}</span>
         </h3>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div {...dailyLogDragScroll} className="dashboard-mobile-card-rail grid grid-cols-1 gap-3 md:grid-cols-2">
             {dailyLog.map((item) => (
               <div key={item.id} className="dashboard-activity-card rounded-xl p-4">
                 <div className="dashboard-daily-heading mb-2">
@@ -1179,21 +1172,8 @@ export default function Dashboard() {
       <LogbookEntryFlyout
         entryId={dashboardLogbookEntryId}
         returnTo="/dashboard"
-        onEdit={(entryId) => {
-          setDashboardLogbookEntryId(null);
-          setDashboardLogbookEditId(entryId);
-        }}
         onClose={() => setDashboardLogbookEntryId(null)}
       />
-      {dashboardLogbookEditId && (
-        <Suspense fallback={null}>
-          <LogbookEditor
-            entryId={dashboardLogbookEditId}
-            returnTo="/dashboard"
-            onClose={() => setDashboardLogbookEditId(null)}
-          />
-        </Suspense>
-      )}
     </div>
   );
 }

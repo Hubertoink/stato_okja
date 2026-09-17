@@ -1,18 +1,20 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useId, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Archive,
+  ArrowLeft,
   CheckCircle2,
   ChevronDown,
   Circle,
   Edit3,
-  LockKeyhole,
+
   MessageCircle,
+  MoreVertical,
   Send,
+  Save,
   Trash2,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import {
@@ -23,15 +25,19 @@ import {
   useRemoveLogbookComment,
   useRestoreLogbookEntry,
   useSetLogbookStatus,
+  useUpdateLogbookEntry,
 } from '@/lib/logbook';
+import { logbookDraft, logbookDraftPayload, type LogbookDraft } from '@/lib/logbookEdit';
+import { isValidLogbookDateTime } from '@/lib/logbookDate';
+import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { ModalBackdrop, useModalHistory } from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
-import LogbookConnections from '@/components/LogbookConnections';
-import { logbookStatusLabels, logbookTypeLabels } from '@/lib/logbookLabels';
-import LogbookStatusBadge from '@/components/LogbookStatusBadge';
-import LogbookTypeBadge from '@/components/LogbookTypeBadge';
+import LogbookDetailContent from '@/components/LogbookDetailContent';
+import { logbookStatusLabels } from '@/lib/logbookLabels';
+
+
 import { ArchiveIconButton, Button, CloseButton, IconButton } from '@/components/ui/Button';
 import { FieldLabel, Textarea } from '@/components/ui/Field';
 import { Menu, MenuItem } from '@/components/ui/Menu';
@@ -95,20 +101,24 @@ function getErrorMessage(error: unknown, fallback: string) {
 export default function LogbookEntryFlyout({
   entryId,
   onClose,
-  onEdit,
-  returnTo = '/logbook',
+  startEditing = false,
 }: {
   entryId: string | null;
   onClose: () => void;
-  onEdit?: (entryId: string) => void;
   returnTo?: string;
+  startEditing?: boolean;
 }) {
   const open = !!entryId;
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation('logbook');
   const { showToast } = useToast();
-  const { data: entry, isLoading } = useLogbookEntry(entryId || undefined);
+  const { data: entry, isLoading, refetch } = useLogbookEntry(entryId || undefined);
+  const update = useUpdateLogbookEntry();
+  const [draft, setDraft] = useState<LogbookDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+  const editFormId = useId();
+  const initialEditRef = useRef<string | null>(null);
+  const { requestDiscard, reset, discardDialog } = useUnsavedChangesGuard(draft, { enabled: !!draft });
   const archive = useArchiveLogbookEntry();
   const restore = useRestoreLogbookEntry();
   const setStatus = useSetLogbookStatus();
@@ -118,16 +128,39 @@ export default function LogbookEntryFlyout({
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   useBodyScrollLock(open);
-  const { dismiss } = useModalHistory(onClose, open);
+  const { dismiss } = useModalHistory(() => {
+    if (!saving) requestDiscard(() => { setDraft(null); onClose(); });
+  }, open);
+
+  const canManage = !!entry && !!user && user.id === entry.createdByUserId;
+  const beginEditing = () => {
+    if (!entry || !canManage || entry.status === 'archived') return;
+    const next = logbookDraft(entry);
+    reset(next);
+    setDraft(next);
+    setStatusMenuOpen(false);
+  };
+  useEffect(() => {
+    setDraft(null);
+    initialEditRef.current = null;
+  }, [entryId]);
+  useEffect(() => {
+    if (startEditing && entry && canManage && entry.status !== 'archived' && initialEditRef.current !== entry.id) {
+      initialEditRef.current = entry.id;
+      const next = logbookDraft(entry);
+      reset(next);
+      setDraft(next);
+    }
+  }, [startEditing, entry, canManage, reset]);
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !archiveConfirmOpen) dismiss();
+      if (event.key === 'Escape' && !event.defaultPrevented && !archiveConfirmOpen && !draft) dismiss();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [archiveConfirmOpen, dismiss, open]);
+  }, [archiveConfirmOpen, dismiss, open, draft]);
 
   useEffect(() => {
     if (!open) setComment('');
@@ -135,11 +168,30 @@ export default function LogbookEntryFlyout({
 
   if (!open || typeof document === 'undefined') return null;
   const archived = entry?.status === 'archived';
-  const canManage =
-    !!entry &&
-    (user?.role === 'superadmin' ||
-      user?.role === 'org_admin' ||
-      user?.id === entry.createdByUserId);
+  const status = draft?.status || entry?.status || 'open';
+  const changeStatus = (next: LogbookEntryStatus) => {
+    if (draft) setDraft({ ...draft, status: next });
+    else if (entry) setStatus.mutate({ id: entry.id, status: next });
+    setStatusMenuOpen(false);
+  };
+  const saveEntry = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!entry || !draft || saving || !canManage || archived) return;
+    if (!draft.title.trim() || !draft.body.trim() || !isValidLogbookDateTime(draft.occurredAt)) {
+      showToast(t('inlineValidation'), { type: 'error' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await update.mutateAsync({ id: entry.id, data: logbookDraftPayload(draft, user?.role === 'superadmin' || user?.role === 'org_admin') });
+      await refetch();
+      reset(null);
+      setDraft(null);
+      showToast(autoT('ui_e1bd2c4575ee'), { type: 'success' });
+    } catch (error) {
+      showToast(getErrorMessage(error, autoT('ui_81128854f3b0')), { type: 'error' });
+    } finally { setSaving(false); }
+  };
 
   const addComment = async (event: FormEvent) => {
     event.preventDefault();
@@ -166,21 +218,25 @@ export default function LogbookEntryFlyout({
         aria-label={autoT('ui_20cde07dafc6')}
         className="logbook-detail-modal relative flex h-full w-full flex-col bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl"
       >
-        <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4 sm:px-6">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">{autoT('ui_f95da57ad34c')}</p>
-            <h2 className="truncate text-lg font-bold text-[var(--text-primary)]">{autoT('ui_73d71268a537')}</h2>
+        <header className="logbook-reading-toolbar flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 py-3 md:px-6">
+          <div className="flex min-w-0 items-center gap-1">
+            <IconButton className="md:hidden" variant="ghost" onClick={dismiss} aria-label={autoT('ui_44424b18700e')}><ArrowLeft /></IconButton>
+            <h2 className="truncate text-base font-bold text-[var(--text-primary)] md:text-lg">{autoT('ui_73d71268a537')}</h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {draft && <IconButton aria-label={autoT('ui_70b73bbc118d')} title={autoT('ui_70b73bbc118d')} type="submit" form={editFormId} disabled={saving}><Save /></IconButton>}
             {canManage && !archived && entry && (
               <div className="relative">
                 <button
                   type="button"
+                  disabled={saving}
                   onClick={() => setStatusMenuOpen((value) => !value)}
-                  className={`status-control logbook-status-pill logbook-status-pill--${entry.status}`}
+                  aria-label={logbookStatusLabels[status]}
+                  aria-expanded={statusMenuOpen}
+                  className={`status-control logbook-status-pill logbook-status-pill--${status}`}
                 >
-                  <LogbookStatusIcon status={entry.status} />
-                  <span className="hidden md:inline">{logbookStatusLabels[entry.status]}</span>
+                  <LogbookStatusIcon status={status} />
+                  <span className="hidden md:inline">{logbookStatusLabels[status]}</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${statusMenuOpen ? "rotate-180" : ''}`} />
                 </button>
                 {statusMenuOpen && (
@@ -188,25 +244,25 @@ export default function LogbookEntryFlyout({
                     <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">{autoT('ui_95706e6c2697')}</div>
                     <StatusMenuItem
                       status="open"
-                      active={entry.status === 'open'}
+                      active={status === 'open'}
                       onSelect={() => {
-                        setStatus.mutate({ id: entry.id, status: 'open' });
+                        changeStatus('open');
                         setStatusMenuOpen(false);
                       }}
                     />
                     <StatusMenuItem
                       status="discussed"
-                      active={entry.status === 'discussed'}
+                      active={status === 'discussed'}
                       onSelect={() => {
-                        setStatus.mutate({ id: entry.id, status: 'discussed' });
+                        changeStatus('discussed');
                         setStatusMenuOpen(false);
                       }}
                     />
                     <StatusMenuItem
                       status="follow_up"
-                      active={entry.status === 'follow_up'}
+                      active={status === 'follow_up'}
                       onSelect={() => {
-                        setStatus.mutate({ id: entry.id, status: 'follow_up' });
+                        changeStatus('follow_up');
                         setStatusMenuOpen(false);
                       }}
                     />
@@ -214,25 +270,36 @@ export default function LogbookEntryFlyout({
                 )}
               </div>
             )}
-            {canManage && !archived && entry && (
+            {canManage && !archived && entry && !draft && (
                 <IconButton
-                  variant="secondary"
+                  variant="ghost"
                   className="logbook-edit-button"
-                  onClick={() => {
-                    if (onEdit) {
-                      onEdit(entry.id);
-                    } else {
-                      navigate(`/logbook/${entry.id}/edit`, { state: { returnTo } });
-                    }
-                  }}
+                  onClick={beginEditing}
                 aria-label={autoT('ui_104f3bfdc340')}
                 title={autoT('ui_104f3bfdc340')}
               >
                 <Edit3 className="h-5 w-5" />
               </IconButton>
             )}
-            {canManage && !archived && (
+            {canManage && !archived && !draft && <details className="relative md:hidden" onKeyDown={(event) => {
+              if (event.key === 'Escape' && event.currentTarget.open) {
+                event.stopPropagation();
+                event.currentTarget.open = false;
+                event.currentTarget.querySelector('summary')?.focus();
+              }
+            }}>
+              <summary className="logbook-more-trigger" aria-label={t('moreActions')}><MoreVertical aria-hidden="true" /></summary>
+              <Menu className="absolute right-0 top-full z-20 mt-2 min-w-48">
+                <MenuItem onClick={(event) => {
+                  const details = event.currentTarget.closest('details');
+                  if (details) details.open = false;
+                  setArchiveConfirmOpen(true);
+                }}><Archive className="h-4 w-4" />{autoT('ui_b81f3298d960')}</MenuItem>
+              </Menu>
+            </details>}
+            {canManage && !archived && !draft && (
               <Button
+                className="hidden md:inline-flex"
                 variant="warning"
                 size="md"
                 onClick={() => setArchiveConfirmOpen(true)}
@@ -260,88 +327,47 @@ export default function LogbookEntryFlyout({
               </span>
             )}
             <CloseButton
+              className="hidden md:inline-flex"
               onClick={dismiss}
               aria-label={autoT('ui_44424b18700e')}
             />
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+        <div className="logbook-reading-scroll min-h-0 flex-1 overflow-y-auto p-3 md:p-6">
           {isLoading && <p className="text-sm text-gray-500">{autoT('ui_a7151ad4e39f')}</p>}
           {!isLoading && !entry && (
             <p className="text-sm text-gray-600">{autoT('ui_118fdc8c2826')}</p>
           )}
           {entry && (
-            <div className="space-y-6">
-              <section>
-                <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-                  <LogbookTypeBadge label={logbookTypeLabels[entry.type]} type={entry.type} />
-                  <LogbookStatusBadge status={entry.status} />
-                  {entry.visibility === 'admins' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-700">
-                      <LockKeyhole className="h-3 w-3" />{autoT('ui_db8e800f08e5')}</span>
-                  )}
-                </div>
-                <h1 className="text-2xl font-bold text-gray-800">{entry.title}</h1>
-                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
-                  <span className="flex items-center gap-2">
-                    <UserAvatar
-                      name={entry.createdByName}
-                      avatarUrl={
-                        entry.createdByUser?.avatarUrl ??
-                        (entry.createdByUserId === user?.id ? user?.avatarUrl : null)
-                      }
-                    />
-                    {entry.createdByName}
-                  </span>
-                  <span>{formatDate(entry.occurredAt)}</span>
-                  {entry.documentationUpdatedAt && (
-                    <span>{autoT('ui_dee2fa0b54d8')}{formatDate(entry.documentationUpdatedAt)}
-                      {entry.documentationUpdatedByName
-                        ? ` von ${entry.documentationUpdatedByName}`
-                        : ''}
-                    </span>
-                  )}
-                </div>
-                {entry.status === 'discussed' && (
-                  <p className="mt-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-                    <CheckCircle2 className="h-5 w-5" />{autoT('ui_90f8eeda9786')}{' '}{entry.discussedByName || '—'}{' '}{autoT('ui_96e8155732e8')}{' '}{formatDate(entry.discussedAt)}.
-                  </p>
-                )}
-              </section>
-              <section className="border-t border-gray-100 pt-5">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{autoT('ui_0401e23e6030')}</h3>
-                <p className="whitespace-pre-wrap leading-7 text-gray-800">{entry.body}</p>
-              </section>
-              {(entry.highlights || entry.challenges || entry.nextSteps) && (
-                <section className="grid gap-3">
-                  <DetailNote
-                    title={autoT('ui_ed124d299865')}
-                    value={entry.highlights}
-                    className="logbook-detail-note--success bg-green-50 text-green-800"
-                  />
-                  <DetailNote
-                    title={autoT('ui_24cb5c6fa8e6')}
-                    value={entry.challenges}
-                    className="logbook-detail-note--warning bg-amber-50 text-amber-800"
-                  />
-                  <DetailNote
-                    title={autoT('ui_76231e1d047c')}
-                    value={entry.nextSteps}
-                    className="logbook-detail-note--info bg-blue-50 text-blue-800"
-                  />
-                </section>
-              )}
-              <LogbookConnections entry={entry} />
-              <section className="border-t border-gray-100 pt-5">
+            <div className="logbook-detail-layout">
+              <form id={editFormId} className="logbook-detail-main" onSubmit={saveEntry} onKeyDown={event => {
+                if (!draft || saving || (event.target as HTMLElement).closest('[data-logbook-picker]')) return;
+                if (event.key === 'Escape') {
+                  event.preventDefault(); event.stopPropagation();
+                  requestDiscard(() => { reset(null); setDraft(null); });
+                }
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+                  event.preventDefault(); event.currentTarget.requestSubmit();
+                }
+              }}>
+                <fieldset disabled={saving} className="min-w-0">
+                  <LogbookDetailContent entry={entry} editor={draft ? { draft, onChange: setDraft } : undefined} />
+                </fieldset>
+                {draft && <div className="logbook-inline-actions">
+                  <Button variant="secondary" disabled={saving} onClick={() => requestDiscard(() => { reset(null); setDraft(null); })}>{t('discardEdits')}</Button>
+                  <Button type="submit" disabled={saving}><Save className="h-4 w-4" />{saving ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}</Button>
+                </div>}
+              </form>
+              <section className="logbook-detail-comments border-t border-gray-100 pt-5">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
                   <MessageCircle className="h-5 w-5 text-viridian" />{autoT('ui_b9677171d9f7')}{entry.comments?.length || 0})
                 </h3>
-                <div className="space-y-3">
+                <div className="logbook-comment-list">
                   {entry.comments?.length ? (
                     entry.comments.map((item) => (
-                      <div key={item.id} className="rounded-xl bg-gray-50 p-4">
-                        <div className="mb-2 flex items-center justify-between gap-3 text-xs text-gray-500">
+                      <div key={item.id} className={`logbook-comment ${item.createdByUserId === user?.id ? 'logbook-comment--own' : 'logbook-comment--other'}`}>
+                        <div className="logbook-comment-meta">
                           <span className="flex items-center gap-2 font-semibold text-gray-700">
                             <UserAvatar
                               name={item.createdByName}
@@ -356,15 +382,13 @@ export default function LogbookEntryFlyout({
                           <span>{formatDate(item.createdAt)}</span>
                         </div>
                         <p className="whitespace-pre-wrap text-sm text-gray-800">{item.body}</p>
-                        {(user?.role === 'superadmin' ||
-                          user?.role === 'org_admin' ||
-                          user?.id === item.createdByUserId) && (
+                        {(!!user && user.id === item.createdByUserId) && (
                           <button
                             type="button"
                             onClick={() =>
                               removeComment.mutate({ entryId: entry.id, commentId: item.id })
                             }
-                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-600"
+                            className="logbook-comment-delete inline-flex items-center gap-1 text-xs font-medium text-red-600"
                           >
                             <Trash2 className="h-3.5 w-3.5" />{autoT('ui_8bb9a7f4f1ff')}</button>
                         )}
@@ -387,6 +411,7 @@ export default function LogbookEntryFlyout({
                     </FieldLabel>
                     <div className="mt-2 flex justify-end">
                       <Button
+                        type="submit"
                         disabled={!comment.trim() || createComment.isPending}
                       >
                         <Send className="h-4 w-4" />{autoT('ui_86b530d1039e')}</Button>
@@ -398,6 +423,7 @@ export default function LogbookEntryFlyout({
           )}
         </div>
       </aside>
+      {discardDialog}
       <ConfirmModal
         open={archiveConfirmOpen}
         title={autoT('ui_549a1516f520')}
@@ -449,23 +475,5 @@ function StatusMenuItem({
       {logbookStatusLabels[status]}
       {active && <CheckCircle2 className="ml-auto h-4 w-4" />}
     </MenuItem>
-  );
-}
-
-function DetailNote({
-  title,
-  value,
-  className,
-}: {
-  title: string;
-  value?: string | null;
-  className: string;
-}) {
-  if (!value) return null;
-  return (
-    <div className={`logbook-detail-note rounded-xl p-4 ${className}`}>
-      <h3 className="mb-2 font-semibold">{title}</h3>
-      <p className="whitespace-pre-wrap text-sm">{value}</p>
-    </div>
   );
 }

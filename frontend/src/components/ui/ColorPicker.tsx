@@ -216,7 +216,7 @@ export function ColorPicker({
   return (
     <>
       <div ref={rootRef}>
-        <div className="flex h-10 overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--surface-1)] shadow-sm focus-within:border-[var(--viridian)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]">
+        <div className="editor-field flex h-10 overflow-hidden">
           <button
             type="button"
             className="w-10 shrink-0 border-r border-black/10 transition-opacity hover:opacity-85 disabled:cursor-not-allowed"

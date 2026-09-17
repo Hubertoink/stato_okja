@@ -7,6 +7,24 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.11.0] - 2026-09-17
+
+### Changed
+- Logbucheinträge lassen sich direkt in der Detailansicht bearbeiten; Verknüpfungen und Kommentare sind kompakter dargestellt.
+- Mobile Seitenköpfe, Dashboard und Einstellungsdialoge wurden vereinheitlicht und platzsparender gestaltet.
+- Kalender und Dashboard unterstützen verbesserte kompakte Ansichten und Mausinteraktionen.
+
+### Fixed
+- Der Linux-Installer aus dem Quellcode erhält für die einmalige Upload-Berechtigungsreparatur die fehlenden Dateisystemrechte; bestehende Uploads bleiben erhalten.
+- Das Absenden von Logbuchkommentaren funktioniert wieder zuverlässig; nur Autoren dürfen ihre Einträge bearbeiten und ihre Kommentare löschen.
+- Dashboard-Scrollinteraktionen funktionieren auch in Umgebungen ohne matchMedia.
+
+### Upgrade
+- Vor dem Update Datenbank und Uploads sichern; das bestehende On-Prem-Updateverfahren verwenden.
+- Keine Änderung an der Docker-Installation erforderlich. Zusätzliche Installer-Rechte gelten nur während der Upload-Reparatur.
+
+---
+
 ## [1.10.0] - 2026-09-10
 
 ### Added

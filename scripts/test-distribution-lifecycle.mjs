@@ -47,6 +47,19 @@ const query = sql => compose('exec', '-T', 'postgres', 'psql', '-U', 'stato_user
 const status = [];
 try {
   console.log(`Isolated test directory: ${directory}`);
+  if (process.platform !== 'win32') {
+    // Exercise the actual legacy installer repair against an existing, protected
+    // upload tree, while retaining the backend's read-only rootfs and cap_drop.
+    compose('run', '--rm', '--no-deps', '--user', '0', '--cap-add', 'CHOWN', '--cap-add', 'DAC_OVERRIDE', '--cap-add', 'FOWNER', '--entrypoint', 'sh', 'backend', '-ec',
+      'mkdir -p /app/uploads/private; printf "preserved upload" > /app/uploads/private/existing.txt; chown -R 1234:1234 /app/uploads; chmod 700 /app/uploads /app/uploads/private');
+    const installer = readFileSync(join(root, 'scripts/install-onprem.sh'), 'utf8');
+    const repair = installer.match(/if ! compose run --rm --no-deps --user 0[^]*?\nfi/);
+    assert.ok(repair, 'Upload permission repair exists in the installer');
+    run('sh', ['-ec', 'compose() { docker compose -f compose.yaml "$@"; }\nshow_compose_diagnostics() { compose ps; }\nfail() { echo "$1" >&2; exit 1; }\n' + repair[0]]);
+    assert.equal(compose('run', '--rm', '--no-deps', '--entrypoint', 'sh', 'backend', '-ec',
+      'test -d /app/uploads/images; test -d /app/uploads/project-documents; touch /app/uploads/private/new.txt; cat /app/uploads/private/existing.txt'), 'preserved upload');
+    status.push('Legacy Linux installer repairs protected uploads without losing existing files');
+  }
   compose('up', '-d', '--wait', '--wait-timeout', '180');
   let address = `http://${compose('port', 'frontend', '8080')}`;
   assert.equal((await fetch(`${address}/api/health`)).status, 200);

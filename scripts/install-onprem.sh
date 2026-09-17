@@ -307,7 +307,7 @@ fi
 # Volumes created by older images can still belong to root. Repair ownership
 # before the unprivileged backend starts; existing uploaded files stay intact.
 say "Berechtigungen des persistenten Upload-Verzeichnisses pruefen"
-if ! compose run --rm --no-deps --user 0 --cap-add CHOWN --entrypoint sh backend -c \
+if ! compose run --rm --no-deps --user 0 --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --entrypoint sh backend -c \
     'mkdir -p /app/uploads/images /app/uploads/project-documents && chown -R node:node /app/uploads'; then
   show_compose_diagnostics
   fail "Die Berechtigungen des Upload-Verzeichnisses konnten nicht repariert werden."

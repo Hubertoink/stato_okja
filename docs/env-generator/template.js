@@ -26,7 +26,7 @@ export const DEFAULT_VALUES = {
   setupToken: '',
 };
 
-export const ZIMAOS_DEFAULT_VERSION = '1.10.0';
+export const ZIMAOS_DEFAULT_VERSION = '1.11.0';
 
 const BASE_VARIABLES = [
   ['POSTGRES_DB', 'stato_prod'],

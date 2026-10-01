@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { isStrictSecurityMode } from '../config/security.config';
 
 @Injectable()
@@ -30,7 +31,7 @@ export class EmailService {
       return null;
     }
     // Allow unauthenticated SMTP in development (e.g., Mailpit) when no user/pass provided
-    const options: nodemailer.TransportOptions & { auth?: { user: string; pass: string } } = {
+    const options: SMTPTransport.Options = {
       host,
       port,
       secure: port === 465,

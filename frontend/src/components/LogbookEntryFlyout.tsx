@@ -216,6 +216,7 @@ export default function LogbookEntryFlyout({
         role="dialog"
         aria-modal="true"
         aria-label={autoT('ui_20cde07dafc6')}
+        data-mode={draft ? 'edit' : 'read'}
         className="logbook-detail-modal relative flex h-full w-full flex-col bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl"
       >
         <header className="logbook-reading-toolbar flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 py-3 md:px-6">

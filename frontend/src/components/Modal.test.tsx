@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import Modal, { ModalBackdrop } from './Modal';
 
 describe('Modal', () => {
+  it.each([true, false])('passes the blur=%s preference to the shared backdrop styles', (blur) => {
+    render(<Modal open onClose={vi.fn()} title="Form" blur={blur}>Inhalt</Modal>);
+
+    expect(screen.getByRole('dialog').parentElement).toHaveAttribute('data-blur', String(blur));
+  });
+
   it('lets custom dialogs attach a backdrop-close action', () => {
     const onClick = vi.fn();
     const { container } = render(<ModalBackdrop onClick={onClick} />);

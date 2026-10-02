@@ -15,6 +15,12 @@
   background: var(--overlay-backdrop);
 }
 
+/* Custom modal shells share the same backdrop as the standard Modal. */
+.modal-overlay:not([data-blur='false']) {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
 .editor-modal-header {
   background: color-mix(in srgb, var(--interactive-soft) 28%, var(--surface-elevated));
 }

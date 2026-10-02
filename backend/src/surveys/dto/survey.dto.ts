@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { PartialType } from '@nestjs/swagger';
 import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import type { SurveyQuestionType } from '../entities/survey.entity';
 
@@ -34,7 +35,7 @@ export class CreateSurveyDto {
   @IsOptional() @IsDateString() endsAt?: string | null;
 }
 
-export class UpdateSurveyDto extends CreateSurveyDto {
+export class UpdateSurveyDto extends PartialType(CreateSurveyDto) {
   @IsOptional() @IsIn(['draft', 'active', 'closed', 'archived']) status?: 'draft' | 'active' | 'closed' | 'archived';
   @IsOptional() @IsBoolean() archived?: boolean;
 }

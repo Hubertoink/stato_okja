@@ -34,11 +34,11 @@ COPY frontend/package.json ./frontend/package.json
 # npm can retain a development-only brace-expansion 1.x copy in the backend
 # workspace. Replace it explicitly with the patched runtime version.
 RUN npm ci --workspace backend --include-workspace-root=false --omit=dev --no-audit --no-fund --loglevel=error \
-	&& npm install --prefix /tmp/runtime-patches brace-expansion@2.1.4 --no-save --package-lock=false --ignore-scripts --no-audit --no-fund --loglevel=error \
+	&& npm install --prefix /tmp/runtime-patches brace-expansion@2.1.6 --no-save --package-lock=false --ignore-scripts --no-audit --no-fund --loglevel=error \
 	&& rm -rf /app/backend/node_modules/brace-expansion \
 	&& cp -a /tmp/runtime-patches/node_modules/brace-expansion /app/backend/node_modules/brace-expansion \
 	&& rm -rf /tmp/runtime-patches \
-	&& node -e "const path = require('path'); const typeorm = require.resolve('typeorm'); require.resolve('tinyglobby', { paths: [path.dirname(typeorm)] }); for (const dependency of ['@nestjs/swagger', 'body-parser', 'brace-expansion']) require.resolve(dependency); const [yamlMajor, yamlMinor, yamlPatch] = require(require.resolve('js-yaml/package.json', { paths: [path.dirname(require.resolve('@nestjs/swagger'))] })).version.split('.').map(Number); if (yamlMajor !== 5 || !(yamlMinor > 2 || (yamlMinor === 2 && yamlPatch >= 2))) throw new Error('Swagger requires patched js-yaml >=5.2.2 <6'); if (require('brace-expansion/package.json').version !== '2.1.4') process.exit(1)" \
+	&& node -e "const path = require('path'); const typeorm = require.resolve('typeorm'); require.resolve('tinyglobby', { paths: [path.dirname(typeorm)] }); for (const dependency of ['@nestjs/swagger', 'body-parser', 'brace-expansion']) require.resolve(dependency); const [yamlMajor, yamlMinor, yamlPatch] = require(require.resolve('js-yaml/package.json', { paths: [path.dirname(require.resolve('@nestjs/swagger'))] })).version.split('.').map(Number); if (yamlMajor !== 5 || !(yamlMinor > 2 || (yamlMinor === 2 && yamlPatch >= 2))) throw new Error('Swagger requires patched js-yaml >=5.2.2 <6'); if (require('brace-expansion/package.json').version !== '2.1.6') process.exit(1)" \
 	&& npm cache clean --force \
 	&& rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 

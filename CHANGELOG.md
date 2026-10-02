@@ -7,6 +7,26 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.12.0] - 2026-10-02
+
+### Changed
+- Die Umfrageübersicht bietet eine klarere Navigation zwischen aktiven und archivierten Umfragen; nach der Wiederherstellung führt sie zurück zur aktiven Übersicht.
+- Der Lesedialog für Logbucheinträge passt seine Größe an den Inhalt an.
+- Modale Dialoge verwenden einen einheitlichen unscharfen Hintergrund und verhindern Layoutsprünge beim Öffnen und Schließen.
+
+### Fixed
+- Umfragen lassen sich wieder zuverlässig archivieren und wiederherstellen; fehlgeschlagene Änderungen zeigen eine Fehlermeldung.
+- Das Exportmenü für Umfragen schließt bei einem Klick außerhalb und mit der Escape-Taste.
+
+### Security
+- Sicherheitsrelevante Abhängigkeiten wurden aktualisiert; das Backend-Container-Image verwendet die gepatchte Version von brace-expansion.
+
+### Upgrade
+- Vor dem Update Datenbank und Uploads sichern; das bestehende On-Prem-Updateverfahren verwenden.
+- Die Release-Pipeline prüft Tests, Builds, PostgreSQL-Migrationen, Container-Sicherheit sowie Installation und Wiederherstellung vor der Veröffentlichung.
+
+---
+
 ## [1.11.0] - 2026-09-17
 
 ### Changed

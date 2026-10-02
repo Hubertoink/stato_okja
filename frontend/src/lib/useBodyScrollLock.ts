@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 let lockCount = 0;
 let restoreState: {
@@ -49,7 +49,11 @@ function lockBody() {
   const body = document.body;
   const docEl = document.documentElement;
   if (lockCount === 0) {
-    const scrollBarWidth = window.innerWidth - docEl.clientWidth;
+    const scrollBarWidth = Math.max(0, window.innerWidth - docEl.clientWidth);
+    // A stable root gutter remains reserved even with overflow: hidden.
+    // Adding body padding as well would shift centered page content left.
+    const hasStableGutter = window.getComputedStyle(docEl).scrollbarGutter?.includes('stable');
+    const bodyPaddingRight = window.getComputedStyle(body).paddingRight;
     restoreState = {
       scrollY: currentScrollY(),
       scrollElement: document.scrollingElement as HTMLElement | null,
@@ -63,7 +67,9 @@ function lockBody() {
       htmlOverscroll: docEl.style.getPropertyValue('overscroll-behavior-y') || '',
       historyScrollRestoration: window.history.scrollRestoration,
     };
-    if (scrollBarWidth > 0) body.style.paddingRight = `${scrollBarWidth}px`;
+    if (!hasStableGutter && scrollBarWidth > 0) {
+      body.style.paddingRight = `${(parseFloat(bodyPaddingRight) || 0) + scrollBarWidth}px`;
+    }
     // Prevent background scroll and retain visual position
     body.style.position = 'fixed';
     body.style.top = `-${restoreState.scrollY}px`;
@@ -111,7 +117,7 @@ function unlockBody() {
 }
 
 export function useBodyScrollLock(active: boolean) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!active) return;
     lockBody();
     return () => unlockBody();

@@ -3,12 +3,25 @@ import { validate } from 'class-validator';
 import { CreateLogbookEntryDto } from '../logbook/dto/logbook.dto';
 import { UpdateOpeningHoursDto } from '../orgs/dto/organization.dto';
 import { CreateCohortDto, CreateTagDto } from '../taxonomy/dto/taxonomy.dto';
+import { CreateSurveyDto, UpdateSurveyDto } from '../surveys/dto/survey.dto';
 
 async function validationErrors(dto: object) {
   return validate(dto, { whitelist: true, forbidNonWhitelisted: true });
 }
 
 describe('write DTO validation', () => {
+  it('allows archiving and restoring surveys without resending their title', async () => {
+    for (const archived of [true, false]) {
+      await expect(validationErrors(plainToInstance(UpdateSurveyDto, { archived }))).resolves.toEqual([]);
+    }
+    await expect(validationErrors(plainToInstance(CreateSurveyDto, {}))).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ property: 'title' })]),
+    );
+    await expect(validationErrors(plainToInstance(UpdateSurveyDto, { archived: 'true' }))).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ property: 'archived' })]),
+    );
+  });
+
   it('rejects unknown taxonomy fields and invalid cohort ages', async () => {
     await expect(
       validationErrors(plainToInstance(CreateTagDto, { name: 'Ferien', injected: true })),

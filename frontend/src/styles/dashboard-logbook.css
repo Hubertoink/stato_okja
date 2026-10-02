@@ -644,10 +644,14 @@
 }
 /* Dock only when both the comments and the document have comfortable widths. */
 @media (min-width: 1280px) {
-  .logbook-detail-modal { width: calc(100vw - 48px); max-width: 1320px; height: 88vh; }
+  .logbook-detail-modal { width: calc(100vw - 48px); max-width: 1320px; height: auto; }
+  .logbook-detail-modal[data-mode='edit'] { height: 88vh; }
   .logbook-detail-modal .logbook-reading-toolbar { flex-shrink: 0; }
   .logbook-detail-modal .logbook-reading-scroll { overflow: hidden; padding: 0; }
   .logbook-detail-layout { grid-template-columns: minmax(300px, 340px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100%; gap: 0; }
+  /* Size reading mode to the taller column, then let both columns scroll at the viewport limit. */
+  .logbook-detail-modal[data-mode='read'] .logbook-reading-scroll { display: grid; flex: 0 1 auto; }
+  .logbook-detail-modal[data-mode='read'] .logbook-detail-layout { height: auto; min-height: 0; }
   .logbook-detail-main { grid-column: 2; grid-row: 1; overflow-y: auto; padding: 24px; overscroll-behavior-y: contain; }
   .logbook-detail-comments { grid-column: 1; grid-row: 1; overflow-y: auto; padding: 24px 20px; border-width: 0 1px 0 0; border-radius: 0 0 0 16px; overscroll-behavior-y: contain; }
   .logbook-detail-comments > h3 { font-size: 16px; }

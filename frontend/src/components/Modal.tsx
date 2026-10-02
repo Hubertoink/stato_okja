@@ -220,7 +220,8 @@ export default function Modal({
   const themeClassName = theme === 'public' ? 'public-survey public-survey-modal' : '';
   const content = (
     <div
-      className={`visual-viewport-fixed z-[70] bg-black/40 flex ${fullScreen ? 'items-stretch' : mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center ${fullScreen ? 'p-0' : 'p-0 md:p-6'} modal-overlay ${themeClassName} ${blur ? "backdrop-blur-sm" : ''}`}
+      className={`visual-viewport-fixed z-[70] bg-black/40 flex ${fullScreen ? 'items-stretch' : mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center ${fullScreen ? 'p-0' : 'p-0 md:p-6'} modal-overlay ${themeClassName}`}
+      data-blur={blur}
       onWheel={(e) => e.stopPropagation()}
       onClick={(event) => {
         if (event.target === event.currentTarget) dismiss();

@@ -7,6 +7,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.12.1] - 2026-10-04
+
+### Changed
+- Der Desktop-Dialog „Server wechseln“ verwendet das App-Design und übernimmt das aktive Theme einschließlich Dark Mode.
+- Abbrechen, Escape und Schließen erhalten die Desktop-Sitzung und stellen den Fokus wieder her.
+
+---
+
 ## [1.12.0] - 2026-10-02
 
 ### Changed

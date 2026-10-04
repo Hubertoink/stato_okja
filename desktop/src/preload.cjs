@@ -15,4 +15,7 @@ contextBridge.exposeInMainWorld('statoDesktop', {
     ipcRenderer.on('stato:state-changed', listener);
     return () => ipcRenderer.removeListener('stato:state-changed', listener);
   },
+  onServerSwitchClosed: (callback) => {
+    ipcRenderer.on('stato:server-switch-closed', () => callback());
+  },
 });

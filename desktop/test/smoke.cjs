@@ -114,6 +114,20 @@ async function remotePage(application, url) {
   });
 }
 
+async function switchModal(application, local) {
+  await local.locator('#change-server').click();
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    const page = application.context().pages().find((candidate) =>
+      candidate.url().endsWith('/server-switch.html'));
+    if (page) {
+      await page.getByRole('dialog').waitFor();
+      return page;
+    }
+    await new Promise((done) => setTimeout(done, 50));
+  }
+  throw new Error('Server switch modal did not appear');
+}
+
 (async () => {
   const userData = await mkdtemp(join(tmpdir(), 'stato-desktop-smoke-'));
   const first = await fixture('Server A');
@@ -266,19 +280,41 @@ async function remotePage(application, url) {
     assert.equal(printed, '%PDF-');
     console.log('PASS: blob download, blank/blob previews and IPC sender guard');
 
-    await application.evaluate(({ dialog }) => {
-      dialog.showMessageBox = async () => ({ response: 0 });
+    await remote.evaluate(() => {
+      document.documentElement.style.setProperty('--viridian', '#8839ef');
     });
-    await local.locator('#change-server').click();
+    let switchPage = await switchModal(application, local);
+    await switchPage.waitForFunction(() =>
+      getComputedStyle(document.querySelector('h1')).color === 'rgb(136, 57, 239)');
+    assert.equal(await switchPage.evaluate(() => document.activeElement.id), 'cancel');
+    await switchPage.keyboard.press('Tab');
+    assert.equal(await switchPage.evaluate(() => document.activeElement.id), 'confirm');
+    await switchPage.keyboard.press('Tab');
+    assert.equal(await switchPage.evaluate(() => document.activeElement.id), 'close');
+    const modalPng = await application.evaluate(async ({ webContents }) => {
+      const contents = webContents.getAllWebContents().find((wc) =>
+        wc.getURL().endsWith('/server-switch.html'));
+      return (await contents.capturePage(undefined, { stayHidden: true, stayAwake: true }))
+        .toPNG().toString('base64');
+    });
+    await writeFile(join(artifacts, 'server-switch-modal.png'), Buffer.from(modalPng, 'base64'));
+    await switchPage.keyboard.press('Escape').catch((error) => {
+      if (!switchPage.isClosed()) throw error;
+    });
+    await local.waitForFunction(() => document.activeElement.id === 'change-server');
     await waitState(local, 'connected');
     assert.equal(
       await remote.evaluate(() => sessionStorage.getItem('auth_token')),
       'server-Server A',
     );
-    await application.evaluate(({ dialog }) => {
-      dialog.showMessageBox = async () => ({ response: 1 });
-    });
-    await local.locator('#change-server').click();
+    switchPage = await switchModal(application, local);
+    await switchPage.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+    await local.waitForFunction(() => document.activeElement.id === 'change-server');
+    switchPage = await switchModal(application, local);
+    await switchPage.getByRole('button', { name: 'Schließen', exact: true }).click();
+    await local.waitForFunction(() => document.activeElement.id === 'change-server');
+    switchPage = await switchModal(application, local);
+    await switchPage.getByRole('button', { name: 'Server wechseln', exact: true }).click();
     await waitState(local, 'setup');
     assert.equal(popup.isClosed(), true);
     await local.locator('#server-url').fill(second.url);
@@ -290,7 +326,8 @@ async function remotePage(application, url) {
     assert.equal(await other.evaluate(() => sessionStorage.getItem('auth_token')), null);
     assert.equal(await other.evaluate(() => localStorage.getItem('test-auth')), null);
     assert.equal(await other.evaluate(() => document.cookie), '');
-    await local.locator('#change-server').click();
+    switchPage = await switchModal(application, local);
+    await switchPage.getByRole('button', { name: 'Server wechseln', exact: true }).click();
     await waitState(local, 'setup');
     await local.locator('#server-url').fill(first.url);
     await local.locator('#connect').click();
@@ -303,7 +340,8 @@ async function remotePage(application, url) {
       'PASS: cancel/switch, closed previews, clean sessions and cookie-free health checks',
     );
 
-    await local.locator('#change-server').click();
+    switchPage = await switchModal(application, local);
+    await switchPage.getByRole('button', { name: 'Server wechseln', exact: true }).click();
     await waitState(local, 'setup');
     failPage = true;
     await local.locator('#connect').click();

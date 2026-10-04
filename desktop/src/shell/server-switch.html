@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'" />
+    <title>Server wechseln</title>
+    <link rel="stylesheet" href="server-switch.css" />
+    <script src="server-switch.js" defer></script>
+  </head>
+  <body>
+    <dialog aria-labelledby="title" aria-describedby="description">
+      <header>
+        <h1 id="title">Server wechseln</h1>
+        <button id="close" class="close" type="button" aria-label="Schließen">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        </button>
+      </header>
+      <div id="description">
+        <p class="question">Zur Serverauswahl zurückkehren?</p>
+        <p>Bitte offene Änderungen vorher speichern. Die lokale Sitzung wird beendet; bei der nächsten Verbindung meldest du dich erneut an.</p>
+      </div>
+      <footer>
+        <button id="cancel" type="button" autofocus>Abbrechen</button>
+        <button id="confirm" class="primary" type="button">Server wechseln</button>
+      </footer>
+      <p id="error" role="alert" hidden>Die Aktion konnte nicht ausgeführt werden. Bitte erneut versuchen.</p>
+    </dialog>
+  </body>
+</html>

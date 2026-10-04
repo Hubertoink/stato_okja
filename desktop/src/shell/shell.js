@@ -80,4 +80,5 @@ document
   .getElementById('forget-credentials')
   .addEventListener('click', () => void run(() => desktop.forgetCredentials()));
 desktop.onState(render);
+desktop.onServerSwitchClosed(() => document.getElementById('change-server').focus());
 void run(() => desktop.getState());

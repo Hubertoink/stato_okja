@@ -126,7 +126,7 @@ App-Fenster; Anmeldung, Datenhaltung und Updates der Oberfläche bleiben auf dem
 
 Entwicklung: `npm run desktop:install`, danach `npm run desktop:dev`.
 Windows-Installer: `npm run desktop:build` (auf Windows).
-Download: [Windows-Desktop-Vorschau 1.12.0](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.12.0).
+Download: [Windows-Desktop-Vorschau 1.12.1](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.12.1).
 Details zu Verbindung, Installation und Tests: [Desktop-App](desktop/README.md).
 
 ## Projektstatus und Roadmap

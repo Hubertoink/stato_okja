@@ -19,6 +19,8 @@ const { loginWorldId, installScript, takeScript } = require('./login-autofill.cj
 
 const shellFile = join(__dirname, 'shell', 'index.html');
 const shellUrl = pathToFileURL(shellFile).href;
+const switchFile = join(__dirname, 'shell', 'server-switch.html');
+const switchUrl = pathToFileURL(switchFile).href;
 const icon = join(__dirname, '..', 'assets', 'stato.ico');
 const preferences = {
   nodeIntegration: false,
@@ -31,6 +33,7 @@ const footerHeight = 36;
 let window;
 let remoteView;
 let remoteSession;
+let switchView;
 let configFile;
 let credentialStore;
 let pendingLogin;
@@ -68,9 +71,10 @@ function updateState(patch) {
 }
 
 function layoutRemote() {
-  if (!window || window.isDestroyed() || !remoteView) return;
+  if (!window || window.isDestroyed()) return;
   const [width, height] = window.getContentSize();
-  remoteView.setBounds({
+  switchView?.setBounds({ x: 0, y: 0, width, height });
+  remoteView?.setBounds({
     x: 0,
     y: 0,
     width,
@@ -79,6 +83,7 @@ function layoutRemote() {
 }
 
 async function discardConnection() {
+  closeServerSwitch(false);
   const view = remoteView;
   const previousSession = remoteSession;
   remoteView = undefined;
@@ -361,28 +366,78 @@ async function performConnection(url, open) {
   return state;
 }
 
-async function changeServer() {
-  if (state.busy) return state;
-  if (remoteView) {
-    const { response } = await dialog.showMessageBox(window, {
-      type: 'question',
-      title: 'Server wechseln',
-      message: 'Zur Serverauswahl zurückkehren?',
-      detail:
-        'Bitte offene Änderungen vorher speichern. Die lokale Sitzung wird beendet; bei der nächsten Verbindung meldest du dich erneut an.',
-      buttons: ['Abbrechen', 'Server wechseln'],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (response !== 1 || closing) return state;
+function closeServerSwitch(restoreFocus = true) {
+  const view = switchView;
+  switchView = undefined;
+  if (!view) return;
+  if (window && !window.isDestroyed()) window.contentView.removeChildView(view);
+  if (!view.webContents.isDestroyed()) view.webContents.close();
+  if (restoreFocus && window && !window.isDestroyed() && !closing) {
+    window.webContents.focus();
+    window.webContents.send('stato:server-switch-closed');
   }
+}
+
+async function changeServer() {
+  if (state.busy || switchView || closing) return state;
+  if (remoteView) {
+    const view = new WebContentsView({
+      webPreferences: { ...preferences, preload: join(__dirname, 'switch-preload.cjs') },
+    });
+    switchView = view;
+    view.setBackgroundColor('#00000000');
+    view.setVisible(false);
+    view.webContents.on('will-navigate', (event) => event.preventDefault());
+    view.webContents.on('will-attach-webview', (event) => event.preventDefault());
+    view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    view.webContents.on('render-process-gone', () => {
+      if (switchView === view) closeServerSwitch();
+    });
+    window.contentView.addChildView(view);
+    layoutRemote();
+    try {
+      // Copy only presentation tokens from the server, without giving its page IPC access.
+      const theme = await remoteView.webContents.executeJavaScriptInIsolatedWorld(loginWorldId, [{
+        code: `(() => {
+          const style = getComputedStyle(document.documentElement);
+          return Object.fromEntries(['--viridian', '--surface-elevated', '--text-primary',
+            '--text-muted', '--border-subtle', '--interactive-soft', '--overlay-backdrop',
+            '--focus-ring'].map(name => [name, style.getPropertyValue(name).trim()]));
+        })()`,
+      }]).catch(() => ({}));
+      if (switchView !== view || closing) return state;
+      await view.webContents.loadFile(switchFile);
+      if (switchView !== view || closing) return state;
+      view.webContents.send('stato:switch-theme', theme);
+      view.setVisible(true);
+      view.webContents.focus();
+    } catch {
+      if (switchView === view) closeServerSwitch();
+    }
+    return state;
+  }
+  return finishServerSwitch();
+}
+
+async function finishServerSwitch() {
   updateState({ busy: true });
   await discardConnection();
   return updateState({ mode: 'setup', busy: false, message: '', kind: '' });
 }
 
 function registerIpc() {
+  ipcMain.handle('stato:server-switch-answer', (event, confirm) => {
+    if (!switchView || event.sender !== switchView.webContents ||
+      event.senderFrame !== switchView.webContents.mainFrame || event.senderFrame.url !== switchUrl) {
+      throw new Error('Nicht autorisierter Desktop-Aufruf.');
+    }
+    if (confirm !== true || closing) {
+      closeServerSwitch();
+      return state;
+    }
+    closeServerSwitch(false);
+    return finishServerSwitch();
+  });
   const handlers = {
     'stato:state': () => state,
     'stato:check': (url) => performConnection(url, false),
@@ -405,6 +460,7 @@ function registerIpc() {
       ) {
         throw new Error('Nicht autorisierter Desktop-Aufruf.');
       }
+      if (switchView && channel !== 'stato:state') return state;
       return handler(...args);
     });
   }

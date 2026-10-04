@@ -234,7 +234,7 @@ export default function Login() {
             <>
               <div>
                 <label className="login-label block text-sm font-semibold mb-2">{t('login.email')}</label>
-                <Input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="w-full" placeholder={autoT('ui_9395988394d4')} />
+                <Input type="email" name="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="w-full" placeholder={autoT('ui_9395988394d4')} autoComplete="username" />
               </div>
 
               <div>
@@ -242,6 +242,7 @@ export default function Login() {
                 <div className="relative">
                   <Input
                     type={showPwd ? "text" : "password"}
+                    name="password"
                     required
                     value={password}
                     onChange={(e)=>setPassword(e.target.value)}

@@ -1,0 +1,65 @@
+{
+  "name": "stato-desktop",
+  "version": "1.12.0",
+  "description": "StatO Desktop – lokal installierter Client für bestehende StatO-Server",
+  "author": "OKJA Team",
+  "license": "MIT",
+  "private": true,
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "lint": "eslint src test --max-warnings 0",
+    "test": "node --test test/*.test.cjs",
+    "test:smoke": "node test/smoke.cjs",
+    "build:win": "electron-builder --win nsis --x64 --publish never",
+    "build:unpacked": "electron-builder --win --x64 --dir --publish never"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "eslint": "9.39.5",
+    "globals": "17.11.0",
+    "playwright-core": "1.63.0"
+  },
+  "build": {
+    "appId": "de.okja.stato.desktop",
+    "productName": "StatO",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "assets/stato.ico",
+      "artifactName": "StatO-Setup-${version}-${arch}.${ext}",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "de_DE",
+        "en_US"
+      ]
+    }
+  }
+}

@@ -6,6 +6,7 @@ backend/node_modules
 frontend/node_modules
 backend/dist
 frontend/dist
+desktop/
 *.tsbuildinfo
 backend/coverage
 frontend/coverage

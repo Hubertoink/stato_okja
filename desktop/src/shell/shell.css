@@ -1,0 +1,275 @@
+:root {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #203631;
+  background: #f3f7f5;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+[hidden] {
+  display: none !important;
+}
+main {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 18px 24px;
+  background: radial-gradient(ellipse at top right, #dcebe3, transparent 65%), #f3f7f5;
+}
+.card {
+  width: min(100%, 540px);
+  padding: 32px 40px 24px;
+  background: #fff;
+  border: 1px solid #dce6e0;
+  border-radius: 20px;
+  box-shadow: 0 18px 60px #24463812;
+}
+.logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin-bottom: 10px;
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  font-weight: 700;
+  color: #477260;
+}
+h1 {
+  font-size: 28px;
+  line-height: 1.2;
+  margin: 12px 0;
+  letter-spacing: -0.03em;
+}
+.intro {
+  margin: 0 0 22px;
+  line-height: 1.65;
+  color: #566a63;
+  font-size: 15px;
+}
+label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 9px;
+}
+input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #a9bcb2;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 14px;
+  background: #fff;
+  color: inherit;
+}
+input:focus-visible,
+button:focus-visible {
+  outline: 3px solid #a0c9b7;
+  outline-offset: 3px;
+}
+.help,
+.http-hint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #63766e;
+  margin: 10px 0 20px;
+}
+.http-hint {
+  color: #8c550f;
+  padding: 10px 12px;
+  background: #fff4df;
+  border-radius: 8px;
+}
+.actions {
+  display: flex;
+  gap: 12px;
+}
+button {
+  padding: 11px 16px;
+  border-radius: 8px;
+  border: 1px solid #c5d5cc;
+  background: #fff;
+  color: #244b3a;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: #edf5f0;
+}
+button.primary {
+  flex: 1;
+  border-color: #315f49;
+  background: #315f49;
+  color: #fff;
+}
+button.primary:hover:not(:disabled) {
+  background: #254a38;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+#status {
+  min-height: 24px;
+  line-height: 1.55;
+  font-size: 13px;
+  margin: 18px 0;
+  overflow-wrap: anywhere;
+}
+#status[data-kind='error'] {
+  color: #ae302b;
+}
+#status[data-kind='success'] {
+  color: #315f49;
+}
+.notes {
+  border-top: 1px solid #e3ebe6;
+  padding-top: 10px;
+  color: #63766e;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.card footer {
+  color: #64796e;
+  font-size: 11px;
+  margin-top: 22px;
+}
+#desktop-footer {
+  position: fixed;
+  inset: auto 0 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-top: 1px solid #e0e6e3;
+  background: #fafcfb;
+  color: #64736c;
+  font-size: 11px;
+}
+.connection-caption {
+  color: #75827b;
+}
+#active-server {
+  flex: 1;
+  font-size: 11px;
+  color: #64736c;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#desktop-footer button {
+  height: 28px;
+  font-size: 11px;
+  font-weight: 400;
+  padding: 4px 8px;
+  border-color: transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #566a60;
+  white-space: nowrap;
+}
+#desktop-footer button:hover:not(:disabled) {
+  background: #eaf0ec;
+  color: #244b3a;
+}
+#desktop-footer .icon-button {
+  width: 28px;
+  padding: 5px;
+  display: grid;
+  place-items: center;
+}
+.splash {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  color: #566a63;
+  font-size: 14px;
+  text-align: center;
+  animation: splash-in 240ms ease-out 120ms both;
+}
+.splash p {
+  margin: 0;
+}
+.splash-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.splash-server {
+  font-size: 12px;
+  color: #75827b;
+  overflow-wrap: anywhere;
+}
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #d3e2da;
+  border-top-color: #315f49;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* Delayed fade-in: fast starts never show a flash of the loading screen. */
+@keyframes splash-in {
+  from {
+    opacity: 0;
+  }
+}
+.credential-prompt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 60%;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-radius: 6px;
+  background: #e6f1eb;
+  color: #244b3a;
+}
+.credential-question {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#desktop-footer .credential-prompt button {
+  height: 22px;
+  padding: 2px 8px;
+}
+#desktop-footer .credential-prompt button.accent {
+  background: #315f49;
+  color: #fff;
+  font-weight: 600;
+}
+#desktop-footer .credential-prompt button.accent:hover:not(:disabled) {
+  background: #254a38;
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash,
+  .spinner {
+    animation: none;
+  }
+}
+@media (max-width: 560px) {
+  .card {
+    padding: 28px 24px 20px;
+  }
+  .actions {
+    flex-direction: column;
+  }
+}

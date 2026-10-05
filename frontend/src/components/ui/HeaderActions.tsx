@@ -71,8 +71,10 @@ export function HeaderSearchAction({
           <div className="relative">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-faint)]" />
             <Input
+              autoComplete="off"
               autoFocus
               className="mt-0 py-2 pl-9 pr-10"
+              enterKeyHint="search"
               onChange={(event) => onValueChange(event.target.value)}
               placeholder={placeholder}
               type="search"

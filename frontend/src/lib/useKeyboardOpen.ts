@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { readVisibleViewport } from './visibleViewport';
 
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 let viewportBaseline = { width: 0, height: 0 };
@@ -21,7 +20,8 @@ export function useKeyboardOpen(threshold = 120): boolean {
 
     const compute = () => {
       try {
-        const { height, offsetTop } = readVisibleViewport(threshold);
+        const height = vv?.height ?? window.innerHeight;
+        const offsetTop = vv?.offsetTop ?? 0;
         const layoutHeight = Math.max(window.innerHeight, document.documentElement.clientHeight, height + offsetTop);
         if (Math.abs(viewportBaseline.width - window.innerWidth) > 40) {
           viewportBaseline = { width: window.innerWidth, height: layoutHeight };
@@ -30,16 +30,17 @@ export function useKeyboardOpen(threshold = 120): boolean {
         }
         const hiddenHeight = Math.max(
           0,
-          layoutHeight - height,
-          viewportBaseline.height - height,
+          layoutHeight - height - offsetTop,
+          viewportBaseline.height - height - offsetTop,
         );
         const nextOpen = isEditableElement(document.activeElement) && hiddenHeight > threshold;
         const root = document.documentElement;
+        const layoutViewportResized =
+          viewportBaseline.height > 0 && layoutHeight < viewportBaseline.height - threshold;
+        const fixedHeight = nextOpen && !layoutViewportResized ? height : layoutHeight;
 
         root.style.setProperty('--visual-viewport-height', `${height}px`);
-        // Panning to a focused field changes offsetTop, not the keyboard height.
-        // Fixed dialogs must always fit the visible viewport, including during blur.
-        root.style.setProperty('--visual-viewport-fixed-height', `${height}px`);
+        root.style.setProperty('--visual-viewport-fixed-height', `${Math.max(height, fixedHeight)}px`);
         root.style.setProperty('--visual-viewport-offset-top', `${offsetTop}px`);
         root.style.setProperty('--keyboard-inset-height', `${nextOpen ? hiddenHeight : 0}px`);
         root.dataset.keyboardOpen = String(nextOpen);

@@ -208,7 +208,7 @@ export default function LogbookEntryFlyout({
 
   const content = (
     <div
-      className="visual-viewport-fixed z-[60] flex items-stretch justify-center md:items-center md:p-6"
+      className="fixed inset-0 z-[60] flex items-stretch justify-center md:items-center md:p-6"
       role="presentation"
     >
       <ModalBackdrop className="bg-slate-950/45 backdrop-blur-[1px]" onClick={dismiss} />

@@ -15,25 +15,8 @@
   background: var(--overlay-backdrop);
 }
 
-/* The panel follows the visual viewport, but its backdrop must still cover
- * the full layout viewport while mobile browser chrome/keyboard moves. */
-.modal-overlay:not([aria-hidden='true']) {
-  isolation: isolate;
-  background: transparent;
-}
-
-.modal-overlay:not([aria-hidden='true'])::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background: var(--overlay-backdrop);
-}
-
-/* Put the filter on the backdrop itself: a filter on the resized wrapper
- * would also constrain its fixed descendants to that smaller box. */
-.modal-overlay:not([aria-hidden='true']):not([data-blur='false'])::before,
-.modal-overlay[aria-hidden='true']:not([data-blur='false']) {
+/* Custom modal shells share the same backdrop as the standard Modal. */
+.modal-overlay:not([data-blur='false']) {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
@@ -43,32 +26,11 @@
 }
 
 
-.visual-viewport-fixed,
-.modal-overlay:not([aria-hidden='true']) {
+.visual-viewport-fixed {
   position: fixed;
   inset-inline: 0;
   top: var(--visual-viewport-offset-top, 0px);
-  bottom: auto;
   height: var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100vh));
-}
-
-/* Custom settings panels also need the keyboard-aware height limit. */
-.modal-overlay > :not([aria-hidden='true']) {
-  max-height: calc(var(--visual-viewport-height, 100vh) - 0.75rem);
-}
-
-@media (min-width: 768px) {
-  .modal-overlay > :not([aria-hidden='true']) {
-    max-height: calc(var(--visual-viewport-height, 100vh) - 3rem);
-  }
-}
-
-.modal-overlay[data-full-screen='true'] > [role='dialog'] {
-  max-height: 100%;
-}
-
-.visual-viewport-fixed > .logbook-detail-modal {
-  max-height: 100%;
 }
 
 /* The picker keeps its visual padding for cards, while the scrollbar itself

@@ -2,8 +2,6 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom';
 import { Dices } from 'lucide-react';
 import { autoT } from '@/i18n/auto';
-import { useIsMobile } from '@/lib/useIsMobile';
-import { Button } from './Button';
 
 type Hsl = { h: number; s: number; l: number };
 type PopoverPosition = { top: number; left: number; arrowLeft: number; placement: 'top' | 'bottom' };
@@ -74,22 +72,12 @@ export function ColorPicker({
   const generatedId = useId();
   const inputId = id || `color-picker-${generatedId}`;
   const currentColor = normalizeHex(value) || '#0f766e';
-  const isMobile = useIsMobile(768);
   const [open, setOpen] = useState(false);
   const [hexInput, setHexInput] = useState(currentColor);
   const rootRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [popoverPosition, setPopoverPosition] = useState<PopoverPosition | null>(null);
   const hsl = hexToHsl(currentColor);
-
-  const openPicker = () => {
-    // iOS does not always transfer focus to a tapped button. Release a
-    // previously edited field so the picker opens without its keyboard.
-    const active = document.activeElement;
-    if (isMobile && active instanceof HTMLElement &&
-      (active.matches('input, textarea') || active.isContentEditable)) active.blur();
-    setOpen(true);
-  };
 
   const updatePopoverPosition = useCallback(() => {
     const anchor = rootRef.current?.getBoundingClientRect();
@@ -98,20 +86,14 @@ export function ColorPicker({
     const popoverWidth = 256;
     const viewportPadding = 12;
     const popoverHeight = popoverRef.current?.offsetHeight || 240;
-    const viewport = window.visualViewport;
-    const viewportTop = viewport?.offsetTop ?? 0;
-    const viewportLeft = viewport?.offsetLeft ?? 0;
-    const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
-    const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth);
     const left = Math.max(
-      viewportLeft + viewportPadding,
-      Math.min(anchor.left + anchor.width / 2 - popoverWidth / 2, viewportRight - popoverWidth - viewportPadding),
+      viewportPadding,
+      Math.min(anchor.left + anchor.width / 2 - popoverWidth / 2, window.innerWidth - popoverWidth - viewportPadding),
     );
-    const placeBelow = anchor.bottom + 10 + popoverHeight <= viewportBottom || anchor.top - viewportTop < popoverHeight + 10;
-    const preferredTop = placeBelow
+    const placeBelow = anchor.bottom + 10 + popoverHeight <= window.innerHeight || anchor.top < popoverHeight + 10;
+    const top = placeBelow
       ? anchor.bottom + 10
-      : anchor.top - popoverHeight - 10;
-    const top = Math.max(viewportTop + viewportPadding, Math.min(preferredTop, viewportBottom - popoverHeight - viewportPadding));
+      : Math.max(viewportPadding, anchor.top - popoverHeight - 10);
 
     setPopoverPosition({
       top,
@@ -146,16 +128,11 @@ export function ColorPicker({
       return;
     }
     updatePopoverPosition();
-    const viewport = window.visualViewport;
     window.addEventListener('resize', updatePopoverPosition);
     window.addEventListener('scroll', updatePopoverPosition, true);
-    viewport?.addEventListener('resize', updatePopoverPosition);
-    viewport?.addEventListener('scroll', updatePopoverPosition);
     return () => {
       window.removeEventListener('resize', updatePopoverPosition);
       window.removeEventListener('scroll', updatePopoverPosition, true);
-      viewport?.removeEventListener('resize', updatePopoverPosition);
-      viewport?.removeEventListener('scroll', updatePopoverPosition);
     };
   }, [open, updatePopoverPosition]);
 
@@ -244,27 +221,13 @@ export function ColorPicker({
             type="button"
             className="w-10 shrink-0 border-r border-black/10 transition-opacity hover:opacity-85 disabled:cursor-not-allowed"
             style={{ backgroundColor: currentColor }}
-            onClick={() => { if (open) setOpen(false); else openPicker(); }}
+            onClick={() => setOpen((current) => !current)}
             aria-label={autoT('ui_200292c7b396')}
             aria-expanded={open}
             aria-controls={`${inputId}-popover`}
             disabled={disabled}
           />
-          {isMobile ? (
-            <Button
-              id={inputId}
-              variant="ghost"
-              onClick={openPicker}
-              className="min-w-0 flex-1 justify-start rounded-none border-0 px-3 py-0 font-mono text-sm uppercase text-[var(--text-primary)]"
-              aria-label={autoT('ui_231d0fcb14d9')}
-              aria-haspopup="dialog"
-              aria-expanded={open}
-              aria-controls={`${inputId}-popover`}
-              disabled={disabled}
-            >
-              {currentColor}
-            </Button>
-          ) : <input
+          <input
             id={inputId}
             value={hexInput}
             onFocus={() => setOpen(true)}
@@ -276,7 +239,7 @@ export function ColorPicker({
             className="min-w-0 flex-1 bg-transparent px-3 font-mono text-sm uppercase text-[var(--text-primary)] outline-none disabled:cursor-not-allowed"
             aria-label={autoT('ui_231d0fcb14d9')}
             disabled={disabled}
-          />}
+          />
           <button
             type="button"
             className="grid w-10 shrink-0 place-items-center border-l border-[var(--border-subtle)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--viridian)] disabled:cursor-not-allowed"

@@ -6,7 +6,7 @@ const SCROLL_GESTURE_THRESHOLD = 10;
 /** Dismiss the mobile keyboard on a deliberate swipe outside editable fields. */
 export function useDismissKeyboardOnScroll() {
   useEffect(() => {
-    let gesture: { identifier: number; x: number; y: number; field: HTMLElement } | null = null;
+    let gesture: { identifier: number; x: number; y: number; field: HTMLElement; editing: boolean; moved: boolean } | null = null;
 
     const reset = () => { gesture = null; };
     const handleTouchStart = (event: TouchEvent) => {
@@ -16,12 +16,14 @@ export function useDismissKeyboardOnScroll() {
       if (
         event.touches.length !== 1 ||
         !(field instanceof HTMLElement) ||
-        !(field.matches(EDITABLE_SELECTOR) || field.isContentEditable) ||
-        (target instanceof Element && target.closest(EDITABLE_SELECTOR))
+        !(field.matches(EDITABLE_SELECTOR) || field.isContentEditable)
       ) return;
 
       const touch = event.touches[0];
-      gesture = { identifier: touch.identifier, x: touch.clientX, y: touch.clientY, field };
+      gesture = {
+        identifier: touch.identifier, x: touch.clientX, y: touch.clientY, field,
+        editing: target instanceof Element && !!target.closest(EDITABLE_SELECTOR), moved: false,
+      };
     };
 
     const handleTouchMove = (event: TouchEvent) => {
@@ -36,24 +38,38 @@ export function useDismissKeyboardOnScroll() {
         return;
       }
       if (Math.hypot(touch.clientX - gesture.x, touch.clientY - gesture.y) < SCROLL_GESTURE_THRESHOLD) return;
+      gesture.moved = true;
+      // Text selection and textarea scrolling retain focus. If this gesture
+      // instead scrolls the surrounding form, handleScroll dismisses the keyboard.
+      if (gesture.editing) return;
 
       const field = gesture.field;
       reset();
       field.blur();
     };
 
+    const handleScroll = (event: Event) => {
+      if (!gesture?.moved || document.activeElement !== gesture.field) return;
+      if (event.target instanceof Element && event.target.closest(EDITABLE_SELECTOR)) return;
+      const field = gesture.field;
+      reset();
+      field.blur();
+    };
+
     // Capture also covers modal scrollers. Passive handlers preserve native scrolling.
-    // Avoid scroll events: keyboard opening and focus visibility can scroll automatically.
+    // Scroll alone never dismisses: keyboard opening can scroll automatically.
     const options = { capture: true, passive: true };
     document.addEventListener('touchstart', handleTouchStart, options);
     document.addEventListener('touchmove', handleTouchMove, options);
     document.addEventListener('touchend', reset, options);
     document.addEventListener('touchcancel', reset, options);
+    document.addEventListener('scroll', handleScroll, options);
     return () => {
       document.removeEventListener('touchstart', handleTouchStart, true);
       document.removeEventListener('touchmove', handleTouchMove, true);
       document.removeEventListener('touchend', reset, true);
       document.removeEventListener('touchcancel', reset, true);
+      document.removeEventListener('scroll', handleScroll, true);
     };
   }, []);
 }

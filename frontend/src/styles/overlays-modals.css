@@ -26,11 +26,32 @@
 }
 
 
-.visual-viewport-fixed {
+.visual-viewport-fixed,
+.modal-overlay:not([aria-hidden='true']) {
   position: fixed;
   inset-inline: 0;
   top: var(--visual-viewport-offset-top, 0px);
+  bottom: auto;
   height: var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100vh));
+}
+
+/* Custom settings panels also need the keyboard-aware height limit. */
+.modal-overlay > :not([aria-hidden='true']) {
+  max-height: calc(var(--visual-viewport-height, 100vh) - 0.75rem);
+}
+
+@media (min-width: 768px) {
+  .modal-overlay > :not([aria-hidden='true']) {
+    max-height: calc(var(--visual-viewport-height, 100vh) - 3rem);
+  }
+}
+
+.modal-overlay[data-full-screen='true'] > [role='dialog'] {
+  max-height: 100%;
+}
+
+.visual-viewport-fixed > .logbook-detail-modal {
+  max-height: 100%;
 }
 
 /* The picker keeps its visual padding for cards, while the scrollbar itself

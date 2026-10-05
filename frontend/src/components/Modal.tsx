@@ -222,6 +222,7 @@ export default function Modal({
     <div
       className={`visual-viewport-fixed z-[70] bg-black/40 flex ${fullScreen ? 'items-stretch' : mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center ${fullScreen ? 'p-0' : 'p-0 md:p-6'} modal-overlay ${themeClassName}`}
       data-blur={blur}
+      data-full-screen={fullScreen}
       onWheel={(e) => e.stopPropagation()}
       onClick={(event) => {
         if (event.target === event.currentTarget) dismiss();
@@ -232,7 +233,7 @@ export default function Modal({
         aria-label={title ? undefined : t('dialog.ariaLabel')}
         aria-labelledby={title ? titleId : undefined}
         aria-modal="true"
-        className={`w-full ${fullScreen ? 'max-w-none max-h-none h-[100dvh] rounded-none border-0' : `${maxW} max-h-[85vh] ${mobilePlacement === 'top' ? 'rounded-b-3xl top-sheet-animate' : 'rounded-t-3xl bottom-sheet-animate'} border border-[var(--border-subtle)] md:rounded-2xl`} bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl modal-panel-roomy ${themeClassName} ${variant !== 'information' ? 'modal-editor-surface' : ''} ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-x-hidden overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
+        className={`w-full ${fullScreen ? 'max-w-none max-h-none h-full rounded-none border-0' : `${maxW} max-h-[85vh] ${mobilePlacement === 'top' ? 'rounded-b-3xl top-sheet-animate' : 'rounded-t-3xl bottom-sheet-animate'} border border-[var(--border-subtle)] md:rounded-2xl`} bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl modal-panel-roomy ${themeClassName} ${variant !== 'information' ? 'modal-editor-surface' : ''} ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-x-hidden overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
         role="dialog"
         tabIndex={-1}
         onKeyDown={handleDialogKeyDown}

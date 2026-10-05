@@ -66,6 +66,27 @@ describe('useDismissKeyboardOnScroll', () => {
     expect(editor).not.toHaveFocus();
   });
 
+  it('dismisses when a swipe starting on a field scrolls the surrounding modal', () => {
+    render(<Fixture />);
+    const input = screen.getByRole('textbox', { name: 'Search' });
+    input.focus();
+    fireEvent.touchStart(input, { touches: [touch(100)] });
+    fireEvent.touchMove(input, { touches: [touch(60)] });
+    expect(input).toHaveFocus();
+    fireEvent.scroll(screen.getByTestId('scroller'));
+    expect(input).not.toHaveFocus();
+  });
+
+  it('keeps focus when a swipe scrolls the textarea itself', () => {
+    render(<Fixture />);
+    const notes = screen.getByRole('textbox', { name: 'Notes' });
+    notes.focus();
+    fireEvent.touchStart(notes, { touches: [touch(100)] });
+    fireEvent.touchMove(notes, { touches: [touch(60)] });
+    fireEvent.scroll(notes);
+    expect(notes).toHaveFocus();
+  });
+
   it('preserves focus when the browser or app scrolls without a swipe', () => {
     render(<Fixture />);
     const input = screen.getByRole('textbox', { name: 'Search' });

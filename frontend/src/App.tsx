@@ -19,6 +19,7 @@ import { canAccessDevTools } from './lib/devToolsConfig';
 import TermsAcceptanceGate from '@/components/TermsAcceptanceGate';
 import { useTranslation } from 'react-i18next';
 import { autoT } from '@/i18n/auto';
+import { useDismissKeyboardOnScroll } from '@/lib/useDismissKeyboardOnScroll';
 
 function isChunkLoadError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
@@ -113,6 +114,7 @@ function AppLoading({ label }: { label: string }) {
 
 function App() {
   const { t } = useTranslation('common');
+  useDismissKeyboardOnScroll();
   // App-level providers
   useEffect(() => {
     const handleChunkError = (event: ErrorEvent | PromiseRejectionEvent) => {

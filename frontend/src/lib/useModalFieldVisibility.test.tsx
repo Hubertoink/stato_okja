@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Input, Textarea } from '@/components/ui/Field';
 import { useModalFieldVisibility } from './useModalFieldVisibility';
+import { readVisibleViewport } from './visibleViewport';
 
 function Fixture({ custom = false }: { custom?: boolean }) {
   useModalFieldVisibility();
@@ -68,6 +69,23 @@ describe('useModalFieldVisibility', () => {
     const field = screen.getByLabelText('Standard reference');
     vi.spyOn(field, 'getBoundingClientRect').mockReturnValue(rect(350, 395));
     vi.spyOn(screen.getByText('Standard reference'), 'getBoundingClientRect').mockReturnValue(rect(320, 340));
+    field.focus();
+    act(() => vi.runOnlyPendingTimers());
+    expect(scroller.scrollBy).not.toHaveBeenCalled();
+  });
+
+  it('keeps fields in the recovered Edge viewport area visible without unnecessary scrolling', () => {
+    const { scroller, viewport } = setup();
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Android EdgA/140.0');
+    vi.stubGlobal('innerHeight', 800);
+    readVisibleViewport();
+    vi.stubGlobal('innerHeight', 450);
+    Object.assign(viewport, { height: 370, offsetTop: 0 });
+    vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue(rect(60, 450));
+    vi.spyOn(screen.getByText('Form'), 'getBoundingClientRect').mockReturnValue(rect(0, 60));
+    const field = screen.getByLabelText('Standard reference');
+    vi.spyOn(field, 'getBoundingClientRect').mockReturnValue(rect(390, 425));
+    vi.spyOn(screen.getByText('Standard reference'), 'getBoundingClientRect').mockReturnValue(rect(370, 385));
     field.focus();
     act(() => vi.runOnlyPendingTimers());
     expect(scroller.scrollBy).not.toHaveBeenCalled();

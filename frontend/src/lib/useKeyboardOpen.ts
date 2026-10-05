@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { readVisibleViewport } from './visibleViewport';
 
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 let viewportBaseline = { width: 0, height: 0 };
@@ -20,8 +21,7 @@ export function useKeyboardOpen(threshold = 120): boolean {
 
     const compute = () => {
       try {
-        const height = vv?.height ?? window.innerHeight;
-        const offsetTop = vv?.offsetTop ?? 0;
+        const { height, offsetTop } = readVisibleViewport(threshold);
         const layoutHeight = Math.max(window.innerHeight, document.documentElement.clientHeight, height + offsetTop);
         if (Math.abs(viewportBaseline.width - window.innerWidth) > 40) {
           viewportBaseline = { width: window.innerWidth, height: layoutHeight };

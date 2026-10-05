@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { readVisibleViewport } from './visibleViewport';
 
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
 
@@ -13,8 +14,8 @@ export function useModalFieldVisibility() {
       if (!(field instanceof HTMLElement) || !field.matches(EDITABLE_SELECTOR)) return;
       const modal = field.closest('.modal-overlay, [role="dialog"]');
       if (!modal) return;
-      const viewportTop = viewport?.offsetTop ?? 0;
-      const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+      const { height, offsetTop: viewportTop } = readVisibleViewport();
+      const viewportBottom = viewportTop + height;
       const header = modal.querySelector('.editor-modal-header, .logbook-reading-toolbar');
       const headerBottom = header?.getBoundingClientRect().bottom ?? viewportTop;
       const label = field.closest('label') ??

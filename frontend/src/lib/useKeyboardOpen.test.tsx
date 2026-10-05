@@ -11,6 +11,30 @@ describe('useKeyboardOpen', () => {
   afterEach(() => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('publishes the corrected Edge Android height to both modal CSS limits', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Android EdgA/140.0');
+    const viewport = new TestVisualViewport();
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 });
+    Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, value: 800 });
+    const input = document.createElement('input');
+    document.body.append(input);
+    const { result } = renderHook(() => useKeyboardOpen());
+    act(() => {
+      input.focus();
+      viewport.height = 370;
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 450 });
+      Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, value: 450 });
+      window.dispatchEvent(new Event('resize'));
+    });
+    expect(result.current).toBe(true);
+    expect(document.documentElement.style.getPropertyValue('--visual-viewport-height')).toBe('450px');
+    expect(document.documentElement.style.getPropertyValue('--visual-viewport-fixed-height')).toBe('450px');
+    expect(document.documentElement.style.getPropertyValue('--visual-viewport-offset-top')).toBe('0px');
+    input.remove();
   });
 
   it('keeps dialogs above the keyboard when the browser pans to a lower field', () => {

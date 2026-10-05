@@ -7,6 +7,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.12.2] - 2026-10-05
+
+### Fixed
+- Die Bildschirmtastatur schließt bei Scrollgesten; Eingabewerte bleiben erhalten.
+- Die mobilen Layout-, Viewport- und Autocomplete-Anpassungen wurden zurückgenommen, um das bisherige Verhalten wiederherzustellen.
+
+---
+
 ## [1.12.1] - 2026-10-04
 
 ### Changed

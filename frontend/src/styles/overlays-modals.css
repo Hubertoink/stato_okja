@@ -15,8 +15,25 @@
   background: var(--overlay-backdrop);
 }
 
-/* Custom modal shells share the same backdrop as the standard Modal. */
-.modal-overlay:not([data-blur='false']) {
+/* The panel follows the visual viewport, but its backdrop must still cover
+ * the full layout viewport while mobile browser chrome/keyboard moves. */
+.modal-overlay:not([aria-hidden='true']) {
+  isolation: isolate;
+  background: transparent;
+}
+
+.modal-overlay:not([aria-hidden='true'])::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--overlay-backdrop);
+}
+
+/* Put the filter on the backdrop itself: a filter on the resized wrapper
+ * would also constrain its fixed descendants to that smaller box. */
+.modal-overlay:not([aria-hidden='true']):not([data-blur='false'])::before,
+.modal-overlay[aria-hidden='true']:not([data-blur='false']) {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }

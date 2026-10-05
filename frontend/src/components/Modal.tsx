@@ -7,7 +7,7 @@ import { CloseButton } from '@/components/ui/Button';
 
 /** Visual backdrop for custom dialogs that do not use the shared Modal shell. */
 export function ModalBackdrop({ className = '', onClick }: { className?: string; onClick?: () => void }) {
-  return <div aria-hidden="true" className={`absolute inset-0 ${className}`} onClick={onClick} />;
+  return <div aria-hidden="true" className={`fixed inset-0 ${className}`} onClick={onClick} />;
 }
 
 type ModalHistoryState = { __statoModalStack?: string[] };

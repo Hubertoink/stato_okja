@@ -171,9 +171,9 @@ export default function ActivityQuickAdd({
           : 'quickAdd.timeRangeOrder',
       )
     : undefined;
-  const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
-  const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
-  const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
+  const employeeStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'employee', form.staffIds), [allStaff, staff, form.staffIds]);
+  const volunteerStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'volunteer', form.staffIds), [allStaff, staff, form.staffIds]);
+  const helperStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'helper', form.staffIds), [allStaff, staff, form.staffIds]);
   const activityInlineCreation = useActivityInlineCreation({
     allCategories,
     allTags,
@@ -893,7 +893,7 @@ export default function ActivityQuickAdd({
                           }`}
                           aria-pressed={Boolean(active)}
                         >
-                          {s.name}
+                          {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
                         </button>
                       );
                     })}
@@ -933,7 +933,7 @@ export default function ActivityQuickAdd({
                           }`}
                           aria-pressed={Boolean(active)}
                         >
-                          {s.name}
+                          {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
                         </button>
                       );
                     })}
@@ -975,7 +975,7 @@ export default function ActivityQuickAdd({
                           }`}
                           aria-pressed={Boolean(active)}
                         >
-                          {s.name}
+                          {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
                         </button>
                       );
                     })}

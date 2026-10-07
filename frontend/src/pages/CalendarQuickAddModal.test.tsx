@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Activity } from '@/lib/activities';
+import type { StaffMember } from '@/lib/staff';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 
-const state = vi.hoisted(() => ({ activity: undefined as Activity | undefined, mutate: vi.fn(), empty: [] }));
+const state = vi.hoisted(() => ({ activity: undefined as Activity | undefined, mutate: vi.fn(), empty: [], staff: [] as StaffMember[] }));
 vi.mock('@/lib/activities', () => ({
   useActivity: () => ({ data: state.activity }),
   useCreateActivity: () => ({ mutate: state.mutate }),
@@ -11,7 +12,7 @@ vi.mock('@/lib/activities', () => ({
   useRemoveActivity: () => ({ mutate: vi.fn() }),
 }));
 vi.mock('@/lib/projects', () => ({ useProjects: () => ({ data: state.empty }) }));
-vi.mock('@/lib/staff', () => ({ useStaff: () => ({ data: state.empty }), useCreateStaff: () => ({}) }));
+vi.mock('@/lib/staff', () => ({ useStaff: (params?: { active?: boolean }) => ({ data: params?.active ? state.staff.filter((s) => s.active !== false) : state.staff }), useCreateStaff: () => ({}) }));
 vi.mock('@/lib/locations', () => ({ useLocations: () => ({ data: state.empty }) }));
 vi.mock('@/lib/taxonomy', () => ({
   useTags: () => ({ data: state.empty }), useCategories: () => ({ data: state.empty }),
@@ -36,9 +37,26 @@ function activity(version: number, youngWomen: number): Activity {
   } as Activity;
 }
 
-beforeEach(() => { state.activity = undefined; state.mutate.mockReset(); });
+beforeEach(() => { state.activity = undefined; state.staff = []; state.mutate.mockReset(); });
 
 describe('activity editor refresh', () => {
+  it('shows assigned archived staff, saves them unchanged, and lets users remove them', () => {
+    state.staff = [
+      { id: 'archived', name: 'Former member', role: 'employee', active: false },
+      { id: 'other', name: 'Unassigned archive', role: 'employee', active: false },
+    ];
+    const initial = { ...activity(1, 4), staff: [state.staff[0]] } as Activity;
+    const { unmount } = render(<ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /Unassigned archive/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ staffIds: ['archived'] }) }), expect.anything());
+    unmount();
+    render(<ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Former member (Archiviert)' }));
+    expect(screen.queryByRole('button', { name: /Former member/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ staffIds: [] }) }), expect.anything());
+  });
   it('replaces cached 4+2 with fetched 6+2 and saves the matching version', async () => {
     const initial = activity(1, 4);
     const { rerender } = render(<ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);

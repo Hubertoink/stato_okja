@@ -113,9 +113,9 @@ export default function ActivityCreatePage() {
           : 'quickAdd.timeRangeOrder',
       )
     : undefined;
-  const employeeStaff = useMemo(() => getStaffGroupMembers(staff, 'employee'), [staff]);
-  const volunteerStaff = useMemo(() => getStaffGroupMembers(staff, 'volunteer'), [staff]);
-  const helperStaff = useMemo(() => getStaffGroupMembers(staff, 'helper'), [staff]);
+  const employeeStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'employee', form.staffIds), [allStaff, staff, form.staffIds]);
+  const volunteerStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'volunteer', form.staffIds), [allStaff, staff, form.staffIds]);
+  const helperStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'helper', form.staffIds), [allStaff, staff, form.staffIds]);
   const activityInlineCreation = useActivityInlineCreation({
     allCategories,
     allTags,
@@ -751,7 +751,7 @@ export default function ActivityCreatePage() {
                               active ? 'bg-viridian text-white' : 'bg-white text-gray-700'
                             }`}
                           >
-                            {s.name}
+                            {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
                           </button>
                         );
                       })}
@@ -793,7 +793,7 @@ export default function ActivityCreatePage() {
                               active ? 'bg-cambridge-blue text-white' : 'bg-white text-gray-700'
                             }`}
                           >
-                            {s.name}
+                            {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
                           </button>
                         );
                       })}
@@ -837,7 +837,7 @@ export default function ActivityCreatePage() {
                                 : 'bg-[var(--surface-1)] text-[var(--text-primary)]'
                             }`}
                           >
-                            {s.name}
+                            {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
                           </button>
                         );
                       })}

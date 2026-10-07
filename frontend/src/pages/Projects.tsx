@@ -38,6 +38,7 @@ import { getStarredProjectIds, toggleStarredProject } from '@/lib/starred';
 import { api } from '@/lib/api';
 import { useCategories, useTags, useTaxonomyAccess, useUpdateCategory } from '@/lib/taxonomy';
 import { type StaffMember, type StaffRole, useCreateStaff, useStaff } from '@/lib/staff';
+import { getProjectStaffOptions } from '@/lib/staffSelection';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import Modal from '@/components/Modal';
@@ -792,6 +793,7 @@ function ProjectForm({
   const qc = useQueryClient();
   const { data: tags } = useTags({ active: true });
   const { data: staff } = useStaff({ active: true });
+  const { data: allStaff } = useStaff();
   const existingDocuments = Array.isArray(initial?.documents)
     ? (initial.documents as ProjectDocument[])
     : [];
@@ -1777,13 +1779,7 @@ function ProjectForm({
         .map((value) => value.trim())
         .filter(Boolean),
     );
-    const availablePeople = (staff || []).filter((person) =>
-      Array.isArray(person.roles)
-        ? person.roles.some((role) => roles.includes(role))
-        : person.role
-          ? roles.includes(person.role)
-          : false,
-    );
+    const availablePeople = getProjectStaffOptions(allStaff ?? staff, [...selectedNames], roles);
 
     return (
       <div className={projectInnerCardClassName} style={projectInnerCardStyle}>
@@ -1809,6 +1805,7 @@ function ProjectForm({
                   aria-pressed={active}
                 >
                   {person.name}
+                  {person.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
                 </button>
               );
             })}
@@ -2307,10 +2304,14 @@ function ProjectForm({
             onSubmit={async (values) => {
               const name = String(values.name || '').trim();
               if (!name) return;
-              const existing = (staff || []).find(
+              const existing = (allStaff ?? staff ?? []).find(
                 (person) => person.name.trim().toLowerCase() === name.toLowerCase(),
               );
               if (existing) {
+                if (existing.active === false) {
+                  showToast(t('common:staffSelection.cannotAssignArchived'), { type: 'error' });
+                  return;
+                }
                 mergeNameIntoField(staffCreateState.field, existing.name);
                 showToast(`Teammitglied "${existing.name}" wurde zugeordnet.`, { type: 'info' });
                 setStaffCreateState((current) => ({ ...current, open: false }));

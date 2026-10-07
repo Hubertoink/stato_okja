@@ -5,6 +5,7 @@ import {
 } from '@/lib/activityExecutionStatus';
 import type { Project } from '@/lib/projects';
 import type { StaffMember, StaffRole } from '@/lib/staff';
+import { getSelectableStaff } from '@/lib/staffSelection';
 import type { Tag } from '@/lib/taxonomy';
 import { formatDate } from '@/i18n/formatters';
 
@@ -114,6 +115,7 @@ function hasStaffRole(member: StaffMember, roles: StaffRole[]) {
 export function getStaffGroupMembers(
   staff: StaffMember[] | undefined,
   group: 'employee' | 'volunteer' | 'helper',
+  selectedIds: readonly string[] = [],
 ): StaffMember[] {
   const rolesByGroup: Record<typeof group, StaffRole[]> = {
     employee: ['lead', 'employee'],
@@ -121,7 +123,7 @@ export function getStaffGroupMembers(
     helper: ['helper'],
   };
 
-  return (staff || []).filter((member) => hasStaffRole(member, rolesByGroup[group]));
+  return getSelectableStaff(staff, selectedIds).filter((member) => hasStaffRole(member, rolesByGroup[group]));
 }
 
 export function getProjectTagIds(project: Project | undefined, tags: Tag[] | undefined): string[] {
@@ -162,7 +164,7 @@ export function mergeProjectStaffIds(
 
   if (defaultNames.length === 0) return existingStaffIds || [];
 
-  const byName = new Map((staff || []).map((member) => [member.name, member.id] as const));
+  const byName = new Map(getSelectableStaff(staff).map((member) => [member.name, member.id] as const));
   const ids = new Set(existingStaffIds || []);
   defaultNames.forEach((name) => {
     const id = byName.get(name);

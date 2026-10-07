@@ -4,6 +4,7 @@ export const resources = {
   de: {
     auto: autoResources.de,
     common: {
+      staffSelection: { archived: 'Archiviert', cannotAssignArchived: 'Dieses Teammitglied ist archiviert und kann nicht neu zugeordnet werden.' },
       workflow: {
         "todayActivities": "Heutige Aktivitäten",
         "noActivitiesToday": "Für heute sind noch keine Aktivitäten dokumentiert.",
@@ -1107,6 +1108,7 @@ export const resources = {
   en: {
     auto: autoResources.en,
     common: {
+      staffSelection: { archived: 'Archived', cannotAssignArchived: 'This team member is archived and cannot be assigned again.' },
       workflow: {
         "todayActivities": "Today’s activities",
         "noActivitiesToday": "No activities have been documented for today yet.",

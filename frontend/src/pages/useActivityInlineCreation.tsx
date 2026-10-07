@@ -4,6 +4,7 @@ import type { StaffRole } from '@/lib/staff';
 import type { ActivityFormState } from './activityEditorShared';
 import { appendUniqueId, findNamedEntity } from './activityEditorShared';
 import { autoT } from '@/i18n/auto';
+import { useTranslation } from 'react-i18next';
 
 type ToastType = 'success' | 'error' | 'info';
 type ToastFn = (message: string, opts?: { type?: ToastType; durationMs?: number }) => void;
@@ -87,6 +88,7 @@ export function useActivityInlineCreation({
   updateTag,
   createStaff,
 }: UseActivityInlineCreationOptions) {
+  const { t } = useTranslation('common');
   const [tagCreateOpen, setTagCreateOpen] = useState(false);
   const [categoryCreateOpen, setCategoryCreateOpen] = useState(false);
   const [staffCreateState, setStaffCreateState] = useState<{ open: boolean; role: StaffRole }>({
@@ -183,6 +185,10 @@ export function useActivityInlineCreation({
     const existing = findNamedEntity(allStaff, name);
 
     if (existing?.id) {
+      if (existing.active === false) {
+        showToast(t('staffSelection.cannotAssignArchived'), { type: 'error' });
+        return;
+      }
       addStaffId(existing.id);
       showToast(`Teammitglied "${existing.name}" wurde zugeordnet.`, { type: 'info' });
       setStaffCreateState((current) => ({ ...current, open: false }));

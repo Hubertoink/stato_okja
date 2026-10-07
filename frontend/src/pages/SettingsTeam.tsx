@@ -170,10 +170,10 @@ export default function SettingsTeam() {
       {modal && (
         <StaffFormModal
           initial={modal.mode === 'edit' ? modal.member : undefined}
-          onSubmit={(values) => {
+          onSubmit={async (values) => {
             if (modal.mode === 'create') {
               // Neue Teammitglieder sind immer aktiv
-              create.mutate({ ...values, active: true }, { onSuccess: () => setModal(null) });
+              await create.mutateAsync({ ...values, active: true });
             } else if (modal.member?.id) {
               const { id: _removed, ...rest } = values as Partial<StaffMember>;
               void _removed;
@@ -182,11 +182,11 @@ export default function SettingsTeam() {
                 active?: boolean;
               };
               void _omit;
-              update.mutate(
+              await update.mutateAsync(
                 { id: modal.member.id, data: withoutActive },
-                { onSuccess: () => setModal(null) },
               );
             }
+            setModal(null);
           }}
           onCancel={() => setModal(null)}
         />

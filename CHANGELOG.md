@@ -7,6 +7,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.13.0] - 2026-10-07
+
+### Fixed
+- Teammitglieder und Einrichtungen lassen sich wieder bearbeiten und speichern: Die Speicheraufrufe senden nur erlaubte Felder.
+- Fehlgeschlagene Speicherversuche zeigen eine Meldung; Eingaben bleiben für einen erneuten Versuch erhalten.
+- Optionale Teamangaben wie E-Mail, Telefon und Notizen lassen sich vollständig leeren.
+
+### Security
+- proxy-addr wurde auf 2.0.8 und sharp auf 0.35.5 aktualisiert, um die vom Container-Scan gemeldeten Sicherheitslücken zu beheben.
+
+---
+
 ## [1.12.2] - 2026-10-05
 
 ### Fixed

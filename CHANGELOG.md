@@ -7,6 +7,15 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.13.1] - 2026-10-07
+
+### Fixed
+- Bereits zugeordnete archivierte Teammitglieder bleiben in Projekten und Aktivitätseditoren sichtbar und sind als archiviert gekennzeichnet.
+- Archivierte Personen lassen sich abwählen und danach nicht erneut auswählen; unveränderte Zuordnungen bleiben beim Speichern erhalten.
+- Neue Aktivitäten übernehmen keine archivierten Personen aus Projektvorgaben; die Schnellanlage verhindert deren erneute Zuordnung.
+
+---
+
 ## [1.13.0] - 2026-10-07
 
 ### Fixed

@@ -15,6 +15,12 @@ export interface StaffMember {
   active?: boolean;
 }
 
+function staffPayload(data: Partial<StaffMember>) {
+  const { name, email, phone, notes, active } = data;
+  const role = Array.isArray(data.roles) ? data.roles[0] ?? data.role : data.roles ?? data.role;
+  return { name, email, phone, notes, active, role };
+}
+
 export function useStaff(params?: { active?: boolean }) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
@@ -32,14 +38,7 @@ export function useCreateStaff() {
   const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async (data: Partial<StaffMember>) => {
-      const payload: Partial<StaffMember> & { role?: StaffRole } = { ...data };
-      // Always prefer roles[0] over any stale `role` field
-      if (Array.isArray(payload.roles) && payload.roles.length > 0) {
-        payload.role = payload.roles[0];
-      }
-      // remove unsupported key to avoid backend update of unknown column
-      delete (payload as Record<string, unknown>).roles;
-      const res = await api.post('/staff', payload);
+      const res = await api.post('/staff', staffPayload(data));
       return res.data as StaffMember;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff', scopeKey] }),
@@ -51,13 +50,7 @@ export function useUpdateStaff() {
   const scopeKey = useOrgScopeKey();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<StaffMember> }) => {
-      const payload: Partial<StaffMember> & { role?: StaffRole } = { ...data };
-      // Always prefer roles[0] over any stale `role` field
-      if (Array.isArray(payload.roles) && payload.roles.length > 0) {
-        payload.role = payload.roles[0];
-      }
-      delete (payload as Record<string, unknown>).roles;
-      const res = await api.patch(`/staff/${id}`, payload);
+      const res = await api.patch(`/staff/${id}`, staffPayload(data));
       return res.data as StaffMember;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff', scopeKey] }),

@@ -211,22 +211,36 @@ export function StaffFormModal({
 }: {
   initial?: Partial<StaffMember>;
   onCancel: () => void;
-  onSubmit: (data: Partial<StaffMember>) => void;
+  onSubmit: (data: Partial<StaffMember>) => void | Promise<void>;
 }) {
   const [form, setForm] = useState<Partial<StaffMember>>({
     name: '',
     roles: initial?.role ? [initial.role] : initial?.roles || ['employee'],
     ...initial,
   });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   useBodyScrollLock(true);
   const { dismiss } = useModalHistory(onCancel);
   const update = <K extends keyof StaffMember>(key: K, value: StaffMember[K]) => setForm((current) => ({ ...current, [key]: value }));
 
-  const handleSave = () => {
-    const cleaned = Object.fromEntries(
-      Object.entries(form).filter(([key, value]) => key !== 'active' && value !== '' && value !== null && value !== undefined),
-    ) as Partial<StaffMember>;
-    onSubmit(cleaned);
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await onSubmit({
+        name: form.name,
+        roles: form.roles,
+        email: form.email || null,
+        phone: form.phone || null,
+        notes: form.notes || null,
+      });
+    } catch {
+      setSaveError(autoT('ui_892c38bb9803'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   useEditorShortcuts({
@@ -308,6 +322,7 @@ export function StaffFormModal({
             />
           </div>
         </div>
+        {saveError && <p role="alert" className="text-[var(--status-danger-text)]">{saveError}</p>}
         <div className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
           <span className="tooltip-wrapper">
             <CloseButton
@@ -320,6 +335,7 @@ export function StaffFormModal({
           <span className="tooltip-wrapper">
             <IconButton
               onClick={handleSave}
+              disabled={saving}
               title={autoT('ui_70b73bbc118d')}
               aria-label={autoT('ui_70b73bbc118d')}
             >

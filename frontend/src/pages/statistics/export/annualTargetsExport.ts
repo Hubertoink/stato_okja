@@ -29,6 +29,7 @@ export async function exportAnnualTargets(
     'Begründung / Verantwortung',
     'Fachliche Einordnung',
     'Zielzeitraum',
+    'Zielvereinbarung',
   ];
   const rows = targets.map((target) => [
     target.title,
@@ -44,6 +45,7 @@ export async function exportAnnualTargets(
     target.description,
     target.review,
     targetPeriodLabel(target),
+    target.agreement || '',
   ]);
   const note =
     'Nur durchgeführte Aktivitäten im jeweiligen Zielzeitraum bis zum Stichtag. Jahresübergreifende Ziele werden für ihren gesamten Zeitraum ausgewertet. Besuche zählen Teilnahmen; Prozentanteile beziehen sich auf Besuche mit Geschlechtszuordnung. Abschlusswerte bleiben gespeichert; aktuelle Werte können abweichen.';
@@ -56,8 +58,10 @@ export async function exportAnnualTargets(
       headers,
       ...rows,
     ]);
-    sheet['!cols'] = headers.map((_, index) => ({ wch: [0, 1, 10, 11].includes(index) ? 42 : 24 }));
-    sheet['!autofilter'] = { ref: `A3:M${rows.length + 3}` };
+    sheet['!cols'] = headers.map((_, index) => ({
+      wch: [0, 1, 10, 11, 13].includes(index) ? 42 : 24,
+    }));
+    sheet['!autofilter'] = { ref: `A3:N${rows.length + 3}` };
     for (let row = 2; row < rows.length + 3; row++)
       for (let column = 0; column < headers.length; column++) {
         const cell = sheet[XLSX.utils.encode_cell({ r: row, c: column })];
@@ -112,6 +116,7 @@ export async function exportAnnualTargets(
       y = 20;
     }
     paragraph(target.title, true);
+    if (target.agreement) paragraph(`Zielvereinbarung: ${target.agreement}`);
     paragraph(`Zeitraum: ${targetPeriodLabel(target)}`);
     paragraph(
       `${targetScopeLabel(target)} | ${targetMetrics[target.metric]} | ${targetStatuses[target.status]}`,

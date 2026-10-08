@@ -305,6 +305,19 @@ export class AnnualTargetsService {
       annualTargetPeriod(target).from,
     );
     const result = target.snapshot ?? current;
+    // Activation notes are already persisted in revisions; expose them without
+    // sending the full history with every overview card.
+    const activation = target.history.find(
+      (entry, index) =>
+        entry.definition.status === 'active' &&
+        target.history[index - 1]?.definition.status === 'draft',
+    );
+    const agreement =
+      target.status !== 'draft' &&
+      activation?.reason.trim() &&
+      activation.reason !== 'Ziel festgelegt'
+        ? activation.reason.trim()
+        : null;
     let scopeLabel = 'Gesamte Einrichtung';
     let projectImageUrl: string | null = null;
     if (target.scope.projectId) {
@@ -325,6 +338,7 @@ export class AnnualTargetsService {
       ...target,
       scopeLabel,
       projectImageUrl,
+      agreement,
       result,
       current,
       dataChanged: !!target.snapshot && JSON.stringify(target.snapshot) !== JSON.stringify(current),

@@ -282,6 +282,58 @@ describe('Annual targets: persisted lifecycle, calculations and HTTP access', ()
     });
   });
 
+  it('exposes the activation agreement without leaking history into cards and retains it through lifecycle changes', async () => {
+    const created = await service.create(ORG, 'admin', payload());
+    expect((await service.detail(ORG, created.id)).agreement).toBeNull();
+    const agreement = 'Wir erweitern die Öffnungszeiten.';
+    const active = await service.command(ORG, 'admin', created.id, {
+      action: 'activate',
+      version: 1,
+      reason: agreement,
+    });
+    expect((await service.detail(ORG, active.id)).agreement).toBe(agreement);
+    const cards = await service.list(ORG, 2025);
+    expect(cards[0].agreement).toBe(agreement);
+    expect(cards[0]).not.toHaveProperty('history');
+    const updated = await service.update(
+      ORG,
+      'admin',
+      created.id,
+      payload({
+        version: 2,
+        target: 3,
+        reason: 'Zusätzlicher Öffnungstag',
+      }),
+    );
+    expect((await service.detail(ORG, updated.id)).agreement).toBe(agreement);
+    const closed = await service.command(ORG, 'admin', created.id, {
+      action: 'close',
+      version: 3,
+      reason: 'Abschlussbewertung',
+    });
+    expect((await service.detail(ORG, closed.id)).agreement).toBe(agreement);
+    const reopened = await service.command(ORG, 'admin', created.id, {
+      action: 'reopen',
+      version: 4,
+      reason: 'Datenkorrektur',
+    });
+    expect((await service.detail(ORG, reopened.id)).agreement).toBe(agreement);
+    expect((await service.detail(ORG, created.id)).agreement).toBe(agreement);
+    const copied = await service.copy(ORG, 'admin', created.id, 2026);
+    expect((await service.detail(ORG, copied.id)).agreement).toBeNull();
+  });
+
+  it('does not display the default activation history message as an agreement', async () => {
+    const created = await service.create(ORG, 'admin', payload());
+    const active = await service.command(ORG, 'admin', created.id, {
+      action: 'activate',
+      version: 1,
+      reason: '',
+    });
+    expect((await service.detail(ORG, active.id)).agreement).toBeNull();
+    expect((await service.detail(ORG, created.id)).agreement).toBeNull();
+  });
+
   it('disables all API routes without deleting stored targets and permits reactivation', async () => {
     const target = await service.create(ORG, 'admin', payload());
     process.env.ANNUAL_TARGETS_ENABLED = 'false';

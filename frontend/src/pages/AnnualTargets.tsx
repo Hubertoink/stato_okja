@@ -1,18 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import {
-  Plus,
-  Target,
-  Download,
-  Pencil,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  Check,
-  Archive,
-  RotateCcw,
-  Copy,
-} from 'lucide-react';
+import { Plus, Target, Download, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { usePublicConfig } from '@/lib/publicConfig';
 import { useOrgScopeKey } from '@/lib/orgScope';
@@ -26,7 +14,6 @@ import {
   AnnualTarget,
   TargetPayload,
   TargetScope,
-  TargetMutation,
   targetMetrics,
   targetTypes,
   targetStatuses,
@@ -39,7 +26,6 @@ import {
   targetPeriod,
   targetPeriodLabel,
   targetMonths,
-  targetCanClose,
   useAnnualTargets,
   useAnnualTarget,
   useTargetMutation,
@@ -50,6 +36,9 @@ import { Input, Select, Textarea, FieldLabel } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatisticsTabs, TargetProgress, AnnualTargetCard } from '@/components/AnnualTargetCards';
 import AnnualTargetActivities from '@/components/AnnualTargetActivities';
+import AnnualTargetActionDialog, { type TargetAction } from '@/components/AnnualTargetActionDialog';
+import AnnualTargetHeaderActions from '@/components/AnnualTargetHeaderActions';
+import AnnualTargetCalculation from '@/components/AnnualTargetCalculation';
 
 const dateLabel = (date: string) => date.split('-').reverse().join('.');
 
@@ -835,345 +824,220 @@ function TargetDetail({
   onEdit: (target: AnnualTarget) => void;
 }) {
   const query = useAnnualTarget(id);
-  const mutation = useTargetMutation();
-  const [action, setAction] = useState<'activate' | 'close' | 'reopen' | 'copy' | null>(null);
-  const [reason, setReason] = useState('');
+  const [action, setAction] = useState<TargetAction | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [activitiesExpanded, setActivitiesExpanded] = useState(false);
   const target = query.data;
-  const execute = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!target || !action) return;
-    const command: TargetMutation =
-      action === 'copy'
-        ? { action, id, year: target.year + 1 }
-        : { action, id, version: target.version, reason };
-    mutation.mutate(command, {
-      onSuccess: () => {
-        if (action === 'copy') setCopied(target.year + 1);
-        setAction(null);
-        setReason('');
-      },
-    });
-  };
-  const actionLabel = {
-    activate: 'Ziel festlegen',
-    close: 'Abschluss speichern',
-    reopen: 'Wieder öffnen',
-    copy: 'Als Entwurf übernehmen',
-  };
   return (
-    <Modal
-      open
-      title={target?.title || 'Jahresziel'}
-      onClose={() => {
-        if (!mutation.isPending) onClose();
-      }}
-      maxWidth="4xl"
-      variant="information"
-      contentClassName="pt-4"
-      headerActions={
-        isAdmin && target ? (
-          <div className="annual-target-header-actions">
-            {target.status !== 'closed' && (
-              <IconButton
-                variant="ghost"
-                size="icon-compact"
-                aria-label="Bearbeiten"
-                title="Bearbeiten"
-                disabled={mutation.isPending}
-                onClick={() => onEdit(target)}
-              >
-                <Pencil aria-hidden="true" />
-              </IconButton>
-            )}
-            {target.status === 'draft' && (
-              <IconButton
-                size="icon-compact"
-                aria-label="Ziel festlegen"
-                title="Ziel festlegen"
-                disabled={mutation.isPending}
-                onClick={() => setAction('activate')}
-              >
-                <Check aria-hidden="true" />
-              </IconButton>
-            )}
-            {target.status === 'active' && (
-              <IconButton
-                size="icon-compact"
-                aria-label={target.dateFrom ? 'Ziel abschließen' : 'Jahr abschließen'}
-                title={
-                  targetCanClose(target)
-                    ? 'Ziel abschließen'
-                    : `Abschluss nach dem ${dateLabel(targetPeriod(target).to)} möglich`
-                }
-                disabled={mutation.isPending || !targetCanClose(target)}
-                onClick={() => setAction('close')}
-              >
-                <Archive aria-hidden="true" />
-              </IconButton>
-            )}
-            {target.status === 'closed' && (
-              <IconButton
-                variant="ghost"
-                size="icon-compact"
-                aria-label="Wieder öffnen"
-                title="Wieder öffnen"
-                disabled={mutation.isPending}
-                onClick={() => setAction('reopen')}
-              >
-                <RotateCcw aria-hidden="true" />
-              </IconButton>
-            )}
-            {!target.scope.activityId && Number(targetPeriod(target).to.slice(0, 4)) < 2200 && (
-              <IconButton
-                variant="ghost"
-                size="icon-compact"
-                aria-label={`Für ${target.year + 1} übernehmen`}
-                title={`Für ${target.year + 1} übernehmen`}
-                disabled={mutation.isPending}
-                onClick={() => setAction('copy')}
-              >
-                <Copy aria-hidden="true" />
-              </IconButton>
-            )}
-          </div>
-        ) : undefined
-      }
-    >
-      {query.isPending ? (
-        <p>Lädt …</p>
-      ) : query.isError ? (
-        <p role="alert">{targetError(query.error)}</p>
-      ) : (
-        target && (
-          <div className="space-y-6">
-            <div className="annual-target-detail-summary">
-              <p className="mb-4 text-sm text-[var(--text-secondary)]">
-                {targetPeriodLabel(target)} · {targetStatuses[target.status]} ·{' '}
-                {targetScopeLabel(target)}
-              </p>
-              <TargetProgress target={target} goalFirst />
-              <p className="mt-4 text-sm font-medium">{targetDifference(target)}</p>
-            </div>
-            {copied && (
-              <p role="status">
-                Entwurf für {copied} angelegt.{' '}
-                <Link
-                  to={`/statistics/targets?year=${copied}`}
-                  onClick={onClose}
-                  className="underline"
-                >
-                  Zum Folgejahr
-                </Link>
-              </p>
-            )}
-            {action && isAdmin && (
-              <form
-                onSubmit={execute}
-                className="space-y-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-4"
-              >
-                <h3 className="font-medium">{actionLabel[action]}</h3>
-                <p className="text-sm">
-                  {action === 'close'
-                    ? 'Die Werte des Zielzeitraums werden mit deiner Einordnung als Abschlussstand gespeichert.'
-                    : action === 'reopen'
-                      ? 'Der bisherige Abschluss bleibt im Änderungsverlauf erhalten. Nach Korrekturen kannst du das Ziel erneut abschließen.'
-                      : action === 'copy'
-                        ? `Das Ziel wird als neuer Entwurf für ${target.year + 1} angelegt.`
-                        : 'Das Ziel wird für die Einrichtung verbindlich festgelegt. Spätere Änderungen benötigen eine Begründung.'}
+    <>
+      <Modal
+        open={!action}
+        title={target?.title || 'Jahresziel'}
+        onClose={onClose}
+        maxWidth="4xl"
+        variant="information"
+        contentClassName="pt-4"
+        showCloseButton={false}
+        headerActions={
+          <AnnualTargetHeaderActions
+            target={target}
+            isAdmin={isAdmin}
+            onEdit={onEdit}
+            onAction={setAction}
+            onClose={onClose}
+          />
+        }
+      >
+        {query.isPending ? (
+          <p>Lädt …</p>
+        ) : query.isError ? (
+          <p role="alert">{targetError(query.error)}</p>
+        ) : (
+          target && (
+            <div className="space-y-6">
+              <div className="annual-target-detail-summary">
+                <p className="mb-4 text-sm text-[var(--text-secondary)]">
+                  {targetPeriodLabel(target)} · {targetStatuses[target.status]} ·{' '}
+                  {targetScopeLabel(target)}
                 </p>
-                {action !== 'copy' && (
-                  <FieldLabel>
-                    {action === 'close' ? 'Fachliche Einordnung' : 'Begründung'}
-                    <Textarea
-                      rows={3}
-                      required={action !== 'activate'}
-                      value={reason}
-                      maxLength={4000}
-                      onChange={(e) => setReason(e.target.value)}
-                    />
-                  </FieldLabel>
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    disabled={mutation.isPending}
-                    onClick={() => setAction(null)}
-                  >
-                    Abbrechen
-                  </Button>
-                  <Button type="submit" disabled={mutation.isPending}>
-                    {actionLabel[action]}
-                  </Button>
-                </div>
-              </form>
-            )}
-            {mutation.isError && <p role="alert">{targetError(mutation.error)}</p>}
-            {target.description && (
-              <div>
-                <h3 className="font-semibold">Begründung / Verantwortung</h3>
-                <p className="mt-1 whitespace-pre-wrap text-sm">{target.description}</p>
-              </div>
-            )}
-            {target.review && (
-              <div>
-                <h3 className="font-semibold">Fachliche Einordnung des Jahresabschlusses</h3>
-                <p className="mt-1 whitespace-pre-wrap text-sm">{target.review}</p>
-              </div>
-            )}
-            {target.dataChanged && (
-              <div className="rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-4 text-sm">
-                <strong>Daten seit dem Abschluss geändert.</strong>
-                <p>
-                  Gespeicherter Abschluss: {formatTargetValue(target.result.value, target.metric)} ·
-                  Aktuell berechnet: {formatTargetValue(target.current.value, target.metric)}. Für
-                  einen korrigierten Abschluss kann ein Admin das Ziel begründet wieder öffnen.
-                </p>
-              </div>
-            )}
-            <div className="rounded-xl bg-[var(--surface-2)] p-4 text-sm">
-              <h3 className="font-semibold">Berechnungsgrundlage</h3>
-              <p className="mt-2">
-                {targetMetrics[target.metric]} · {targetScopeLabel(target)} ·{' '}
-                {targetPeriod(target).from > target.result.asOf
-                  ? `Auswertung ab ${dateLabel(targetPeriod(target).from)}`
-                  : `${dateLabel(targetPeriod(target).from)} bis ${dateLabel(target.result.asOf)}`}{' '}
-                · {target.result.activityCount} durchgeführte Aktivitäten.
-              </p>
-              <p className="mt-2">
-                {target.metric === 'duration_hours'
-                  ? 'Summe der Angebotsdauer in Stunden; keine Personalstunden.'
-                  : target.metric === 'participant_total'
-                    ? 'Summe der Besuche. Wiederkehrende Personen zählen bei jedem Besuch erneut.'
-                    : target.metric === 'activity_count'
-                      ? 'Anzahl der durchgeführten Aktivitäten. Ausgefallene Termine werden ausgeschlossen.'
-                      : 'Summe der Besuche des gewählten Geschlechts ÷ Summe aller Besuche mit Geschlechtszuordnung × 100. Es wird kein Durchschnitt einzelner Prozentwerte gebildet.'}
-              </p>
-              <p className="mt-2">
-                Ein Zwischenstand ist keine Prognose. Der Abschluss ist nach dem{' '}
-                {dateLabel(targetPeriod(target).to)} möglich.
-              </p>
-            </div>
-            <div>
-              <h3 className="mb-3 font-semibold">
-                Monatswerte{target.status === 'closed' ? ' zum Abschluss' : ''}
-              </h3>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {targetMonths(target).map((month) => {
-                  const row = target.result.series.find((entry) => entry.month === month);
-                  const future =
-                    month > target.result.asOf.slice(0, 7) ||
-                    targetPeriod(target).from > target.result.asOf;
-                  return (
-                    <div
-                      className="rounded-xl border border-[var(--border-subtle)] p-3"
-                      key={month}
-                    >
-                      <p className="text-xs text-[var(--text-secondary)]">
-                        {new Date(`${month}-01T12:00:00`).toLocaleDateString('de-DE', {
-                          month: 'long',
-                          ...(targetPeriod(target).from.slice(0, 4) !==
-                          targetPeriod(target).to.slice(0, 4)
-                            ? { year: 'numeric' as const }
-                            : {}),
-                        })}
-                      </p>
-                      <p className="mt-1 text-sm font-medium">
-                        {future
-                          ? 'Ausstehend'
-                          : formatTargetValue(
-                              row?.value ?? (target.metric.endsWith('_percent') ? null : 0),
-                              target.metric,
-                            )}
-                      </p>
+                {target.agreement && (
+                  <div className="annual-target-agreement">
+                    <Target aria-hidden="true" />
+                    <div>
+                      <span>Zielvereinbarung</span>
+                      <p>{target.agreement}</p>
                     </div>
-                  );
-                })}
+                  </div>
+                )}
+                <TargetProgress target={target} goalFirst />
+                <p className="mt-4 text-sm font-medium">{targetDifference(target)}</p>
               </div>
-            </div>
-            <details
-              className="annual-target-disclosure"
-              onToggle={(event) => setActivitiesExpanded(event.currentTarget.open)}
-            >
-              <summary>
-                <span>
-                  Zugehörige Aktivitäten{' '}
-                  <span className="annual-target-disclosure-count">
-                    {target.current.activityCount}
-                  </span>
-                </span>
-                <ChevronDown aria-hidden="true" />
-              </summary>
-              {activitiesExpanded && (
-                <div className="annual-target-disclosure-content">
-                  <AnnualTargetActivities key={id} id={id} />
+              {copied && (
+                <p role="status">
+                  Entwurf für {copied} angelegt.{' '}
+                  <Link
+                    to={`/statistics/targets?year=${copied}`}
+                    onClick={onClose}
+                    className="underline"
+                  >
+                    Zum Folgejahr
+                  </Link>
+                </p>
+              )}
+              {target.description && (
+                <div>
+                  <h3 className="font-semibold">Begründung / Verantwortung</h3>
+                  <p className="mt-1 whitespace-pre-wrap text-sm">{target.description}</p>
                 </div>
               )}
-            </details>
-            <details className="annual-target-disclosure">
-              <summary>
-                <span>
-                  Änderungsverlauf{' '}
-                  <span className="annual-target-disclosure-count">
-                    {target.history?.length ?? 0}
-                  </span>
-                </span>
-                <ChevronDown aria-hidden="true" />
-              </summary>
-              <ol className="annual-target-disclosure-content space-y-3">
-                {target.history
-                  ?.slice()
-                  .reverse()
-                  .map((entry, index) => (
-                    <li
-                      key={`${entry.at}-${index}`}
-                      className="rounded-xl border border-[var(--border-subtle)] p-3 text-sm"
-                    >
-                      <p className="font-medium">{entry.reason}</p>
-                      <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                        {new Date(entry.at).toLocaleString('de-DE')} · {entry.actorName || 'Admin'}
-                      </p>
-                      <p className="mt-2">
-                        {entry.definition.title} · {entry.definition.year} ·{' '}
-                        {targetMetrics[entry.definition.metric]} ·{' '}
-                        {targetRequirement(entry.definition)} ·{' '}
-                        {targetStatuses[entry.definition.status]}
-                      </p>
-                      <p className="mt-1 text-xs">
-                        Zeitraum: {targetPeriodLabel(entry.definition)}
-                      </p>
-                      <p className="mt-1 text-xs">
-                        Bezug:{' '}
-                        {entry.definition.scope.types
-                          ?.map((type) => targetTypes[type])
-                          .join(', ') ||
-                          (entry.definition.scope.projectId
-                            ? `Projekt ${entry.definition.scope.projectId}`
-                            : entry.definition.scope.activityId
-                              ? `Aktivität ${entry.definition.scope.activityId}`
-                              : 'Gesamte Einrichtung')}
-                      </p>
-                      {entry.definition.description && (
-                        <p className="mt-1 whitespace-pre-wrap">{entry.definition.description}</p>
-                      )}
-                      {entry.definition.snapshot && (
-                        <p className="mt-1">
-                          Abschlusswert:{' '}
-                          {formatTargetValue(
-                            entry.definition.snapshot.value,
-                            entry.definition.metric,
-                          )}{' '}
-                          · {entry.definition.review}
+              {target.review && (
+                <div>
+                  <h3 className="font-semibold">Fachliche Einordnung des Jahresabschlusses</h3>
+                  <p className="mt-1 whitespace-pre-wrap text-sm">{target.review}</p>
+                </div>
+              )}
+              {target.dataChanged && (
+                <div className="rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-4 text-sm">
+                  <strong>Daten seit dem Abschluss geändert.</strong>
+                  <p>
+                    Gespeicherter Abschluss: {formatTargetValue(target.result.value, target.metric)}{' '}
+                    · Aktuell berechnet: {formatTargetValue(target.current.value, target.metric)}.
+                    Für einen korrigierten Abschluss kann ein Admin das Ziel begründet wieder
+                    öffnen.
+                  </p>
+                </div>
+              )}
+              <AnnualTargetCalculation target={target} />
+              <div>
+                <h3 className="mb-3 font-semibold">
+                  Monatswerte{target.status === 'closed' ? ' zum Abschluss' : ''}
+                </h3>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {targetMonths(target).map((month) => {
+                    const row = target.result.series.find((entry) => entry.month === month);
+                    const future =
+                      month > target.result.asOf.slice(0, 7) ||
+                      targetPeriod(target).from > target.result.asOf;
+                    return (
+                      <div
+                        className="rounded-xl border border-[var(--border-subtle)] p-3"
+                        key={month}
+                      >
+                        <p className="text-xs text-[var(--text-secondary)]">
+                          {new Date(`${month}-01T12:00:00`).toLocaleDateString('de-DE', {
+                            month: 'long',
+                            ...(targetPeriod(target).from.slice(0, 4) !==
+                            targetPeriod(target).to.slice(0, 4)
+                              ? { year: 'numeric' as const }
+                              : {}),
+                          })}
                         </p>
-                      )}
-                    </li>
-                  ))}
-              </ol>
-            </details>
-          </div>
-        )
+                        <p className="mt-1 text-sm font-medium">
+                          {future
+                            ? 'Ausstehend'
+                            : formatTargetValue(
+                                row?.value ?? (target.metric.endsWith('_percent') ? null : 0),
+                                target.metric,
+                              )}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <details
+                className="annual-target-disclosure"
+                onToggle={(event) => setActivitiesExpanded(event.currentTarget.open)}
+              >
+                <summary>
+                  <span>
+                    Zugehörige Aktivitäten{' '}
+                    <span className="annual-target-disclosure-count">
+                      {target.current.activityCount}
+                    </span>
+                  </span>
+                  <ChevronDown aria-hidden="true" />
+                </summary>
+                {activitiesExpanded && (
+                  <div className="annual-target-disclosure-content">
+                    <AnnualTargetActivities key={id} id={id} />
+                  </div>
+                )}
+              </details>
+              <details className="annual-target-disclosure">
+                <summary>
+                  <span>
+                    Änderungsverlauf{' '}
+                    <span className="annual-target-disclosure-count">
+                      {target.history?.length ?? 0}
+                    </span>
+                  </span>
+                  <ChevronDown aria-hidden="true" />
+                </summary>
+                <ol className="annual-target-disclosure-content space-y-3">
+                  {target.history
+                    ?.slice()
+                    .reverse()
+                    .map((entry, index) => (
+                      <li
+                        key={`${entry.at}-${index}`}
+                        className="rounded-xl border border-[var(--border-subtle)] p-3 text-sm"
+                      >
+                        <p className="font-medium">{entry.reason}</p>
+                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                          {new Date(entry.at).toLocaleString('de-DE')} ·{' '}
+                          {entry.actorName || 'Admin'}
+                        </p>
+                        <p className="mt-2">
+                          {entry.definition.title} · {entry.definition.year} ·{' '}
+                          {targetMetrics[entry.definition.metric]} ·{' '}
+                          {targetRequirement(entry.definition)} ·{' '}
+                          {targetStatuses[entry.definition.status]}
+                        </p>
+                        <p className="mt-1 text-xs">
+                          Zeitraum: {targetPeriodLabel(entry.definition)}
+                        </p>
+                        <p className="mt-1 text-xs">
+                          Bezug:{' '}
+                          {entry.definition.scope.types
+                            ?.map((type) => targetTypes[type])
+                            .join(', ') ||
+                            (entry.definition.scope.projectId
+                              ? `Projekt ${entry.definition.scope.projectId}`
+                              : entry.definition.scope.activityId
+                                ? `Aktivität ${entry.definition.scope.activityId}`
+                                : 'Gesamte Einrichtung')}
+                        </p>
+                        {entry.definition.description && (
+                          <p className="mt-1 whitespace-pre-wrap">{entry.definition.description}</p>
+                        )}
+                        {entry.definition.snapshot && (
+                          <p className="mt-1">
+                            Abschlusswert:{' '}
+                            {formatTargetValue(
+                              entry.definition.snapshot.value,
+                              entry.definition.metric,
+                            )}{' '}
+                            · {entry.definition.review}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                </ol>
+              </details>
+            </div>
+          )
+        )}
+      </Modal>
+      {action && isAdmin && target && (
+        <AnnualTargetActionDialog
+          key={action}
+          action={action}
+          target={target}
+          onClose={() => setAction(null)}
+          onCopied={setCopied}
+        />
       )}
-    </Modal>
+    </>
   );
 }

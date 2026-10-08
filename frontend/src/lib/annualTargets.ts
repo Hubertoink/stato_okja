@@ -52,6 +52,7 @@ export type AnnualTarget = TargetPayload & {
   review: string;
   scopeLabel: string;
   projectImageUrl?: string | null;
+  agreement?: string | null;
   result: TargetSnapshot;
   current: TargetSnapshot;
   snapshot: TargetSnapshot | null;

@@ -34,19 +34,22 @@ vi.mock('@/lib/activities', () => ({
 vi.mock('@/components/Modal', () => ({
   useModalHistory: (onClose: () => void) => ({ dismiss: onClose }),
   default: ({
+    open,
     children,
     title,
     headerActions,
   }: {
+    open: boolean;
     children: React.ReactNode;
     title: string;
     headerActions?: React.ReactNode;
-  }) => (
-    <div role="dialog" aria-label={title}>
-      <header>{headerActions}</header>
-      {children}
-    </div>
-  ),
+  }) =>
+    open ? (
+      <div role="dialog" aria-label={title}>
+        <header>{headerActions}</header>
+        {children}
+      </div>
+    ) : null,
 }));
 vi.mock('@/lib/useBodyScrollLock', () => ({ useBodyScrollLock: () => undefined }));
 vi.mock('@/lib/annualTargets', async (original) => ({
@@ -155,6 +158,66 @@ describe('Annual target UI permissions and flows', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ziel hinzufügen' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Jahresziele' })).not.toBeInTheDocument();
+  });
+  it('shows the stored agreement and emphasizes the numeric goal on the card and detail', () => {
+    state.targets = [target({ agreement: 'Wir erweitern die Öffnungszeiten.' })];
+    show('/statistics/targets?year=2025&target=t1');
+    for (const view of [
+      screen.getByRole('article', { name: 'Stunden Offene Tür' }),
+      screen.getByRole('dialog', { name: 'Stunden Offene Tür' }),
+    ]) {
+      expect(within(view).getByText('Wir erweitern die Öffnungszeiten.')).toBeInTheDocument();
+      const requirement = within(view).getByText('Jahresvorgabe');
+      const actual = within(view).getByText('Istwert');
+      expect(
+        requirement.compareDocumentPosition(actual) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(within(view).getByText('Mindestens 100 h')).toBeInTheDocument();
+    }
+  });
+  it('opens activation separately, restores details on cancel and submits the agreement', () => {
+    state.targets = [target({ status: 'draft' })];
+    show('/statistics/targets?year=2025&target=t1');
+    fireEvent.click(screen.getByRole('button', { name: 'Ziel festlegen' }));
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByRole('dialog', { name: 'Ziel festlegen' })).toBeInTheDocument();
+    expect(screen.queryByText('Berechnungsgrundlage')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.getByRole('dialog', { name: 'Stunden Offene Tür' })).toBeInTheDocument();
+    expect(state.mutate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Ziel festlegen' }));
+    fireEvent.change(screen.getByRole('textbox', { name: /Zielvereinbarung/ }), {
+      target: { value: 'Wir erweitern die Öffnungszeiten.' },
+    });
+    state.mutate.mockImplementation((_command, options) => options.onSuccess());
+    fireEvent.click(screen.getByRole('button', { name: 'Ziel festlegen' }));
+    expect(state.mutate).toHaveBeenCalledWith(
+      {
+        action: 'activate',
+        id: 't1',
+        version: 2,
+        reason: 'Wir erweitern die Öffnungszeiten.',
+      },
+      expect.anything(),
+    );
+    expect(screen.getByRole('dialog', { name: 'Stunden Offene Tür' })).toBeInTheDocument();
+  });
+  it('copies into the following year through a separate confirmation dialog', () => {
+    show('/statistics/targets?year=2025&target=t1');
+    fireEvent.click(screen.getByRole('button', { name: 'Für 2026 übernehmen' }));
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(
+      screen.getByRole('dialog', { name: 'Entwurf fürs Folgejahr übernehmen' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Berechnungsgrundlage')).not.toBeInTheDocument();
+    state.mutate.mockImplementation((_command, options) => options.onSuccess());
+    fireEvent.click(screen.getByRole('button', { name: 'Als Entwurf übernehmen' }));
+    expect(state.mutate).toHaveBeenCalledWith(
+      { action: 'copy', id: 't1', year: 2026 },
+      expect.anything(),
+    );
+    expect(screen.getByRole('dialog', { name: 'Stunden Offene Tür' })).toBeInTheDocument();
+    expect(screen.getByText(/Entwurf für 2026 angelegt/)).toBeInTheDocument();
   });
   it('selects a project through the activity project picker while preserving the target draft', () => {
     show();

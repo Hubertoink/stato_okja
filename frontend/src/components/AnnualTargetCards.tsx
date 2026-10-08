@@ -243,6 +243,15 @@ export function AnnualTargetCard({
       <h3 id={`annual-target-title-${target.id}`} className="annual-target-card-title">
         {target.title}
       </h3>
+      {target.agreement && target.status !== 'draft' && (
+        <div className="annual-target-agreement">
+          <Target aria-hidden="true" />
+          <div>
+            <span>Zielvereinbarung</span>
+            <p>{target.agreement}</p>
+          </div>
+        </div>
+      )}
       <dl className="annual-target-metadata">
         <div>
           <dt>{scopeKind}</dt>
@@ -258,7 +267,7 @@ export function AnnualTargetCard({
         </div>
       </dl>
       <div className="annual-target-card-performance">
-        <TargetProgress target={target} />
+        <TargetProgress target={target} goalFirst={target.status !== 'draft'} />
         <div className="annual-target-result">
           <span
             className={`annual-target-result-icon annual-target-result-icon--${tone}`}

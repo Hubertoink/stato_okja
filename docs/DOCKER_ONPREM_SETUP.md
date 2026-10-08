@@ -324,6 +324,8 @@ Mit `ANNUAL_TARGETS_ENABLED=true` in der verwendeten ENV-Datei werden die Jahres
 
 Ziele gelten wahlweise für das gesamte Zieljahr oder einen eigenen Zeitraum mit inklusivem Start- und Enddatum, auch über Jahresgrenzen hinweg. Das Zieljahr entspricht dem Beginn; jahresübergreifende Ziele erscheinen in jedem betroffenen Jahr und werden stets für den gesamten Zeitraum ausgewertet. Ein Abschluss ist nach dem Enddatum möglich. Beim Übernehmen in ein Folgejahr wird der Zeitraum entsprechend verschoben (29. Februar wird gegebenenfalls zum 28. Februar). Bestehende Ziele ohne Datumsangaben gelten weiterhin für das ganze Jahr. Besuchsanteile und ihre Zielwerte werden in Prozent angegeben.
 
+Beim Festlegen kann eine Zielvereinbarung hinterlegt werden. Sie erscheint zusammen mit der numerischen Vorgabe auf der Karte, in der Detailansicht und im Export. Bereits gespeicherte Begründungen vom Festlegen werden ebenfalls angezeigt. Festlegen, Abschließen, Wiederöffnen und Übernehmen ins Folgejahr erfolgen in eigenen Dialogen; das übernommene Ziel startet als neuer Entwurf ohne verbindliche Vereinbarung.
+
 Nach einer Änderung muss der Backend-Container mit der aktualisierten Umgebung neu erstellt werden (ein bloßes `docker restart` übernimmt keine neuen ENV-Werte). Für das Release-Bundle beispielsweise im Installationsordner:
 
 ```bash

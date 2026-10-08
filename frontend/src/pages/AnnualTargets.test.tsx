@@ -27,12 +27,14 @@ vi.mock('@/lib/activities', () => ({
   useActivitiesPaged: () => ({ data: { data: [], total: 0 } }),
 }));
 vi.mock('@/components/Modal', () => ({
+  useModalHistory: (onClose: () => void) => ({ dismiss: onClose }),
   default: ({ children, title }: { children: React.ReactNode; title: string }) => (
     <div role="dialog" aria-label={title}>
       {children}
     </div>
   ),
 }));
+vi.mock('@/lib/useBodyScrollLock', () => ({ useBodyScrollLock: () => undefined }));
 vi.mock('@/lib/annualTargets', async (original) => ({
   ...(await original<typeof import('@/lib/annualTargets')>()),
   useAnnualTargets: () => ({ data: state.targets }),
@@ -135,6 +137,35 @@ describe('Annual target UI permissions and flows', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ziel hinzufügen' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Jahresziele' })).not.toBeInTheDocument();
+  });
+  it('selects a project through the activity project picker while preserving the target draft', () => {
+    show();
+    fireEvent.click(screen.getByRole('button', { name: 'Ziel hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Titel'), {
+      target: { value: 'Medienwerkstatt Besuche' },
+    });
+    fireEvent.change(screen.getByLabelText('Kennzahl'), { target: { value: 'participant_total' } });
+    fireEvent.change(screen.getByLabelText('Zielwert'), { target: { value: '250' } });
+    fireEvent.change(screen.getByLabelText('Geltungsbereich'), { target: { value: 'project' } });
+    expect(screen.getByRole('button', { name: 'Entwurf speichern' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Projekt auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: /Medienwerkstatt/ }));
+    expect(
+      screen.getByRole('button', { name: 'Projekt auswählen: Medienwerkstatt' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Titel')).toHaveValue('Medienwerkstatt Besuche');
+    fireEvent.click(screen.getByRole('button', { name: 'Entwurf speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'save',
+        payload: expect.objectContaining({
+          scope: { projectId: 'p1' },
+          metric: 'participant_total',
+          target: 250,
+        }),
+      }),
+      expect.anything(),
+    );
   });
   it('retains the unbounded achievement value but caps the visual bar', () => {
     render(

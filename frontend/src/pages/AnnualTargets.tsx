@@ -7,6 +7,9 @@ import { useOrgScopeKey } from '@/lib/orgScope';
 import { useActiveOrganizationName } from '@/lib/useActiveOrganizationName';
 import { useActivitiesPaged, useActivity } from '@/lib/activities';
 import { useProjects } from '@/lib/projects';
+import { colorFromStringHash } from '@/lib/colors';
+import ProjectPickerModal from './ProjectPickerModal';
+import ProtectedImage from '@/components/ProtectedImage';
 import {
   AnnualTarget,
   TargetPayload,
@@ -380,269 +383,310 @@ function TargetEditor({
   const [activitySearch, setActivitySearch] = useState('');
   const [activityPage, setActivityPage] = useState(1);
   const [pickActivity, setPickActivity] = useState(false);
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const projects = useProjects();
+  const selectedProject = projects.data?.find((project) => project.id === form.scope.projectId);
+  const projectTitle =
+    selectedProject?.title ||
+    (form.scope.projectId && form.scope.projectId === initial?.scope.projectId
+      ? initial.scopeLabel
+      : '');
   const selectedActivity = useActivity(form.scope.activityId);
   const mutation = useTargetMutation();
   const change = <K extends keyof TargetPayload>(key: K, value: TargetPayload[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
   const save = (event: React.FormEvent) => {
     event.preventDefault();
+    if (projectPickerOpen || (scopeMode === 'project' && !form.scope.projectId)) return;
     mutation.mutate({ action: 'save', id: initial?.id, payload: form }, { onSuccess: onSaved });
   };
   return (
-    <Modal
-      open
-      title={initial ? 'Jahresziel bearbeiten' : 'Jahresziel anlegen'}
-      onClose={() => {
-        if (!mutation.isPending) onClose();
-      }}
-      maxWidth="2xl"
-      variant="form"
-    >
-      <form onSubmit={save} className="space-y-4 overflow-y-auto p-4 sm:p-6">
-        <FieldLabel>
-          Titel
-          <Input
-            required
-            maxLength={120}
-            value={form.title}
-            onChange={(e) => change('title', e.target.value)}
-            placeholder="z. B. Aktivitätsstunden Offene Tür"
-          />
-        </FieldLabel>
-        <div className="grid gap-4 sm:grid-cols-2">
+    <>
+      <Modal
+        open
+        title={initial ? 'Jahresziel bearbeiten' : 'Jahresziel anlegen'}
+        onClose={() => {
+          if (!mutation.isPending) onClose();
+        }}
+        maxWidth="2xl"
+        variant="form"
+      >
+        <form onSubmit={save} className="space-y-4 overflow-y-auto p-4 sm:p-6">
           <FieldLabel>
-            Zieljahr
+            Titel
             <Input
-              type="number"
               required
-              min={2000}
-              max={2200}
-              disabled={initial?.status === 'active'}
-              value={form.year}
-              onChange={(e) => change('year', Number(e.target.value))}
+              maxLength={120}
+              value={form.title}
+              onChange={(e) => change('title', e.target.value)}
+              placeholder="z. B. Aktivitätsstunden Offene Tür"
             />
           </FieldLabel>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldLabel>
+              Zieljahr
+              <Input
+                type="number"
+                required
+                min={2000}
+                max={2200}
+                disabled={initial?.status === 'active'}
+                value={form.year}
+                onChange={(e) => change('year', Number(e.target.value))}
+              />
+            </FieldLabel>
+            <FieldLabel>
+              Kennzahl
+              <Select
+                value={form.metric}
+                onChange={(e) => change('metric', e.target.value as TargetPayload['metric'])}
+              >
+                {Object.entries(targetMetrics).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </FieldLabel>
+          </div>
           <FieldLabel>
-            Kennzahl
+            Geltungsbereich
             <Select
-              value={form.metric}
-              onChange={(e) => change('metric', e.target.value as TargetPayload['metric'])}
+              value={scopeMode}
+              onChange={(e) => {
+                setScopeMode(e.target.value);
+                change('scope', {});
+              }}
             >
-              {Object.entries(targetMetrics).map(([value, label]) => (
+              {[
+                ['all', 'Gesamte Einrichtung'],
+                ['types', 'Aktivitätstypen / Bereiche'],
+                ['project', 'Bestimmtes Projekt / wiederkehrendes Angebot'],
+                ['activity', 'Einzelne Aktivität / Termin'],
+              ].map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
               ))}
             </Select>
           </FieldLabel>
-        </div>
-        <FieldLabel>
-          Geltungsbereich
-          <Select
-            value={scopeMode}
-            onChange={(e) => {
-              setScopeMode(e.target.value);
-              change('scope', {});
-            }}
-          >
-            {[
-              ['all', 'Gesamte Einrichtung'],
-              ['types', 'Aktivitätstypen / Bereiche'],
-              ['project', 'Bestimmtes Projekt / wiederkehrendes Angebot'],
-              ['activity', 'Einzelne Aktivität / Termin'],
-            ].map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-        </FieldLabel>
-        {scopeMode === 'types' && (
-          <fieldset className="space-y-2 rounded-xl border border-[var(--border-subtle)] p-3">
-            <legend className="px-1 text-sm">Aktivitätstypen auswählen</legend>
-            {Object.entries(targetTypes).map(([value, label]) => (
-              <label className="flex items-center gap-2 text-sm" key={value}>
-                <Input
-                  type="checkbox"
-                  className="!min-h-0 !w-4"
-                  checked={form.scope.types?.includes(value) ?? false}
-                  onChange={(event) =>
-                    change('scope', {
-                      types: event.target.checked
-                        ? [...(form.scope.types ?? []), value]
-                        : form.scope.types?.filter((type) => type !== value),
-                    })
-                  }
-                />
-                {label}
-              </label>
-            ))}
-          </fieldset>
-        )}
-        {scopeMode === 'project' && (
-          <FieldLabel>
-            Projekt
-            <Select
-              required
-              value={form.scope.projectId ?? ''}
-              onChange={(e) => change('scope', { projectId: e.target.value })}
-            >
-              <option value="">Bitte wählen</option>
-              {initial?.scope.projectId &&
-                !projects.data?.some((p) => p.id === initial.scope.projectId) && (
-                  <option value={initial.scope.projectId}>{initial.scopeLabel}</option>
-                )}
-              {projects.data?.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.title}
-                  {project.archived ? ' (archiviert)' : ''}
-                </option>
+          {scopeMode === 'types' && (
+            <fieldset className="space-y-2 rounded-xl border border-[var(--border-subtle)] p-3">
+              <legend className="px-1 text-sm">Aktivitätstypen auswählen</legend>
+              {Object.entries(targetTypes).map(([value, label]) => (
+                <label className="flex items-center gap-2 text-sm" key={value}>
+                  <Input
+                    type="checkbox"
+                    className="!min-h-0 !w-4"
+                    checked={form.scope.types?.includes(value) ?? false}
+                    onChange={(event) =>
+                      change('scope', {
+                        types: event.target.checked
+                          ? [...(form.scope.types ?? []), value]
+                          : form.scope.types?.filter((type) => type !== value),
+                      })
+                    }
+                  />
+                  {label}
+                </label>
               ))}
-            </Select>
-            {projects.isError && <span role="alert">Projekte konnten nicht geladen werden.</span>}
-          </FieldLabel>
-        )}
-        {scopeMode === 'activity' && (
-          <div className="space-y-2">
-            <p className="text-sm">
-              {selectedActivity.data
-                ? `${selectedActivity.data.title || 'Aktivität'} · ${dateLabel(selectedActivity.data.date)}`
-                : initial?.scopeLabel || 'Noch keine Aktivität ausgewählt'}
-            </p>
-            <Button variant="secondary" onClick={() => setPickActivity((value) => !value)}>
-              Aktivität auswählen
-            </Button>
-            {pickActivity && (
-              <div className="space-y-3 rounded-xl border border-[var(--border-subtle)] p-3">
-                <Input
-                  aria-label="Aktivität suchen"
-                  placeholder="Aktivität suchen …"
-                  value={activitySearch}
-                  onChange={(e) => {
-                    setActivitySearch(e.target.value);
-                    setActivityPage(1);
-                  }}
-                />
-                <TargetActivityPicker
-                  year={form.year}
-                  search={activitySearch}
-                  page={activityPage}
-                  onPage={setActivityPage}
-                  onPick={(id) => {
-                    change('scope', { activityId: id });
-                    setPickActivity(false);
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        )}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <FieldLabel>
-            Vorgabe
-            <Select
-              value={form.rule}
-              onChange={(e) => change('rule', e.target.value as TargetPayload['rule'])}
-            >
-              <option value="min">Mindestens</option>
-              <option value="max">Höchstens</option>
-              <option value="range">Zielkorridor</option>
-            </Select>
-          </FieldLabel>
-          <FieldLabel>
-            {form.rule === 'range' ? 'Untere Grenze' : 'Zielwert'}
-            <Input
-              type="number"
-              required
-              min={0}
-              max={form.metric.endsWith('_percent') ? 100 : 1e9}
-              step={
-                form.metric === 'activity_count' || form.metric === 'participant_total' ? 1 : 'any'
-              }
-              value={Number.isNaN(form.target) ? '' : form.target}
-              onChange={(e) =>
-                change('target', e.target.value === '' ? NaN : Number(e.target.value))
-              }
-            />
-          </FieldLabel>
-          {form.rule === 'range' && (
+            </fieldset>
+          )}
+          {scopeMode === 'project' && (
+            <div>
+              <FieldLabel htmlFor="annual-target-project" className="mb-1">
+                Projekt
+              </FieldLabel>
+              <Button
+                id="annual-target-project"
+                variant="secondary"
+                className="w-full justify-start gap-3 text-left"
+                aria-haspopup="dialog"
+                aria-expanded={projectPickerOpen}
+                aria-label={
+                  projectTitle ? `Projekt auswählen: ${projectTitle}` : 'Projekt auswählen'
+                }
+                onClick={() => setProjectPickerOpen(true)}
+              >
+                {selectedProject && (
+                  <span
+                    className="h-10 w-12 shrink-0 overflow-hidden rounded-md"
+                    style={{
+                      backgroundColor:
+                        selectedProject.color || colorFromStringHash(selectedProject.title),
+                    }}
+                  >
+                    {selectedProject.imageUrl && (
+                      <ProtectedImage
+                        src={selectedProject.imageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                  </span>
+                )}
+                <span className="min-w-0 truncate">
+                  {projectTitle || 'Projekt auswählen'}
+                  {selectedProject?.archived ? ' (archiviert)' : ''}
+                </span>
+              </Button>
+              {projects.isError && <span role="alert">Projekte konnten nicht geladen werden.</span>}
+            </div>
+          )}
+          {scopeMode === 'activity' && (
+            <div className="space-y-2">
+              <p className="text-sm">
+                {selectedActivity.data
+                  ? `${selectedActivity.data.title || 'Aktivität'} · ${dateLabel(selectedActivity.data.date)}`
+                  : initial?.scopeLabel || 'Noch keine Aktivität ausgewählt'}
+              </p>
+              <Button variant="secondary" onClick={() => setPickActivity((value) => !value)}>
+                Aktivität auswählen
+              </Button>
+              {pickActivity && (
+                <div className="space-y-3 rounded-xl border border-[var(--border-subtle)] p-3">
+                  <Input
+                    aria-label="Aktivität suchen"
+                    placeholder="Aktivität suchen …"
+                    value={activitySearch}
+                    onChange={(e) => {
+                      setActivitySearch(e.target.value);
+                      setActivityPage(1);
+                    }}
+                  />
+                  <TargetActivityPicker
+                    year={form.year}
+                    search={activitySearch}
+                    page={activityPage}
+                    onPage={setActivityPage}
+                    onPick={(id) => {
+                      change('scope', { activityId: id });
+                      setPickActivity(false);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-3">
             <FieldLabel>
-              Obere Grenze
+              Vorgabe
+              <Select
+                value={form.rule}
+                onChange={(e) => change('rule', e.target.value as TargetPayload['rule'])}
+              >
+                <option value="min">Mindestens</option>
+                <option value="max">Höchstens</option>
+                <option value="range">Zielkorridor</option>
+              </Select>
+            </FieldLabel>
+            <FieldLabel>
+              {form.rule === 'range' ? 'Untere Grenze' : 'Zielwert'}
               <Input
-                required
                 type="number"
-                min={form.target}
+                required
+                min={0}
                 max={form.metric.endsWith('_percent') ? 100 : 1e9}
                 step={
                   form.metric === 'activity_count' || form.metric === 'participant_total'
                     ? 1
                     : 'any'
                 }
-                value={form.upperTarget ?? ''}
+                value={Number.isNaN(form.target) ? '' : form.target}
                 onChange={(e) =>
-                  change('upperTarget', e.target.value === '' ? null : Number(e.target.value))
+                  change('target', e.target.value === '' ? NaN : Number(e.target.value))
                 }
               />
             </FieldLabel>
-          )}
-        </div>
-        <FieldLabel>
-          Begründung / Verantwortung (optional)
-          <Textarea
-            rows={3}
-            maxLength={4000}
-            value={form.description}
-            onChange={(e) => change('description', e.target.value)}
-          />
-        </FieldLabel>
-        <label className="flex items-center gap-2 text-sm">
-          <Input
-            type="checkbox"
-            className="!min-h-0 !w-4"
-            checked={form.showOnDashboard}
-            onChange={(e) => change('showOnDashboard', e.target.checked)}
-          />
-          Nach dem Festlegen auf dem Dashboard anzeigen
-        </label>
-        {initial && (
+            {form.rule === 'range' && (
+              <FieldLabel>
+                Obere Grenze
+                <Input
+                  required
+                  type="number"
+                  min={form.target}
+                  max={form.metric.endsWith('_percent') ? 100 : 1e9}
+                  step={
+                    form.metric === 'activity_count' || form.metric === 'participant_total'
+                      ? 1
+                      : 'any'
+                  }
+                  value={form.upperTarget ?? ''}
+                  onChange={(e) =>
+                    change('upperTarget', e.target.value === '' ? null : Number(e.target.value))
+                  }
+                />
+              </FieldLabel>
+            )}
+          </div>
           <FieldLabel>
-            Änderungsgrund{initial.status === 'active' ? ' (erforderlich)' : ' (optional)'}
+            Begründung / Verantwortung (optional)
             <Textarea
-              required={initial.status === 'active'}
-              rows={2}
-              maxLength={2000}
-              value={form.reason}
-              onChange={(e) => change('reason', e.target.value)}
+              rows={3}
+              maxLength={4000}
+              value={form.description}
+              onChange={(e) => change('description', e.target.value)}
             />
           </FieldLabel>
-        )}
-        {mutation.isError && (
-          <p role="alert" className="text-sm text-[var(--status-danger-text)]">
-            {targetError(mutation.error)}
-          </p>
-        )}
-        <div className="flex flex-wrap justify-end gap-3">
-          <Button variant="secondary" disabled={mutation.isPending} onClick={onClose}>
-            Abbrechen
-          </Button>
-          <Button
-            type="submit"
-            disabled={
-              mutation.isPending ||
-              (scopeMode === 'types' && !form.scope.types?.length) ||
-              (scopeMode === 'activity' && !form.scope.activityId)
-            }
-          >
-            {mutation.isPending
-              ? 'Speichert …'
-              : initial
-                ? 'Änderungen speichern'
-                : 'Entwurf speichern'}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+          <label className="flex items-center gap-2 text-sm">
+            <Input
+              type="checkbox"
+              className="!min-h-0 !w-4"
+              checked={form.showOnDashboard}
+              onChange={(e) => change('showOnDashboard', e.target.checked)}
+            />
+            Nach dem Festlegen auf dem Dashboard anzeigen
+          </label>
+          {initial && (
+            <FieldLabel>
+              Änderungsgrund{initial.status === 'active' ? ' (erforderlich)' : ' (optional)'}
+              <Textarea
+                required={initial.status === 'active'}
+                rows={2}
+                maxLength={2000}
+                value={form.reason}
+                onChange={(e) => change('reason', e.target.value)}
+              />
+            </FieldLabel>
+          )}
+          {mutation.isError && (
+            <p role="alert" className="text-sm text-[var(--status-danger-text)]">
+              {targetError(mutation.error)}
+            </p>
+          )}
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="secondary" disabled={mutation.isPending} onClick={onClose}>
+              Abbrechen
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                mutation.isPending ||
+                projectPickerOpen ||
+                (scopeMode === 'project' && !form.scope.projectId) ||
+                (scopeMode === 'types' && !form.scope.types?.length) ||
+                (scopeMode === 'activity' && !form.scope.activityId)
+              }
+            >
+              {mutation.isPending
+                ? 'Speichert …'
+                : initial
+                  ? 'Änderungen speichern'
+                  : 'Entwurf speichern'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+      {projectPickerOpen && (
+        <ProjectPickerModal
+          onClose={() => setProjectPickerOpen(false)}
+          onPick={(project) => {
+            change('scope', { projectId: project.id });
+            setProjectPickerOpen(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 

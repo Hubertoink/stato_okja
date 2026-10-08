@@ -7,13 +7,30 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
-## [Unreleased]
+## [1.14.0] - 2026-10-08
 
 ### Added
 - Optionale Jahresziele unter Statistik: Stunden, Besuche, Aktivitäten und Genderanteile mit Bereichs-, Projekt- oder Terminbezug, Soll-Ist-Vergleich, Monatswerten und Dashboard-Anzeige.
 - Admins können Ziele festlegen, begründet ändern, ins Folgejahr übernehmen und mit gespeichertem Stand abschließen. Editor und User haben Lesezugriff.
 - Excel-/PDF-Export, Änderungshistorie und Hinweise auf nachträglich geänderte Abschlussdaten.
 - `ANNUAL_TARGETS_ENABLED=true` aktiviert das standardmäßig ausgeschaltete Modul im Backend-Container, ohne Frontend-Neubau.
+
+### Changed
+- Ziele unterstützen frei wählbare Zeiträume einschließlich jahresübergreifender Vorgaben und Prozentwerte für Besuchsanteile.
+- Projektziele verwenden den bestehenden Projektpicker und zeigen vorhandene Projektbilder dezent in der Übersicht.
+- Zielkarten und Details heben Vorgaben und Zielvereinbarungen hervor; Berechnungsgrundlagen sind mit Icons gegliedert.
+- Zielaktionen öffnen eigene Dialoge; Kopfaktionen verwenden das App-Design mit Hover- und Tastatur-Tooltips.
+
+### Fixed
+- Die Paginierung zugehöriger Aktivitäten hält die Liste während des Ladens stabil und lädt die nächste Seite vorab.
+- Zugehörige Aktivitäten und Änderungsverlauf sind in den Zieldetails zunächst eingeklappt.
+- Archivierte Logbucheinträge erhalten eine eigene Navigation.
+- Der zusätzliche Erklärungstext unter der Zielübersicht wurde entfernt.
+
+### Upgrade
+- Vor dem Update Datenbank und Uploads sichern und das bestehende Updateverfahren verwenden. Neue Tabellen für Jahresziele und ihre Zeiträume werden automatisch migriert.
+- Das KPI-Modul bleibt standardmäßig deaktiviert. Zum Einschalten `ANNUAL_TARGETS_ENABLED=true` setzen und den Backend-Container neu erstellen; bei `false` bleiben Ziele, Historien und Abschlüsse gespeichert.
+- Die Release-Pipeline prüft Tests, Builds, PostgreSQL-Migrationen, Container-Sicherheit sowie Installation und Wiederherstellung.
 
 ---
 

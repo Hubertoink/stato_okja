@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AnnualTargets from './AnnualTargets';
@@ -87,7 +87,11 @@ describe('Annual target UI permissions and flows', () => {
     (role) => {
       state.role = role;
       show('/statistics/targets?year=2025&target=t1');
-      expect(screen.getByText('120 h', { selector: 'strong' })).toBeInTheDocument();
+      expect(
+        within(screen.getByRole('article', { name: 'Stunden Offene Tür' })).getByText('120 h', {
+          selector: 'strong',
+        }),
+      ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Excel' })).toBeInTheDocument();
       for (const name of [
         'Ziel hinzufügen',
@@ -173,8 +177,29 @@ describe('Annual target UI permissions and flows', () => {
         <AnnualTargetCards year={2025} />
       </MemoryRouter>,
     );
-    expect(screen.getByText('120 % der Jahresvorgabe')).toBeInTheDocument();
-    expect(screen.getByRole('progressbar')).toHaveAttribute('value', '100');
+    expect(screen.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuetext',
+      '120 % der Jahresvorgabe',
+    );
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
+  });
+  it('shows the actual gender share rather than its ratio to the target', () => {
+    state.targets = [
+      target({
+        title: 'Weiblicher Anteil',
+        metric: 'female_share_percent',
+        target: 40,
+        result: { value: 37, asOf: '2025-12-31', activityCount: 10, series: [] },
+        evaluation: { met: false, difference: -3 },
+      }),
+    ];
+    render(
+      <MemoryRouter>
+        <AnnualTargetCards year={2025} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuenow', '37');
+    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '37 %; Mindestens 40 %');
   });
   it('shows saved and corrected values separately after closing', () => {
     state.targets = [

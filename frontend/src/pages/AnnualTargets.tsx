@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Target, Download, Pencil, ArrowRight } from 'lucide-react';
+import { Plus, Target, Download, Pencil } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { usePublicConfig } from '@/lib/publicConfig';
 import { useOrgScopeKey } from '@/lib/orgScope';
@@ -33,7 +33,7 @@ import Modal from '@/components/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea, FieldLabel } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { StatisticsTabs, TargetProgress } from '@/components/AnnualTargetCards';
+import { StatisticsTabs, TargetProgress, AnnualTargetCard } from '@/components/AnnualTargetCards';
 
 const dateLabel = (date: string) => date.split('-').reverse().join('.');
 
@@ -236,77 +236,45 @@ function AnnualTargetsContent() {
           </p>
         </section>
       ) : (
-        <section className="modern-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-[var(--surface-2)]">
-                <tr>
-                  {['Ziel / Bezug', 'Jahresvorgabe', 'Istwert', 'Abstand', 'Status'].map(
-                    (label) => (
-                      <th className="p-4 font-medium" key={label}>
-                        {label}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {targets.map((target) => (
-                  <tr key={target.id} className="border-t border-[var(--border-subtle)] align-top">
-                    <td className="min-w-52 p-4">
-                      <Button
-                        variant="ghost"
-                        className="p-0 text-left font-semibold"
-                        onClick={() => setParam('target', target.id)}
-                      >
-                        {target.title}
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                      <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                        {targetScopeLabel(target)}
-                      </p>
-                      <p className="mt-1 text-xs">{targetMetrics[target.metric]}</p>
-                    </td>
-                    <td className="p-4">{targetRequirement(target)}</td>
-                    <td className="p-4">
-                      <strong>{formatTargetValue(target.result.value, target.metric)}</strong>
-                      <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                        Stand: {dateLabel(target.result.asOf)}
-                      </p>
-                      {target.dataChanged && (
-                        <p className="mt-1 text-xs text-[var(--status-warning-text)]">
-                          Daten seit Abschluss geändert
-                        </p>
-                      )}
-                    </td>
-                    <td className="p-4">{targetDifference(target)}</td>
-                    <td className="p-4">
-                      <span className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs">
-                        {targetStatuses[target.status]}
-                      </span>
-                      {target.status === 'closed' && (
-                        <p className="mt-2">
-                          {target.evaluation.met === null
-                            ? 'Nicht bewertbar'
-                            : target.evaluation.met
-                              ? 'Ziel erreicht'
-                              : 'Ziel nicht erreicht'}
-                        </p>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <section aria-label="Jahresziele im Überblick" className="space-y-4">
+          <div className="annual-target-overview">
+            <span>
+              <strong>{targets.length}</strong>{' '}
+              {targets.length === 1 ? 'Jahresziel' : 'Jahresziele'}
+            </span>
+            <span>
+              <strong>{targets.filter((target) => target.status === 'draft').length}</strong>{' '}
+              Entwürfe
+            </span>
+            <span>
+              <strong>{targets.filter((target) => target.status === 'active').length}</strong>{' '}
+              festgelegt
+            </span>
+            <span>
+              <strong>{targets.filter((target) => target.status === 'closed').length}</strong>{' '}
+              abgeschlossen
+            </span>
+          </div>
+          <div className="annual-target-grid">
+            {targets.map((target) => (
+              <AnnualTargetCard
+                key={target.id}
+                target={target}
+                onOpen={() => setParam('target', target.id)}
+              />
+            ))}
           </div>
         </section>
       )}
-      <p className="text-xs text-[var(--text-secondary)]">
-        Istwerte zählen durchgeführte Aktivitäten vom 01.01. bis zum Stichtag, höchstens bis zum
-        31.12. des Zieljahres. Besuche sind Teilnahmen, keine unterschiedlichen Personen.
-        Prozentanteile beziehen sich auf Besuche mit Geschlechtszuordnung. Sich überschneidende
-        Ziele werden einzeln ausgewertet.
-      </p>
+      <details className="annual-target-notes">
+        <summary>Wie werden die Jahresziele berechnet?</summary>
+        <p>
+          Istwerte zählen durchgeführte Aktivitäten vom 01.01. bis zum Stichtag, höchstens bis zum
+          31.12. des Zieljahres. Besuche sind Teilnahmen, keine unterschiedlichen Personen.
+          Prozentanteile beziehen sich auf Besuche mit Geschlechtszuordnung. Sich überschneidende
+          Ziele werden einzeln ausgewertet.
+        </p>
+      </details>
       {editor && isAdmin && (
         <TargetEditor
           initial={editor === 'new' ? undefined : editor}
@@ -809,6 +777,7 @@ function TargetDetail({
                   {target.year} · {targetStatuses[target.status]} · {targetScopeLabel(target)}
                 </p>
                 <TargetProgress target={target} />
+                <p className="text-sm font-medium">{targetDifference(target)}</p>
               </div>
               {isAdmin && (
                 <div className="flex max-w-md flex-wrap gap-2">

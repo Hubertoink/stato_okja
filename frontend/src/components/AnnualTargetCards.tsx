@@ -1,5 +1,18 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Target } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Archive,
+  CheckCircle2,
+  Clock3,
+  FilePenLine,
+  LockKeyhole,
+  Target,
+  Users,
+  Activity,
+  PieChart,
+  AlertCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/lib/auth';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
@@ -10,7 +23,11 @@ import {
   useAnnualTargets,
   type AnnualTarget,
   type TargetScope,
+  targetMetrics,
+  targetScopeLabel,
+  targetStatuses,
 } from '@/lib/annualTargets';
+import './AnnualTargetCards.css';
 
 export function StatisticsTabs() {
   const config = usePublicConfig();
@@ -39,32 +56,242 @@ export function StatisticsTabs() {
   );
 }
 
+function metricIcon(target: AnnualTarget) {
+  return target.metric === 'duration_hours'
+    ? Clock3
+    : target.metric === 'participant_total'
+      ? Users
+      : target.metric === 'activity_count'
+        ? Activity
+        : PieChart;
+}
+
+function targetTone(target: AnnualTarget) {
+  if (target.status === 'draft' || target.evaluation.met === null) return 'neutral';
+  if (target.evaluation.met) return 'success';
+  return target.status === 'closed' ? 'warning' : 'neutral';
+}
+
 export function TargetProgress({ target }: { target: AnnualTarget }) {
+  const value = target.result.value;
+  const isShare = target.metric.endsWith('_percent');
   const progress =
-    target.rule === 'min' && !target.metric.endsWith('_percent') && target.target > 0
-      ? ((target.result.value ?? 0) / target.target) * 100
+    target.rule === 'min' && !isShare && target.target > 0 && value !== null
+      ? (value / target.target) * 100
       : null;
+  const gaugeValue = isShare ? value : progress;
+  const visibleValue = gaugeValue === null ? null : Math.min(100, Math.max(0, gaugeValue));
+  const Icon = metricIcon(target);
+  const marker = (percentage: number, key: string) => {
+    const radians = (((percentage / 100) * 360 - 90) * Math.PI) / 180;
+    return (
+      <circle
+        key={key}
+        cx={70 + 58 * Math.cos(radians)}
+        cy={70 + 58 * Math.sin(radians)}
+        r="4"
+        className="annual-target-gauge-marker"
+      />
+    );
+  };
   return (
-    <div className="space-y-2">
-      <p className="text-2xl font-semibold">
-        {formatTargetValue(target.result.value, target.metric)}
-      </p>
-      <p className="text-sm text-[var(--text-secondary)]">{targetRequirement(target)}</p>
-      {progress !== null && (
-        <>
-          <progress
-            aria-label={`${target.title}: Jahresfortschritt`}
-            value={Math.min(100, progress)}
-            max={100}
-            className="h-2 w-full accent-viridian"
-          />
-          <p className="text-xs">
-            {progress.toLocaleString('de-DE', { maximumFractionDigits: 0 })} % der Jahresvorgabe
-          </p>
-        </>
-      )}
-      <p className="text-sm">{targetDifference(target)}</p>
+    <div className={`annual-target-progress annual-target-tone--${targetTone(target)}`}>
+      <div
+        className="annual-target-gauge"
+        role={visibleValue === null ? undefined : isShare ? 'meter' : 'progressbar'}
+        aria-label={
+          isShare ? `${target.title}: Besuchsanteil` : `${target.title}: Jahresfortschritt`
+        }
+        aria-valuemin={visibleValue === null ? undefined : 0}
+        aria-valuemax={visibleValue === null ? undefined : 100}
+        aria-valuenow={visibleValue ?? undefined}
+        aria-valuetext={
+          visibleValue === null
+            ? undefined
+            : isShare
+              ? `${formatTargetValue(value, target.metric)}; ${targetRequirement(target)}`
+              : `${progress!.toLocaleString('de-DE', { maximumFractionDigits: 1 })} % der Jahresvorgabe`
+        }
+      >
+        <svg viewBox="0 0 140 140" aria-hidden="true" focusable="false">
+          <circle cx="70" cy="70" r="58" className="annual-target-gauge-track" />
+          {visibleValue !== null && (
+            <circle
+              cx="70"
+              cy="70"
+              r="58"
+              pathLength="100"
+              className="annual-target-gauge-fill"
+              strokeDasharray={`${visibleValue} 100`}
+              transform="rotate(-90 70 70)"
+            />
+          )}
+          {isShare && marker(target.target, 'target')}
+          {isShare &&
+            target.rule === 'range' &&
+            target.upperTarget !== null &&
+            marker(target.upperTarget, 'upper')}
+        </svg>
+        <div className="annual-target-gauge-center" aria-hidden="true">
+          {gaugeValue !== null ? (
+            <>
+              <span className="annual-target-gauge-number">
+                {gaugeValue.toLocaleString('de-DE', { maximumFractionDigits: 1 })}
+                <small> %</small>
+              </span>
+              <span className="annual-target-gauge-caption">
+                {isShare ? 'Besuchsanteil' : 'der Vorgabe'}
+              </span>
+            </>
+          ) : value === null ? (
+            <>
+              <span className="annual-target-gauge-number">–</span>
+              <span className="annual-target-gauge-caption">keine Daten</span>
+            </>
+          ) : (
+            <>
+              <Icon className="annual-target-gauge-symbol" />
+              <span className="annual-target-gauge-caption">
+                {target.rule === 'range'
+                  ? 'Zielkorridor'
+                  : target.rule === 'max'
+                    ? 'Obergrenze'
+                    : 'Jahresziel'}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="annual-target-values">
+        <div>
+          <span className="annual-target-value-label">
+            {target.status === 'closed' ? 'Abschlusswert' : 'Istwert'}
+          </span>
+          <strong
+            className={`annual-target-value ${value === null ? 'annual-target-value--empty' : ''}`}
+          >
+            {formatTargetValue(value, target.metric)}
+          </strong>
+        </div>
+        <div className="annual-target-requirement">
+          <span className="annual-target-value-label">Jahresvorgabe</span>
+          <span>{targetRequirement(target)}</span>
+          {isShare && <span className="annual-target-marker-legend">Zielmarke im Kreis</span>}
+        </div>
+      </div>
     </div>
+  );
+}
+
+export function AnnualTargetCard({
+  target,
+  to,
+  onOpen,
+}: {
+  target: AnnualTarget;
+  to?: string;
+  onOpen?: () => void;
+}) {
+  const Icon = metricIcon(target);
+  const StatusIcon =
+    target.status === 'draft' ? FilePenLine : target.status === 'closed' ? Archive : LockKeyhole;
+  const scopeKind = target.scope.projectId
+    ? 'Projekt'
+    : target.scope.activityId
+      ? 'Aktivität'
+      : target.scope.types?.length
+        ? 'Bereich'
+        : 'Bezug';
+  const tone = targetTone(target);
+  return (
+    <article
+      className={`annual-target-card annual-target-tone--${tone}`}
+      aria-labelledby={`annual-target-title-${target.id}`}
+    >
+      <div className="annual-target-card-top">
+        <span className="annual-target-metric-icon" aria-hidden="true">
+          <Icon />
+        </span>
+        <span className={`annual-target-status annual-target-status--${target.status}`}>
+          <StatusIcon aria-hidden="true" />
+          {targetStatuses[target.status]}
+        </span>
+      </div>
+      <h3 id={`annual-target-title-${target.id}`} className="annual-target-card-title">
+        {target.title}
+      </h3>
+      <dl className="annual-target-metadata">
+        <div>
+          <dt>{scopeKind}</dt>
+          <dd>{targetScopeLabel(target)}</dd>
+        </div>
+        <div>
+          <dt>Kennzahl</dt>
+          <dd>{targetMetrics[target.metric]}</dd>
+        </div>
+      </dl>
+      <TargetProgress target={target} />
+      <div className="annual-target-result">
+        <span
+          className={`annual-target-result-icon annual-target-result-icon--${tone}`}
+          aria-hidden="true"
+        >
+          {tone === 'success' ? (
+            <CheckCircle2 />
+          ) : tone === 'warning' ? (
+            <AlertCircle />
+          ) : (
+            <Target />
+          )}
+        </span>
+        <div>
+          <p>{targetDifference(target)}</p>
+          <span>
+            {target.status === 'draft'
+              ? 'Vorschau · Ziel noch nicht festgelegt'
+              : target.status === 'closed'
+                ? target.evaluation.met === null
+                  ? 'Jahresabschluss nicht bewertbar'
+                  : target.evaluation.met
+                    ? 'Jahresziel erreicht'
+                    : 'Jahresziel nicht erreicht'
+                : target.evaluation.met
+                  ? 'Vorgabe bisher erfüllt'
+                  : 'Stand im laufenden Zieljahr'}
+          </span>
+        </div>
+      </div>
+      {target.dataChanged && (
+        <p className="annual-target-data-warning">
+          <AlertCircle aria-hidden="true" />
+          Daten seit Abschluss geändert
+        </p>
+      )}
+      <footer className="annual-target-card-footer">
+        <span>Stand: {target.result.asOf.split('-').reverse().join('.')}</span>
+        {to ? (
+          <Link
+            to={to}
+            className="annual-target-details"
+            aria-label={`Ziel ansehen: ${target.title}`}
+          >
+            Details ansehen
+            <ArrowUpRight aria-hidden="true" />
+          </Link>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="annual-target-details"
+            onClick={onOpen}
+            aria-label={`Ziel ansehen: ${target.title}`}
+          >
+            Details ansehen
+            <ArrowUpRight aria-hidden="true" />
+          </Button>
+        )}
+      </footer>
+    </article>
   );
 }
 
@@ -109,19 +336,13 @@ export default function AnnualTargetCards({
           Für diesen Bezug sind noch keine Jahresziele hinterlegt.
         </p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="annual-target-grid">
           {targets.slice(0, 4).map((target) => (
-            <Link
-              className="rounded-xl border border-[var(--border-subtle)] p-4 hover:bg-[var(--surface-2)]"
+            <AnnualTargetCard
               key={target.id}
+              target={target}
               to={`/statistics/targets?year=${year}&target=${target.id}`}
-            >
-              <h3 className="mb-3 font-medium">{target.title}</h3>
-              <TargetProgress target={target} />
-              <p className="mt-3 text-xs text-[var(--text-secondary)]">
-                Stand: {target.result.asOf.split('-').reverse().join('.')}
-              </p>
-            </Link>
+            />
           ))}
         </div>
       )}

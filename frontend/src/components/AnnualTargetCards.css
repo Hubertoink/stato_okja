@@ -1,0 +1,329 @@
+.annual-target-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 23rem), 1fr));
+  gap: 1.25rem;
+}
+
+.annual-target-card {
+  --annual-target-accent: var(--viridian);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--viridian) 32%, var(--border-subtle));
+  border-radius: calc(var(--card-radius) + 4px);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--viridian) 4%, transparent);
+}
+
+.annual-target-tone--success {
+  --annual-target-accent: var(--status-success-text);
+}
+.annual-target-tone--warning {
+  --annual-target-accent: var(--status-warning-text);
+}
+.annual-target-tone--neutral {
+  --annual-target-accent: var(--viridian);
+}
+
+.annual-target-card-top,
+.annual-target-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.annual-target-metric-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  background: var(--interactive-soft);
+  color: var(--viridian);
+}
+.annual-target-metric-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.annual-target-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.annual-target-status svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+.annual-target-status--active {
+  background: var(--interactive-soft);
+  color: var(--viridian);
+}
+.annual-target-status--closed {
+  background: var(--surface-3);
+}
+
+.annual-target-card-title {
+  margin: 1rem 0 1.125rem;
+  font-size: 1.125rem;
+  line-height: 1.4;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.annual-target-metadata {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+.annual-target-metadata dt,
+.annual-target-value-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.annual-target-metadata dd {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.annual-target-progress {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-width: 0;
+  margin: auto 0 1.5rem;
+}
+.annual-target-gauge {
+  position: relative;
+  flex: 0 0 8rem;
+  width: 8rem;
+  height: 8rem;
+}
+.annual-target-gauge > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.annual-target-gauge-track,
+.annual-target-gauge-fill {
+  fill: none;
+  stroke-width: 7;
+}
+.annual-target-gauge-track {
+  stroke: color-mix(in srgb, var(--annual-target-accent) 12%, var(--surface-2));
+}
+.annual-target-gauge-fill {
+  stroke: var(--annual-target-accent);
+  stroke-linecap: round;
+}
+.annual-target-gauge-marker {
+  fill: var(--text-primary);
+  stroke: var(--surface-1);
+  stroke-width: 2;
+}
+.annual-target-gauge-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+.annual-target-gauge-number {
+  font-size: 1.65rem;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+}
+.annual-target-gauge-number small {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.annual-target-gauge-caption {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+}
+.annual-target-gauge-symbol {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--annual-target-accent);
+}
+.annual-target-values {
+  min-width: 0;
+  flex: 1;
+}
+.annual-target-value {
+  display: block;
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.annual-target-value--empty {
+  font-size: 1rem;
+  letter-spacing: normal;
+}
+.annual-target-requirement {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.annual-target-marker-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.375rem;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+}
+.annual-target-marker-legend::before {
+  content: '';
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: var(--text-primary);
+}
+
+.annual-target-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin-bottom: 1.5rem;
+}
+.annual-target-result-icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--text-muted);
+}
+.annual-target-result-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+.annual-target-result-icon--success {
+  color: var(--status-success-text);
+}
+.annual-target-result-icon--warning {
+  color: var(--status-warning-text);
+}
+.annual-target-result p {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 550;
+}
+.annual-target-result span:not(.annual-target-result-icon) {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.annual-target-data-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: -0.5rem 0 1rem;
+  font-size: 0.7rem;
+  color: var(--status-warning-text);
+}
+.annual-target-data-warning svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+.annual-target-card-footer {
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid color-mix(in srgb, var(--viridian) 25%, var(--border-subtle));
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+.annual-target-card-footer .annual-target-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.annual-target-details svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.annual-target-details:hover {
+  color: var(--viridian);
+}
+.annual-target-details:focus-visible {
+  outline: 2px solid var(--viridian);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.annual-target-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.annual-target-overview strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.annual-target-notes {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.annual-target-notes summary {
+  cursor: pointer;
+  width: fit-content;
+  font-weight: 500;
+}
+.annual-target-notes p {
+  margin-top: 0.75rem;
+  max-width: 65rem;
+  line-height: 1.7;
+}
+
+@media (max-width: 400px) {
+  .annual-target-card {
+    padding: 1.125rem;
+  }
+  .annual-target-progress {
+    gap: 0.875rem;
+  }
+  .annual-target-gauge {
+    flex-basis: 6.75rem;
+    width: 6.75rem;
+    height: 6.75rem;
+  }
+  .annual-target-gauge-number {
+    font-size: 1.35rem;
+  }
+  .annual-target-value {
+    font-size: 1.4rem;
+  }
+  .annual-target-card-footer {
+    flex-wrap: wrap;
+  }
+}

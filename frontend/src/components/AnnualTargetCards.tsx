@@ -4,7 +4,7 @@ import {
   Archive,
   CheckCircle2,
   Clock3,
-  FilePenLine,
+  FileEdit,
   LockKeyhole,
   Target,
   Users,
@@ -194,7 +194,7 @@ export function AnnualTargetCard({
 }) {
   const Icon = metricIcon(target);
   const StatusIcon =
-    target.status === 'draft' ? FilePenLine : target.status === 'closed' ? Archive : LockKeyhole;
+    target.status === 'draft' ? FileEdit : target.status === 'closed' ? Archive : LockKeyhole;
   const scopeKind = target.scope.projectId
     ? 'Projekt'
     : target.scope.activityId

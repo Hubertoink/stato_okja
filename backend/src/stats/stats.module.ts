@@ -10,10 +10,14 @@ import { Category } from '../taxonomy/entities/category.entity';
 import { CustomKpi } from './entities/custom-kpi.entity';
 import { OrgsModule } from '../orgs/orgs.module';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
+import { AnnualTarget } from './entities/annual-target.entity';
+import { AnnualTargetsController } from './annual-targets.controller';
+import { AnnualTargetsService } from './annual-targets.service';
+import { Project } from '../projects/entities/project.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Activity, Cohort, Category, CustomKpi]), OrgsModule],
-  controllers: [StatsController, CustomKpisController],
-  providers: [StatsService, CustomKpisService, OrgScopeGuard],
+  imports: [TypeOrmModule.forFeature([Activity, Cohort, Category, CustomKpi, AnnualTarget, Project]), OrgsModule],
+  controllers: [StatsController, CustomKpisController, AnnualTargetsController],
+  providers: [StatsService, CustomKpisService, AnnualTargetsService, OrgScopeGuard],
 })
 export class StatsModule {}

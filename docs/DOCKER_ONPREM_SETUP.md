@@ -318,6 +318,22 @@ Für `ENABLE_PROCESSES` gilt:
 - Bei `false` deaktiviert der Backend-Container ProzessO global, ohne die je Organisation gespeicherte Freischaltung zu verändern.
 - Nach einer Änderung muss nur der Backend-Container neu gestartet werden.
 
+### Optionale Jahresziele
+
+Mit `ANNUAL_TARGETS_ENABLED=true` in der verwendeten ENV-Datei werden die Jahresziele unter **Statistik → Jahresziele** aktiviert. Standard ist `false`. Der Schalter gilt für alle Organisationen dieses Backend-Containers. Anlegen, Festlegen, Ändern und Abschließen ist ausschließlich für Organisationsadmins und Superadmins möglich.
+
+Ziele gelten wahlweise für das gesamte Zieljahr oder einen eigenen Zeitraum mit inklusivem Start- und Enddatum, auch über Jahresgrenzen hinweg. Das Zieljahr entspricht dem Beginn; jahresübergreifende Ziele erscheinen in jedem betroffenen Jahr und werden stets für den gesamten Zeitraum ausgewertet. Ein Abschluss ist nach dem Enddatum möglich. Beim Übernehmen in ein Folgejahr wird der Zeitraum entsprechend verschoben (29. Februar wird gegebenenfalls zum 28. Februar). Bestehende Ziele ohne Datumsangaben gelten weiterhin für das ganze Jahr. Besuchsanteile und ihre Zielwerte werden in Prozent angegeben.
+
+Beim Festlegen kann eine Zielvereinbarung hinterlegt werden. Sie erscheint zusammen mit der numerischen Vorgabe auf der Karte, in der Detailansicht und im Export. Bereits gespeicherte Begründungen vom Festlegen werden ebenfalls angezeigt. Festlegen, Abschließen, Wiederöffnen und Übernehmen ins Folgejahr erfolgen in eigenen Dialogen; das übernommene Ziel startet als neuer Entwurf ohne verbindliche Vereinbarung.
+
+Nach einer Änderung muss der Backend-Container mit der aktualisierten Umgebung neu erstellt werden (ein bloßes `docker restart` übernimmt keine neuen ENV-Werte). Für das Release-Bundle beispielsweise im Installationsordner:
+
+```bash
+docker compose --env-file config/stato.env -f compose.yaml up -d --no-deps --force-recreate backend
+```
+
+Bei manuellem Betrieb die verwendeten Compose- und ENV-Pfade einsetzen. Anschließend die Browserseite neu laden. Ein Frontend-Neubau ist für diesen Schalter nicht erforderlich. `false` blendet alle Einstiege aus und sperrt die Jahresziel-API; vorhandene Ziele, Historien und Abschlüsse bleiben gespeichert und werden nach erneuter Aktivierung wieder zugänglich. Persönliche Kennzahlenkarten bleiben unabhängig davon verfügbar.
+
 ## Vollständiges Beispiel für `.env.onprem`
 
 Die gepflegte, kommentierte Vorlage ist

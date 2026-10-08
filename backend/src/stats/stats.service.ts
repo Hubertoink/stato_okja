@@ -6,6 +6,8 @@ import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { ActivityExecutionStatus, ActivityType } from '../common/enums';
 import { OrgsService } from '../orgs/orgs.service';
 import type { CustomKpiMetric } from './entities/custom-kpi.entity';
+import type { AnnualTargetMetric, AnnualTargetScope, AnnualTargetSnapshot } from './entities/annual-target.entity';
+import { annualTargetValue, TargetTotals } from './annual-target-metrics';
 
 type StatsScope = {
   from?: string;
@@ -216,6 +218,43 @@ export class StatsService {
     if (typeof value === 'number') return value;
     if (typeof value === 'string') return Number(value) || 0;
     return 0;
+  }
+
+  private async annualTargetQuery(orgId: string | null, year: number, scope: AnnualTargetScope, asOf: string, dateFrom = `${year}-01-01`) {
+    const qb = await this.createFilteredActivityQuery(dateFrom, asOf, orgId, undefined, scope.projectId);
+    if (scope.types?.length) qb.andWhere('activity.type IN (:...targetTypes)', { targetTypes: scope.types });
+    if (scope.activityId) qb.andWhere('activity.id = :targetActivityId', { targetActivityId: scope.activityId });
+    return qb;
+  }
+
+  async getAnnualTargetSnapshot(orgId: string | null, year: number, scope: AnnualTargetScope, metric: AnnualTargetMetric, asOf: string, dateFrom = `${year}-01-01`): Promise<AnnualTargetSnapshot> {
+    const qb = await this.annualTargetQuery(orgId, year, scope, asOf, dateFrom);
+    const monthExpression = 'SUBSTR(CAST(activity.date AS varchar), 1, 7)';
+    const rows = await qb.select(monthExpression, 'month')
+      .addSelect('COUNT(*)', 'activities')
+      .addSelect('COALESCE(SUM(activity.durationMinutes), 0)', 'minutes')
+      .addSelect('COALESCE(SUM(activity.countTotal), 0)', 'visits')
+      .addSelect('COALESCE(SUM(activity.countMale), 0)', 'male')
+      .addSelect('COALESCE(SUM(activity.countFemale), 0)', 'female')
+      .addSelect('COALESCE(SUM(activity.countDiverse), 0)', 'diverse')
+      .groupBy(monthExpression).orderBy(monthExpression, 'ASC').getRawMany();
+    const total: TargetTotals = { activities: 0, minutes: 0, visits: 0, male: 0, female: 0, diverse: 0 };
+    const series = rows.map((row) => {
+      const monthly = { ...total };
+      for (const key of Object.keys(total) as Array<keyof TargetTotals>) {
+        monthly[key] = this.toNumber(row[key]);
+        total[key] += monthly[key];
+      }
+      return { month: String(row.month), value: annualTargetValue(metric, monthly) };
+    });
+    return { value: annualTargetValue(metric, total), asOf, activityCount: total.activities, series };
+  }
+
+  async getAnnualTargetActivities(orgId: string | null, year: number, scope: AnnualTargetScope, asOf: string, page: number, dateFrom = `${year}-01-01`) {
+    const qb = await this.annualTargetQuery(orgId, year, scope, asOf, dateFrom);
+    const [items, total] = await qb.select(['activity.id', 'activity.title', 'activity.date', 'activity.type', 'activity.durationMinutes', 'activity.countTotal'])
+      .orderBy('activity.date', 'DESC').addOrderBy('activity.id', 'ASC').skip((page - 1) * 25).take(25).getManyAndCount();
+    return { items, total, page, pageSize: 25 };
   }
 
   private getOverviewCacheTtlMs() {

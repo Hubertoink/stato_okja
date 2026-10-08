@@ -7,6 +7,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [Unreleased]
+
+### Added
+- Optionale Jahresziele unter Statistik: Stunden, Besuche, Aktivitäten und Genderanteile mit Bereichs-, Projekt- oder Terminbezug, Soll-Ist-Vergleich, Monatswerten und Dashboard-Anzeige.
+- Admins können Ziele festlegen, begründet ändern, ins Folgejahr übernehmen und mit gespeichertem Stand abschließen. Editor und User haben Lesezugriff.
+- Excel-/PDF-Export, Änderungshistorie und Hinweise auf nachträglich geänderte Abschlussdaten.
+- `ANNUAL_TARGETS_ENABLED=true` aktiviert das standardmäßig ausgeschaltete Modul im Backend-Container, ohne Frontend-Neubau.
+
+---
+
 ## [1.13.1] - 2026-10-07
 
 ### Fixed

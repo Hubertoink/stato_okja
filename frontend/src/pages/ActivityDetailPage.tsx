@@ -1,3 +1,4 @@
+import AnnualTargetCards from '@/components/AnnualTargetCards';
 import DOMPurify from 'dompurify';
 import { useIsMobile } from '@/lib/useIsMobile';
 import ActivityTypeBadge from '@/components/ActivityTypeBadge';
@@ -149,6 +150,7 @@ export default function ActivityDetailPage() {
           <h2>{t('detail.notes')}</h2>
           <p className="activity-detail-notes">{activity.notes?.trim() || 'Keine Notizen vorhanden.'}</p>
         </section>
+        <AnnualTargetCards year={Number(activity.date.slice(0, 4))} scope={{ activityId: activity.id }} />
         <footer className="activity-detail-actions">
           <Button variant="secondary" size="lg" onClick={() => navigate(`/activities/${activity.id}/edit`, { state: { from: `/activities/${activity.id}`, activityListKey, returnState: { from, activityListKey } }, replace: true })}><Pencil className="h-4 w-4" />{t('common:actions.edit')}</Button>
           {modules.data?.logbook && <Button variant="primary" size="lg" onClick={() => navigate(`/logbook/new?activityId=${encodeURIComponent(activity.id)}${activity.projectId ? `&projectId=${encodeURIComponent(activity.projectId)}` : ''}`)}><BookOpen className="h-4 w-4" />Logbucheintrag</Button>}
@@ -159,6 +161,7 @@ export default function ActivityDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
+      <AnnualTargetCards year={Number(activity.date.slice(0, 4))} scope={{ activityId: activity.id }} />
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-2xl font-bold text-viridian">

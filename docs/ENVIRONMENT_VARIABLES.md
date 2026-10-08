@@ -132,6 +132,7 @@ Diese Variablen kommen vor allem in lokalen Entwicklungs- oder S3/MinIO-Setups v
 | Variable | Optionen / Format | Funktion |
 | --- | --- | --- |
 | `ENABLE_ORG_MOVE` | `true`, `false` | Aktiviert Organisationsverschiebungen im Backend und steuert im Compose-Build auch das zugehoerige Frontend-Flag. |
+| `ANNUAL_TARGETS_ENABLED` | `true`, `false` (Standard: `false`) | Aktiviert Jahresziele mit Soll-Ist-Vergleich für alle Organisationen dieses Backend-Containers. Ohne Frontend-Neubau; bei `false` sind Oberfläche und API deaktiviert, Daten bleiben erhalten. |
 | `ENABLE_PROCESSES` | `true`, `false` | Globaler Laufzeitschalter fuer ProzessO im Backend. Bei `false` ist ProzessO fuer alle Organisationen ausgeblendet und die API verweigert den Zugriff; die organisationsbezogene Freischaltung bleibt gespeichert. |
 | `VITE_ENABLE_DEV_TOOLS` | `true`, `false` | Frontend-Build-Flag fuer das Dev-Tools-Menue. In Produktion normalerweise `false`. |
 | `VITE_ENABLE_ORG_MOVE` | `true`, `false` | Frontend-Build-Flag fuer die Organisationsverschiebung. Wird in Compose meist aus `ENABLE_ORG_MOVE` abgeleitet. |

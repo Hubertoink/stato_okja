@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ActivityDetailPage from './ActivityDetailPage';
+vi.mock('@/components/AnnualTargetCards', () => ({ default: () => null }));
 
 const fixture = vi.hoisted(() => ({
   activity: { id: 'a1', title: 'Sports Night', type: 'project_open', date: '2026-09-10', durationMinutes: 120, countMale: 7, countFemale: 10, countDiverse: 1, notes: 'Gut besucht', staff: [{ id: 's1', name: 'Mara Nguyen' }], projectId: 'p1', project: { title: 'Sportangebot', color: '#008877' }, categories: [{ id: 'c1', name: 'Sport' }], tags: [], executionStatus: 'completed' },

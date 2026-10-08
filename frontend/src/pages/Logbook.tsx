@@ -1,6 +1,6 @@
 import DemoHoverHint from '@/demo/DemoHoverHint';
 import { useEffect, useMemo, useState } from 'react';
-import { Download, Plus, X } from 'lucide-react';
+import { Archive, ArrowLeft, Download, Plus, X } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchAllLogbookEntries, useLogbookEntries } from '@/lib/logbook';
 import {
@@ -58,12 +58,17 @@ export default function Logbook() {
   const [tableView, setTableView] = useState(initialFilters.tableView);
   const [tablePage, setTablePage] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const archived = advanced.status === 'archived';
   const returnTo =
     (location.state as { returnTo?: unknown } | null)?.returnTo === '/dashboard'
       ? '/dashboard'
       : '/logbook';
   const filters = useMemo(
-    () => ({ search: search.trim() || undefined, ...advanced }),
+    () => ({
+      search: search.trim() || undefined,
+      ...advanced,
+      includeArchived: advanced.status === 'archived' ? true : advanced.includeArchived,
+    }),
     [advanced, search],
   );
   const tablePageSize = 20;
@@ -188,7 +193,7 @@ export default function Logbook() {
       <PageHeader
         mobileInlineActions
         className="mb-4"
-        title={t('title')}
+        title={archived ? t('archiveTitle') : t('title')}
         actions={(
         <DemoHoverHint title="Logbuch dokumentieren" description="Erstelle einen Logbucheintrag, suche nach Beobachtungen oder exportiere die Einträge für die nächste Teamsitzung." placement="bottom" align="end">
         <div className="flex justify-end gap-2">
@@ -276,7 +281,7 @@ export default function Logbook() {
             <X className="h-3.5 w-3.5" />
           </IconButton>
         )}
-        <span className="ml-auto">
+        <span className="ml-auto flex flex-wrap items-center justify-end gap-3">
           <Toggle
             ariaLabel={t('tableView')}
             checked={tableView}
@@ -286,6 +291,16 @@ export default function Logbook() {
               setTablePage(1);
             }}
           />
+          <Button
+            variant="secondary"
+            onClick={() => {
+              resetFilters();
+              if (!archived) setAdvanced({ status: 'archived', includeArchived: true });
+            }}
+          >
+            {archived ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <Archive className="h-4 w-4" aria-hidden="true" />}
+            {archived ? t('backToLogbook') : t('archive')}
+          </Button>
         </span>
       </div>
 
@@ -297,15 +312,15 @@ export default function Logbook() {
       ) : entries.length === 0 && (!tableView || !data?.total) ? (
         <EmptyState
           illustration={logbookEmptyIllustration}
-          title={t('emptyTitle')}
-          description={t('emptyDescription')}
-          action={(
+          title={archived ? t('emptyArchived') : t('emptyTitle')}
+          description={archived ? t('emptyArchivedDescription') : t('emptyDescription')}
+          action={!archived ? (
           <Button
             onClick={() => navigate('/logbook/new')}
           >
             {t('createFirst')}
           </Button>
-          )}
+          ) : undefined}
         />
       ) : (
         <>

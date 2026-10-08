@@ -191,6 +191,7 @@ Wenn alle Nutzer nur als Proxy-IP erscheinen, ist meist `TRUST_PROXY` falsch ges
 | Variable | Default | Beschreibung |
 | --- | --- | --- |
 | `ENABLE_ORG_MOVE` | `false` | Aktiviert Organisationsverschiebungen im Backend. Das Frontend braucht denselben Wert als Build-Argument `VITE_ENABLE_ORG_MOVE`. |
+| `ANNUAL_TARGETS_ENABLED` | `false` | Jahresziele global aktivieren. Nur Superadmins und Organisationsadmins können Ziele verwalten; Editor und User lesen. Bei `false` bleiben Daten erhalten, Oberfläche und API sind gesperrt. |
 | `ENABLE_PROCESSES` | `true` | Globaler Laufzeitschalter fuer ProzessO. Bei `false` bleibt die Organisationsfreigabe unveraendert gespeichert, ProzessO und seine API sind jedoch fuer alle Organisationen deaktiviert. |
 | `SEED_ALLOW_PROD` | `false` | Erlaubt Seed-Skripte in Production/Staging nur bei explizitem `true`. Nicht im Normalbetrieb setzen. |
 | `SEED_ORGS` | `5` | Anzahl Organisationen fuer Seed-Skripte. |

@@ -1,3 +1,4 @@
+import { StatisticsTabs } from '@/components/AnnualTargetCards';
 import { formatStatisticsReportPeriod } from './statistics/reportPeriod';
 import { useTranslation } from 'react-i18next';
 import { useActiveOrganizationName } from '@/lib/useActiveOrganizationName';
@@ -1147,6 +1148,7 @@ export default function Statistics() {
   return (
     <div className="relative">
       <PageHeader title={autoT('ui_23ad8442dc9f')} />
+      <StatisticsTabs />
 
       {/* Time Range Selector */}
       <SurfaceCard className="mb-6">

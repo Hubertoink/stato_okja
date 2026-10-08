@@ -1,3 +1,4 @@
+import { annualTargetsEnabled } from '../stats/annual-targets.guard';
 import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, Res, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
@@ -169,6 +170,7 @@ export class AuthController {
       loginTitle,
       loginSubtitle,
       liveRefreshIntervalMs,
+      annualTargetsEnabled: annualTargetsEnabled(),
       twoFactorEnabled: this.auth.isTwoFactorAuthenticationEnabled(),
       initialSetupRequired: await this.auth.isInitialSetupRequired(),
       ...this.auth.getPublicPasswordResetConfig(),

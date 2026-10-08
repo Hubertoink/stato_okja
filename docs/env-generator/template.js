@@ -74,6 +74,7 @@ const BASE_VARIABLES = [
   ['PUBLIC_ORG_NAME', (config) => config.organizationName],
   ['PUBLIC_LOGIN_SUBTITLE', 'OKJA Statistik und Dokumentation'],
   ['PUBLIC_LIVE_REFRESH_INTERVAL_MS', '30000'],
+  ['ANNUAL_TARGETS_ENABLED', 'false'],
   ['STATS_OVERVIEW_CACHE_TTL_MS', '0'],
   ['RATE_LIMIT_TTL', '60'],
   ['RATE_LIMIT_MAX', '100'],

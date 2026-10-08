@@ -60,6 +60,7 @@ const Activities = lazyWithReload(() => import('./pages/Activities'));
 const ActivityDetailPage = lazyWithReload(() => import('@/pages/ActivityDetailPage'));
 const ActivityEditPage = lazyWithReload(() => import('@/pages/ActivityEditPage'));
 const ActivityCreatePage = lazyWithReload(() => import('@/pages/ActivityCreatePage'));
+const AnnualTargets = lazyWithReload(() => import('./pages/AnnualTargets'));
 const Statistics = lazyWithReload(() => import('./pages/Statistics'));
 const Settings = lazyWithReload(() => import('./pages/Settings'));
 const MyProfile = lazyWithReload(() => import('./pages/MyProfile'));
@@ -353,6 +354,10 @@ function AuthedRoutes() {
                 <Calendar />
               </RouteBoundary>
             }
+          />
+          <Route
+            path="statistics/targets"
+            element={<RouteBoundary label="Jahresziele"><AnnualTargets /></RouteBoundary>}
           />
           <Route
             path="statistics"

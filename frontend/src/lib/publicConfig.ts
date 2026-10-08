@@ -12,6 +12,7 @@ export interface PublicConfig {
   loginTitle: string;
   loginSubtitle: string;
   liveRefreshIntervalMs: number;
+  annualTargetsEnabled: boolean;
   twoFactorEnabled: boolean;
   initialSetupRequired: boolean;
   passwordResetMode: PasswordResetMode;
@@ -26,6 +27,7 @@ export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   loginTitle: 'StatO',
   loginSubtitle: autoT('ui_86922bad66e8'),
   liveRefreshIntervalMs: 15000,
+  annualTargetsEnabled: false,
   twoFactorEnabled: false,
   initialSetupRequired: false,
   passwordResetMode: 'email',
@@ -61,6 +63,7 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
     loginTitle: String(data.loginTitle || DEFAULT_PUBLIC_CONFIG.loginTitle),
     loginSubtitle: String(data.loginSubtitle || DEFAULT_PUBLIC_CONFIG.loginSubtitle),
     liveRefreshIntervalMs: parseLiveRefreshIntervalMs(data.liveRefreshIntervalMs),
+    annualTargetsEnabled: data.annualTargetsEnabled === true,
     twoFactorEnabled: typeof data.twoFactorEnabled === 'boolean' ? data.twoFactorEnabled : DEFAULT_PUBLIC_CONFIG.twoFactorEnabled,
     initialSetupRequired:
       typeof data.initialSetupRequired === 'boolean'

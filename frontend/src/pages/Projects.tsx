@@ -1,5 +1,7 @@
+import AnnualTargetCards from '@/components/AnnualTargetCards';
+import { usePublicConfig } from '@/lib/publicConfig';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import { FIXED_PALETTE, TAG_PALETTE } from '@/lib/colorPalette';
 import { ColorPicker } from '@/components/ui/ColorPicker';
@@ -654,6 +656,7 @@ function ProjectOverviewCard({
   project, category, staffNames, tagList, starred,
   onOpenActivities, onToggleStar, onEdit, list = false,
 }: ProjectCardProps & { list?: boolean }) {
+  const annualTargetConfig = usePublicConfig();
   const prettyType = PROJECT_TYPE_LABELS[project.type] || project.type;
   const tagLimit = list ? 4 : 3;
   return (
@@ -700,6 +703,7 @@ function ProjectOverviewCard({
         {project.description && <p className="project-overview-description">{truncateWords(projectDescriptionToPlainText(project.description), 24)}</p>}
       </div>
       <div className="project-overview-actions">
+        {annualTargetConfig.data?.annualTargetsEnabled && <Link className="px-3 py-2 text-xs font-medium text-viridian underline" to={`/statistics/targets?projectId=${project.id}`}>Jahresziele</Link>}
         <Button variant="ghost" size="sm" onClick={onOpenActivities} aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })} title={autoT('ui_8587eefe7ef8')}><CalendarRange className="h-4 w-4" /><span>Aktivitäten</span></Button>
         <div className="project-overview-desktop-star"><ProjectStarButton ariaLabel={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')} onClick={onToggleStar} starred={starred} /></div>
         <Button variant="secondary" size="sm" onClick={onEdit} aria-label={autoT('ui_47fd1acdc0a4', { value0: project.title })}><Pencil className="h-4 w-4" /><span>{autoT('ui_104f3bfdc340')}</span></Button>
@@ -1866,6 +1870,7 @@ function ProjectForm({
           onDrop={onDrop}
         >
           <div className="px-4 py-4 md:px-5 md:py-5">
+            {initial?.id && <AnnualTargetCards scope={{ projectId: initial.id }} />}
             {!initial?.id && (
               <div className="mb-4">
                 <button

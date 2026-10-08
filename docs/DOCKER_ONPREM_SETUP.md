@@ -318,6 +318,18 @@ Für `ENABLE_PROCESSES` gilt:
 - Bei `false` deaktiviert der Backend-Container ProzessO global, ohne die je Organisation gespeicherte Freischaltung zu verändern.
 - Nach einer Änderung muss nur der Backend-Container neu gestartet werden.
 
+### Optionale Jahresziele
+
+Mit `ANNUAL_TARGETS_ENABLED=true` in der verwendeten ENV-Datei werden die Jahresziele unter **Statistik → Jahresziele** aktiviert. Standard ist `false`. Der Schalter gilt für alle Organisationen dieses Backend-Containers. Anlegen, Festlegen, Ändern und Abschließen ist ausschließlich für Organisationsadmins und Superadmins möglich.
+
+Nach einer Änderung muss der Backend-Container mit der aktualisierten Umgebung neu erstellt werden (ein bloßes `docker restart` übernimmt keine neuen ENV-Werte). Für das Release-Bundle beispielsweise im Installationsordner:
+
+```bash
+docker compose --env-file config/stato.env -f compose.yaml up -d --no-deps --force-recreate backend
+```
+
+Bei manuellem Betrieb die verwendeten Compose- und ENV-Pfade einsetzen. Anschließend die Browserseite neu laden. Ein Frontend-Neubau ist für diesen Schalter nicht erforderlich. `false` blendet alle Einstiege aus und sperrt die Jahresziel-API; vorhandene Ziele, Historien und Abschlüsse bleiben gespeichert und werden nach erneuter Aktivierung wieder zugänglich. Persönliche Kennzahlenkarten bleiben unabhängig davon verfügbar.
+
 ## Vollständiges Beispiel für `.env.onprem`
 
 Die gepflegte, kommentierte Vorlage ist

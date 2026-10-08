@@ -230,35 +230,37 @@ export function AnnualTargetCard({
           <dd>{targetMetrics[target.metric]}</dd>
         </div>
       </dl>
-      <TargetProgress target={target} />
-      <div className="annual-target-result">
-        <span
-          className={`annual-target-result-icon annual-target-result-icon--${tone}`}
-          aria-hidden="true"
-        >
-          {tone === 'success' ? (
-            <CheckCircle2 />
-          ) : tone === 'warning' ? (
-            <AlertCircle />
-          ) : (
-            <Target />
-          )}
-        </span>
-        <div>
-          <p>{targetDifference(target)}</p>
-          <span>
-            {target.status === 'draft'
-              ? 'Vorschau · Ziel noch nicht festgelegt'
-              : target.status === 'closed'
-                ? target.evaluation.met === null
-                  ? 'Jahresabschluss nicht bewertbar'
-                  : target.evaluation.met
-                    ? 'Jahresziel erreicht'
-                    : 'Jahresziel nicht erreicht'
-                : target.evaluation.met
-                  ? 'Vorgabe bisher erfüllt'
-                  : 'Stand im laufenden Zieljahr'}
+      <div className="annual-target-card-performance">
+        <TargetProgress target={target} />
+        <div className="annual-target-result">
+          <span
+            className={`annual-target-result-icon annual-target-result-icon--${tone}`}
+            aria-hidden="true"
+          >
+            {tone === 'success' ? (
+              <CheckCircle2 />
+            ) : tone === 'warning' ? (
+              <AlertCircle />
+            ) : (
+              <Target />
+            )}
           </span>
+          <div>
+            <p>{targetDifference(target)}</p>
+            <span>
+              {target.status === 'draft'
+                ? 'Vorschau · Ziel noch nicht festgelegt'
+                : target.status === 'closed'
+                  ? target.evaluation.met === null
+                    ? 'Jahresabschluss nicht bewertbar'
+                    : target.evaluation.met
+                      ? 'Jahresziel erreicht'
+                      : 'Jahresziel nicht erreicht'
+                  : target.evaluation.met
+                    ? 'Vorgabe bisher erfüllt'
+                    : 'Stand im laufenden Zieljahr'}
+            </span>
+          </div>
         </div>
       </div>
       {target.dataChanged && (

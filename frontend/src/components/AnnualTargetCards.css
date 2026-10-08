@@ -8,6 +8,7 @@
   --annual-target-accent: var(--viridian);
   display: flex;
   flex-direction: column;
+  gap: 1.25rem;
   min-width: 0;
   padding: 1.5rem;
   border: 1px solid color-mix(in srgb, var(--viridian) 32%, var(--border-subtle));
@@ -73,7 +74,7 @@
 }
 
 .annual-target-card-title {
-  margin: 1rem 0 1.125rem;
+  margin: 0;
   font-size: 1.125rem;
   line-height: 1.4;
   font-weight: 650;
@@ -81,17 +82,31 @@
 }
 .annual-target-metadata {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem;
+  margin: 0;
+}
+.annual-target-metadata > div {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.75rem;
+}
+.annual-target-card-performance {
+  display: grid;
   gap: 1rem;
-  margin-bottom: 1.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  background: var(--surface-2);
 }
 .annual-target-metadata dt,
 .annual-target-value-label {
   display: block;
   margin-bottom: 0.25rem;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 500;
+  line-height: 1.5;
 }
 .annual-target-metadata dd {
   margin: 0;
@@ -104,9 +119,9 @@
 .annual-target-progress {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
   min-width: 0;
-  margin: auto 0 1.5rem;
+  margin: 0;
 }
 .annual-target-gauge {
   position: relative;
@@ -166,6 +181,8 @@
   color: var(--annual-target-accent);
 }
 .annual-target-values {
+  display: grid;
+  gap: 0.875rem;
   min-width: 0;
   flex: 1;
 }
@@ -182,9 +199,11 @@
   letter-spacing: normal;
 }
 .annual-target-requirement {
-  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
   font-size: 0.8rem;
   color: var(--text-secondary);
+  line-height: 1.5;
 }
 .annual-target-marker-legend {
   display: inline-flex;
@@ -206,7 +225,9 @@
   display: flex;
   align-items: flex-start;
   gap: 0.625rem;
-  margin-bottom: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  line-height: 1.5;
 }
 .annual-target-result-icon {
   flex-shrink: 0;
@@ -224,9 +245,13 @@
   color: var(--status-warning-text);
 }
 .annual-target-result p {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-size: 0.8rem;
   font-weight: 550;
+}
+.annual-target-result > div {
+  display: grid;
+  gap: 0.25rem;
 }
 .annual-target-result span:not(.annual-target-result-icon) {
   font-size: 0.7rem;
@@ -236,7 +261,7 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  margin: -0.5rem 0 1rem;
+  margin: 0;
   font-size: 0.7rem;
   color: var(--status-warning-text);
 }
@@ -305,17 +330,90 @@
   line-height: 1.7;
 }
 
+.annual-target-activities-status {
+  min-height: 1.25rem;
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.annual-target-activities-list {
+  height: 24rem;
+  max-height: 50vh;
+  min-height: 12rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--surface-1);
+}
+.annual-target-activities-list:focus-visible {
+  outline: 2px solid var(--viridian);
+  outline-offset: 2px;
+}
+.annual-target-activities-list li {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.annual-target-activities-list li:last-child {
+  border-bottom: 0;
+}
+.annual-target-activities-list a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.annual-target-activity-date,
+.annual-target-activity-counts {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.annual-target-activities-message {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+}
+.annual-target-activities-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.annual-target-activities-pagination > span {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 400px) {
   .annual-target-card {
     padding: 1.125rem;
   }
   .annual-target-progress {
-    gap: 0.875rem;
+    gap: 0.75rem;
+  }
+  .annual-target-card-performance {
+    padding: 0.75rem;
   }
   .annual-target-gauge {
-    flex-basis: 6.75rem;
-    width: 6.75rem;
-    height: 6.75rem;
+    flex-basis: 6rem;
+    width: 6rem;
+    height: 6rem;
   }
   .annual-target-gauge-number {
     font-size: 1.35rem;

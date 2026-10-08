@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useOrgScopedQueryState, useOrgScopeKey } from './orgScope';
 import type { Activity } from './activities';
@@ -129,16 +130,36 @@ export function useAnnualTarget(id: string) {
 }
 export function useTargetActivities(id: string, page: number) {
   const { scopeKey, ready } = useOrgScopedQueryState();
-  return useQuery({
-    queryKey: ['stats:annual-target-activities', scopeKey, id, page],
+  const client = useQueryClient();
+  const query = useQuery({
+    ...targetActivitiesOptions(scopeKey, id, page),
     enabled: ready && !!id,
-    queryFn: async () =>
-      (
-        await api.get<{ items: Activity[]; total: number; pageSize: number }>(
-          `/stats/annual-targets/${id}/activities`,
-          { params: { page } },
-        )
-      ).data,
+    // Keep rows only when paging within the same target and organization.
+    placeholderData: (previous, previousQuery) =>
+      ready && previousQuery?.queryKey[1] === scopeKey && previousQuery.queryKey[2] === id
+        ? previous
+        : undefined,
+  });
+  const data = query.data;
+  useEffect(() => {
+    if (!ready || !id || !data || query.isPlaceholderData || page * data.pageSize >= data.total)
+      return;
+    void client.prefetchQuery(targetActivitiesOptions(scopeKey, id, page + 1));
+  }, [client, scopeKey, ready, id, page, data, query.isPlaceholderData]);
+  return query;
+}
+
+function targetActivitiesOptions(scopeKey: string, id: string, page: number) {
+  return queryOptions({
+    queryKey: ['stats:annual-target-activities', scopeKey, id, page],
+    staleTime: 30_000,
+    queryFn: async ({ signal }) => {
+      const response = await api.get<{ items: Activity[]; total: number; pageSize: number }>(
+        `/stats/annual-targets/${id}/activities`,
+        { params: { page }, signal },
+      );
+      return { ...response.data, page };
+    },
   });
 }
 export type TargetMutation =

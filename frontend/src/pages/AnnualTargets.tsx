@@ -26,7 +26,6 @@ import {
   targetError,
   useAnnualTargets,
   useAnnualTarget,
-  useTargetActivities,
   useTargetMutation,
 } from '@/lib/annualTargets';
 import Modal from '@/components/Modal';
@@ -34,6 +33,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea, FieldLabel } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatisticsTabs, TargetProgress, AnnualTargetCard } from '@/components/AnnualTargetCards';
+import AnnualTargetActivities from '@/components/AnnualTargetActivities';
 
 const dateLabel = (date: string) => date.split('-').reverse().join('.');
 
@@ -726,8 +726,6 @@ function TargetDetail({
   onEdit: (target: AnnualTarget) => void;
 }) {
   const query = useAnnualTarget(id);
-  const [page, setPage] = useState(1);
-  const activities = useTargetActivities(id, page);
   const mutation = useTargetMutation();
   const [action, setAction] = useState<'activate' | 'close' | 'reopen' | 'copy' | null>(null);
   const [reason, setReason] = useState('');
@@ -763,6 +761,7 @@ function TargetDetail({
       }}
       maxWidth="4xl"
       variant="information"
+      contentClassName="pt-4"
     >
       {query.isPending ? (
         <p>Lädt …</p>
@@ -777,7 +776,7 @@ function TargetDetail({
                   {target.year} · {targetStatuses[target.status]} · {targetScopeLabel(target)}
                 </p>
                 <TargetProgress target={target} />
-                <p className="text-sm font-medium">{targetDifference(target)}</p>
+                <p className="mt-4 text-sm font-medium">{targetDifference(target)}</p>
               </div>
               {isAdmin && (
                 <div className="flex max-w-md flex-wrap gap-2">
@@ -940,52 +939,7 @@ function TargetDetail({
                 })}
               </div>
             </div>
-            <div>
-              <h3 className="mb-2 font-semibold">Zugehörige Aktivitäten · aktueller Datenstand</h3>
-              {activities.isPending ? (
-                <p>Lädt …</p>
-              ) : activities.isError ? (
-                <p role="alert">Aktivitäten konnten nicht geladen werden.</p>
-              ) : (
-                <>
-                  <ul className="divide-y divide-[var(--border-subtle)]">
-                    {activities.data.items.map((activity) => (
-                      <li key={activity.id} className="py-2 text-sm">
-                        <Link className="underline" to={`/activities/${activity.id}`}>
-                          {dateLabel(activity.date)} ·{' '}
-                          {activity.title || targetTypes[activity.type]}
-                        </Link>
-                        <span className="ml-3 text-[var(--text-secondary)]">
-                          {activity.durationMinutes ?? 0} Min. · {activity.countTotal ?? 0} Besuche
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  {!activities.data.total && (
-                    <p className="text-sm">Keine durchgeführten Aktivitäten bis zum Stichtag.</p>
-                  )}
-                  <div className="mt-3 flex items-center gap-3">
-                    <Button
-                      variant="secondary"
-                      disabled={page === 1}
-                      onClick={() => setPage(page - 1)}
-                    >
-                      Zurück
-                    </Button>
-                    <span className="text-xs">
-                      Seite {page} · {activities.data.total} Aktivitäten
-                    </span>
-                    <Button
-                      variant="secondary"
-                      disabled={page * activities.data.pageSize >= activities.data.total}
-                      onClick={() => setPage(page + 1)}
-                    >
-                      Weiter
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
+            <AnnualTargetActivities key={id} id={id} />
             <div>
               <h3 className="mb-2 font-semibold">Änderungsverlauf</h3>
               <ol className="space-y-3">

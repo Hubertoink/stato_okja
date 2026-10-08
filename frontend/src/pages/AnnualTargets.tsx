@@ -277,16 +277,6 @@ function AnnualTargetsContent() {
           </div>
         </section>
       )}
-      <details className="annual-target-notes">
-        <summary>Wie werden die Jahresziele berechnet?</summary>
-        <p>
-          Istwerte zählen durchgeführte Aktivitäten im Zielzeitraum bis zum Stichtag. Ohne eigenen
-          Zeitraum gilt das ganze Zieljahr. Jahresübergreifende Ziele erscheinen in jedem
-          betroffenen Jahr; ihre Werte beziehen sich immer auf den gesamten Zielzeitraum. Besuche
-          sind Teilnahmen, keine unterschiedlichen Personen. Prozentanteile beziehen sich auf
-          Besuche mit Geschlechtszuordnung. Sich überschneidende Ziele werden einzeln ausgewertet.
-        </p>
-      </details>
       {editor && isAdmin && (
         <TargetEditor
           initial={editor === 'new' ? undefined : editor}

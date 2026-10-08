@@ -542,22 +542,6 @@
   color: var(--text-primary);
   font-weight: 600;
 }
-.annual-target-notes {
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 1rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-.annual-target-notes summary {
-  cursor: pointer;
-  width: fit-content;
-  font-weight: 500;
-}
-.annual-target-notes p {
-  margin-top: 0.75rem;
-  max-width: 65rem;
-  line-height: 1.7;
-}
 
 .annual-target-activities-status {
   min-height: 1.25rem;

@@ -8,11 +8,13 @@ import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
 import { AnnualTarget } from './entities/annual-target.entity';
 import { AnnualTargets20261008120000 } from '../database/migrations/20261008120000-annual-targets';
+import { AnnualTargetPeriod20261008180000 } from '../database/migrations/20261008180000-annual-target-period';
 import { AnnualTargetsController } from './annual-targets.controller';
 import { AnnualTargetsService } from './annual-targets.service';
 import { StatsService } from './stats.service';
 import { AnnualTargetDto } from './dto/annual-target.dto';
 import { annualTargetValue, berlinToday, evaluateAnnualTarget } from './annual-target-metrics';
+import * as metrics from './annual-target-metrics';
 
 const ORG = '11111111-1111-4111-8111-111111111111';
 const FOREIGN = '22222222-2222-4222-8222-222222222222';
@@ -39,7 +41,7 @@ const activitySchema = new EntitySchema({
 const projectSchema = new EntitySchema({
   name: 'TargetProjectFixture',
   tableName: 'projects',
-  columns: { ...columns, title: { type: String } },
+  columns: { ...columns, title: { type: String }, imageUrl: { type: String, nullable: true } },
 });
 
 describe('Annual targets: persisted lifecycle, calculations and HTTP access', () => {
@@ -315,7 +317,116 @@ describe('Annual targets: persisted lifecycle, calculations and HTTP access', ()
         version: 2,
         reason: 'Too soon',
       }),
-    ).rejects.toThrow('Ende des Zieljahres');
+    ).rejects.toThrow('Ende des Zielzeitraums');
+  });
+
+  it('uses both inclusive date boundaries for totals, weighted shares, months and activity pages', async () => {
+    const created = await request(
+      '',
+      'POST',
+      payload({
+        dateFrom: '2025-02-01',
+        dateTo: '2025-02-01',
+        metric: 'female_share_percent',
+        target: 50,
+      }),
+    );
+    expect(created.status).toBe(201);
+    const target = await service.detail(ORG, created.data.id);
+    expect(target.result).toMatchObject({
+      value: 80,
+      activityCount: 1,
+      asOf: '2025-02-01',
+      series: [{ month: '2025-02', value: 80 }],
+    });
+    const list = await service.activityList(ORG, target.id, 1);
+    expect(list.items.map((item) => item.id)).toEqual(['feb']);
+    expect(list.total).toBe(1);
+    expect(target.history[0].definition).toMatchObject({
+      dateFrom: '2025-02-01',
+      dateTo: '2025-02-01',
+    });
+  });
+
+  it('includes cross-year targets in each affected year without leaking other organizations', async () => {
+    const definition = payload({ year: 2024, dateFrom: '2024-12-31', dateTo: '2025-02-01' });
+    const created = await service.create(ORG, 'admin', definition);
+    await service.create(FOREIGN, 'other-admin', definition);
+    for (const year of [2024, 2025]) {
+      const listed = await service.list(ORG, year);
+      expect(listed).toHaveLength(1);
+      expect(listed[0]).toMatchObject({ id: created.id, result: { value: 3.5, activityCount: 3 } });
+    }
+    expect(await service.list(ORG, 2026)).toEqual([]);
+  });
+
+  it('allows closing after a custom period ends in the current year and retains its snapshot', async () => {
+    const clock = jest.spyOn(metrics, 'berlinToday').mockReturnValue('2025-03-01');
+    try {
+      const created = await service.create(
+        ORG,
+        'admin',
+        payload({ dateFrom: '2025-02-01', dateTo: '2025-02-28' }),
+      );
+      await service.command(ORG, 'admin', created.id, {
+        action: 'activate',
+        version: 1,
+        reason: '',
+      });
+      const closed = await service.command(ORG, 'admin', created.id, {
+        action: 'close',
+        version: 2,
+        reason: 'Februar ausgewertet',
+      });
+      expect(closed.snapshot).toMatchObject({ value: 1.5, asOf: '2025-02-28' });
+      await db.getRepository('TargetActivityFixture').update('feb', { durationMinutes: 120 });
+      const detail = await service.detail(ORG, created.id);
+      expect(detail.result.value).toBe(1.5);
+      expect(detail.current.value).toBe(2);
+      expect(detail.dataChanged).toBe(true);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('copies the period into the next year and clamps leap days', async () => {
+    const source = await service.create(
+      ORG,
+      'admin',
+      payload({ year: 2024, dateFrom: '2024-02-29', dateTo: '2025-01-31' }),
+    );
+    const copy = await service.copy(ORG, 'admin', source.id, 2025);
+    expect(copy).toMatchObject({
+      year: 2025,
+      dateFrom: '2025-02-28',
+      dateTo: '2026-01-31',
+      status: 'draft',
+    });
+  });
+
+  it('rejects incomplete, invalid, reversed and mismatched periods and out-of-period activities', async () => {
+    for (const extra of [
+      { dateFrom: '2025-01-01' },
+      { dateTo: '2025-12-31' },
+      { dateFrom: '2025-02-30', dateTo: '2025-03-01' },
+      { dateFrom: '2025-03-01', dateTo: '2025-02-01' },
+      { dateFrom: '2024-01-01', dateTo: '2025-12-31' },
+      { dateFrom: '2025-01-01', dateTo: '2201-01-01' },
+      { dateFrom: '2025-02-01', dateTo: '2025-03-01', scope: { activityId: ACTIVITY } },
+    ])
+      expect((await request('', 'POST', payload(extra))).status).toBe(400);
+  });
+
+  it('returns the linked project image only from the same organization', async () => {
+    await db
+      .getRepository('TargetProjectFixture')
+      .update(PROJECT, { orgId: ORG, imageUrl: '/uploads/projects/picture.png' });
+    const target = await service.create(ORG, 'admin', payload({ scope: { projectId: PROJECT } }));
+    expect((await service.detail(ORG, target.id)).projectImageUrl).toBe(
+      '/uploads/projects/picture.png',
+    );
+    await db.getRepository('TargetProjectFixture').update(PROJECT, { orgId: FOREIGN });
+    expect((await service.detail(ORG, target.id)).projectImageUrl).toBeNull();
   });
 });
 
@@ -348,6 +459,17 @@ describe('Annual target boundaries and migration', () => {
         `INSERT INTO annual_targets (id, year, title, metric, scope, rule, target, history) VALUES ('one', 2025, 'Ziel', 'duration_hours', '{}', 'min', 5, '[]')`,
       );
       await migration.up(runner);
+      expect(await runner.query('SELECT title FROM annual_targets')).toEqual([{ title: 'Ziel' }]);
+      const periodMigration = new AnnualTargetPeriod20261008180000();
+      await periodMigration.up(runner);
+      await periodMigration.up(runner);
+      expect(await runner.query('SELECT dateFrom, dateTo FROM annual_targets')).toEqual([
+        { dateFrom: null, dateTo: null },
+      ]);
+      await runner.query(
+        "UPDATE annual_targets SET dateFrom = '2025-02-01', dateTo = '2025-02-28'",
+      );
+      await periodMigration.down(runner);
       expect(await runner.query('SELECT title FROM annual_targets')).toEqual([{ title: 'Ziel' }]);
       await migration.down(runner);
       expect(await runner.hasTable('annual_targets')).toBe(false);

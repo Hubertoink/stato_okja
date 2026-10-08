@@ -5,13 +5,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
 import { AnnualTarget, AnnualTargetRevision } from './entities/annual-target.entity';
 import { AnnualTargetCommandDto, AnnualTargetDto } from './dto/annual-target.dto';
 import { StatsService } from './stats.service';
-import { berlinToday, evaluateAnnualTarget } from './annual-target-metrics';
+import {
+  annualTargetPeriod,
+  berlinToday,
+  evaluateAnnualTarget,
+  shiftTargetDate,
+} from './annual-target-metrics';
 
 @Injectable()
 export class AnnualTargetsService {
@@ -35,6 +40,28 @@ export class AnnualTargetsService {
   private async definition(orgId: string | null, dto: AnnualTargetDto) {
     const title = dto.title.trim();
     if (!title) throw new BadRequestException('Bitte einen Titel angeben');
+    const dateFrom = dto.dateFrom ?? null;
+    const dateTo = dto.dateTo ?? null;
+    if ((dateFrom === null) !== (dateTo === null))
+      throw new BadRequestException('Bitte Beginn und Ende des Zielzeitraums angeben');
+    const period = annualTargetPeriod(dto);
+    for (const date of [period.from, period.to]) {
+      const parsed = new Date(`${date}T00:00:00Z`);
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+        !Number.isFinite(parsed.getTime()) ||
+        parsed.toISOString().slice(0, 10) !== date ||
+        date < '2000-01-01' ||
+        date > '2200-12-31'
+      )
+        throw new BadRequestException(
+          'Bitte einen gültigen Zielzeitraum zwischen 2000 und 2200 angeben',
+        );
+    }
+    if (period.from > period.to)
+      throw new BadRequestException('Das Ende darf nicht vor dem Beginn liegen');
+    if (Number(period.from.slice(0, 4)) !== dto.year)
+      throw new BadRequestException('Das Zieljahr muss dem Beginn des Zeitraums entsprechen');
     if (dto.rule === 'range' && (dto.upperTarget == null || dto.upperTarget < dto.target))
       throw new BadRequestException(
         'Die obere Grenze muss mindestens der unteren Grenze entsprechen',
@@ -69,12 +96,14 @@ export class AnnualTargetsService {
       if (!activity)
         throw new BadRequestException('Aktivität in dieser Einrichtung nicht gefunden');
       const date = typeof activity.date === 'string' ? activity.date : activity.date.toISOString();
-      if (!date.startsWith(String(dto.year)))
-        throw new BadRequestException('Die Aktivität muss im Zieljahr liegen');
+      if (date.slice(0, 10) < period.from || date.slice(0, 10) > period.to)
+        throw new BadRequestException('Die Aktivität muss im Zielzeitraum liegen');
     }
     return {
       title,
       year: dto.year,
+      dateFrom,
+      dateTo,
       metric: dto.metric,
       scope,
       rule: dto.rule,
@@ -94,6 +123,8 @@ export class AnnualTargetsService {
     const {
       title,
       year,
+      dateFrom,
+      dateTo,
       metric,
       scope,
       rule,
@@ -113,6 +144,8 @@ export class AnnualTargetsService {
       definition: {
         title,
         year,
+        dateFrom,
+        dateTo,
         metric,
         scope,
         rule,
@@ -205,8 +238,9 @@ export class AnnualTargetsService {
     } else if (dto.action === 'close') {
       if (target.status !== 'active')
         throw new BadRequestException('Nur festgelegte Ziele können abgeschlossen werden');
-      if (berlinToday() <= `${target.year}-12-31`)
-        throw new BadRequestException('Der Jahresabschluss ist nach Ende des Zieljahres möglich');
+      const period = annualTargetPeriod(target);
+      if (berlinToday() <= period.to)
+        throw new BadRequestException('Der Abschluss ist nach Ende des Zielzeitraums möglich');
       if (!dto.reason.trim())
         throw new BadRequestException('Bitte eine fachliche Einordnung ergänzen');
       target.snapshot = await this.stats.getAnnualTargetSnapshot(
@@ -214,7 +248,8 @@ export class AnnualTargetsService {
         target.year,
         target.scope,
         target.metric,
-        `${target.year}-12-31`,
+        period.to,
+        period.from,
       );
       target.review = dto.reason.trim();
       target.status = 'closed';
@@ -245,13 +280,19 @@ export class AnnualTargetsService {
     return this.create(
       orgId,
       actorId,
-      { ...source, year, reason: `Aus Jahresziel ${source.year} übernommen (${source.id})` },
+      {
+        ...source,
+        year,
+        dateFrom: shiftTargetDate(source.dateFrom, year - source.year),
+        dateTo: shiftTargetDate(source.dateTo, year - source.year),
+        reason: `Aus Jahresziel ${source.year} übernommen (${source.id})`,
+      },
       actorName,
     );
   }
 
-  private asOf(year: number) {
-    return [berlinToday(), `${year}-12-31`].sort()[0];
+  private asOf(target: AnnualTarget) {
+    return [berlinToday(), annualTargetPeriod(target).to].sort()[0];
   }
 
   private async result(target: AnnualTarget) {
@@ -260,15 +301,18 @@ export class AnnualTargetsService {
       target.year,
       target.scope,
       target.metric,
-      this.asOf(target.year),
+      this.asOf(target),
+      annualTargetPeriod(target).from,
     );
     const result = target.snapshot ?? current;
     let scopeLabel = 'Gesamte Einrichtung';
+    let projectImageUrl: string | null = null;
     if (target.scope.projectId) {
       const project = await this.projects.findOne({
         where: { ...this.where(target.orgId), id: target.scope.projectId },
       });
       scopeLabel = project?.title ?? 'Gelöschtes Projekt';
+      projectImageUrl = project?.imageUrl ?? null;
     } else if (target.scope.activityId) {
       const activity = await this.activities.findOne({
         where: { ...this.where(target.orgId), id: target.scope.activityId },
@@ -280,6 +324,7 @@ export class AnnualTargetsService {
     return {
       ...target,
       scopeLabel,
+      projectImageUrl,
       result,
       current,
       dataChanged: !!target.snapshot && JSON.stringify(target.snapshot) !== JSON.stringify(current),
@@ -294,7 +339,14 @@ export class AnnualTargetsService {
 
   async list(orgId: string | null, year: number) {
     const targets = await this.targets.find({
-      where: { ...this.where(orgId), year },
+      where: [
+        { ...this.where(orgId), year },
+        {
+          ...this.where(orgId),
+          dateFrom: LessThanOrEqual(`${year}-12-31`),
+          dateTo: MoreThanOrEqual(`${year}-01-01`),
+        },
+      ],
       order: { createdAt: 'ASC' },
     });
     return Promise.all(
@@ -316,8 +368,9 @@ export class AnnualTargetsService {
       orgId,
       target.year,
       target.scope,
-      this.asOf(target.year),
+      this.asOf(target),
       page,
+      annualTargetPeriod(target).from,
     );
   }
 }

@@ -1,9 +1,14 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AnnualTargets from './AnnualTargets';
 import AnnualTargetCards, { StatisticsTabs } from '@/components/AnnualTargetCards';
-import type { AnnualTarget } from '@/lib/annualTargets';
+import {
+  type AnnualTarget,
+  targetMonths,
+  targetPeriodLabel,
+  targetCanClose,
+} from '@/lib/annualTargets';
 
 const state = vi.hoisted(() => ({
   role: 'org_admin',
@@ -28,8 +33,17 @@ vi.mock('@/lib/activities', () => ({
 }));
 vi.mock('@/components/Modal', () => ({
   useModalHistory: (onClose: () => void) => ({ dismiss: onClose }),
-  default: ({ children, title }: { children: React.ReactNode; title: string }) => (
+  default: ({
+    children,
+    title,
+    headerActions,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    headerActions?: React.ReactNode;
+  }) => (
     <div role="dialog" aria-label={title}>
+      <header>{headerActions}</header>
       {children}
     </div>
   ),
@@ -215,5 +229,138 @@ describe('Annual target UI permissions and flows', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Wieder öffnen' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+  });
+
+  it('saves a cross-year period and explicitly labels percentage limits', () => {
+    show();
+    fireEvent.click(screen.getByRole('button', { name: 'Ziel hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Winterangebot' } });
+    fireEvent.change(screen.getByLabelText('Zielzeitraum'), { target: { value: 'custom' } });
+    fireEvent.change(screen.getByLabelText('Von'), { target: { value: '2024-12-01' } });
+    fireEvent.change(screen.getByLabelText('Bis'), { target: { value: '2025-03-31' } });
+    fireEvent.change(screen.getByLabelText('Kennzahl'), {
+      target: { value: 'female_share_percent' },
+    });
+    fireEvent.change(screen.getByLabelText('Vorgabe'), { target: { value: 'range' } });
+    expect(screen.getByLabelText('Untere Grenze (%)')).toHaveAttribute('max', '100');
+    expect(screen.getByLabelText('Obere Grenze (%)')).toHaveAttribute('max', '100');
+    fireEvent.change(screen.getByLabelText('Untere Grenze (%)'), { target: { value: '30' } });
+    fireEvent.change(screen.getByLabelText('Obere Grenze (%)'), { target: { value: '50' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entwurf speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          year: 2024,
+          dateFrom: '2024-12-01',
+          dateTo: '2025-03-31',
+          target: 30,
+          upperTarget: 50,
+        }),
+      }),
+      expect.anything(),
+    );
+    fireEvent.change(screen.getByLabelText('Zielzeitraum'), { target: { value: 'year' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entwurf speichern' }));
+    expect(state.mutate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ dateFrom: null, dateTo: null }),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('keeps detail actions in the header, shows the goal first and collapses activities and history', async () => {
+    show('/statistics/targets?year=2025&target=t1');
+    const dialog = screen.getByRole('dialog', { name: 'Stunden Offene Tür' });
+    const edit = within(dialog).getByRole('button', { name: 'Bearbeiten' });
+    expect(edit.closest('header')).toBeInTheDocument();
+    const requirement = within(dialog).getByText('Jahresvorgabe');
+    const actual = within(dialog).getByText('Istwert');
+    expect(
+      requirement.compareDocumentPosition(actual) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const activityDisclosure = within(dialog)
+      .getByText('Zugehörige Aktivitäten')
+      .closest('details')!;
+    expect(activityDisclosure).not.toHaveAttribute('open');
+    expect(within(dialog).getByText('Änderungsverlauf').closest('details')).not.toHaveAttribute(
+      'open',
+    );
+    expect(screen.queryByRole('region', { name: 'Aktivitätenliste' })).not.toBeInTheDocument();
+    fireEvent.click(activityDisclosure.querySelector('summary')!);
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: 'Aktivitätenliste' })).toBeInTheDocument(),
+    );
+  });
+
+  it('preserves a custom period when editing and displays only its months', () => {
+    state.targets = [target({ dateFrom: '2025-02-15', dateTo: '2025-03-20' })];
+    show('/statistics/targets?year=2025&target=t1');
+    const dialog = screen.getByRole('dialog', { name: 'Stunden Offene Tür' });
+    expect(within(dialog).queryByText('Januar')).not.toBeInTheDocument();
+    expect(within(dialog).getByText('Februar')).toBeInTheDocument();
+    expect(within(dialog).getByText('März')).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Bearbeiten' }));
+    expect(screen.getByLabelText('Von')).toHaveValue('2025-02-15');
+    expect(screen.getByLabelText('Bis')).toHaveValue('2025-03-20');
+  });
+
+  it('navigates years through accessible arrow buttons on either side of the year picker', () => {
+    show();
+    const previous = screen.getByRole('button', { name: 'Vorjahr' });
+    const next = screen.getByRole('button', { name: 'Folgejahr' });
+    const input = screen.getByLabelText('Zieljahr');
+    expect(previous.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(input.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(next);
+    expect(screen.getByLabelText('Zieljahr')).toHaveValue(2026);
+    fireEvent.click(previous);
+    expect(screen.getByLabelText('Zieljahr')).toHaveValue(2025);
+  });
+
+  it('lists months across years and preserves the full-year default', () => {
+    expect(targetMonths({ year: 2025, dateFrom: '2025-12-15', dateTo: '2026-02-02' })).toEqual([
+      '2025-12',
+      '2026-01',
+      '2026-02',
+    ]);
+    expect(targetMonths({ year: 2025 })).toHaveLength(12);
+    expect(targetPeriodLabel({ year: 2025 })).toBe('01.01.2025 – 31.12.2025');
+  });
+
+  it('allows closing only after the inclusive period end in Berlin', () => {
+    vi.useFakeTimers();
+    try {
+      const period = { year: 2025, dateFrom: '2025-02-01', dateTo: '2025-02-28' };
+      vi.setSystemTime(new Date('2025-02-28T22:59:00Z'));
+      expect(targetCanClose(period)).toBe(false);
+      vi.setSystemTime(new Date('2025-02-28T23:01:00Z'));
+      expect(targetCanClose(period)).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('uses a linked project image as decoration and leaves other targets without a background image', () => {
+    state.targets = [
+      target({ scope: { projectId: 'p1' }, projectImageUrl: 'https://example.test/project.jpg' }),
+    ];
+    const { container, unmount } = render(
+      <MemoryRouter>
+        <AnnualTargetCards year={2025} />
+      </MemoryRouter>,
+    );
+    const image = container.querySelector('img');
+    expect(image).toHaveAttribute('src', 'https://example.test/project.jpg');
+    expect(image).toHaveAttribute('alt', '');
+    expect(image?.closest('[aria-hidden="true"]')).toBeInTheDocument();
+    unmount();
+    state.targets = [target()];
+    const fallback = render(
+      <MemoryRouter>
+        <AnnualTargetCards year={2025} />
+      </MemoryRouter>,
+    );
+    expect(fallback.container.querySelector('img')).toBeNull();
   });
 });

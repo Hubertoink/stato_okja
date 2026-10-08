@@ -6,6 +6,7 @@ import {
   targetRequirement,
   targetScopeLabel,
   targetStatuses,
+  targetPeriodLabel,
 } from '@/lib/annualTargets';
 
 export async function exportAnnualTargets(
@@ -27,6 +28,7 @@ export async function exportAnnualTargets(
     'Daten seit Abschluss geändert',
     'Begründung / Verantwortung',
     'Fachliche Einordnung',
+    'Zielzeitraum',
   ];
   const rows = targets.map((target) => [
     target.title,
@@ -41,9 +43,10 @@ export async function exportAnnualTargets(
     target.dataChanged ? 'Ja' : 'Nein',
     target.description,
     target.review,
+    targetPeriodLabel(target),
   ]);
   const note =
-    'Nur durchgeführte Aktivitäten bis zum Stichtag. Besuche zählen Teilnahmen; Prozentanteile beziehen sich auf Besuche mit Geschlechtszuordnung. Abschlusswerte bleiben gespeichert; aktuelle Werte können abweichen.';
+    'Nur durchgeführte Aktivitäten im jeweiligen Zielzeitraum bis zum Stichtag. Jahresübergreifende Ziele werden für ihren gesamten Zeitraum ausgewertet. Besuche zählen Teilnahmen; Prozentanteile beziehen sich auf Besuche mit Geschlechtszuordnung. Abschlusswerte bleiben gespeichert; aktuelle Werte können abweichen.';
   if (format === 'xlsx') {
     const XLSX = await import('xlsx-js-style');
     const workbook = XLSX.utils.book_new();
@@ -54,7 +57,7 @@ export async function exportAnnualTargets(
       ...rows,
     ]);
     sheet['!cols'] = headers.map((_, index) => ({ wch: [0, 1, 10, 11].includes(index) ? 42 : 24 }));
-    sheet['!autofilter'] = { ref: `A3:L${rows.length + 3}` };
+    sheet['!autofilter'] = { ref: `A3:M${rows.length + 3}` };
     for (let row = 2; row < rows.length + 3; row++)
       for (let column = 0; column < headers.length; column++) {
         const cell = sheet[XLSX.utils.encode_cell({ r: row, c: column })];
@@ -109,6 +112,7 @@ export async function exportAnnualTargets(
       y = 20;
     }
     paragraph(target.title, true);
+    paragraph(`Zeitraum: ${targetPeriodLabel(target)}`);
     paragraph(
       `${targetScopeLabel(target)} | ${targetMetrics[target.metric]} | ${targetStatuses[target.status]}`,
     );

@@ -1,6 +1,18 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Target, Download, Pencil } from 'lucide-react';
+import {
+  Plus,
+  Target,
+  Download,
+  Pencil,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Check,
+  Archive,
+  RotateCcw,
+  Copy,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { usePublicConfig } from '@/lib/publicConfig';
 import { useOrgScopeKey } from '@/lib/orgScope';
@@ -24,12 +36,16 @@ import {
   formatTargetValue,
   targetDifference,
   targetError,
+  targetPeriod,
+  targetPeriodLabel,
+  targetMonths,
+  targetCanClose,
   useAnnualTargets,
   useAnnualTarget,
   useTargetMutation,
 } from '@/lib/annualTargets';
 import Modal from '@/components/Modal';
-import { Button } from '@/components/ui/Button';
+import { Button, IconButton } from '@/components/ui/Button';
 import { Input, Select, Textarea, FieldLabel } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatisticsTabs, TargetProgress, AnnualTargetCard } from '@/components/AnnualTargetCards';
@@ -133,42 +149,48 @@ function AnnualTargetsContent() {
           )}
         </div>
         <div className="mt-5 flex flex-wrap items-end gap-3">
-          <FieldLabel className="w-32">
-            Zieljahr
-            <Input
-              aria-label="Zieljahr"
-              type="number"
-              min={2000}
-              max={2200}
-              key={year}
-              defaultValue={year}
-              onBlur={(event) => {
-                const value = Number(event.target.value);
-                if (Number.isInteger(value) && value >= 2000 && value <= 2200) {
-                  const next = new URLSearchParams(params);
-                  next.set('year', String(value));
-                  next.delete('target');
-                  setParams(next);
-                } else {
-                  event.target.value = String(year);
-                }
-              }}
-            />
-          </FieldLabel>
-          <Button
-            variant="secondary"
-            disabled={year <= 2000}
-            onClick={() => setParam('year', String(year - 1))}
-          >
-            Vorjahr
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={year >= 2200}
-            onClick={() => setParam('year', String(year + 1))}
-          >
-            Folgejahr
-          </Button>
+          <div className="flex items-end gap-2">
+            <IconButton
+              variant="secondary"
+              aria-label="Vorjahr"
+              title="Vorjahr"
+              disabled={year <= 2000}
+              onClick={() => setParam('year', String(year - 1))}
+            >
+              <ChevronLeft aria-hidden="true" />
+            </IconButton>
+            <FieldLabel className="w-32">
+              Zieljahr
+              <Input
+                aria-label="Zieljahr"
+                type="number"
+                min={2000}
+                max={2200}
+                key={year}
+                defaultValue={year}
+                onBlur={(event) => {
+                  const value = Number(event.target.value);
+                  if (Number.isInteger(value) && value >= 2000 && value <= 2200) {
+                    const next = new URLSearchParams(params);
+                    next.set('year', String(value));
+                    next.delete('target');
+                    setParams(next);
+                  } else {
+                    event.target.value = String(year);
+                  }
+                }}
+              />
+            </FieldLabel>
+            <IconButton
+              variant="secondary"
+              aria-label="Folgejahr"
+              title="Folgejahr"
+              disabled={year >= 2200}
+              onClick={() => setParam('year', String(year + 1))}
+            >
+              <ChevronRight aria-hidden="true" />
+            </IconButton>
+          </div>
           <Button
             variant="secondary"
             disabled={exporting || !targets.length}
@@ -269,10 +291,11 @@ function AnnualTargetsContent() {
       <details className="annual-target-notes">
         <summary>Wie werden die Jahresziele berechnet?</summary>
         <p>
-          Istwerte zählen durchgeführte Aktivitäten vom 01.01. bis zum Stichtag, höchstens bis zum
-          31.12. des Zieljahres. Besuche sind Teilnahmen, keine unterschiedlichen Personen.
-          Prozentanteile beziehen sich auf Besuche mit Geschlechtszuordnung. Sich überschneidende
-          Ziele werden einzeln ausgewertet.
+          Istwerte zählen durchgeführte Aktivitäten im Zielzeitraum bis zum Stichtag. Ohne eigenen
+          Zeitraum gilt das ganze Zieljahr. Jahresübergreifende Ziele erscheinen in jedem
+          betroffenen Jahr; ihre Werte beziehen sich immer auf den gesamten Zielzeitraum. Besuche
+          sind Teilnahmen, keine unterschiedlichen Personen. Prozentanteile beziehen sich auf
+          Besuche mit Geschlechtszuordnung. Sich überschneidende Ziele werden einzeln ausgewertet.
         </p>
       </details>
       {editor && isAdmin && (
@@ -281,8 +304,9 @@ function AnnualTargetsContent() {
           year={year}
           scope={scope}
           onClose={() => setEditor(null)}
-          onSaved={() => {
+          onSaved={(savedYear) => {
             setEditor(null);
+            if (savedYear !== year) setParam('year', String(savedYear));
           }}
         />
       )}
@@ -310,13 +334,15 @@ function TargetEditor({
   year: number;
   scope: TargetScope;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (year: number) => void;
 }) {
   const [form, setForm] = useState<TargetPayload>(() =>
     initial
       ? {
           title: initial.title,
           year: initial.year,
+          dateFrom: initial.dateFrom ?? null,
+          dateTo: initial.dateTo ?? null,
           metric: initial.metric,
           scope: initial.scope,
           rule: initial.rule,
@@ -330,6 +356,8 @@ function TargetEditor({
       : {
           title: '',
           year,
+          dateFrom: null,
+          dateTo: null,
           metric: 'duration_hours',
           scope,
           rule: 'min',
@@ -349,6 +377,7 @@ function TargetEditor({
           : 'all',
   );
   const [activitySearch, setActivitySearch] = useState('');
+  const [customPeriod, setCustomPeriod] = useState(!!initial?.dateFrom);
   const [activityPage, setActivityPage] = useState(1);
   const [pickActivity, setPickActivity] = useState(false);
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
@@ -366,7 +395,10 @@ function TargetEditor({
   const save = (event: React.FormEvent) => {
     event.preventDefault();
     if (projectPickerOpen || (scopeMode === 'project' && !form.scope.projectId)) return;
-    mutation.mutate({ action: 'save', id: initial?.id, payload: form }, { onSuccess: onSaved });
+    mutation.mutate(
+      { action: 'save', id: initial?.id, payload: form },
+      { onSuccess: () => onSaved(form.year) },
+    );
   };
   return (
     <>
@@ -398,7 +430,7 @@ function TargetEditor({
                 required
                 min={2000}
                 max={2200}
-                disabled={initial?.status === 'active'}
+                disabled={initial?.status === 'active' || customPeriod}
                 value={form.year}
                 onChange={(e) => change('year', Number(e.target.value))}
               />
@@ -417,6 +449,66 @@ function TargetEditor({
               </Select>
             </FieldLabel>
           </div>
+          <FieldLabel>
+            Zielzeitraum
+            <Select
+              value={customPeriod ? 'custom' : 'year'}
+              onChange={(e) => {
+                const custom = e.target.value === 'custom';
+                setCustomPeriod(custom);
+                setForm((prev) => ({
+                  ...prev,
+                  dateFrom: custom ? `${prev.year}-01-01` : null,
+                  dateTo: custom ? `${prev.year}-12-31` : null,
+                }));
+              }}
+            >
+              <option value="year">Ganzes Zieljahr</option>
+              <option value="custom">Eigener Zeitraum</option>
+            </Select>
+          </FieldLabel>
+          {customPeriod && (
+            <div className="space-y-2">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FieldLabel>
+                  Von
+                  <Input
+                    type="date"
+                    required
+                    min={initial?.status === 'active' ? `${form.year}-01-01` : '2000-01-01'}
+                    max={initial?.status === 'active' ? `${form.year}-12-31` : '2200-12-31'}
+                    value={form.dateFrom || ''}
+                    onChange={(e) => {
+                      const from = e.target.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        dateFrom: from,
+                        year:
+                          from && initial?.status !== 'active'
+                            ? Number(from.slice(0, 4))
+                            : prev.year,
+                      }));
+                    }}
+                  />
+                </FieldLabel>
+                <FieldLabel>
+                  Bis
+                  <Input
+                    type="date"
+                    required
+                    min={form.dateFrom || '2000-01-01'}
+                    max="2200-12-31"
+                    value={form.dateTo || ''}
+                    onChange={(e) => change('dateTo', e.target.value)}
+                  />
+                </FieldLabel>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Start- und Endtag zählen mit. Das Zieljahr entspricht dem Beginn;
+                jahresübergreifende Ziele erscheinen auch in den Folgejahren.
+              </p>
+            </div>
+          )}
           <FieldLabel>
             Geltungsbereich
             <Select
@@ -523,7 +615,8 @@ function TargetEditor({
                     }}
                   />
                   <TargetActivityPicker
-                    year={form.year}
+                    from={targetPeriod(form).from}
+                    to={targetPeriod(form).to}
                     search={activitySearch}
                     page={activityPage}
                     onPage={setActivityPage}
@@ -550,6 +643,11 @@ function TargetEditor({
             </FieldLabel>
             <FieldLabel>
               {form.rule === 'range' ? 'Untere Grenze' : 'Zielwert'}
+              {form.metric.endsWith('_percent')
+                ? ' (%)'
+                : form.metric === 'duration_hours'
+                  ? ' (h)'
+                  : ''}
               <Input
                 type="number"
                 required
@@ -569,6 +667,11 @@ function TargetEditor({
             {form.rule === 'range' && (
               <FieldLabel>
                 Obere Grenze
+                {form.metric.endsWith('_percent')
+                  ? ' (%)'
+                  : form.metric === 'duration_hours'
+                    ? ' (h)'
+                    : ''}
                 <Input
                   required
                   type="number"
@@ -587,6 +690,12 @@ function TargetEditor({
               </FieldLabel>
             )}
           </div>
+          {form.metric.endsWith('_percent') && (
+            <p className="text-xs text-[var(--text-muted)]">
+              Zielwert zwischen 0 und 100 %. Beispiel: 30 entspricht 30 % der Besuche mit
+              Geschlechtszuordnung.
+            </p>
+          )}
           <FieldLabel>
             Begründung / Verantwortung (optional)
             <Textarea
@@ -659,23 +768,21 @@ function TargetEditor({
 }
 
 function TargetActivityPicker({
-  year,
+  from,
+  to,
   search,
   page,
   onPage,
   onPick,
 }: {
-  year: number;
+  from: string;
+  to: string;
   search: string;
   page: number;
   onPage: (page: number) => void;
   onPick: (id: string) => void;
 }) {
-  const query = useActivitiesPaged(
-    { from: `${year}-01-01`, to: `${year}-12-31`, search, order: 'desc' },
-    page,
-    10,
-  );
+  const query = useActivitiesPaged({ from, to, search, order: 'desc' }, page, 10);
   return (
     <div className="space-y-2">
       {query.isPending ? (
@@ -695,7 +802,9 @@ function TargetActivityPicker({
               {activity.title || activity.project?.title || targetTypes[activity.type]}
             </Button>
           ))}
-          {!query.data.total && <p className="text-sm">Keine Aktivitäten im Zieljahr gefunden.</p>}
+          {!query.data.total && (
+            <p className="text-sm">Keine Aktivitäten im Zielzeitraum gefunden.</p>
+          )}
           <div className="flex gap-2">
             <Button variant="secondary" disabled={page === 1} onClick={() => onPage(page - 1)}>
               Zurück
@@ -730,6 +839,7 @@ function TargetDetail({
   const [action, setAction] = useState<'activate' | 'close' | 'reopen' | 'copy' | null>(null);
   const [reason, setReason] = useState('');
   const [copied, setCopied] = useState<number | null>(null);
+  const [activitiesExpanded, setActivitiesExpanded] = useState(false);
   const target = query.data;
   const execute = (event: React.FormEvent) => {
     event.preventDefault();
@@ -748,7 +858,7 @@ function TargetDetail({
   };
   const actionLabel = {
     activate: 'Ziel festlegen',
-    close: 'Jahresabschluss speichern',
+    close: 'Abschluss speichern',
     reopen: 'Wieder öffnen',
     copy: 'Als Entwurf übernehmen',
   };
@@ -762,6 +872,74 @@ function TargetDetail({
       maxWidth="4xl"
       variant="information"
       contentClassName="pt-4"
+      headerActions={
+        isAdmin && target ? (
+          <div className="annual-target-header-actions">
+            {target.status !== 'closed' && (
+              <IconButton
+                variant="ghost"
+                size="icon-compact"
+                aria-label="Bearbeiten"
+                title="Bearbeiten"
+                disabled={mutation.isPending}
+                onClick={() => onEdit(target)}
+              >
+                <Pencil aria-hidden="true" />
+              </IconButton>
+            )}
+            {target.status === 'draft' && (
+              <IconButton
+                size="icon-compact"
+                aria-label="Ziel festlegen"
+                title="Ziel festlegen"
+                disabled={mutation.isPending}
+                onClick={() => setAction('activate')}
+              >
+                <Check aria-hidden="true" />
+              </IconButton>
+            )}
+            {target.status === 'active' && (
+              <IconButton
+                size="icon-compact"
+                aria-label={target.dateFrom ? 'Ziel abschließen' : 'Jahr abschließen'}
+                title={
+                  targetCanClose(target)
+                    ? 'Ziel abschließen'
+                    : `Abschluss nach dem ${dateLabel(targetPeriod(target).to)} möglich`
+                }
+                disabled={mutation.isPending || !targetCanClose(target)}
+                onClick={() => setAction('close')}
+              >
+                <Archive aria-hidden="true" />
+              </IconButton>
+            )}
+            {target.status === 'closed' && (
+              <IconButton
+                variant="ghost"
+                size="icon-compact"
+                aria-label="Wieder öffnen"
+                title="Wieder öffnen"
+                disabled={mutation.isPending}
+                onClick={() => setAction('reopen')}
+              >
+                <RotateCcw aria-hidden="true" />
+              </IconButton>
+            )}
+            {!target.scope.activityId && Number(targetPeriod(target).to.slice(0, 4)) < 2200 && (
+              <IconButton
+                variant="ghost"
+                size="icon-compact"
+                aria-label={`Für ${target.year + 1} übernehmen`}
+                title={`Für ${target.year + 1} übernehmen`}
+                disabled={mutation.isPending}
+                onClick={() => setAction('copy')}
+              >
+                <Copy aria-hidden="true" />
+              </IconButton>
+            )}
+          </div>
+        ) : undefined
+      }
     >
       {query.isPending ? (
         <p>Lädt …</p>
@@ -770,45 +948,13 @@ function TargetDetail({
       ) : (
         target && (
           <div className="space-y-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="mb-2 text-sm">
-                  {target.year} · {targetStatuses[target.status]} · {targetScopeLabel(target)}
-                </p>
-                <TargetProgress target={target} />
-                <p className="mt-4 text-sm font-medium">{targetDifference(target)}</p>
-              </div>
-              {isAdmin && (
-                <div className="flex max-w-md flex-wrap gap-2">
-                  {target.status !== 'closed' && (
-                    <Button variant="secondary" onClick={() => onEdit(target)}>
-                      <Pencil />
-                      Bearbeiten
-                    </Button>
-                  )}
-                  {target.status === 'draft' && (
-                    <Button onClick={() => setAction('activate')}>Ziel festlegen</Button>
-                  )}
-                  {target.status === 'active' && (
-                    <Button
-                      disabled={target.year >= targetYear()}
-                      onClick={() => setAction('close')}
-                    >
-                      Jahr abschließen
-                    </Button>
-                  )}
-                  {target.status === 'closed' && (
-                    <Button variant="secondary" onClick={() => setAction('reopen')}>
-                      Wieder öffnen
-                    </Button>
-                  )}
-                  {!target.scope.activityId && target.year < 2200 && (
-                    <Button variant="secondary" onClick={() => setAction('copy')}>
-                      Für {target.year + 1} übernehmen
-                    </Button>
-                  )}
-                </div>
-              )}
+            <div className="annual-target-detail-summary">
+              <p className="mb-4 text-sm text-[var(--text-secondary)]">
+                {targetPeriodLabel(target)} · {targetStatuses[target.status]} ·{' '}
+                {targetScopeLabel(target)}
+              </p>
+              <TargetProgress target={target} goalFirst />
+              <p className="mt-4 text-sm font-medium">{targetDifference(target)}</p>
             </div>
             {copied && (
               <p role="status">
@@ -830,7 +976,7 @@ function TargetDetail({
                 <h3 className="font-medium">{actionLabel[action]}</h3>
                 <p className="text-sm">
                   {action === 'close'
-                    ? 'Die Jahreswerte werden mit deiner Einordnung als Abschlussstand gespeichert.'
+                    ? 'Die Werte des Zielzeitraums werden mit deiner Einordnung als Abschlussstand gespeichert.'
                     : action === 'reopen'
                       ? 'Der bisherige Abschluss bleibt im Änderungsverlauf erhalten. Nach Korrekturen kannst du das Ziel erneut abschließen.'
                       : action === 'copy'
@@ -889,9 +1035,11 @@ function TargetDetail({
             <div className="rounded-xl bg-[var(--surface-2)] p-4 text-sm">
               <h3 className="font-semibold">Berechnungsgrundlage</h3>
               <p className="mt-2">
-                {targetMetrics[target.metric]} · {targetScopeLabel(target)} · 01.01.{target.year}{' '}
-                bis {dateLabel(target.result.asOf)} · {target.result.activityCount} durchgeführte
-                Aktivitäten.
+                {targetMetrics[target.metric]} · {targetScopeLabel(target)} ·{' '}
+                {targetPeriod(target).from > target.result.asOf
+                  ? `Auswertung ab ${dateLabel(targetPeriod(target).from)}`
+                  : `${dateLabel(targetPeriod(target).from)} bis ${dateLabel(target.result.asOf)}`}{' '}
+                · {target.result.activityCount} durchgeführte Aktivitäten.
               </p>
               <p className="mt-2">
                 {target.metric === 'duration_hours'
@@ -903,8 +1051,8 @@ function TargetDetail({
                       : 'Summe der Besuche des gewählten Geschlechts ÷ Summe aller Besuche mit Geschlechtszuordnung × 100. Es wird kein Durchschnitt einzelner Prozentwerte gebildet.'}
               </p>
               <p className="mt-2">
-                Ein Zwischenstand ist keine Jahresprognose. Der Jahresabschluss ist nach Ende des
-                Zieljahres möglich.
+                Ein Zwischenstand ist keine Prognose. Der Abschluss ist nach dem{' '}
+                {dateLabel(targetPeriod(target).to)} möglich.
               </p>
             </div>
             <div>
@@ -912,18 +1060,23 @@ function TargetDetail({
                 Monatswerte{target.status === 'closed' ? ' zum Abschluss' : ''}
               </h3>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {Array.from({ length: 12 }, (_, index) => {
-                  const month = `${target.year}-${String(index + 1).padStart(2, '0')}`;
+                {targetMonths(target).map((month) => {
                   const row = target.result.series.find((entry) => entry.month === month);
-                  const future = month > target.result.asOf.slice(0, 7);
+                  const future =
+                    month > target.result.asOf.slice(0, 7) ||
+                    targetPeriod(target).from > target.result.asOf;
                   return (
                     <div
                       className="rounded-xl border border-[var(--border-subtle)] p-3"
                       key={month}
                     >
                       <p className="text-xs text-[var(--text-secondary)]">
-                        {new Date(target.year, index, 1).toLocaleDateString('de-DE', {
+                        {new Date(`${month}-01T12:00:00`).toLocaleDateString('de-DE', {
                           month: 'long',
+                          ...(targetPeriod(target).from.slice(0, 4) !==
+                          targetPeriod(target).to.slice(0, 4)
+                            ? { year: 'numeric' as const }
+                            : {}),
                         })}
                       </p>
                       <p className="mt-1 text-sm font-medium">
@@ -939,10 +1092,36 @@ function TargetDetail({
                 })}
               </div>
             </div>
-            <AnnualTargetActivities key={id} id={id} />
-            <div>
-              <h3 className="mb-2 font-semibold">Änderungsverlauf</h3>
-              <ol className="space-y-3">
+            <details
+              className="annual-target-disclosure"
+              onToggle={(event) => setActivitiesExpanded(event.currentTarget.open)}
+            >
+              <summary>
+                <span>
+                  Zugehörige Aktivitäten{' '}
+                  <span className="annual-target-disclosure-count">
+                    {target.current.activityCount}
+                  </span>
+                </span>
+                <ChevronDown aria-hidden="true" />
+              </summary>
+              {activitiesExpanded && (
+                <div className="annual-target-disclosure-content">
+                  <AnnualTargetActivities key={id} id={id} />
+                </div>
+              )}
+            </details>
+            <details className="annual-target-disclosure">
+              <summary>
+                <span>
+                  Änderungsverlauf{' '}
+                  <span className="annual-target-disclosure-count">
+                    {target.history?.length ?? 0}
+                  </span>
+                </span>
+                <ChevronDown aria-hidden="true" />
+              </summary>
+              <ol className="annual-target-disclosure-content space-y-3">
                 {target.history
                   ?.slice()
                   .reverse()
@@ -960,6 +1139,9 @@ function TargetDetail({
                         {targetMetrics[entry.definition.metric]} ·{' '}
                         {targetRequirement(entry.definition)} ·{' '}
                         {targetStatuses[entry.definition.status]}
+                      </p>
+                      <p className="mt-1 text-xs">
+                        Zeitraum: {targetPeriodLabel(entry.definition)}
                       </p>
                       <p className="mt-1 text-xs">
                         Bezug:{' '}
@@ -988,7 +1170,7 @@ function TargetDetail({
                     </li>
                   ))}
               </ol>
-            </div>
+            </details>
           </div>
         )
       )}

@@ -1,4 +1,25 @@
-import type { AnnualTargetMetric, AnnualTargetRule } from './entities/annual-target.entity';
+import type {
+  AnnualTarget,
+  AnnualTargetMetric,
+  AnnualTargetRule,
+} from './entities/annual-target.entity';
+
+export function annualTargetPeriod(
+  target: Pick<AnnualTarget, 'year'> & Partial<Pick<AnnualTarget, 'dateFrom' | 'dateTo'>>,
+) {
+  return {
+    from: target.dateFrom ?? `${target.year}-01-01`,
+    to: target.dateTo ?? `${target.year}-12-31`,
+  };
+}
+
+export function shiftTargetDate(date: string | null, years: number) {
+  if (!date) return null;
+  const [year, month, day] = date.split('-').map(Number);
+  const nextYear = year + years;
+  const lastDay = new Date(Date.UTC(nextYear, month, 0)).getUTCDate();
+  return `${nextYear}-${String(month).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+}
 
 export type TargetTotals = {
   activities: number;

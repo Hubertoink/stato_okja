@@ -7,6 +7,8 @@ import {
   IsEnum,
   IsIn,
   IsInt,
+  IsDateString,
+  Matches,
   IsNotEmpty,
   IsNumber,
   IsObject,
@@ -36,6 +38,10 @@ export class AnnualTargetScopeDto {
 export class AnnualTargetDto {
   @IsString() @IsNotEmpty() @MaxLength(120) title!: string;
   @IsInt() @Min(2000) @Max(2200) year!: number;
+  @IsOptional() @IsDateString({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) dateFrom?:
+    string | null;
+  @IsOptional() @IsDateString({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) dateTo?:
+    string | null;
   @IsIn([
     'duration_hours',
     'participant_total',

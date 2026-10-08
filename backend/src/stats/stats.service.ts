@@ -220,15 +220,15 @@ export class StatsService {
     return 0;
   }
 
-  private async annualTargetQuery(orgId: string | null, year: number, scope: AnnualTargetScope, asOf: string) {
-    const qb = await this.createFilteredActivityQuery(`${year}-01-01`, asOf, orgId, undefined, scope.projectId);
+  private async annualTargetQuery(orgId: string | null, year: number, scope: AnnualTargetScope, asOf: string, dateFrom = `${year}-01-01`) {
+    const qb = await this.createFilteredActivityQuery(dateFrom, asOf, orgId, undefined, scope.projectId);
     if (scope.types?.length) qb.andWhere('activity.type IN (:...targetTypes)', { targetTypes: scope.types });
     if (scope.activityId) qb.andWhere('activity.id = :targetActivityId', { targetActivityId: scope.activityId });
     return qb;
   }
 
-  async getAnnualTargetSnapshot(orgId: string | null, year: number, scope: AnnualTargetScope, metric: AnnualTargetMetric, asOf: string): Promise<AnnualTargetSnapshot> {
-    const qb = await this.annualTargetQuery(orgId, year, scope, asOf);
+  async getAnnualTargetSnapshot(orgId: string | null, year: number, scope: AnnualTargetScope, metric: AnnualTargetMetric, asOf: string, dateFrom = `${year}-01-01`): Promise<AnnualTargetSnapshot> {
+    const qb = await this.annualTargetQuery(orgId, year, scope, asOf, dateFrom);
     const monthExpression = 'SUBSTR(CAST(activity.date AS varchar), 1, 7)';
     const rows = await qb.select(monthExpression, 'month')
       .addSelect('COUNT(*)', 'activities')
@@ -250,8 +250,8 @@ export class StatsService {
     return { value: annualTargetValue(metric, total), asOf, activityCount: total.activities, series };
   }
 
-  async getAnnualTargetActivities(orgId: string | null, year: number, scope: AnnualTargetScope, asOf: string, page: number) {
-    const qb = await this.annualTargetQuery(orgId, year, scope, asOf);
+  async getAnnualTargetActivities(orgId: string | null, year: number, scope: AnnualTargetScope, asOf: string, page: number, dateFrom = `${year}-01-01`) {
+    const qb = await this.annualTargetQuery(orgId, year, scope, asOf, dateFrom);
     const [items, total] = await qb.select(['activity.id', 'activity.title', 'activity.date', 'activity.type', 'activity.durationMinutes', 'activity.countTotal'])
       .orderBy('activity.date', 'DESC').addOrderBy('activity.id', 'ASC').skip((page - 1) * 25).take(25).getManyAndCount();
     return { items, total, page, pageSize: 25 };

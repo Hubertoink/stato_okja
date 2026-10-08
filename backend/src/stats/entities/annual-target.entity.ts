@@ -31,6 +31,8 @@ export type AnnualTargetRevision = {
   definition: {
     title: string;
     year: number;
+    dateFrom?: string | null;
+    dateTo?: string | null;
     metric: AnnualTargetMetric;
     scope: AnnualTargetScope;
     rule: AnnualTargetRule;
@@ -50,6 +52,8 @@ export class AnnualTarget {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column({ type: 'uuid', nullable: true }) orgId!: string | null;
   @Column({ type: 'int' }) year!: number;
+  @Column({ type: 'date', nullable: true }) dateFrom!: string | null;
+  @Column({ type: 'date', nullable: true }) dateTo!: string | null;
   @Column({ type: 'varchar', length: 120 }) title!: string;
   @Column({ type: 'varchar', length: 40 }) metric!: AnnualTargetMetric;
   @Column({ type: 'simple-json' }) scope!: AnnualTargetScope;

@@ -32,6 +32,8 @@ export type TargetSnapshot = {
 export type TargetPayload = {
   title: string;
   year: number;
+  dateFrom?: string | null;
+  dateTo?: string | null;
   metric: TargetMetric;
   scope: TargetScope;
   rule: 'min' | 'max' | 'range';
@@ -49,6 +51,7 @@ export type AnnualTarget = TargetPayload & {
   status: keyof typeof targetStatuses;
   review: string;
   scopeLabel: string;
+  projectImageUrl?: string | null;
   result: TargetSnapshot;
   current: TargetSnapshot;
   snapshot: TargetSnapshot | null;
@@ -108,6 +111,41 @@ export function targetYear() {
       new Date(),
     ),
   );
+}
+
+export function targetPeriod(target: Pick<TargetPayload, 'year' | 'dateFrom' | 'dateTo'>) {
+  return {
+    from: target.dateFrom || `${target.year}-01-01`,
+    to: target.dateTo || `${target.year}-12-31`,
+  };
+}
+export function targetPeriodLabel(target: Pick<TargetPayload, 'year' | 'dateFrom' | 'dateTo'>) {
+  const { from, to } = targetPeriod(target);
+  return `${from.split('-').reverse().join('.')} – ${to.split('-').reverse().join('.')}`;
+}
+export function targetMonths(target: Pick<TargetPayload, 'year' | 'dateFrom' | 'dateTo'>) {
+  const { from, to } = targetPeriod(target);
+  const months: string[] = [];
+  let year = Number(from.slice(0, 4));
+  let month = Number(from.slice(5, 7));
+  while (`${year}-${String(month).padStart(2, '0')}` <= to.slice(0, 7)) {
+    months.push(`${year}-${String(month).padStart(2, '0')}`);
+    month++;
+    if (month > 12) {
+      month = 1;
+      year++;
+    }
+  }
+  return months;
+}
+export function targetCanClose(target: Pick<TargetPayload, 'year' | 'dateFrom' | 'dateTo'>) {
+  const today = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  return today > targetPeriod(target).to;
 }
 
 export function useAnnualTargets(year: number) {

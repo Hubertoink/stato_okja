@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import ProtectedImage from '@/components/ProtectedImage';
 import { useAuth } from '@/lib/auth';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
@@ -26,6 +27,7 @@ import {
   targetMetrics,
   targetScopeLabel,
   targetStatuses,
+  targetPeriodLabel,
 } from '@/lib/annualTargets';
 import './AnnualTargetCards.css';
 
@@ -72,7 +74,13 @@ function targetTone(target: AnnualTarget) {
   return target.status === 'closed' ? 'warning' : 'neutral';
 }
 
-export function TargetProgress({ target }: { target: AnnualTarget }) {
+export function TargetProgress({
+  target,
+  goalFirst = false,
+}: {
+  target: AnnualTarget;
+  goalFirst?: boolean;
+}) {
   const value = target.result.value;
   const isShare = target.metric.endsWith('_percent');
   const progress =
@@ -94,6 +102,27 @@ export function TargetProgress({ target }: { target: AnnualTarget }) {
       />
     );
   };
+  const actualValue = (
+    <div className="annual-target-actual">
+      <span className="annual-target-value-label">
+        {target.status === 'closed' ? 'Abschlusswert' : 'Istwert'}
+      </span>
+      <strong
+        className={`annual-target-value ${value === null ? 'annual-target-value--empty' : ''}`}
+      >
+        {formatTargetValue(value, target.metric)}
+      </strong>
+    </div>
+  );
+  const requirement = (
+    <div className="annual-target-requirement">
+      <span className="annual-target-value-label">
+        {target.dateFrom ? 'Zielvorgabe' : 'Jahresvorgabe'}
+      </span>
+      <span className="annual-target-requirement-value">{targetRequirement(target)}</span>
+      {isShare && <span className="annual-target-marker-legend">Zielmarke im Kreis</span>}
+    </div>
+  );
   return (
     <div className={`annual-target-progress annual-target-tone--${targetTone(target)}`}>
       <div
@@ -110,7 +139,7 @@ export function TargetProgress({ target }: { target: AnnualTarget }) {
             ? undefined
             : isShare
               ? `${formatTargetValue(value, target.metric)}; ${targetRequirement(target)}`
-              : `${progress!.toLocaleString('de-DE', { maximumFractionDigits: 1 })} % der Jahresvorgabe`
+              : `${progress!.toLocaleString('de-DE', { maximumFractionDigits: 1 })} % der ${target.dateFrom ? 'Zielvorgabe' : 'Jahresvorgabe'}`
         }
       >
         <svg viewBox="0 0 140 140" aria-hidden="true" focusable="false">
@@ -162,22 +191,11 @@ export function TargetProgress({ target }: { target: AnnualTarget }) {
           )}
         </div>
       </div>
-      <div className="annual-target-values">
-        <div>
-          <span className="annual-target-value-label">
-            {target.status === 'closed' ? 'Abschlusswert' : 'Istwert'}
-          </span>
-          <strong
-            className={`annual-target-value ${value === null ? 'annual-target-value--empty' : ''}`}
-          >
-            {formatTargetValue(value, target.metric)}
-          </strong>
-        </div>
-        <div className="annual-target-requirement">
-          <span className="annual-target-value-label">Jahresvorgabe</span>
-          <span>{targetRequirement(target)}</span>
-          {isShare && <span className="annual-target-marker-legend">Zielmarke im Kreis</span>}
-        </div>
+      <div
+        className={`annual-target-values ${goalFirst ? 'annual-target-values--goal-first' : ''}`}
+      >
+        {goalFirst ? requirement : actualValue}
+        {goalFirst ? actualValue : requirement}
       </div>
     </div>
   );
@@ -208,6 +226,11 @@ export function AnnualTargetCard({
       className={`annual-target-card annual-target-tone--${tone}`}
       aria-labelledby={`annual-target-title-${target.id}`}
     >
+      {target.scope.projectId && target.projectImageUrl && (
+        <div className="annual-target-project-backdrop" aria-hidden="true">
+          <ProtectedImage src={target.projectImageUrl} alt="" loading="lazy" />
+        </div>
+      )}
       <div className="annual-target-card-top">
         <span className="annual-target-metric-icon" aria-hidden="true">
           <Icon />
@@ -228,6 +251,10 @@ export function AnnualTargetCard({
         <div>
           <dt>Kennzahl</dt>
           <dd>{targetMetrics[target.metric]}</dd>
+        </div>
+        <div>
+          <dt>Zeitraum</dt>
+          <dd>{targetPeriodLabel(target)}</dd>
         </div>
       </dl>
       <div className="annual-target-card-performance">
@@ -254,11 +281,11 @@ export function AnnualTargetCard({
                   ? target.evaluation.met === null
                     ? 'Jahresabschluss nicht bewertbar'
                     : target.evaluation.met
-                      ? 'Jahresziel erreicht'
-                      : 'Jahresziel nicht erreicht'
+                      ? 'Ziel erreicht'
+                      : 'Ziel nicht erreicht'
                   : target.evaluation.met
                     ? 'Vorgabe bisher erfüllt'
-                    : 'Stand im laufenden Zieljahr'}
+                    : 'Stand im laufenden Zielzeitraum'}
             </span>
           </div>
         </div>

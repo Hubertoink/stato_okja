@@ -5,8 +5,11 @@ import { EditorActions } from '@/components/ui/EditorFrame';
 import { FieldLabel, Textarea } from '@/components/ui/Field';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { Target } from 'lucide-react';
+import { TargetProgress } from '@/components/AnnualTargetCards';
 import {
+  targetDifference,
   targetError,
+  targetMetrics,
   targetPeriodLabel,
   targetRequirement,
   targetScopeLabel,
@@ -84,6 +87,29 @@ export default function AnnualTargetActionDialog({
               </p>
             </div>
           </div>
+          {action === 'close' && (
+            <section className="annual-target-detail-summary" aria-label="KPI und Erreichungsgrad">
+              <p className="mb-4 text-sm text-[var(--text-secondary)]">
+                Kennzahl: <strong>{targetMetrics[target.metric]}</strong>
+              </p>
+              <TargetProgress target={target} goalFirst />
+              <dl className="mt-4 text-sm">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <dt className="text-[var(--text-secondary)]">Erreichungsgrad:</dt>
+                  <dd className="font-semibold">
+                    {target.evaluation.met === null
+                      ? 'Nicht bewertbar'
+                      : target.evaluation.met
+                        ? 'Ziel erreicht'
+                        : 'Ziel nicht erreicht'}
+                  </dd>
+                </div>
+              </dl>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                {targetDifference(target)}
+              </p>
+            </section>
+          )}
           <p className="text-sm text-[var(--text-secondary)]">
             {action === 'close'
               ? 'Die Werte des Zielzeitraums werden mit deiner Einordnung als Abschlussstand gespeichert.'

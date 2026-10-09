@@ -219,6 +219,96 @@ describe('Annual target UI permissions and flows', () => {
     expect(screen.getByRole('dialog', { name: 'Stunden Offene Tür' })).toBeInTheDocument();
     expect(screen.getByText(/Entwurf für 2026 angelegt/)).toBeInTheDocument();
   });
+  it.each([
+    {
+      name: 'an exceeded minimum',
+      overrides: {},
+      metric: 'Aktivitätsstunden',
+      value: '120 h',
+      result: 'Ziel erreicht',
+      gauge: 'progressbar',
+      gaugeValue: '100',
+    },
+    {
+      name: 'a gender share below its minimum',
+      overrides: {
+        metric: 'female_share_percent',
+        target: 30,
+        result: { value: 27, asOf: '2025-12-31', activityCount: 10, series: [] },
+        evaluation: { met: false, difference: -3 },
+      },
+      metric: 'Weiblicher Besuchsanteil',
+      value: '27 %',
+      result: 'Ziel nicht erreicht',
+      gauge: 'meter',
+      gaugeValue: '27',
+    },
+    {
+      name: 'an upper limit',
+      overrides: { rule: 'max', target: 150, evaluation: { met: true, difference: 30 } },
+      metric: 'Aktivitätsstunden',
+      value: '120 h',
+      result: 'Ziel erreicht',
+    },
+    {
+      name: 'a target corridor',
+      overrides: { rule: 'range', upperTarget: 110, evaluation: { met: false, difference: -10 } },
+      metric: 'Aktivitätsstunden',
+      value: '120 h',
+      result: 'Ziel nicht erreicht',
+    },
+    {
+      name: 'missing data',
+      overrides: {
+        result: { value: null, asOf: '2025-12-31', activityCount: 0, series: [] },
+        evaluation: { met: null, difference: null },
+      },
+      metric: 'Aktivitätsstunden',
+      value: 'Noch nicht berechenbar',
+      result: 'Nicht bewertbar',
+    },
+  ] satisfies Array<{
+    name: string;
+    overrides: Partial<AnnualTarget>;
+    metric: string;
+    value: string;
+    result: string;
+    gauge?: 'meter' | 'progressbar';
+    gaugeValue?: string;
+  }>)('shows KPI and achievement before the closing review for $name', (scenario) => {
+    state.targets = [target(scenario.overrides)];
+    show('/statistics/targets?year=2025&target=t1');
+    fireEvent.click(screen.getByRole('button', { name: 'Jahr abschließen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Ziel abschließen' });
+    const performance = within(dialog).getByRole('region', { name: 'KPI und Erreichungsgrad' });
+    expect(within(performance).getByText(scenario.metric)).toBeInTheDocument();
+    expect(
+      within(performance).getByText(scenario.value, { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(within(performance).getByText('Erreichungsgrad:')).toBeInTheDocument();
+    expect(within(performance).getByText(scenario.result)).toBeInTheDocument();
+    if ('gauge' in scenario) {
+      expect(within(performance).getByRole(scenario.gauge!)).toHaveAttribute(
+        'aria-valuenow',
+        scenario.gaugeValue,
+      );
+    }
+    const review = within(dialog).getByRole('textbox', { name: 'Fachliche Einordnung' });
+    expect(
+      performance.compareDocumentPosition(review) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.change(review, { target: { value: 'Einordnung anhand der angezeigten Kennzahl.' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Abschluss speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(
+      {
+        action: 'close',
+        id: 't1',
+        version: 2,
+        reason: 'Einordnung anhand der angezeigten Kennzahl.',
+      },
+      expect.anything(),
+    );
+  });
   it('selects a project through the activity project picker while preserving the target draft', () => {
     show();
     fireEvent.click(screen.getByRole('button', { name: 'Ziel hinzufügen' }));

@@ -272,6 +272,12 @@ describe('Annual targets: persisted lifecycle, calculations and HTTP access', ()
     });
     expect(reopened.snapshot).toBeNull();
     expect(reopened.history[2].definition.snapshot?.value).toBe(2.5);
+    expect(reopened.history.map((entry) => entry.action)).toEqual([
+      'create',
+      'activate',
+      'close',
+      'reopen',
+    ]);
     const copied = await service.copy(ORG, 'admin', target.id, 2026);
     expect(copied).toMatchObject({
       year: 2026,
@@ -280,6 +286,22 @@ describe('Annual targets: persisted lifecycle, calculations and HTTP access', ()
       review: '',
       snapshot: null,
     });
+    expect(copied.history[0].action).toBe('copy');
+  });
+
+  it('records draft actions independently of the supplied reason', async () => {
+    const created = await service.create(ORG, 'admin', payload({ reason: 'Ziel abgeschlossen' }));
+    const updated = await service.update(
+      ORG,
+      'admin',
+      created.id,
+      payload({ version: 1, reason: 'Ziel festgelegt' }),
+    );
+    const detail = await service.detail(ORG, updated.id);
+    expect(detail.history.map(({ action, reason }) => ({ action, reason }))).toEqual([
+      { action: 'create', reason: 'Ziel abgeschlossen' },
+      { action: 'update', reason: 'Ziel festgelegt' },
+    ]);
   });
 
   it('exposes the activation agreement without leaking history into cards and retains it through lifecycle changes', async () => {
@@ -318,6 +340,13 @@ describe('Annual targets: persisted lifecycle, calculations and HTTP access', ()
       reason: 'Datenkorrektur',
     });
     expect((await service.detail(ORG, reopened.id)).agreement).toBe(agreement);
+    expect(reopened.history.map((entry) => entry.action)).toEqual([
+      'create',
+      'activate',
+      'update',
+      'close',
+      'reopen',
+    ]);
     expect((await service.detail(ORG, created.id)).agreement).toBe(agreement);
     const copied = await service.copy(ORG, 'admin', created.id, 2026);
     expect((await service.detail(ORG, copied.id)).agreement).toBeNull();

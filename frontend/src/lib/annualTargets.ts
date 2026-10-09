@@ -59,6 +59,7 @@ export type AnnualTarget = TargetPayload & {
   dataChanged: boolean;
   evaluation: { met: boolean | null; difference: number | null };
   history?: Array<{
+    action?: 'create' | 'update' | 'activate' | 'close' | 'reopen' | 'copy';
     at: string;
     actorId: string;
     actorName?: string;
@@ -70,6 +71,39 @@ export type AnnualTarget = TargetPayload & {
     };
   }>;
 };
+
+type TargetRevision = NonNullable<AnnualTarget['history']>[number];
+
+export function targetRevisionLabel(entry: TargetRevision, previous?: TargetRevision) {
+  let action = entry.action;
+  // Older revisions store the resulting status, but no explicit action.
+  if (!action) {
+    const status = entry.definition.status;
+    const before = previous?.definition.status;
+    if (!previous && status === 'draft') {
+      action = /^Aus Jahresziel \d{4} übernommen \([^)]+\)$/.test(entry.reason) ? 'copy' : 'create';
+    } else if (before === 'draft' && status === 'active') action = 'activate';
+    else if (before === 'active' && status === 'closed') action = 'close';
+    else if (before === 'closed' && status === 'active') action = 'reopen';
+    else if (before === status) action = 'update';
+  }
+  switch (action) {
+    case 'create':
+      return 'Ziel angelegt';
+    case 'copy':
+      return 'Ziel übernommen';
+    case 'update':
+      return entry.definition.status === 'draft' ? 'Entwurf bearbeitet' : 'Ziel bearbeitet';
+    case 'activate':
+      return 'Ziel festgelegt';
+    case 'close':
+      return 'Ziel abgeschlossen';
+    case 'reopen':
+      return 'Ziel wieder geöffnet';
+    default:
+      return 'Änderung dokumentiert';
+  }
+}
 
 export function targetUnit(metric: TargetMetric) {
   return metric === 'duration_hours' ? 'h' : metric.endsWith('_percent') ? '%' : '';

@@ -26,6 +26,7 @@ import {
   targetPeriod,
   targetPeriodLabel,
   targetMonths,
+  targetRevisionLabel,
   useAnnualTargets,
   useAnnualTarget,
   useTargetMutation,
@@ -1007,18 +1008,29 @@ function TargetDetail({
                 </summary>
                 <ol className="annual-target-disclosure-content space-y-3">
                   {target.history
-                    ?.slice()
+                    ?.map((entry, index, history) => ({
+                      ...entry,
+                      actionLabel: targetRevisionLabel(entry, history[index - 1]),
+                    }))
                     .reverse()
                     .map((entry, index) => (
                       <li
                         key={`${entry.at}-${index}`}
                         className="rounded-xl border border-[var(--border-subtle)] p-3 text-sm"
                       >
-                        <p className="font-medium">{entry.reason}</p>
+                        <p className="font-semibold text-viridian">{entry.actionLabel}</p>
                         <p className="mt-1 text-xs text-[var(--text-secondary)]">
                           {new Date(entry.at).toLocaleString('de-DE')} ·{' '}
                           {entry.actorName || 'Admin'}
                         </p>
+                        {entry.reason && entry.reason !== entry.actionLabel && (
+                          <p className="mt-2 whitespace-pre-wrap">
+                            <span className="text-[var(--text-secondary)]">
+                              Begründung / Einordnung:{' '}
+                            </span>
+                            {entry.reason}
+                          </p>
+                        )}
                         <p className="mt-2">
                           {entry.definition.title} · {entry.definition.year} ·{' '}
                           {targetMetrics[entry.definition.metric]} ·{' '}

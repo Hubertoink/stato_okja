@@ -8,6 +8,7 @@ import {
   targetMonths,
   targetPeriodLabel,
   targetCanClose,
+  targetRevisionLabel,
 } from '@/lib/annualTargets';
 
 const state = vi.hoisted(() => ({
@@ -104,6 +105,57 @@ describe('Annual target UI permissions and flows', () => {
     state.exportTargets.mockReset();
   });
   afterEach(cleanup);
+  it('shows actions separately from reasons for the existing chronological history', () => {
+    const statuses = ['draft', 'draft', 'active', 'active', 'closed', 'active'] as const;
+    state.targets = [
+      target({
+        history: statuses.map((status, index) => ({
+          at: `2025-12-31T10:0${index}:00Z`,
+          actorId: 'admin',
+          actorName: 'Super Admin',
+          reason: `Fachliche Notiz ${index + 1}`,
+          definition: target({ status }),
+        })),
+      }),
+    ];
+    show('/statistics/targets?year=2025&target=t1');
+    const history = screen.getByText('Änderungsverlauf').closest('details')!;
+    fireEvent.click(history.querySelector('summary')!);
+    const entries = within(history).getAllByRole('listitem');
+    const labels = [
+      'Ziel wieder geöffnet',
+      'Ziel abgeschlossen',
+      'Ziel bearbeitet',
+      'Ziel festgelegt',
+      'Entwurf bearbeitet',
+      'Ziel angelegt',
+    ];
+    entries.forEach((entry, index) => {
+      expect(within(entry).getByText(labels[index])).toBeInTheDocument();
+      expect(
+        within(entry).getByText(`Fachliche Notiz ${6 - index}`, { exact: false }),
+      ).toBeInTheDocument();
+      expect(within(entry).getByText('Begründung / Einordnung:')).toBeInTheDocument();
+    });
+    expect(state.targets[0].history?.[0].definition.status).toBe('draft');
+  });
+  it('uses recorded actions even without a preceding revision and recognizes legacy copies', () => {
+    const entry = {
+      at: '2025-12-31T10:00:00Z',
+      actorId: 'admin',
+      reason: 'Korrektur nötig',
+      definition: target(),
+    };
+    expect(targetRevisionLabel({ ...entry, action: 'reopen' })).toBe('Ziel wieder geöffnet');
+    expect(targetRevisionLabel(entry)).toBe('Änderung dokumentiert');
+    expect(
+      targetRevisionLabel({
+        ...entry,
+        definition: target({ status: 'draft' }),
+        reason: 'Aus Jahresziel 2024 übernommen (t1)',
+      }),
+    ).toBe('Ziel übernommen');
+  });
   it('filters by status through counted badges and restores all targets', () => {
     state.targets = [
       target(),

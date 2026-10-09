@@ -16,6 +16,7 @@ export type AnnualTargetMetric =
   | 'diverse_share_percent';
 export type AnnualTargetRule = 'min' | 'max' | 'range';
 export type AnnualTargetStatus = 'draft' | 'active' | 'closed';
+export type AnnualTargetAction = 'create' | 'update' | 'activate' | 'close' | 'reopen' | 'copy';
 export type AnnualTargetScope = { types?: string[]; projectId?: string; activityId?: string };
 export type AnnualTargetSnapshot = {
   value: number | null;
@@ -24,6 +25,7 @@ export type AnnualTargetSnapshot = {
   series: Array<{ month: string; value: number | null }>;
 };
 export type AnnualTargetRevision = {
+  action?: AnnualTargetAction;
   at: string;
   actorId: string;
   actorName?: string;

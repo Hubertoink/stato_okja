@@ -15,6 +15,10 @@ const state = vi.hoisted(() => ({
   enabled: true,
   targets: [] as AnnualTarget[],
   mutate: vi.fn(),
+  exportTargets: vi.fn(),
+}));
+vi.mock('./statistics/export/annualTargetsExport', () => ({
+  exportAnnualTargets: state.exportTargets,
 }));
 vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { role: state.role } }) }));
 vi.mock('@/lib/publicConfig', () => ({
@@ -97,8 +101,140 @@ describe('Annual target UI permissions and flows', () => {
     state.enabled = true;
     state.targets = [target()];
     state.mutate.mockReset();
+    state.exportTargets.mockReset();
   });
   afterEach(cleanup);
+  it('filters by status through counted badges and restores all targets', () => {
+    state.targets = [
+      target(),
+      target({ id: 't2', title: 'Entwurf Besuche', status: 'draft' }),
+      target({ id: 't3', title: 'Abschluss Aktivitäten', status: 'closed' }),
+    ];
+    show();
+    const filters = within(screen.getByRole('group', { name: 'Jahresziele nach Status filtern' }));
+    expect(filters.getByRole('button', { name: 'Alle Jahresziele 3' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    for (const [label, title] of [
+      ['Entwürfe 1', 'Entwurf Besuche'],
+      ['Festgelegt 1', 'Stunden Offene Tür'],
+      ['Abgeschlossen 1', 'Abschluss Aktivitäten'],
+    ]) {
+      fireEvent.click(filters.getByRole('button', { name: label }));
+      expect(filters.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getAllByRole('article')).toHaveLength(1);
+      expect(screen.getByRole('article', { name: title })).toBeInTheDocument();
+      expect(filters.getByRole('button', { name: 'Alle Jahresziele 3' })).toBeInTheDocument();
+    }
+    fireEvent.click(filters.getByRole('button', { name: 'Abgeschlossen 1' }));
+    expect(screen.getAllByRole('article')).toHaveLength(3);
+    expect(filters.getByRole('button', { name: 'Alle Jahresziele 3' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+  it('preserves the status filter and scope through details and year changes and handles empty results', () => {
+    state.targets = [
+      target({ status: 'draft', scope: { projectId: 'p1' } }),
+      target({
+        id: 't2',
+        title: 'Anderes Projekt',
+        status: 'draft',
+        scope: { projectId: 'p2' },
+      }),
+      target({ id: 't3', title: 'Festgelegtes Ziel', scope: { projectId: 'p1' } }),
+    ];
+    show('/statistics/targets?year=2025&projectId=p1&status=draft');
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Entwürfe 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Ziel ansehen: Stunden Offene Tür' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Stunden Offene Tür' })).getByRole('button', {
+        name: 'Schließen',
+      }),
+    );
+    expect(screen.getByRole('button', { name: 'Entwürfe 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Folgejahr' }));
+    expect(screen.getByLabelText('Zieljahr')).toHaveValue(2026);
+    expect(screen.getByRole('button', { name: 'Entwürfe 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Abgeschlossen 0' }));
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
+    expect(screen.getByText('Keine Jahresziele mit diesem Status')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Excel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'PDF' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Alle Jahresziele anzeigen' }));
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+  });
+  it('exports only targets matching the selected status', async () => {
+    const draft = target({ id: 't2', title: 'Entwurf Besuche', status: 'draft' });
+    state.targets = [target(), draft];
+    show('/statistics/targets?year=2025&status=draft');
+    fireEvent.click(screen.getByRole('button', { name: 'Excel' }));
+    await waitFor(() =>
+      expect(state.exportTargets).toHaveBeenCalledWith([draft], 2025, 'Jugendhaus', 'xlsx'),
+    );
+  });
+  it.each([
+    {
+      name: 'the inclusive end day',
+      now: '2025-02-28T22:59:00Z',
+      status: 'active',
+      expired: false,
+    },
+    {
+      name: 'the next day in Berlin',
+      now: '2025-02-28T23:01:00Z',
+      status: 'active',
+      expired: true,
+    },
+    {
+      name: 'an already closed target',
+      now: '2025-02-28T23:01:00Z',
+      status: 'closed',
+      expired: false,
+    },
+  ] as const)(
+    'marks expiry and the closing flag correctly for $name',
+    ({ now, status, expired }) => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date(now));
+        state.targets = [target({ status, dateFrom: '2025-02-01', dateTo: '2025-02-28' })];
+        show('/statistics/targets?year=2025&target=t1');
+        for (const view of [
+          screen.getByRole('article', { name: 'Stunden Offene Tür' }),
+          screen.getByRole('dialog', { name: 'Stunden Offene Tür' }),
+        ]) {
+          expect(!!within(view).queryByText('Zeitraum abgelaufen')).toBe(expired);
+        }
+        const close = screen.queryByRole('button', { name: 'Ziel abschließen' });
+        if (status === 'closed') {
+          expect(close).not.toBeInTheDocument();
+        } else {
+          expect(close?.querySelector('svg')).toHaveClass('lucide-flag');
+          if (expired) {
+            expect(close).toBeEnabled();
+            expect(close).toHaveClass('bg-viridian');
+          } else {
+            expect(close).toBeDisabled();
+            expect(close).not.toHaveClass('bg-viridian');
+          }
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
   it.each(['editor', 'user'])(
     'lets %s read the report and detail without modification controls',
     (role) => {

@@ -1,4 +1,4 @@
-import { Archive, Check, Copy, Pencil, RotateCcw } from 'lucide-react';
+import { Check, Copy, Flag, Pencil, RotateCcw } from 'lucide-react';
 import { CloseButton, IconButton } from '@/components/ui/Button';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { targetCanClose, targetPeriod, type AnnualTarget } from '@/lib/annualTargets';
@@ -50,12 +50,12 @@ export default function AnnualTargetHeaderActions({
               }
             >
               <IconButton
-                variant="secondary"
+                variant={canClose ? 'primary' : 'secondary'}
                 aria-label={target.dateFrom ? 'Ziel abschließen' : 'Jahr abschließen'}
                 disabled={!canClose}
                 onClick={() => onAction('close')}
               >
-                <Archive aria-hidden="true" />
+                <Flag aria-hidden="true" />
               </IconButton>
             </Tooltip>
           )}

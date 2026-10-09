@@ -34,13 +34,24 @@ import Modal from '@/components/Modal';
 import { Button, IconButton } from '@/components/ui/Button';
 import { Input, Select, Textarea, FieldLabel } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { StatisticsTabs, TargetProgress, AnnualTargetCard } from '@/components/AnnualTargetCards';
+import {
+  StatisticsTabs,
+  TargetProgress,
+  AnnualTargetCard,
+  TargetPeriodBadge,
+} from '@/components/AnnualTargetCards';
 import AnnualTargetActivities from '@/components/AnnualTargetActivities';
 import AnnualTargetActionDialog, { type TargetAction } from '@/components/AnnualTargetActionDialog';
 import AnnualTargetHeaderActions from '@/components/AnnualTargetHeaderActions';
 import AnnualTargetCalculation from '@/components/AnnualTargetCalculation';
 
 const dateLabel = (date: string) => date.split('-').reverse().join('.');
+const statusFilters = [
+  { status: 'all', label: 'Alle Jahresziele' },
+  { status: 'draft', label: 'Entwürfe' },
+  { status: 'active', label: 'Festgelegt' },
+  { status: 'closed', label: 'Abgeschlossen' },
+] as const;
 
 export default function AnnualTargets() {
   const scopeKey = useOrgScopeKey();
@@ -95,6 +106,11 @@ function AnnualTargetsContent() {
         ? target.scope.projectId === scope.projectId
         : true,
   );
+  const statusFilter =
+    statusFilters.find((filter) => filter.status === params.get('status'))?.status ?? 'all';
+  const visibleTargets = targets.filter(
+    (target) => statusFilter === 'all' || target.status === statusFilter,
+  );
   const targetId = params.get('target');
   const setParam = (name: string, value?: string) => {
     const next = new URLSearchParams(params);
@@ -107,7 +123,7 @@ function AnnualTargetsContent() {
     setExporting(true);
     try {
       const { exportAnnualTargets } = await import('./statistics/export/annualTargetsExport');
-      await exportAnnualTargets(targets, year, organization ?? 'Ohne Einrichtung', format);
+      await exportAnnualTargets(visibleTargets, year, organization ?? 'Ohne Einrichtung', format);
     } catch {
       setExportError('Der Export ist fehlgeschlagen. Bitte erneut versuchen.');
     } finally {
@@ -182,7 +198,7 @@ function AnnualTargetsContent() {
           </div>
           <Button
             variant="secondary"
-            disabled={exporting || !targets.length}
+            disabled={exporting || !visibleTargets.length}
             onClick={() => void exportReport('xlsx')}
           >
             <Download />
@@ -190,7 +206,7 @@ function AnnualTargetsContent() {
           </Button>
           <Button
             variant="secondary"
-            disabled={exporting || !targets.length}
+            disabled={exporting || !visibleTargets.length}
             onClick={() => void exportReport('pdf')}
           >
             <Download />
@@ -237,44 +253,66 @@ function AnnualTargetsContent() {
             Erneut laden
           </Button>
         </div>
-      ) : targets.length === 0 ? (
-        <section className="modern-card p-8 text-center">
-          <Target className="mx-auto mb-3 h-8 w-8 text-viridian" />
-          <h2 className="text-lg font-semibold">Noch keine Jahresziele für {year}</h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Lege Vorgaben für Stunden, Besuche, Aktivitäten oder Genderanteile fest. Die Istwerte
-            berechnet Stato aus der Dokumentation.
-          </p>
-        </section>
       ) : (
         <section aria-label="Jahresziele im Überblick" className="space-y-4">
-          <div className="annual-target-overview">
-            <span>
-              <strong>{targets.length}</strong>{' '}
-              {targets.length === 1 ? 'Jahresziel' : 'Jahresziele'}
-            </span>
-            <span>
-              <strong>{targets.filter((target) => target.status === 'draft').length}</strong>{' '}
-              Entwürfe
-            </span>
-            <span>
-              <strong>{targets.filter((target) => target.status === 'active').length}</strong>{' '}
-              festgelegt
-            </span>
-            <span>
-              <strong>{targets.filter((target) => target.status === 'closed').length}</strong>{' '}
-              abgeschlossen
-            </span>
-          </div>
-          <div className="annual-target-grid">
-            {targets.map((target) => (
-              <AnnualTargetCard
-                key={target.id}
-                target={target}
-                onOpen={() => setParam('target', target.id)}
-              />
+          <div
+            role="group"
+            aria-label="Jahresziele nach Status filtern"
+            className="annual-target-overview"
+          >
+            {statusFilters.map(({ status, label }) => (
+              <Button
+                key={status}
+                size="sm"
+                variant={statusFilter === status ? 'primary' : 'secondary'}
+                className="annual-target-status-filter"
+                aria-pressed={statusFilter === status}
+                onClick={() =>
+                  setParam(
+                    'status',
+                    status === 'all' || statusFilter === status ? undefined : status,
+                  )
+                }
+              >
+                {label}{' '}
+                <span className="tabular-nums">
+                  {status === 'all'
+                    ? targets.length
+                    : targets.filter((target) => target.status === status).length}
+                </span>
+              </Button>
             ))}
           </div>
+          {visibleTargets.length === 0 ? (
+            <div className="modern-card p-8 text-center">
+              <Target className="mx-auto mb-3 h-8 w-8 text-viridian" />
+              <h2 className="text-lg font-semibold">
+                {targets.length === 0
+                  ? `Noch keine Jahresziele für ${year}`
+                  : 'Keine Jahresziele mit diesem Status'}
+              </h2>
+              {targets.length === 0 ? (
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  Lege Vorgaben für Stunden, Besuche, Aktivitäten oder Genderanteile fest. Die
+                  Istwerte berechnet Stato aus der Dokumentation.
+                </p>
+              ) : (
+                <Button variant="secondary" className="mt-3" onClick={() => setParam('status')}>
+                  Alle Jahresziele anzeigen
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="annual-target-grid">
+              {visibleTargets.map((target) => (
+                <AnnualTargetCard
+                  key={target.id}
+                  target={target}
+                  onOpen={() => setParam('target', target.id)}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
       {editor && isAdmin && (
@@ -846,10 +884,13 @@ function TargetDetail({
           target && (
             <div className="space-y-6">
               <div className="annual-target-detail-summary">
-                <p className="mb-4 text-sm text-[var(--text-secondary)]">
-                  {targetPeriodLabel(target)} · {targetStatuses[target.status]} ·{' '}
-                  {targetScopeLabel(target)}
-                </p>
+                <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-[var(--text-secondary)]">
+                  <p>
+                    {targetPeriodLabel(target)} · {targetStatuses[target.status]} ·{' '}
+                    {targetScopeLabel(target)}
+                  </p>
+                  <TargetPeriodBadge target={target} />
+                </div>
                 {target.agreement && (
                   <div className="annual-target-agreement">
                     <Target aria-hidden="true" />

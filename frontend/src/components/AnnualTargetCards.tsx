@@ -11,6 +11,7 @@ import {
   Activity,
   PieChart,
   AlertCircle,
+  CalendarCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -28,6 +29,7 @@ import {
   targetScopeLabel,
   targetStatuses,
   targetPeriodLabel,
+  targetCanClose,
 } from '@/lib/annualTargets';
 import './AnnualTargetCards.css';
 
@@ -72,6 +74,16 @@ function targetTone(target: AnnualTarget) {
   if (target.status === 'draft' || target.evaluation.met === null) return 'neutral';
   if (target.evaluation.met) return 'success';
   return target.status === 'closed' ? 'warning' : 'neutral';
+}
+
+export function TargetPeriodBadge({ target }: { target: AnnualTarget }) {
+  if (target.status === 'closed' || !targetCanClose(target)) return null;
+  return (
+    <span className="annual-target-period-ended">
+      <CalendarCheck aria-hidden="true" />
+      Zeitraum abgelaufen
+    </span>
+  );
 }
 
 export function TargetProgress({
@@ -263,7 +275,10 @@ export function AnnualTargetCard({
         </div>
         <div>
           <dt>Zeitraum</dt>
-          <dd>{targetPeriodLabel(target)}</dd>
+          <dd className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>{targetPeriodLabel(target)}</span>
+            <TargetPeriodBadge target={target} />
+          </dd>
         </div>
       </dl>
       <div className="annual-target-card-performance">
@@ -292,9 +307,11 @@ export function AnnualTargetCard({
                     : target.evaluation.met
                       ? 'Ziel erreicht'
                       : 'Ziel nicht erreicht'
-                  : target.evaluation.met
-                    ? 'Vorgabe bisher erfüllt'
-                    : 'Stand im laufenden Zielzeitraum'}
+                  : targetCanClose(target)
+                    ? 'Zielzeitraum beendet'
+                    : target.evaluation.met
+                      ? 'Vorgabe bisher erfüllt'
+                      : 'Stand im laufenden Zielzeitraum'}
             </span>
           </div>
         </div>

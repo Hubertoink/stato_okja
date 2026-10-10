@@ -704,7 +704,7 @@ function ProjectOverviewCard({
         </div>
         {project.description && <p className="project-overview-description">{truncateWords(projectDescriptionToPlainText(project.description), 24)}</p>}
       </div>
-      <div className="project-overview-actions">
+      <div className={`project-overview-actions ${annualTargetConfig.data?.annualTargetsEnabled ? 'project-overview-actions--with-targets' : ''}`}>
         {annualTargetConfig.data?.annualTargetsEnabled && (
           <Button
             variant="ghost"
@@ -719,7 +719,7 @@ function ProjectOverviewCard({
         )}
         <Button variant="ghost" size="sm" onClick={onOpenActivities} aria-label={autoT('ui_d7e8a0c6a275', { value0: project.title })} title={autoT('ui_8587eefe7ef8')}><CalendarRange className="h-4 w-4" /><span>Aktivitäten</span></Button>
         <div className="project-overview-desktop-star"><ProjectStarButton ariaLabel={starred ? autoT('ui_054cf53eb7ef') : autoT('ui_25ea6cda3c4e')} onClick={onToggleStar} starred={starred} /></div>
-        <Button variant="secondary" size="sm" onClick={onEdit} aria-label={autoT('ui_47fd1acdc0a4', { value0: project.title })}><Pencil className="h-4 w-4" /><span>{autoT('ui_104f3bfdc340')}</span></Button>
+        <Button variant="secondary" size="sm" onClick={onEdit} aria-label={autoT('ui_47fd1acdc0a4', { value0: project.title })} title={autoT('ui_104f3bfdc340')}><Pencil className="h-4 w-4" /><span>{autoT('ui_104f3bfdc340')}</span></Button>
       </div>
     </article>
   );

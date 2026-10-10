@@ -1,4 +1,4 @@
-.project-overview-card { position: relative; display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border-subtle); border-radius: 1rem; background: var(--surface-1); color: var(--text-primary); box-shadow: 0 2px 8px #00000008; }
+.project-overview-card { position: relative; display: flex; flex-direction: column; min-width: 0; container: project-overview / inline-size; border: 1px solid var(--border-subtle); border-radius: 1rem; background: var(--surface-1); color: var(--text-primary); box-shadow: 0 2px 8px #00000008; }
 .project-overview-media { position: relative; height: 180px; flex-shrink: 0; overflow: hidden; border-radius: 1rem 1rem 0 0; }
 .project-overview-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .project-overview-image-shade { position: absolute; inset: 0; background: linear-gradient(135deg, transparent 40%, #0003); }
@@ -17,6 +17,17 @@
 .project-overview-staff .tooltip-wrapper:focus-within .tooltip-bubble { visibility: visible; opacity: 1; }
 .project-overview-description { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
 .project-overview-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--border-subtle); padding: 10px 16px; margin-top: auto; }
+.project-overview-actions > button { white-space: nowrap; }
+.project-overview-actions > button > svg { flex-shrink: 0; }
+/* Use the card's width: a wide screen can still contain narrow grid cards. */
+@container project-overview (max-width: 26rem) {
+  .project-overview-actions--with-targets > button { min-width: 2.75rem; min-height: 2.75rem; padding-inline: 0.5rem; }
+  .project-overview-actions--with-targets > button > span { display: none; }
+}
+@container project-overview (max-width: 18rem) {
+  .project-overview-actions > button { min-width: 2.75rem; min-height: 2.75rem; padding-inline: 0.5rem; }
+  .project-overview-actions > button > span { display: none; }
+}
 .project-overview-desktop-star { display: none; }
 .project-overview-filters { display: flex; gap: 2px; overflow-x: auto; max-width: 100%; padding: 3px 1px 6px; }
 .project-overview-filters > button { flex-shrink: 0; border-radius: 999px; }

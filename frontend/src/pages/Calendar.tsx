@@ -1688,7 +1688,7 @@ export default function Calendar() {
                         <span aria-label="Belegt"><Clock3 aria-hidden="true" /></span>
                       </div>
                     </div>
-                    <div className="calendar-analysis-day-label font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    <div className="calendar-analysis-day-label text-center text-xs md:text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                       {day.toLocaleDateString(getCurrentIntlLocale(), { weekday: 'short', day: '2-digit', month: '2-digit' })}
                     </div>
                     {!!analysis?.withoutTime.length && (

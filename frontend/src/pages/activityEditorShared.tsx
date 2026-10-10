@@ -143,10 +143,10 @@ export function getProjectTagIds(project: Project | undefined, tags: Tag[] | und
 export function getProjectCategoryIds(project: Project | undefined): string[] {
   if (!project || project.type === 'open_door') return [];
 
-  const categoryIds = new Set<string>();
-  (project.categories || []).forEach((category) => categoryIds.add(category.id));
-  if (project.categoryId) categoryIds.add(project.categoryId);
-  return Array.from(categoryIds);
+  // Projects always have one category; categoryId is authoritative. The
+  // relation fallback supports older responses without collecting stale IDs.
+  const categoryId = project.categoryId || project.categories?.[0]?.id;
+  return categoryId ? [categoryId] : [];
 }
 
 export function mergeProjectStaffIds(

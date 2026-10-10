@@ -1,4 +1,5 @@
 import { annualTargetsEnabled } from '../stats/annual-targets.guard';
+import { getActivityCategoryMode } from '../config/activity-category.config';
 import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, Res, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
@@ -171,6 +172,7 @@ export class AuthController {
       loginSubtitle,
       liveRefreshIntervalMs,
       annualTargetsEnabled: annualTargetsEnabled(),
+      activityCategoryMode: getActivityCategoryMode(),
       twoFactorEnabled: this.auth.isTwoFactorAuthenticationEnabled(),
       initialSetupRequired: await this.auth.isInitialSetupRequired(),
       ...this.auth.getPublicPasswordResetConfig(),

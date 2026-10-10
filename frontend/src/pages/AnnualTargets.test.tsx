@@ -1,5 +1,6 @@
+import DashboardAnnualTargets from '@/components/DashboardAnnualTargets';
 import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AnnualTargets from './AnnualTargets';
 import AnnualTargetCards, { StatisticsTabs } from '@/components/AnnualTargetCards';
@@ -8,6 +9,7 @@ import {
   targetMonths,
   targetPeriodLabel,
   targetCanClose,
+  targetRevisionLabel,
 } from '@/lib/annualTargets';
 
 const state = vi.hoisted(() => ({
@@ -15,6 +17,10 @@ const state = vi.hoisted(() => ({
   enabled: true,
   targets: [] as AnnualTarget[],
   mutate: vi.fn(),
+  exportTargets: vi.fn(),
+}));
+vi.mock('./statistics/export/annualTargetsExport', () => ({
+  exportAnnualTargets: state.exportTargets,
 }));
 vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { role: state.role } }) }));
 vi.mock('@/lib/publicConfig', () => ({
@@ -97,8 +103,205 @@ describe('Annual target UI permissions and flows', () => {
     state.enabled = true;
     state.targets = [target()];
     state.mutate.mockReset();
+    state.exportTargets.mockReset();
   });
   afterEach(cleanup);
+  it('opens, edits and closes dashboard targets without changing the route', () => {
+    function Location() { return <output data-testid="location">{useLocation().pathname}</output>; }
+    render(<MemoryRouter initialEntries={['/dashboard']}><Location /><DashboardAnnualTargets /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Ziel ansehen: Stunden Offene Tür' }));
+    expect(screen.getByRole('dialog', { name: 'Stunden Offene Tür' })).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+    expect(screen.getByRole('dialog', { name: 'Jahresziel bearbeiten' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+  });
+
+  it('shows actions separately from reasons for the existing chronological history', () => {
+    const statuses = ['draft', 'draft', 'active', 'active', 'closed', 'active'] as const;
+    state.targets = [
+      target({
+        history: statuses.map((status, index) => ({
+          at: `2025-12-31T10:0${index}:00Z`,
+          actorId: 'admin',
+          actorName: 'Super Admin',
+          reason: `Fachliche Notiz ${index + 1}`,
+          definition: target({ status }),
+        })),
+      }),
+    ];
+    show('/statistics/targets?year=2025&target=t1');
+    const history = screen.getByText('Änderungsverlauf').closest('details')!;
+    fireEvent.click(history.querySelector('summary')!);
+    const entries = within(history).getAllByRole('listitem');
+    const labels = [
+      'Ziel wieder geöffnet',
+      'Ziel abgeschlossen',
+      'Ziel bearbeitet',
+      'Ziel festgelegt',
+      'Entwurf bearbeitet',
+      'Ziel angelegt',
+    ];
+    entries.forEach((entry, index) => {
+      expect(within(entry).getByText(labels[index])).toBeInTheDocument();
+      expect(
+        within(entry).getByText(`Fachliche Notiz ${6 - index}`, { exact: false }),
+      ).toBeInTheDocument();
+      expect(within(entry).getByText('Begründung / Einordnung:')).toBeInTheDocument();
+    });
+    expect(state.targets[0].history?.[0].definition.status).toBe('draft');
+  });
+  it('uses recorded actions even without a preceding revision and recognizes legacy copies', () => {
+    const entry = {
+      at: '2025-12-31T10:00:00Z',
+      actorId: 'admin',
+      reason: 'Korrektur nötig',
+      definition: target(),
+    };
+    expect(targetRevisionLabel({ ...entry, action: 'reopen' })).toBe('Ziel wieder geöffnet');
+    expect(targetRevisionLabel(entry)).toBe('Änderung dokumentiert');
+    expect(
+      targetRevisionLabel({
+        ...entry,
+        definition: target({ status: 'draft' }),
+        reason: 'Aus Jahresziel 2024 übernommen (t1)',
+      }),
+    ).toBe('Ziel übernommen');
+  });
+  it('filters by status through counted badges and restores all targets', () => {
+    state.targets = [
+      target(),
+      target({ id: 't2', title: 'Entwurf Besuche', status: 'draft' }),
+      target({ id: 't3', title: 'Abschluss Aktivitäten', status: 'closed' }),
+    ];
+    show();
+    const filters = within(screen.getByRole('group', { name: 'Jahresziele nach Status filtern' }));
+    expect(filters.getByRole('button', { name: 'Alle Jahresziele 3' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    for (const [label, title] of [
+      ['Entwürfe 1', 'Entwurf Besuche'],
+      ['Festgelegt 1', 'Stunden Offene Tür'],
+      ['Abgeschlossen 1', 'Abschluss Aktivitäten'],
+    ]) {
+      fireEvent.click(filters.getByRole('button', { name: label }));
+      expect(filters.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getAllByRole('article')).toHaveLength(1);
+      expect(screen.getByRole('article', { name: title })).toBeInTheDocument();
+      expect(filters.getByRole('button', { name: 'Alle Jahresziele 3' })).toBeInTheDocument();
+    }
+    fireEvent.click(filters.getByRole('button', { name: 'Abgeschlossen 1' }));
+    expect(screen.getAllByRole('article')).toHaveLength(3);
+    expect(filters.getByRole('button', { name: 'Alle Jahresziele 3' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+  it('preserves the status filter and scope through details and year changes and handles empty results', () => {
+    state.targets = [
+      target({ status: 'draft', scope: { projectId: 'p1' } }),
+      target({
+        id: 't2',
+        title: 'Anderes Projekt',
+        status: 'draft',
+        scope: { projectId: 'p2' },
+      }),
+      target({ id: 't3', title: 'Festgelegtes Ziel', scope: { projectId: 'p1' } }),
+    ];
+    show('/statistics/targets?year=2025&projectId=p1&status=draft');
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Entwürfe 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Ziel ansehen: Stunden Offene Tür' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Stunden Offene Tür' })).getByRole('button', {
+        name: 'Schließen',
+      }),
+    );
+    expect(screen.getByRole('button', { name: 'Entwürfe 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Folgejahr' }));
+    expect(screen.getByLabelText('Zieljahr')).toHaveValue(2026);
+    expect(screen.getByRole('button', { name: 'Entwürfe 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Abgeschlossen 0' }));
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
+    expect(screen.getByText('Keine Jahresziele mit diesem Status')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Excel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'PDF' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Alle Jahresziele anzeigen' }));
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+  });
+  it('exports only targets matching the selected status', async () => {
+    const draft = target({ id: 't2', title: 'Entwurf Besuche', status: 'draft' });
+    state.targets = [target(), draft];
+    show('/statistics/targets?year=2025&status=draft');
+    fireEvent.click(screen.getByRole('button', { name: 'Excel' }));
+    await waitFor(() =>
+      expect(state.exportTargets).toHaveBeenCalledWith([draft], 2025, 'Jugendhaus', 'xlsx'),
+    );
+  });
+  it.each([
+    {
+      name: 'the inclusive end day',
+      now: '2025-02-28T22:59:00Z',
+      status: 'active',
+      expired: false,
+    },
+    {
+      name: 'the next day in Berlin',
+      now: '2025-02-28T23:01:00Z',
+      status: 'active',
+      expired: true,
+    },
+    {
+      name: 'an already closed target',
+      now: '2025-02-28T23:01:00Z',
+      status: 'closed',
+      expired: false,
+    },
+  ] as const)(
+    'marks expiry and the closing flag correctly for $name',
+    ({ now, status, expired }) => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date(now));
+        state.targets = [target({ status, dateFrom: '2025-02-01', dateTo: '2025-02-28' })];
+        show('/statistics/targets?year=2025&target=t1');
+        for (const view of [
+          screen.getByRole('article', { name: 'Stunden Offene Tür' }),
+          screen.getByRole('dialog', { name: 'Stunden Offene Tür' }),
+        ]) {
+          expect(!!within(view).queryByText('Zeitraum abgelaufen')).toBe(expired);
+        }
+        const close = screen.queryByRole('button', { name: 'Ziel abschließen' });
+        if (status === 'closed') {
+          expect(close).not.toBeInTheDocument();
+        } else {
+          expect(close?.querySelector('svg')).toHaveClass('lucide-flag');
+          if (expired) {
+            expect(close).toBeEnabled();
+            expect(close).toHaveClass('bg-viridian');
+          } else {
+            expect(close).toBeDisabled();
+            expect(close).not.toHaveClass('bg-viridian');
+          }
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
   it.each(['editor', 'user'])(
     'lets %s read the report and detail without modification controls',
     (role) => {
@@ -218,6 +421,96 @@ describe('Annual target UI permissions and flows', () => {
     );
     expect(screen.getByRole('dialog', { name: 'Stunden Offene Tür' })).toBeInTheDocument();
     expect(screen.getByText(/Entwurf für 2026 angelegt/)).toBeInTheDocument();
+  });
+  it.each([
+    {
+      name: 'an exceeded minimum',
+      overrides: {},
+      metric: 'Aktivitätsstunden',
+      value: '120 h',
+      result: 'Ziel erreicht',
+      gauge: 'progressbar',
+      gaugeValue: '100',
+    },
+    {
+      name: 'a gender share below its minimum',
+      overrides: {
+        metric: 'female_share_percent',
+        target: 30,
+        result: { value: 27, asOf: '2025-12-31', activityCount: 10, series: [] },
+        evaluation: { met: false, difference: -3 },
+      },
+      metric: 'Weiblicher Besuchsanteil',
+      value: '27 %',
+      result: 'Ziel nicht erreicht',
+      gauge: 'meter',
+      gaugeValue: '27',
+    },
+    {
+      name: 'an upper limit',
+      overrides: { rule: 'max', target: 150, evaluation: { met: true, difference: 30 } },
+      metric: 'Aktivitätsstunden',
+      value: '120 h',
+      result: 'Ziel erreicht',
+    },
+    {
+      name: 'a target corridor',
+      overrides: { rule: 'range', upperTarget: 110, evaluation: { met: false, difference: -10 } },
+      metric: 'Aktivitätsstunden',
+      value: '120 h',
+      result: 'Ziel nicht erreicht',
+    },
+    {
+      name: 'missing data',
+      overrides: {
+        result: { value: null, asOf: '2025-12-31', activityCount: 0, series: [] },
+        evaluation: { met: null, difference: null },
+      },
+      metric: 'Aktivitätsstunden',
+      value: 'Noch nicht berechenbar',
+      result: 'Nicht bewertbar',
+    },
+  ] satisfies Array<{
+    name: string;
+    overrides: Partial<AnnualTarget>;
+    metric: string;
+    value: string;
+    result: string;
+    gauge?: 'meter' | 'progressbar';
+    gaugeValue?: string;
+  }>)('shows KPI and achievement before the closing review for $name', (scenario) => {
+    state.targets = [target(scenario.overrides)];
+    show('/statistics/targets?year=2025&target=t1');
+    fireEvent.click(screen.getByRole('button', { name: 'Jahr abschließen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Ziel abschließen' });
+    const performance = within(dialog).getByRole('region', { name: 'KPI und Erreichungsgrad' });
+    expect(within(performance).getByText(scenario.metric)).toBeInTheDocument();
+    expect(
+      within(performance).getByText(scenario.value, { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(within(performance).getByText('Erreichungsgrad:')).toBeInTheDocument();
+    expect(within(performance).getByText(scenario.result)).toBeInTheDocument();
+    if ('gauge' in scenario) {
+      expect(within(performance).getByRole(scenario.gauge!)).toHaveAttribute(
+        'aria-valuenow',
+        scenario.gaugeValue,
+      );
+    }
+    const review = within(dialog).getByRole('textbox', { name: 'Fachliche Einordnung' });
+    expect(
+      performance.compareDocumentPosition(review) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.change(review, { target: { value: 'Einordnung anhand der angezeigten Kennzahl.' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Abschluss speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(
+      {
+        action: 'close',
+        id: 't1',
+        version: 2,
+        reason: 'Einordnung anhand der angezeigten Kennzahl.',
+      },
+      expect.anything(),
+    );
   });
   it('selects a project through the activity project picker while preserving the target draft', () => {
     show();

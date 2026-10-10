@@ -1,3 +1,4 @@
+import { selectActivityCategory, type ActivityCategoryMode } from '@/lib/activityCategories';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { CategoryFormModal, StaffFormModal, TagFormModal } from '@/components/settings/EntityFormModals';
 import type { StaffRole } from '@/lib/staff';
@@ -64,6 +65,7 @@ type UseActivityInlineCreationOptions = {
   allTags?: TagRecord[];
   allStaff?: StaffRecord[];
   taxonomyAccess?: TaxonomyAccess;
+  categoryMode?: ActivityCategoryMode;
   user?: CurrentUser;
   setForm: Dispatch<SetStateAction<ActivityFormState>>;
   showToast: ToastFn;
@@ -79,6 +81,7 @@ export function useActivityInlineCreation({
   allTags,
   allStaff,
   taxonomyAccess,
+  categoryMode = 'multiple',
   user,
   setForm,
   showToast,
@@ -132,7 +135,7 @@ export function useActivityInlineCreation({
       }
 
       if (!categoryId) throw new Error('missing-category-id');
-      setForm((current) => ({ ...current, categoryIds: appendUniqueId(current.categoryIds, categoryId) }));
+      setForm((current) => ({ ...current, categoryIds: selectActivityCategory(current.categoryIds, categoryId, categoryMode, false) }));
       showToast(
         existing?.id ? `Kategorie "${name}" wurde zugeordnet.` : autoT('ui_1335fd92fa57', { value0: name }),
         existing?.id ? { type: 'info' } : undefined,

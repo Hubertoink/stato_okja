@@ -1,3 +1,9 @@
+import { usePublicConfig } from '@/lib/publicConfig';
+import {
+  selectActivityCategory,
+  mergeActivityCategoryDefaults,
+  SINGLE_CATEGORY_MESSAGE,
+} from '@/lib/activityCategories';
 import { Project, useProjects } from '@/lib/projects';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
@@ -99,6 +105,8 @@ export default function ActivityQuickAdd({
   const { data: cohorts } = useCohorts({ active: true });
   const { data: locations } = useLocations({ active: true });
   const { data: taxonomyAccess } = useTaxonomyAccess();
+  const categoryConfig = usePublicConfig();
+  const categoryMode = categoryConfig.data?.activityCategoryMode ?? 'multiple';
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const createTag = useCreateTag();
@@ -179,6 +187,7 @@ export default function ActivityQuickAdd({
     allTags,
     allStaff,
     taxonomyAccess,
+    categoryMode,
     user,
     setForm,
     showToast,
@@ -254,7 +263,7 @@ export default function ActivityQuickAdd({
     const ids = getProjectTagIds(proj, tags);
     if (ids.length > 0) setForm((f: ActivityFormState) => ({ ...f, tagIds: ids }));
   }, [selectedProject, initialProject, tags, activity]);
-  // Prefill categories from project when creating (include primary categoryId)
+  // Prefill the single project category when creating
   useEffect(() => {
     if (activity) return; // editing: don't override
     const proj = selectedProject || initialProject;
@@ -266,9 +275,10 @@ export default function ActivityQuickAdd({
     }
     const cur = form.categoryIds || [];
     if (cur.length > 0) return; // already chosen
-    const categoryIds = getProjectCategoryIds(proj);
+    if (!categoryConfig.data) return;
+    const categoryIds = mergeActivityCategoryDefaults([], getProjectCategoryIds(proj), categoryMode);
     if (categoryIds.length > 0) setForm((f: ActivityFormState) => ({ ...f, categoryIds }));
-  }, [selectedProject, initialProject, activity]);
+  }, [selectedProject, initialProject, activity, categoryMode, categoryConfig.data]);
   // If switching to an open-door project, clear categories
   useEffect(() => {
     const proj = selectedProject || initialProject;
@@ -340,6 +350,10 @@ export default function ActivityQuickAdd({
   const { dismiss } = useModalHistory(handleClose);
 
   const handleSave = () => {
+    if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
+      showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
+      return;
+    }
     if (create.isPending || update.isPending || submitLockedRef.current) return;
 
     if (!form.date) {
@@ -797,6 +811,11 @@ export default function ActivityQuickAdd({
                     ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2 mb-2">
+                    {categoryMode === 'single' && (
+                      <p className="w-full text-xs text-[var(--text-secondary)]" role={(form.categoryIds?.length ?? 0) > 1 ? 'alert' : undefined}>
+                        {(form.categoryIds?.length ?? 0) > 1 ? SINGLE_CATEGORY_MESSAGE : 'Eine Kategorie pro Aktivität auswählbar.'}
+                      </p>
+                    )}
                     {(categories || []).map((c) => {
                       const active = (form.categoryIds || []).includes(c.id);
                       return (
@@ -804,10 +823,7 @@ export default function ActivityQuickAdd({
                           key={c.id}
                           type="button"
                           onClick={() => {
-                            const set = new Set(form.categoryIds || []);
-                            if (set.has(c.id)) set.delete(c.id);
-                            else set.add(c.id);
-                            setForm({ ...form, categoryIds: Array.from(set) });
+                            setForm({ ...form, categoryIds: selectActivityCategory(form.categoryIds, c.id, categoryMode) });
                           }}
                           className="min-h-8 px-2 py-1 rounded-full text-xs border"
                           style={getSelectableTaxonomyChipStyle(active, c.color)}
@@ -1050,16 +1066,11 @@ export default function ActivityQuickAdd({
                 tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
                 start: prev.start || p.defaultStartTime || '15:00',
                 end: prev.end || p.defaultEndTime || '17:00',
-                // Prefill categories from project's categories plus primary categoryId if set
+                // Prefill the single project category
                 categoryIds:
                   p.type === 'open_door'
                     ? []
-                    : (() => {
-                        const set = new Set<string>(prev.categoryIds || []);
-                        (p.categories || []).forEach((c) => set.add(c.id));
-                        if (p.categoryId) set.add(p.categoryId);
-                        return Array.from(set);
-                      })(),
+                    : mergeActivityCategoryDefaults(prev.categoryIds, getProjectCategoryIds(p), categoryMode),
               }));
               setPicker(false);
             }}

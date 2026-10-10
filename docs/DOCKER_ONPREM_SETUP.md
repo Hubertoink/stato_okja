@@ -754,3 +754,9 @@ Für einen neuen On-Prem-Rechner ist der einfachste und sauberste Weg:
 6. HTTPS mit dem integrierten Caddy-Profil oder einem vorgeschalteten Proxy setzen
 
 Damit läuft StatO vollständig selbst gehostet mit Frontend-, Backend- und Datenbank-Container auf einer eigenen Infrastruktur.
+
+### Eine oder mehrere Kategorien pro Aktivität
+
+Mit `ACTIVITY_CATEGORY_MODE=single` in der ENV-Datei darf jede Aktivität höchstens eine Kategorie haben; `multiple` (Standard) erlaubt die bisherige Mehrfachauswahl. Die Einstellung gilt für alle Organisationen des Backend-Containers. Nach einer Änderung den Backend-Container neu erstellen, z. B. mit dem beim Deployment verwendeten Compose-Befehl und `up -d --force-recreate backend`. Die Oberfläche übernimmt den Modus über die öffentliche Konfiguration; ein Frontend-Neubau ist nicht nötig.
+
+Bestehende Mehrfachzuordnungen werden nicht gelöscht. Beim nächsten Speichern einer betroffenen Aktivität im Einzelmodus muss die Auswahl auf maximal eine Kategorie reduziert werden. Eine leere Auswahl bleibt erlaubt. Projekte haben weiterhin nur eine Kategorie; diese wird als Vorgabe übernommen, wenn die Aktivität noch keine Kategorie hat. Tags sind weiterhin mehrfach auswählbar.

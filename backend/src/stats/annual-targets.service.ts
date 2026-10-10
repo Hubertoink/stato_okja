@@ -8,7 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
-import { AnnualTarget, AnnualTargetRevision } from './entities/annual-target.entity';
+import {
+  AnnualTarget,
+  AnnualTargetAction,
+  AnnualTargetRevision,
+} from './entities/annual-target.entity';
 import { AnnualTargetCommandDto, AnnualTargetDto } from './dto/annual-target.dto';
 import { StatsService } from './stats.service';
 import {
@@ -118,6 +122,7 @@ export class AnnualTargetsService {
     target: AnnualTarget,
     actorId: string,
     reason: string,
+    action: AnnualTargetAction,
     actorName?: string,
   ): AnnualTargetRevision {
     const {
@@ -137,6 +142,7 @@ export class AnnualTargetsService {
       snapshot,
     } = target;
     return {
+      action,
       at: new Date().toISOString(),
       actorId,
       actorName,
@@ -160,7 +166,13 @@ export class AnnualTargetsService {
     };
   }
 
-  async create(orgId: string | null, actorId: string, dto: AnnualTargetDto, actorName?: string) {
+  async create(
+    orgId: string | null,
+    actorId: string,
+    dto: AnnualTargetDto,
+    actorName?: string,
+    action: 'create' | 'copy' = 'create',
+  ) {
     const definition = await this.definition(orgId, dto);
     const target = this.targets.create({
       ...definition,
@@ -172,7 +184,7 @@ export class AnnualTargetsService {
       history: [],
     });
     target.history = [
-      this.revision(target, actorId, dto.reason?.trim() || 'Ziel angelegt', actorName),
+      this.revision(target, actorId, dto.reason?.trim() || 'Ziel angelegt', action, actorName),
     ];
     return this.targets.save(target);
   }
@@ -182,11 +194,12 @@ export class AnnualTargetsService {
     version: number | undefined,
     actorId: string,
     reason: string,
+    action: AnnualTargetAction,
     actorName?: string,
   ) {
     if (version !== target.version)
       throw new ConflictException('Das Ziel wurde inzwischen geändert. Bitte neu laden.');
-    target.history = [...target.history, this.revision(target, actorId, reason, actorName)];
+    target.history = [...target.history, this.revision(target, actorId, reason, action, actorName)];
     const { id, createdAt: _createdAt, updatedAt: _updatedAt, ...changes } = target;
     void _createdAt;
     void _updatedAt;
@@ -219,6 +232,7 @@ export class AnnualTargetsService {
       dto.version,
       actorId,
       dto.reason?.trim() || 'Entwurf bearbeitet',
+      'update',
       actorName,
     );
   }
@@ -266,6 +280,7 @@ export class AnnualTargetsService {
       dto.version,
       actorId,
       dto.reason.trim() || 'Ziel festgelegt',
+      dto.action,
       actorName,
     );
   }
@@ -288,6 +303,7 @@ export class AnnualTargetsService {
         reason: `Aus Jahresziel ${source.year} übernommen (${source.id})`,
       },
       actorName,
+      'copy',
     );
   }
 

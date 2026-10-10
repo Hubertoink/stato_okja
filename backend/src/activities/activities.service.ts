@@ -19,6 +19,7 @@ import {
 } from '../auth/org-scope-access';
 import { ActivityListQuery, type ActivityListFilters } from './activity-list-query';
 import { normalizeActivityMetrics } from './activity-metrics';
+import { assertActivityCategorySelection } from '../config/activity-category.config';
 
 type ActivityAuditSnapshot = {
   title: string | null;
@@ -432,6 +433,8 @@ export class ActivitiesService {
       cohorts?: ActivityCohortInput[];
     };
 
+    assertActivityCategorySelection(categoryIds ?? rest.categories?.map((category) => category.id) ?? []);
+
     // locationId is optional; if omitted, activity can still be created
 
     const activity = this.activityRepository.create(rest);
@@ -537,6 +540,8 @@ export class ActivitiesService {
       categoryIds?: string[];
       cohorts?: ActivityCohortInput[];
     };
+
+    assertActivityCategorySelection(categoryIds ?? rest.categories?.map((category) => category.id) ?? existing.categories?.map((category) => category.id) ?? []);
 
     Object.assign(existing, rest);
     existing.executionStatus = this.normalizeExecutionStatus(rest.executionStatus ?? existing.executionStatus);

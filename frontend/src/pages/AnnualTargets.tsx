@@ -1,46 +1,23 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Target, Download, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Target, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { usePublicConfig } from '@/lib/publicConfig';
 import { useOrgScopeKey } from '@/lib/orgScope';
 import { useActiveOrganizationName } from '@/lib/useActiveOrganizationName';
-import { useActivitiesPaged, useActivity } from '@/lib/activities';
-import { useProjects } from '@/lib/projects';
-import { colorFromStringHash } from '@/lib/colors';
-import ProjectPickerModal from './ProjectPickerModal';
-import ProtectedImage from '@/components/ProtectedImage';
-import {
-  AnnualTarget,
-  TargetPayload,
-  TargetScope,
-  targetMetrics,
-  targetTypes,
-  targetStatuses,
-  targetYear,
-  targetScopeLabel,
-  targetRequirement,
-  formatTargetValue,
-  targetDifference,
-  targetError,
-  targetPeriod,
-  targetPeriodLabel,
-  targetMonths,
-  useAnnualTargets,
-  useAnnualTarget,
-  useTargetMutation,
-} from '@/lib/annualTargets';
-import Modal from '@/components/Modal';
+import { type AnnualTarget, type TargetScope, targetYear, targetError, useAnnualTargets } from '@/lib/annualTargets';
 import { Button, IconButton } from '@/components/ui/Button';
-import { Input, Select, Textarea, FieldLabel } from '@/components/ui/Field';
+import { Input, FieldLabel } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { StatisticsTabs, TargetProgress, AnnualTargetCard } from '@/components/AnnualTargetCards';
-import AnnualTargetActivities from '@/components/AnnualTargetActivities';
-import AnnualTargetActionDialog, { type TargetAction } from '@/components/AnnualTargetActionDialog';
-import AnnualTargetHeaderActions from '@/components/AnnualTargetHeaderActions';
-import AnnualTargetCalculation from '@/components/AnnualTargetCalculation';
+import { StatisticsTabs, AnnualTargetCard } from '@/components/AnnualTargetCards';
+import { TargetEditor, TargetDetail } from '@/components/AnnualTargetDialogs';
 
-const dateLabel = (date: string) => date.split('-').reverse().join('.');
+const statusFilters = [
+  { status: 'all', label: 'Alle Jahresziele' },
+  { status: 'draft', label: 'Entwürfe' },
+  { status: 'active', label: 'Festgelegt' },
+  { status: 'closed', label: 'Abgeschlossen' },
+] as const;
 
 export default function AnnualTargets() {
   const scopeKey = useOrgScopeKey();
@@ -95,6 +72,11 @@ function AnnualTargetsContent() {
         ? target.scope.projectId === scope.projectId
         : true,
   );
+  const statusFilter =
+    statusFilters.find((filter) => filter.status === params.get('status'))?.status ?? 'all';
+  const visibleTargets = targets.filter(
+    (target) => statusFilter === 'all' || target.status === statusFilter,
+  );
   const targetId = params.get('target');
   const setParam = (name: string, value?: string) => {
     const next = new URLSearchParams(params);
@@ -107,7 +89,7 @@ function AnnualTargetsContent() {
     setExporting(true);
     try {
       const { exportAnnualTargets } = await import('./statistics/export/annualTargetsExport');
-      await exportAnnualTargets(targets, year, organization ?? 'Ohne Einrichtung', format);
+      await exportAnnualTargets(visibleTargets, year, organization ?? 'Ohne Einrichtung', format);
     } catch {
       setExportError('Der Export ist fehlgeschlagen. Bitte erneut versuchen.');
     } finally {
@@ -182,7 +164,7 @@ function AnnualTargetsContent() {
           </div>
           <Button
             variant="secondary"
-            disabled={exporting || !targets.length}
+            disabled={exporting || !visibleTargets.length}
             onClick={() => void exportReport('xlsx')}
           >
             <Download />
@@ -190,7 +172,7 @@ function AnnualTargetsContent() {
           </Button>
           <Button
             variant="secondary"
-            disabled={exporting || !targets.length}
+            disabled={exporting || !visibleTargets.length}
             onClick={() => void exportReport('pdf')}
           >
             <Download />
@@ -237,44 +219,66 @@ function AnnualTargetsContent() {
             Erneut laden
           </Button>
         </div>
-      ) : targets.length === 0 ? (
-        <section className="modern-card p-8 text-center">
-          <Target className="mx-auto mb-3 h-8 w-8 text-viridian" />
-          <h2 className="text-lg font-semibold">Noch keine Jahresziele für {year}</h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Lege Vorgaben für Stunden, Besuche, Aktivitäten oder Genderanteile fest. Die Istwerte
-            berechnet Stato aus der Dokumentation.
-          </p>
-        </section>
       ) : (
         <section aria-label="Jahresziele im Überblick" className="space-y-4">
-          <div className="annual-target-overview">
-            <span>
-              <strong>{targets.length}</strong>{' '}
-              {targets.length === 1 ? 'Jahresziel' : 'Jahresziele'}
-            </span>
-            <span>
-              <strong>{targets.filter((target) => target.status === 'draft').length}</strong>{' '}
-              Entwürfe
-            </span>
-            <span>
-              <strong>{targets.filter((target) => target.status === 'active').length}</strong>{' '}
-              festgelegt
-            </span>
-            <span>
-              <strong>{targets.filter((target) => target.status === 'closed').length}</strong>{' '}
-              abgeschlossen
-            </span>
-          </div>
-          <div className="annual-target-grid">
-            {targets.map((target) => (
-              <AnnualTargetCard
-                key={target.id}
-                target={target}
-                onOpen={() => setParam('target', target.id)}
-              />
+          <div
+            role="group"
+            aria-label="Jahresziele nach Status filtern"
+            className="annual-target-overview"
+          >
+            {statusFilters.map(({ status, label }) => (
+              <Button
+                key={status}
+                size="sm"
+                variant={statusFilter === status ? 'primary' : 'secondary'}
+                className="annual-target-status-filter"
+                aria-pressed={statusFilter === status}
+                onClick={() =>
+                  setParam(
+                    'status',
+                    status === 'all' || statusFilter === status ? undefined : status,
+                  )
+                }
+              >
+                {label}{' '}
+                <span className="tabular-nums">
+                  {status === 'all'
+                    ? targets.length
+                    : targets.filter((target) => target.status === status).length}
+                </span>
+              </Button>
             ))}
           </div>
+          {visibleTargets.length === 0 ? (
+            <div className="modern-card p-8 text-center">
+              <Target className="mx-auto mb-3 h-8 w-8 text-viridian" />
+              <h2 className="text-lg font-semibold">
+                {targets.length === 0
+                  ? `Noch keine Jahresziele für ${year}`
+                  : 'Keine Jahresziele mit diesem Status'}
+              </h2>
+              {targets.length === 0 ? (
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  Lege Vorgaben für Stunden, Besuche, Aktivitäten oder Genderanteile fest. Die
+                  Istwerte berechnet Stato aus der Dokumentation.
+                </p>
+              ) : (
+                <Button variant="secondary" className="mt-3" onClick={() => setParam('status')}>
+                  Alle Jahresziele anzeigen
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="annual-target-grid">
+              {visibleTargets.map((target) => (
+                <AnnualTargetCard
+                  key={target.id}
+                  target={target}
+                  onOpen={() => setParam('target', target.id)}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
       {editor && isAdmin && (
@@ -299,735 +303,5 @@ function AnnualTargetsContent() {
         />
       )}
     </div>
-  );
-}
-
-function TargetEditor({
-  initial,
-  year,
-  scope,
-  onClose,
-  onSaved,
-}: {
-  initial?: AnnualTarget;
-  year: number;
-  scope: TargetScope;
-  onClose: () => void;
-  onSaved: (year: number) => void;
-}) {
-  const [form, setForm] = useState<TargetPayload>(() =>
-    initial
-      ? {
-          title: initial.title,
-          year: initial.year,
-          dateFrom: initial.dateFrom ?? null,
-          dateTo: initial.dateTo ?? null,
-          metric: initial.metric,
-          scope: initial.scope,
-          rule: initial.rule,
-          target: initial.target,
-          upperTarget: initial.upperTarget,
-          description: initial.description,
-          showOnDashboard: initial.showOnDashboard,
-          version: initial.version,
-          reason: '',
-        }
-      : {
-          title: '',
-          year,
-          dateFrom: null,
-          dateTo: null,
-          metric: 'duration_hours',
-          scope,
-          rule: 'min',
-          target: 0,
-          upperTarget: null,
-          description: '',
-          showOnDashboard: true,
-        },
-  );
-  const [scopeMode, setScopeMode] = useState(() =>
-    form.scope.activityId
-      ? 'activity'
-      : form.scope.projectId
-        ? 'project'
-        : form.scope.types?.length
-          ? 'types'
-          : 'all',
-  );
-  const [activitySearch, setActivitySearch] = useState('');
-  const [customPeriod, setCustomPeriod] = useState(!!initial?.dateFrom);
-  const [activityPage, setActivityPage] = useState(1);
-  const [pickActivity, setPickActivity] = useState(false);
-  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
-  const projects = useProjects();
-  const selectedProject = projects.data?.find((project) => project.id === form.scope.projectId);
-  const projectTitle =
-    selectedProject?.title ||
-    (form.scope.projectId && form.scope.projectId === initial?.scope.projectId
-      ? initial.scopeLabel
-      : '');
-  const selectedActivity = useActivity(form.scope.activityId);
-  const mutation = useTargetMutation();
-  const change = <K extends keyof TargetPayload>(key: K, value: TargetPayload[K]) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
-  const save = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (projectPickerOpen || (scopeMode === 'project' && !form.scope.projectId)) return;
-    mutation.mutate(
-      { action: 'save', id: initial?.id, payload: form },
-      { onSuccess: () => onSaved(form.year) },
-    );
-  };
-  return (
-    <>
-      <Modal
-        open
-        title={initial ? 'Jahresziel bearbeiten' : 'Jahresziel anlegen'}
-        onClose={() => {
-          if (!mutation.isPending) onClose();
-        }}
-        maxWidth="2xl"
-        variant="form"
-      >
-        <form onSubmit={save} className="space-y-4 overflow-y-auto p-4 sm:p-6">
-          <FieldLabel>
-            Titel
-            <Input
-              required
-              maxLength={120}
-              value={form.title}
-              onChange={(e) => change('title', e.target.value)}
-              placeholder="z. B. Aktivitätsstunden Offene Tür"
-            />
-          </FieldLabel>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FieldLabel>
-              Zieljahr
-              <Input
-                type="number"
-                required
-                min={2000}
-                max={2200}
-                disabled={initial?.status === 'active' || customPeriod}
-                value={form.year}
-                onChange={(e) => change('year', Number(e.target.value))}
-              />
-            </FieldLabel>
-            <FieldLabel>
-              Kennzahl
-              <Select
-                value={form.metric}
-                onChange={(e) => change('metric', e.target.value as TargetPayload['metric'])}
-              >
-                {Object.entries(targetMetrics).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </FieldLabel>
-          </div>
-          <FieldLabel>
-            Zielzeitraum
-            <Select
-              value={customPeriod ? 'custom' : 'year'}
-              onChange={(e) => {
-                const custom = e.target.value === 'custom';
-                setCustomPeriod(custom);
-                setForm((prev) => ({
-                  ...prev,
-                  dateFrom: custom ? `${prev.year}-01-01` : null,
-                  dateTo: custom ? `${prev.year}-12-31` : null,
-                }));
-              }}
-            >
-              <option value="year">Ganzes Zieljahr</option>
-              <option value="custom">Eigener Zeitraum</option>
-            </Select>
-          </FieldLabel>
-          {customPeriod && (
-            <div className="space-y-2">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FieldLabel>
-                  Von
-                  <Input
-                    type="date"
-                    required
-                    min={initial?.status === 'active' ? `${form.year}-01-01` : '2000-01-01'}
-                    max={initial?.status === 'active' ? `${form.year}-12-31` : '2200-12-31'}
-                    value={form.dateFrom || ''}
-                    onChange={(e) => {
-                      const from = e.target.value;
-                      setForm((prev) => ({
-                        ...prev,
-                        dateFrom: from,
-                        year:
-                          from && initial?.status !== 'active'
-                            ? Number(from.slice(0, 4))
-                            : prev.year,
-                      }));
-                    }}
-                  />
-                </FieldLabel>
-                <FieldLabel>
-                  Bis
-                  <Input
-                    type="date"
-                    required
-                    min={form.dateFrom || '2000-01-01'}
-                    max="2200-12-31"
-                    value={form.dateTo || ''}
-                    onChange={(e) => change('dateTo', e.target.value)}
-                  />
-                </FieldLabel>
-              </div>
-              <p className="text-xs text-[var(--text-muted)]">
-                Start- und Endtag zählen mit. Das Zieljahr entspricht dem Beginn;
-                jahresübergreifende Ziele erscheinen auch in den Folgejahren.
-              </p>
-            </div>
-          )}
-          <FieldLabel>
-            Geltungsbereich
-            <Select
-              value={scopeMode}
-              onChange={(e) => {
-                setScopeMode(e.target.value);
-                change('scope', {});
-              }}
-            >
-              {[
-                ['all', 'Gesamte Einrichtung'],
-                ['types', 'Aktivitätstypen / Bereiche'],
-                ['project', 'Bestimmtes Projekt / wiederkehrendes Angebot'],
-                ['activity', 'Einzelne Aktivität / Termin'],
-              ].map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </FieldLabel>
-          {scopeMode === 'types' && (
-            <fieldset className="space-y-2 rounded-xl border border-[var(--border-subtle)] p-3">
-              <legend className="px-1 text-sm">Aktivitätstypen auswählen</legend>
-              {Object.entries(targetTypes).map(([value, label]) => (
-                <label className="flex items-center gap-2 text-sm" key={value}>
-                  <Input
-                    type="checkbox"
-                    className="!min-h-0 !w-4"
-                    checked={form.scope.types?.includes(value) ?? false}
-                    onChange={(event) =>
-                      change('scope', {
-                        types: event.target.checked
-                          ? [...(form.scope.types ?? []), value]
-                          : form.scope.types?.filter((type) => type !== value),
-                      })
-                    }
-                  />
-                  {label}
-                </label>
-              ))}
-            </fieldset>
-          )}
-          {scopeMode === 'project' && (
-            <div>
-              <FieldLabel htmlFor="annual-target-project" className="mb-1">
-                Projekt
-              </FieldLabel>
-              <Button
-                id="annual-target-project"
-                variant="secondary"
-                className="w-full justify-start gap-3 text-left"
-                aria-haspopup="dialog"
-                aria-expanded={projectPickerOpen}
-                aria-label={
-                  projectTitle ? `Projekt auswählen: ${projectTitle}` : 'Projekt auswählen'
-                }
-                onClick={() => setProjectPickerOpen(true)}
-              >
-                {selectedProject && (
-                  <span
-                    className="h-10 w-12 shrink-0 overflow-hidden rounded-md"
-                    style={{
-                      backgroundColor:
-                        selectedProject.color || colorFromStringHash(selectedProject.title),
-                    }}
-                  >
-                    {selectedProject.imageUrl && (
-                      <ProtectedImage
-                        src={selectedProject.imageUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                  </span>
-                )}
-                <span className="min-w-0 truncate">
-                  {projectTitle || 'Projekt auswählen'}
-                  {selectedProject?.archived ? ' (archiviert)' : ''}
-                </span>
-              </Button>
-              {projects.isError && <span role="alert">Projekte konnten nicht geladen werden.</span>}
-            </div>
-          )}
-          {scopeMode === 'activity' && (
-            <div className="space-y-2">
-              <p className="text-sm">
-                {selectedActivity.data
-                  ? `${selectedActivity.data.title || 'Aktivität'} · ${dateLabel(selectedActivity.data.date)}`
-                  : initial?.scopeLabel || 'Noch keine Aktivität ausgewählt'}
-              </p>
-              <Button variant="secondary" onClick={() => setPickActivity((value) => !value)}>
-                Aktivität auswählen
-              </Button>
-              {pickActivity && (
-                <div className="space-y-3 rounded-xl border border-[var(--border-subtle)] p-3">
-                  <Input
-                    aria-label="Aktivität suchen"
-                    placeholder="Aktivität suchen …"
-                    value={activitySearch}
-                    onChange={(e) => {
-                      setActivitySearch(e.target.value);
-                      setActivityPage(1);
-                    }}
-                  />
-                  <TargetActivityPicker
-                    from={targetPeriod(form).from}
-                    to={targetPeriod(form).to}
-                    search={activitySearch}
-                    page={activityPage}
-                    onPage={setActivityPage}
-                    onPick={(id) => {
-                      change('scope', { activityId: id });
-                      setPickActivity(false);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <FieldLabel>
-              Vorgabe
-              <Select
-                value={form.rule}
-                onChange={(e) => change('rule', e.target.value as TargetPayload['rule'])}
-              >
-                <option value="min">Mindestens</option>
-                <option value="max">Höchstens</option>
-                <option value="range">Zielkorridor</option>
-              </Select>
-            </FieldLabel>
-            <FieldLabel>
-              {form.rule === 'range' ? 'Untere Grenze' : 'Zielwert'}
-              {form.metric.endsWith('_percent')
-                ? ' (%)'
-                : form.metric === 'duration_hours'
-                  ? ' (h)'
-                  : ''}
-              <Input
-                type="number"
-                required
-                min={0}
-                max={form.metric.endsWith('_percent') ? 100 : 1e9}
-                step={
-                  form.metric === 'activity_count' || form.metric === 'participant_total'
-                    ? 1
-                    : 'any'
-                }
-                value={Number.isNaN(form.target) ? '' : form.target}
-                onChange={(e) =>
-                  change('target', e.target.value === '' ? NaN : Number(e.target.value))
-                }
-              />
-            </FieldLabel>
-            {form.rule === 'range' && (
-              <FieldLabel>
-                Obere Grenze
-                {form.metric.endsWith('_percent')
-                  ? ' (%)'
-                  : form.metric === 'duration_hours'
-                    ? ' (h)'
-                    : ''}
-                <Input
-                  required
-                  type="number"
-                  min={form.target}
-                  max={form.metric.endsWith('_percent') ? 100 : 1e9}
-                  step={
-                    form.metric === 'activity_count' || form.metric === 'participant_total'
-                      ? 1
-                      : 'any'
-                  }
-                  value={form.upperTarget ?? ''}
-                  onChange={(e) =>
-                    change('upperTarget', e.target.value === '' ? null : Number(e.target.value))
-                  }
-                />
-              </FieldLabel>
-            )}
-          </div>
-          {form.metric.endsWith('_percent') && (
-            <p className="text-xs text-[var(--text-muted)]">
-              Zielwert zwischen 0 und 100 %. Beispiel: 30 entspricht 30 % der Besuche mit
-              Geschlechtszuordnung.
-            </p>
-          )}
-          <FieldLabel>
-            Begründung / Verantwortung (optional)
-            <Textarea
-              rows={3}
-              maxLength={4000}
-              value={form.description}
-              onChange={(e) => change('description', e.target.value)}
-            />
-          </FieldLabel>
-          <label className="flex items-center gap-2 text-sm">
-            <Input
-              type="checkbox"
-              className="!min-h-0 !w-4"
-              checked={form.showOnDashboard}
-              onChange={(e) => change('showOnDashboard', e.target.checked)}
-            />
-            Nach dem Festlegen auf dem Dashboard anzeigen
-          </label>
-          {initial && (
-            <FieldLabel>
-              Änderungsgrund{initial.status === 'active' ? ' (erforderlich)' : ' (optional)'}
-              <Textarea
-                required={initial.status === 'active'}
-                rows={2}
-                maxLength={2000}
-                value={form.reason}
-                onChange={(e) => change('reason', e.target.value)}
-              />
-            </FieldLabel>
-          )}
-          {mutation.isError && (
-            <p role="alert" className="text-sm text-[var(--status-danger-text)]">
-              {targetError(mutation.error)}
-            </p>
-          )}
-          <div className="flex flex-wrap justify-end gap-3">
-            <Button variant="secondary" disabled={mutation.isPending} onClick={onClose}>
-              Abbrechen
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                mutation.isPending ||
-                projectPickerOpen ||
-                (scopeMode === 'project' && !form.scope.projectId) ||
-                (scopeMode === 'types' && !form.scope.types?.length) ||
-                (scopeMode === 'activity' && !form.scope.activityId)
-              }
-            >
-              {mutation.isPending
-                ? 'Speichert …'
-                : initial
-                  ? 'Änderungen speichern'
-                  : 'Entwurf speichern'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-      {projectPickerOpen && (
-        <ProjectPickerModal
-          onClose={() => setProjectPickerOpen(false)}
-          onPick={(project) => {
-            change('scope', { projectId: project.id });
-            setProjectPickerOpen(false);
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-function TargetActivityPicker({
-  from,
-  to,
-  search,
-  page,
-  onPage,
-  onPick,
-}: {
-  from: string;
-  to: string;
-  search: string;
-  page: number;
-  onPage: (page: number) => void;
-  onPick: (id: string) => void;
-}) {
-  const query = useActivitiesPaged({ from, to, search, order: 'desc' }, page, 10);
-  return (
-    <div className="space-y-2">
-      {query.isPending ? (
-        <p>Lädt …</p>
-      ) : query.isError ? (
-        <p role="alert">Aktivitäten konnten nicht geladen werden.</p>
-      ) : (
-        <>
-          {query.data.data.map((activity) => (
-            <Button
-              key={activity.id}
-              variant="ghost"
-              className="w-full justify-start text-left"
-              onClick={() => onPick(activity.id)}
-            >
-              {dateLabel(activity.date)} ·{' '}
-              {activity.title || activity.project?.title || targetTypes[activity.type]}
-            </Button>
-          ))}
-          {!query.data.total && (
-            <p className="text-sm">Keine Aktivitäten im Zielzeitraum gefunden.</p>
-          )}
-          <div className="flex gap-2">
-            <Button variant="secondary" disabled={page === 1} onClick={() => onPage(page - 1)}>
-              Zurück
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={page * 10 >= query.data.total}
-              onClick={() => onPage(page + 1)}
-            >
-              Weiter
-            </Button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function TargetDetail({
-  id,
-  isAdmin,
-  onClose,
-  onEdit,
-}: {
-  id: string;
-  isAdmin: boolean;
-  onClose: () => void;
-  onEdit: (target: AnnualTarget) => void;
-}) {
-  const query = useAnnualTarget(id);
-  const [action, setAction] = useState<TargetAction | null>(null);
-  const [copied, setCopied] = useState<number | null>(null);
-  const [activitiesExpanded, setActivitiesExpanded] = useState(false);
-  const target = query.data;
-  return (
-    <>
-      <Modal
-        open={!action}
-        title={target?.title || 'Jahresziel'}
-        onClose={onClose}
-        maxWidth="4xl"
-        variant="information"
-        contentClassName="pt-4"
-        showCloseButton={false}
-        headerActions={
-          <AnnualTargetHeaderActions
-            target={target}
-            isAdmin={isAdmin}
-            onEdit={onEdit}
-            onAction={setAction}
-            onClose={onClose}
-          />
-        }
-      >
-        {query.isPending ? (
-          <p>Lädt …</p>
-        ) : query.isError ? (
-          <p role="alert">{targetError(query.error)}</p>
-        ) : (
-          target && (
-            <div className="space-y-6">
-              <div className="annual-target-detail-summary">
-                <p className="mb-4 text-sm text-[var(--text-secondary)]">
-                  {targetPeriodLabel(target)} · {targetStatuses[target.status]} ·{' '}
-                  {targetScopeLabel(target)}
-                </p>
-                {target.agreement && (
-                  <div className="annual-target-agreement">
-                    <Target aria-hidden="true" />
-                    <div>
-                      <span>Zielvereinbarung</span>
-                      <p>{target.agreement}</p>
-                    </div>
-                  </div>
-                )}
-                <TargetProgress target={target} goalFirst />
-                <p className="mt-4 text-sm font-medium">{targetDifference(target)}</p>
-              </div>
-              {copied && (
-                <p role="status">
-                  Entwurf für {copied} angelegt.{' '}
-                  <Link
-                    to={`/statistics/targets?year=${copied}`}
-                    onClick={onClose}
-                    className="underline"
-                  >
-                    Zum Folgejahr
-                  </Link>
-                </p>
-              )}
-              {target.description && (
-                <div>
-                  <h3 className="font-semibold">Begründung / Verantwortung</h3>
-                  <p className="mt-1 whitespace-pre-wrap text-sm">{target.description}</p>
-                </div>
-              )}
-              {target.review && (
-                <div>
-                  <h3 className="font-semibold">Fachliche Einordnung des Jahresabschlusses</h3>
-                  <p className="mt-1 whitespace-pre-wrap text-sm">{target.review}</p>
-                </div>
-              )}
-              {target.dataChanged && (
-                <div className="rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-4 text-sm">
-                  <strong>Daten seit dem Abschluss geändert.</strong>
-                  <p>
-                    Gespeicherter Abschluss: {formatTargetValue(target.result.value, target.metric)}{' '}
-                    · Aktuell berechnet: {formatTargetValue(target.current.value, target.metric)}.
-                    Für einen korrigierten Abschluss kann ein Admin das Ziel begründet wieder
-                    öffnen.
-                  </p>
-                </div>
-              )}
-              <AnnualTargetCalculation target={target} />
-              <div>
-                <h3 className="mb-3 font-semibold">
-                  Monatswerte{target.status === 'closed' ? ' zum Abschluss' : ''}
-                </h3>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {targetMonths(target).map((month) => {
-                    const row = target.result.series.find((entry) => entry.month === month);
-                    const future =
-                      month > target.result.asOf.slice(0, 7) ||
-                      targetPeriod(target).from > target.result.asOf;
-                    return (
-                      <div
-                        className="rounded-xl border border-[var(--border-subtle)] p-3"
-                        key={month}
-                      >
-                        <p className="text-xs text-[var(--text-secondary)]">
-                          {new Date(`${month}-01T12:00:00`).toLocaleDateString('de-DE', {
-                            month: 'long',
-                            ...(targetPeriod(target).from.slice(0, 4) !==
-                            targetPeriod(target).to.slice(0, 4)
-                              ? { year: 'numeric' as const }
-                              : {}),
-                          })}
-                        </p>
-                        <p className="mt-1 text-sm font-medium">
-                          {future
-                            ? 'Ausstehend'
-                            : formatTargetValue(
-                                row?.value ?? (target.metric.endsWith('_percent') ? null : 0),
-                                target.metric,
-                              )}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <details
-                className="annual-target-disclosure"
-                onToggle={(event) => setActivitiesExpanded(event.currentTarget.open)}
-              >
-                <summary>
-                  <span>
-                    Zugehörige Aktivitäten{' '}
-                    <span className="annual-target-disclosure-count">
-                      {target.current.activityCount}
-                    </span>
-                  </span>
-                  <ChevronDown aria-hidden="true" />
-                </summary>
-                {activitiesExpanded && (
-                  <div className="annual-target-disclosure-content">
-                    <AnnualTargetActivities key={id} id={id} />
-                  </div>
-                )}
-              </details>
-              <details className="annual-target-disclosure">
-                <summary>
-                  <span>
-                    Änderungsverlauf{' '}
-                    <span className="annual-target-disclosure-count">
-                      {target.history?.length ?? 0}
-                    </span>
-                  </span>
-                  <ChevronDown aria-hidden="true" />
-                </summary>
-                <ol className="annual-target-disclosure-content space-y-3">
-                  {target.history
-                    ?.slice()
-                    .reverse()
-                    .map((entry, index) => (
-                      <li
-                        key={`${entry.at}-${index}`}
-                        className="rounded-xl border border-[var(--border-subtle)] p-3 text-sm"
-                      >
-                        <p className="font-medium">{entry.reason}</p>
-                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                          {new Date(entry.at).toLocaleString('de-DE')} ·{' '}
-                          {entry.actorName || 'Admin'}
-                        </p>
-                        <p className="mt-2">
-                          {entry.definition.title} · {entry.definition.year} ·{' '}
-                          {targetMetrics[entry.definition.metric]} ·{' '}
-                          {targetRequirement(entry.definition)} ·{' '}
-                          {targetStatuses[entry.definition.status]}
-                        </p>
-                        <p className="mt-1 text-xs">
-                          Zeitraum: {targetPeriodLabel(entry.definition)}
-                        </p>
-                        <p className="mt-1 text-xs">
-                          Bezug:{' '}
-                          {entry.definition.scope.types
-                            ?.map((type) => targetTypes[type])
-                            .join(', ') ||
-                            (entry.definition.scope.projectId
-                              ? `Projekt ${entry.definition.scope.projectId}`
-                              : entry.definition.scope.activityId
-                                ? `Aktivität ${entry.definition.scope.activityId}`
-                                : 'Gesamte Einrichtung')}
-                        </p>
-                        {entry.definition.description && (
-                          <p className="mt-1 whitespace-pre-wrap">{entry.definition.description}</p>
-                        )}
-                        {entry.definition.snapshot && (
-                          <p className="mt-1">
-                            Abschlusswert:{' '}
-                            {formatTargetValue(
-                              entry.definition.snapshot.value,
-                              entry.definition.metric,
-                            )}{' '}
-                            · {entry.definition.review}
-                          </p>
-                        )}
-                      </li>
-                    ))}
-                </ol>
-              </details>
-            </div>
-          )
-        )}
-      </Modal>
-      {action && isAdmin && target && (
-        <AnnualTargetActionDialog
-          key={action}
-          action={action}
-          target={target}
-          onClose={() => setAction(null)}
-          onCopied={setCopied}
-        />
-      )}
-    </>
   );
 }

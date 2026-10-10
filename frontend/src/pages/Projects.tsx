@@ -1870,7 +1870,7 @@ function ProjectForm({
           onDrop={onDrop}
         >
           <div className="px-4 py-4 md:px-5 md:py-5">
-            {initial?.id && <AnnualTargetCards scope={{ projectId: initial.id }} />}
+            {initial?.id && <AnnualTargetCards compact scope={{ projectId: initial.id }} />}
             {!initial?.id && (
               <div className="mb-4">
                 <button

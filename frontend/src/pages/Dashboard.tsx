@@ -45,7 +45,7 @@ import { listOrgs, type OrgDto, getOpeningHours, OpeningHours } from '@/lib/orgs
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { fetchActivityAcks, setActivityAck } from '@/lib/acks';
 import { usePublicConfig } from '@/lib/publicConfig';
-import AnnualTargetCards from '@/components/AnnualTargetCards';
+import DashboardAnnualTargets from '@/components/DashboardAnnualTargets';
 import CustomKpiCards from '@/components/CustomKpiCards';
 import { useLogbookEntries } from '@/lib/logbook';
 import { useActiveSurveyDashboardSummaries } from '@/lib/surveys';
@@ -1060,7 +1060,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <AnnualTargetCards />
+      <DashboardAnnualTargets />
       <CustomKpiCards
         surface="dashboard"
         from={dashboardTrendRange.from}

@@ -13,6 +13,7 @@ export interface PublicConfig {
   loginSubtitle: string;
   liveRefreshIntervalMs: number;
   annualTargetsEnabled: boolean;
+  activityCategoryMode: 'single' | 'multiple';
   twoFactorEnabled: boolean;
   initialSetupRequired: boolean;
   passwordResetMode: PasswordResetMode;
@@ -28,6 +29,7 @@ export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   loginSubtitle: autoT('ui_86922bad66e8'),
   liveRefreshIntervalMs: 15000,
   annualTargetsEnabled: false,
+  activityCategoryMode: 'multiple',
   twoFactorEnabled: false,
   initialSetupRequired: false,
   passwordResetMode: 'email',
@@ -64,6 +66,7 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
     loginSubtitle: String(data.loginSubtitle || DEFAULT_PUBLIC_CONFIG.loginSubtitle),
     liveRefreshIntervalMs: parseLiveRefreshIntervalMs(data.liveRefreshIntervalMs),
     annualTargetsEnabled: data.annualTargetsEnabled === true,
+    activityCategoryMode: data.activityCategoryMode === 'single' ? 'single' : 'multiple',
     twoFactorEnabled: typeof data.twoFactorEnabled === 'boolean' ? data.twoFactorEnabled : DEFAULT_PUBLIC_CONFIG.twoFactorEnabled,
     initialSetupRequired:
       typeof data.initialSetupRequired === 'boolean'

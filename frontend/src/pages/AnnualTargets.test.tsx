@@ -1,5 +1,6 @@
+import DashboardAnnualTargets from '@/components/DashboardAnnualTargets';
 import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AnnualTargets from './AnnualTargets';
 import AnnualTargetCards, { StatisticsTabs } from '@/components/AnnualTargetCards';
@@ -105,6 +106,20 @@ describe('Annual target UI permissions and flows', () => {
     state.exportTargets.mockReset();
   });
   afterEach(cleanup);
+  it('opens, edits and closes dashboard targets without changing the route', () => {
+    function Location() { return <output data-testid="location">{useLocation().pathname}</output>; }
+    render(<MemoryRouter initialEntries={['/dashboard']}><Location /><DashboardAnnualTargets /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Ziel ansehen: Stunden Offene Tür' }));
+    expect(screen.getByRole('dialog', { name: 'Stunden Offene Tür' })).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+    expect(screen.getByRole('dialog', { name: 'Jahresziel bearbeiten' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+  });
+
   it('shows actions separately from reasons for the existing chronological history', () => {
     const statuses = ['draft', 'draft', 'active', 'active', 'closed', 'active'] as const;
     state.targets = [

@@ -1,6 +1,6 @@
 # StatO for ZimaOS
 # Import: App Center -> Install a customized app -> Import
-# The eight ${...} values below appear in the ZimaOS setup form.
+# The ${...} values below appear in the ZimaOS setup form.
 
 name: stato-zimaos
 
@@ -62,6 +62,7 @@ services:
     environment:
       NODE_ENV: production
       APP_ENV: production
+      ACTIVITY_CATEGORY_MODE: ${ACTIVITY_CATEGORY_MODE:-multiple}
       TRUST_PROXY: "1"
       TZ: Europe/Berlin
       APP_ORIGIN: ${STATO_URL:?Required - for example http://192.168.1.50:8088}

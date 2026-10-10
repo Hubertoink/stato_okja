@@ -350,12 +350,49 @@ export function AnnualTargetCard({
   );
 }
 
+export function CompactAnnualTargetCard({ target, to }: { target: AnnualTarget; to: string }) {
+  return (
+    <article className={`annual-target-compact annual-target-tone--${targetTone(target)}`}>
+      <Link to={to} className="annual-target-compact-link" aria-label={`Ziel ansehen: ${target.title}`}>
+        <div className="annual-target-compact-heading">
+          <h3 title={target.title}>{target.title}</h3>
+          <span className={`annual-target-status annual-target-status--${target.status}`}>
+            {targetStatuses[target.status]}
+          </span>
+        </div>
+        <div className="annual-target-compact-summary">
+          <dl aria-label={targetMetrics[target.metric]}>
+            <div>
+              <dt>{target.status === 'closed' ? 'Abschluss' : 'Ist'}</dt>
+              <dd className="annual-target-compact-actual">{formatTargetValue(target.result.value, target.metric)}</dd>
+            </div>
+            <div>
+              <dt>Ziel</dt>
+              <dd>{targetRequirement(target)}</dd>
+            </div>
+          </dl>
+          <ArrowUpRight aria-hidden="true" />
+        </div>
+        {target.dataChanged && (
+          <p className="annual-target-data-warning">
+            <AlertCircle aria-hidden="true" /> Daten seit Abschluss geändert
+          </p>
+        )}
+      </Link>
+    </article>
+  );
+}
+
 export default function AnnualTargetCards({
   year = targetYear(),
   scope,
+  onOpen,
+  compact = false,
 }: {
   year?: number;
   scope?: TargetScope;
+  onOpen?: (target: AnnualTarget) => void;
+  compact?: boolean;
 }) {
   const config = usePublicConfig();
   const { user } = useAuth();
@@ -374,14 +411,14 @@ export default function AnnualTargetCards({
   );
   if (!config.data?.annualTargetsEnabled || (!scope && !targets?.length && !isError)) return null;
   return (
-    <section className="modern-card mb-6 p-4 sm:p-6" aria-label="Jahresziele">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
+    <section className={compact ? 'annual-targets-compact' : 'modern-card mb-6 p-4 sm:p-6'} aria-label="Jahresziele">
+      <div className={compact ? 'annual-targets-compact-header' : 'mb-4 flex flex-wrap items-center justify-between gap-3'}>
+        <h2 className={`flex items-center gap-2 font-semibold ${compact ? 'text-sm' : 'text-lg'}`}>
           <Target className="h-5 w-5" />
           Jahresziele {year}
         </h2>
         <Link className="text-sm font-medium text-viridian underline" to={to}>
-          {scope && isAdmin ? 'Ziele ansehen und festlegen' : 'Alle Jahresziele'}
+          {compact ? 'Alle Ziele' : scope && isAdmin ? 'Ziele ansehen und festlegen' : 'Alle Jahresziele'}
         </Link>
       </div>
       {isError ? (
@@ -391,12 +428,19 @@ export default function AnnualTargetCards({
           Für diesen Bezug sind noch keine Jahresziele hinterlegt.
         </p>
       ) : (
-        <div className="annual-target-grid">
-          {targets.slice(0, 4).map((target) => (
-            <AnnualTargetCard
+        <div className={compact ? 'annual-target-compact-list' : 'annual-target-grid'}>
+          {targets.slice(0, 4).map((target) => compact ? (
+            <CompactAnnualTargetCard
               key={target.id}
               target={target}
               to={`/statistics/targets?year=${year}&target=${target.id}`}
+            />
+          ) : (
+            <AnnualTargetCard
+              key={target.id}
+              target={target}
+              to={onOpen ? undefined : `/statistics/targets?year=${year}&target=${target.id}`}
+              onOpen={onOpen ? () => onOpen(target) : undefined}
             />
           ))}
         </div>

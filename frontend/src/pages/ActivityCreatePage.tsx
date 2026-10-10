@@ -1,3 +1,9 @@
+import { usePublicConfig } from '@/lib/publicConfig';
+import {
+  selectActivityCategory,
+  mergeActivityCategoryDefaults,
+  SINGLE_CATEGORY_MESSAGE,
+} from '@/lib/activityCategories';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Boxes, Plus as PlusIcon, Save as SaveIcon } from 'lucide-react';
@@ -70,6 +76,8 @@ export default function ActivityCreatePage() {
   const { data: cohorts } = useCohorts({ active: true });
   const { data: locations } = useLocations({ active: true });
   const { data: taxonomyAccess } = useTaxonomyAccess();
+  const categoryConfig = usePublicConfig();
+  const categoryMode = categoryConfig.data?.activityCategoryMode ?? 'multiple';
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const createTag = useCreateTag();
@@ -121,6 +129,7 @@ export default function ActivityCreatePage() {
     allTags,
     allStaff,
     taxonomyAccess,
+    categoryMode,
     user,
     setForm,
     showToast,
@@ -161,19 +170,20 @@ export default function ActivityCreatePage() {
     if (ids.length > 0) setForm((f) => ({ ...f, tagIds: ids }));
   }, [selectedProject, tags, form.tagIds]);
 
-  // Prefill categories from project when none selected yet (include primary categoryId)
+  // Prefill the single project category when none is selected yet
   useEffect(() => {
     const proj = selectedProject;
     if (!proj) return;
     if (proj.type === 'open_door') {
-      setForm((f) => ({ ...f, categoryIds: [] }));
+      if (form.categoryIds?.length) setForm((f) => ({ ...f, categoryIds: [] }));
       return;
     }
     const cur = form.categoryIds || [];
     if (cur.length > 0) return;
-    const categoryIds = getProjectCategoryIds(proj);
+    if (!categoryConfig.data) return;
+    const categoryIds = mergeActivityCategoryDefaults([], getProjectCategoryIds(proj), categoryMode);
     if (categoryIds.length > 0) setForm((f) => ({ ...f, categoryIds: categoryIds }));
-  }, [selectedProject, form.categoryIds]);
+  }, [selectedProject, form.categoryIds, categoryMode, categoryConfig.data]);
 
   // Clear categories when switching to open-door
   useEffect(() => {
@@ -209,6 +219,10 @@ export default function ActivityCreatePage() {
   }, [categories, form, initialFormReady, locations, projects, reset, staff, tags]);
 
   const handleSave = () => {
+    if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
+      showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
+      return;
+    }
     if (create.isPending || submitLockedRef.current) return;
 
     const nextErrors = {
@@ -655,6 +669,11 @@ export default function ActivityCreatePage() {
                       ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2 mb-2">
+                      {categoryMode === 'single' && (
+                        <p className="w-full text-xs text-[var(--text-secondary)]" role={(form.categoryIds?.length ?? 0) > 1 ? 'alert' : undefined}>
+                          {(form.categoryIds?.length ?? 0) > 1 ? SINGLE_CATEGORY_MESSAGE : 'Eine Kategorie pro Aktivität auswählbar.'}
+                        </p>
+                      )}
                       {(categories || []).map((c) => {
                         const active = (form.categoryIds || []).includes(c.id);
                         return (
@@ -662,10 +681,7 @@ export default function ActivityCreatePage() {
                             key={c.id}
                             type="button"
                             onClick={() => {
-                              const set = new Set(form.categoryIds || []);
-                              if (set.has(c.id)) set.delete(c.id);
-                              else set.add(c.id);
-                              setForm({ ...form, categoryIds: Array.from(set) });
+                              setForm({ ...form, categoryIds: selectActivityCategory(form.categoryIds, c.id, categoryMode) });
                             }}
                             className="px-2 py-1 rounded-full text-xs border"
                             style={getSelectableTaxonomyChipStyle(active, c.color)}
@@ -911,12 +927,7 @@ export default function ActivityCreatePage() {
               categoryIds:
                 p.type === 'open_door'
                   ? []
-                  : (() => {
-                      const set = new Set<string>(prev.categoryIds || []);
-                      (p.categories || []).forEach((c) => set.add(c.id));
-                      if (p.categoryId) set.add(p.categoryId);
-                      return Array.from(set);
-                    })(),
+                  : mergeActivityCategoryDefaults(prev.categoryIds, getProjectCategoryIds(p), categoryMode),
               start: prev.start || p.defaultStartTime || '15:00',
               end: prev.end || p.defaultEndTime || '17:00',
             }));

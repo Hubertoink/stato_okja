@@ -1,3 +1,116 @@
+.annual-targets-compact {
+  min-width: 0;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.annual-targets-compact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.annual-targets-compact-header > a {
+  font-size: 0.75rem;
+}
+
+.annual-target-compact-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.annual-target-compact {
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--surface-1);
+}
+
+.annual-target-compact-link {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: inherit;
+  color: var(--text-primary);
+  transition: background 150ms;
+}
+
+.annual-target-compact-link:hover {
+  background: var(--surface-2);
+}
+
+.annual-target-compact-link:focus-visible {
+  outline: 2px solid var(--viridian);
+  outline-offset: 2px;
+}
+
+.annual-target-compact-heading,
+.annual-target-compact-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.annual-target-compact-heading h3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.annual-target-compact-heading .annual-target-status {
+  flex-shrink: 0;
+  padding: 0.125rem 0.5rem;
+}
+
+.annual-target-compact-summary dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.annual-target-compact-summary dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.annual-target-compact-summary dt {
+  color: var(--text-muted);
+}
+
+.annual-target-compact-summary dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.annual-target-compact-summary .annual-target-compact-actual {
+  color: var(--annual-target-accent);
+  font-weight: 650;
+}
+
+.annual-target-compact-summary > svg {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-muted);
+}
+
 .annual-target-grid {
   column-width: 23rem;
   column-gap: 1.25rem;

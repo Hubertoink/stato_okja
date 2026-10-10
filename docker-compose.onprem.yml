@@ -36,6 +36,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       APP_ENV: ${APP_ENV:-production}
+      ACTIVITY_CATEGORY_MODE: ${ACTIVITY_CATEGORY_MODE:-multiple}
       STRICT_SECURITY_MODE: ${STRICT_SECURITY_MODE:-true}
       PORT: 3000
       TZ: ${TZ:-Europe/Berlin}

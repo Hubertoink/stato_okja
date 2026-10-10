@@ -15,6 +15,7 @@ import { EmailService } from './email/email.service';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { bootstrapEmptyDatabase } from './database/bootstrap-empty-database';
 import backendPackage from '../package.json';
+import { getActivityCategoryMode } from './config/activity-category.config';
 
 const PG_TIMESTAMP_OID = 1114;
 
@@ -28,6 +29,7 @@ pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
 
 async function bootstrap() {
   assertSecureRuntimeConfig();
+  getActivityCategoryMode();
   assertTwoFactorRuntimeConfig();
   await bootstrapEmptyDatabase();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

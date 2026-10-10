@@ -1,3 +1,9 @@
+import { usePublicConfig } from '@/lib/publicConfig';
+import {
+  selectActivityCategory,
+  mergeActivityCategoryDefaults,
+  SINGLE_CATEGORY_MESSAGE,
+} from '@/lib/activityCategories';
 import { getActivityEditorReturn, type ActivityEditorNavigationState } from '@/lib/activityEditorReturn';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -37,6 +43,7 @@ import { useActivityInlineCreation } from './useActivityInlineCreation';
 import {
   type ActivityFormState,
   buildActivitySavePayload,
+  getProjectCategoryIds,
   getActivityFormStateFromActivity,
   getCohortSums,
   getActivityFormSnapshot,
@@ -67,6 +74,8 @@ export default function ActivityEditPage() {
   const { data: staff } = useStaff({ active: true });
   const { data: allStaff } = useStaff();
   const { data: taxonomyAccess } = useTaxonomyAccess();
+  const categoryConfig = usePublicConfig();
+  const categoryMode = categoryConfig.data?.activityCategoryMode ?? 'multiple';
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const createTag = useCreateTag();
@@ -124,6 +133,7 @@ export default function ActivityEditPage() {
     allTags,
     allStaff,
     taxonomyAccess,
+    categoryMode,
     user,
     setForm,
     showToast,
@@ -178,6 +188,10 @@ export default function ActivityEditPage() {
   };
 
   const handleSave = () => {
+    if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
+      showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
+      return;
+    }
     const nextErrors = {
       ...(!form.date ? { date: t('quickAdd.chooseDate') } : {}),
       ...(!form.projectId ? { project: t('quickAdd.chooseProject') } : {}),
@@ -600,6 +614,11 @@ export default function ActivityEditPage() {
                       ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      {categoryMode === 'single' && (
+                        <p className="w-full text-xs text-[var(--text-secondary)]" role={(form.categoryIds?.length ?? 0) > 1 ? 'alert' : undefined}>
+                          {(form.categoryIds?.length ?? 0) > 1 ? SINGLE_CATEGORY_MESSAGE : 'Eine Kategorie pro Aktivität auswählbar.'}
+                        </p>
+                      )}
                       {(categories || []).map((c) => {
                         const active = (form.categoryIds || []).includes(c.id);
                         return (
@@ -607,10 +626,7 @@ export default function ActivityEditPage() {
                             key={c.id}
                             type="button"
                             onClick={() => {
-                              const set = new Set(form.categoryIds || []);
-                              if (set.has(c.id)) set.delete(c.id);
-                              else set.add(c.id);
-                              setForm({ ...form, categoryIds: Array.from(set) });
+                              setForm({ ...form, categoryIds: selectActivityCategory(form.categoryIds, c.id, categoryMode) });
                             }}
                             className="px-2 py-1 rounded-full text-xs border"
                             style={getSelectableTaxonomyChipStyle(active, c.color)}
@@ -852,13 +868,9 @@ export default function ActivityEditPage() {
               ...prev,
               projectId: p.id,
               tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
-              categoryIds: (() => {
-                if (p.type === 'open_door') return [];
-                const set = new Set<string>(prev.categoryIds || []);
-                (p.categories || []).forEach((c) => set.add(c.id));
-                if (p.categoryId) set.add(p.categoryId);
-                return Array.from(set);
-              })(),
+              categoryIds: p.type === 'open_door'
+                ? []
+                : mergeActivityCategoryDefaults(prev.categoryIds, getProjectCategoryIds(p), categoryMode),
             }));
             setValidationErrors((errors) => ({ ...errors, project: undefined }));
             setPicker(false);

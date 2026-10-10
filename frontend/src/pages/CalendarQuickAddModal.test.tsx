@@ -4,18 +4,19 @@ import type { Activity } from '@/lib/activities';
 import type { StaffMember } from '@/lib/staff';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 
-const state = vi.hoisted(() => ({ activity: undefined as Activity | undefined, mutate: vi.fn(), empty: [], staff: [] as StaffMember[] }));
+const state = vi.hoisted(() => ({ activity: undefined as Activity | undefined, mutate: vi.fn(), empty: [], categoryMode: 'multiple', categories: [{ id: 'c1', name: 'Sport' }, { id: 'c2', name: 'Musik' }], staff: [] as StaffMember[] }));
 vi.mock('@/lib/activities', () => ({
   useActivity: () => ({ data: state.activity }),
   useCreateActivity: () => ({ mutate: state.mutate }),
   useUpdateActivity: () => ({ mutate: state.mutate }),
   useRemoveActivity: () => ({ mutate: vi.fn() }),
 }));
+vi.mock('@/lib/publicConfig', () => ({ usePublicConfig: () => ({ data: { activityCategoryMode: state.categoryMode } }) }));
 vi.mock('@/lib/projects', () => ({ useProjects: () => ({ data: state.empty }) }));
 vi.mock('@/lib/staff', () => ({ useStaff: (params?: { active?: boolean }) => ({ data: params?.active ? state.staff.filter((s) => s.active !== false) : state.staff }), useCreateStaff: () => ({}) }));
 vi.mock('@/lib/locations', () => ({ useLocations: () => ({ data: state.empty }) }));
 vi.mock('@/lib/taxonomy', () => ({
-  useTags: () => ({ data: state.empty }), useCategories: () => ({ data: state.empty }),
+  useTags: () => ({ data: state.empty }), useCategories: () => ({ data: state.categories }),
   useCohorts: () => ({ data: [{ id: 'young', name: '6-9 Jahre' }, { id: 'older', name: '10-12 Jahre' }] }),
   useTaxonomyAccess: () => ({ data: {} }), useCreateCategory: () => ({}),
   useUpdateCategory: () => ({}), useCreateTag: () => ({}), useUpdateTag: () => ({}),
@@ -37,9 +38,31 @@ function activity(version: number, youngWomen: number): Activity {
   } as Activity;
 }
 
-beforeEach(() => { state.activity = undefined; state.staff = []; state.mutate.mockReset(); });
+beforeEach(() => { state.categoryMode = 'multiple'; state.activity = undefined; state.staff = []; state.mutate.mockReset(); });
 
 describe('activity editor refresh', () => {
+  it.each(['single', 'multiple'])('saves the category selection in %s mode', (mode) => {
+    state.categoryMode = mode;
+    const initial = activity(1, 4);
+    render(<ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Sport' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Musik' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ categoryIds: mode === 'single' ? ['c2'] : ['c1', 'c2'] }) }), expect.anything());
+  });
+
+  it('keeps existing multiple categories visible and blocks saving until reduced in single mode', () => {
+    state.categoryMode = 'single';
+    const initial = { ...activity(1, 4), categories: state.categories } as Activity;
+    render(<ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('nur eine Kategorie');
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Sport' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ categoryIds: ['c2'] }) }), expect.anything());
+  });
+
   it('shows assigned archived staff, saves them unchanged, and lets users remove them', () => {
     state.staff = [
       { id: 'archived', name: 'Former member', role: 'employee', active: false },

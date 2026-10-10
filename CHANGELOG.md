@@ -7,6 +7,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.15.1] - 2026-10-10
+
+### Fixed
+- Die Aktionsleiste von Angebots- und Projektkarten zeigt bei wenig Platz nur Icons mit Tooltips. Bei ausreichender Kartenbreite bleiben die Beschriftungen sichtbar; „Bearbeiten“ ragt nicht mehr über die Karte hinaus.
+- Wochentag und Datum in der Uhrzeit-Analyse sind zentriert und verwenden denselben Stil wie die Wochenansicht.
+
+---
+
 ## [1.15.0] - 2026-10-10
 
 ### Added

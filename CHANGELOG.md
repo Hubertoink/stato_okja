@@ -7,6 +7,27 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.15.0] - 2026-10-10
+
+### Added
+- `ACTIVITY_CATEGORY_MODE=single|multiple` steuert, ob Aktivitäten höchstens eine oder mehrere Kategorien erhalten dürfen. Backend und Aktivitätseditoren berücksichtigen den Modus; Mehrfachauswahl bleibt Standard.
+- Die neue Einstellung ist in den Docker- und ENV-Vorlagen sowie im Konfigurationsgenerator enthalten. Projekte behalten ihre einzelne Kategorie.
+
+### Changed
+- Jahresziel-Details und Bearbeitung öffnen direkt auf dem Dashboard.
+- Projektziele erscheinen als kleine, vollständig anklickbare Karten über die gesamte Breite mit Titel, Status und Soll-/Istwerten.
+- Die Jahresziele-Aktion in Projektkarten und Listen nutzt das gemeinsame App-Design mit Ziel-Icon.
+- Die Zielübersicht ordnet Karten platzsparend an und bietet Statusfilter sowie Hinweise auf abgelaufene Zielzeiträume.
+- Abschlussdialoge zeigen die Kennzahl und den erreichten Stand; die Historie benennt Aktionen getrennt von ihrer Begründung.
+
+### Upgrade
+- Vor dem Update Datenbank und Uploads sichern und das bestehende Updateverfahren verwenden.
+- `ACTIVITY_CATEGORY_MODE=multiple` behält das bisherige Verhalten bei. Für maximal eine Kategorie pro Aktivität `ACTIVITY_CATEGORY_MODE=single` setzen und den Backend-Container neu erstellen; ein Frontend-Neubau ist für den Moduswechsel nicht nötig.
+- Vorhandene Mehrfachzuordnungen bleiben gespeichert. Im Einzelmodus müssen sie beim nächsten Speichern einer betroffenen Aktivität auf höchstens eine Kategorie reduziert werden. Tags bleiben mehrfach auswählbar.
+- Jahresziele werden weiterhin mit `ANNUAL_TARGETS_ENABLED=true` aktiviert.
+
+---
+
 ## [1.14.0] - 2026-10-08
 
 ### Added

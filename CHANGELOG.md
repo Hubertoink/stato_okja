@@ -7,6 +7,13 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- Der PNG-Export des Wochenprofils erhält die inhaltliche Heatmap-Färbung für Angebote und Besucher:innen einschließlich Intensität und Transparenz. Berechnete CSS-Farben werden für den Export in sRGB umgewandelt.
+
+---
+
 ## [1.15.0] - 2026-10-10
 
 ### Added

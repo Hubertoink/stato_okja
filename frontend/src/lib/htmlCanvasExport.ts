@@ -58,7 +58,29 @@ function restoreSuspendedStyles(styles: SuspendedStyle[]) {
   });
 }
 
-function copyExportLayout(source: Element, target: HTMLElement | SVGElement) {
+function createExportColorResolver() {
+  let context: CanvasRenderingContext2D | null = null;
+  return (color: string) => {
+    if (!context) {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('Could not create canvas context for export colors.');
+    }
+    // Let the browser resolve CSS Color 4, then read an sRGB pixel for html2canvas.
+    context.clearRect(0, 0, 1, 1);
+    context.fillStyle = color;
+    context.fillRect(0, 0, 1, 1);
+    const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha / 255})`;
+  };
+}
+
+function copyExportLayout(
+  source: Element,
+  target: HTMLElement | SVGElement,
+  resolveColor: (color: string) => string,
+) {
   const computed = window.getComputedStyle(source);
   target.removeAttribute('style');
   for (const property of LAYOUT_PROPERTIES) {
@@ -71,10 +93,7 @@ function copyExportLayout(source: Element, target: HTMLElement | SVGElement) {
   target.style.setProperty('color', '#334155', 'important');
   target.style.setProperty('background-color', target === target.ownerDocument?.querySelector('[data-export-capture-root]') ? '#ffffff' : 'transparent', 'important');
   if (source instanceof HTMLElement && source.dataset.exportPreserveBackground === 'true') {
-    const inlineBackground = source.style.getPropertyValue('background-color');
-    if (inlineBackground && !inlineBackground.includes('var(') && !inlineBackground.includes('color(')) {
-      target.style.setProperty('background-color', inlineBackground, 'important');
-    }
+    target.style.setProperty('background-color', resolveColor(computed.backgroundColor), 'important');
   }
   target.style.setProperty('background-image', 'none', 'important');
   target.style.setProperty('border-color', '#cbd5e1', 'important');
@@ -113,6 +132,7 @@ function prepareSafeExportClone(sourceRoot: HTMLElement, cloneRoot: HTMLElement,
 
   const sourceElements = [sourceRoot, ...sourceRoot.querySelectorAll('*')];
   const clonedElements = [cloneRoot, ...cloneRoot.querySelectorAll('*')];
+  const resolveColor = createExportColorResolver();
   sourceElements.forEach((source, index) => {
     const target = clonedElements[index];
     if (!target) return;
@@ -120,7 +140,7 @@ function prepareSafeExportClone(sourceRoot: HTMLElement, cloneRoot: HTMLElement,
       target.remove();
       return;
     }
-    copyExportLayout(source, target as HTMLElement | SVGElement);
+    copyExportLayout(source, target as HTMLElement | SVGElement, resolveColor);
   });
   normalizeSvgPaint(cloneRoot);
 }

@@ -65,6 +65,23 @@ die Version und notwendige neue Einstellungen; erzeuge bestehende Secrets nicht 
 
 ## Nach der Installation
 
+Für die ersten Schritte in der Anwendung gibt es ein
+[bebildertes Bedienungsmanual](../Assets/Manual/index.html) und eine
+[druckfertige PDF-Fassung](../Assets/Manual/Stato-Bedienungsmanual.pdf). Der erweiterte Entwurf
+erklärt Organisationsgrundlagen, die Anlage von Angeboten und Projekten sowie
+die nachträgliche Dokumentation und laufende Tageserfassung von Aktivitäten.
+Weitere Kapitel führen durch Statistikfilter, Kalender, Logbuch, Umfragen und
+die Vererbung gemeinsamer Erfassungsgrundlagen.
+Die Screenshots stammen aus der Dev-Version 1.15 und verwenden Demo-Daten.
+Die HTML-Fassung lässt sich lokal öffnen; beim Weitergeben muss der zugehörige
+Ordner `Assets/Manual/bilder/` mitgeliefert werden.
+
+Der separate [Leitfaden zur Datenqualität](../Assets/Manual/best-practices.html)
+([PDF](../Assets/Manual/Stato-Best-Practices-Statistikerfassung.pdf)) enthält Best Practices
+zu Zählregeln, Reliabilität, Validität, Vererbung, Plausibilitätsprüfungen und
+der verantwortungsvollen Interpretation von Statistiken und Umfragen.
+Die Empfehlungen sind keine Zertifizierung der Anwendung.
+
 Die mitgelieferte `OPERATIONS.md` erklärt Sicherungen, Wiederherstellung und
 Updates. Die ausführliche technische Anleitung im Repository heißt
 `docs/DOCKER_ONPREM_SETUP.md`; ältere Source-Installationen sind dort separat

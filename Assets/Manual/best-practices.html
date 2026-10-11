@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="StatO-Praxisleitfaden für verlässliche Statistikerfassung: Zählregeln, Validität, Reliabilität, Vererbung, Datenprüfung und verantwortungsvolle Auswertung.">
+  <title>StatO · Best Practices zur Statistikerfassung</title>
+  <style>
+    :root { color-scheme: light; --ink: #202334; --muted: #51576b; --accent: #4645c7; --line: #d8daea; --soft: #f1f1fc; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: #f6f6fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-size: 17px; line-height: 1.65; }
+    a { color: var(--accent); text-underline-offset: 4px; }
+    a:hover { text-decoration-thickness: 2px; }
+    a:focus-visible, button:focus-visible { outline: 3px solid #b16510; outline-offset: 4px; }
+    .skip { position: fixed; top: -100px; left: 16px; background: white; padding: 12px; z-index: 3; }
+    .skip:focus { top: 12px; }
+    .layout { display: grid; grid-template-columns: 260px minmax(0, 960px); justify-content: center; }
+    .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; overflow: auto; padding: 32px 24px; }
+    .brand { font-size: 26px; font-weight: 750; letter-spacing: -.025em; }
+    .sidebar p { font-size: 14px; color: var(--muted); }
+    nav { border-top: 1px solid var(--line); padding-top: 20px; }
+    nav a { display: block; padding: 7px 0; font-size: 14px; color: var(--ink); text-decoration: none; }
+    nav a:hover { color: var(--accent); text-decoration: underline; }
+    .print { width: 100%; margin-top: 28px; padding: 12px 16px; border: 1px solid var(--accent); background: var(--accent); color: white; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; }
+    .print:hover { background: #34339f; }
+    main { min-width: 0; margin: 24px 24px 64px 0; background: white; border: 1px solid var(--line); }
+    .lesson { padding: 48px 56px; border-top: 1px solid var(--line); }
+    .cover { border-top: 0; padding-top: 64px; }
+    h1, h2, h3 { line-height: 1.2; text-wrap: balance; }
+    h1 { font-size: clamp(34px, 4vw, 54px); letter-spacing: -.035em; margin: 0 0 24px; }
+    h1 span { display: block; color: var(--accent); }
+    h2 { font-size: 29px; letter-spacing: -.02em; margin: 0 0 16px; }
+    h3 { font-size: 20px; margin: 28px 0 12px; }
+    p { margin: 12px 0; max-width: 72ch; }
+    .lead { font-size: 21px; color: var(--muted); }
+    .meta { border-block: 1px solid var(--line); margin: 28px 0; padding: 18px 0; font-size: 14px; color: var(--muted); }
+    ol, ul { padding-left: 24px; }
+    li { margin: 8px 0; padding-left: 4px; }
+    .note { background: var(--soft); border: 1px solid var(--line); padding: 16px 20px; margin: 24px 0; font-size: 15px; }
+    .note p { margin: 0; }
+    .small { font-size: 14px; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; }
+    th { text-align: left; font-weight: 650; background: var(--soft); }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .table-scroll { overflow-x: auto; }
+    figure { margin: 24px 0; }
+    figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); }
+    figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { padding: 10px 0; margin: 0; border-bottom: 1px solid var(--line); }
+    .checklist strong { display: block; }
+    footer { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+    @media (max-width: 950px) {
+      .layout { display: block; }
+      .sidebar { position: static; height: auto; padding: 24px; }
+      nav { columns: 2; }
+      nav a { break-inside: avoid; }
+      .print { width: auto; margin-top: 16px; }
+      main { margin: 0 16px 32px; }
+      .lesson { padding: 32px; }
+    }
+    @media (max-width: 540px) {
+      body { font-size: 16px; }
+      main { margin: 0; border-inline: 0; }
+      .lesson { padding: 28px 20px; }
+      h2 { font-size: 26px; }
+      .lead { font-size: 19px; }
+      th, td { padding: 8px; }
+    }
+    @page { size: A4; margin: 16mm 15mm 18mm; }
+    @media print {
+      :root { background: white; }
+      body { font-size: 10pt; line-height: 1.48; }
+      .layout { display: block; }
+      .sidebar, .skip { display: none; }
+      main { margin: 0; border: 0; }
+      .lesson { padding: 0; border: 0; break-before: page; }
+      .cover { break-before: auto; padding-top: 24mm; }
+      h1 { font-size: 36pt; }
+      h2 { font-size: 22pt; }
+      h3 { font-size: 13pt; margin-top: 16px; }
+      .lead { font-size: 15pt; }
+      .meta, .small, .note, table { font-size: 9pt; }
+      .note { padding: 10px 14px; margin: 14px 0; }
+      li { margin: 5px 0; }
+      th, td { padding: 8px 10px; }
+      figure { margin: 16px 0; break-inside: avoid; }
+      figure img { max-height: 100mm; object-fit: contain; }
+      figcaption { font-size: 8pt; }
+      .checklist li { padding: 7px 0; }
+      h2, h3 { break-after: avoid; }
+      .note, tr { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+      .table-scroll { overflow: visible; }
+      footer { font-size: 8pt; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#leitfaden" class="skip">Zum Leitfaden springen</a>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Leitfaden-Navigation">
+      <div class="brand">StatO</div>
+      <p>Praxisleitfaden · Datenqualität</p>
+      <nav aria-label="Inhaltsverzeichnis">
+        <a href="#leitfaden">Über diesen Leitfaden</a>
+        <a href="#qualitaet">Qualität verstehen</a>
+        <a href="#zaehlregeln">Zähleinheit vereinbaren</a>
+        <a href="#vererbung">Vererbung gezielt nutzen</a>
+        <a href="#merkmale">Kohorten &amp; fehlende Angaben</a>
+        <a href="#erfassung">Einmal, zeitnah, nachvollziehbar</a>
+        <a href="#pruefung">Plausibilität prüfen</a>
+        <a href="#auswertung">Vergleichbar auswerten</a>
+        <a href="#umfragen">Umfragen verantwortungsvoll nutzen</a>
+        <a href="#vereinbarung">Vorlage: Erfassungsvereinbarung</a>
+        <a href="#routine">Qualitätsroutine &amp; Freigabe</a>
+        <a href="#quellen">Quellen &amp; Grenzen</a>
+        <a href="index.html">Zum Bedienungsmanual</a>
+      </nav>
+      <button type="button" class="print" id="print-guide">Drucken / als PDF speichern</button>
+    </aside>
+    <main id="leitfaden">
+      <section class="lesson cover" aria-labelledby="titel">
+        <h1 id="titel">Besser erfassen.<span>Verlässlich auswerten.</span></h1>
+        <p class="lead">Best Practices für Statistikerfassung mit StatO in der Offenen Kinder- und Jugendarbeit.</p>
+        <div class="meta">Für Teams, Einrichtungsleitungen und Träger · Entwurf vom 11. Oktober 2026</div>
+        <h2>Gute Daten entstehen vor dem Export</h2>
+        <p>Gemeinsame Definitionen, passende Auswahlmöglichkeiten und eine kurze Prüfroutine machen Zahlen belastbarer. Die Software hilft beim Strukturieren – die fachlichen Regeln müssen die beteiligten Teams vereinbaren.</p>
+        <ol>
+          <li>Festlegen, was und wie gezählt wird.</li>
+          <li>Gemeinsame Kategorien und Kohorten bereitstellen.</li>
+          <li>Einheitlich erfassen und Unklarheiten sichtbar halten.</li>
+          <li>Vor dem Bericht prüfen und Aussagegrenzen benennen.</li>
+        </ol>
+        <div class="note"><p><strong>Empfehlungen, keine Qualitätsgarantie.</strong> Dieser Leitfaden ist eine Arbeitshilfe, keine Zertifizierung von StatO, kein validiertes Messinstrument und keine Rechtsberatung. Die beschriebenen App-Funktionen wurden in der Dev-Version 1.15 geprüft; die Teamregeln sind methodische Vorschläge.</p></div>
+        <p class="small">Alle Zahlenbeispiele sind erfunden. Die beiden Demo-Aktivitäten ergeben 20 Teilnahmen bei 6 Aktivitätsstunden. Die Umfrage enthält genau eine Testantwort. Produktive Förder- oder Berichtsvorgaben müssen vorab mit den zuständigen Stellen abgestimmt werden.</p>
+      </section>
+
+      <section class="lesson" id="qualitaet" aria-labelledby="h-qualitaet">
+        <h2 id="h-qualitaet">Qualität: drei unterschiedliche Fragen</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">Begriff</th><th scope="col">Praktische Frage</th><th scope="col">Beispiel</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Validität</th><td>Erfasst die Zahl tatsächlich das, was wir wissen möchten?</td><td>Teilnahmen über mehrere Termine messen Nutzungshäufigkeit, nicht die Anzahl unterschiedlicher junger Menschen.</td></tr>
+              <tr><th scope="row">Reliabilität</th><td>Wird unter vergleichbaren Bedingungen hinreichend konsistent gemessen?</td><td>Zwei Mitarbeitende wenden dieselbe Wiedereintrittsregel an und kommen beim gleichen Termin zu übereinstimmenden Zählwerten.</td></tr>
+              <tr><th scope="row">Objektivität</th><td>Ist das Ergebnis möglichst unabhängig davon, wer erfasst und auswertet?</td><td>Schriftliche Regeln und feste Filter verhindern, dass Teams dieselben Sachverhalte unterschiedlich einordnen.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Gleichmäßig falsch bleibt falsch.</strong> Wenn alle Teams jeden Wiedereintritt als neue Person zählen, kann die Zählung konsistent sein – für die Frage nach unterschiedlichen Personen ist sie trotzdem ungeeignet. Reliabilität ersetzt keine Validität.</p>
+        <h3>Von der Berichtsfrage zur Messregel</h3>
+        <ol>
+          <li>Formuliere die Frage: „Wie oft wurde das Angebot genutzt?“ oder „Wie viele unterschiedliche Personen erreichen wir?“</li>
+          <li>Wähle eine passende Zähleinheit und einen Zeitraum.</li>
+          <li>Beschreibe Ein- und Ausschlüsse anhand echter Grenzfälle.</li>
+          <li>Probiere die Regeln im Team aus und kläre Abweichungen vor dem Routineeinsatz.</li>
+        </ol>
+        <div class="note"><p><strong>Zusätzliche Qualitätsdimensionen:</strong> Vollständigkeit, Aktualität, Vergleichbarkeit, Verständlichkeit und Datenschutz gehören ebenfalls zur Qualität. Eine lückenlos gefüllte Tabelle kann methodisch ungeeignet sein; eine fehlende Erfassung darf nicht als beobachtete Null interpretiert werden.</p></div>
+        <p class="small">Ein gelegentlicher gemeinsamer Zähltest ist eine praktische Lernhilfe, kein formaler Nachweis eines Reliabilitätskoeffizienten. Für wissenschaftliche Wirkungsfragen braucht es ein eigenes Untersuchungsdesign.</p>
+      </section>
+
+      <section class="lesson" id="zaehlregeln" aria-labelledby="h-zaehlregeln">
+        <h2 id="h-zaehlregeln">Die Zähleinheit zuerst vereinbaren</h2>
+        <p>StatO summiert die eingegebenen Aktivitätswerte. Das Programm kann daraus nicht erkennen, ob dasselbe Individuum mehrere Termine besucht hat. Beschrifte Berichte deshalb passend zur Erfassung.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">Einheit</th><th scope="col">Bedeutung</th><th scope="col">Abgrenzung</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Aktivität</th><td>Ein einzelner Termin eines Angebots.</td><td>Ein wiederkehrendes Projekt ist nicht selbst jeder seiner Termine.</td></tr>
+              <tr><th scope="row">Teilnahme</th><td>Eine gezählte Beteiligung an einem Termin nach vereinbarter Regel.</td><td>Dieselbe Person kann an mehreren Terminen mehrfach eingehen.</td></tr>
+              <tr><th scope="row">Kontakt</th><td>Eine Begegnung nach einer gesonderten Kontaktdefinition.</td><td>Nicht ohne Erklärung mit Teilnahmen zusammenwerfen.</td></tr>
+              <tr><th scope="row">Unterschiedliche Personen</th><td>Innerhalb eines definierten Zeitraums deduplizierte Personen.</td><td>Aus aggregierten Teilnahmezahlen allein nicht bestimmbar.</td></tr>
+              <tr><th scope="row">Aktivitätsstunden</th><td>Summe der tatsächlichen Aktivitätsdauern.</td><td>Nicht automatisch Personalstunden oder Teilnehmendenstunden.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Eine mögliche Regel für einen offenen Treff</h3>
+        <p><strong>Empfehlung zur Abstimmung:</strong> Eine Person wird pro dokumentiertem Treff-Termin einmal als Teilnahme gezählt. Verlassen und Zurückkommen im selben Termin erzeugt keine weitere Teilnahme. Mitarbeitende werden nicht als Teilnehmende gezählt. Welche Gäste und kurzen Besuche einbezogen werden, wird ausdrücklich festgelegt.</p>
+        <p>Das ist ein Beispiel, keine universelle Vorgabe. Manche Berichtssysteme verlangen Kontakte oder andere Einheiten. Dann braucht es eine andere Definition und eine entsprechend bezeichnete Auswertung.</p>
+        <div class="note"><p><strong>Parallelangebote klären.</strong> Eine Teilnahme am Treff und eine am Workshop können in getrennten Angebotsauswertungen zulässig sein. Ihre Summe ist dann aber keine deduplizierte Zahl der Besucher:innen des Hauses. Gemeinsame Veranstaltungen mehrerer Standorte brauchen eine abgestimmte Erfassungsverantwortung.</p></div>
+        <p class="small">Keine personenbezogene Liste allein zur Aufwertung einer Kennzahl anlegen. Ein dedupliziertes Reichweitenverfahren muss fachlich nötig, datenschutzgerecht und mit dem Betreiber abgestimmt sein.</p>
+      </section>
+
+      <section class="lesson" id="vererbung" aria-labelledby="h-vererbung">
+        <h2 id="h-vererbung">Vererbung unterstützt Vergleichbarkeit</h2>
+        <p>Gleiche Kategorien und Alterskohorten reduzieren unterschiedliche Auswahlmöglichkeiten zwischen Standorten. Ihre Bedeutung muss zusätzlich in einer gemeinsamen Erfassungsvereinbarung stehen.</p>
+        <ol>
+          <li><strong>Beim Träger abstimmen:</strong> Kategorien, Altersgrenzen und Zählregeln gemeinsam definieren; Berichtsvorgaben berücksichtigen.</li>
+          <li><strong>Zentral bereitstellen:</strong> In der übergeordneten Organisation die gemeinsamen Einträge pflegen.</li>
+          <li><strong>Vorgaben setzen:</strong> Unter Organisationen → Vererbungsregeln → Unterorganisationen automatische Vererbung oder individuelle Auswahl wählen.</li>
+          <li><strong>Spielraum bestimmen:</strong> Lokale Ergänzungen und Anpassungsrechte ausdrücklich erlauben oder begrenzen.</li>
+          <li><strong>Wirksamkeit kontrollieren:</strong> Jeden Standort auswählen und dort die sichtbaren Kategorien/Kohorten sowie mögliche Überschreibungen prüfen.</li>
+        </ol>
+        <figure>
+          <a href="bilder/20-geerbte-kohorten.png"><img src="bilder/20-geerbte-kohorten.png" alt="Demo-Unterorganisation erhält die zentralen Alterskohorten zwölf bis siebzehn und achtzehn bis einundzwanzig; lokale Kohorten sind gesperrt."></a>
+          <figcaption>Geprüftes Beispiel: „Standort Süd – Manual-Demo“ erhält beide Kohorten aus der Hauptorganisation.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Was Vererbung nicht leistet:</strong> Sie überträgt Auswahlgrundlagen, nicht automatisch Aktivitätsdaten. Sie prüft weder die korrekte Zählung noch garantiert sie Validität oder Reliabilität. Vorgaben können durch ausdrücklich gesetzte Regeln überschrieben sein; vorhandene lokale Einträge können sichtbar bleiben.</p></div>
+      </section>
+
+      <section class="lesson" id="vererbung-governance" aria-labelledby="h-vererbung-governance">
+        <h2 id="h-vererbung-governance">Änderungen steuern, statt Vergleichsbrüche verstecken</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">Entscheidung</th><th scope="col">Nutzen</th><th scope="col">Prüfbedarf</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Alle aktuellen und zukünftigen Einträge vererben</th><td>Neue sichtbare Einträge stehen Nachkommen automatisch zur Verfügung.</td><td>Zentrale Änderungen können viele Teams betreffen. Vorher informieren und Folgen testen.</td></tr>
+              <tr><th scope="row">Individuelle Auswahl</th><td>Gezielter gemeinsamer Katalog.</td><td>Neue Einträge müssen bewusst aufgenommen werden; Standorte können sonst unterschiedliche Stände haben.</td></tr>
+              <tr><th scope="row">Lokale Ergänzungen erlauben</th><td>Standortspezifische Angebote bleiben beschreibbar.</td><td>Doppelte oder gleichnamige Kategorien mit anderer Bedeutung vermeiden; Zuordnung zum Trägerbericht vereinbaren.</td></tr>
+              <tr><th scope="row">Anpassungsrechte begrenzen</th><td>Stabilere gemeinsame Grundlagen.</td><td>Zuständigkeit und Verfahren für begründete Ausnahmen schaffen.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Ein praktikabler Änderungsprozess</h3>
+        <ol>
+          <li>Eine verantwortliche Person oder kleine Fachgruppe sammelt Änderungswünsche.</li>
+          <li>Dokumentiert Anlass, alte/neue Definition, betroffene Standorte und Gültigkeitsdatum.</li>
+          <li>Prüft vor einer Änderung, ob bestehende Aktivitäten und spätere Auswertungen betroffen sind. Nicht davon ausgehen, dass alte Berichte unverändert bleiben.</li>
+          <li>Informiert Teams und testet die Auswahlmöglichkeiten in einer Demo-Organisation.</li>
+          <li>Bei einem Definitionswechsel Berichtsbruch kennzeichnen oder eine nachvollziehbare Überleitung erstellen.</li>
+        </ol>
+        <p><strong>Empfehlung:</strong> Eine definierte Berichtsperiode möglichst mit einem stabilen Katalog auswerten. Änderungen möglichst zum vereinbarten Stichtag einführen, nicht still während eines laufenden Vergleichs.</p>
+        <div class="note"><p><strong>Externe Versionsführung erforderlich.</strong> Eine Versionsnummer wie „Erfassungsvereinbarung 1.0, gültig ab …“ ist hier eine Teamempfehlung. Dieser Leitfaden behauptet keine automatische methodische Versionierung oder historische Rekonstruktion durch StatO.</p></div>
+      </section>
+
+      <section class="lesson" id="merkmale" aria-labelledby="h-merkmale">
+        <h2 id="h-merkmale">Kohorten und fehlende Angaben sauber behandeln</h2>
+        <h3>Altersgruppen sollen zur Fragestellung passen</h3>
+        <p>Gruppen möglichst überschneidungsfrei und für die tatsächlich betrachtete Population vollständig definieren. Festlegen, ob das Alter am Aktivitätstag oder zu einem anderen Stichtag gilt. Bei 12–17 und 18–21 gilt im Beispiel: 17 Jahre gehört zur ersten, 18 Jahre zur zweiten Gruppe.</p>
+        <p>Die Demo enthält nur diese beiden Kohorten. Für eine Einrichtung mit jüngeren oder älteren Teilnehmenden reicht das nicht aus. Ergänze fachlich passende Bereiche vor der Erfassung; ordne niemanden einer falschen Gruppe zu, nur weil die richtige fehlt.</p>
+        <h3>Unbekannt ist nicht null</h3>
+        <ul>
+          <li><strong>Null:</strong> Es wurden tatsächlich keine Teilnahmen in dieser Gruppe beobachtet.</li>
+          <li><strong>Unbekannt / nicht erfasst:</strong> Die Information liegt nicht vor oder ist nicht zuverlässig bestimmbar.</li>
+          <li><strong>Nicht zutreffend:</strong> Das Merkmal ist für diesen Sachverhalt nicht sinnvoll anwendbar.</li>
+        </ul>
+        <p>Im geprüften Aktivitätseditor stehen m / w / d je Kohorte zur Verfügung; ein eigener strukturierter Kanal für unbekannte Angaben wurde dort nicht gefunden. Leere Zellen können in Summen als null erscheinen. Sie sind deshalb kein verlässlicher Fehlend-Code.</p>
+        <div class="note"><p><strong>Nicht raten und nicht zweckentfremden.</strong> Alter oder Geschlecht nicht aus dem Aussehen ableiten. „Divers“ ist keine Sammelkategorie für unbekannt oder nicht angegeben. Wenn die Oberfläche euren Fehlend-Fall nicht abbildet, vereinbart mit Fachverantwortlichen und Betreiber eine transparente Lösung; berichtet unvollständige Untergruppen nicht als vollständige Verteilung.</p></div>
+        <p>Haltet in einer geeigneten, datensparsamen Qualitätsnotiz fest, welcher Erfassungsumfang eingeschränkt ist. Eine Freitextnotiz wird nicht automatisch zu einer statistischen Fehlend-Kategorie. Keine erfundenen Zahlen eintragen, um Summen scheinbar passend zu machen.</p>
+        <p class="small">Bei veröffentlichten kleinen Untergruppen kann ein Rückschluss auf Personen möglich sein. Veröffentlichungsregeln für Zusammenfassung oder Unterdrückung mit euren Datenschutzverantwortlichen festlegen; es gibt hier keinen universellen sicheren Schwellenwert.</p>
+      </section>
+
+      <section class="lesson" id="erfassung" aria-labelledby="h-erfassung">
+        <h2 id="h-erfassung">Einmal, zeitnah und nachvollziehbar erfassen</h2>
+        <ol>
+          <li><strong>Verantwortung:</strong> Pro Termin eine zuständige Person bestimmen. Bei Vertretung eine explizite Übergabe machen.</li>
+          <li><strong>Eine Erfassungsart:</strong> Entweder laufend zählen oder nachträglich dokumentieren. Nicht beides für denselben Termin speichern.</li>
+          <li><strong>Zeitnähe:</strong> Möglichst direkt nach dem Termin prüfen. Eine verbindliche Frist vereinbaren, statt Wochen später aus Erinnerung zu schätzen.</li>
+          <li><strong>Tatsächliche Zeiten:</strong> Projekt-Standardzeiten sind Vorbelegungen, keine beobachteten Dauern. Unterbrechungen und Aufteilung längerer Angebote fachlich klären.</li>
+          <li><strong>Durchführung:</strong> „Stattgefunden“ und „Ausgefallen“ korrekt unterscheiden. Ein zukünftiger Termin ist noch kein durchgeführtes Angebot.</li>
+          <li><strong>Abschluss:</strong> Tageserfassung im Abschlussdialog speichern; Minimieren allein speichert keine endgültige Aktivität.</li>
+          <li><strong>Nachkontrolle:</strong> Organisation, Datum, Projekt, Standort, Dauer und Teilnahmezahl in der gespeicherten Liste prüfen.</li>
+        </ol>
+        <h3>Doppelerfassungen erkennen</h3>
+        <p>Vergleiche Organisation, Datum, Projekt, Titel, Standort und Zeitfenster. Gleiche Werte sind ein Prüfhinweis, kein sicherer Dublettennachweis: Zwei echte Gruppen können zeitgleich stattfinden. Erst fachlich klären, dann den fehlerhaften Datensatz gezielt korrigieren.</p>
+        <h3>Korrekturen dokumentieren</h3>
+        <p>Bei wichtigen nachträglichen Änderungen Grund, Datum, Zuständigkeit und betroffenen Bericht festhalten. Diese Dokumentation ist eine organisatorische Empfehlung, keine behauptete automatische Auditfunktion. Bereits versandte Berichte bei relevanten Korrekturen versioniert neu herausgeben.</p>
+        <div class="note"><p><strong>Unterbrechung oder Ausfall nicht verdecken.</strong> Fehlende Erfassung, tatsächliche Nichtdurchführung und fehlende Teilnahme sind verschiedene Sachverhalte. Ein fehlender Termin darf nicht still als Aktivität mit null Teilnahmen nachgetragen werden.</p></div>
+      </section>
+
+      <section class="lesson" id="pruefung" aria-labelledby="h-pruefung">
+        <h2 id="h-pruefung">Plausibilitätsprüfung mit konkreten Zahlen</h2>
+        <p>Eine Plausibilitätsprüfung findet auffällige Daten. Sie beweist nicht, dass eine Beobachtung richtig war. Auffälligkeiten sind Rückfragen – keine Aufforderung, Werte passend zu machen.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">Prüfung</th><th scope="col">Demo-Rechnung</th><th scope="col">Bei Abweichung</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Teilnahmensumme</th><td>Kreativwerkstatt: 5 + 6 + 1 = 12.<br>Treff: 3 + 4 + 1 = 8.</td><td>Kohorten, Zählregel, fehlende Angaben und Eingabe prüfen.</td></tr>
+              <tr><th scope="row">Dauer</th><td>15:00–17:00 = 120 Minuten.<br>14:00–18:00 = 240 Minuten.</td><td>Tatsächliche Zeiten kontrollieren; Vorbelegungen und Zeitzonen beachten.</td></tr>
+              <tr><th scope="row">Gesamtumfang</th><td>2 Aktivitäten; 12 + 8 = 20 Teilnahmen;<br>(120 + 240) ÷ 60 = 6 Stunden.</td><td>Organisation, Zeitraum, Status, Projektfilter und Dubletten prüfen.</td></tr>
+              <tr><th scope="row">Verhältnis</th><td>20 ÷ 6 = 3,333… Teilnahmen je Aktivitätsstunde.</td><td>Zähler und Nenner müssen denselben Umfang betreffen. Erst am Ende runden.</td></tr>
+              <tr><th scope="row">Untergruppen</th><td>m: 8; w: 10; d: 2.<br>8 + 10 + 2 = 20.</td><td>Die Rechnung gilt nur bei vollständig zugeordneten Angaben.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Zusätzliche Prüfhinweise</h3>
+        <ul>
+          <li>Fehlende Projekte, unerwartete Kategorien, ungewöhnliche Dauern und starke Sprünge prüfen.</li>
+          <li>Erfasste Termine mit einem unabhängigen Überblick über tatsächlich durchgeführte Angebote abgleichen.</li>
+          <li>Bei null Stunden keinen Stundenquotienten bilden: Das Verhältnis ist nicht definiert, nicht automatisch null.</li>
+          <li>Schließtage und Überschneidungen prüfen. Ein Schließtag kann Sonderaktivitäten haben; nicht automatisch löschen.</li>
+        </ul>
+        <div class="note"><p><strong>Empfohlene Teamübung:</strong> Zwei Mitarbeitende ordnen einige anonymisierte Beispielsituationen unabhängig ein. Besprecht jede Abweichung und ergänzt Grenzfälle in der Vereinbarung. Nicht die „richtige Zahl“ diktieren, sondern die Regel verständlich machen.</p></div>
+      </section>
+
+      <section class="lesson" id="auswertung" aria-labelledby="h-auswertung">
+        <h2 id="h-auswertung">Vergleiche brauchen denselben Bezugsrahmen</h2>
+        <p>Vor jedem Vergleich Zeitraum, Organisationen, Angebotsumfang, Status und Definitionsstand festlegen. „Alle Projekte“ und ein einzelnes Projekt beantworten unterschiedliche Fragen.</p>
+        <h3>Verhältnisse aus den Gesamtsummen berechnen</h3>
+        <p>Kreativwerkstatt: 12 Teilnahmen ÷ 2 Stunden = 6. Offener Treff: 8 ÷ 4 = 2. Das Gesamtverhältnis ist <strong>20 ÷ 6 = 3,33</strong>, nicht der ungewichtete Mittelwert 4. Die Stunden sind hier die passenden Gewichte.</p>
+        <p>Genauso Prozentwerte nicht einfach mitteln: 8 von 10 und 2 von 30 ergeben zusammen 10 von 40 = 25 %, nicht (80 % + 6,67 %) ÷ 2 = 43,33 %. Zähler und Nenner müssen fachlich zusammengehören; überlappende Personen dürfen nicht als deduplizierte Reichweite summiert werden.</p>
+        <h3>Berichtsmetadaten mitliefern</h3>
+        <ul>
+          <li>Zeitraum, Stichtag des Exports und eingeschlossene Organisationen.</li>
+          <li>Angebots-/Projektfilter, Statusfilter und Umgang mit Schließtagen.</li>
+          <li>Zähleinheit und Version der Erfassungsvereinbarung.</li>
+          <li>Bekannte Erfassungslücken, Definitionswechsel und Korrekturen.</li>
+          <li>Bezugsgrößen, Rundung und Datenquelle.</li>
+        </ul>
+        <h3>Was die Zahlen nicht zeigen</h3>
+        <p>Teilnahmen beschreiben Nutzung nach eurer Definition. Sie belegen nicht allein Bildungswirkung, Wohlbefinden, soziale Integration oder kausale Wirksamkeit. Mehr Dokumentation kann wie mehr Nutzung aussehen. Ein Rückgang kann mit Schließungen zusammenhängen, ohne sinkende Nachfrage zu bedeuten.</p>
+        <div class="note"><p><strong>Keine automatische Trägeraggregation unterstellen.</strong> Vererbte Kategorien bedeuten nicht, dass ein Bericht bereits sämtliche Standorte enthält. Prüfe den tatsächlich exportierten Organisationsumfang. Für einen organisationsübergreifenden Bericht getrennte Datenbestände und Überschneidungen nachvollziehbar abgleichen.</p></div>
+      </section>
+
+      <section class="lesson" id="umfragen" aria-labelledby="h-umfragen">
+        <h2 id="h-umfragen">Umfragen ergänzen Zahlen – mit eigenen Grenzen</h2>
+        <ol>
+          <li><strong>Zweck:</strong> Vorher festlegen, welche Entscheidung die Antworten unterstützen sollen.</li>
+          <li><strong>Fragen:</strong> Einfach, neutral und nur ein Thema pro Frage. Klare Zeitbezüge und verständliche Skalenanker verwenden.</li>
+          <li><strong>Antworten:</strong> Passende Optionen anbieten; Platzhalter entfernen. Demografische Angaben freiwillig und sparsam halten.</li>
+          <li><strong>Pretest:</strong> Mit wenigen Personen aus der Zielgruppe prüfen, wie die Fragen verstanden werden; Testdaten von echten Erhebungen trennen.</li>
+          <li><strong>Durchführung:</strong> Zeitraum und Einladungspraxis dokumentieren. Nicht nur besonders zufriedene oder häufig anwesende Personen ansprechen.</li>
+          <li><strong>Auswertung:</strong> Antwortanzahl je Frage, fehlende Antworten und mögliche Verzerrungen mitberichten.</li>
+        </ol>
+        <h3>Rücklaufquote ist nicht Repräsentativität</h3>
+        <p>In der Demo: 1 Testantwort bei 12 eingetragenen erwarteten Teilnehmenden = 8,3 %. Die erwartete Zahl ist eine manuelle Bezugsgröße. Eine methodisch sinnvolle Rücklaufquote verlangt eine definierte Zahl berechtigter und tatsächlich angesprochener Personen; Teilnahmezahlen aus Aktivitäten sind dafür nicht automatisch geeignet.</p>
+        <p>Freiwillige Beteiligung kann Selbstselektion erzeugen. Nichtantwortende können andere Erfahrungen haben. Antworten neben Betreuungspersonen können sozial erwünscht ausfallen. Eine hohe Quote oder ein hoher Median beseitigt diese Probleme nicht.</p>
+        <div class="note"><p><strong>Browserbegrenzung ist keine Personenprüfung.</strong> „Eine Antwort pro Browser“ reduziert Wiederholungen bestmöglich; mehrere Geräte oder gelöschter Speicher können das verändern. Ein gemeinsames Tablet benötigt möglicherweise Mehrfachantworten, bietet dann aber keine entsprechende Wiederholungsbegrenzung.</p></div>
+        <p>Bei einer einzelnen Bewertung 4 ist der Median 4 – daraus keine allgemeine Zufriedenheit ableiten. Freitexte vor Weitergabe auf Personenbezug prüfen. Nach dem Beenden den angezeigten Löschtermin für Einzelantworten beachten und Ergebnisse rechtzeitig datensparsam sichern; automatische Löschung wurde hier nicht verifiziert.</p>
+      </section>
+
+      <section class="lesson" id="vereinbarung" aria-labelledby="h-vereinbarung">
+        <h2 id="h-vereinbarung">Vorlage: unsere Erfassungsvereinbarung</h2>
+        <p>Diese Vorlage im Team ausfüllen, freigeben und an einem gemeinsamen Ort ablegen. Sie ist kein automatisch gespeichertes StatO-Formular.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">Feld</th><th scope="col">Einzutragende Festlegung</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Geltung</th><td>Träger / Standorte: __________________<br>Version: ______ · gültig ab: ______ · nächste Prüfung: ______</td></tr>
+              <tr><th scope="row">Zweck</th><td>Berichtsfrage, Empfänger und gegebenenfalls Fördervorgabe: __________________</td></tr>
+              <tr><th scope="row">Zähleinheit</th><td>Teilnahme / Kontakt / andere Einheit: __________________<br>Ein- und Ausschlüsse; Wiedereintrittsregel: __________________</td></tr>
+              <tr><th scope="row">Terminabgrenzung</th><td>Wann beginnt/endet eine Aktivität? Umgang mit Pausen, Parallelangeboten und gemeinsamen Veranstaltungen: __________________</td></tr>
+              <tr><th scope="row">Merkmale</th><td>Altersstichtag, Kohortengrenzen und Kategorien samt Definition: __________________<br>Umgang mit unbekannten / fehlenden Angaben: __________________</td></tr>
+              <tr><th scope="row">Vererbung</th><td>Zentrale Einträge, lokale Ergänzungen, Anpassungsrechte und Zuständigkeit: __________________</td></tr>
+              <tr><th scope="row">Erfassung</th><td>Verantwortung pro Termin, Vertretung, Abschlussfrist und Prüfung: __________________</td></tr>
+              <tr><th scope="row">Korrekturen</th><td>Wo werden Änderungsgrund, Datum und Berichtsversion dokumentiert? __________________</td></tr>
+              <tr><th scope="row">Auswertung</th><td>Standardzeitraum, Filter, Bezugsgrößen, Rundung, Umgang mit Lücken: __________________</td></tr>
+              <tr><th scope="row">Schutz &amp; Freigabe</th><td>Empfänger, Datensparsamkeit, kleine Gruppen, Freitextprüfung, Aufbewahrung und Freigabeverantwortung: __________________</td></tr>
+              <tr><th scope="row">Beschluss</th><td>Freigegeben durch: __________________ · Datum: ______<br>Teams informiert / geschult am: ______</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">Mindestens drei Grenzfälle ergänzen: ein Wiedereintritt, ein gemeinsames Standortangebot und eine fehlende Alters-/Geschlechtsangabe. Die vereinbarte Behandlung muss technisch und fachlich umsetzbar sein.</p>
+      </section>
+
+      <section class="lesson" id="routine" aria-labelledby="h-routine">
+        <h2 id="h-routine">Eine kurze Qualitätsroutine verankern</h2>
+        <p>Die folgende Taktung ist ein Vorschlag. Passt sie an Teamgröße, Berichtspflichten und tatsächlichen Prüfaufwand an.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">Zeitpunkt</th><th scope="col">Prüfung</th><th scope="col">Zuständig</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Nach dem Termin</th><td>Organisation, Datum, tatsächliche Zeiten, Status, Zählwerte und Speicherung.</td><td>Erfassende Person.</td></tr>
+              <tr><th scope="row">Wöchentlich</th><td>Durchgeführte Angebote gegen Einträge abgleichen; Lücken, Dubletten und offene Fragen klären.</td><td>Team / Vertretung.</td></tr>
+              <tr><th scope="row">Monatlich</th><td>Ausreißer, Kategorien, geerbte Grundlagen und Konsistenz zwischen Standorten prüfen.</td><td>Leitung / Datenverantwortliche.</td></tr>
+              <tr><th scope="row">Vor Veröffentlichung</th><td>Umfang, Berechnung, Metadaten, Datenschutz und Aussagegrenzen prüfen; Freigabe dokumentieren.</td><td>Berichtsverantwortliche.</td></tr>
+              <tr><th scope="row">Bei Definitionswechsel</th><td>Version, Gültigkeit, Kommunikation und Vergleichsbruch dokumentieren.</td><td>Zuständige Fachgruppe.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Freigabecheck für den nächsten Bericht</h3>
+        <ul class="checklist">
+          <li><strong>Fragestellung und Einheit stimmen.</strong> Teilnahmen werden nicht als unterschiedliche Personen bezeichnet.</li>
+          <li><strong>Der Umfang ist beschrieben.</strong> Zeitraum, Organisationen, Filter und Definitionsstand liegen bei.</li>
+          <li><strong>Lücken sind sichtbar.</strong> Unbekannt wird nicht als beobachtete Null ausgegeben.</li>
+          <li><strong>Summen und Verhältnisse sind geprüft.</strong> Gleicher Umfang für Zähler/Nenner; keine ungewichteten Mittelwert-Abkürzungen.</li>
+          <li><strong>Die Interpretation bleibt angemessen.</strong> Nutzung ist kein alleiniger Wirkungsnachweis; Umfragegrenzen sind benannt.</li>
+          <li><strong>Weitergabe ist datensparsam.</strong> Kleine Gruppen und Freitexte sind geprüft; Empfänger und Aufbewahrung sind geklärt.</li>
+        </ul>
+      </section>
+
+      <section class="lesson" id="quellen" aria-labelledby="h-quellen">
+        <h2 id="h-quellen">Quellen, Prüfstand und Grenzen</h2>
+        <h3>Methodische Orientierung</h3>
+        <p><strong>Statistics Norway (SSB): „Quality in official statistics / The European Statistics Code of Practice“.</strong> Die offizielle Darstellung erläutert unter anderem Relevanz, Genauigkeit und Zuverlässigkeit, Aktualität, Vergleichbarkeit sowie Verständlichkeit. Sie verlinkt den europäischen Verhaltenskodex und den Quality Assurance Framework.</p>
+        <p><a href="https://www.ssb.no/en/omssb/kvalitet-i-offisiell-statistikk/retningslinjer-for-europeisk-statistikk">www.ssb.no · Qualitätsrahmen für europäische Statistik</a><br><span class="small">Inhalt der Primärquelle abgerufen am 11.10.2026.</span></p>
+        <p>Der Rahmen betrifft amtliche Statistik. Hier dient er nur als Orientierung für Qualitätsdimensionen, nicht als Nachweis, dass StatO oder eine OKJA-Auswertung diesen Standard erfüllt. Die konkreten Teamregeln, Rechenbeispiele und Vorlagen in diesem Leitfaden sind eigenständig formulierte Empfehlungen.</p>
+        <h3>Geprüfte StatO-Funktionen</h3>
+        <ul>
+          <li>Aktivitätserfassung mit Kohorten und m/w/d sowie tatsächlichen Zeiten.</li>
+          <li>Jahresstatistik der zwei Demo-Aktivitäten und Einzelprojektfilter.</li>
+          <li>Vererbungsregeln und sichtbare geerbte Kohorten einer neuen Unterorganisation.</li>
+          <li>Logbucheintrag, Projektverknüpfung, Kommentar und Nachverfolgungsstatus.</li>
+          <li>Umfrageentwurf, öffentliche Testabgabe, Auswertung und beendete Runde.</li>
+        </ul>
+        <p>Browserprüfung auf <a href="https://devapp.stato-okja.de">devapp.stato-okja.de</a>, Version 1.15 (d8d61cc), am 11.10.2026. Die bebilderten Bedienungsschritte stehen im <a href="index.html">Bedienungsmanual</a>. Erfundene Demo-Daten sind keine methodische Validierungsstudie.</p>
+        <div class="note"><p><strong>Nicht geprüft:</strong> automatischer Erhalt historischer Taxonomiestände, organisationsübergreifende Deduplizierung, Exportdateien, automatische Löschung und wissenschaftliche Messgüte. Keine solche Funktion oder Garantie aus den Beispielen ableiten.</p></div>
+        <footer>
+          <p>Für die HTML-Fassung diese Datei mit dem Ordner „bilder“ weitergeben. Die <a href="Stato-Best-Practices-Statistikerfassung.pdf">PDF-Fassung</a> ist eigenständig nutzbar. Externe Quellen benötigen eine Internetverbindung.</p>
+          <p>Vor produktivem Einsatz die Erfassungsvereinbarung mit Team, Träger, Berichtsempfängern und gegebenenfalls Datenschutzverantwortlichen abstimmen.</p>
+        </footer>
+      </section>
+    </main>
+  </div>
+  <script>
+    document.getElementById('print-guide').addEventListener('click', () => window.print());
+  </script>
+</body>
+</html>

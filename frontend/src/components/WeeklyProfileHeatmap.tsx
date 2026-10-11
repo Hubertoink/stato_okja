@@ -6,6 +6,8 @@ import { formatWeeklyProfileTime } from '@/lib/weeklyProfile';
 import { Button, IconButton } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import Toggle from '@/components/Toggle';
+import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { useTranslation } from 'react-i18next';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const DAY_LABELS: Record<number, string> = {
@@ -50,6 +52,7 @@ export default function WeeklyProfileHeatmap({
   chartRef,
   exportActions,
 }: Props) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<'offers' | 'participants'>('offers');
   const [fineGrained, setFineGrained] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -283,7 +286,13 @@ export default function WeeklyProfileHeatmap({
           />
         </div>
       </div>
-      <div className="mt-5 overflow-x-auto" role="grid" aria-label="Wochenprofil Heatmap">
+      <p data-export-only="true" style={{ display: 'none', fontSize: 12, marginTop: 12 }}>
+        {t('chartExport.cellValues', {
+          metric: t(mode === 'offers' ? 'chartExport.offers' : 'chartExport.participants'),
+          resolution: t(fineGrained ? 'chartExport.halfHour' : 'chartExport.hour'),
+        })}
+      </p>
+      <div className="mt-5 overflow-x-auto" role="grid" aria-label="Wochenprofil Heatmap" data-export-expand="true">
         <div
           className={isMobile ? 'min-w-0' : 'min-w-[720px]'}
           style={{ ['--weekly-profile-row-height' as string]: isMobile ? '28px' : '24px' }}
@@ -349,6 +358,7 @@ export default function WeeklyProfileHeatmap({
                     role="gridcell"
                     data-weekly-profile-slot="true"
                     data-export-preserve-background="true"
+                    data-export-value={selected ? value.toLocaleString(getCurrentIntlLocale(), { maximumFractionDigits: 1 }) : '\u2014'}
                     aria-label={`${DAY_LABELS[weekday]} ${formatWeeklyProfileTime(minute)}`}
                     aria-describedby={isActive ? 'weekly-profile-tooltip' : undefined}
                     onMouseEnter={(event) => {

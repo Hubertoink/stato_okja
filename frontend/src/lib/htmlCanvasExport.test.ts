@@ -102,4 +102,37 @@ describe('captureExportNode', () => {
     expect(remoteFontStyle.hasAttribute('media')).toBe(false);
     expect(localFontStyle.hasAttribute('media')).toBe(false);
   });
+
+  it('exports static values and readable SVG text without mutating the interactive chart', async () => {
+    const node = document.createElement('div');
+    node.innerHTML = `
+      <div data-export-chart="replace"><svg><text fill="#ffffff" stroke="#111111">46</text></svg></div>
+      <div data-export-only="true" style="display:none"><table><tbody><tr><td>Vollstaendiger Projektname</td><td>46</td></tr></tbody></table></div>
+      <div data-export-chart="pie"><svg><path fill="#7c3aed" /><g class="recharts-pie-labels"><text>1 %</text></g></svg><div class="recharts-legend-wrapper">Kategorie</div></div>
+      <button data-export-value="12,5"><span></span></button>
+      <button data-export-value="0"><span></span></button>`;
+    document.body.appendChild(node);
+    html2canvasMock.mockImplementation(async (_node, options) => {
+      const clonedDocument = document.implementation.createHTMLDocument();
+      const clone = node.cloneNode(true) as HTMLElement;
+      clonedDocument.body.appendChild(clone);
+      options.onclone(clonedDocument);
+      expect(clone.querySelector<HTMLElement>('[data-export-chart]')?.style.display).toBe('none');
+      expect(clone.querySelector<HTMLElement>('[data-export-only]')?.style.display).toBe('block');
+      expect(clone.style.height).toBe('auto');
+      expect(clone.style.width).toBe('720px');
+      expect(clone.querySelector('text')?.getAttribute('fill')).toBe('#334155');
+      expect(clone.querySelector('text')?.getAttribute('stroke')).toBe('none');
+      expect(clone.querySelector('.recharts-pie-labels')).toBeNull();
+      expect(clone.querySelector('.recharts-legend-wrapper')).toBeNull();
+      expect(clone.querySelector('path')?.getAttribute('fill')).toBe('#7c3aed');
+      expect(Array.from(clone.querySelectorAll('[data-export-value]'), (cell) => cell.textContent)).toEqual(['12,5', '0']);
+      expect(clone.textContent).toContain('Vollstaendiger Projektname');
+      return document.createElement('canvas');
+    });
+    await captureExportNode(node, { scale: 2 });
+    expect(node.querySelector<HTMLElement>('[data-export-only]')?.style.display).toBe('none');
+    expect(node.querySelector('text')?.getAttribute('fill')).toBe('#ffffff');
+    expect(node.querySelector('[data-export-value]')?.textContent).toBe('');
+  });
 });

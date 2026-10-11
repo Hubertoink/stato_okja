@@ -24,7 +24,8 @@ const LAYOUT_PROPERTIES = [
   'top', 'right', 'bottom', 'left', 'z-index', 'overflow', 'overflow-x', 'overflow-y',
   'flex', 'flex-basis', 'flex-grow', 'flex-shrink', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'align-self', 'gap', 'row-gap', 'column-gap',
   'grid-template-columns', 'grid-template-rows', 'grid-column', 'grid-row', 'place-items',
-  'font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-align', 'text-transform', 'white-space', 'word-break',
+  'font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-align', 'text-transform', 'white-space', 'word-break', 'overflow-wrap',
+  'border-collapse', 'table-layout', 'paint-order',
   'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
   'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
   'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius',
@@ -117,8 +118,9 @@ function normalizeSvgPaint(root: HTMLElement) {
     if (stroke && stroke !== 'none' && (stroke.includes('var(') || stroke.includes('color('))) {
       element.setAttribute('stroke', '#94a3b8');
     }
-    if (element.classList.contains('recharts-text') || element.classList.contains('recharts-cartesian-axis-tick-value')) {
+    if (tag === 'text' || tag === 'tspan') {
       element.setAttribute('fill', '#334155');
+      element.setAttribute('stroke', 'none');
     }
     if (element.classList.contains('recharts-cartesian-axis-line') || element.classList.contains('recharts-cartesian-axis-tick-line')) {
       element.setAttribute('stroke', '#94a3b8');
@@ -143,6 +145,42 @@ function prepareSafeExportClone(sourceRoot: HTMLElement, cloneRoot: HTMLElement,
     copyExportLayout(source, target as HTMLElement | SVGElement, resolveColor);
   });
   normalizeSvgPaint(cloneRoot);
+  cloneRoot.querySelectorAll<HTMLElement>('[data-export-chart="replace"]').forEach((element) => {
+    element.style.setProperty('display', 'none', 'important');
+  });
+  cloneRoot.querySelectorAll('[data-export-chart="pie"] .recharts-pie-labels, [data-export-chart="pie"] .recharts-legend-wrapper').forEach((element) => {
+    element.remove();
+  });
+  if (cloneRoot.querySelector('[data-export-only] table')) {
+    cloneRoot.style.setProperty('width', `${Math.max(720, sourceRoot.clientWidth)}px`, 'important');
+  }
+  cloneRoot.querySelectorAll<HTMLElement>('[data-export-only="true"]').forEach((element) => {
+    element.style.setProperty('display', 'block', 'important');
+    // Export tables can be taller than the interactive chart they accompany.
+    for (let parent = element.parentElement; parent && cloneRoot.contains(parent); parent = parent.parentElement) {
+      parent.style.setProperty('height', 'auto', 'important');
+      parent.style.setProperty('max-height', 'none', 'important');
+      parent.style.setProperty('overflow', 'visible', 'important');
+      if (parent !== cloneRoot) parent.style.setProperty('width', 'auto', 'important');
+    }
+  });
+  sourceRoot.querySelectorAll<HTMLElement>('[data-export-expand]').forEach((source) => {
+    const target = cloneRoot.querySelector<HTMLElement>('[data-export-expand]');
+    if (!target) return;
+    target.style.setProperty('width', `${source.scrollWidth}px`, 'important');
+    target.style.setProperty('overflow', 'visible', 'important');
+    const rootStyle = window.getComputedStyle(sourceRoot);
+    const width = source.scrollWidth + parseFloat(rootStyle.paddingLeft) + parseFloat(rootStyle.paddingRight);
+    cloneRoot.style.setProperty('width', `${Math.max(sourceRoot.clientWidth, width)}px`, 'important');
+  });
+  cloneRoot.querySelectorAll<HTMLElement>('[data-export-value]').forEach((element) => {
+    element.textContent = element.dataset.exportValue || '';
+    element.style.setProperty('font-size', '11px', 'important');
+    element.style.setProperty('font-weight', '600', 'important');
+    element.style.setProperty('text-align', 'center', 'important');
+    element.style.setProperty('opacity', '1', 'important');
+    element.style.setProperty('color', '#0f172a', 'important');
+  });
 }
 
 /**

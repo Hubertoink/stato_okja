@@ -10,6 +10,7 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 ## [Unreleased]
 
 ### Fixed
+- PNG-Exporte enthalten dauerhaft lesbare Werte: Ranglisten und Umfrageantworten werden mit horizontalen Balken, vollständigen Bezeichnungen und Zahlen ausgegeben; Kreis- und Zeitdiagramme erhalten Wertetabellen. Das Wochenprofil zeigt die Werte des gewählten Modus direkt in den Zellen. SVG-Beschriftungen bleiben auch beim Export aus dem dunklen Theme sichtbar.
 - Der PNG-Export des Wochenprofils erhält die inhaltliche Heatmap-Färbung für Angebote und Besucher:innen einschließlich Intensität und Transparenz. Berechnete CSS-Farben werden für den Export in sRGB umgewandelt.
 
 ---

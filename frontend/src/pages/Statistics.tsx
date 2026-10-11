@@ -51,6 +51,7 @@ import {
   getVisibleSelectedItems,
 } from './statisticsHelpers';
 import { createBarValueLabelRenderer, createPieValueLabelRenderer } from './statisticsChartLabels';
+import { ChartExportData } from '@/components/ChartExportData';
 import {
   buildStatisticsActivitiesFileName,
   buildStatisticsChartFileName,
@@ -1981,6 +1982,7 @@ export default function Statistics() {
             tooltipItemStyle={chartTooltipItemStyle}
             legendWrapperStyle={pieLegendWrapperStyle}
             cellKeyPrefix="activity-type"
+            valueLabel={autoT('ui_b6bf5f1a2033')}
           />
 
           <StatisticsPieChartCard
@@ -2004,6 +2006,7 @@ export default function Statistics() {
             tooltipItemStyle={chartTooltipItemStyle}
             legendWrapperStyle={pieLegendWrapperStyle}
             cellKeyPrefix="gender"
+            valueLabel={t('workflow.attendances')}
           />
 
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
@@ -2103,6 +2106,13 @@ export default function Statistics() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            <ChartExportData
+              valueLabel={showAverage ? autoT('ui_c649f425302c') : t('workflow.attendances')}
+              rows={aggregatedTimeseries.map((item) => ({
+                name: formatStatisticsAggregationTooltipLabel(item.date, timeAggregation),
+                value: item.totalParticipants,
+              }))}
+            />
           </div>
 
           <StatisticsPieChartCard
@@ -2126,6 +2136,7 @@ export default function Statistics() {
             tooltipItemStyle={chartTooltipItemStyle}
             legendWrapperStyle={pieLegendWrapperStyle}
             cellKeyPrefix="cohort"
+            valueLabel={showAverage ? autoT('ui_c649f425302c') : t('workflow.attendances')}
           />
 
           <StatisticsBarChartCard

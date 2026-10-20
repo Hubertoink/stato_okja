@@ -145,7 +145,8 @@ function getActivityTypeLabel(type?: string | null) {
 export default function Statistics() {
   const { t } = useTranslation('common');
   const organizationName = useActiveOrganizationName();
-  const isMobile = useIsMobile(768);
+  // Touch-enabled laptops still use the desktop controls and floating menu.
+  const isMobile = useIsMobile(768, { touchIsMobile: false });
   const {
     currentYear,
     currentMonth,

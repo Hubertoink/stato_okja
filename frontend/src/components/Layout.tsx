@@ -20,6 +20,7 @@ import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+import { useShellHeaderHeight } from '@/lib/useShellHeaderHeight';
 import Modal from '@/components/Modal';
 import ProtectedImage, { useResolvedImageSrc } from '@/components/ProtectedImage';
 import { listAccessibleOrgs, listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
@@ -151,6 +152,7 @@ function OrganizationScopeOption({
 }
 
 export default function Layout() {
+  const headerRef = useShellHeaderHeight();
   const { t } = useTranslation('common');
   const location = useLocation();
   const navigate = useNavigate();
@@ -484,6 +486,7 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       {/* Header and desktop navigation share the banner background. */}
       <div
+        ref={headerRef}
         className={`header-navigation-shell fixed inset-x-0 top-0 z-40 ${headerCompact ? 'header-navigation-shell-compact' : ''} ${activeBannerSrc ? 'header-navigation-shell-with-banner' : ''}`}
         style={{
           '--organization-banner-position': `${activeOrgBranding?.bannerPosition ?? 50}%`,

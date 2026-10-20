@@ -207,6 +207,13 @@ export default function Layout() {
     user: t('roles.user'),
   };
   const [menuOpen, setMenuOpen] = useState(false);
+  const [headerCompact, setHeaderCompact] = useState(false);
+  useEffect(() => {
+    const update = () => setHeaderCompact(window.scrollY > 64);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, []);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const availableMobileNavItemIds = useMemo(
     () => MOBILE_NAV_ITEM_IDS.filter((id) => (id !== 'processes' || processOEnabled) && (id !== 'logbook' || logbookEnabled) && (id !== 'surveys' || surveysEnabled)),
@@ -477,7 +484,7 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       {/* Header and desktop navigation share the banner background. */}
       <div
-        className={`header-navigation-shell fixed inset-x-0 top-0 z-40 ${activeBannerSrc ? 'header-navigation-shell-with-banner' : ''}`}
+        className={`header-navigation-shell fixed inset-x-0 top-0 z-40 ${headerCompact ? 'header-navigation-shell-compact' : ''} ${activeBannerSrc ? 'header-navigation-shell-with-banner' : ''}`}
         style={{
           '--organization-banner-position': `${activeOrgBranding?.bannerPosition ?? 50}%`,
         } as CSSProperties}
@@ -512,7 +519,7 @@ export default function Layout() {
                 {branding.orgName}
               </span>
             ) : null}
-            <div className="hidden md:block leading-tight min-w-0">
+            <div className="desktop-header-brand-copy hidden md:block leading-tight min-w-0">
               <div className="flex min-w-0 items-baseline gap-2">
                 <h1 className="text-xl md:text-2xl font-extrabold tracking-tight truncate">
                   {autoT('ui_3abd120bdece')}
@@ -545,7 +552,7 @@ export default function Layout() {
             {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}
           >
             {/* Summary on sm+ placed just left of the avatar */}
-            <div className="hidden md:flex flex-col items-end text-sm mr-3">
+            <div className="desktop-header-user-copy hidden md:flex flex-col items-end text-sm mr-3">
               <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
               <div className="text-gray-600 truncate max-w-[40vw]">
                 {roleLabel[user?.role || 'user']}

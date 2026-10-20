@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } fro
 import { Search, SlidersHorizontal, XCircle } from 'lucide-react';
 import { IconButton } from './Button';
 import { Input } from './Field';
+import { PAGE_ACTIONS_POSITION_EVENT } from './FloatingPageActions';
 
 /** Standard search trigger and popover for list page headers. */
 export function HeaderSearchAction({
@@ -52,8 +53,10 @@ export function HeaderSearchAction({
     };
     updatePosition();
     window.addEventListener('resize', updatePosition);
+    window.addEventListener(PAGE_ACTIONS_POSITION_EVENT, updatePosition);
     return () => {
       window.removeEventListener('resize', updatePosition);
+      window.removeEventListener(PAGE_ACTIONS_POSITION_EVENT, updatePosition);
     };
   }, [open]);
 

@@ -5,7 +5,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import type { Project } from '@/lib/projects';
 import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
 import ProjectPickerModal from './ProjectPickerModal';
-import { useActivities, Activity } from '@/lib/activities';
+import { useActivities, useActivitiesPaged, Activity } from '@/lib/activities';
 // colorForActivityType no longer needed after switching to class-based palette
 import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holidays';
 import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
@@ -22,7 +22,7 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import type React from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock3, Pencil, Plus, UsersRound } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, CalendarSearch, ChevronLeft, ChevronRight, Clock3, Pencil, Plus, UsersRound } from 'lucide-react';
 import ProtectedImage from '@/components/ProtectedImage';
 import CalendarClosureModal from '@/components/CalendarClosureModal';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
@@ -31,6 +31,8 @@ import DemoHoverHint, { dismissActiveDemoHoverHint } from '@/demo/DemoHoverHint'
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button, IconButton } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { FloatingPageActions } from '@/components/ui/FloatingPageActions';
+import { nextCalendarPeriodStart } from '@/lib/calendarNavigation';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
@@ -658,6 +660,42 @@ export default function Calendar() {
   });
   const activitiesQ = useActivities({ from: range.from, to: range.to });
   const activities = activitiesQ.data;
+  const nextActivityQ = useActivitiesPaged({
+    from: nextCalendarPeriodStart(cursor, calendarView, isMobileAnalysis),
+    order: 'asc',
+  }, 1, 1);
+  const nextActivity = nextActivityQ.isPlaceholderData ? undefined : nextActivityQ.data?.data[0];
+  const nextActivityLabel = nextActivityQ.isError
+    ? 'Aktivität konnte nicht geladen werden – erneut versuchen'
+    : nextActivityQ.isPending || nextActivityQ.isPlaceholderData
+      ? 'Nächste Aktivität wird gesucht'
+      : !nextActivity
+        ? 'Keine Aktivität in einem späteren Zeitraum vorhanden'
+        : calendarView === 'month'
+          ? 'Zum nächsten Monat mit Aktivität'
+          : calendarView === 'three-day' || isMobileAnalysis
+            ? 'Zum nächsten Zeitraum mit Aktivität'
+            : 'Zur nächsten Woche mit Aktivität';
+  const nextActivityButton = (
+    <IconButton
+      aria-label={nextActivityLabel}
+      title={nextActivityLabel}
+      disabled={!nextActivityQ.isError && !nextActivity}
+      onClick={() => {
+        if (nextActivityQ.isError) {
+          void nextActivityQ.refetch();
+          return;
+        }
+        if (!nextActivity) return;
+        const [year, month, day] = nextActivity.date.slice(0, 10).split('-').map(Number);
+        setCursor(new Date(year, month - 1, day));
+        setSelectedDateISO(null);
+      }}
+      variant="secondary"
+    >
+      <CalendarSearch aria-hidden="true" />
+    </IconButton>
+  );
   const closureDays = closureDaysQ.data ?? [];
   const closureDaysByDate = useMemo(() => {
     const map = new Map<string, OrganizationClosureDay>();
@@ -1359,46 +1397,50 @@ export default function Calendar() {
           </div>
         </div>
         {/* Desktop controls */}
-        <DemoHoverHint
-          title={autoT('ui_ce3e61ff4f3d')}
-          description={autoT('ui_185ae16ec6ca')}
-          placement="bottom"
-          align="end"
-        >
-          <div className="hidden md:flex gap-2">
-            {showTodayButton && (
-              <Button size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
-            )}
-            <IconButton
-              aria-label="Vorheriger Zeitraum"
-              onClick={goToPrevious}
-              title="Vorheriger Zeitraum"
-              variant="secondary"
-            >
-              <ChevronLeft aria-hidden="true" />
-            </IconButton>
-            <IconButton
-              aria-label="Nächster Zeitraum"
-              onClick={goToNext}
-              title="Nächster Zeitraum"
-              variant="secondary"
-            >
-              <ChevronRight aria-hidden="true" />
-            </IconButton>
-            <SegmentedControl<'month' | 'week' | 'analysis'>
-              ariaLabel={autoT('ui_d256a4d045f0')}
-              onChange={setView}
-              options={[
-                { value: 'month', label: autoT('ui_da13625eeb37') },
-                { value: 'week', label: autoT('ui_7b2207dc85a6') },
-                { value: 'analysis', label: 'Analyse' },
-              ]}
-              value={calendarView === 'analysis' ? 'analysis' : calendarView === 'week' ? 'week' : 'month'}
-            />
-          </div>
-        </DemoHoverHint>
+        <FloatingPageActions label={label}>
+          <DemoHoverHint
+            title={autoT('ui_ce3e61ff4f3d')}
+            description={autoT('ui_185ae16ec6ca')}
+            placement="bottom"
+            align="end"
+          >
+            <div className="hidden md:flex gap-2">
+              {showTodayButton && (
+                <Button size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
+              )}
+              <IconButton
+                aria-label="Vorheriger Zeitraum"
+                onClick={goToPrevious}
+                title="Vorheriger Zeitraum"
+                variant="secondary"
+              >
+                <ChevronLeft aria-hidden="true" />
+              </IconButton>
+              <IconButton
+                aria-label="Nächster Zeitraum"
+                onClick={goToNext}
+                title="Nächster Zeitraum"
+                variant="secondary"
+              >
+                <ChevronRight aria-hidden="true" />
+              </IconButton>
+              {nextActivityButton}
+              <SegmentedControl<'month' | 'week' | 'analysis'>
+                ariaLabel={autoT('ui_d256a4d045f0')}
+                onChange={setView}
+                options={[
+                  { value: 'month', label: autoT('ui_da13625eeb37') },
+                  { value: 'week', label: autoT('ui_7b2207dc85a6') },
+                  { value: 'analysis', label: 'Analyse' },
+                ]}
+                value={calendarView === 'analysis' ? 'analysis' : calendarView === 'week' ? 'week' : 'month'}
+              />
+            </div>
+          </DemoHoverHint>
+        </FloatingPageActions>
 
         <div className="flex flex-wrap items-center gap-2 md:hidden">
+          {nextActivityButton}
           <SegmentedControl<'month' | 'three-day' | 'analysis'>
             ariaLabel={autoT('ui_a950dd6ca6dd')}
             onChange={setView}

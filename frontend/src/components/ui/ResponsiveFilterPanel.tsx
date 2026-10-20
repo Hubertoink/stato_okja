@@ -3,6 +3,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import Modal from '@/components/Modal';
 import { CloseButton } from './Button';
 import { useTranslation } from 'react-i18next';
+import { PAGE_ACTIONS_POSITION_EVENT } from './FloatingPageActions';
 
 /** A header-anchored filter popover on desktop and a full-width top sheet on phones. */
 export function ResponsiveFilterPanel({
@@ -47,18 +48,28 @@ export function ResponsiveFilterPanel({
     const updatePosition = () => {
       const rect = anchorRef.current?.getBoundingClientRect();
       if (!rect) return;
+      const dock = anchorRef.current?.closest('.page-actions-dock');
+      const dockTop = dock?.getBoundingClientRect().top;
+      const viewportWidth = document.documentElement.clientWidth;
+      const panelWidth = panelRef.current?.getBoundingClientRect().width ?? 0;
+      const right = Math.max(16, Math.min(viewportWidth - rect.right, viewportWidth - panelWidth - 16));
+      const headerBottom = document.querySelector('.header-navigation-shell')?.getBoundingClientRect().bottom ?? 0;
       setAnchorStyle({
         position: 'fixed',
-        top: `${Math.min(rect.bottom + 8, window.innerHeight - 48)}px`,
-        right: `${Math.max(16, window.innerWidth - rect.right)}px`,
+        top: dock ? 'auto' : `${Math.min(rect.bottom + 8, window.innerHeight - 48)}px`,
+        bottom: dockTop !== undefined ? `${window.innerHeight - dockTop + 8}px` : 'auto',
+        maxHeight: dockTop !== undefined ? `${Math.max(120, dockTop - headerBottom - 24)}px` : undefined,
+        right: `${right}px`,
       });
     };
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener(PAGE_ACTIONS_POSITION_EVENT, updatePosition);
     return () => {
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener(PAGE_ACTIONS_POSITION_EVENT, updatePosition);
     };
   }, [anchorRef, isMobile, open]);
 

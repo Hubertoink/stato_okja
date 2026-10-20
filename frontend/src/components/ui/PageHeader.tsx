@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { FloatingPageActions } from './FloatingPageActions';
 
 export function PageHeader({
   actions,
@@ -23,7 +24,7 @@ export function PageHeader({
         </h1>
         {description ? <div className="mt-1 text-sm text-[var(--text-secondary)] md:text-base">{description}</div> : null}
       </div>
-      {actions ? <div className="flex shrink-0 justify-end">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 justify-end"><FloatingPageActions>{actions}</FloatingPageActions></div> : null}
     </header>
   );
 }

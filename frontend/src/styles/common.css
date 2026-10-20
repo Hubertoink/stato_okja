@@ -84,6 +84,60 @@
   overflow-y: auto;
 }
 
+/* The original controls move to a small bottom dock once their anchor leaves view. */
+@media (min-width: 768px) {
+  .page-actions-dock {
+    position: fixed;
+    inset-inline: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 35;
+    width: fit-content;
+    max-width: calc(100vw - 3rem);
+    margin-inline: auto;
+    padding: 0.75rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 1.25rem;
+    background: var(--surface-elevated);
+    box-shadow: 0 12px 40px rgb(15 23 42 / 20%);
+    animation: page-actions-rise 180ms ease-out;
+  }
+
+  .page-actions-dock-label {
+    margin-bottom: 0.5rem;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .page-actions-dock .header-action-popover {
+    top: auto;
+    bottom: 100%;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    max-height: calc(100dvh - 14rem);
+    overflow-y: auto;
+  }
+
+  .page-actions-dock .demo-hover-hint-bottom > .demo-hover-hint-panel {
+    top: auto;
+    bottom: calc(100% + 0.875rem);
+  }
+
+  body:has(.quick-tally-minimized) .page-actions-dock {
+    bottom: 5.5rem;
+  }
+
+  @keyframes page-actions-rise {
+    from { margin-bottom: -1.5rem; opacity: 0; }
+    to { margin-bottom: 0; opacity: 1; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-actions-dock { animation: none; }
+}
+
 .filter-popover--logbook {
   width: min(36rem, calc(100vw - 2rem));
 }

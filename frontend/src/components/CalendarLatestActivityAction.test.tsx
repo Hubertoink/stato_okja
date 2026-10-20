@@ -9,6 +9,7 @@ vi.mock('@/lib/orgScope', () => ({
   useOrgScopedQueryState: () => ({ scope: 'org-1', scopeKey: 'org-1', ready: true }),
 }));
 afterEach(() => vi.resetAllMocks());
+const october = { from: '2026-10-01', to: '2026-10-31' };
 
 describe('jump to the latest calendar activity', () => {
   it.each(['month', 'week', 'analysis', 'three-day'] as const)('selects August 2026 instead of the first entry in 2024 in %s view', async (view) => {
@@ -20,7 +21,7 @@ describe('jump to the latest calendar activity', () => {
     });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const select = vi.fn();
-    const { unmount } = render(<QueryClientProvider client={client}><CalendarLatestActivityAction view={view} onSelect={select} /></QueryClientProvider>);
+    const { unmount } = render(<QueryClientProvider client={client}><CalendarLatestActivityAction currentPeriod={october} view={view} onSelect={select} /></QueryClientProvider>);
     await waitFor(() => expect(screen.getByRole('button')).toBeEnabled());
     fireEvent.click(screen.getByRole('button'));
     expect(select).toHaveBeenCalledWith(new Date(2026, 7, 21));
@@ -32,8 +33,30 @@ describe('jump to the latest calendar activity', () => {
   it('disables the jump when the organization has no activities', async () => {
     api.get.mockResolvedValue({ data: { data: [], total: 0 } });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const { unmount } = render(<QueryClientProvider client={client}><CalendarLatestActivityAction view="month" onSelect={vi.fn()} /></QueryClientProvider>);
+    const { unmount } = render(<QueryClientProvider client={client}><CalendarLatestActivityAction currentPeriod={october} view="month" onSelect={vi.fn()} /></QueryClientProvider>);
     expect(await screen.findByRole('button', { name: 'Keine Aktivität vorhanden' })).toBeDisabled();
+    unmount();
+    client.clear();
+  });
+
+  it.each([
+    { view: 'month', from: '2026-08-01', to: '2026-08-31' },
+    { view: 'week', from: '2026-08-17', to: '2026-08-23' },
+    { view: 'analysis', from: '2026-08-17', to: '2026-08-23' },
+    { view: 'three-day', from: '2026-08-19', to: '2026-08-21' },
+    { view: 'three-day', from: '2026-08-21', to: '2026-08-23' },
+  ] as const)('disables the jump within $view ($from – $to) and enables it after leaving the period', async ({ view, from, to }) => {
+    api.get.mockResolvedValue({ data: { data: [{ date: '2026-08-21' }], total: 1 } });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const select = vi.fn();
+    const renderAction = (period: typeof october) => <QueryClientProvider client={client}><CalendarLatestActivityAction currentPeriod={period} view={view} onSelect={select} /></QueryClientProvider>;
+    const { rerender, unmount } = render(renderAction({ from, to }));
+    const button = await screen.findByRole('button', { name: 'Aktuellste Aktivität wird bereits angezeigt' });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(select).not.toHaveBeenCalled();
+    rerender(renderAction(october));
+    expect(button).toBeEnabled();
     unmount();
     client.clear();
   });

@@ -662,6 +662,10 @@ export default function Calendar() {
   const activities = activitiesQ.data;
   const latestActivityButton = (
     <CalendarLatestActivityAction
+      currentPeriod={calendarView === 'month' ? {
+        from: fmtLocalISO(startOfMonth(cursor)),
+        to: fmtLocalISO(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)),
+      } : range}
       view={isMobileAnalysis ? 'three-day' : calendarView}
       onSelect={(date) => {
         setCursor(date);
@@ -1345,9 +1349,9 @@ export default function Calendar() {
         <div className="flex items-center justify-between md:block">
           <PageHeader className="mb-0" description={label} title={autoT('ui_33fe92f625e5')} />
           {/* Navigation controls on mobile - inline with title */}
-          <div className="flex gap-1.5 md:hidden">
+          <div className="flex items-center gap-1.5 md:hidden">
             {showTodayButton && (
-              <Button className="rounded-lg px-2.5 py-1.5" size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
+              <Button className="h-11 rounded-lg px-2.5" size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
             )}
             <IconButton
               aria-label="Vorheriger Zeitraum"
@@ -1377,9 +1381,9 @@ export default function Calendar() {
             placement="bottom"
             align="end"
           >
-            <div className="hidden md:flex gap-2">
+            <div className="hidden md:flex items-center gap-2">
               {showTodayButton && (
-                <Button size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
+                <Button className="h-10" size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
               )}
               <IconButton
                 aria-label="Vorheriger Zeitraum"

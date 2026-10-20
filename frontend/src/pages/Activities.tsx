@@ -841,8 +841,7 @@ export default function Activities() {
           </div>
           </DemoHoverHint>
         )}
-      />
-
+        secondaryActions={<>
       {/* Nur noch: Knopf + compakte Anzeige aktiver Filter */}
       <DemoHoverHint
         title={autoT('ui_c3a80d1a3f64')}
@@ -937,6 +936,8 @@ export default function Activities() {
           </div>
         </div>
       </DemoHoverHint>
+        </>}
+      />
 
       {/* Activity List */}
       {/* Desktop Table */}

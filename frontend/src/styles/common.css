@@ -110,6 +110,23 @@
     color: var(--text-secondary);
   }
 
+  .page-actions-dock .page-header-title {
+    display: none;
+  }
+
+  .page-actions-dock .page-header-row {
+    justify-content: center;
+  }
+
+  .page-actions-dock .page-header-secondary {
+    max-width: min(70rem, calc(100vw - 5rem));
+  }
+
+  .page-actions-dock .page-header-secondary > div,
+  .page-actions-dock .page-header-secondary > .demo-hover-hint > div {
+    margin-bottom: 0;
+  }
+
   .page-actions-dock .header-action-popover {
     top: auto;
     bottom: 100%;

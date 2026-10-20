@@ -3,6 +3,24 @@ import { ActivityListQuery } from './activity-list-query';
 import { ActivityType, AuditAction } from '../common/enums';
 
 describe('ActivitiesService audit diff', () => {
+  it.each([
+    [{ from: '2026-08-01' }, 'a.date >= :from'],
+    [{ to: '2026-08-31' }, 'a.date <= :to'],
+    [{ from: '2026-08-01', to: '2026-08-31' }, 'a.date BETWEEN :from AND :to'],
+  ])('applies date boundaries for %j without silently including older activities', async (filters, condition) => {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      distinct: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+    };
+    const query = new ActivityListQuery({ createQueryBuilder: () => qb } as never, {} as never);
+    await query.build({ ...filters, order: 'desc', orgId: 'org-1' });
+    expect(qb.andWhere).toHaveBeenCalledWith(condition, filters);
+    expect(qb.orderBy).toHaveBeenCalledWith('a.date', 'DESC');
+  });
+
   it('joins staff for paged staff filters without selecting the relation', async () => {
     const queryBuilder = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),

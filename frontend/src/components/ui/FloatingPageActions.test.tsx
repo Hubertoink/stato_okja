@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FloatingPageActions } from './FloatingPageActions';
 import { Input } from './Field';
+import { PageHeader } from './PageHeader';
+import { Button } from './Button';
 
 let anchorBottom = 180;
 const flushScroll = () => {
@@ -34,6 +36,21 @@ function Example() {
 }
 
 describe('desktop floating page actions', () => {
+  it('keeps page actions and secondary view controls together in a single dock', () => {
+    render(<><header className="header-navigation-shell" /><PageHeader title="Projekte" actions={<Button>Neues Projekt</Button>} secondaryActions={<Button>Liste</Button>} /></>);
+    const create = screen.getByRole('button', { name: 'Neues Projekt' });
+    const view = screen.getByRole('button', { name: 'Liste' });
+    anchorBottom = 70;
+    flushScroll();
+    expect(create.closest('.page-actions-dock')).not.toBeNull();
+    expect(view.closest('.page-actions-dock')).toBe(create.closest('.page-actions-dock'));
+    expect(screen.getAllByRole('button')).toHaveLength(2);
+    anchorBottom = 180;
+    flushScroll();
+    expect(view.closest('.page-actions-dock')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Liste' })).toBe(view);
+  });
+
   it('keeps the same controls and focus when docking and restores them on scroll up', () => {
     const { container } = render(<Example />);
     const input = screen.getByRole('textbox');

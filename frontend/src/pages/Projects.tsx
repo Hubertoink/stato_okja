@@ -2710,8 +2710,7 @@ export default function Projects() {
             </CreateButton>
           </div>
         }
-      />
-
+        secondaryActions={<>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="project-overview-filters" role="group" aria-label="Projektart auswählen">
           <Button size="sm" variant={projectTypeFilters.length === 0 && !favoritesOnly ? 'primary' : 'secondary'} aria-pressed={projectTypeFilters.length === 0 && !favoritesOnly} onClick={() => { setProjectTypeFilters([]); setFavoritesOnly(false); }}>Alle ({projects.length})</Button>
@@ -2732,6 +2731,8 @@ export default function Projects() {
           />
         </div>
       </div>
+        </>}
+      />
 
       {isLoading && !data ? (
         <div className="text-gray-500">{autoT('ui_8877cfeced3f')}</div>

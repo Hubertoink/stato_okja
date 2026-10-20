@@ -63,6 +63,7 @@ import { StatisticsExportActions } from './StatisticsExportActions';
 import { StatisticsPieChartCard } from './StatisticsPieChartCard';
 import CustomKpiCards from '@/components/CustomKpiCards';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { FloatingPageActions } from '@/components/ui/FloatingPageActions';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { Button, IconButton } from '@/components/ui/Button';
@@ -1657,7 +1658,8 @@ export default function Statistics() {
 
           return (
             <>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+              <FloatingPageActions label={formatRangeDisplay(MONTH_NAMES)}>
+              <div className="flex flex-wrap items-center gap-3">
                 <SegmentedControl<'year' | 'month'>
                   ariaLabel={autoT('ui_fe359159c8ad')}
                   className="self-start"
@@ -1746,6 +1748,17 @@ export default function Statistics() {
                   </Button>
                 </div>
               </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button variant="secondary" onClick={() => setTypePickerOpen(true)} title="Aktivitätstyp auswählen">
+                    {selectedType ? TYPE_LABEL[selectedType] : 'Alle Aktivitätstypen'}
+                    <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                  </Button>
+                  <Button variant="secondary" onClick={() => setProjectPickerOpen(true)} title="Angebot oder Projekt auswählen">
+                    {selectedProjectRecord?.title || 'Alle Angebote & Projekte'}
+                    <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                  </Button>
+                </div>
+              </FloatingPageActions>
 
               {filterMode === 'month' && !isCustomRange && (
                 <div className="mt-4 pt-4 border-t">

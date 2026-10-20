@@ -103,6 +103,10 @@ export class ActivityListQuery {
 
     if (filters?.from && filters?.to) {
       qb.andWhere('a.date BETWEEN :from AND :to', { from: filters.from, to: filters.to });
+    } else if (filters?.from) {
+      qb.andWhere('a.date >= :from', { from: filters.from });
+    } else if (filters?.to) {
+      qb.andWhere('a.date <= :to', { to: filters.to });
     }
     if (filters?.search) {
       const search = `%${filters.search.trim().toLowerCase()}%`;

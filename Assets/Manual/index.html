@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bebildertes StatO-Manual: Organisation, Projekte, Aktivitäten, Statistik, Kalender, Logbuch und Umfragen mit geprüften Demo-Abläufen.">
+  <title>StatO · Bedienungsmanual für den Einstieg</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #202334;
+      --muted: #51576b;
+      --accent: #4645c7;
+      --line: #d8daea;
+      --paper: #fff;
+      --soft: #f1f1fc;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: #f6f6fa;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-padding-top: 24px; }
+    body { margin: 0; font-size: 17px; line-height: 1.65; }
+    a { color: var(--accent); text-underline-offset: 4px; }
+    a:hover { text-decoration-thickness: 2px; }
+    a:focus-visible, button:focus-visible { outline: 3px solid #b16510; outline-offset: 4px; }
+    .skip { position: fixed; top: -100px; left: 16px; z-index: 3; background: white; padding: 12px; }
+    .skip:focus { top: 12px; }
+    .layout { display: grid; grid-template-columns: 260px minmax(0, 960px); justify-content: center; }
+    .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; overflow: auto; padding: 32px 24px; }
+    .brand { font-size: 26px; font-weight: 750; letter-spacing: -.025em; }
+    .sidebar p { margin: 2px 0 24px; font-size: 14px; color: var(--muted); }
+    .sidebar nav { border-top: 1px solid var(--line); padding-top: 20px; }
+    .sidebar nav a { display: block; font-size: 14px; padding: 6px 0; color: var(--ink); text-decoration: none; }
+    .sidebar nav a:hover { color: var(--accent); text-decoration: underline; }
+    .sidebar nav strong { display: block; font-size: 13px; color: var(--muted); margin-top: 18px; }
+    .print { width: 100%; margin-top: 28px; padding: 12px 16px; border: 1px solid var(--accent); background: var(--accent); color: white; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; }
+    .print:hover { background: #34339f; }
+    main { min-width: 0; margin: 24px 24px 64px 0; background: var(--paper); border: 1px solid var(--line); }
+    .lesson { padding: 48px 56px; border-top: 1px solid var(--line); }
+    .cover { border-top: 0; padding-top: 64px; padding-bottom: 56px; }
+    h1, h2, h3 { line-height: 1.2; text-wrap: balance; }
+    h1 { font-size: clamp(34px, 4vw, 54px); letter-spacing: -.035em; margin: 0 0 24px; }
+    h1 span { display: block; color: var(--accent); }
+    h2 { font-size: 29px; letter-spacing: -.02em; margin: 0 0 16px; }
+    h3 { font-size: 20px; margin: 28px 0 12px; }
+    p { margin: 12px 0; max-width: 72ch; }
+    .lead { font-size: 21px; color: var(--muted); }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px 24px; padding: 18px 0; margin: 28px 0; border-block: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+    .role { display: inline-block; padding: 3px 10px; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; color: var(--muted); }
+    .route { color: var(--muted); font-size: 14px; margin-bottom: 22px; }
+    ol, ul { padding-left: 24px; }
+    li { margin: 8px 0; padding-left: 4px; }
+    .steps li::marker { font-weight: 700; color: var(--accent); }
+    .note { background: var(--soft); border: 1px solid var(--line); padding: 16px 20px; margin: 24px 0; font-size: 15px; }
+    .note p { margin: 0; }
+    .success { padding-top: 16px; margin-top: 20px; border-top: 1px solid var(--line); font-size: 15px; }
+    .success strong { color: #1d6554; }
+    figure { margin: 24px 0; }
+    figure a { display: block; }
+    figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 4px; }
+    figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    .pair figure { margin-top: 16px; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; }
+    th { text-align: left; font-weight: 650; background: var(--soft); }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .table-scroll { overflow-x: auto; }
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { padding: 10px 0; margin: 0; border-bottom: 1px solid var(--line); }
+    .checklist strong { display: block; }
+    .small { font-size: 14px; color: var(--muted); }
+    footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+    @media (max-width: 950px) {
+      .layout { display: block; }
+      .sidebar { position: static; height: auto; padding: 24px; }
+      .sidebar p { margin-bottom: 12px; }
+      .sidebar nav { columns: 2; }
+      .sidebar nav strong, .sidebar nav a { break-inside: avoid; }
+      .print { width: auto; margin-top: 16px; }
+      main { margin: 0 16px 32px; }
+      .lesson { padding: 32px; }
+    }
+    @media (max-width: 540px) {
+      body { font-size: 16px; }
+      main { margin: 0; border-inline: 0; }
+      .lesson { padding: 28px 20px; }
+      h2 { font-size: 26px; }
+      .lead { font-size: 19px; }
+      .pair { grid-template-columns: 1fr; gap: 0; }
+      .meta { display: block; }
+      .meta span { display: block; }
+      th, td { padding: 8px; }
+    }
+    @page { size: A4; margin: 16mm 15mm 18mm; }
+    @media print {
+      :root { background: white; }
+      body { font-size: 10pt; line-height: 1.48; }
+      .layout { display: block; }
+      .sidebar, .skip { display: none; }
+      main { margin: 0; border: 0; }
+      .lesson { padding: 0; border: 0; break-before: page; }
+      .cover { break-before: auto; padding-top: 24mm; }
+      h1 { font-size: 36pt; }
+      h2 { font-size: 22pt; }
+      h3 { font-size: 13pt; margin-top: 16px; }
+      .lead { font-size: 15pt; }
+      .role, .route, .small { font-size: 9pt; }
+      .meta { font-size: 9pt; }
+      .note, .success, table { font-size: 9pt; }
+      .note { margin: 14px 0; padding: 10px 14px; }
+      li { margin: 5px 0; }
+      figure { margin: 16px 0; break-inside: avoid; }
+      figure img { max-height: 112mm; object-fit: contain; border-radius: 0; }
+      figcaption { font-size: 8pt; }
+      .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .pair figure img { max-height: 90mm; }
+      #angebote figure img { max-height: 78mm; }
+      #angebote th, #angebote td { padding: 6px 10px; }
+      #vererbung figure img { max-height: 88mm; }
+      #checkliste { font-size: 9pt; line-height: 1.4; }
+      #checkliste p { margin-block: 8px; }
+      #checkliste .checklist li { padding: 7px 0; }
+      #checkliste footer { margin-top: 18px; padding-top: 12px; }
+      h2, h3, .role, .route { break-after: avoid; }
+      .note, tr, .success { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+      .table-scroll { overflow: visible; }
+      footer { font-size: 8pt; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#manual">Zum Manual springen</a>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Manual-Navigation">
+      <div class="brand">StatO</div>
+      <p>Bedienungsmanual · Einstieg</p>
+      <nav aria-label="Inhaltsverzeichnis">
+        <a href="#manual">Über dieses Manual</a>
+        <a href="#orientierung">1. Orientierung</a>
+        <strong>Organisation vorbereiten</strong>
+        <a href="#organisation">2. Organisation anlegen</a>
+        <a href="#grundlagen">3. Kategorien &amp; Alterskohorten</a>
+        <a href="#standorte-team">4. Standorte &amp; Team</a>
+        <strong>Angebote &amp; Projekte</strong>
+        <a href="#projekt">5. Erstes Projekt anlegen</a>
+        <a href="#angebote">6. Angebote wiederverwenden</a>
+        <strong>Aktivitäten tracken</strong>
+        <a href="#dokumentieren">7. Nachträglich dokumentieren</a>
+        <a href="#tageserfassung-start">8. Tageserfassung starten</a>
+        <a href="#zaehlen">9. Laufend zählen</a>
+        <a href="#abschliessen">10. Erfassung abschließen</a>
+        <a href="#pruefen">11. Einträge prüfen</a>
+        <strong>Ergebnisse nutzen</strong>
+        <a href="#statistik">12. Auswertung kontrollieren</a>
+        <a href="#export">13. Ergebnisse exportieren</a>
+        <a href="#statistik-vertiefen">14. Filter &amp; Kennzahlen verstehen</a>
+        <strong>Kalender, Logbuch &amp; Umfragen</strong>
+        <a href="#kalender">15. Kalender nutzen</a>
+        <a href="#module">16. Module freischalten</a>
+        <a href="#logbuch">17. Übergaben dokumentieren</a>
+        <a href="#logbuch-team">18. Im Team nachverfolgen</a>
+        <a href="#umfrage">19. Umfrage vorbereiten</a>
+        <a href="#umfrage-fragen">20. Fragen prüfen</a>
+        <a href="#umfrage-start">21. Starten &amp; teilnehmen</a>
+        <a href="#umfrage-ergebnis">22. Beenden &amp; auswerten</a>
+        <a href="#vererbung">23. Gemeinsame Grundlagen vererben</a>
+        <a href="best-practices.html">Leitfaden: Datenqualität</a>
+        <a href="#checkliste">Checkliste &amp; häufige Fragen</a>
+      </nav>
+      <button class="print" type="button" id="print-manual">Drucken / als PDF speichern</button>
+      <p class="small">Screenshots anklicken, um sie in Originalgröße zu öffnen.</p>
+    </aside>
+    <main id="manual">
+      <section class="lesson cover" aria-labelledby="titel">
+        <h1 id="titel">Mit StatO starten.<span>Vom ersten Projekt zur dokumentierten Aktivität.</span></h1>
+        <p class="lead">Ein bebildertes Bedienungsmanual für Teams und Verantwortliche in der Offenen Kinder- und Jugendarbeit.</p>
+        <div class="meta">
+          <span>Erweiterter Entwurf · 11. Oktober 2026</span>
+          <span>Geprüft in der Dev-App · Version 1.15</span>
+        </div>
+        <h2>Das lernst du hier</h2>
+        <ol>
+          <li>Eine Organisation auswählen und die wichtigsten Grundlagen vorbereiten.</li>
+          <li>Angebote und Projekte einmal anlegen und für mehrere Termine nutzen.</li>
+          <li>Aktivitäten nachträglich dokumentieren oder Teilnahmen während des Angebots zählen.</li>
+          <li>Gespeicherte Einträge kontrollieren und erste Ergebnisse auswerten.</li>
+          <li>Kalender, Logbuch und Umfragen im Team nutzen sowie gemeinsame Erfassungsgrundlagen vererben.</li>
+        </ol>
+        <div class="note">
+          <p><strong>Ein gemeinsames Beispiel, keine echten Teilnehmendendaten.</strong> Alle Beispiele gehören zur eigens angelegten Organisation „Jugendzentrum Beispiel – Manual-Demo“. Die Projekte heißen „Kreativwerkstatt“ und „Offener Treff“. Erfasst werden ausschließlich erfundene, zusammengefasste Zählwerte.</p>
+        </div>
+        <h3>So benutzt du das Manual</h3>
+        <p>Wenn deine Organisation bereits eingerichtet ist, starte bei <a href="#projekt">Kapitel 5</a>. Für den Arbeitsalltag sind besonders <a href="#dokumentieren">Kapitel 7 bis 11</a> relevant. Die Kennzeichnung am Kapitelanfang zeigt, ob der Schritt für die Einrichtung oder für die tägliche Dokumentation gedacht ist.</p>
+        <p class="small">Die Screenshots zeigen die deutschsprachige Desktop-Oberfläche. Auf kleineren Geräten können Felder untereinander stehen und Schaltflächen nur als Symbol erscheinen. Datum und Uhrzeit in Eingabefeldern können je nach Browsereinstellung anders formatiert sein. Die Anleitungen beziehen sich auf die sichtbaren Bezeichnungen in der geprüften Dev-Version; spätere Versionen können davon abweichen.</p>
+      </section>
+
+      <section class="lesson" id="orientierung" aria-labelledby="h-orientierung">
+        <h2 id="h-orientierung">1. Zuerst orientieren</h2>
+        <span class="role">Für alle mit Zugriff auf eine Organisation</span>
+        <p>Prüfe nach der Anmeldung zuerst, <strong>welche Organisation im Kopfbereich ausgewählt ist</strong>. Sie bestimmt den Arbeitskontext für Angebote, Aktivitäten und Auswertungen.</p>
+        <figure>
+          <a href="bilder/03-dashboard.png"><img src="bilder/03-dashboard.png" alt="StatO-Dashboard mit der ausgewählten Demo-Organisation, Navigationssymbolen und den Schnellzugriffen zur Dokumentation und Tageserfassung."></a>
+          <figcaption>Abb. 1 · Oben steht die aktive Organisation. Darunter liegen Navigation und Schnellzugriff. Das Profilbild ist unkenntlich gemacht.</figcaption>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <caption class="small">Die wichtigsten Arbeitsbereiche</caption>
+            <thead><tr><th scope="col">Bereich</th><th scope="col">Wofür du ihn nutzt</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Dashboard</th><td>Einstieg und Schnellzugriff auf die Erfassung.</td></tr>
+              <tr><th scope="row">Angebote &amp; Projekte</th><td>Wiederkehrende Angebote und Projekte anlegen oder bearbeiten.</td></tr>
+              <tr><th scope="row">Aktivitäten</th><td>Einzelne durchgeführte Termine dokumentieren und kontrollieren.</td></tr>
+              <tr><th scope="row">Einstellungen</th><td>Kategorien, Kohorten, Team und Einrichtungen vorbereiten.</td></tr>
+              <tr><th scope="row">Statistiken</th><td>Erfasste Aktivitäten nach Zeitraum und Angebot auswerten.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note"><p><strong>Projekt oder Aktivität?</strong> Das Projekt ist das Angebot, zum Beispiel „Kreativwerkstatt“. Die Aktivität ist ein konkreter Termin dieses Angebots, zum Beispiel „Plakate gestalten am 9. Oktober“. Ein Projekt kann viele Aktivitäten haben.</p></div>
+        <p class="small">Falls Menüpunkte fehlen, können Berechtigungen oder die für deine Organisation freigeschalteten Module der Grund sein. Wende dich an die zuständige Administration.</p>
+      </section>
+
+      <section class="lesson" id="organisation" aria-labelledby="h-organisation">
+        <h2 id="h-organisation">2. Organisation anlegen und auswählen</h2>
+        <span class="role">Einrichtung · mit entsprechender Admin-Berechtigung</span>
+        <p class="route">Benutzermenü oben rechts → Organisationen → Neue Organisation</p>
+        <ol class="steps">
+          <li>Öffne das <strong>Benutzermenü</strong> über das Profilbild und wähle <strong>Organisationen</strong>.</li>
+          <li>Klicke auf <strong>Neue Organisation</strong> und gib einen eindeutigen Namen ein.</li>
+          <li>Für eine eigenständige Organisation wähle <strong>(Keine – oberste Ebene)</strong>. Eine übergeordnete Organisation wählst du nur, wenn die neue Einheit bewusst Teil einer bestehenden Hierarchie sein soll.</li>
+          <li>Bei Bedarf aktiviere <strong>Administrator einladen</strong> und ergänze die dann angezeigten Angaben. Für das Demo-Beispiel blieb diese Option ausgeschaltet.</li>
+          <li>Klicke auf <strong>Organisation anlegen</strong>. Öffne anschließend die Organisationsauswahl im Kopfbereich, markiere die neue Organisation und klicke auf <strong>Übernehmen</strong>.</li>
+        </ol>
+        <div class="pair">
+          <figure>
+            <a href="bilder/01-organisation-anlegen.png"><img src="bilder/01-organisation-anlegen.png" alt="Dialog Neue Organisation anlegen mit Demo-Namen, oberster Hierarchieebene und optionaler Administrator-Einladung."></a>
+            <figcaption>Abb. 2 · Name und Hierarchie festlegen, dann anlegen.</figcaption>
+          </figure>
+          <figure>
+            <a href="bilder/02-organisation-auswaehlen.png"><img src="bilder/02-organisation-auswaehlen.png" alt="Organisationsauswahl mit markierter Demo-Organisation und Schaltfläche Übernehmen."></a>
+            <figcaption>Abb. 3 · Die neue Organisation als Arbeitskontext übernehmen.</figcaption>
+          </figure>
+        </div>
+        <p class="success"><strong>Ergebnis prüfen:</strong> Der Name deiner Organisation steht jetzt im Kopfbereich. „Superadmin Bereich (ohne Orga-Daten)“ ist kein Kontext zum Erfassen von Angeboten.</p>
+        <p class="small">Die Anlage wurde hier als Superadmin geprüft. Wer diese Funktion in deiner Einrichtung nutzen darf, hängt von den vergebenen Rechten ab. Lege nicht für jeden Termin eine neue Organisation an.</p>
+      </section>
+
+      <section class="lesson" id="grundlagen" aria-labelledby="h-grundlagen">
+        <h2 id="h-grundlagen">3. Kategorien und Alterskohorten vorbereiten</h2>
+        <span class="role">Einrichtung · zuständige Administration</span>
+        <p class="route">Einstellungen → Kategorien / Kohorten</p>
+        <p>Diese Grundlagen machen die spätere Erfassung vergleichbar: <strong>Kategorien</strong> beschreiben den fachlichen Schwerpunkt, <strong>Kohorten</strong> bilden die Altersgruppen für die Zählung.</p>
+        <ol class="steps">
+          <li>Öffne <strong>Einstellungen → Kategorien</strong>. Über <strong>Standard-Kategorien erstellen</strong> kannst du die vorgeschlagenen Kategorien auswählen und anlegen. Alternativ lege eine eigene Kategorie über das Plus-Symbol an.</li>
+          <li>Öffne <strong>Kohorten</strong> und klicke auf <strong>Neue Kohorte</strong>.</li>
+          <li>Trage <strong>Name</strong>, <strong>Min Alter</strong>, <strong>Max Alter</strong> und <strong>Sortierung</strong> ein. Im Beispiel: „12–17 Jahre“, Minimum 12, Maximum 17, Sortierung 1.</li>
+          <li>Speichere über das <strong>Speichern-Symbol</strong>. Wiederhole den Schritt für weitere benötigte Altersgruppen.</li>
+        </ol>
+        <div class="pair">
+          <figure>
+            <a href="bilder/04-standard-kategorien.png"><img src="bilder/04-standard-kategorien.png" alt="Einstellungen mit angelegten Standard-Kategorien wie Beratung, Ernährung und Gesundheit sowie Künstlerisches Gestalten."></a>
+            <figcaption>Abb. 4 · Kategorien nach der Anlage. Das Plus-Symbol ergänzt eigene Kategorien.</figcaption>
+          </figure>
+          <figure>
+            <a href="bilder/08-alterskohorte.png"><img src="bilder/08-alterskohorte.png" alt="Neue Alterskohorte mit Name 12 bis 17 Jahre, Mindestalter 12, Höchstalter 17 und Sortierung 1."></a>
+            <figcaption>Abb. 5 · Eine Altersgruppe definieren und über das Diskettensymbol speichern.</figcaption>
+          </figure>
+        </div>
+        <div class="note"><p><strong>Vor der ersten Zählung einrichten.</strong> Im geprüften neuen Org-Kontext waren zunächst keine Kohorten vorhanden. Ohne sie fehlen die Eingabereihen für Teilnehmendenzahlen. Stimmt die Altersgruppen im Team ab, deckt eure Zielgruppe vollständig ab und vermeidet Überschneidungen. Die zwei Demo-Gruppen sind keine verbindliche fachliche Vorgabe.</p></div>
+        <p class="success"><strong>Ergebnis prüfen:</strong> In der Aktivitätsmaske sind die vorgesehenen Altersgruppen als eigene Zeilen sichtbar.</p>
+      </section>
+
+      <section class="lesson" id="standorte-team" aria-labelledby="h-standorte">
+        <h2 id="h-standorte">4. Standorte und Team vorbereiten</h2>
+        <span class="role">Einrichtung · zuständige Administration</span>
+        <h3>Standorte / Räume</h3>
+        <ol class="steps">
+          <li>Öffne <strong>Einstellungen → Einrichtungen → Neue Einrichtung</strong>.</li>
+          <li>Gib den <strong>Namen</strong> ein, zum Beispiel „Kreativraum“. Adresse und Raumtyp kannst du bei Bedarf ergänzen.</li>
+          <li>Klicke auf <strong>Speichern</strong>. Der Standort ist danach bei Aktivitäten auswählbar.</li>
+        </ol>
+        <h3>Benutzerzugang und Team unterscheiden</h3>
+        <p>Für den Zugang zur App öffnest du <strong>Benutzermenü → Organisationen</strong> und klickst im Organisationsbaum auf den Namen der gewünschten Organisation. Im Benutzerfenster kannst du eine E-Mail-Adresse eintragen und <strong>Einladung senden</strong> wählen.</p>
+        <div class="pair">
+          <figure>
+            <a href="bilder/05-einrichtung.png"><img src="bilder/05-einrichtung.png" alt="Neue Einrichtung Kreativraum mit optionaler Adresse und Raumtyp Gruppenraum."></a>
+            <figcaption>Abb. 6 · Einen Raum für die spätere Standortauswahl anlegen.</figcaption>
+          </figure>
+          <figure>
+            <a href="bilder/15-team-einladen.png"><img src="bilder/15-team-einladen.png" alt="Benutzerfenster der Demo-Organisation mit leerer Benutzerliste und E-Mail-Feld zum Einladen."></a>
+            <figcaption>Abb. 7 · Zugang einladen. Für das Manual wurde keine Einladung verschickt.</figcaption>
+          </figure>
+        </div>
+        <div class="note"><p><strong>Ein Team-Eintrag ist nicht automatisch ein App-Zugang.</strong> Unter <strong>Einstellungen → Team</strong> werden die für die Angebotszuordnung verfügbaren Mitarbeitenden und Helfer verwaltet. Benutzerkonten, Einladungen und Zugriffsrechte werden davon getrennt verwaltet. Nutze nur die tatsächlich benötigten Rechte.</p></div>
+        <p class="small">Einladungsannahme und Änderungen von Benutzerrollen sind nicht Bestandteil dieses ersten, im Browser geprüften Einstiegsmanuals.</p>
+      </section>
+
+      <section class="lesson" id="projekt" aria-labelledby="h-projekt">
+        <h2 id="h-projekt">5. Das erste Projekt anlegen</h2>
+        <span class="role">Angebotsplanung · mit Bearbeitungsrecht</span>
+        <p class="route">Angebote &amp; Projekte → Neues Angebot / Projekt</p>
+        <ol class="steps">
+          <li>Klicke auf <strong>Neues Angebot / Projekt</strong>.</li>
+          <li>Trage den <strong>Titel</strong> ein: im Beispiel „Kreativwerkstatt“.</li>
+          <li>Wähle den passenden <strong>Typ</strong>, hier <strong>Projekt (offen)</strong>. Titel und Typ sind Pflichtangaben.</li>
+          <li>Ergänze die <strong>Zielgruppe</strong> und wähle die fachliche <strong>Kategorie</strong>, hier „Künstlerisches Gestalten (u.a. Basteln, Malen)“.</li>
+          <li>Scrolle zu <strong>Standardzeiten für Aktivitäten</strong> und hinterlege Start und Ende, hier 15:00 und 17:00 Uhr. Diese Werte werden bei der späteren Erfassung vorgeschlagen.</li>
+          <li>Bei Bedarf ergänze Tags, Bild, Farbe, Team, Unterlagen und Beschreibung. Klicke auf <strong>Speichern</strong>.</li>
+        </ol>
+        <figure>
+          <a href="bilder/06-projekt-anlegen.png"><img src="bilder/06-projekt-anlegen.png" alt="Projektanlage Kreativwerkstatt mit Typ Projekt offen, Zielgruppe 12 bis 17 Jahre und ausgewählter Kategorie Künstlerisches Gestalten."></a>
+          <figcaption>Abb. 8 · Basisinformationen ausfüllen. Die Standardzeiten und weitere optionale Angaben liegen weiter unten in der scrollbaren Maske.</figcaption>
+        </figure>
+        <p class="success"><strong>Ergebnis prüfen:</strong> Nach dem Speichern erscheint „Kreativwerkstatt“ in der Angebotsübersicht. Ein angelegtes Projekt ist noch keine dokumentierte Aktivität.</p>
+      </section>
+
+      <section class="lesson" id="angebote" aria-labelledby="h-angebote">
+        <h2 id="h-angebote">6. Angebote für mehrere Termine nutzen</h2>
+        <span class="role">Angebotsplanung · mit Bearbeitungsrecht</span>
+        <p>Lege ein wiederkehrendes Angebot <strong>einmal</strong> an. Jeder durchgeführte Termin wird später als eigene Aktivität diesem Angebot zugeordnet.</p>
+        <figure>
+          <a href="bilder/07-projektuebersicht.png"><img src="bilder/07-projektuebersicht.png" alt="Angebotsübersicht mit den beiden gespeicherten Angeboten Kreativwerkstatt und Offener Treff sowie Filtern nach Angebotstyp."></a>
+          <figcaption>Abb. 9 · Zwei Angebote, noch ohne eigene Termine: ein offenes Projekt und eine Offene Tür.</figcaption>
+        </figure>
+        <ol class="steps">
+          <li>Für einen offenen Regelbetrieb lege beispielsweise <strong>„Offener Treff“</strong> mit Typ <strong>Offene Tür</strong> an.</li>
+          <li>Hinterlege die üblichen Zeiten, im Beispiel <strong>14:00 bis 18:00 Uhr</strong>.</li>
+          <li>Nutze die Typfilter oder die Suche in der Übersicht, um Angebote wiederzufinden.</li>
+          <li>Über das <strong>Stift-Symbol</strong> bearbeitest du ein vorhandenes Angebot. Über den <strong>Projekttitel</strong> kannst du die zugehörigen Aktivitäten anzeigen.</li>
+        </ol>
+        <div class="table-scroll">
+          <table>
+            <caption class="small">Die in der Anlage angebotenen Typen</caption>
+            <thead><tr><th scope="col">Typ</th><th scope="col">Orientierung für die Auswahl</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Offene Tür</th><td>Offener Treff / offener Regelbetrieb.</td></tr>
+              <tr><th scope="row">Projekt (offen)</th><td>Projektangebot mit offenem Zugang.</td></tr>
+              <tr><th scope="row">Projekt (geschlossen)</th><td>Projektangebot für eine festgelegte Gruppe.</td></tr>
+              <tr><th scope="row">Veranstaltung</th><td>Ein Veranstaltungsangebot.</td></tr>
+              <tr><th scope="row">Aufsuchend</th><td>Ein Angebot der aufsuchenden Arbeit.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">Die genaue fachliche Abgrenzung stimmt ihr in eurer Organisation ab. „Projekt (geschlossen)“ beschreibt hier den Angebotstyp und bedeutet nicht automatisch, dass ein Projekt abgeschlossen ist.</p>
+      </section>
+
+      <section class="lesson" id="dokumentieren" aria-labelledby="h-dokumentieren">
+        <h2 id="h-dokumentieren">7. Eine Aktivität nachträglich dokumentieren</h2>
+        <span class="role">Arbeitsalltag · mit Bearbeitungsrecht</span>
+        <p class="route">Dashboard → Aktivität dokumentieren → Projekt wählen</p>
+        <ol class="steps">
+          <li>Wähle im Dashboard <strong>Aktivität dokumentieren</strong> und dann das passende Angebot, hier <strong>Kreativwerkstatt</strong>. Alternativ beginnt die Erfassung im Bereich <strong>Aktivitäten</strong>.</li>
+          <li>Prüfe <strong>Datum</strong> und <strong>Standort</strong>. Im Beispiel: 09.10.2026 und „Kreativraum“. Das vorgeschlagene heutige Datum musst du für vergangene Termine ändern.</li>
+          <li>Ergänze einen aussagekräftigen <strong>Titel</strong> und kontrolliere <strong>Start</strong> und <strong>Ende</strong>. Projekt-Standardzeiten sind nur Vorschläge; trage die tatsächlichen Zeiten ein.</li>
+          <li>Trage die Zählwerte in die passende Alterskohorte ein. <strong>m</strong> steht für männlich, <strong>w</strong> für weiblich, <strong>d</strong> für divers; <strong>Σ</strong> zeigt die Summe.</li>
+          <li>Prüfe die <strong>Kategorie</strong> und ergänze bei Bedarf Tags und kurze fachliche Notizen. In dieser Maske ist <strong>eine Kategorie pro Aktivität</strong> auswählbar.</li>
+          <li>Kontrolliere den Status oben rechts. Für das durchgeführte Beispiel ist <strong>Stattgefunden</strong> richtig. Klicke auf <strong>Speichern</strong>.</li>
+        </ol>
+        <figure>
+          <a href="bilder/09-aktivitaet-erfassen.png"><img src="bilder/09-aktivitaet-erfassen.png" alt="Aktivitätsmaske der Kreativwerkstatt am 9. Oktober mit Kreativraum, Zeiten 15 bis 17 Uhr und 5 männlichen, 6 weiblichen sowie einer diversen Teilnahme."></a>
+          <figcaption>Abb. 10 · Das ausgefüllte Beispiel, nach dem Speichern erneut geöffnet. Deshalb ist hier zusätzlich „Löschen“ sichtbar. 03:00 PM und 05:00 PM entsprechen 15:00 und 17:00 Uhr.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Nur zusammengefasste Zahlen.</strong> Im Beispiel ergeben 5 + 6 + 1 insgesamt <strong>12 Teilnahmen</strong>. Keine Namen oder identifizierbaren Angaben zu jungen Menschen in Titel und Notizen eintragen. Fachliche Beobachtungen kurz und sachlich formulieren.</p></div>
+      </section>
+
+      <section class="lesson" id="tageserfassung-start" aria-labelledby="h-tageserfassung">
+        <h2 id="h-tageserfassung">8. Die Tageserfassung starten</h2>
+        <span class="role">Arbeitsalltag · laufende Zählung</span>
+        <p class="route">Dashboard → Tageserfassung starten</p>
+        <p>Nutze die Tageserfassung, wenn du die Zählwerte <strong>während des Angebots</strong> sammeln möchtest, statt sie anschließend vollständig einzutragen.</p>
+        <ol class="steps">
+          <li>Klicke auf <strong>Tageserfassung starten</strong>.</li>
+          <li>Wähle das <strong>Projekt</strong>, im Beispiel <strong>Offener Treff</strong>.</li>
+          <li>Wähle den <strong>Standort</strong>.</li>
+          <li>Prüfe die <strong>Startzeit</strong>. Das Projekt kann eine Standardzeit vorschlagen. Über das Uhr-Symbol lässt sich eine aktuelle Uhrzeit übernehmen; kontrolliere den angezeigten Wert.</li>
+          <li>Klicke erneut auf <strong>Tageserfassung starten</strong>, um zur Zählansicht zu wechseln.</li>
+        </ol>
+        <figure>
+          <a href="bilder/12-tageserfassung-starten.png"><img src="bilder/12-tageserfassung-starten.png" alt="Startdialog der Tageserfassung mit Offener Treff, Demo-Standort, Startzeit 14 Uhr und Schaltfläche Tageserfassung starten."></a>
+          <figcaption>Abb. 11 · Angebot, Standort und Beginn festlegen, bevor du zählst.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Vorab eine Zählregel vereinbaren.</strong> Stimmt im Team ab, welche Teilnahme wann gezählt wird und wie ihr Wiedereintritte behandelt. Die App kennt keine individuellen Teilnehmenden und kann doppelte Zählungen derselben Person nicht anhand einer Identität erkennen.</p></div>
+      </section>
+
+      <section class="lesson" id="zaehlen" aria-labelledby="h-zaehlen">
+        <h2 id="h-zaehlen">9. Teilnahmen laufend zählen</h2>
+        <span class="role">Arbeitsalltag · laufende Zählung</span>
+        <ol class="steps">
+          <li>Suche die passende <strong>Alterskohorte</strong> und die Spalte <strong>m</strong>, <strong>w</strong> oder <strong>d</strong>.</li>
+          <li><strong>Einmal tippen oder klicken erhöht den Wert um 1.</strong></li>
+          <li>Für eine Korrektur nach unten: <strong>lange drücken</strong>, <strong>nach unten wischen</strong> oder am Desktop <strong>rechtsklicken</strong>. Das verringert den Wert um 1.</li>
+          <li>Behalte die Zeilensummen und die <strong>Gesamtsumme</strong> im Blick.</li>
+          <li>Am Ende wähle <strong>Abschließen &amp; Speichern</strong>, um zur Abschlusskontrolle zu gelangen.</li>
+        </ol>
+        <figure>
+          <a href="bilder/13-tageserfassung-zaehlen.png"><img src="bilder/13-tageserfassung-zaehlen.png" alt="Laufende Tageserfassung für Offener Treff mit drei männlichen, vier weiblichen und einer diversen Teilnahme, Gesamtsumme acht."></a>
+          <figcaption>Abb. 12 · Das Beispiel zählt 3 männliche, 4 weibliche und 1 diverse Teilnahme: insgesamt 8.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Minimieren ist nicht Abschließen.</strong> Über <strong>Minimieren</strong> kannst du zur App zurückkehren und die laufende Erfassung über <strong>Tageserfassung fortsetzen</strong> wieder öffnen. Ein endgültiger Aktivitätseintrag entsteht erst beim Speichern im Abschlussdialog. <strong>Abbrechen → Session abbrechen</strong> verwirft dagegen die Zählungen.</p></div>
+        <p class="small">Verlasse dich bei einer laufenden Sitzung nicht auf eine dauerhafte oder geräteübergreifende Sicherung. Schließe die Erfassung zeitnah ab und kontrolliere anschließend den gespeicherten Eintrag.</p>
+      </section>
+
+      <section class="lesson" id="abschliessen" aria-labelledby="h-abschliessen">
+        <h2 id="h-abschliessen">10. Die Erfassung abschließen und speichern</h2>
+        <span class="role">Arbeitsalltag · Abschlusskontrolle</span>
+        <ol class="steps">
+          <li>Prüfe im Dialog <strong>Erfassung abschließen</strong> das Angebot, den Standort und die zusammengefassten Zählwerte.</li>
+          <li>Kontrolliere <strong>Startzeit</strong> und <strong>Endzeit</strong>. Die vorbelegte Endzeit kann vom tatsächlichen Ende abweichen.</li>
+          <li>Ergänze bei Bedarf einen <strong>Titel</strong> und sachliche <strong>Notizen / Besondere Vorkommnisse</strong>.</li>
+          <li>Wenn Zählwerte nicht stimmen, gehe mit <strong>Zurück</strong> wieder zur Zählansicht.</li>
+          <li>Klicke auf <strong>Speichern</strong> und warte auf die Speicherbestätigung. Kontrolliere danach die Aktivität in der Liste.</li>
+        </ol>
+        <figure>
+          <a href="bilder/14-tageserfassung-abschliessen.png"><img src="bilder/14-tageserfassung-abschliessen.png" alt="Abschlussdialog mit acht Teilnahmen, Startzeit 14 Uhr, korrigierter Endzeit 18 Uhr und Titel Offener Treff Spielen und Austausch."></a>
+          <figcaption>Abb. 13 · Letzte Prüfung vor dem Speichern. Im Beispiel wurde das tatsächliche Ende auf 18:00 Uhr korrigiert; die Eingabefelder sind maßgeblich.</figcaption>
+        </figure>
+        <p class="success"><strong>Ergebnis prüfen:</strong> Der offene Treff ist als Aktivität mit <strong>8 Teilnahmen</strong> und <strong>240 Minuten</strong> gespeichert.</p>
+        <div class="note"><p><strong>Nicht doppelt erfassen.</strong> Nach dem Abschluss der Tageserfassung brauchst du denselben Termin nicht noch einmal über „Aktivität dokumentieren“ anzulegen. Korrigiere stattdessen den bereits gespeicherten Eintrag.</p></div>
+      </section>
+
+      <section class="lesson" id="pruefen" aria-labelledby="h-pruefen">
+        <h2 id="h-pruefen">11. Gespeicherte Aktivitäten prüfen</h2>
+        <span class="role">Arbeitsalltag · Qualitätskontrolle</span>
+        <p class="route">Aktivitäten → Eintrag suchen → Bearbeiten</p>
+        <ol class="steps">
+          <li>Öffne den Bereich <strong>Aktivitäten</strong>. Suche den Termin über die Liste, das Suchsymbol oder den <strong>Erweiterten Filter</strong>.</li>
+          <li>Prüfe <strong>Datum</strong>, <strong>Typ</strong>, <strong>Titel / Projekt</strong>, <strong>Teilnehmende</strong> und <strong>Dauer</strong>.</li>
+          <li>Über das <strong>Stift-Symbol / Bearbeiten</strong> öffnest du den Eintrag. Korrigiere bei Bedarf Werte und speichere erneut.</li>
+          <li>Öffne den Eintrag nach dem Speichern bei Bedarf nochmals, um auch Standort, Kohorten und Notizen zu prüfen.</li>
+        </ol>
+        <figure>
+          <a href="bilder/11-aktivitaeten-pruefen.png"><img src="bilder/11-aktivitaeten-pruefen.png" alt="Gespeicherte Aktivitätsliste mit offenem Treff am 11. Oktober, acht Teilnahmen und 240 Minuten sowie Kreativwerkstatt am 9. Oktober, zwölf Teilnahmen und 120 Minuten."></a>
+          <figcaption>Abb. 14 · Beide Beispiele nach der Speicherung: 8 / 240 Minuten und 12 / 120 Minuten.</figcaption>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <caption class="small">Kontrollwerte für das Beispiel</caption>
+            <thead><tr><th scope="col">Aktivität</th><th scope="col">Teilnahmen</th><th scope="col">Dauer</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Kreativwerkstatt · 09.10.2026</th><td>12 (m 5 / w 6 / d 1)</td><td>120 Minuten</td></tr>
+              <tr><th scope="row">Offener Treff · 11.10.2026</th><td>8 (m 3 / w 4 / d 1)</td><td>240 Minuten</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note"><p><strong>Wenn du einen Eintrag nicht findest:</strong> Prüfe zuerst die aktive Organisation sowie Such- und Filtereinstellungen. Lege den Termin nicht vorschnell erneut an. Eine noch laufende Tageserfassung ist außerdem noch kein endgültig gespeicherter Eintrag.</p></div>
+      </section>
+
+      <section class="lesson" id="statistik" aria-labelledby="h-statistik">
+        <h2 id="h-statistik">12. Die erste Auswertung kontrollieren</h2>
+        <span class="role">Auswertung · mit Zugriff auf Statistiken</span>
+        <p class="route">Statistiken → Auswertung</p>
+        <ol class="steps">
+          <li>Wähle <strong>Jahr</strong> oder <strong>Monat</strong> und den passenden Zeitraum, hier <strong>2026</strong>.</li>
+          <li>Für den Gesamtüberblick wähle <strong>Alle Typen</strong> und <strong>Alle Projekte</strong>. Für ein einzelnes Angebot wähle dessen Projektfilter.</li>
+          <li>Prüfe die Kennzahlen in der Ansicht <strong>Absolut</strong>. Weitere Filter erreichst du über das Filter-Symbol.</li>
+          <li>Scrolle bei Bedarf zu den Diagrammen und zur Liste <strong>Alle Aktivitäten (gefiltert)</strong>, um die zugrunde liegenden Einträge zu kontrollieren.</li>
+        </ol>
+        <figure>
+          <a href="bilder/16-statistik.png"><img src="bilder/16-statistik.png" alt="Statistische Jahresauswertung 2026 mit allen Typen und Projekten sowie zwei Aktivitäten, zwanzig Teilnahmen, 3,3 Teilnahmen pro Stunde und sechs Gesamtstunden."></a>
+          <figcaption>Abb. 15 · Auswertung der beiden gespeicherten Demo-Aktivitäten.</figcaption>
+        </figure>
+        <p><strong>Die Beispielwerte lassen sich nachrechnen:</strong> 12 + 8 = <strong>20 Teilnahmen</strong>; 120 + 240 = 360 Minuten = <strong>6 Stunden</strong>. 20 ÷ 6 ergibt gerundet <strong>3,3 Teilnahmen / Stunde</strong>.</p>
+        <div class="note"><p><strong>Teilnahmen sind nicht eindeutige Personen.</strong> Besucht eine Person mehrere Termine, kann sie in mehreren Aktivitäten mitgezählt werden. Auch „Gesamt-Stunden“ im Beispiel sind die summierten Aktivitätsdauern – nicht automatisch Personalstunden oder Teilnehmendenstunden.</p></div>
+      </section>
+
+      <section class="lesson" id="export" aria-labelledby="h-export">
+        <h2 id="h-export">13. Ergebnisse exportieren</h2>
+        <span class="role">Auswertung · mit Exportberechtigung</span>
+        <p class="route">Statistiken → Auswertung → Export</p>
+        <ol class="steps">
+          <li>Stelle <strong>vor dem Export</strong> den gewünschten Zeitraum und die passenden Filter ein.</li>
+          <li>Klicke auf <strong>Export</strong>.</li>
+          <li>Prüfe die angezeigte <strong>Organisation</strong>, den <strong>Zeitraum</strong> und die <strong>Anzahl der Aktivitäten</strong>.</li>
+          <li>Wähle das benötigte Format. Kontrolliere danach die heruntergeladene Datei, bevor du sie weitergibst.</li>
+        </ol>
+        <figure>
+          <a href="bilder/17-export.png"><img src="bilder/17-export.png" alt="Exportdialog für die Demo-Organisation mit Zeitraum 2026, zwei Aktivitäten und den Optionen Stato-Excel, CSV sowie vollständige Arbeitsmappe mit Logbuchtexten."></a>
+          <figcaption>Abb. 16 · Der Exportdialog zeigt Umfang und verfügbare Formate. Die Download-Dateien wurden für dieses Manual nicht geprüft.</figcaption>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">Format</th><th scope="col">Angezeigter Zweck</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Stato-Excel</th><td>Aktivitäten als Arbeitsmappe zur weiteren Auswertung.</td></tr>
+              <tr><th scope="row">CSV</th><td>Aktivitäten als CSV-Datei für Tabellenprogramme.</td></tr>
+              <tr><th scope="row">Vollständige Arbeitsmappe</th><td>Zusätzlich Kohorten, Projekt-KPIs und Logbuch.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note"><p><strong>Logbuchtexte bewusst behandeln.</strong> Laut Exportdialog enthalten Aktivitätsexporte keine Logbuchtexte. Die vollständige Arbeitsmappe enthält zusätzlich Logbucheinträge für Zeitraum und Angebot; andere Aktivitätsfilter gelten nicht für das Logbuch. Prüfe deshalb den Umfang und die Empfänger besonders sorgfältig.</p></div>
+      </section>
+
+      <section class="lesson" id="statistik-vertiefen" aria-labelledby="h-statistik-vertiefen">
+        <h2 id="h-statistik-vertiefen">14. Filter und Kennzahlen verstehen</h2>
+        <span class="role">Auswertung · mit Zugriff auf Statistiken</span>
+        <p class="route">Statistiken → Auswertung → Erweiterter Filter</p>
+        <ol class="steps">
+          <li>Lege die Fragestellung fest: gesamtes Jahr, einzelnes Angebot oder bestimmte Wochentage?</li>
+          <li>Wähle Zeitraum, Typ und Projekt. Unter <strong>Erweiterter Filter</strong> stehen zusätzlich <strong>Von / Bis</strong>, Schnellauswahl, Status, Schließtage und Wochentage zur Verfügung.</li>
+          <li>Für tatsächlich durchgeführte Angebote nutze <strong>Stattgefunden</strong>. <strong>Ausgefallen</strong> ist eine andere Betrachtung. Bestätige Änderungen mit <strong>Übernehmen</strong>.</li>
+          <li>Prüfe die Tabelle <strong>Alle Aktivitäten (gefiltert)</strong>. Vergleiche die Kennzahlen erst, wenn dieselben Definitionen und Filter gelten.</li>
+        </ol>
+        <figure>
+          <a href="bilder/30-statistik-filter.png"><img src="bilder/30-statistik-filter.png" alt="Erweiterter Statistikfilter mit Zeitraum, Schnellauswahl, Status Stattgefunden oder Ausgefallen und Schließtagen."></a>
+          <figcaption>Abb. 17 · Im geprüften Ausgangszustand ist „Stattgefunden“ ausgewählt. Weitere Wochentagsfelder liegen darunter.</figcaption>
+        </figure>
+        <p>Die Diagramme beantworten unterschiedliche Fragen: Tätigkeitstypen zeigen den Angebotsmix, Kohorten und Geschlechter die erfassten Teilnahmen, der Zeitverlauf die Entwicklung im gewählten Zeitraster. Prozentwerte immer zusammen mit der zugrunde liegenden Anzahl lesen. Das Wochenprofil ist eine verdichtete Darstellung und kein Nachweis individueller Anwesenheitszeiten.</p>
+        <p><strong>Absolut</strong> und <strong>Ø Werte</strong> sind verschiedene Darstellungen. Ein Durchschnitt benötigt einen Bezugswert: pro Aktivität, pro Stunde oder pro Zeitabschnitt sind nicht dasselbe. Nutze für die erste Plausibilitätskontrolle die absoluten Werte und die Einzeltabelle.</p>
+      </section>
+
+      <section class="lesson" id="statistik-beispiel" aria-labelledby="h-statistik-beispiel">
+        <h2 id="h-statistik-beispiel">Ein Projektfilter verändert den Bezugsrahmen</h2>
+        <p>Im Jahresfilter 2026 liefert die Auswahl <strong>Kreativwerkstatt</strong> genau eine Aktivität, zwölf Teilnahmen und zwei Stunden. Daraus ergeben sich <strong>12 ÷ 2 = 6 Teilnahmen / Stunde</strong>.</p>
+        <figure>
+          <a href="bilder/31-statistik-projekt.png"><img src="bilder/31-statistik-projekt.png" alt="Projektfilter Kreativwerkstatt in der Jahresstatistik 2026: eine Aktivität, zwölf Teilnahmen, sechs Teilnahmen pro Stunde und zwei Gesamtstunden."></a>
+          <figcaption>Abb. 18 · Kontrollierter Einzelprojektfilter. Mit „Alle Projekte“ kehrst du zum Gesamtüberblick zurück.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Nicht Mittelwerte ungewichtet mitteln.</strong> Kreativwerkstatt: 12 ÷ 2 = 6. Offener Treff: 8 ÷ 4 = 2. Zusammen: (12 + 8) ÷ (2 + 4) = 3,33 – nicht (6 + 2) ÷ 2 = 4. Der separate <a href="best-practices.html">Leitfaden zur Datenqualität</a> erklärt passende Zähleinheiten und Vergleichsregeln.</p></div>
+        <p class="small">Die Darstellung allein erklärt keine Ursachen: Mehr Teilnahmen bedeuten nicht automatisch bessere Wirkung. Feiertage, Schließungen, Erfassungsumfang und Angebotsstruktur können Vergleiche beeinflussen.</p>
+      </section>
+
+      <section class="lesson" id="kalender" aria-labelledby="h-kalender">
+        <h2 id="h-kalender">15. Aktivitäten im Kalender finden</h2>
+        <span class="role">Arbeitsalltag · mit Kalenderzugriff</span>
+        <p class="route">Kalender → Monat / Woche</p>
+        <ol class="steps">
+          <li>Öffne <strong>Kalender</strong>. Nutze die Pfeile für den vorherigen oder nächsten Zeitraum.</li>
+          <li>Wechsle zwischen <strong>Monat</strong> und <strong>Woche</strong>. <strong>Analyse</strong> ist die weitere angebotene Ansicht.</li>
+          <li>Wähle die Tageszahl, um Aktivitäten dieses Tages anzuzeigen. Ein vorhandener Angebotseintrag lässt sich öffnen; die zugehörige Bearbeitungsaktion dient zur Korrektur.</li>
+          <li>Zum Erfassen nutze das Plus am gewünschten Tag: <strong>Aktivität zu … hinzufügen</strong>. Wähle danach das Projekt.</li>
+        </ol>
+        <figure>
+          <a href="bilder/22-kalender.png"><img src="bilder/22-kalender.png" alt="Monatskalender Oktober 2026 der Demo-Organisation mit Kreativwerkstatt am 9. Oktober und Offenem Treff am 11. Oktober."></a>
+          <figcaption>Abb. 19 · Beide gespeicherten Demo-Aktivitäten erscheinen im Kalender.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Kein unverbindlicher Planungsstatus im geprüften Editor.</strong> Die Aktivitätserfassung bietet „Stattgefunden“ und „Ausgefallen“, nicht „Geplant“. Speichere einen zukünftigen Termin daher nicht vorsorglich als stattgefunden. Das würde Durchführung und Statistik verfälschen.</p></div>
+      </section>
+
+      <section class="lesson" id="kalender-erfassung" aria-labelledby="h-kalender-erfassung">
+        <h2 id="h-kalender-erfassung">Vom Kalendertag zur Erfassung</h2>
+        <p>Der Kalender öffnet denselben fachlichen Erfassungsvorgang wie die Aktivitätsdokumentation: Datum, Standort, Titel, Angebot, tatsächliche Zeiten und Zählwerte müssen stimmen. Über die Status-Schaltfläche oben unterscheidest du <strong>Stattgefunden</strong> und <strong>Ausgefallen</strong>.</p>
+        <figure>
+          <a href="bilder/21-kalender-erfassen.png"><img src="bilder/21-kalender-erfassen.png" alt="Vom Kalender geöffneter Aktivitätseditor mit Datum, Projekt Kreativwerkstatt und Statusmenü Stattgefunden oder Ausgefallen."></a>
+          <figcaption>Abb. 20 · Nur zur Veranschaulichung geöffneter zukünftiger Termin; nicht gespeichert. Ein Plan ist noch keine durchgeführte Aktivität.</figcaption>
+        </figure>
+        <p>Nach einer tatsächlichen Durchführung: Werte prüfen, <strong>Speichern</strong> und den Eintrag im Kalender sowie in der Aktivitätsliste kontrollieren. Bei einem Ausfall keine fiktiven Teilnahmen dokumentieren. Die Einrichtungsschließung wird separat über die Aktion am Kalendertag verwaltet; sie ist nicht dasselbe wie der Status einer einzelnen Aktivität.</p>
+        <p class="small">Die Anlage einer Schließzeit, Analyseansicht und Wochenansicht wurden für diesen Entwurf nicht als vollständige Arbeitsabläufe durchgespielt.</p>
+      </section>
+
+      <section class="lesson" id="module" aria-labelledby="h-module">
+        <h2 id="h-module">16. Logbuch und Umfragen freischalten</h2>
+        <span class="role">Einrichtung · zuständige Administration</span>
+        <p class="route">Benutzermenü → Organisationen → Module</p>
+        <ol class="steps">
+          <li>Suche in der Organisationsverwaltung die <strong>richtige Organisation</strong>.</li>
+          <li>Öffne deren <strong>Module</strong>-Menü und aktiviere bei Bedarf <strong>Logbuch</strong> und <strong>Umfragen</strong>.</li>
+          <li>Wähle die Organisation im Kopfbereich und kontrolliere, ob die Navigation die Bereiche anzeigt. Zugriffsrechte müssen ebenfalls zur Aufgabe passen.</li>
+        </ol>
+        <figure>
+          <a href="bilder/18-module.png"><img src="bilder/18-module.png" alt="Modulmenü der Demo-Organisation: Logbuch und Umfragen aktiviert, ProzessO deaktiviert." style="max-width: 380px; margin-inline: auto;"></a>
+          <figcaption>Abb. 21 · Module gelten für diese Organisation. Im Demo-Beispiel wurden nur Logbuch und Umfragen zusätzlich aktiviert.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Deaktivieren ist kein Löschen.</strong> Laut Modulmenü bleiben Daten beim Deaktivieren erhalten. Module werden pro Organisation geschaltet; die Freigabe bei der übergeordneten Organisation ist keine automatische Freigabe für jeden Standort.</p></div>
+      </section>
+
+      <section class="lesson" id="logbuch" aria-labelledby="h-logbuch">
+        <h2 id="h-logbuch">17. Eine Übergabe im Logbuch festhalten</h2>
+        <span class="role">Arbeitsalltag · mit Logbuchberechtigung</span>
+        <p class="route">Logbuch → Neuer Eintrag</p>
+        <ol class="steps">
+          <li>Wähle <strong>Neuer Eintrag</strong>. Prüfe den <strong>Zeitpunkt</strong> und wähle die <strong>Eintragsart</strong>, hier „Übergabe“.</li>
+          <li>Formuliere einen kurzen <strong>Titel</strong> und eine sachliche <strong>Beschreibung</strong>: Was ist beobachtet, was ist vereinbart, was bleibt offen?</li>
+          <li>Verknüpfe bei Bedarf <strong>Projekt</strong> und/oder <strong>Aktivität</strong>. Unser gespeicherter Eintrag ist mit „Kreativwerkstatt“ verknüpft.</li>
+          <li>Prüfe die <strong>Sichtbarkeit</strong>: „Ganzes Team“ oder „Nur Admins“. Speichere und kontrolliere den angezeigten Eintrag.</li>
+        </ol>
+        <figure>
+          <a href="bilder/23-logbuch-erstellen.png"><img src="bilder/23-logbuch-erstellen.png" alt="Dialog Logbucheintrag erstellen mit fiktiver Materialübergabe, Eintragsart Übergabe, Beschreibung, Verknüpfungen und Sichtbarkeit Ganzes Team."></a>
+          <figcaption>Abb. 22 · Nachgestellter Eingabedialog ohne weitere Speicherung; die zuvor gespeicherte Demo-Übergabe bleibt der einzige Eintrag.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Qualitative Dokumentation ersetzt keine Zählung.</strong> Ein Logbucheintrag erzeugt nicht automatisch eine statistische Aktivität. Keine unnötigen Namen, Diagnosen oder sensiblen Falldetails aufnehmen. „Nur Admins“ ersetzt weder Datenminimierung noch eure fachlichen Datenschutzregeln.</p></div>
+        <p class="small">Prüfe den Zeitpunkt nach dem Speichern: In der geprüften Dev-Version wurde im Eingabedialog eine andere Uhrzeit als in der Detailanzeige dargestellt. Übernimm Zeitangaben nicht ungeprüft; bei einer Abweichung den Betreiber zur Klärung einbeziehen.</p>
+      </section>
+
+      <section class="lesson" id="logbuch-team" aria-labelledby="h-logbuch-team">
+        <h2 id="h-logbuch-team">18. Besprechen und nachverfolgen</h2>
+        <p class="route">Logbuch → Eintrag öffnen → Eintragsdetails</p>
+        <ol class="steps">
+          <li>Öffne den Eintrag und lies Dokumentation sowie Verknüpfungen.</li>
+          <li>Ergänze eine konkrete Teamabsprache unter <strong>Kommentar hinzufügen</strong> und bestätige mit <strong>Kommentar senden</strong>.</li>
+          <li>Wähle den passenden Status: <strong>Offen</strong>, <strong>Besprochen</strong> oder <strong>Nachverfolgung</strong>. Unser Materialthema bleibt zur Nachverfolgung markiert.</li>
+          <li>Nutze in der Übersicht <strong>Offene Besprechungspunkte</strong>, Suche oder erweiterten Filter für die nächste Teamsitzung. <strong>Archiv</strong> dient zur separaten Anzeige archivierter Einträge.</li>
+        </ol>
+        <figure>
+          <a href="bilder/24-logbuch-details.png"><img src="bilder/24-logbuch-details.png" alt="Gespeicherte Demo-Übergabe mit Projektverknüpfung Kreativwerkstatt, Status Nachverfolgung und einem Kommentar. Profilbilder sind verdeckt."></a>
+          <figcaption>Abb. 23 · Die Übergabe, ein Kommentar und der Status wurden gespeichert und nach neuer Navigation erneut kontrolliert.</figcaption>
+        </figure>
+        <p><strong>Bearbeiten</strong> korrigiert den Inhalt; <strong>Archivieren</strong> räumt die Arbeitsübersicht auf. Eine Besprechung ist nicht automatisch die Erledigung jeder vereinbarten Aufgabe. Haltet Verantwortlichkeit und nächsten Prüftermin ausdrücklich im Text fest.</p>
+        <p class="small">Archivierung und Logbuchexport wurden nicht durchgeführt. Vor einem Export mit Texten den Empfängerkreis und die enthaltenen Informationen prüfen.</p>
+      </section>
+
+      <section class="lesson" id="umfrage" aria-labelledby="h-umfrage">
+        <h2 id="h-umfrage">19. Eine kleine Umfrage vorbereiten</h2>
+        <span class="role">Team / Auswertung · mit Umfrageberechtigung</span>
+        <p class="route">Umfragen → Neue Umfrage → Grunddaten</p>
+        <ol class="steps">
+          <li>Gib einen verständlichen <strong>Titel</strong> und eine kurze <strong>Einleitung für Teilnehmende</strong> ein. Benenne Zweck, Freiwilligkeit und den Umgang mit den Ergebnissen.</li>
+          <li>Wähle optional ein <strong>Projekt</strong>. Ohne Zuordnung bleibt es eine allgemeine Umfrage.</li>
+          <li><strong>Erwartete Teilnehmende</strong> ist optional und dient der Rücklaufquote. Verwende nur eine fachlich begründete Bezugszahl.</li>
+          <li>Entscheide, ob <strong>Mehrere Antworten pro Gerät erlauben</strong> für ein gemeinsames Tablet benötigt wird.</li>
+          <li>Nutze eine Vorlage oder <strong>Leere Umfrage</strong> und wechsle über <strong>Weiter zu Fragen</strong> zum Fragebogen.</li>
+        </ol>
+        <figure>
+          <a href="bilder/25-umfrage-grunddaten.png"><img src="bilder/25-umfrage-grunddaten.png" alt="Grunddaten einer deutlich gekennzeichneten Testumfrage mit Titel, Einleitung, zwölf erwarteten Teilnehmenden, optionalen Planterminen und Geräteoption."></a>
+          <figcaption>Abb. 24 · Ausschließlich fiktive Demo-Daten. Im Beispiel bleibt die Projektzuordnung leer.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Plantermine sind keine automatische Veröffentlichung.</strong> Die Oberfläche weist darauf hin: Freigabe erfolgt über „Starten“ und „Beenden“. Prüfe vor dem Start den kompletten Fragebogen.</p></div>
+      </section>
+
+      <section class="lesson" id="umfrage-fragen" aria-labelledby="h-umfrage-fragen">
+        <h2 id="h-umfrage-fragen">20. Fragen und Vorschau prüfen</h2>
+        <p class="route">Neue Umfrage → Fragen &amp; Vorschau</p>
+        <ol class="steps">
+          <li>Öffne eine Frage zum Bearbeiten. Passe Fragetext und <strong>Antwortformat</strong> an: eine Auswahl, mehrere Auswahl, Bewertung 1–5 oder Freitext.</li>
+          <li>Bei Bewertungen beschrifte beide Enden verständlich. Hier: „Gar nicht gut“ und „Sehr gut“.</li>
+          <li>Bei Auswahlfragen ersetze Platzhalter wie <strong>Option 1 / Option 2</strong> durch tatsächliche Antwortmöglichkeiten. Entferne Fragen, die für deinen Zweck nicht nötig sind.</li>
+          <li>Prüfe <strong>Antwort ist erforderlich</strong>. Demografische Angaben sollten freiwillig bleiben; erhebe sie nur bei begründetem Bedarf.</li>
+          <li>Nutze <strong>Vorschau</strong>, prüfe Reihenfolge und Verständlichkeit, dann <strong>Entwurf speichern</strong>.</li>
+        </ol>
+        <figure>
+          <a href="bilder/26-umfrage-fragen.png"><img src="bilder/26-umfrage-fragen.png" alt="Frageneditor mit geöffneter Bewertungsfrage zur Kreativwerkstatt und klaren Beschriftungen Gar nicht gut und Sehr gut."></a>
+          <figcaption>Abb. 25 · Eine Frage pro Thema. Die übrigen Vorlagenfragen wurden nur für den technischen Test belassen, nicht als fertiger Fragebogen empfohlen.</figcaption>
+        </figure>
+        <p class="small">Der Testfragebogen enthält vier optionale Fragen. Eine Auswahlfrage mit Vorlagenplatzhaltern wurde bewusst nicht beantwortet. Für eine echte Erhebung muss sie vor dem Start vervollständigt oder entfernt werden. Die Demo ist ein Bedienungsbeispiel, kein validiertes Messinstrument.</p>
+      </section>
+
+      <section class="lesson" id="umfrage-start" aria-labelledby="h-umfrage-start">
+        <h2 id="h-umfrage-start">21. Starten und Teilnahme testen</h2>
+        <p class="route">Umfrage öffnen → Starten → Überblick → Teilnahme öffnen</p>
+        <ol class="steps">
+          <li>Prüfe den Entwurf und klicke <strong>Starten</strong>. Im Überblick muss der Status <strong>Aktiv</strong> erscheinen.</li>
+          <li>Nun stehen <strong>QR-Code &amp; Link</strong> zur Verfügung. <strong>Teilnahme öffnen</strong> zeigt die öffentliche Teilnahmeansicht.</li>
+          <li>Teilnehmende beantworten die Fragen schrittweise mit <strong>Weiter</strong>; optionale Fragen können übersprungen werden.</li>
+          <li>Erst <strong>Abschicken</strong> übermittelt die Antworten. Die Dankeseite bestätigt den Abschluss.</li>
+        </ol>
+        <figure>
+          <a href="bilder/27-umfrage-start.png"><img src="bilder/27-umfrage-start.png" alt="Aktive Demo-Umfrage mit QR-Code-und-Link-Bereich; QR-Code und öffentliche Adresse sind verdeckt."></a>
+          <figcaption>Abb. 26 · Öffentlicher Link und QR-Code wurden für das Manual unkenntlich gemacht. Die Testumfrage wurde anschließend beendet.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Ein Browser ist keine Person.</strong> Die Wiederholungssperre arbeitet bestmöglich im Browser. Andere Geräte, Browser oder gelöschter Speicher können die Zuordnung verändern. Auf gemeinsamen Geräten verhindert die Standardsperre möglicherweise Antworten weiterer Personen; mit Mehrfachantworten fehlt diese Begrenzung.</p></div>
+      </section>
+
+      <section class="lesson" id="umfrage-teilnahme" aria-labelledby="h-umfrage-teilnahme">
+        <h2 id="h-umfrage-teilnahme">So sieht die Teilnahme aus</h2>
+        <figure>
+          <a href="bilder/28-umfrage-teilnahme.png"><img src="bilder/28-umfrage-teilnahme.png" alt="Öffentliche Teilnahmeansicht: Frage zwei von vier zur Kreativwerkstatt, Bewertung vier auf einer Skala von eins bis fünf, Weiter und Zurück."></a>
+          <figcaption>Abb. 27 · Testantwort 4 von 5. Ein Beitrag wurde abgeschickt; keine echte Rückmeldung von Jugendlichen.</figcaption>
+        </figure>
+        <p>Die Teilnahmeansicht weist darauf hin, keine Namen, Telefonnummern oder andere persönlichen Angaben einzutragen. Sie ist kein Notfall- oder Beratungskanal. Erklärt bei einer realen Durchführung, wo Beratung stattdessen erreichbar ist.</p>
+        <p>Teste vor einer echten Erhebung Verständlichkeit und Bedienbarkeit. Trenne Probeläufe von der späteren Auswertung: Testantworten dürfen nicht als echte Rückmeldungen berichtet werden.</p>
+      </section>
+
+      <section class="lesson" id="umfrage-ergebnis" aria-labelledby="h-umfrage-ergebnis">
+        <h2 id="h-umfrage-ergebnis">22. Beenden und Ergebnisse lesen</h2>
+        <p class="route">Umfrage → Beenden → Umfrage beenden → Auswertung</p>
+        <ol class="steps">
+          <li>Zum Abschluss <strong>Beenden</strong> wählen und mit <strong>Umfrage beenden</strong> bestätigen. Der öffentliche Link und QR-Code werden geschlossen.</li>
+          <li>Im <strong>Überblick</strong> den Status „Beendet“, Zeitraum und den angezeigten Löschtermin für Einzelantworten prüfen.</li>
+          <li>Unter <strong>Auswertung</strong> Gesamtantworten, Rücklaufquote und die Antwortanzahl jeder Frage lesen. Übersprungene Fragen haben kleinere Bezugszahlen.</li>
+          <li><strong>Einzelantworten</strong> und <strong>Verlauf</strong> sind weitere Ansichten; <strong>Neue Umfragerunde</strong> bietet eine weitere Runde. Exporte vor Weitergabe auf sensible Freitexte prüfen.</li>
+        </ol>
+        <figure>
+          <a href="bilder/29-umfrage-auswertung.png"><img src="bilder/29-umfrage-auswertung.png" alt="Auswertung des beendeten Testlaufs mit einer gültigen Antwort, zwölf erwarteten Teilnehmenden und 8,3 Prozent Rücklauf."></a>
+          <figcaption>Abb. 28 · 1 ÷ 12 × 100 = 8,3 %. Die Bewertungsfrage hat einen Median von 4 bei genau einer Antwort.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Keine Repräsentativität aus einer Prozentzahl ableiten.</strong> Die erwartete Anzahl ist eine eingetragene Bezugszahl, kein Beweis einer erreichten Grundgesamtheit. Eine Testantwort belegt nur den Ablauf. Nichtantwort, freiwillige Teilnahme und Auswahl der Befragten begrenzen die Aussagekraft.</p></div>
+        <p class="small">Start, öffentliche Testabgabe, Antwortauswertung und Beenden wurden geprüft. Weitere Runden, automatische Löschung und Umfrageexporte wurden nicht ausgeführt.</p>
+      </section>
+
+      <section class="lesson" id="vererbung" aria-labelledby="h-vererbung">
+        <h2 id="h-vererbung">23. Gemeinsame Grundlagen vererben</h2>
+        <span class="role">Einrichtung · zuständige Administration</span>
+        <p class="route">Benutzermenü → Organisationen → Vererbungsregeln → Unterorganisationen</p>
+        <ol class="steps">
+          <li>Lege in der übergeordneten Organisation gemeinsame Kategorien und Alterskohorten fachlich abgestimmt an.</li>
+          <li>Öffne deren <strong>Vererbungsregeln</strong>. Der Reiter <strong>Organisation</strong> betrifft die eigene Einheit; <strong>Unterorganisationen</strong> setzt die Vorgaben für Nachkommen.</li>
+          <li>Wähle pro Bereich <strong>Alle aktuellen und zukünftigen … vererben</strong> oder eine <strong>Individuelle Auswahl</strong>. Automatische Vererbung übernimmt künftig sichtbare Einträge ebenfalls.</li>
+          <li>Entscheide bewusst über lokale Ergänzungen und darüber, ob Admins von Unterorganisationen ihre Vererbungen anpassen dürfen. Speichere die Regeln.</li>
+          <li>Wähle die Unterorganisation und prüfe die wirksamen Einträge unter <strong>Einstellungen → Kohorten</strong> beziehungsweise Kategorien.</li>
+        </ol>
+        <figure>
+          <a href="bilder/20-geerbte-kohorten.png"><img src="bilder/20-geerbte-kohorten.png" alt="Unterorganisation Standort Süd mit den Alterskohorten zwölf bis siebzehn und achtzehn bis einundzwanzig, geerbt aus der Demo-Hauptorganisation. Neue lokale Kohorte ist gesperrt."></a>
+          <figcaption>Abb. 29 · Die neu angelegte Unterorganisation „Standort Süd – Manual-Demo“ erhält beide Kohorten. Lokale Kohorten sind im Beispiel gesperrt.</figcaption>
+        </figure>
+        <div class="note"><p><strong>Vererbung schafft gemeinsame Auswahlmöglichkeiten, keine Messgarantie.</strong> Vorgaben wirken auf direkte und weitere Nachkommen, solange keine ausdrückliche Überschreibung greift. Bestehende lokale Einträge können sichtbar bleiben. Gleiche Bezeichnungen ersetzen keine gemeinsamen Zählregeln und bedeuten keine automatische Zusammenführung von Aktivitätsdaten.</p></div>
+        <p>Im Demo-Träger werden alle sichtbaren Kategorien, Tags und Kohorten automatisch weitergegeben; lokale Kategorien und Kohorten sind gesperrt, lokale Tags bleiben erlaubt. Die Anpassung durch untergeordnete Admins wurde ausgeschaltet. Das ist ein Beispiel, keine universelle Empfehlung. Die fachliche Entscheidung und Änderungsregeln beschreibt der <a href="best-practices.html">separate Leitfaden</a>.</p>
+      </section>
+
+      <section class="lesson" id="checkliste" aria-labelledby="h-checkliste">
+        <h2 id="h-checkliste">Bereit für den ersten eigenen Termin?</h2>
+        <ul class="checklist">
+          <li><strong>Organisation stimmt.</strong> Der richtige Name steht im Kopfbereich.</li>
+          <li><strong>Grundlagen sind vorbereitet.</strong> Kategorien, passende Alterskohorten und benötigte Standorte sind vorhanden.</li>
+          <li><strong>Das Angebot existiert.</strong> Titel, Typ und gegebenenfalls Standardzeiten sind geprüft.</li>
+          <li><strong>Eine Erfassungsart ist gewählt.</strong> Nachträgliche Dokumentation oder laufende Tageserfassung – nicht beides für denselben Termin.</li>
+          <li><strong>Der Termin ist kontrolliert.</strong> Datum, tatsächliche Zeiten, Standort und Zählwerte stimmen.</li>
+          <li><strong>Die Speicherung ist bestätigt.</strong> Der Eintrag erscheint in der Aktivitätsliste mit plausibler Dauer und Teilnahmenzahl.</li>
+          <li><strong>Die Auswertung ist plausibel.</strong> Organisation, Zeitraum und Filter passen zum betrachteten Angebot.</li>
+        </ul>
+        <h3>Häufige Fragen</h3>
+        <p><strong>Ich sehe keine Eingabefelder für Altersgruppen.</strong><br>Prüfe unter Einstellungen → Kohorten, ob im aktiven Org-Kontext Alterskohorten eingerichtet sind.</p>
+        <p><strong>Die Uhrzeit ist schon ausgefüllt. Muss ich sie prüfen?</strong><br>Ja. Standardzeiten aus dem Projekt sind eine Hilfe, aber die dokumentierte Dauer muss zum tatsächlichen Termin passen.</p>
+        <p><strong>Nach der Tageserfassung ist noch kein Eintrag sichtbar.</strong><br>Prüfe, ob du im Abschlussdialog wirklich gespeichert hast oder ob die Sitzung noch läuft. Kontrolliere danach die Organisation und die Filter in der Liste.</p>
+        <p><strong>Ein Menüpunkt oder eine Aktion fehlt.</strong><br>Die sichtbaren Funktionen hängen von Berechtigungen und freigeschalteten Modulen ab. Lass die zuständige Administration prüfen, ob dein Zugang für die Aufgabe vorgesehen ist.</p>
+        <footer>
+          <p><strong>Stand und Umfang dieses Entwurfs.</strong> Echte Screenshots aus <a href="https://devapp.stato-okja.de">devapp.stato-okja.de</a>, aufgenommen am 11.10.2026, angezeigte Version 1.15 (d8d61cc). Organisation, Kategorien, Kohorten, Standort, zwei Angebote und beide Erfassungswege wurden im Browser angelegt und die gespeicherten Aktivitätswerte kontrolliert.</p>
+          <p>Ergänzt und geprüft: Statistik-Projektfilter, Kalender-Einstieg, ein Logbucheintrag mit Kommentar und Status, eine Umfrage mit einer fiktiven Antwort und geschlossenem Teilnahmelink sowie geerbte Kohorten in einer neuen Demo-Unterorganisation. Keine Einladungen wurden verschickt. Exporte, Einladungsannahme, detaillierte Rollenverwaltung, Jahresziele und automatische Umfrage-Löschung wurden nicht praktisch verifiziert.</p>
+          <p><strong>Ergänzung:</strong> <a href="best-practices.html">Best Practices zur Statistikerfassung</a> · <a href="Stato-Best-Practices-Statistikerfassung.pdf">Leitfaden als PDF</a>.</p>
+          <p><strong>Weitergeben:</strong> Für die HTML-Fassung diese Datei zusammen mit dem Ordner „bilder“ weitergeben. Alternativ über „Drucken / als PDF speichern“ eine PDF erstellen. Das Manual funktioniert ohne Internetverbindung; nur der Link zur Dev-App benötigt Internet.</p>
+        </footer>
+      </section>
+    </main>
+  </div>
+  <script>
+    document.getElementById('print-manual').addEventListener('click', () => window.print());
+  </script>
+</body>
+</html>

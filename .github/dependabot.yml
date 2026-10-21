@@ -9,12 +9,69 @@ updates:
       timezone: Europe/Berlin
     open-pull-requests-limit: 5
     groups:
-      npm-minor-and-patch:
+      backend-runtime:
         patterns:
-          - "*"
-        update-types:
-          - minor
-          - patch
+          - "@nestjs/common"
+          - "@nestjs/config"
+          - "@nestjs/core"
+          - "@nestjs/jwt"
+          - "@nestjs/passport"
+          - "@nestjs/platform-express"
+          - "@nestjs/swagger"
+          - "@nestjs/throttler"
+          - "@nestjs/typeorm"
+          - "archiver"
+          - "bcryptjs"
+          - "body-parser"
+          - "class-transformer"
+          - "class-validator"
+          - "dotenv"
+          - "express"
+          - "helmet"
+          - "jszip"
+          - "multer"
+          - "nodemailer"
+          - "passport"
+          - "passport-jwt"
+          - "pg"
+          - "pg-query-stream"
+          - "qs"
+          - "reflect-metadata"
+          - "rxjs"
+          - "sharp"
+          - "sql.js"
+          - "typeorm"
+          - "yaml"
+        update-types: [minor, patch]
+      frontend-runtime:
+        patterns:
+          - "@fontsource/inter"
+          - "@tanstack/query-sync-storage-persister"
+          - "@tanstack/react-query"
+          - "@tanstack/react-query-persist-client"
+          - "@types/qrcode"
+          - "@xyflow/react"
+          - "axios"
+          - "dompurify"
+          - "elkjs"
+          - "form-data"
+          - "html2canvas"
+          - "i18next"
+          - "jspdf"
+          - "lucide-react"
+          - "qrcode"
+          - "react"
+          - "react-dom"
+          - "react-i18next"
+          - "react-router-dom"
+          - "react-simple-wysiwyg"
+          - "recharts"
+          - "xlsx-js-style"
+        update-types: [minor, patch]
+      development-tools:
+        dependency-type: development
+        patterns: ["*"]
+        update-types: [minor, patch]
     ignore:
       # ts-jest currently needs the TypeScript 5 compiler API.
       - dependency-name: typescript
@@ -41,6 +98,19 @@ updates:
       - dependency-name: "@vitejs/plugin-react"
         update-types:
           - version-update:semver-major
+
+  - package-ecosystem: npm
+    directory: /desktop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:15"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    groups:
+      desktop-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
 
   - package-ecosystem: github-actions
     directory: /

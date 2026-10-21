@@ -7,6 +7,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.17.0] - 2026-10-21
+
+### Added
+- Windows-Desktop-Updater mit automatischer Prüfung, Toast und Windows-Benachrichtigung, eigenem Eintrag im Avatar-Menü sowie Zugang über die Desktop-Fußzeile. Download, Fortschritt und bestätigter Neustart erfolgen im lokalen Update-Fenster.
+- Desktop-Releases enthalten künftig `latest.yml` und `.exe.blockmap` für geprüfte Updates innerhalb der App. Desktop 1.16.0 und ältere Versionen benötigen einmalig einen manuell installierten neuen Client.
+
+### Upgrade
+- Desktop 1.16.0 und ältere Versionen einmalig mit dem neuen Windows-Installer aktualisieren. Danach können künftige Desktop-Versionen direkt in der App heruntergeladen und installiert werden.
+- Für den Avatar-Menüeintrag und In-App-Toast auch die Serveroberfläche aktualisieren. Die Desktop-Fußzeile funktioniert unabhängig davon.
+
 ## [1.16.0] - 2026-10-21
 
 ### Changed

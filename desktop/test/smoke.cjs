@@ -140,6 +140,52 @@ async function switchModal(application, local) {
     local = await application.firstWindow();
     local.setDefaultTimeout(15000);
     await waitState(local, 'setup');
+    await application.evaluate(async ({ app }) => {
+      const require = process.getBuiltinModule('module').createRequire(`${app.getAppPath()}/package.json`);
+      const { createServer } = require('node:http');
+      const { createHash } = require('node:crypto');
+      const { mkdir, writeFile } = require('node:fs/promises');
+      const { join } = require('node:path');
+      const { NsisUpdater, autoUpdater } = require('electron-updater');
+      const { createUpdateController } = require(join(app.getAppPath(), 'src/updates.cjs'));
+      const payload = Buffer.from('StatO test payload, never executed');
+      const sha512 = createHash('sha512').update(payload).digest('base64');
+      let corrupt = false;
+      const server = createServer((req, res) => {
+        if (req.url.startsWith('/latest.yml')) {
+          res.end(`version: 1.17.0\nfiles:\n  - url: StatO-Setup-1.17.0-x64.exe\n    sha512: ${sha512}\n    size: ${payload.length}\npath: StatO-Setup-1.17.0-x64.exe\nsha512: ${sha512}\n`);
+        } else {
+          const body = corrupt ? Buffer.from('corrupt download') : payload;
+          res.setHeader('Content-Length', body.length);
+          res.end(body);
+        }
+      });
+      await new Promise((done) => server.listen(0, '127.0.0.1', done));
+      try {
+        for (const damaged of [false, true]) {
+          corrupt = damaged;
+          const data = join(app.getPath('userData'), damaged ? 'bad-update' : 'good-update');
+          await mkdir(data, { recursive: true });
+          await writeFile(join(data, 'app-update.yml'), 'updaterCacheDirName: stato-test-updater\n');
+          const adapter = { version: '1.16.0', name: 'stato-test', isPackaged: true,
+            userDataPath: data, baseCachePath: data, appUpdateConfigPath: join(data, 'app-update.yml'),
+            whenReady: async () => {}, onQuit: () => { throw new Error('Automatic install must be disabled'); },
+            quit: () => { throw new Error('Test must not quit the app'); } };
+          const updater = new NsisUpdater(null, adapter);
+          let updateError;
+          updater.on('error', (error) => { updateError = error; });
+          updater.httpExecutor = autoUpdater.httpExecutor;
+          updater.logger = null;
+          updater.disableDifferentialDownload = true;
+          const controller = createUpdateController({ updater, currentVersion: '1.16.0', enabled: true,
+            discover: async () => ({ version: '1.17.0', url: `http://127.0.0.1:${server.address().port}/` }) });
+          if ((await controller.check()).status !== 'available') throw new Error('Real updater did not read metadata');
+          const result = await controller.download();
+          if (result.status !== (damaged ? 'error' : 'downloaded')) throw new Error(`Unexpected real download state: ${result.status}: ${updateError?.stack}`);
+        }
+      } finally { await new Promise((done) => server.close(done)); }
+    });
+    console.log('PASS: real NSIS updater metadata, download, SHA-512 validation and corrupt download rejection');
     await local.locator('#server-url').fill(first.url);
     await local.locator('#check').click();
     await local.waitForFunction(() => document.getElementById('status').dataset.kind === 'success');
@@ -168,6 +214,18 @@ async function switchModal(application, local) {
     await capture(application, 'connected-footer.png');
     assert.equal(await remote.evaluate(() => typeof window.statoDesktop), 'undefined');
     assert.equal(await remote.evaluate(() => typeof window.require), 'undefined');
+    assert.deepEqual(await remote.evaluate(() => Object.keys(window.statoDesktopUpdates).sort()), ['getState', 'onState', 'open']);
+    assert.equal(await remote.evaluate(async () => (await window.statoDesktopUpdates.getState()).status), 'disabled');
+    await remote.evaluate(() => window.statoDesktopUpdates.open());
+    const updatePanel = application.context().pages().find((page) => page.url().endsWith('/updates.html'));
+    await updatePanel.getByRole('heading', { name: 'Desktop-Updates' }).waitFor();
+    assert.equal(await updatePanel.locator('#check-update').isDisabled(), true);
+    const updatePng = await application.evaluate(async ({ webContents }) => {
+      const contents = webContents.getAllWebContents().find((wc) => wc.getURL().endsWith('/updates.html'));
+      return (await contents.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG().toString('base64');
+    });
+    await writeFile(join(artifacts, 'desktop-updates.png'), Buffer.from(updatePng, 'base64'));
+    await updatePanel.close();
     const security = await application.evaluate(({ webContents }, url) => {
       const contents = webContents
         .getAllWebContents()
@@ -269,6 +327,18 @@ async function switchModal(application, local) {
         rejected = true;
       }
       if (!rejected) throw new Error('Remote renderer was allowed to invoke desktop IPC');
+      for (const channel of ['stato:update-check', 'stato:update-download', 'stato:update-install']) {
+        let blocked = false;
+        try { await ipcMain._invokeHandlers.get(channel)({ sender: wc, senderFrame: wc.mainFrame }); }
+        catch { blocked = true; }
+        if (!blocked) throw new Error(`Server renderer was allowed to invoke ${channel}`);
+      }
+      for (const channel of ['stato:update-state', 'stato:update-open']) {
+        let blocked = false;
+        try { await ipcMain._invokeHandlers.get(channel)({ sender: wc, senderFrame: { url: wc.getURL() } }); }
+        catch { blocked = true; }
+        if (!blocked) throw new Error(`Child frame was allowed to invoke ${channel}`);
+      }
     }, first.url);
     const printed = await application.evaluate(async ({ BrowserWindow }) => {
       const preview = BrowserWindow.getAllWindows().find((win) =>

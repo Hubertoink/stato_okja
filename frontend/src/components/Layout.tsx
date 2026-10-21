@@ -43,6 +43,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { compareLocalized } from '@/i18n/formatters';
 import { autoT } from '@/i18n/auto';
+import { useDesktopUpdates } from '@/lib/desktopUpdates';
 
 type OrgScopeTreeNode = { org: OrgDto; children: OrgScopeTreeNode[] };
 
@@ -163,6 +164,7 @@ export default function Layout() {
   const { scope, setScope, switching: orgSwitching } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
+  const desktopUpdates = useDesktopUpdates();
   const demoGuidesMutedForPageLoad = useDemoMobileGuideMuted();
 
   const notifySession = useCallback(
@@ -646,6 +648,22 @@ export default function Layout() {
                       {t('userMenu.profile')}
                     </button>
                   </li>
+                  {desktopUpdates.available && (
+                    <li className="border-t border-b theme-menu-section">
+                      <Button variant="ghost" className="w-full justify-start px-4 py-2 theme-menu-item"
+                        onClick={() => { setMenuOpen(false); desktopUpdates.open(); }}>
+                        <span className="text-left">
+                          <span className="block">Desktop-Updates</span>
+                          <span className="block text-xs text-gray-500">
+                            {desktopUpdates.state?.status === 'downloaded' ? 'Bereit zur Installation'
+                              : desktopUpdates.state?.status === 'available' ? `Version ${desktopUpdates.state.version} verfügbar`
+                              : desktopUpdates.state?.status === 'downloading' ? `Download: ${desktopUpdates.state.percent} %`
+                              : `Version ${desktopUpdates.state?.currentVersion ?? '…'}`}
+                          </span>
+                        </span>
+                      </Button>
+                    </li>
+                  )}
                   {!restrictToPasswordChange &&
                     canSwitchOrganization && (
                       <li>

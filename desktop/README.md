@@ -5,7 +5,31 @@ eines konfigurierten Servers. Frontend, Backend und Datenbank werden nicht kopie
 oder lokal gestartet. Für den Client brauchen Nutzende weder Node.js noch Docker.
 Die erste Distribution ist ein Windows-x64-Installer für das aktuelle Benutzerkonto.
 
-Download: [StatO Desktop 1.12.1 – Windows-Vorschau](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.12.1).
+Download: [StatO Desktop 1.17.0 – Windows-Vorschau](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.17.0).
+
+## Desktop-Updates (ab Version 1.17.0)
+
+Die installierte Windows-App prüft 15 Sekunden nach dem Start und alle vier Stunden
+auf neue Desktop-Releases. Im Avatar-Menü öffnet **Desktop-Updates** ein lokales
+Fenster mit installierter Version, Prüfzeitpunkt, Download-Fortschritt und den
+Aktionen **Jetzt prüfen**, **Update herunterladen** und **Neu starten & installieren**.
+Eine neue Version wird per Toast in der Weboberfläche und Windows-Benachrichtigung
+gemeldet. Die Desktop-Fußzeile bietet denselben Zugang auch mit älteren Servern.
+Der Avatar-Eintrag und der In-App-Toast benötigen die aktualisierte Serveroberfläche.
+
+Downloads beginnen erst auf Wunsch; auch beim Beenden wird nichts automatisch
+installiert. Vor dem Neustart verlangt die lokale App eine Bestätigung zum Speichern
+offener Eingaben. Fehlgeschlagene Prüfungen/Downloads können wiederholt werden.
+Entwicklungsstarts führen keine Update-Netzwerkanfragen aus.
+
+**Einmaliger Umstieg:** Desktop 1.16.0 und ältere Versionen enthalten keinen Updater.
+Die erste Version mit dieser Funktion muss einmal manuell installiert werden.
+
+Die Release-Suche liest die öffentliche GitHub-API ohne Token und berücksichtigt nur
+vollständige `desktop-vX.Y.Z`-Releases einschließlich der bisherigen Vorschau-Releases.
+Server-Releases, Entwürfe und unvollständige Uploads werden ignoriert; ältere Versionen
+werden nicht installiert. `electron-updater` lädt vom ausgewählten Desktop-Release
+und prüft den Download gegen die SHA-512-Prüfsumme in `latest.yml`.
 
 ## Benutzung
 
@@ -72,8 +96,8 @@ Zum lokalen Entwickeln mit Vite braucht `/api/health` ein laufendes Backend hint
 dem vorhandenen Vite-Proxy. Im Client beispielsweise `http://localhost:5173` wählen.
 
 Die Vorschau ist **nicht digital signiert**. Für eine reguläre Veröffentlichung
-die Windows-Code-Signierung mit electron-builder einrichten. Noch gibt es keinen
-automatischen Client-Updater: neue Installer werden manuell verteilt und installiert.
+die Windows-Code-Signierung mit electron-builder einrichten. Der Updater verwendet
+die bestehende NSIS-Installation und unterstützt später auch signierte Installer.
 Die Weboberfläche aktualisiert sich weiterhin über den Server. Backend-Daten und
 Migrationen bleiben vollständig Teil des bisherigen Server-Release-Verfahrens.
 
@@ -85,20 +109,23 @@ zusammen erhöhen; danach `npm install --package-lock-only --prefix desktop`.
 
 Der Workflow `.github/workflows/desktop.yml` prüft und baut die App auf Windows.
 Bei Änderungen auf `main`/`dev`, Pull Requests und manuellen Läufen stellt er den
-Installer samt `SHA256SUMS` als Workflow-Artefakt bereit.
+Installer, `.exe.blockmap`, `latest.yml` und `SHA256SUMS` als Workflow-Artefakt bereit.
 
 Für eine verteilbare Desktop-Vorschau `desktop/RELEASE_NOTES.md` und die Download-Links
 an die neue Version anpassen, die Änderungen auf `main` pushen und danach einen
-eigenen Desktop-Tag erstellen. Für Version 1.12.1:
+eigenen Desktop-Tag erstellen. Beispiel für Version 1.17.0:
 
 ```powershell
-git tag -a desktop-v1.12.1 -m "StatO Desktop 1.12.1 Windows preview"
-git push origin desktop-v1.12.1
+git tag -a desktop-v1.17.0 -m "StatO Desktop 1.17.0 Windows preview"
+git push origin desktop-v1.17.0
 ```
 
 Der Tag muss zur Version in `VERSION` passen und auf einem Commit aus `main` liegen.
 Nach erfolgreichen Tests und Build veröffentlicht der Workflow automatisch einen
-GitHub-Prerelease mit `StatO-Setup-<version>-x64.exe` und `SHA256SUMS`. Das bestehende
+GitHub-Prerelease mit `StatO-Setup-<version>-x64.exe`, `.exe.blockmap`, `latest.yml`
+und `SHA256SUMS`. Alle vier Dateien gehören zum Release; fehlende Metadaten machen
+ihn für den Updater unsichtbar. Der Workflow setzt `__VERSION__` in den Release-Notizen
+automatisch aus `VERSION` ein. Das bestehende
 stabile Server-Release bleibt dadurch weiterhin als neuestes Release erreichbar.
 Die eigene Tag-Familie `desktop-v*` löst keine Docker-Release-Veröffentlichung aus.
 Server-Tags `v*` erzeugen im Desktop-Workflow nur das Build-Artefakt.
@@ -107,6 +134,9 @@ Server-Tags `v*` erzeugen im Desktop-Workflow nur das Build-Artefakt.
 
 - `src/main.cjs`: Fenster, lokale IPC-Aufrufe, Verbindung und Sitzungslebenszyklus.
 - `src/preload.cjs`: kleine, feste API ausschließlich für die lokale Serverauswahl.
+- `src/updates.cjs`: Desktop-Release-Auswahl und Update-Zustandsautomat.
+- `src/remote-preload.cjs`: ausschließlich Update-Status lesen und lokales Fenster öffnen.
+- `src/update-preload.cjs`: Update-Aktionen ausschließlich im lokalen Update-Fenster.
 - `src/shell/`: lokale Serverauswahl und dauerhaft erreichbare Desktop-Fußzeile.
 - `src/server.cjs` / `src/config.cjs`: URL-/Statusprüfung und lokale Konfiguration.
 - `src/credentials.cjs`: verschlüsselte Passwortablage pro Server.
@@ -114,14 +144,17 @@ Server-Tags `v*` erzeugen im Desktop-Workflow nur das Build-Artefakt.
   JavaScript-Welt der Serverseite (wie ein Browser-Erweiterungs-Skript).
 - `test/`: automatisierte URL-, Netzwerk-, Konfigurations- und Electron-Smoke-Tests.
 
-Die Serveroberfläche bekommt **keinen Preload**, keine Node-Integration und keine
-Desktop-IPC-API. Das Passwort-Hilfsskript läuft in einer eigenen isolierten Welt,
+Die Serveroberfläche bekommt keine Node-Integration und ausschließlich die eng begrenzte
+Update-API: Status lesen, Statusereignisse abonnieren und lokales Fenster öffnen.
+Download, Installation, Feed-Auswahl, Verbindungs- und Zugangsdaten-IPC bleiben gesperrt.
+Sender, Hauptframe und URL werden im Main-Prozess geprüft; Popups erhalten keinen Preload.
+Das Passwort-Hilfsskript läuft in einer eigenen isolierten Welt,
 auf die Skripte der Seite keinen Zugriff haben. Es erkennt das Anmeldeformular über
 `autocomplete="username"`/`type="email"` und `autocomplete="current-password"`.
 Eine Anmeldung gilt als erfolgreich, wenn danach eine SPA-Navigation erfolgt und weder
 Passwort- noch 2FA-Feld mehr vorhanden sind.
 Kontextisolation, Sandbox und Web-Sicherheit bleiben eingeschaltet.
-Nur die lokale Hauptseite darf Desktop-IPC aufrufen. Navigation in lokalen Dateien
+Update-Aktionen sind nur aus dem lokalen Update-Fenster erlaubt. Navigation in lokalen Dateien
 oder anderen Protokollen wird blockiert; Popups bleiben auf Server/Blob/Blank-Seiten
 beschränkt. Kamera, Mikrofon, Standort und andere Geräteberechtigungen sind deaktiviert.
 

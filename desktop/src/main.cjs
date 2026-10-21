@@ -8,7 +8,10 @@ const {
   shell,
   session,
   safeStorage,
+  Notification,
 } = require('electron');
+const { autoUpdater } = require('electron-updater');
+const { createUpdateController } = require('./updates.cjs');
 const { join, basename } = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { randomUUID } = require('node:crypto');
@@ -21,6 +24,8 @@ const shellFile = join(__dirname, 'shell', 'index.html');
 const shellUrl = pathToFileURL(shellFile).href;
 const switchFile = join(__dirname, 'shell', 'server-switch.html');
 const switchUrl = pathToFileURL(switchFile).href;
+const updateFile = join(__dirname, 'shell', 'updates.html');
+const updateUrl = pathToFileURL(updateFile).href;
 const icon = join(__dirname, '..', 'assets', 'stato.ico');
 const preferences = {
   nodeIntegration: false,
@@ -34,6 +39,12 @@ let window;
 let remoteView;
 let remoteSession;
 let switchView;
+let updateWindow;
+let updateController;
+let updateTimer;
+let installConfirmationOpen = false;
+let updateNotification;
+const notifiedUpdates = new Set();
 let configFile;
 let credentialStore;
 let pendingLogin;
@@ -288,7 +299,7 @@ async function performConnection(url, open) {
     remoteSession = session.fromPartition(`${serverPartition(result.serverUrl)}-${randomUUID()}`);
     secureSession(remoteSession);
     const view = new WebContentsView({
-      webPreferences: { ...preferences, session: remoteSession },
+      webPreferences: { ...preferences, session: remoteSession, preload: join(__dirname, 'remote-preload.cjs') },
     });
     ownedView = view;
     remoteView = view;
@@ -426,6 +437,42 @@ async function finishServerSwitch() {
 }
 
 function registerIpc() {
+  const updateHandlers = {
+    'stato:update-state': () => updateController.getState(),
+    'stato:update-open': () => openUpdates(),
+    'stato:update-check': () => updateController.check(),
+    'stato:update-download': () => updateController.download(),
+    'stato:update-install': async () => {
+      if (installConfirmationOpen || updateController.getState().status !== 'downloaded') return updateController.getState();
+      installConfirmationOpen = true;
+      try {
+        const { response } = await dialog.showMessageBox(updateWindow, {
+          type: 'question', title: 'StatO aktualisieren?',
+          message: 'Offene Eingaben gespeichert?',
+          detail: 'StatO wird geschlossen, aktualisiert und neu gestartet. Nicht gespeicherte Eingaben können verloren gehen.',
+          buttons: ['Abbrechen', 'Jetzt neu starten'], defaultId: 0, cancelId: 0, noLink: true,
+        });
+        if (response === 1 && !closing) return updateController.install();
+        return updateController.getState();
+      } finally { installConfirmationOpen = false; }
+    },
+  };
+  for (const [channel, handler] of Object.entries(updateHandlers)) {
+    ipcMain.handle(channel, (event) => {
+      const frame = event.senderFrame;
+      const trustedPanel = updateWindow && !updateWindow.isDestroyed() && event.sender === updateWindow.webContents &&
+        frame === updateWindow.webContents.mainFrame && frame.url === updateUrl;
+      const trustedShell = window && event.sender === window.webContents &&
+        frame === window.webContents.mainFrame && frame.url === shellUrl;
+      const currentServer = remoteView && event.sender === remoteView.webContents &&
+        frame === remoteView.webContents.mainFrame && isServerNavigation(frame.url, state.serverUrl);
+      const readOnly = channel === 'stato:update-state' || channel === 'stato:update-open';
+      if (!trustedPanel && !(readOnly && (trustedShell || currentServer))) {
+        throw new Error('Nicht autorisierter Desktop-Aufruf.');
+      }
+      return handler();
+    });
+  }
   ipcMain.handle('stato:server-switch-answer', (event, confirm) => {
     if (!switchView || event.sender !== switchView.webContents ||
       event.senderFrame !== switchView.webContents.mainFrame || event.senderFrame.url !== switchUrl) {
@@ -463,6 +510,57 @@ function registerIpc() {
       if (switchView && channel !== 'stato:state') return state;
       return handler(...args);
     });
+  }
+}
+
+async function openUpdates() {
+  if (closing || !window) return updateController.getState();
+  if (updateWindow && !updateWindow.isDestroyed()) {
+    if (!hiddenForTest) updateWindow.show();
+    updateWindow.focus();
+    return updateController.getState();
+  }
+  const panel = new BrowserWindow({
+    parent: window, width: 600, height: 630, minWidth: 540, minHeight: 600,
+    title: 'StatO – Desktop-Updates', icon, autoHideMenuBar: true, show: false,
+    backgroundColor: '#f3f7f5',
+    webPreferences: { ...preferences, preload: join(__dirname, 'update-preload.cjs') },
+  });
+  updateWindow = panel;
+  panel.webContents.on('will-navigate', (event) => event.preventDefault());
+  panel.webContents.on('will-attach-webview', (event) => event.preventDefault());
+  panel.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  panel.on('closed', () => { if (updateWindow === panel) updateWindow = undefined; });
+  await panel.loadFile(updateFile);
+  if (!panel.isDestroyed() && !hiddenForTest) panel.show();
+  return updateController.getState();
+}
+
+function startUpdates() {
+  updateController = createUpdateController({
+    updater: autoUpdater, currentVersion: app.getVersion(), enabled: app.isPackaged && process.platform === 'win32',
+    onState: (update) => {
+      for (const contents of [window?.webContents, remoteView?.webContents, updateWindow?.webContents]) {
+        if (contents && !contents.isDestroyed()) contents.send('stato:update-state-changed', update);
+      }
+      const notice = `${update.status}:${update.version}`;
+      if (['available', 'downloaded'].includes(update.status) && !notifiedUpdates.has(notice)) {
+        notifiedUpdates.add(notice);
+        if (!hiddenForTest && Notification.isSupported()) {
+          updateNotification = new Notification({ title: 'StatO Desktop-Update',
+            body: update.status === 'available' ? `Version ${update.version} ist verfügbar.` : `Version ${update.version} ist bereit zur Installation.`, icon });
+          updateNotification.on('click', () => { void openUpdates(); });
+          updateNotification.show();
+        }
+      }
+    },
+  });
+  if (app.isPackaged && process.platform === 'win32') {
+    // Delay the initial check until the app has opened; retries never trigger installation.
+    const initialCheck = setTimeout(() => void updateController.check(), 15000);
+    initialCheck.unref();
+    updateTimer = setInterval(() => void updateController.check(), 4 * 60 * 60 * 1000);
+    updateTimer.unref();
   }
 }
 
@@ -525,6 +623,7 @@ if (!app.requestSingleInstanceLock()) {
     .then(async () => {
       app.setAppUserModelId('de.okja.stato.desktop');
       Menu.setApplicationMenu(null);
+      startUpdates();
       registerIpc();
       await createWindow();
     })
@@ -533,4 +632,5 @@ if (!app.requestSingleInstanceLock()) {
       app.quit();
     });
   app.on('window-all-closed', () => app.quit());
+  app.on('before-quit', () => clearInterval(updateTimer));
 }

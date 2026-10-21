@@ -9,7 +9,7 @@ import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useModalHistory } from '@/components/Modal';
-import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
+import { ArchiveIconButton, CloseButton, DeleteIconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 
 function CohortForm({ initial, onSubmit, onCancel }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void }) {
@@ -142,10 +142,13 @@ export default function SettingsCohorts() {
             </div>
             <div className="flex gap-2">
               {showArchived && c.active === false && canManage && canDeleteTaxonomy && (
-                <button
-                  className="text-viridian hover:underline"
+                <ArchiveIconButton
+                  restore
+                  size="icon-compact"
+                  title={autoT('ui_98f492b5e015')}
+                  aria-label={autoT('ui_98f492b5e015')}
                   onClick={() => update.mutate({ id: c.id, data: { active: true } })}
-                >{autoT('ui_98f492b5e015')}</button>
+                />
               )}
               {canManage && (
                 <>

@@ -14,7 +14,7 @@ import { api } from '@/lib/api';
 import { STAFF_ROLE_LABEL, StaffFormModal } from '@/components/settings/EntityFormModals';
 import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
-import { DeleteIconButton } from '@/components/ui/Button';
+import { ArchiveIconButton, DeleteIconButton } from '@/components/ui/Button';
 
 export default function SettingsTeam() {
   const { user } = useAuth();
@@ -123,8 +123,11 @@ export default function SettingsTeam() {
             </div>
             <div className="flex gap-2 shrink-0 self-start md:self-center">
               {showArchived && m.active === false && canManageTeam && (
-                <button
-                  className="text-viridian hover:underline"
+                <ArchiveIconButton
+                  restore
+                  size="icon-compact"
+                  title={autoT('ui_98f492b5e015')}
+                  aria-label={autoT('ui_98f492b5e015')}
                   onClick={() =>
                     update.mutate(
                       { id: m.id, data: { active: true } },
@@ -135,7 +138,7 @@ export default function SettingsTeam() {
                       },
                     )
                   }
-                >{autoT('ui_98f492b5e015')}</button>
+                />
               )}
               {canManageTeam && <button
                 className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"

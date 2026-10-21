@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'" />
+    <title>StatO – Desktop-Updates</title>
+    <link rel="stylesheet" href="shell.css" />
+    <script src="updates.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <section class="card" aria-labelledby="heading">
+        <p class="eyebrow">STATO DESKTOP</p>
+        <h1 id="heading">Desktop-Updates</h1>
+        <p class="intro">Die App prüft beim Start und alle vier Stunden auf neue Desktop-Versionen.</p>
+        <p>Installiert: <strong id="current-version"></strong></p>
+        <p id="status" role="status" aria-live="polite"></p>
+        <progress id="progress" max="100" aria-label="Download-Fortschritt" hidden></progress>
+        <p id="last-check" class="help"></p>
+        <div class="actions">
+          <button id="check-update" type="button">Jetzt prüfen</button>
+          <button id="download-update" class="primary" type="button" hidden>Update herunterladen</button>
+          <button id="install-update" class="primary" type="button" hidden>Neu starten & installieren</button>
+        </div>
+        <p class="help">Vor der Installation bitte offene Eingaben speichern. StatO wird erst nach deiner Bestätigung geschlossen und neu gestartet.</p>
+        <div class="notes">Diese Updates betreffen die Desktop-App. Die Weboberfläche und Daten werden weiterhin von deinem StatO-Server bereitgestellt.</div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,6 +1,6 @@
 {
   "name": "stato-desktop",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "description": "StatO Desktop – lokal installierter Client für bestehende StatO-Server",
   "author": "OKJA Team",
   "license": "MIT",
@@ -35,6 +35,13 @@
       "package.json"
     ],
     "asar": true,
+    "publish": {
+      "provider": "github",
+      "owner": "Hubertoink",
+      "repo": "stato_okja",
+      "tagNamePrefix": "desktop-v",
+      "releaseType": "prerelease"
+    },
     "win": {
       "icon": "assets/stato.ico",
       "artifactName": "StatO-Setup-${version}-${arch}.${ext}",
@@ -61,5 +68,8 @@
         "en_US"
       ]
     }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
   }
 }

@@ -80,5 +80,12 @@ document
   .getElementById('forget-credentials')
   .addEventListener('click', () => void run(() => desktop.forgetCredentials()));
 desktop.onState(render);
+for (const id of ['setup-updates', 'desktop-updates']) {
+  document.getElementById(id).onclick = () => { void desktop.openUpdates(); };
+}
+desktop.onUpdateState((state) => {
+  document.getElementById('desktop-updates').textContent = ['available', 'downloaded'].includes(state.status)
+    ? 'Update verfügbar' : 'Desktop-Updates';
+});
 desktop.onServerSwitchClosed(() => document.getElementById('change-server').focus());
 void run(() => desktop.getState());

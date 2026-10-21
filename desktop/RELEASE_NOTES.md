@@ -1,30 +1,31 @@
-StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installation und öffnet die Weboberfläche in einem eigenen App-Fenster.
+StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installation und öffnet die Weboberfläche in einem eigenen Electron-App-Fenster.
 
-### Neu in 1.12.1
+### Neu in __VERSION__
 
-- „Server wechseln“ verwendet jetzt ein Modal im App-Design und übernimmt die Farben des aktiven Themes, einschließlich Dark Mode.
-- Abbrechen, Escape und Schließen erhalten die laufende Sitzung und setzen den Fokus zurück auf „Server wechseln“.
-- Automatisierte Electron-Tests prüfen Theme-Übernahme, Tastaturbedienung und den Sitzungslebenszyklus.
+- Desktop-Updates direkt in der App: automatische Prüfung beim Start und alle vier Stunden, Benachrichtigung bei einer neuen Version und Download mit Fortschrittsanzeige.
+- Eigener Eintrag **Desktop-Updates** im Avatar-Menü der aktualisierten Serveroberfläche. Die Desktop-Fußzeile bietet den Zugang auch mit älteren Servern.
+- Installation und Neustart erst nach Bestätigung; offene Eingaben vorher speichern. Beim normalen Beenden wird kein Update installiert.
 
-### Installation
+### Installation und einmaliger Umstieg
 
-1. `StatO-Setup-1.12.1-x64.exe` herunterladen und installieren (Windows 10/11, x64).
+1. `StatO-Setup-__VERSION__-x64.exe` herunterladen und installieren (Windows x64).
 2. StatO starten und die vollständige Serveradresse eingeben, zum Beispiel `https://stato.traeger.de`.
 3. Verbinden und mit dem vorhandenen StatO-Konto anmelden.
 
-Node.js und Docker werden auf dem Client nicht benötigt. Der StatO-Server muss erreichbar sein; interne Installationen benötigen gegebenenfalls LAN oder VPN.
+**Desktop 1.16.0 und ältere Versionen benötigen diesen Installer einmalig manuell.** Danach können künftige Desktop-Updates innerhalb der App heruntergeladen und installiert werden.
 
-### Funktionen
-
-- Serverprüfung und automatische Verbindung mit der zuletzt gespeicherten Adresse.
-- Serverwechsel und erneutes Laden über die Desktop-Fußzeile.
-- Optionales Speichern von Passwörtern, verschlüsselt für das aktuelle Windows-Konto.
-- Datei-Downloads über den Windows-Speichern-Dialog sowie Vorschau- und Druckfenster.
+Node.js und Docker werden auf dem Client nicht benötigt. Backend und Datenbank werden nicht lokal installiert. Der StatO-Server muss erreichbar sein; interne Installationen benötigen gegebenenfalls LAN oder VPN.
 
 ### Status der Vorschau
 
-Der Installer ist noch nicht digital signiert; Windows kann beim Start eine SmartScreen-Warnung anzeigen. Neue Client-Versionen werden manuell über einen Installer installiert. Die Weboberfläche wird weiterhin vom Server aktualisiert. Für produktive Verbindungen HTTPS verwenden.
+Der Installer ist noch nicht digital signiert; Windows kann beim Start eine SmartScreen-Warnung anzeigen. Die Weboberfläche und ihre Neuerungen werden weiterhin vom verbundenen Server bereitgestellt.
 
-`SHA256SUMS` enthält die SHA-256-Prüfsumme des Installers. Zum Vergleichen unter PowerShell: `Get-FileHash .\StatO-Setup-1.12.1-x64.exe -Algorithm SHA256`.
+`SHA256SUMS` enthält die Prüfsummen des Installers und der Update-Dateien. Zum Vergleichen unter PowerShell:
 
-Weitere Hinweise: [Desktop-Dokumentation](https://github.com/Hubertoink/stato_okja/blob/desktop-v1.12.1/desktop/README.md).
+```powershell
+Get-FileHash .\StatO-Setup-__VERSION__-x64.exe -Algorithm SHA256
+```
+
+`latest.yml` und `.exe.blockmap` sind für den Updater bestimmt und müssen nicht manuell geöffnet werden.
+
+Weitere Hinweise: [Desktop-Dokumentation](https://github.com/Hubertoink/stato_okja/blob/desktop-v__VERSION__/desktop/README.md).

@@ -59,13 +59,19 @@ jobs:
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           $installer = Get-Item "desktop/dist/StatO-Setup-$version-x64.exe"
-          $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          [System.IO.File]::WriteAllText("$env:GITHUB_WORKSPACE/desktop/dist/SHA256SUMS", "$hash  $($installer.Name)`n", [System.Text.UTF8Encoding]::new($false))
+          $files = @($installer, (Get-Item "$($installer.FullName).blockmap"), (Get-Item 'desktop/dist/latest.yml'))
+          $lines = $files | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          }
+          [System.IO.File]::WriteAllText("$env:GITHUB_WORKSPACE/desktop/dist/SHA256SUMS", ($lines -join "`n") + "`n", [System.Text.UTF8Encoding]::new($false))
       - uses: actions/upload-artifact@v7
         with:
           name: stato-windows-preview
           path: |
             desktop/dist/StatO-Setup-*.exe
+            desktop/dist/StatO-Setup-*.exe.blockmap
+            desktop/dist/latest.yml
             desktop/dist/SHA256SUMS
           if-no-files-found: error
       - uses: actions/upload-artifact@v7
@@ -101,12 +107,13 @@ jobs:
         run: |
           set -euo pipefail
           version="$(tr -d '\r\n' < VERSION)"
-          assets=("release-assets/StatO-Setup-$version-x64.exe" release-assets/SHA256SUMS)
+          sed "s/__VERSION__/$version/g" desktop/RELEASE_NOTES.md > release-assets/notes.md
+          assets=("release-assets/StatO-Setup-$version-x64.exe" "release-assets/StatO-Setup-$version-x64.exe.blockmap" release-assets/latest.yml release-assets/SHA256SUMS)
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
           else
             gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
               --verify-tag --prerelease --latest=false \
               --title "StatO Desktop $version – Windows-Vorschau" \
-              --notes-file desktop/RELEASE_NOTES.md
+              --notes-file release-assets/notes.md
           fi

@@ -11,6 +11,8 @@ vi.mock('@/lib/auth', () => ({
   canManageSettingsDestructiveActions: () => true,
 }));
 
+// Let history.back() emit its real popstate; an extra synthetic event can dismiss
+// the retry dialog after a failed request in newer jsdom versions.
 describe('location deletion', () => {
   const refetch = vi.fn();
   beforeEach(() => {
@@ -26,7 +28,6 @@ describe('location deletion', () => {
     expect(screen.getByText('Möchtest du die Einrichtung „Jugendhaus“ wirklich löschen?')).toBeInTheDocument();
     expect(api.delete).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
-    fireEvent.popState(window, { state: {} });
     await waitFor(() => expect(screen.queryByText('Einrichtung löschen?')).not.toBeInTheDocument());
     expect(api.delete).not.toHaveBeenCalled();
   });
@@ -36,7 +37,6 @@ describe('location deletion', () => {
     render(<SettingsLocations />);
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[1]);
-    fireEvent.popState(window, { state: {} });
     await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
     expect(api.delete).toHaveBeenCalledExactlyOnceWith('/locations/location-1');
     expect(screen.queryByText('Einrichtung löschen?')).not.toBeInTheDocument();
@@ -47,7 +47,6 @@ describe('location deletion', () => {
     render(<SettingsLocations />);
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[1]);
-    fireEvent.popState(window, { state: {} });
     expect(await screen.findByRole('alert')).toHaveTextContent('Die Einrichtung konnte nicht gelöscht werden.');
     expect(refetch).not.toHaveBeenCalled();
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[1]);

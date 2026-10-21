@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { ChartExportData } from '@/components/ChartExportData';
 
 type StatisticsPieChartDatum = {
   name: string;
@@ -26,6 +27,7 @@ export function StatisticsPieChartCard({
   tooltipItemStyle,
   legendWrapperStyle,
   cellKeyPrefix,
+  valueLabel,
 }: {
   title: string;
   exportActions: ReactNode;
@@ -45,6 +47,7 @@ export function StatisticsPieChartCard({
   tooltipItemStyle?: CSSProperties;
   legendWrapperStyle?: CSSProperties;
   cellKeyPrefix: string;
+  valueLabel: string;
 }) {
   return (
     <div className={`statistics-chart-card ${cardClassName}`} data-pdf-section ref={chartRef}>
@@ -52,7 +55,7 @@ export function StatisticsPieChartCard({
         <h3 className="statistics-chart-title text-lg font-semibold text-viridian">{title}</h3>
         {exportActions}
       </div>
-      <div className={bodyClassName}>
+      <div className={bodyClassName} data-export-chart="pie">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
             <Pie
@@ -68,7 +71,7 @@ export function StatisticsPieChartCard({
               animationDuration={700}
               stroke={separatorColor}
               strokeWidth={1.25}
-              label={createLabelRenderer(showAbsoluteValueLabels)}
+              label={showAbsoluteValueLabels ? false : createLabelRenderer(false)}
             >
               {data.map((entry, index) => (
                 <Cell key={`${cellKeyPrefix}-${index}`} fill={entry.color} />
@@ -84,15 +87,18 @@ export function StatisticsPieChartCard({
                 entry?: { payload?: { name?: string } },
               ) => [formatValue(value), entry?.payload?.name || '']}
             />
-            <Legend
-              verticalAlign="bottom"
-              align="center"
-              iconSize={11}
-              wrapperStyle={legendWrapperStyle}
-            />
+            {!showAbsoluteValueLabels && (
+              <Legend
+                verticalAlign="bottom"
+                align="center"
+                iconSize={11}
+                wrapperStyle={legendWrapperStyle}
+              />
+            )}
           </PieChart>
         </ResponsiveContainer>
       </div>
+      <ChartExportData rows={data} valueLabel={valueLabel} percentages />
     </div>
   );
 }

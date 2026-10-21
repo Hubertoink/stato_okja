@@ -4,6 +4,12 @@ export const resources = {
   de: {
     auto: autoResources.de,
     common: {
+      chartExport: {
+        name: 'Bezeichnung', share: 'Anteil', noData: 'Keine Daten', bar: 'Balken',
+        offers: 'Ø Angebote parallel', participants: 'Ø Besucher:innen',
+        cellValues: 'Zellwerte: {{metric}} · {{resolution}} · — = nicht ausgewählter Wochentag',
+        halfHour: '30 Min.', hour: '1 Std.',
+      },
       staffSelection: { archived: 'Archiviert', cannotAssignArchived: 'Dieses Teammitglied ist archiviert und kann nicht neu zugeordnet werden.' },
       workflow: {
         "todayActivities": "Heutige Aktivitäten",
@@ -1113,6 +1119,12 @@ export const resources = {
   en: {
     auto: autoResources.en,
     common: {
+      chartExport: {
+        name: 'Label', share: 'Share', noData: 'No data', bar: 'Bar',
+        offers: 'Average concurrent activities', participants: 'Average visitors',
+        cellValues: 'Cell values: {{metric}} · {{resolution}} · — = unselected weekday',
+        halfHour: '30 min.', hour: '1 hr.',
+      },
       staffSelection: { archived: 'Archived', cannotAssignArchived: 'This team member is archived and cannot be assigned again.' },
       workflow: {
         "todayActivities": "Today’s activities",

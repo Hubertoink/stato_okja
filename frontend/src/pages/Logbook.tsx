@@ -252,8 +252,7 @@ export default function Logbook() {
         </div>
         </DemoHoverHint>
         )}
-      />
-
+        secondaryActions={<>
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
         <Button variant={advanced.status === 'open' ? 'primary' : 'secondary'} size="sm" aria-pressed={advanced.status === 'open'} onClick={() => { setSearch(''); setAdvanced(advanced.status === 'open' ? {} : { status: 'open' }); }}>{t('common:workflow.openTopics')}</Button>
         <Badge variant="count">
@@ -303,6 +302,8 @@ export default function Logbook() {
           </Button>
         </span>
       </div>
+        </>}
+      />
 
       <DemoHoverHint title="Beobachtungen im Team nachvollziehen" description="Öffne einen Eintrag, um Beobachtungen, Highlights und nächste Schritte zu lesen. Mit Filtern und Tabellenansicht findest du passende Dokumentationen für eure Reflexion." placement="bottom" className="demo-hover-hint-anchor-top">
       {isLoading ? (

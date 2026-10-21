@@ -59,6 +59,7 @@ import Modal from '@/components/Modal';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { captureExportNode } from '@/lib/htmlCanvasExport';
+import { ChartExportData } from '@/components/ChartExportData';
 
 const SURVEY_EXPORT_SCALE = 2;
 const SURVEY_EXPORT_MARGIN_MM = 10;
@@ -1118,7 +1119,7 @@ export default function SurveyDetail() {
                         {exportActions}
                       </div>
                     </div>
-                    <div className="mt-4 h-64 w-full">
+                    <div className="mt-4 h-64 w-full" data-export-chart="replace">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 4 }}>
                           <CartesianGrid strokeDasharray="3 3" />
@@ -1146,6 +1147,7 @@ export default function SurveyDetail() {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
+                    <ChartExportData bars rows={chartData} valueLabel={autoT('ui_a0015435c276')} />
                   </SurfaceCard>
                 </div>
               );

@@ -1,6 +1,6 @@
 {
   "name": "stato-desktop",
-  "version": "1.15.1",
+  "version": "1.16.0",
   "description": "StatO Desktop – lokal installierter Client für bestehende StatO-Server",
   "author": "OKJA Team",
   "license": "MIT",
@@ -15,10 +15,10 @@
     "build:unpacked": "electron-builder --win --x64 --dir --publish never"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.5",
+    "@eslint/js": "10.0.1",
     "electron": "44.5.1",
     "electron-builder": "26.15.3",
-    "eslint": "9.39.5",
+    "eslint": "10.13.0",
     "globals": "17.11.0",
     "playwright-core": "1.63.0"
   },

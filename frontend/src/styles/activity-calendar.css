@@ -51,12 +51,11 @@
   border-color: var(--border-strong) !important;
 }
 
-/* The desktop header is 5rem and the icon navigation is 2.75rem high.
- * Align with their real lower edge and overlap it slightly to avoid a seam. */
+/* Follow the measured header while it collapses or the navigation wraps. */
 @media (min-width: 768px) {
   .activities-desktop-table-header th {
     position: sticky;
-    top: calc(5rem + 2.75rem - 1px);
+    top: calc(var(--app-header-height, 7.75rem) - 1px);
     z-index: 20;
     background: var(--azure-web);
     box-shadow:

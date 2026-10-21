@@ -31,7 +31,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import Modal from '@/components/Modal';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useToast } from '@/components/Toast';
@@ -51,6 +50,7 @@ import {
   getVisibleSelectedItems,
 } from './statisticsHelpers';
 import { createBarValueLabelRenderer, createPieValueLabelRenderer } from './statisticsChartLabels';
+import { ChartExportData } from '@/components/ChartExportData';
 import {
   buildStatisticsActivitiesFileName,
   buildStatisticsChartFileName,
@@ -62,6 +62,7 @@ import { StatisticsExportActions } from './StatisticsExportActions';
 import { StatisticsPieChartCard } from './StatisticsPieChartCard';
 import CustomKpiCards from '@/components/CustomKpiCards';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { FloatingPageActions } from '@/components/ui/FloatingPageActions';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { Button, IconButton } from '@/components/ui/Button';
@@ -143,7 +144,8 @@ function getActivityTypeLabel(type?: string | null) {
 export default function Statistics() {
   const { t } = useTranslation('common');
   const organizationName = useActiveOrganizationName();
-  const isMobile = useIsMobile(768);
+  // Touch-enabled laptops still use the desktop controls and floating menu.
+  const isMobile = useIsMobile(768, { touchIsMobile: false });
   const {
     currentYear,
     currentMonth,
@@ -216,6 +218,8 @@ export default function Statistics() {
     useState<ActivitiesExportFormat | null>(null);
   const [isControllingExporting, setIsControllingExporting] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
+  const typePickerTriggerRef = useRef<HTMLDivElement | null>(null);
+  const projectPickerTriggerRef = useRef<HTMLDivElement | null>(null);
   const reportExportTriggerRef = useRef<HTMLDivElement | null>(null);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isExportInProgress, setIsExportInProgress] = useState(false);
@@ -1656,7 +1660,8 @@ export default function Statistics() {
 
           return (
             <>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+              <FloatingPageActions label={formatRangeDisplay(MONTH_NAMES)}>
+              <div className="flex flex-wrap items-center gap-3">
                 <SegmentedControl<'year' | 'month'>
                   ariaLabel={autoT('ui_fe359159c8ad')}
                   className="self-start"
@@ -1745,6 +1750,34 @@ export default function Statistics() {
                   </Button>
                 </div>
               </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div ref={typePickerTriggerRef}>
+                    <Button
+                      variant="secondary"
+                      aria-expanded={typePickerOpen}
+                      aria-haspopup="dialog"
+                      onClick={() => setTypePickerOpen(open => !open)}
+                      title="Aktivitätstyp auswählen"
+                    >
+                      {selectedType ? TYPE_LABEL[selectedType] : 'Alle Aktivitätstypen'}
+                      <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div ref={projectPickerTriggerRef} className="min-w-0 max-w-full">
+                    <Button
+                      className="max-w-full"
+                      variant="secondary"
+                      aria-expanded={projectPickerOpen}
+                      aria-haspopup="dialog"
+                      onClick={() => setProjectPickerOpen(open => !open)}
+                      title="Angebot oder Projekt auswählen"
+                    >
+                      <span className="truncate">{selectedProjectRecord?.title || 'Alle Angebote & Projekte'}</span>
+                      <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </FloatingPageActions>
 
               {filterMode === 'month' && !isCustomRange && (
                 <div className="mt-4 pt-4 border-t">
@@ -1981,6 +2014,7 @@ export default function Statistics() {
             tooltipItemStyle={chartTooltipItemStyle}
             legendWrapperStyle={pieLegendWrapperStyle}
             cellKeyPrefix="activity-type"
+            valueLabel={autoT('ui_b6bf5f1a2033')}
           />
 
           <StatisticsPieChartCard
@@ -2004,6 +2038,7 @@ export default function Statistics() {
             tooltipItemStyle={chartTooltipItemStyle}
             legendWrapperStyle={pieLegendWrapperStyle}
             cellKeyPrefix="gender"
+            valueLabel={t('workflow.attendances')}
           />
 
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
@@ -2103,6 +2138,13 @@ export default function Statistics() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            <ChartExportData
+              valueLabel={showAverage ? autoT('ui_c649f425302c') : t('workflow.attendances')}
+              rows={aggregatedTimeseries.map((item) => ({
+                name: formatStatisticsAggregationTooltipLabel(item.date, timeAggregation),
+                value: item.totalParticipants,
+              }))}
+            />
           </div>
 
           <StatisticsPieChartCard
@@ -2126,6 +2168,7 @@ export default function Statistics() {
             tooltipItemStyle={chartTooltipItemStyle}
             legendWrapperStyle={pieLegendWrapperStyle}
             cellKeyPrefix="cohort"
+            valueLabel={showAverage ? autoT('ui_c649f425302c') : t('workflow.attendances')}
           />
 
           <StatisticsBarChartCard
@@ -2317,11 +2360,11 @@ export default function Statistics() {
         </div>
       </div>
 
-      <Modal
+      <ResponsiveFilterPanel
+        anchorRef={typePickerTriggerRef}
         open={typePickerOpen}
         onClose={() => setTypePickerOpen(false)}
         title={autoT('ui_4324a8f20ad4')}
-        maxWidth="sm"
       >
         <div className="space-y-4">
           <p className={`text-sm ${mobileSecondaryTextClass}`}>{autoT('ui_269234dabd92')}</p>
@@ -2379,13 +2422,14 @@ export default function Statistics() {
             })}
           </div>
         </div>
-      </Modal>
+      </ResponsiveFilterPanel>
 
-      <Modal
+      <ResponsiveFilterPanel
+        anchorRef={projectPickerTriggerRef}
+        desktopClassName="filter-popover--projects"
         open={projectPickerOpen}
         onClose={() => setProjectPickerOpen(false)}
         title={autoT('ui_42da26b250b4')}
-        maxWidth="lg"
       >
         <div className="space-y-4">
           <p className={`text-sm ${mobileSecondaryTextClass}`}>
@@ -2492,7 +2536,7 @@ export default function Statistics() {
             )}
           </div>
         </div>
-      </Modal>
+      </ResponsiveFilterPanel>
 
       <ResponsiveFilterPanel
         anchorRef={reportExportTriggerRef}

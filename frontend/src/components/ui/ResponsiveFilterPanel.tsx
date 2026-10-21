@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { useIsMobile } from '@/lib/useIsMobile';
 import Modal from '@/components/Modal';
 import { CloseButton } from './Button';
 import { useTranslation } from 'react-i18next';
+import { useAnchoredPopoverPosition } from './useAnchoredPopoverPosition';
 
 /** A header-anchored filter popover on desktop and a full-width top sheet on phones. */
 export function ResponsiveFilterPanel({
@@ -22,45 +23,33 @@ export function ResponsiveFilterPanel({
   open: boolean;
   title: string;
 }) {
-  const isMobile = useIsMobile(mobileBreakpoint);
+  const isMobile = useIsMobile(mobileBreakpoint, { touchIsMobile: false });
   const { t } = useTranslation('common');
   const panelRef = useRef<HTMLElement | null>(null);
-  const [anchorStyle, setAnchorStyle] = useState<CSSProperties | undefined>();
+  const anchorStyle = useAnchoredPopoverPosition(open && !isMobile, panelRef, anchorRef);
 
   useEffect(() => {
     if (!open || isMobile) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       if (
         !panelRef.current?.contains(event.target as Node)
-        && !anchorRef?.current?.contains(event.target as Node)
+        && !(anchorRef?.current ?? panelRef.current?.parentElement)?.contains(event.target as Node)
       ) onClose();
     };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      onClose();
+      const anchor = anchorRef?.current ?? panelRef.current?.parentElement;
+      anchor?.querySelector<HTMLButtonElement>('button[aria-expanded]')?.focus();
+    };
     document.addEventListener('pointerdown', closeOnOutsidePointer);
-    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
-  }, [anchorRef, isMobile, onClose, open]);
-
-  useEffect(() => {
-    if (!open || isMobile || !anchorRef?.current) {
-      setAnchorStyle(undefined);
-      return;
-    }
-    const updatePosition = () => {
-      const rect = anchorRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      setAnchorStyle({
-        position: 'fixed',
-        top: `${Math.min(rect.bottom + 8, window.innerHeight - 48)}px`,
-        right: `${Math.max(16, window.innerWidth - rect.right)}px`,
-      });
-    };
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    document.addEventListener('keydown', closeOnEscape);
     return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
     };
-  }, [anchorRef, isMobile, open]);
+  }, [anchorRef, isMobile, onClose, open]);
 
   if (!open) return null;
   if (isMobile) {

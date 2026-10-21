@@ -120,13 +120,14 @@ async function checkServer(input, { fetchImpl = fetch, timeoutMs = 10000 } = {})
     return { serverUrl, version: health.version, insecure: serverUrl.startsWith('http:') };
   } catch (error) {
     if (controller.signal.aborted)
-      throw new Error('Der Server antwortet nicht rechtzeitig. Netzwerk oder VPN prüfen.');
+      throw new Error('Der Server antwortet nicht rechtzeitig. Netzwerk oder VPN prüfen.', { cause: error });
     if (
       error instanceof TypeError ||
       /ERR_|certificate|fetch failed|redirect/i.test(error.message)
     ) {
       throw new Error(
         'Verbindung fehlgeschlagen. Adresse, Netzwerk/VPN und TLS-Zertifikat prüfen. Die Adresse muss direkt auf StatO zeigen.',
+        { cause: error },
       );
     }
     throw error;

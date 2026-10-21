@@ -3,6 +3,39 @@
   isolation: isolate;
 }
 
+@media (min-width: 768px) {
+  .mobile-header-row {
+    transition: padding 180ms ease;
+  }
+
+  .mobile-header-brand > img {
+    transition: width 180ms ease, height 180ms ease;
+  }
+
+  .header-navigation-shell-compact .mobile-header-row {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .header-navigation-shell-compact .mobile-header-brand > img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .header-navigation-shell-compact .desktop-header-brand-copy,
+  .header-navigation-shell-compact .desktop-header-user-copy,
+  .header-navigation-shell-compact .mobile-header-user > button:has(.lucide-lightbulb) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-header-row,
+  .mobile-header-brand > img {
+    transition: none;
+  }
+}
+
 /* Blur scrolling content before painting the banner. A separate layer keeps
    fixed-position menus independent of the backdrop filter's containing block. */
 .header-navigation-shell-with-banner::before {

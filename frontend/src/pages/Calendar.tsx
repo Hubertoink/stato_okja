@@ -31,6 +31,8 @@ import DemoHoverHint, { dismissActiveDemoHoverHint } from '@/demo/DemoHoverHint'
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button, IconButton } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { FloatingPageActions } from '@/components/ui/FloatingPageActions';
+import { CalendarLatestActivityAction } from '@/components/CalendarLatestActivityAction';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
@@ -658,6 +660,19 @@ export default function Calendar() {
   });
   const activitiesQ = useActivities({ from: range.from, to: range.to });
   const activities = activitiesQ.data;
+  const latestActivityButton = (
+    <CalendarLatestActivityAction
+      currentPeriod={calendarView === 'month' ? {
+        from: fmtLocalISO(startOfMonth(cursor)),
+        to: fmtLocalISO(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)),
+      } : range}
+      view={isMobileAnalysis ? 'three-day' : calendarView}
+      onSelect={(date) => {
+        setCursor(date);
+        setSelectedDateISO(null);
+      }}
+    />
+  );
   const closureDays = closureDaysQ.data ?? [];
   const closureDaysByDate = useMemo(() => {
     const map = new Map<string, OrganizationClosureDay>();
@@ -1334,9 +1349,9 @@ export default function Calendar() {
         <div className="flex items-center justify-between md:block">
           <PageHeader className="mb-0" description={label} title={autoT('ui_33fe92f625e5')} />
           {/* Navigation controls on mobile - inline with title */}
-          <div className="flex gap-1.5 md:hidden">
+          <div className="flex items-center gap-1.5 md:hidden">
             {showTodayButton && (
-              <Button className="rounded-lg px-2.5 py-1.5" size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
+              <Button className="h-11 rounded-lg px-2.5" size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
             )}
             <IconButton
               aria-label="Vorheriger Zeitraum"
@@ -1359,46 +1374,50 @@ export default function Calendar() {
           </div>
         </div>
         {/* Desktop controls */}
-        <DemoHoverHint
-          title={autoT('ui_ce3e61ff4f3d')}
-          description={autoT('ui_185ae16ec6ca')}
-          placement="bottom"
-          align="end"
-        >
-          <div className="hidden md:flex gap-2">
-            {showTodayButton && (
-              <Button size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
-            )}
-            <IconButton
-              aria-label="Vorheriger Zeitraum"
-              onClick={goToPrevious}
-              title="Vorheriger Zeitraum"
-              variant="secondary"
-            >
-              <ChevronLeft aria-hidden="true" />
-            </IconButton>
-            <IconButton
-              aria-label="Nächster Zeitraum"
-              onClick={goToNext}
-              title="Nächster Zeitraum"
-              variant="secondary"
-            >
-              <ChevronRight aria-hidden="true" />
-            </IconButton>
-            <SegmentedControl<'month' | 'week' | 'analysis'>
-              ariaLabel={autoT('ui_d256a4d045f0')}
-              onChange={setView}
-              options={[
-                { value: 'month', label: autoT('ui_da13625eeb37') },
-                { value: 'week', label: autoT('ui_7b2207dc85a6') },
-                { value: 'analysis', label: 'Analyse' },
-              ]}
-              value={calendarView === 'analysis' ? 'analysis' : calendarView === 'week' ? 'week' : 'month'}
-            />
-          </div>
-        </DemoHoverHint>
+        <FloatingPageActions label={label}>
+          <DemoHoverHint
+            title={autoT('ui_ce3e61ff4f3d')}
+            description={autoT('ui_185ae16ec6ca')}
+            placement="bottom"
+            align="end"
+          >
+            <div className="hidden md:flex items-center gap-2">
+              {showTodayButton && (
+                <Button className="h-10" size="sm" onClick={gotoToday}>{autoT('ui_1ab33097cd8e')}</Button>
+              )}
+              <IconButton
+                aria-label="Vorheriger Zeitraum"
+                onClick={goToPrevious}
+                title="Vorheriger Zeitraum"
+                variant="secondary"
+              >
+                <ChevronLeft aria-hidden="true" />
+              </IconButton>
+              <IconButton
+                aria-label="Nächster Zeitraum"
+                onClick={goToNext}
+                title="Nächster Zeitraum"
+                variant="secondary"
+              >
+                <ChevronRight aria-hidden="true" />
+              </IconButton>
+              {latestActivityButton}
+              <SegmentedControl<'month' | 'week' | 'analysis'>
+                ariaLabel={autoT('ui_d256a4d045f0')}
+                onChange={setView}
+                options={[
+                  { value: 'month', label: autoT('ui_da13625eeb37') },
+                  { value: 'week', label: autoT('ui_7b2207dc85a6') },
+                  { value: 'analysis', label: 'Analyse' },
+                ]}
+                value={calendarView === 'analysis' ? 'analysis' : calendarView === 'week' ? 'week' : 'month'}
+              />
+            </div>
+          </DemoHoverHint>
+        </FloatingPageActions>
 
         <div className="flex flex-wrap items-center gap-2 md:hidden">
+          {latestActivityButton}
           <SegmentedControl<'month' | 'three-day' | 'analysis'>
             ariaLabel={autoT('ui_a950dd6ca6dd')}
             onChange={setView}

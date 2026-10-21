@@ -419,7 +419,7 @@ export function QuickTallyMinimizedPill({ onRestore }: { onRestore: () => void }
   if (!session) return null;
 
   const content = (
-    <div className="group fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 right-4 md:right-6 z-50">
+    <div className="quick-tally-minimized group fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 right-4 md:right-6 z-50">
       <div
         className="pointer-events-none absolute bottom-full right-0 hidden w-[28rem] max-w-[calc(100vw-2rem)] pb-3 translate-y-2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block"
         aria-label={autoT('ui_3d43fbbf12d5')}

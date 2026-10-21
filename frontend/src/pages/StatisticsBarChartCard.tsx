@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { useEmbeddedImageSrc } from '@/components/ProtectedImage';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
+import { ChartExportData } from '@/components/ChartExportData';
 
 type StatisticsBarChartDatum = {
   name: string;
@@ -125,7 +126,7 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
   ) => string | [string, string];
   tooltipLabelFormatter?: (label: string | number, payload?: Array<{ payload?: T }>) => string;
   barDataKey: string;
-  labelDataKey: string;
+  labelDataKey: keyof T & string;
   barName: string;
   barFill?: string;
   valueLabelContent: ReactElement;
@@ -139,7 +140,7 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
         <h3 className="statistics-chart-title text-lg font-semibold text-viridian">{title}</h3>
         {exportActions}
       </div>
-      <div className={bodyClassName}>
+      <div className={bodyClassName} data-export-chart="replace">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={margin}>
             <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
@@ -194,6 +195,15 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <ChartExportData
+        bars
+        valueLabel={barName}
+        rows={data.map((item, index) => ({
+          name: item.name,
+          value: Number(item[labelDataKey]),
+          color: getCellFill?.(item, index) || barFill,
+        }))}
+      />
     </div>
   );
 }

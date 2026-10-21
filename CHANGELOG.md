@@ -7,6 +7,30 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.16.0] - 2026-10-21
+
+### Changed
+- Kompakte Floating-Menüs halten Aktionen und Filter auf Aktivitäten, Kalender, Angeboten und Projekten, Statistik, Logbuch und Umfragen beim Scrollen erreichbar. Der Desktop-Header wird dabei schmaler.
+- Flyout-Filter bleiben innerhalb des sichtbaren Bereichs; Projekttypen und Statistikfilter verwenden kompakte Dropdowns.
+- Archivierte Einträge lassen sich über ein einheitliches Wiederherstellen-Icon reaktivieren.
+
+### Security
+- Aktualisierte Laufzeit- und Build-Abhängigkeiten einschließlich brace-expansion im Backend-Image, follow-redirects, Handlebars, Vite und postcss-selector-parser.
+- Dependabot prüft Backend, Frontend, Entwicklungswerkzeuge und Desktop in getrennten Update-Gruppen.
+
+### Upgrade
+- Vor dem Update Datenbank und Uploads sichern und das bestehende Updateverfahren verwenden.
+- Windows-Desktop: ESLint und Regelpaket sind gemeinsam aktualisiert; Verbindungsfehler behalten ihre ursprüngliche Ursache.
+
+
+### Fixed
+- Der Kalender springt zur aktuellsten Aktivität und deaktiviert die Sprungaktion, wenn der zugehörige Zeitraum bereits angezeigt wird. Der Heute-Button hat dieselbe Höhe wie die Navigationsicons.
+- Der fixierte Aktivitäten-Tabellenkopf schließt beim Scrollen am verkleinerten Header an.
+- PNG-Exporte enthalten dauerhaft lesbare Werte: Ranglisten und Umfrageantworten werden mit horizontalen Balken, vollständigen Bezeichnungen und Zahlen ausgegeben; Kreis- und Zeitdiagramme erhalten Wertetabellen. Das Wochenprofil zeigt die Werte des gewählten Modus direkt in den Zellen. SVG-Beschriftungen bleiben auch beim Export aus dem dunklen Theme sichtbar.
+- Der PNG-Export des Wochenprofils erhält die inhaltliche Heatmap-Färbung für Angebote und Besucher:innen einschließlich Intensität und Transparenz. Berechnete CSS-Farben werden für den Export in sRGB umgewandelt.
+
+---
+
 ## [1.15.1] - 2026-10-10
 
 ### Fixed
@@ -463,7 +487,21 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
   Vererbungsverwaltung mehr.
 - Abstände in den Hinweisen zur Vererbung wurden korrigiert.
 
-## [Unreleased]
+## [1.16.0] - 2026-10-21
+
+### Changed
+- Kompakte Floating-Menüs halten Aktionen und Filter auf Aktivitäten, Kalender, Angeboten und Projekten, Statistik, Logbuch und Umfragen beim Scrollen erreichbar. Der Desktop-Header wird dabei schmaler.
+- Flyout-Filter bleiben innerhalb des sichtbaren Bereichs; Projekttypen und Statistikfilter verwenden kompakte Dropdowns.
+- Archivierte Einträge lassen sich über ein einheitliches Wiederherstellen-Icon reaktivieren.
+
+### Security
+- Aktualisierte Laufzeit- und Build-Abhängigkeiten einschließlich brace-expansion im Backend-Image, follow-redirects, Handlebars, Vite und postcss-selector-parser.
+- Dependabot prüft Backend, Frontend, Entwicklungswerkzeuge und Desktop in getrennten Update-Gruppen.
+
+### Upgrade
+- Vor dem Update Datenbank und Uploads sichern und das bestehende Updateverfahren verwenden.
+- Windows-Desktop: ESLint und Regelpaket sind gemeinsam aktualisiert; Verbindungsfehler behalten ihre ursprüngliche Ursache.
+
 
 ### In Entwicklung
 - JWT Refresh Token Rotation

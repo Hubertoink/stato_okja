@@ -31,7 +31,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import Modal from '@/components/Modal';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useToast } from '@/components/Toast';
@@ -219,6 +218,8 @@ export default function Statistics() {
     useState<ActivitiesExportFormat | null>(null);
   const [isControllingExporting, setIsControllingExporting] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
+  const typePickerTriggerRef = useRef<HTMLDivElement | null>(null);
+  const projectPickerTriggerRef = useRef<HTMLDivElement | null>(null);
   const reportExportTriggerRef = useRef<HTMLDivElement | null>(null);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isExportInProgress, setIsExportInProgress] = useState(false);
@@ -1750,14 +1751,31 @@ export default function Statistics() {
                 </div>
               </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Button variant="secondary" onClick={() => setTypePickerOpen(true)} title="Aktivitätstyp auswählen">
-                    {selectedType ? TYPE_LABEL[selectedType] : 'Alle Aktivitätstypen'}
-                    <ChevronDown aria-hidden="true" className="h-4 w-4" />
-                  </Button>
-                  <Button variant="secondary" onClick={() => setProjectPickerOpen(true)} title="Angebot oder Projekt auswählen">
-                    {selectedProjectRecord?.title || 'Alle Angebote & Projekte'}
-                    <ChevronDown aria-hidden="true" className="h-4 w-4" />
-                  </Button>
+                  <div ref={typePickerTriggerRef}>
+                    <Button
+                      variant="secondary"
+                      aria-expanded={typePickerOpen}
+                      aria-haspopup="dialog"
+                      onClick={() => setTypePickerOpen(open => !open)}
+                      title="Aktivitätstyp auswählen"
+                    >
+                      {selectedType ? TYPE_LABEL[selectedType] : 'Alle Aktivitätstypen'}
+                      <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div ref={projectPickerTriggerRef} className="min-w-0 max-w-full">
+                    <Button
+                      className="max-w-full"
+                      variant="secondary"
+                      aria-expanded={projectPickerOpen}
+                      aria-haspopup="dialog"
+                      onClick={() => setProjectPickerOpen(open => !open)}
+                      title="Angebot oder Projekt auswählen"
+                    >
+                      <span className="truncate">{selectedProjectRecord?.title || 'Alle Angebote & Projekte'}</span>
+                      <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </FloatingPageActions>
 
@@ -2342,11 +2360,11 @@ export default function Statistics() {
         </div>
       </div>
 
-      <Modal
+      <ResponsiveFilterPanel
+        anchorRef={typePickerTriggerRef}
         open={typePickerOpen}
         onClose={() => setTypePickerOpen(false)}
         title={autoT('ui_4324a8f20ad4')}
-        maxWidth="sm"
       >
         <div className="space-y-4">
           <p className={`text-sm ${mobileSecondaryTextClass}`}>{autoT('ui_269234dabd92')}</p>
@@ -2404,13 +2422,14 @@ export default function Statistics() {
             })}
           </div>
         </div>
-      </Modal>
+      </ResponsiveFilterPanel>
 
-      <Modal
+      <ResponsiveFilterPanel
+        anchorRef={projectPickerTriggerRef}
+        desktopClassName="filter-popover--projects"
         open={projectPickerOpen}
         onClose={() => setProjectPickerOpen(false)}
         title={autoT('ui_42da26b250b4')}
-        maxWidth="lg"
       >
         <div className="space-y-4">
           <p className={`text-sm ${mobileSecondaryTextClass}`}>
@@ -2517,7 +2536,7 @@ export default function Statistics() {
             )}
           </div>
         </div>
-      </Modal>
+      </ResponsiveFilterPanel>
 
       <ResponsiveFilterPanel
         anchorRef={reportExportTriggerRef}

@@ -92,7 +92,6 @@ import { EditorActions } from '@/components/ui/EditorFrame';
 import { fieldControlClassName } from '@/components/ui/Field';
 import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
 import { ResponsiveFilterPanel } from '@/components/ui/ResponsiveFilterPanel';
-import { useIsMobile } from '@/lib/useIsMobile';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ProjectStarButton } from '@/components/ui/ProjectStar';
 import { ProjectStarIndicator } from '@/components/ui/ProjectStar';
@@ -2461,7 +2460,6 @@ export default function Projects() {
   const [projectTypeFilters, setProjectTypeFilters] = useState<string[]>(
     initialProjectFilters.types,
   );
-  const isMobile = useIsMobile(768);
   const projectTypeFilterRef = useRef<HTMLDivElement | null>(null);
   const [desktopView, setDesktopView] = useState<ProjectsDesktopView>(() => {
     try {
@@ -2480,22 +2478,6 @@ export default function Projects() {
   useEffect(() => {
     saveProjectsFilters({ showArchived, types: projectTypeFilters });
   }, [projectTypeFilters, showArchived]);
-  useEffect(() => {
-    if (!projectTypeFilterOpen || isMobile) return;
-    const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (!projectTypeFilterRef.current?.contains(event.target as Node))
-        setProjectTypeFilterOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setProjectTypeFilterOpen(false);
-    };
-    document.addEventListener('pointerdown', closeOnOutsidePointer);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsidePointer);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [isMobile, projectTypeFilterOpen]);
   const [modal, setModal] = useState<{
     mode: 'create' | 'edit';
     project?: Project;
@@ -2525,7 +2507,7 @@ export default function Projects() {
   const projects = data || [];
   const projectTypes = useMemo(
     () =>
-      Array.from(new Set(projects.map((project) => project.type))).sort((left, right) =>
+      Array.from(new Set([...Object.keys(PROJECT_TYPE_LABELS), ...projects.map((project) => project.type)])).sort((left, right) =>
         (PROJECT_TYPE_LABELS[left] || left).localeCompare(
           PROJECT_TYPE_LABELS[right] || right,
           'de',
@@ -2644,11 +2626,12 @@ export default function Projects() {
               <HeaderFilterButton
                 aria-expanded={projectTypeFilterOpen}
                 aria-label="Projekte filtern"
-                aria-pressed={projectTypeFilters.length > 0 || showArchived}
+                aria-pressed={projectTypeFilters.length > 0 || favoritesOnly || showArchived}
                 onClick={() => setProjectTypeFilterOpen((open) => !open)}
                 title="Projekte filtern"
               />
               <ResponsiveFilterPanel
+                anchorRef={projectTypeFilterRef}
                 desktopClassName="filter-popover--projects"
                 onClose={() => setProjectTypeFilterOpen(false)}
                 open={projectTypeFilterOpen}
@@ -2657,6 +2640,15 @@ export default function Projects() {
                 <section>
                   <h4 className="mb-2 text-sm font-semibold text-viridian">Projektarten</h4>
                   <div className="grid gap-1">
+                    <Button
+                      aria-pressed={projectTypeFilters.length === 0 && !favoritesOnly}
+                      className="justify-start"
+                      onClick={() => { setProjectTypeFilters([]); setFavoritesOnly(false); }}
+                      size="sm"
+                      variant={projectTypeFilters.length === 0 && !favoritesOnly ? 'primary' : 'secondary'}
+                    >
+                      Alle ({projects.length})
+                    </Button>
                     {projectTypes.map((type) => {
                       const selected = projectTypeFilters.includes(type);
                       return (
@@ -2664,22 +2656,32 @@ export default function Projects() {
                           key={type}
                           aria-pressed={selected}
                           className="justify-start"
-                          onClick={() =>
+                          onClick={() => {
+                            setFavoritesOnly(false);
                             setProjectTypeFilters((current) =>
                               selected
                                 ? current.filter((entry) => entry !== type)
                                 : [...current, type],
-                            )
-                          }
+                            );
+                          }}
                           size="sm"
                           variant={selected ? 'primary' : 'secondary'}
                         >
-                          {PROJECT_TYPE_LABELS[type] || type}
+                          {PROJECT_TYPE_LABELS[type] || type} ({projects.filter(project => project.type === type).length})
                         </Button>
                       );
                     })}
                   </div>
                 </section>
+                <Button
+                  aria-pressed={favoritesOnly}
+                  className="mt-2 w-full justify-start"
+                  onClick={() => { setProjectTypeFilters([]); setFavoritesOnly(value => !value); }}
+                  size="sm"
+                  variant={favoritesOnly ? 'primary' : 'secondary'}
+                >
+                  <ProjectStarIndicator size="sm" />Favoriten ({projects.filter(project => starred.includes(project.id)).length})
+                </Button>
                 <label className="filter-archive-option mt-3">
                   <input
                     type="checkbox"

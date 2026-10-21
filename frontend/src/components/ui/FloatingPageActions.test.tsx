@@ -44,6 +44,7 @@ describe('desktop floating page actions', () => {
     flushScroll();
     expect(create.closest('.page-actions-dock')).not.toBeNull();
     expect(view.closest('.page-actions-dock')).toBe(create.closest('.page-actions-dock'));
+    expect(create.closest('.page-actions-dock')?.querySelector('.page-actions-dock-label')).toBeNull();
     expect(screen.getAllByRole('button')).toHaveLength(2);
     anchorBottom = 180;
     flushScroll();

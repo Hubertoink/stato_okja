@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from 'react';
+import { useEffect, useRef, type ComponentProps } from 'react';
 import { Search, SlidersHorizontal, XCircle } from 'lucide-react';
 import { IconButton } from './Button';
 import { Input } from './Field';
-import { PAGE_ACTIONS_POSITION_EVENT } from './FloatingPageActions';
+import { useAnchoredPopoverPosition } from './useAnchoredPopoverPosition';
 
 /** Standard search trigger and popover for list page headers. */
 export function HeaderSearchAction({
@@ -28,7 +28,7 @@ export function HeaderSearchAction({
 }) {
   const anchorRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const [offset, setOffset] = useState(0);
+  const popoverStyle = useAnchoredPopoverPosition(open, popoverRef, anchorRef);
 
   useEffect(() => {
     if (!open) return;
@@ -41,25 +41,6 @@ export function HeaderSearchAction({
     return () => document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
   }, [open, onOpenChange]);
 
-  useLayoutEffect(() => {
-    if (!open) return;
-    const updatePosition = () => {
-      const anchor = anchorRef.current?.getBoundingClientRect();
-      if (!anchor) return;
-      const viewportWidth = document.documentElement.clientWidth;
-      const width = popoverRef.current?.getBoundingClientRect().width || 0;
-      const left = Math.max(16, Math.min(anchor.right - width, viewportWidth - width - 16));
-      setOffset(anchor.right - left - width);
-    };
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener(PAGE_ACTIONS_POSITION_EVENT, updatePosition);
-    return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener(PAGE_ACTIONS_POSITION_EVENT, updatePosition);
-    };
-  }, [open]);
-
   return (
     <div className="relative" ref={anchorRef} onKeyDown={(event) => {
       if (open && event.key === 'Escape') {
@@ -70,7 +51,7 @@ export function HeaderSearchAction({
       }
     }}>
       {open ? (
-        <div ref={popoverRef} className="header-action-popover" role="search" style={{ right: offset }}>
+        <div ref={popoverRef} className="header-action-popover" role="search" style={popoverStyle}>
           <div className="relative">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-faint)]" />
             <Input

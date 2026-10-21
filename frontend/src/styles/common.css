@@ -114,6 +114,10 @@
     display: none;
   }
 
+  .page-actions-dock .project-overview-filters {
+    display: none;
+  }
+
   .page-actions-dock .page-header-row {
     justify-content: center;
   }

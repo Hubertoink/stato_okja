@@ -32,7 +32,7 @@ export function PageHeader({
   </>;
   return (
     <header className={`mb-6 mt-1 ${className}`}>
-      {actions ? <FloatingPageActions label={title}>{content}</FloatingPageActions> : content}
+      {actions ? <FloatingPageActions>{content}</FloatingPageActions> : content}
     </header>
   );
 }

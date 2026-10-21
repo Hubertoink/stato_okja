@@ -65,7 +65,7 @@ export default function SettingsTeam() {
               checked={showArchived}
               onChange={setShowArchived}
               label={
-                <span>{autoT('ui_d9431e38c8b6')}<span className="text-xs text-gray-500">({archivedCount})</span>
+                <span>{autoT('ui_d9431e38c8b6')}{' '}<span className="text-xs text-gray-500">({archivedCount})</span>
                 </span>
               }
             />
@@ -99,7 +99,12 @@ export default function SettingsTeam() {
         {members.map((m) => (
           <div key={m.id} className="py-3 flex items-start justify-between gap-3">
             <div className="min-w-0 pr-2">
-              <div className="font-medium text-viridian">{m.name}</div>
+              <div className="font-medium text-viridian flex flex-wrap items-center gap-2">
+                {m.name}
+                {m.active === false && (
+                  <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-xs text-[var(--text-muted)]">Archiviert</span>
+                )}
+              </div>
               <div className="text-sm text-gray-600 flex flex-wrap gap-3">
                 {m.email && <span className="break-all">{m.email}</span>}
                 {m.phone && <span>{m.phone}</span>}
@@ -117,17 +122,9 @@ export default function SettingsTeam() {
               </div>
             </div>
             <div className="flex gap-2 shrink-0 self-start md:self-center">
-              {canManageTeam && <button
-                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
-                title={autoT('ui_104f3bfdc340')}
-                aria-label={autoT('ui_3829918a22c4', { value0: m.name })}
-                onClick={() => setModal({ mode: 'edit', member: m })}
-              >
-                <Pencil className="w-4 h-4 text-viridian" />
-              </button>}
               {showArchived && m.active === false && canManageTeam && (
                 <button
-                  className="text-viridian hover:underline text-sm"
+                  className="text-viridian hover:underline"
                   onClick={() =>
                     update.mutate(
                       { id: m.id, data: { active: true } },
@@ -140,6 +137,14 @@ export default function SettingsTeam() {
                   }
                 >{autoT('ui_98f492b5e015')}</button>
               )}
+              {canManageTeam && <button
+                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
+                title={autoT('ui_104f3bfdc340')}
+                aria-label={autoT('ui_3829918a22c4', { value0: m.name })}
+                onClick={() => setModal({ mode: 'edit', member: m })}
+              >
+                <Pencil className="w-4 h-4 text-viridian" />
+              </button>}
               {canManageTeam && <DeleteIconButton
                 size="icon-compact"
                 title={autoT('ui_ffa5a8a7e21d')}

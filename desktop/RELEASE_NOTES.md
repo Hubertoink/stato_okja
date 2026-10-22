@@ -2,9 +2,9 @@ StatO Desktop fÃ¼r Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Aktualisierter Windows-Installer für StatO 1.17.1 mit bestehender In-App-Updatefunktion.
-- Zusammen mit Server 1.17.1: korrigierter Scrollsprung beim Zurückkehren des Floating-Menüs in den Seitenkopf.
-- Die Oberfläche wird vom verbundenen Server geladen; für den Scrollfix muss deshalb auch der Server aktualisiert sein.
+- Aktualisierter Windows-Installer fÃ¼r StatO 1.18.0 mit bestehender In-App-Updatefunktion.
+- Zusammen mit Server 1.18.0: Monatsauslastung in der Statistik sowie passende, sanft animierte Ladeplatzhalter fÃ¼r Statistik und AktivitÃ¤ten.
+- Die OberflÃ¤che wird vom verbundenen Server geladen; fÃ¼r diese Neuerungen muss deshalb auch der Server aktualisiert sein.
 
 ### Installation und einmaliger Umstieg
 

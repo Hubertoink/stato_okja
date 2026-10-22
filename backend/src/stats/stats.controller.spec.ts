@@ -61,6 +61,16 @@ describe('StatsController org scoping', () => {
     jest.clearAllMocks();
   });
 
+  it('monthly indicators: forwards all filters and preserves organization scope', async () => {
+    await controller.getParticipantsTimeseries(
+      { user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' },
+      '2026-01-01', '2026-12-31', 'project-1', undefined, '1,3', 'project_open', 'completed,cancelled', 'open',
+    );
+    expect(service.getParticipantsTimeseries).toHaveBeenCalledWith(
+      '2026-01-01', '2026-12-31', 'org-1', undefined, 'project-1', 'project_open', [1, 3], ['completed', 'cancelled'], 'open',
+    );
+  });
+
   it('summary: superadmin without scope uses null orgId', async () => {
     await controller.getSummary({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: undefined }, undefined, undefined, undefined);
     expect(service.getSummary).toHaveBeenCalledWith(undefined, undefined, null, undefined, undefined, undefined, undefined);

@@ -192,8 +192,13 @@ export class StatsController {
     @Query('projectId') projectId?: string,
     @Query('orgId') orgIdQuery?: string,
     @Query('weekdays') weekdaysCsv?: string,
+    @Query('type') type?: string,
+    @Query('executionStatuses') executionStatusesCsv?: string,
+    @Query('closureState') closureState?: string,
   ) {
-    return this.statsService.getParticipantsTimeseries(...(await this.resolveBaseStatsArgs(req, from, to, projectId, orgIdQuery, weekdaysCsv)));
+    const [, , orgId, orgIds, , , weekdays] = await this.resolveBaseStatsArgs(req, from, to, projectId, orgIdQuery, weekdaysCsv);
+    return this.statsService.getParticipantsTimeseries(from, to, orgId, orgIds, projectId, type, weekdays,
+      parseExecutionStatuses(executionStatusesCsv), parseClosureState(closureState));
   }
 
   @Get('by-category')

@@ -7,11 +7,23 @@ und dieses Projekt hÃ¤lt sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.18.0] - 2026-10-22
+
+### Added
+- Monatsauslastung in der Statistik: proportionale Linien nach AktivitÃ¤tenzahl, mit Filterbezug und Anzahl im Tooltip.
+
+### Changed
+- Statistik und AktivitÃ¤ten zeigen beim Zeitraum- oder Seitenwechsel Platzhalter, statt alte Werte der neuen Auswahl zuzuordnen.
+- Statistik-Platzhalter folgen KPI-Karten, Wochenprofil und DiagrammflÃ¤chen; mobile AktivitÃ¤ten behalten ihre Kartenaufteilung.
+- Ein dezenter animierter Glanzverlauf signalisiert den Ladevorgang und respektiert reduzierte Bewegung.
+- Hintergrundaktualisierungen behalten aktuelle Daten sichtbar; Ladefehler bieten eine Wiederholung an.
+- Windows-Installer 1.18.0 mit bestehender In-App-Updatefunktion.
+
 ## [1.17.1] - 2026-10-22
 
 ### Fixed
-- Floating-Menüs geben ihren Platzhalter erst nach Rückkehr der Bedienelemente in den Seitenfluss frei; dadurch entfällt der kurze Scrollsprung beim Hochscrollen.
-- Mittwald-Dev und das Produktions-Stack-Image verwenden den internen Backend-Dienst mit regelmäßig erneuerter DNS-Auflösung statt des öffentlichen IPv6-Umwegs.
+- Floating-MenÃ¼s geben ihren Platzhalter erst nach RÃ¼ckkehr der Bedienelemente in den Seitenfluss frei; dadurch entfÃ¤llt der kurze Scrollsprung beim Hochscrollen.
+- Mittwald-Dev und das Produktions-Stack-Image verwenden den internen Backend-Dienst mit regelmÃ¤ÃŸig erneuerter DNS-AuflÃ¶sung statt des Ã¶ffentlichen IPv6-Umwegs.
 
 ## [1.17.0] - 2026-10-21
 

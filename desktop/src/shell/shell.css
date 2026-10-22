@@ -273,3 +273,16 @@ button:disabled {
     flex-direction: column;
   }
 }
+
+#desktop-footer button.update-ready,
+#setup-updates.update-ready {
+  background: #5b5fff;
+  color: #fff;
+  border-color: #5b5fff;
+  font-weight: 600;
+}
+#desktop-footer button.update-ready:hover:not(:disabled),
+#setup-updates.update-ready:hover:not(:disabled) {
+  background: #4549db;
+  color: #fff;
+}

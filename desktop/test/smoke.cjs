@@ -182,6 +182,14 @@ async function switchModal(application, local) {
           if ((await controller.check()).status !== 'available') throw new Error('Real updater did not read metadata');
           const result = await controller.download();
           if (result.status !== (damaged ? 'error' : 'downloaded')) throw new Error(`Unexpected real download state: ${result.status}: ${updateError?.stack}`);
+          if (!damaged) {
+            let installArgs;
+            updater.spawnLog = async (_file, args) => { installArgs = args; };
+            updater.doInstall({ isSilent: true, isForceRunAfter: true, isAdminRightsRequired: false });
+            if (!installArgs?.includes('/S') || !installArgs.includes('--force-run')) {
+              throw new Error('NSIS update must silently install and relaunch');
+            }
+          }
         }
       } finally { await new Promise((done) => server.close(done)); }
     });
@@ -212,6 +220,20 @@ async function switchModal(application, local) {
       '',
     );
     await capture(application, 'connected-footer.png');
+    await application.evaluate(({ webContents }) => {
+      const shell = webContents.getAllWebContents().find((wc) => wc.getURL().endsWith('/shell/index.html'));
+      shell.send('stato:update-state-changed', { revision: 100, status: 'available', version: '99.0.0', percent: 0 });
+    });
+    await local.locator('#desktop-updates.update-ready').waitFor();
+    assert.equal(await local.locator('#desktop-updates').textContent(), 'Update verfügbar');
+    assert.equal(await local.locator('#desktop-updates').evaluate((element) => getComputedStyle(element).backgroundColor), 'rgb(91, 95, 255)');
+    await capture(application, 'desktop-update-highlight.png');
+    await application.evaluate(({ webContents }) => {
+      const shell = webContents.getAllWebContents().find((wc) => wc.getURL().endsWith('/shell/index.html'));
+      shell.send('stato:update-state-changed', { revision: 101, status: 'downloaded', version: '99.0.0', percent: 100 });
+    });
+    await local.getByRole('button', { name: 'Update installieren', exact: true }).waitFor();
+
     assert.equal(await remote.evaluate(() => typeof window.statoDesktop), 'undefined');
     assert.equal(await remote.evaluate(() => typeof window.require), 'undefined');
     assert.deepEqual(await remote.evaluate(() => Object.keys(window.statoDesktopUpdates).sort()), ['getState', 'onState', 'open']);

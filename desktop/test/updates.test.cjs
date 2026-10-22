@@ -21,7 +21,7 @@ function fixture(options = {}) {
     updater.emit('download-progress', { percent: 52.6 });
     updater.emit('update-downloaded', { version: '1.17.0' });
   };
-  updater.quitAndInstall = (silent, restart) => { assert.equal(silent, false); assert.equal(restart, true); installs += 1; };
+  updater.quitAndInstall = (silent, restart) => { assert.equal(silent, true); assert.equal(restart, true); installs += 1; };
   const states = [];
   const controller = createUpdateController({ updater, currentVersion: '1.16.0', enabled: true,
     discover: async () => selectDesktopRelease([release('1.17.0')]), onState: (state) => states.push(state), ...options });

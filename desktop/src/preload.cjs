@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // no Electron/Node objects are exposed to either renderer.
 contextBridge.exposeInMainWorld('statoDesktop', {
   getState: () => ipcRenderer.invoke('stato:state'),
+  getUpdateState: () => ipcRenderer.invoke('stato:update-state'),
   openUpdates: () => ipcRenderer.invoke('stato:update-open'),
   onUpdateState: (callback) => {
     ipcRenderer.on('stato:update-state-changed', (_event, state) => callback(state));

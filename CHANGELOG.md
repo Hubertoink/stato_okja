@@ -7,6 +7,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.18.1] - 2026-10-22
+
+### Fixed
+- Desktop prüft direkt nach Laden des lokalen Fensters auf Updates, unabhängig von der Serververbindung.
+- Verfügbare und heruntergeladene Updates werden in der Desktop-Fußzeile farbig hervorgehoben.
+- Der Installationsbutton aktualisiert direkt ohne zusätzlichen Bestätigungsdialog und startet StatO danach wieder.
+- Der Windows-Setup-Assistent bietet den vorausgewählten Start nach Abschluss wieder an.
+
 ## [1.18.0] - 2026-10-22
 
 ### Added

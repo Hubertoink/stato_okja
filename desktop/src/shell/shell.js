@@ -83,9 +83,22 @@ desktop.onState(render);
 for (const id of ['setup-updates', 'desktop-updates']) {
   document.getElementById(id).onclick = () => { void desktop.openUpdates(); };
 }
-desktop.onUpdateState((state) => {
-  document.getElementById('desktop-updates').textContent = ['available', 'downloaded'].includes(state.status)
-    ? 'Update verfügbar' : 'Desktop-Updates';
-});
+let updateRevision = -1;
+function renderUpdateState(state) {
+  if (state.revision < updateRevision) return;
+  updateRevision = state.revision;
+  const ready = ['available', 'downloaded'].includes(state.status);
+  for (const id of ['setup-updates', 'desktop-updates']) {
+    const button = document.getElementById(id);
+    button.classList.toggle('update-ready', ready);
+    button.textContent = state.status === 'downloaded' ? 'Update installieren'
+      : state.status === 'available' ? 'Update verfügbar'
+      : state.status === 'checking' ? 'Updates werden geprüft …'
+      : state.status === 'downloading' ? `Update lädt … ${state.percent} %` : 'Desktop-Updates';
+    button.title = ready ? `StatO Desktop ${state.version}` : 'Desktop-Updates';
+  }
+}
+desktop.onUpdateState(renderUpdateState);
+void desktop.getUpdateState().then(renderUpdateState).catch(() => {});
 desktop.onServerSwitchClosed(() => document.getElementById('change-server').focus());
 void run(() => desktop.getState());

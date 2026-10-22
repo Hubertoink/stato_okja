@@ -42,7 +42,6 @@ let switchView;
 let updateWindow;
 let updateController;
 let updateTimer;
-let installConfirmationOpen = false;
 let updateNotification;
 const notifiedUpdates = new Set();
 let configFile;
@@ -442,20 +441,7 @@ function registerIpc() {
     'stato:update-open': () => openUpdates(),
     'stato:update-check': () => updateController.check(),
     'stato:update-download': () => updateController.download(),
-    'stato:update-install': async () => {
-      if (installConfirmationOpen || updateController.getState().status !== 'downloaded') return updateController.getState();
-      installConfirmationOpen = true;
-      try {
-        const { response } = await dialog.showMessageBox(updateWindow, {
-          type: 'question', title: 'StatO aktualisieren?',
-          message: 'Offene Eingaben gespeichert?',
-          detail: 'StatO wird geschlossen, aktualisiert und neu gestartet. Nicht gespeicherte Eingaben können verloren gehen.',
-          buttons: ['Abbrechen', 'Jetzt neu starten'], defaultId: 0, cancelId: 0, noLink: true,
-        });
-        if (response === 1 && !closing) return updateController.install();
-        return updateController.getState();
-      } finally { installConfirmationOpen = false; }
-    },
+    'stato:update-install': () => closing ? updateController.getState() : updateController.install(),
   };
   for (const [channel, handler] of Object.entries(updateHandlers)) {
     ipcMain.handle(channel, (event) => {
@@ -556,9 +542,6 @@ function startUpdates() {
     },
   });
   if (app.isPackaged && process.platform === 'win32') {
-    // Delay the initial check until the app has opened; retries never trigger installation.
-    const initialCheck = setTimeout(() => void updateController.check(), 15000);
-    initialCheck.unref();
     updateTimer = setInterval(() => void updateController.check(), 4 * 60 * 60 * 1000);
     updateTimer.unref();
   }
@@ -592,6 +575,8 @@ async function createWindow() {
     if (!hiddenForTest) window.show();
   });
   await window.loadFile(shellFile);
+  // Check as soon as the local UI is ready, independently of the server connection.
+  void updateController.check();
   configFile = join(app.getPath('userData'), 'connection.json');
   credentialStore = createCredentialStore(
     join(app.getPath('userData'), 'credentials.json'),

@@ -96,7 +96,7 @@ function createUpdateController({ updater, currentVersion, enabled, discover = d
     install() {
       if (!enabled || busy || state.status !== 'downloaded') return state;
       publish({ status: 'installing' });
-      try { updater.quitAndInstall(false, true); } catch { fail(); }
+      try { updater.quitAndInstall(true, true); } catch { fail(); }
       return state;
     },
   };

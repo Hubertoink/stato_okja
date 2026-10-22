@@ -1,3 +1,4 @@
+import { DataTransition, LoadingTableRows } from '@/components/ui/DataTransition';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { getActivityListPosition, saveActivityListPosition, useRestoreActivityListPosition } from '@/lib/activityListPosition';
@@ -221,6 +222,7 @@ export default function Activities() {
   const {
     data: paged,
     isLoading: activitiesLoading,
+    isPlaceholderData: activitiesPlaceholder,
     isFetching: activitiesFetching,
     isError: activitiesIsError,
     refetch: refetchActivities,
@@ -230,6 +232,7 @@ export default function Activities() {
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
     staleTimeMs: publicConfig?.liveRefreshIntervalMs ?? 0,
   });
+  const activitiesPending = activitiesLoading || activitiesPlaceholder;
   // no quick location filter
   const activities = useMemo(() => paged?.data || [], [paged]);
   const activityDays = useMemo(() => {
@@ -851,7 +854,7 @@ export default function Activities() {
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex flex-wrap gap-2 text-xs">
             <Badge variant="count">
-              {activitiesLoading ? t('filters.resultsLoading') : t('filters.results', { count: exportCountLabel })}
+              {activitiesPending ? t('filters.resultsLoading') : t('filters.results', { count: exportCountLabel })}
             </Badge>
           {searchTerm.trim() ? (
             <span className="inline-flex min-w-0 max-w-[calc(100vw-6.5rem)] items-center gap-1 rounded-full bg-azure-web px-2 py-1 text-viridian md:max-w-[34rem]">
@@ -939,6 +942,9 @@ export default function Activities() {
         </>}
       />
 
+      <div role="status" className="min-h-6 text-sm text-gray-500" aria-live="polite">
+        {activitiesPending ? `Aktivitäten – Seite ${page} wird geladen …` : activitiesFetching ? 'Wird aktualisiert …' : null}
+      </div>
       {/* Activity List */}
       {/* Desktop Table */}
       <DemoHoverHint
@@ -983,7 +989,8 @@ export default function Activities() {
               <th className="activities-col-action px-3 lg:px-6 py-3 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">{t('table.action')}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className={`divide-y divide-gray-200 ${activitiesPending ? "pending-data-rows" : ""}`} aria-hidden={activitiesPending || undefined} aria-busy={activitiesPending}>
+            {activitiesPending && activities.length === 0 && <LoadingTableRows />}
             {activities.map((a) => (
               <tr key={a.id} className="bg-white hover:bg-azure-web">
                 <td className="activities-col-date px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
@@ -1105,7 +1112,7 @@ export default function Activities() {
                 </td>
               </tr>
             ))}
-            {activities.length === 0 && (
+            {activities.length === 0 && !activitiesPending && !activitiesIsError && (
               <tr>
                 <td colSpan={7} className="px-3 lg:px-6 py-6 text-center text-gray-500 text-sm">
                   {t('table.noActivities')}
@@ -1158,6 +1165,7 @@ export default function Activities() {
         description={autoT('ui_ae48dac7af3d')}
       >
         <div className="relative min-h-[12rem] pt-2 md:hidden">
+        <DataTransition pending={activitiesPending} label={`Aktivitäten – Seite ${page} wird geladen …`}>
         <div className="space-y-3">
           {activityDays.map((day, index) => (
             <ActivityDayGroup key={`${day.date}-${index}`} date={day.date} label={formatActivityMobileDate(day.date)}>
@@ -1267,7 +1275,7 @@ export default function Activities() {
           ))}
             </ActivityDayGroup>
           ))}
-          {activities.length === 0 && !activitiesLoading && !activitiesFetching && (
+          {activities.length === 0 && !activitiesPending && !activitiesFetching && !activitiesIsError && (
             <EmptyState
               className="mx-3 mb-3"
               description={t('table.adjustFilters')}
@@ -1275,6 +1283,7 @@ export default function Activities() {
             />
           )}
         </div>
+        </DataTransition>
         </div>
       </DemoHoverHint>
       <div className={`mt-4 flex items-center gap-3 md:hidden ${total > 0 ? "justify-between" : "justify-end"}`}>

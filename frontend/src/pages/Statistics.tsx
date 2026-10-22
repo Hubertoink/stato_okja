@@ -1,3 +1,6 @@
+import { DataTransition } from '@/components/ui/DataTransition';
+import { MonthActivityIndicator, monthlyActivityCounts } from './statistics/MonthActivityIndicator';
+import { useStatisticsMonthCounts } from './statistics/useStatisticsOverview';
 import { StatisticsTabs } from '@/components/AnnualTargetCards';
 import { formatStatisticsReportPeriod } from './statistics/reportPeriod';
 import { useTranslation } from 'react-i18next';
@@ -285,6 +288,12 @@ export default function Statistics() {
     refetchOnWindowFocus: true,
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
   });
+  const monthCountsQ = useStatisticsMonthCounts(statsParams, scopeKey, selectedYear, filterMode === 'month' && !isCustomRange);
+  const monthCounts = monthlyActivityCounts(monthCountsQ.data ?? [], selectedYear);
+  const monthMaximum = Math.max(0, ...monthCounts);
+  const monthDescription = (month: number, name: string) => monthCountsQ.data
+    ? `${name}: ${monthCounts[month - 1]} Aktivitäten (im Verhältnis zum stärksten Monat)`
+    : `${name}: ${monthCountsQ.isError ? 'Monatsübersicht nicht verfügbar' : 'Monatsübersicht wird geladen …'}`;
   const overview = overviewQ.data;
   const summary = overview?.summary;
   const byType = overview?.byType;
@@ -963,6 +972,10 @@ export default function Statistics() {
   };
 
   const beginExport = () => {
+    if (overviewQ.isPending || overviewQ.isPlaceholderData || overviewQ.isError) {
+      showToast('Bitte warten, bis die gewählte Statistik geladen ist.', { type: 'info' });
+      return false;
+    }
     if (exportInProgressRef.current) {
       showToast('Ein Export wird bereits erstellt.', { type: 'info' });
       return false;
@@ -1417,9 +1430,13 @@ export default function Statistics() {
                                         ? 'bg-viridian/10 text-viridian'
                                         : mobileSoftSurfaceClass
                                   }`}
+                                  title={monthDescription(month, name)}
+                                  aria-label={monthDescription(month, name)}
+                                  aria-pressed={isActive}
                                   onClick={() => selectMonth(month)}
                                 >
                                   {name}
+                                  <MonthActivityIndicator count={monthCountsQ.data ? monthCounts[month - 1] : undefined} max={monthMaximum} active={isActive} />
                                 </button>
                               );
                             })}
@@ -1781,6 +1798,7 @@ export default function Statistics() {
 
               {filterMode === 'month' && !isCustomRange && (
                 <div className="mt-4 pt-4 border-t">
+                  <p className="mb-2 text-xs text-gray-500">Monatsauslastung nach Aktivitäten</p>
                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
                     {MONTH_NAMES_SHORT.map((name, idx) => {
                       const month = idx + 1;
@@ -1798,9 +1816,13 @@ export default function Statistics() {
                                 ? 'bg-viridian/10 text-viridian hover:bg-viridian/20'
                                 : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                           }`}
+                          title={monthDescription(month, name)}
+                          aria-label={monthDescription(month, name)}
+                          aria-pressed={isActive}
                           onClick={() => selectMonth(month)}
                         >
                           {name}
+                          <MonthActivityIndicator count={monthCountsQ.data ? monthCounts[month - 1] : undefined} max={monthMaximum} active={isActive} />
                         </button>
                       );
                     })}
@@ -1961,7 +1983,10 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      <div>
+      <DataTransition pending={overviewQ.isPending || overviewQ.isPlaceholderData}
+        refreshing={overviewQ.isFetching} error={overviewQ.isError}
+        label={`Statistik für ${formatRangeDisplay(MONTH_NAMES)} wird geladen …`}
+        onRetry={() => { void overviewQ.refetch(); }}>
         <StatisticsKpis
           showAverage={showAverage}
           onShowAverageChange={setShowAverage}
@@ -2283,7 +2308,9 @@ export default function Statistics() {
 
         <StatisticsActivitiesTable
           activities={reportActivities}
-          isLoading={activitiesPageQ.isLoading}
+          isLoading={activitiesPageQ.isPending || activitiesPageQ.isPlaceholderData}
+          isError={activitiesPageQ.isError}
+          onRetry={() => { void activitiesPageQ.refetch(); }}
           totalActivities={totalActivities}
           page={activitiesPage}
           totalPages={totalActivityPages}
@@ -2358,7 +2385,7 @@ export default function Statistics() {
             </div>
           </div>
         </div>
-      </div>
+      </DataTransition>
 
       <ResponsiveFilterPanel
         anchorRef={typePickerTriggerRef}

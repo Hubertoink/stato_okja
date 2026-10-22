@@ -1,3 +1,4 @@
+import { LoadingTableRows } from '@/components/ui/DataTransition';
 import type { ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import type { Activity } from '@/lib/activities';
@@ -14,6 +15,8 @@ import {
 export function StatisticsActivitiesTable({
   activities,
   isLoading,
+  isError,
+  onRetry,
   totalActivities,
   page,
   totalPages,
@@ -26,6 +29,8 @@ export function StatisticsActivitiesTable({
 }: {
   activities: Activity[];
   isLoading: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   totalActivities: number;
   page: number;
   totalPages: number;
@@ -67,7 +72,8 @@ export function StatisticsActivitiesTable({
           )}
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div role="status" className="text-sm text-gray-500">{isLoading ? `Aktivitäten – Seite ${page} wird geladen …` : null}</div>
+      <div className="overflow-x-auto" aria-busy={isLoading}>
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-azure-web text-gray-700">
@@ -88,8 +94,8 @@ export function StatisticsActivitiesTable({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {activities.map((activity) => {
+          <tbody className={`divide-y divide-gray-100 ${isLoading ? "pending-data-rows" : ""}`} aria-hidden={isLoading || undefined}>
+            {!isError && activities.map((activity) => {
               const cancelled = isCancelledActivity(activity.executionStatus);
               return (
                 <tr key={activity.id} data-pdf-row>
@@ -121,8 +127,9 @@ export function StatisticsActivitiesTable({
                 </tr>
               );
             })}
-            {isLoading && activities.length === 0 && <EmptyRow label={autoT('ui_c2b2d9c3136c')} />}
-            {!isLoading && activities.length === 0 && <EmptyRow label={autoT('ui_afc08a0675e3')} />}
+            {isLoading && activities.length === 0 && <LoadingTableRows columns={9} />}
+            {isError && <tr><td colSpan={9} role="alert">Daten konnten nicht geladen werden. <Button type="button" onClick={onRetry}>Erneut versuchen</Button></td></tr>}
+            {!isLoading && !isError && activities.length === 0 && <EmptyRow label={autoT('ui_afc08a0675e3')} />}
           </tbody>
         </table>
       </div>

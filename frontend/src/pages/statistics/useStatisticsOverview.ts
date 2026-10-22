@@ -51,3 +51,21 @@ export function useStatisticsOverview(
     placeholderData: keepPreviousData,
   });
 }
+
+// One small daily aggregate for the year, independent of the selected month.
+export function useStatisticsMonthCounts(params: StatisticsOverviewParams, scopeKey: string, year: string, enabled: boolean) {
+  const annualParams = { ...params, from: `${year}-01-01`, to: `${year}-12-31` };
+  return useQuery({
+    queryKey: ['stats:month-counts', scopeKey, annualParams],
+    enabled: enabled && /^\d{4}$/.test(year),
+    queryFn: async ({ signal }) => {
+      const { executionStatuses, weekdays, ...rest } = annualParams;
+      const res = await api.get('/stats/participants-timeseries', { signal, params: {
+        ...rest, executionStatuses: executionStatuses?.join(','), weekdays: weekdays?.join(','),
+      } });
+      return res.data as StatsOverviewResponse['participantsTimeseries'];
+    },
+    staleTime: 60_000,
+    refetchInterval: enabled ? 60_000 : false,
+  });
+}

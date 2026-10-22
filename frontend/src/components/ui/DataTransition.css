@@ -1,0 +1,10 @@
+.pending-data-rows td { position: relative; visibility: hidden; }
+.pending-data-rows td::after {
+  content: '';
+  visibility: visible;
+  position: absolute;
+  inset: 16px 12px;
+  min-height: 8px;
+  border-radius: 6px;
+  background: #e5e7eb;
+}

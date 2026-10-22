@@ -319,7 +319,7 @@ jobs:
             VITE_ENABLE_DEV_TOOLS=false
             VITE_DEMO_MODE=false
             VITE_COMMIT_SHA=${{ github.sha }}
-            NGINX_MODE=proxy
+            NGINX_MODE=direct
 
   frontend-onprem:
     name: On-Prem frontend image

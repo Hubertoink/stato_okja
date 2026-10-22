@@ -7,6 +7,12 @@ und dieses Projekt hÃ¤lt sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.17.1] - 2026-10-22
+
+### Fixed
+- Floating-Menüs geben ihren Platzhalter erst nach Rückkehr der Bedienelemente in den Seitenfluss frei; dadurch entfällt der kurze Scrollsprung beim Hochscrollen.
+- Mittwald-Dev und das Produktions-Stack-Image verwenden den internen Backend-Dienst mit regelmäßig erneuerter DNS-Auflösung statt des öffentlichen IPv6-Umwegs.
+
 ## [1.17.0] - 2026-10-21
 
 ### Added

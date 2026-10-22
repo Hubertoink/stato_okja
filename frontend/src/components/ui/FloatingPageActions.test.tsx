@@ -36,6 +36,23 @@ function Example() {
 }
 
 describe('desktop floating page actions', () => {
+  it('never collapses the placeholder while the controls are still fixed', () => {
+    const { container } = render(<Example />);
+    anchorBottom = 70;
+    flushScroll();
+    const anchor = container.querySelector('.page-actions-anchor') as HTMLElement;
+    const remove = anchor.style.removeProperty.bind(anchor.style);
+    const states: boolean[] = [];
+    vi.spyOn(anchor.style, 'removeProperty').mockImplementation((property) => {
+      if (property === 'height') states.push(!!anchor.querySelector('.page-actions-dock'));
+      return remove(property);
+    });
+    anchorBottom = 180;
+    flushScroll();
+    expect(states).toEqual([false]);
+    expect(anchor.style.height).toBe('');
+  });
+
   it('keeps page actions and secondary view controls together in a single dock', () => {
     render(<><header className="header-navigation-shell" /><PageHeader title="Projekte" actions={<Button>Neues Projekt</Button>} secondaryActions={<Button>Liste</Button>} /></>);
     const create = screen.getByRole('button', { name: 'Neues Projekt' });

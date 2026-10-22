@@ -9,6 +9,13 @@ export function FloatingPageActions({ children, label }: { children: ReactNode; 
   const [floating, setFloating] = useState(false);
 
   useLayoutEffect(() => {
+    // Release the placeholder only after React has put the controls back in
+    // normal flow. Clearing it in the scroll callback briefly collapses the
+    // header while the controls are still fixed, triggering scroll anchoring.
+    if (!floating) {
+      anchorRef.current?.style.removeProperty('width');
+      anchorRef.current?.style.removeProperty('height');
+    }
     // Popovers may be open already when the controls change position.
     window.dispatchEvent(new Event(PAGE_ACTIONS_POSITION_EVENT));
   }, [floating]);
@@ -29,9 +36,6 @@ export function FloatingPageActions({ children, label }: { children: ReactNode; 
         const rect = anchor.getBoundingClientRect();
         anchor.style.width = `${rect.width}px`;
         anchor.style.height = `${rect.height}px`;
-      } else {
-        anchor.style.removeProperty('width');
-        anchor.style.removeProperty('height');
       }
       docked = shouldFloat;
       setFloating(shouldFloat);

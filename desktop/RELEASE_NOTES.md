@@ -2,9 +2,9 @@ StatO Desktop fÃ¼r Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Desktop-Updates direkt in der App: automatische PrÃ¼fung beim Start und alle vier Stunden, Benachrichtigung bei einer neuen Version und Download mit Fortschrittsanzeige.
-- Eigener Eintrag **Desktop-Updates** im Avatar-MenÃ¼ der aktualisierten ServeroberflÃ¤che. Die Desktop-FuÃŸzeile bietet den Zugang auch mit Ã¤lteren Servern.
-- Installation und Neustart erst nach BestÃ¤tigung; offene Eingaben vorher speichern. Beim normalen Beenden wird kein Update installiert.
+- Aktualisierter Windows-Installer für StatO 1.17.1 mit bestehender In-App-Updatefunktion.
+- Zusammen mit Server 1.17.1: korrigierter Scrollsprung beim Zurückkehren des Floating-Menüs in den Seitenkopf.
+- Die Oberfläche wird vom verbundenen Server geladen; für den Scrollfix muss deshalb auch der Server aktualisiert sein.
 
 ### Installation und einmaliger Umstieg
 

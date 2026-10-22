@@ -1165,7 +1165,7 @@ export default function Activities() {
         description={autoT('ui_ae48dac7af3d')}
       >
         <div className="relative min-h-[12rem] pt-2 md:hidden">
-        <DataTransition pending={activitiesPending} label={`Aktivitäten – Seite ${page} wird geladen …`}>
+        <DataTransition variant="activity-cards" empty={activities.length === 0} showStatus={false} pending={activitiesPending} label={`Aktivitäten – Seite ${page} wird geladen …`}>
         <div className="space-y-3">
           {activityDays.map((day, index) => (
             <ActivityDayGroup key={`${day.date}-${index}`} date={day.date} label={formatActivityMobileDate(day.date)}>

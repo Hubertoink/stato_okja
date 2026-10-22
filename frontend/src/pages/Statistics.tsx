@@ -1983,7 +1983,7 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      <DataTransition pending={overviewQ.isPending || overviewQ.isPlaceholderData}
+      <DataTransition variant="statistics" pending={overviewQ.isPending || overviewQ.isPlaceholderData}
         refreshing={overviewQ.isFetching} error={overviewQ.isError}
         label={`Statistik für ${formatRangeDisplay(MONTH_NAMES)} wird geladen …`}
         onRetry={() => { void overviewQ.refetch(); }}>

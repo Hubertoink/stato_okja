@@ -260,7 +260,7 @@ jobs:
           cache-scope: frontend
           platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           build-args: |
-            VITE_API_BASE_URL=${{ github.ref == 'refs/heads/demo' && '/api' || (github.ref == 'refs/heads/dev' && 'https://devapi.stato-okja.de/api' || env.FRONTEND_API_BASE_URL) }}
+            VITE_API_BASE_URL=${{ (github.ref == 'refs/heads/demo' || github.ref == 'refs/heads/dev') && '/api' || env.FRONTEND_API_BASE_URL }}
             VITE_ENABLE_DEV_TOOLS=${{ github.ref == 'refs/heads/dev' && 'true' || 'false' }}
             VITE_DEMO_MODE=${{ github.ref == 'refs/heads/demo' && 'true' || 'false' }}
             VITE_COMMIT_SHA=${{ github.sha }}

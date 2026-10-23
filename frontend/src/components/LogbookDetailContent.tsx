@@ -14,7 +14,7 @@ import LogbookEditableConnections from './LogbookEditableConnections';
 import type { LogbookDraft } from '@/lib/logbookEdit';
 
 /** Shared reading layout for the detail dialog and the standalone entry page. */
-export default function LogbookDetailContent({ entry, editor }: { entry: LogbookEntry; editor?: {
+export default function LogbookDetailContent({ entry, editor, showTitle = true }: { entry: LogbookEntry; showTitle?: boolean; editor?: {
   draft: LogbookDraft; onChange: (next: LogbookDraft) => void;
 } }) {
   const { user } = useAuth();
@@ -30,7 +30,7 @@ export default function LogbookDetailContent({ entry, editor }: { entry: Logbook
   return (
     <div className="logbook-reading-content">
       <section className="logbook-reading-summary">
-        {editor ? <FieldLabel className="mb-3">{autoT('ui_950701e758d1')}<Input autoFocus required maxLength={180} value={editor.draft.title} onChange={event => change('title', event.target.value)} className="mt-1 text-lg font-bold" /></FieldLabel> : <h1>{entry.title}</h1>}
+        {editor ? <FieldLabel className="mb-3">{autoT('ui_950701e758d1')}<Input autoFocus required maxLength={180} value={editor.draft.title} onChange={event => change('title', event.target.value)} className="mt-1 text-lg font-bold" /></FieldLabel> : showTitle ? <h1>{entry.title}</h1> : null}
         <div className="logbook-reading-badges">
           {editor ? <FieldLabel>{autoT('ui_f4b0e988965d')}<Select value={editor.draft.type} onChange={event => change('type', event.target.value)}>
             {Object.entries(logbookTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}

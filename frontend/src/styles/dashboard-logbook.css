@@ -554,7 +554,6 @@
 .logbook-reading-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.65; color: var(--text-secondary); }
 .logbook-reflection-list { overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-2); }
 .logbook-reflection-item { --reflection-accent: #15803d; position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 14px; }
-.logbook-reflection-item::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 4px; background: var(--reflection-accent); }
 .logbook-reflection-item--warning { --reflection-accent: #b45309; }
 .logbook-reflection-item--info { --reflection-accent: #2563eb; }
 :root[data-color-mode='dark'] .logbook-reflection-item--success { --reflection-accent: #4ade80; }

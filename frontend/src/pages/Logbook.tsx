@@ -1,6 +1,6 @@
 import DemoHoverHint from '@/demo/DemoHoverHint';
 import { useEffect, useMemo, useState } from 'react';
-import { Archive, ArrowLeft, Download, Plus, X } from 'lucide-react';
+import { Archive, ArrowLeft, Download, MessageCircle, Plus, X } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchAllLogbookEntries, useLogbookEntries } from '@/lib/logbook';
 import {
@@ -345,7 +345,15 @@ export default function Logbook() {
                       className="cursor-pointer bg-white transition-colors hover:bg-azure-web"
                       onClick={() => navigate(`/logbook?entry=${encodeURIComponent(entry.id)}`)}
                     >
-                      <td className="activities-col-date whitespace-nowrap px-3 py-4 text-sm text-gray-700 lg:px-6">{formatDate(entry.occurredAt, { dateStyle: 'short', timeStyle: 'short' })}</td>
+                      <td className="activities-col-date whitespace-nowrap px-3 py-4 text-sm text-gray-700 lg:px-6">
+                        <span className="flex items-center gap-3">
+                          <span>{formatDate(entry.occurredAt, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-600">
+                            <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                            <span className="sr-only">{t('exportColumns.comments')}: </span>{formatNumber(entry.commentCount || 0)}
+                          </span>
+                        </span>
+                      </td>
                       <td className="activities-col-type px-3 py-4 lg:px-6"><LogbookTypeBadge label={t(`types.${entry.type}`)} type={entry.type} /></td>
                       <td className="activities-col-title max-w-xs px-3 py-4 lg:px-6"><span className="font-medium text-gray-900">{entry.title}</span>{entry.isUnread ? <Badge className="ml-2" variant="accent">{t('newBadge')}</Badge> : null}</td>
                       <td className="activities-col-meta max-w-[12rem] truncate px-3 py-4 text-sm text-gray-600 lg:px-6">{entry.project?.title || '–'}</td>

@@ -652,13 +652,21 @@
   .logbook-detail-modal[data-mode='read'] .logbook-reading-scroll { display: grid; flex: 0 1 auto; }
   .logbook-detail-modal[data-mode='read'] .logbook-detail-layout { height: auto; min-height: 0; }
   .logbook-detail-main { grid-column: 2; grid-row: 1; overflow-y: auto; padding: 24px; overscroll-behavior-y: contain; }
-  .logbook-detail-comments { grid-column: 1; grid-row: 1; overflow-y: auto; padding: 24px 20px; border-width: 0 1px 0 0; border-radius: 0 0 0 16px; overscroll-behavior-y: contain; }
+  .logbook-detail-comments { grid-column: 1; grid-row: 1; padding: 24px 20px; border-width: 0 1px 0 0; border-radius: 0 0 0 16px; }
   .logbook-detail-comments > h3 { font-size: 16px; }
   .logbook-detail-comments .mb-2.flex, .logbook-detail-page-comments .mb-2.flex { flex-wrap: wrap; gap: 8px; }
   .logbook-detail-page { display: grid; grid-template-columns: minmax(300px, 340px) minmax(0, 1fr); gap: 20px; max-width: 1320px; align-items: start; }
   .logbook-detail-page > div:first-child { grid-column: 1 / -1; }
   .logbook-detail-page-main { grid-column: 2; grid-row: 2; }
-  .logbook-detail-page-comments { grid-column: 1; grid-row: 2; position: sticky; top: 100px; max-height: calc(100dvh - 124px); overflow-y: auto; margin-top: 0; padding: 20px; }
+  .logbook-detail-page-comments { grid-column: 1; grid-row: 2; position: sticky; top: 100px; max-height: calc(100dvh - 124px); margin-top: 0; padding: 20px; }
+  .logbook-detail-comments, .logbook-detail-page-comments { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .logbook-detail-comments > h3, .logbook-detail-comments > form,
+  .logbook-detail-page-comments > h2, .logbook-detail-page-comments > form { flex-shrink: 0; }
+  .logbook-detail-comments > .logbook-comment-list,
+  .logbook-detail-page-comments > .logbook-comment-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
+  .logbook-detail-comments .logbook-comment,
+  .logbook-detail-page-comments .logbook-comment { flex-shrink: 0; }
+  .logbook-detail-comments textarea, .logbook-detail-page-comments textarea { max-height: 24vh; }
 }
 
 .logbook-edit-connection { display: flex; align-items: center; gap: 4px; min-width: 0; }

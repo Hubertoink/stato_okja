@@ -1,6 +1,7 @@
 import { CalendarSearch } from 'lucide-react';
 import { useActivitiesPaged } from '@/lib/activities';
 import { IconButton } from './ui/Button';
+import { Tooltip } from './ui/Tooltip';
 
 /** Jump to the newest activity date in the active organization, including past dates. */
 export function CalendarLatestActivityAction({ currentPeriod, onSelect, view }: {
@@ -26,10 +27,11 @@ export function CalendarLatestActivityAction({ currentPeriod, onSelect, view }: 
               ? 'Zum Zeitraum der aktuellsten Aktivität'
               : 'Zur Woche der aktuellsten Aktivität';
 
-  return <IconButton
+  const disabled = alreadyVisible || (!query.isError && !activity);
+
+  return <Tooltip text={label} disabled={disabled}><IconButton
     aria-label={label}
-    title={label}
-    disabled={alreadyVisible || (!query.isError && !activity)}
+    disabled={disabled}
     onClick={() => {
       if (query.isError) {
         void query.refetch();
@@ -40,5 +42,5 @@ export function CalendarLatestActivityAction({ currentPeriod, onSelect, view }: 
       onSelect(new Date(year, month - 1, day));
     }}
     variant="secondary"
-  ><CalendarSearch aria-hidden="true" /></IconButton>;
+  ><CalendarSearch aria-hidden="true" /></IconButton></Tooltip>;
 }

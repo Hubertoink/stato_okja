@@ -665,8 +665,9 @@
 .logbook-edit-connection > .logbook-connection-row { flex: 1; min-width: 0; width: 100%; text-align: left; }
 .logbook-edit-connection > button:last-child:not(.logbook-connection-row) { flex-shrink: 0; }
 .logbook-reflection-item > div { flex: 1; }
-.logbook-inline-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 16px 0; margin-top: 20px; border-top: 1px solid var(--border-subtle); background: var(--surface-elevated); }
+.logbook-detail-modal { overflow: hidden; }
+.logbook-inline-actions { display: flex; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 16px 12px; border-top: 1px solid var(--border-subtle); background: var(--surface-elevated); }
 .logbook-reading-summary input[type='datetime-local'] { min-width: 0; max-width: 100%; }
 @media (min-width: 768px) {
-  .logbook-inline-actions { position: sticky; bottom: -24px; z-index: 2; padding-bottom: 24px; }
+  .logbook-inline-actions { padding-inline: 24px; }
 }

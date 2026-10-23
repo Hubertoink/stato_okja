@@ -34,11 +34,11 @@ export function Tooltip({
     const rect = anchor.current.getBoundingClientRect();
     const box = bubble.current.getBoundingClientRect();
     setPosition({
-      left: Math.max(8, Math.min(rect.right - box.width, window.innerWidth - box.width - 8)),
+      left: Math.max(8, Math.min(rect.left + (rect.width - box.width) / 2, window.innerWidth - box.width - 8)),
       top:
-        rect.bottom + box.height + 8 < window.innerHeight
-          ? rect.bottom + 8
-          : Math.max(8, rect.top - box.height - 8),
+        rect.top - box.height - 6 >= 8
+          ? rect.top - box.height - 6
+          : Math.min(window.innerHeight - box.height - 8, rect.bottom + 6),
     });
   }, [visible, text]);
   useEffect(() => {

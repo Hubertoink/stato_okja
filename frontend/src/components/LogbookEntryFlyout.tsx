@@ -310,10 +310,6 @@ export default function LogbookEntryFlyout({
                 <fieldset disabled={saving} className="min-w-0">
                   <LogbookDetailContent entry={entry} showTitle={false} editor={draft ? { draft, onChange: setDraft } : undefined} />
                 </fieldset>
-                {draft && <div className="logbook-inline-actions">
-                  <Button variant="secondary" disabled={saving} onClick={() => requestDiscard(() => { reset(null); setDraft(null); })}>{t('discardEdits')}</Button>
-                  <Button type="submit" disabled={saving}><Save className="h-4 w-4" />{saving ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}</Button>
-                </div>}
               </form>
               <section className="logbook-detail-comments border-t border-gray-100 pt-5">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
@@ -378,6 +374,10 @@ export default function LogbookEntryFlyout({
             </div>
           )}
         </div>
+        {draft && <footer className="logbook-inline-actions">
+          <Button variant="secondary" disabled={saving} onClick={() => requestDiscard(() => { reset(null); setDraft(null); })}>{t('discardEdits')}</Button>
+          <Button type="submit" form={editFormId} disabled={saving}><Save className="h-4 w-4" />{saving ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}</Button>
+        </footer>}
         {canManage && !draft && entry && (
           <footer className="logbook-detail-footer flex shrink-0 items-center justify-start border-t border-[var(--border-subtle)] px-3 py-3 md:px-6">
             {!archived && <Button variant="warning" disabled={archive.isPending} onClick={() => setArchiveConfirmOpen(true)}>

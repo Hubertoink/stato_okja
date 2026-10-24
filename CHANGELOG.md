@@ -7,6 +7,11 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.18.3] - 2026-10-24
+
+### Fixed
+- Desktop-Fensterknöpfe bleiben am rechten Fensterrand statt innerhalb des zentrierten Inhaltscontainers, auch beim Maximieren und bei unterschiedlichen Fensterbreiten.
+
 ## [1.18.2] - 2026-10-24
 
 ### Changed

@@ -2,10 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Die separate Windows-Titelleiste entfällt. Minimieren, Maximieren/Wiederherstellen und Schließen stehen direkt rechts neben dem Avatar.
-- Freie Flächen im App-Header dienen zum Verschieben des Fensters; die Fenstersteuerung passt sich auch schmalen Fenstern an.
-- Bei Anmeldung, Serverauswahl und Verbindungsfehlern bleibt eine kompakte Fenstersteuerung erreichbar.
-- Die Integration funktioniert mit bestehenden StatO-Servern ohne Server-Update.
+- Minimieren, Maximieren/Wiederherstellen und Schließen bleiben jetzt am rechten Fensterrand, unabhängig von der Inhaltsbreite des Headers.
+- Die Position bleibt auch beim Vergrößern, Maximieren und Wiederherstellen des Fensters stabil.
+- Kein Server-Update erforderlich.
 
 ### Installation und einmaliger Umstieg
 
